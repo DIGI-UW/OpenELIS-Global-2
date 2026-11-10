@@ -93,6 +93,16 @@ export function displayResult(row) {
     );
     return match ? match.value : (row.result ?? "");
   }
+  if (["M", "C"].includes(row.resultType) && row.multiSelectResultValues) {
+    return Object.values(JSON.parse(row.multiSelectResultValues))
+      .flatMap((group) => String(group).split(","))
+      .map(
+        (id) =>
+          (row.dictionaryResults || []).find((entry) => String(entry.id) === id)
+            ?.value ?? id,
+      )
+      .join(", ");
+  }
   return row.displayResult ?? row.result ?? "";
 }
 

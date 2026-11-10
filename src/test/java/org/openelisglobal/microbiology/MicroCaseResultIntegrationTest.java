@@ -76,7 +76,11 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     @Autowired
     private MicroIncomingResultService incoming;
     @Autowired
+    private MicroPatientReportService reports;
+    @Autowired
     private MicroIncomingItemDAO incomingItems;
+    @Autowired
+    private org.openelisglobal.result.service.ResultSignatureService signatures;
     @Autowired
     private org.openelisglobal.analyzerresults.service.AnalyzerResultsService analyzerStaging;
     @Autowired
@@ -128,6 +132,7 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         outsider = user("Outside", fixtures.createLabUnit().getId(), Constants.ROLE_RESULTS);
         var test = fixtures.createCatalogTest();
         test.setTestSection(unit);
+        test.setIsReportable("Y");
         em.merge(test);
         components.saveSampleResults(test.getId(),
                 List.of(component("PRIMARY", "MTB", true), component("RIF", "Rifampicin", false)), null, null, actor);
@@ -492,7 +497,7 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         replacement.components.get(0).value = "56";
         var queued = incoming.receiveReviewed(microCase.getId(), microCase.getSampleItemId(),
                 analysis.getTest().getId(), "ANALYZER", "reviewed-late-result", "56", replacement, analysis.getId(),
-                actor, analyzer());
+                actor, analyzer(), null);
         assertEquals("NEEDS_AMENDMENT", queued.state);
         assertEquals("12",
                 workspace.getTests(microCase.getId(), actor).getFirst().components.getFirst().getResultValue());
@@ -685,7 +690,7 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
-    public void acceptsNegativeExponentUsingMantissaPrecision() {
+    public void aScientificValueIsSavedAsEnteredWhateverThePrecision() {
         configurePrecision(2);
         var submission = payload();
         submission.components.get(0).value = "1.5e-7";
@@ -695,22 +700,223 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
-    public void rejectsExcessMantissaPrecisionEvenWithPositiveExponent() {
+    public void extraDecimalsAreSavedAsEnteredAndRoundOnlyForDisplay() {
         configurePrecision(2);
         var submission = payload();
-        submission.components.get(0).value = "1.555e7";
-        assertEquals("MICROBIOLOGY_INVALID_PRECISION", assertThrows(IllegalArgumentException.class,
-                () -> workspace.saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor)))
+        submission.components.get(0).value = "1.2345";
+        assertEquals("TechnicalAcceptance", workspace
+                .saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor)).get(0).status);
+        var saved = results.getResultsByAnalysis(analysis).stream().filter(r -> "1.2345".equals(r.getEnteredValue()))
+                .findFirst().orElseThrow();
+        assertEquals("1.23", results.formatSimpleResultForDisplay(saved));
+        var notANumber = payload();
+        notANumber.components.get(0).value = "1.2.3";
+        assertEquals("MICROBIOLOGY_INVALID_RESULT", assertThrows(IllegalArgumentException.class,
+                () -> workspace.saveResults(microCase.getId(), analysis.getId(), notANumber, actor, request(actor)))
                 .getMessage());
+    }
+
+    @Test
+    public void aComponentWithNoDecimalPlacesSetAcceptsAnyDecimals() {
+        var configured = components.getActiveComponentsByTestId(analysis.getTest().getId());
+        configured.forEach(c -> c.setReportingDecimalPlaces(null));
+        components.saveSampleResults(analysis.getTest().getId(), configured, null, null, actor);
+        em.flush();
+        var submission = payload();
+        submission.components.get(0).value = "1.234567";
+        workspace.saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor));
+        var saved = results.getResultsByAnalysis(analysis).stream().filter(r -> "1.234567".equals(r.getEnteredValue()))
+                .findFirst().orElseThrow();
+        assertEquals("1.234567", results.formatSimpleResultForDisplay(saved));
+    }
+
+    @Test
+    public void anAnalyzerValueWithExtraDecimalsIsPlacedAsSent() {
+        configurePrecision(2);
+        var delivery = payload();
+        delivery.version = null;
+        delivery.components.get(0).value = "<1.234";
+        var received = incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(),
+                "ANALYZER", "extra-decimals", "<1.234", delivery, true, actor);
+        assertEquals("PLACED", received.state);
+        assertEquals(Set.of("<1.234/<1.234", "34/34"), results.getResultsByAnalysis(analysis).stream()
+                .map(r -> r.getValue() + "/" + r.getEnteredValue()).collect(java.util.stream.Collectors.toSet()));
+    }
+
+    @Test
+    public void reSavingSelectionsKeepsEachComponentsOptionsToItself() {
+        var configured = components.getActiveComponentsByTestId(analysis.getTest().getId());
+        Map<String, List<org.openelisglobal.testresult.valueholder.TestResult>> options = new HashMap<>();
+        for (var component : configured) {
+            component.setResultType("M");
+            var option = new org.openelisglobal.testresult.valueholder.TestResult();
+            option.setTestResultType("M");
+            option.setValue("M3 option " + component.getCode());
+            option.setSortOrder("1");
+            option.setIsActive(true);
+            options.put(component.getCode(), List.of(option));
+        }
+        components.saveSampleResults(analysis.getTest().getId(), configured, null, options, actor);
+        em.flush();
+        var loaded = workspace.getTests(microCase.getId(), actor).get(0);
+        var first = selections(loaded, row -> "{\"1\":\"" + row.getDictionaryResults().get(0).getId() + "\"}");
+        workspace.saveResults(microCase.getId(), analysis.getId(), first, actor, request(actor));
+        em.flush();
+        var reloaded = workspace.getTests(microCase.getId(), actor).get(0);
+        for (var row : reloaded.components)
+            assertEquals("{\"1\":\"" + row.getDictionaryResults().get(0).getId() + "\"}",
+                    row.getMultiSelectResultValues());
+        var resave = selections(reloaded, row -> row.getMultiSelectResultValues());
+        assertEquals("TechnicalAcceptance", workspace
+                .saveResults(microCase.getId(), analysis.getId(), resave, actor, request(actor)).get(0).status);
+    }
+
+    @Test
+    public void eachSelectionComponentShowsItsOwnValuesTogether() {
+        var configured = components.getActiveComponentsByTestId(analysis.getTest().getId());
+        Map<String, List<org.openelisglobal.testresult.valueholder.TestResult>> options = new HashMap<>();
+        for (var component : configured) {
+            component.setResultType("M");
+            options.put(component.getCode(),
+                    component.getIsPrimary() ? List.of(selectionOption("M3 Red", "1"), selectionOption("M3 Blue", "2"))
+                            : List.of(selectionOption("M3 Large", "1")));
+        }
+        components.saveSampleResults(analysis.getTest().getId(), configured, null, options, actor);
+        em.flush();
+        var loaded = workspace.getTests(microCase.getId(), actor).get(0);
+        workspace.saveResults(microCase.getId(), analysis.getId(),
+                selections(loaded, row -> "{\"1\":\"" + row.getDictionaryResults().get(0).getId() + "\"}"), actor,
+                request(actor));
+        em.flush();
+        var reloaded = workspace.getTests(microCase.getId(), actor).get(0);
+        var saved = workspace.saveResults(microCase.getId(), analysis.getId(),
+                selections(reloaded,
+                        row -> "{\"1\":\"" + row.getDictionaryResults().stream().map(o -> o.getId())
+                                .collect(java.util.stream.Collectors.joining(",")) + "\"}"),
+                actor, request(actor)).get(0);
+        em.flush();
+        assertEquals(Set.of("M3 Red,M3 Blue", "M3 Large"),
+                workspace.getTests(microCase.getId(), actor).get(0).components.stream().map(row -> row.getResultValue())
+                        .collect(java.util.stream.Collectors.toSet()));
+        workspace.validateResult(microCase.getId(), analysis.getId(), saved.version, validator);
+        em.flush();
+        assertEquals(List.of("MTB: M3 Red, M3 Blue", "Rifampicin: M3 Large"), reports.preview(microCase.getId()).initial
+                .get(0).values().stream().map(v -> v.component() + ": " + v.value()).toList());
+    }
+
+    private org.openelisglobal.testresult.valueholder.TestResult selectionOption(String value, String sortOrder) {
+        var option = new org.openelisglobal.testresult.valueholder.TestResult();
+        option.setTestResultType("M");
+        option.setValue(value);
+        option.setSortOrder(sortOrder);
+        option.setIsActive(true);
+        return option;
+    }
+
+    private MicroCaseResultRequestForm selections(MicroCaseTestForm loaded,
+            java.util.function.Function<org.openelisglobal.test.beanItems.TestResultItem, String> values) {
+        var p = new MicroCaseResultRequestForm();
+        p.version = loaded.version;
+        p.components = new ArrayList<>();
+        for (var row : loaded.components) {
+            var c = new MicroCaseResultRequestForm.ResultComponent();
+            c.componentId = row.getTestResultComponentId();
+            c.value = "";
+            c.multiSelectResultValues = values.apply(row);
+            p.components.add(c);
+        }
+        return p;
+    }
+
+    @Test
+    public void theTechnicianSignatureNamesTheUser() {
+        workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor));
+        em.flush();
+        var stored = results.getResultsByAnalysis(analysis);
+        assertEquals(2, stored.size());
+        assertEquals(List.of("Writer M3"), signatures.getResultSignaturesByResults(stored).stream()
+                .map(org.openelisglobal.result.valueholder.ResultSignature::getNonUserName).toList());
+    }
+
+    @Test
+    public void acceptedAnalyzerResultKeepsTheInstrumentsCompletionTime() {
+        var stagedRows = stageAnalyzerRows(null);
+        var completed = Timestamp.from(Instant.now().minus(2, java.time.temporal.ChronoUnit.DAYS)
+                .truncatedTo(java.time.temporal.ChronoUnit.MINUTES));
+        stagedRows.forEach(row -> {
+            row.setCompleteDate(completed);
+            em.merge(row);
+        });
+        em.flush();
+        var decisions = decisionsFor(stagedRows);
+        decisions.forEach(item -> item.setIsAccepted(true));
+        analyzerAcceptance.acceptAndPersist(decisions, actor);
+        em.flush();
+        em.clear();
+        assertEquals(completed.getTime(), analyses.get(analysis.getId()).getCompletedDate().getTime());
+    }
+
+    @Test
+    public void aDeliveryMatchingOnlyACultureOrderWaitsInIncoming() {
+        var link = links.getByCaseAndAnalysis(microCase.getId(), analysis.getId());
+        link.setCaseRole(MicroCaseRole.CULTURE);
+        links.update(link);
+        em.flush();
+        var received = incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(),
+                "ANALYZER", "culture-order-only", "12", delivery(), true, actor);
+        assertEquals("WAITING", received.state);
+        assertEquals(List.of("WAITING"),
+                incomingItems.forCase(microCase.getId()).stream().map(MicroIncomingItem::getState).toList());
         assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
     }
 
     @Test
-    public void wholeNumberPrecisionDoesNotConstrainScientificMantissa() {
-        var submission = payload();
-        submission.components.get(0).value = "1.555e7";
-        assertEquals("TechnicalAcceptance", workspace
-                .saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor)).get(0).status);
+    public void anAcceptedAnalyzerResultMatchingOnlyACultureOrderWaitsInIncoming() {
+        var decisions = decisionsFor(stageAnalyzerRows(null));
+        var link = links.getByCaseAndAnalysis(microCase.getId(), analysis.getId());
+        link.setCaseRole(MicroCaseRole.CULTURE);
+        links.update(link);
+        em.flush();
+        decisions.forEach(item -> item.setIsAccepted(true));
+        analyzerAcceptance.acceptAndPersist(decisions, actor);
+        em.flush();
+        assertEquals(List.of("WAITING"),
+                incomingItems.forCase(microCase.getId()).stream().map(MicroIncomingItem::getState).toList());
+        assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+    }
+
+    @Test
+    public void aDeliveryMatchingACultureOrderAndAnAdditionalAnalysisLandsOnTheAdditional() {
+        var link = links.getByCaseAndAnalysis(microCase.getId(), analysis.getId());
+        link.setCaseRole(MicroCaseRole.CULTURE);
+        links.update(link);
+        var additional = fixtures.createAnalysis(analysis.getSampleItem(), analysis.getTest());
+        additional.setStatusId(statuses.getStatusID(AnalysisStatus.NotStarted));
+        em.merge(additional);
+        var additionalLink = new MicroCaseAnalysis();
+        additionalLink.setCaseId(microCase.getId());
+        additionalLink.setAnalysisId(additional.getId());
+        additionalLink.setPlacement("ADDITIONAL");
+        links.insert(additionalLink);
+        em.flush();
+        var received = incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(),
+                "ANALYZER", "culture-order-and-additional", "12", delivery(), true, actor);
+        assertEquals("PLACED", received.state);
+        assertEquals(additional.getId(), received.placementTarget);
+        assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+        assertEquals(2, results.getResultsByAnalysis(analyses.get(additional.getId())).size());
+    }
+
+    private MicroCaseResultRequestForm delivery() {
+        var p = new MicroCaseResultRequestForm();
+        p.components = new ArrayList<>();
+        for (var component : components.getActiveComponentsByTestId(analysis.getTest().getId())) {
+            var c = new MicroCaseResultRequestForm.ResultComponent();
+            c.componentId = component.getId();
+            c.value = component.getIsPrimary() ? "12" : "34";
+            p.components.add(c);
+        }
+        return p;
     }
 
     @Test

@@ -1,6 +1,8 @@
 package org.openelisglobal.common.services;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.result.valueholder.Result;
@@ -118,6 +120,15 @@ public class RuleResultScope {
      */
     @Transactional(readOnly = true)
     public String componentIdOf(Result result) {
+        return componentIdOf(result, new HashMap<>());
+    }
+
+    /**
+     * {@link #componentIdOf(Result)}, looking up each test's primary once per
+     * {@code primaryByTest}.
+     */
+    @Transactional(readOnly = true)
+    public String componentIdOf(Result result, Map<String, String> primaryByTest) {
         if (result == null || result.getTestResult() == null) {
             return null;
         }
@@ -126,7 +137,13 @@ public class RuleResultScope {
             return componentId;
         }
         org.openelisglobal.test.valueholder.Test test = result.getTestResult().getTest();
-        return test == null ? null : primaryComponentId(test.getId());
+        if (test == null) {
+            return null;
+        }
+        if (!primaryByTest.containsKey(test.getId())) {
+            primaryByTest.put(test.getId(), primaryComponentId(test.getId()));
+        }
+        return primaryByTest.get(test.getId());
     }
 
     /** The id of a test's primary component, or null when it has none. */

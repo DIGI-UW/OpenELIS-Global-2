@@ -89,7 +89,7 @@ public class MicroPatientReportService {
                     || !"Finalized".equals(statuses.getAnalysisStatusForID(a.getStatusId()).name()))
                 continue;
             var definitions = components.getComponentsByTestId(a.getTest().getId());
-            var values = new ArrayList<MicroPatientReportForm.Value>();
+            var values = new LinkedHashMap<String, MicroPatientReportForm.Value>();
             var analysisResults = results.getResultsByAnalysis(a);
             for (var result : analysisResults) {
                 if ("N".equals(result.getIsReportable()) || result.getParentResult() != null)
@@ -114,12 +114,16 @@ public class MicroPatientReportService {
                     if (!quantified.isEmpty())
                         value += " " + String.join(" ", quantified);
                 }
-                values.add(new MicroPatientReportForm.Value(result.getId(), componentId, label, value));
+                values.merge(componentId + "|" + label,
+                        new MicroPatientReportForm.Value(result.getId(), componentId, label, value),
+                        (first, next) -> new MicroPatientReportForm.Value(first.resultId(), componentId, label,
+                                first.value() + ", " + next.value()));
             }
             if (values.isEmpty())
                 continue;
             var target = "ADDITIONAL".equals(link.getPlacement()) ? form.additional : form.initial;
-            target.add(new MicroPatientReportForm.Test(a.getId(), a.getTest().getName(), values));
+            target.add(new MicroPatientReportForm.Test(a.getId(), a.getTest().getName(),
+                    new ArrayList<>(values.values())));
             form.validatedResults += values.size();
         }
         for (var row : cultures.getRows(caseId))

@@ -43,6 +43,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -75,6 +76,7 @@ import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.result.service.ResultInventoryService;
 import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.service.ResultServiceImpl;
 import org.openelisglobal.result.service.ResultSignatureService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultInventory;
@@ -138,6 +140,8 @@ public class ResultsLoadUtility {
     private PatientService patientService;
     @Autowired
     private ResultService resultService;
+    @Autowired
+    private RuleResultScope ruleResultScope;
     @Autowired
     private DictionaryService dictionaryService;
     @Autowired
@@ -584,6 +588,7 @@ public class ResultsLoadUtility {
         }
         Sample sample = anchor != null && anchor.getSample() != null ? anchor.getSample() : sampleItem.getSample();
         List<Result> resultList = resultService.getResultsByAnalysis(analysis);
+        Map<String, String> primaryByTest = new HashMap<>();
 
         ResultInventory testKit = null;
 
@@ -665,7 +670,7 @@ public class ResultsLoadUtility {
                     sampleItem.getSortOrder(), result, sample.getAccessionNumber(), patientName, patientInfo,
                     techSignature, techSignatureId, initialConditions, SpringContext.getBean(TypeOfSampleService.class)
                             .getTypeOfSampleNameForId(sampleItem.getTypeOfSampleId()),
-                    component);
+                    component, primaryByTest);
             resultItem.setNationalId(nationalId);
             applyQcMetadata(resultItem, sampleItem, result);
             // Pool-anchored: expose the pool id + member count so the frontend can
@@ -704,7 +709,7 @@ public class ResultsLoadUtility {
                         patientInfo, techSignature, techSignatureId, initialConditions,
                         SpringContext.getBean(TypeOfSampleService.class)
                                 .getTypeOfSampleNameForId(sampleItem.getTypeOfSampleId()),
-                        component);
+                        component, primaryByTest);
                 resultItem.setNationalId(nationalId);
                 testResultList.add(resultItem);
             }
@@ -946,7 +951,8 @@ public class ResultsLoadUtility {
     private TestResultItem createTestResultItem(Analysis analysis, SampleItem displaySampleItem,
             ResultInventory testKit, String notes, String sequenceNumber, Result result, String accessionNumber,
             String patientName, String patientInfo, String techSignature, String techSignatureId,
-            String initialSampleConditions, String sampleType, TestResultComponent component) {
+            String initialSampleConditions, String sampleType, TestResultComponent component,
+            Map<String, String> primaryByTest) {
 
         TestService testService = SpringContext.getBean(TestService.class);
         Test test = analysisService.getTest(analysis);
@@ -1092,7 +1098,6 @@ public class ResultsLoadUtility {
         if (component != null) {
             testItem.setTestResultComponentId(component.getId());
         }
-        testItem.setResultValue(getFormattedResultValue(result));
         setResultLimitDependencies(resultLimit, testItem, testResults, analysis);
         testItem.setRangeNotAppliedReason(
                 rangeSelection.isRangeNotApplied() ? rangeSelection.getReason().getMessageKey() : null);
@@ -1121,9 +1126,18 @@ public class ResultsLoadUtility {
         if (result != null && result.getId() != null) {
             testItem.setResultId(result.getId());
         }
-        testItem.setResultValue(getFormattedResultValue(result));
+        List<Result> componentResults = component == null ? null
+                : resultService.getResultsByAnalysis(analysis).stream()
+                        .filter(r -> component.getId().equals(ruleResultScope.componentIdOf(r, primaryByTest)))
+                        .collect(Collectors.toList());
+        testItem.setResultValue(componentResults != null && result != null
+                && TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())
+                        ? selectionNames(componentResults)
+                        : getFormattedResultValue(result));
         testItem.setRawResultValue(result == null ? "" : StringUtil.blankIfNull(result.getEnteredValue()));
-        testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
+        testItem.setMultiSelectResultValues(
+                componentResults == null ? analysisService.getJSONMultiSelectResults(analysis)
+                        : ResultServiceImpl.getJSONStringForMultiSelect(componentResults));
         testItem.setAnalysisStatusId(component == null ? analysisService.getStatusId(analysis)
                 : componentStatusId(analysisService.getStatusId(analysis), result));
         // Display type selection:
@@ -1359,6 +1373,13 @@ public class ResultsLoadUtility {
     private String getFormattedResultValue(Result result) {
         ResultService resultResultService = SpringContext.getBean(ResultService.class);
         return result != null ? resultResultService.formatResultForDisplay(result, false) : "";
+    }
+
+    private String selectionNames(List<Result> results) {
+        return results.stream()
+                .filter(r -> TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(r.getResultType())
+                        && !GenericValidator.isBlankOrNull(r.getValue()))
+                .map(r -> dictionaryService.getDataForId(r.getValue()).getDictEntry()).collect(Collectors.joining(","));
     }
 
     private List<IdValuePair> getAnyDictionaryValues(Result result) {
