@@ -19,7 +19,7 @@ import {
   isUnsavedRow,
   rowListEditors,
 } from "../pathologyRows";
-import { embeddingOutstandingLabel } from "../pathologySections";
+import { embeddingOutstandingLabel, rowActionLock } from "../pathologySections";
 import "../pathologyCaseView.scss";
 
 /**
@@ -34,6 +34,7 @@ const EmbeddingSection = ({
   readOnly,
   dirty,
   saving,
+  moving,
   embeddingId,
   onEmbed,
 }) => {
@@ -43,6 +44,18 @@ const EmbeddingSection = ({
   const blocks = caseInfo.blocks ?? [];
   const summary = embeddingSummary(blocks);
   const { patchRow } = rowListEditors("blocks", updateCase);
+
+  const embedLock = rowActionLock({
+    status: caseInfo.status,
+    dirty,
+    saving,
+    moving,
+    embedding: embeddingId !== null,
+    saveFirstKey: "pathology.locked.saveBeforeEmbed",
+  });
+  const embedLockedReason = embedLock.reasonKey
+    ? intl.formatMessage({ id: embedLock.reasonKey })
+    : undefined;
 
   return (
     <Stack gap={6}>
@@ -92,16 +105,8 @@ const EmbeddingSection = ({
                       { id: "pathology.action.embedCassette" },
                       { designation: blockIdentifier(block) },
                     )}
-                    disabled={
-                      disabled || dirty || saving || embeddingId !== null
-                    }
-                    title={
-                      dirty
-                        ? intl.formatMessage({
-                            id: "pathology.locked.saveBeforeEmbed",
-                          })
-                        : undefined
-                    }
+                    disabled={disabled || embedLock.disabled}
+                    title={embedLockedReason}
                     onClick={() => onEmbed(block)}
                   >
                     <FormattedMessage id="pathology.action.embed" />

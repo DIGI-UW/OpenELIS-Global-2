@@ -17,6 +17,7 @@ import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -25,9 +26,9 @@ import org.springframework.beans.factory.annotation.Autowired;
  * what the save stored, so each test states only the rule it pins.
  *
  * <p>
- * Audit entries survive the fixture reload, so they are cleared before and
- * after each test; otherwise a count asserted in one test would include the
- * entries another test wrote.
+ * Audit entries and stage events survive the fixture reload, so they are
+ * cleared before and after each test; otherwise a count asserted in one test
+ * would include the entries another test wrote.
  */
 abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
 
@@ -91,13 +92,13 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
 
     /**
      * What the case view posts: every collection on every save, so a form that
-     * changes one still carries the others, and no decalcification flag unless a
-     * test sets one. An empty list means the client added nothing, not that the
-     * case should lose what it holds.
+     * changes one still carries the others, the stored macroscopic description, and
+     * no decalcification flag unless a test sets one. An empty list means the
+     * client added nothing, not that the case should lose what it holds.
      */
     protected PathologySampleForm caseViewForm() {
         PathologySampleForm form = new PathologySampleForm();
-        form.setStatus(pathologySampleService.get(CASE_ID).getStatus());
+        form.setGrossExam(pathologySampleService.get(CASE_ID).getGrossExam());
         form.setSystemUserId(TECHNICIAN_ID);
         form.setBlocks(new ArrayList<>());
         form.setSlides(new ArrayList<>());
@@ -115,6 +116,26 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
         block.setLocation(location);
         block.setTissueTypeId(tissueTypeId);
         return block;
+    }
+
+    protected PathologySampleForm flagged(boolean decalcificationRequired) {
+        PathologySampleForm form = caseViewForm();
+        form.setDecalcificationRequired(decalcificationRequired);
+        return form;
+    }
+
+    protected boolean storedFlag() {
+        return jdbcTemplate.queryForObject(
+                "SELECT decalcification_required FROM clinlims.pathology_sample WHERE id = ?", Boolean.class, CASE_ID);
+    }
+
+    /** See {@link PathologyCaseRows#storeAt}. */
+    protected void storeAt(PathologyStatus stage) {
+        PathologyCaseRows.storeAt(jdbcTemplate, CASE_ID, stage);
+    }
+
+    protected String storedStage() {
+        return PathologyCaseRows.storedStage(jdbcTemplate, CASE_ID);
     }
 
     private String referenceTableId(String name) {
@@ -168,10 +189,10 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
         return new String(history.getChanges(), StandardCharsets.UTF_8);
     }
 
-    /** Every audit entry on a block or slide, and the case's own. */
+    /** Every audit entry on a block or slide, the case's own, and its moves. */
     private void clearPathologyAudit() {
         jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table IN (?, ?)",
                 Integer.parseInt(blockReferenceTableId), Integer.parseInt(slideReferenceTableId));
-        clearCaseAudit();
+        PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_ID);
     }
 }

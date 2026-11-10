@@ -11,9 +11,12 @@ import java.util.Set;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.resultrun.form.ResultRunChip;
 import org.openelisglobal.resultrun.form.ResultRunHeader;
 import org.openelisglobal.resultrun.form.ResultRunListResponse;
 import org.openelisglobal.resultrun.form.ResultRunRowsPage;
+import org.openelisglobal.resultrun.form.ResultRunSelection;
+import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.role.service.RoleService;
@@ -23,6 +26,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -62,8 +67,17 @@ public class ResultRunRestController extends BaseRestController {
 
     @GetMapping(value = "/{id}/rows", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ResultRunRowsPage> rows(HttpServletRequest request, @PathVariable Long id,
-            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "50") int pageSize) {
-        return ResponseEntity.of(resultRunService.getRows(id, viewer(request), page, pageSize));
+            @RequestParam(required = false) String chip, @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        return ResponseEntity
+                .of(resultRunService.getRows(id, viewer(request), ResultRunChip.fromRequest(chip), page, pageSize));
+    }
+
+    /** What a bulk action on this selection would cover (FR-E11, FR-E12). */
+    @PostMapping(value = "/{id}/selection", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ResultRunSelectionSummary> selection(HttpServletRequest request, @PathVariable Long id,
+            @RequestBody ResultRunSelection selection) {
+        return ResponseEntity.of(resultRunService.summarizeSelection(id, viewer(request), selection));
     }
 
     /**

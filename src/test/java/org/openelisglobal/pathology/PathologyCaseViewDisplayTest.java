@@ -1,6 +1,7 @@
 package org.openelisglobal.pathology;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -8,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.TimeZone;
@@ -15,8 +17,16 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.OrderStatus;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologyDisplayService;
+import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.StageEventView;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -55,6 +65,12 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private PathologyDisplayService pathologyDisplayService;
+
+    @Autowired
+    private PathologySampleService pathologySampleService;
+
+    @Autowired
+    private IStatusService statusService;
 
     private TimeZone runnersTimeZone;
 
@@ -157,6 +173,152 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
                 "an entry taken out of use after a cassette recorded it is missing from the category list"
                         + " the picker reads, so the case names it itself",
                 RETIRED_TISSUE_NAME, displayItem.getTissueTypeNames().get(String.valueOf(RETIRED_TISSUE)));
+    }
+
+    /**
+     * The case view lists every stage the case entered, with the operator as a name
+     * and the time as text, and keeps the processor run readable once the case has
+     * left Processing (FR-5.1, AC-8).
+     */
+    @Test
+    public void caseDisplayItem_carriesTheStageEntriesAndTheProcessorRun() {
+        try (StageSwitches switches = StageSwitches.allOn()) {
+            pathologySampleService.advance(CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.GROSSING, "1001");
+            pathologySampleService.updateWithFormValues(CASE_WITH_TWO_SPECIMEN_ITEMS, formWithRunReference("RUN-7"));
+
+            PathologyCaseViewDisplayItem atProcessing = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+            assertEquals("one move, one entry", 1, atProcessing.getStageEvents().size());
+            StageEventView entry = atProcessing.getStageEvents().get(0);
+            assertEquals("onto processing", "PROCESSING", entry.stage());
+            assertEquals("going forward", "FORWARD", entry.direction());
+            assertNotNull("timed by the server, as text", entry.enteredAt());
+            assertTrue("by the user who moved it, as a name: " + entry.enteredBy(), entry.enteredBy().contains("Doe"));
+            assertNull("still open", entry.completedAt());
+            assertEquals("the run is read from the processing entry", "RUN-7", atProcessing.getRunReference());
+            assertFalse("and, written once, it is no longer editable", atProcessing.isRunReferenceEditable());
+
+            pathologySampleService.advance(CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.PROCESSING, "1001");
+
+            PathologyCaseViewDisplayItem movedOn = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+            assertEquals("two moves, two entries, oldest first", Arrays.asList("PROCESSING", "EMBEDDING"),
+                    movedOn.getStageEvents().stream().map(StageEventView::stage).toList());
+            assertNotNull("the processing entry is completed", movedOn.getStageEvents().get(0).completedAt());
+            assertEquals("and the run still reads from it once the case has moved on", "RUN-7",
+                    movedOn.getRunReference());
+        } finally {
+            PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        }
+    }
+
+    /**
+     * At Processing on an entry that holds no run, the case view offers the run
+     * field; a case that reached Processing before entries were recorded has no
+     * entry to hold one, so it does not.
+     */
+    @Test
+    public void caseDisplayItem_offersTheRunOnlyWhereASaveWouldTakeIt() {
+        try (StageSwitches switches = StageSwitches.allOn()) {
+            pathologySampleService.advance(CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.GROSSING, "1001");
+
+            assertTrue("an open processing entry with no run takes one", pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isRunReferenceEditable());
+
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITHOUT_SPECIMEN_ITEMS, PathologyStatus.PROCESSING);
+
+            assertFalse("a case with no entry at processing does not", pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITHOUT_SPECIMEN_ITEMS).isRunReferenceEditable());
+        } finally {
+            PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        }
+    }
+
+    /**
+     * The case view reads where the case would be sent on or back to from the same
+     * rule the moves use, so the label on the button is the move the server makes.
+     */
+    @Test
+    public void caseDisplayItem_carriesTheNextAndPreviousStage() {
+        try (StageSwitches switches = StageSwitches.allOn()) {
+            PathologyCaseViewDisplayItem atGrossing = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+            assertEquals("an unflagged specimen at grossing goes on to processing", "PROCESSING",
+                    atGrossing.getNextStage());
+            assertEquals("and back to accessioning", "ACCESSIONED", atGrossing.getPreviousStage());
+
+            ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_STAGE_PROCESSING_ENABLED,
+                    "false");
+
+            assertEquals("a stage the deployment switched off is skipped", "EMBEDDING",
+                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).getNextStage());
+
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.COMPLETED);
+            PathologyCaseViewDisplayItem completed = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+            assertNull("a signed-out case goes nowhere on", completed.getNextStage());
+            assertNull("nor back", completed.getPreviousStage());
+        }
+    }
+
+    /**
+     * The case view enables Release by the rule the release is refused on: in the
+     * pathologist's queue, or at Completed with no release on record. A new result
+     * that sets the order back to Started does not undo the release.
+     */
+    @Test
+    public void caseDisplayItem_saysWhetherAReleaseWouldBeTaken() {
+        PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        try {
+            assertFalse("a case at a bench stage is not released",
+                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isReleasable());
+
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.READY_PATHOLOGIST);
+            assertTrue("a case in the pathologist's queue is",
+                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isReleasable());
+
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.COMPLETED);
+            assertTrue("so is a case set to Completed without a release",
+                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isReleasable());
+
+            PathologySampleForm release = formWithRunReference(null);
+            release.setRelease(true);
+            pathologySampleService.updateWithFormValues(CASE_WITH_TWO_SPECIMEN_ITEMS, release);
+            jdbcTemplate.update(
+                    "UPDATE clinlims.sample SET status_id = ?"
+                            + " WHERE id = (SELECT sample_id FROM clinlims.pathology_sample WHERE id = ?)",
+                    Integer.parseInt(statusService.getStatusID(OrderStatus.Started)), CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertFalse("but not once it is released, though a later result started its order again",
+                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).isReleasable());
+        } finally {
+            PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        }
+    }
+
+    /** A case on file before stage entries were recorded has none, and no run. */
+    @Test
+    public void caseDisplayItem_ofACaseNeverMoved_hasNoEntriesAndNoRun() {
+        PathologyCaseViewDisplayItem displayItem = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITHOUT_SPECIMEN_ITEMS);
+
+        assertTrue("no entries are invented", displayItem.getStageEvents().isEmpty());
+        assertNull("nor a run", displayItem.getRunReference());
+    }
+
+    /** What the screen posts at Processing: the case as it stands, plus the run. */
+    private PathologySampleForm formWithRunReference(String runReference) {
+        PathologySampleForm form = new PathologySampleForm();
+        form.setSystemUserId("1001");
+        form.setGrossExam(pathologySampleService.get(CASE_WITH_TWO_SPECIMEN_ITEMS).getGrossExam());
+        form.setBlocks(new ArrayList<>());
+        form.setSlides(new ArrayList<>());
+        form.setReports(new ArrayList<>());
+        form.setRunReference(runReference);
+        return form;
     }
 
     private void seedSpecimenRows() {

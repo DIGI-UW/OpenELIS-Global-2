@@ -23,6 +23,8 @@ import { countedRows, embeddingSummary } from "./pathologyRows";
 // section's header.
 export const EMBEDDING_SECTION_ID = "pathology-section-embedding";
 
+export const PROCESSING_SECTION_ID = "pathology-section-processing";
+
 // The single-stage sections are titled by the stage's own key, so the rail,
 // the header and the locked hint can never call one stage two things.
 // i18n-keys: pathology.section.*
@@ -58,13 +60,13 @@ export const PATHOLOGY_SECTIONS = Object.freeze([
     pathologistOnly: false,
   }),
   Object.freeze({
-    id: "pathology-section-processing",
+    id: PROCESSING_SECTION_ID,
     number: 4,
     titleKey: stageDisplayKey("PROCESSING"),
     stages: Object.freeze(["PROCESSING"]),
     gate: "PROCESSING",
     displayOnly: false,
-    placeholder: true,
+    placeholder: false,
     pathologistOnly: false,
   }),
   Object.freeze({
@@ -151,12 +153,19 @@ export function stageEnablementProperty(stageId) {
  * matching the server's own default, so a browser that has not yet fetched
  * configuration never locks a section out by accident; it is disabled only
  * when the server has explicitly said so.
+ *
+ * The switch is read the way the server reads it when it picks the next and
+ * previous stage: trimmed and ignoring case, so a value stored as " FALSE "
+ * cannot make the server skip a stage whose section this screen still tracks.
  */
 export function isStageEnabled(stageId, configurationProperties) {
   // The server never serves a switch for a stage every deployment tracks, so
   // an absent property is what "cannot be disabled" looks like from here.
+  const value = configurationProperties?.[stageEnablementProperty(stageId)];
   return (
-    configurationProperties?.[stageEnablementProperty(stageId)] !== "false"
+    String(value ?? "")
+      .trim()
+      .toLowerCase() !== "false"
   );
 }
 
@@ -175,6 +184,132 @@ export function stageApplies(
     return false;
   }
   return stageId !== "DECALCIFICATION" || Boolean(decalcificationRequired);
+}
+
+// i18n-keys: pathology.action.*
+const ADVANCE_LABEL_KEYS = Object.freeze({
+  GROSSING: "pathology.action.beginGrossing",
+  DECALCIFICATION: "pathology.action.sendForDecalc",
+  PROCESSING: "pathology.action.sendForProcessing",
+  EMBEDDING: "pathology.action.sendForEmbedding",
+  MICROTOMY: "pathology.action.sendToMicrotomy",
+  STAINING: "pathology.action.sendForStaining",
+  COVERSLIPPING: "pathology.action.sendForCoverslip",
+  READY_PATHOLOGIST: "pathology.action.sendToPathologist",
+});
+
+/**
+ * What the action bar's primary says for a move to the given stage, or null
+ * for a stage no advance reaches.
+ */
+export function advanceLabelKey(stageId) {
+  return ADVANCE_LABEL_KEYS[stageId] ?? null;
+}
+
+/**
+ * Why the case cannot be sent on yet, as the hint the disabled primary
+ * carries, or null when it can. A request still in flight is said first,
+ * since its answer may change the stage; then unsaved work, since saving it
+ * may be what completes the stage; then the stage's own rule, judged on the
+ * stored stage as the server judges it: grossing done under FR-3.4, every
+ * cassette embedded. The outstanding cassettes are named as the rail names
+ * them, the first two and a count of the rest.
+ */
+export function advanceBlockedReason(
+  intl,
+  caseInfo,
+  { storedStatus, dirty, saving, moving } = {},
+) {
+  if (saving || moving) {
+    return { key: "pathology.locked.requestInFlight" };
+  }
+  if (dirty) {
+    return { key: "pathology.locked.saveBeforeTransition" };
+  }
+  if (storedStatus === "GROSSING" && !grossingComplete(caseInfo)) {
+    return { key: "pathology.locked.grossingIncomplete" };
+  }
+  if (storedStatus === "EMBEDDING") {
+    const summary = embeddingSummary(caseInfo?.blocks);
+    if (summary.total === 0) {
+      return { key: "pathology.locked.embeddingNoCassettes" };
+    }
+    if (!summary.complete) {
+      return {
+        key: "pathology.locked.embeddingIncomplete",
+        values: {
+          outstanding: embeddingOutstandingLabel(intl, summary.outstanding)
+            .visible,
+        },
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Why the case cannot be returned, as the hint the disabled control carries,
+ * or null when it can. The lasting reasons come first, since neither saving
+ * nor waiting changes them.
+ */
+export function returnBlockedReason({
+  storedStatus,
+  previousStage,
+  dirty,
+  saving,
+  moving,
+} = {}) {
+  if (storedStatus === "COMPLETED") {
+    return { key: "pathology.locked.caseCompleted" };
+  }
+  if (!previousStage) {
+    return { key: "pathology.locked.nothingToReturnTo" };
+  }
+  if (saving || moving) {
+    return { key: "pathology.locked.requestInFlight" };
+  }
+  if (dirty) {
+    return { key: "pathology.locked.saveBeforeTransition" };
+  }
+  return null;
+}
+
+/**
+ * Whether a row action (Embed, Deactivate) can be pressed, and if not, the
+ * hint that says why. A signed-out case holds it until it is reopened;
+ * a save, a move or an embed still unanswered holds it until the answer is
+ * read back; unsaved work holds it until it is saved or discarded, in the
+ * words of `saveFirstKey`, because the action re-reads the case.
+ */
+export function rowActionLock({
+  status,
+  dirty = false,
+  saving = false,
+  moving = false,
+  embedding = false,
+  saveFirstKey,
+} = {}) {
+  if (status === "COMPLETED") {
+    return { disabled: true, reasonKey: "pathology.locked.caseCompleted" };
+  }
+  if (saving || moving || embedding) {
+    return { disabled: true, reasonKey: "pathology.locked.requestInFlight" };
+  }
+  if (dirty) {
+    return { disabled: true, reasonKey: saveFirstKey };
+  }
+  return { disabled: false, reasonKey: null };
+}
+
+/**
+ * The id of the section a case standing at the given stage is worked in, or
+ * null for a stage this build does not know.
+ */
+export function sectionIdOfStage(stageId) {
+  return (
+    PATHOLOGY_SECTIONS.find((section) => section.stages.includes(stageId))
+      ?.id ?? null
+  );
 }
 
 /**

@@ -121,6 +121,7 @@
         <class>org.openelisglobal.program.valueholder.pathology.PathologyReport</class>
         <class>org.openelisglobal.program.valueholder.pathology.PathologyConclusion</class>
         <class>org.openelisglobal.program.valueholder.pathology.PathologyBlock</class>
+        <class>org.openelisglobal.program.valueholder.pathology.PathologyStageEvent</class>
 
         <!-- Sample Storage Management entities (001-sample-storage) - annotation-based -->
         <class>org.openelisglobal.storage.valueholder.StorageRoom</class>
@@ -186,6 +187,7 @@
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.resultrun.valueholder.ResultRun</class>
+        <class>org.openelisglobal.containertype.valueholder.ContainerType</class>
 
         <!-- Westgard QC entities (003-westgard-qc) -->
         <class>org.openelisglobal.qc.valueholder.QCControlLot</class>

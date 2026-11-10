@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1611-container-type-tables" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <tableExists schemaName="clinlims" tableName="container_type"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1611 FR-G1 to G3: the containers a sample can be taken in, with the domains they serve and the sample types they yield. Deactivated, never deleted.</comment>
+  <createSequence schemaName="clinlims" sequenceName="container_type_seq" startValue="1" incrementBy="1"/>
+  <createTable schemaName="clinlims" tableName="container_type">
+   <column name="id" type="BIGINT">
+    <constraints primaryKey="true" nullable="false" primaryKeyName="pk_container_type"/>
+   </column>
+   <column name="code" type="VARCHAR(40)">
+    <constraints nullable="false" unique="true" uniqueConstraintName="uq_container_type_code"/>
+   </column>
+   <column name="name" type="VARCHAR(120)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="category" type="VARCHAR(60)"/>
+   <column name="additive" type="VARCHAR(120)"/>
+   <column name="material" type="VARCHAR(60)"/>
+   <column name="nominal_volume" type="NUMERIC(10,2)"/>
+   <column name="volume_unit" type="VARCHAR(10)"/>
+   <column name="cap_colour_hex" type="VARCHAR(7)"/>
+   <column name="cap_colour_name" type="VARCHAR(40)"/>
+   <column name="standard_code" type="VARCHAR(60)"/>
+   <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+    <constraints nullable="false"/>
+   </column>
+   <column name="edited" type="BOOLEAN" defaultValueBoolean="false">
+    <constraints nullable="false"/>
+   </column>
+   <column name="sys_user_id" type="numeric(10)"/>
+   <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+  </createTable>
+  <createTable schemaName="clinlims" tableName="container_type_domain">
+   <column name="container_type_id" type="BIGINT">
+    <constraints nullable="false"/>
+   </column>
+   <column name="domain" type="VARCHAR(20)">
+    <constraints nullable="false"/>
+   </column>
+  </createTable>
+  <addPrimaryKey schemaName="clinlims" tableName="container_type_domain" columnNames="container_type_id, domain"
+   constraintName="pk_container_type_domain"/>
+  <addForeignKeyConstraint constraintName="fk_container_type_domain_type" baseTableSchemaName="clinlims"
+   baseTableName="container_type_domain" baseColumnNames="container_type_id" referencedTableSchemaName="clinlims"
+   referencedTableName="container_type" referencedColumnNames="id" onDelete="CASCADE"/>
+  <createTable schemaName="clinlims" tableName="container_type_sample_type">
+   <column name="container_type_id" type="BIGINT">
+    <constraints nullable="false"/>
+   </column>
+   <column name="type_of_sample_id" type="numeric(10)">
+    <constraints nullable="false"/>
+   </column>
+  </createTable>
+  <addPrimaryKey schemaName="clinlims" tableName="container_type_sample_type"
+   columnNames="container_type_id, type_of_sample_id" constraintName="pk_container_type_sample_type"/>
+  <addForeignKeyConstraint constraintName="fk_container_type_sample_type_type" baseTableSchemaName="clinlims"
+   baseTableName="container_type_sample_type" baseColumnNames="container_type_id" referencedTableSchemaName="clinlims"
+   referencedTableName="container_type" referencedColumnNames="id" onDelete="CASCADE"/>
+  <addForeignKeyConstraint constraintName="fk_container_type_sample_type_tos" baseTableSchemaName="clinlims"
+   baseTableName="container_type_sample_type" baseColumnNames="type_of_sample_id" referencedTableSchemaName="clinlims"
+   referencedTableName="type_of_sample" referencedColumnNames="id" onDelete="CASCADE"/>
+  <sql>
+   ALTER TABLE clinlims.container_type_domain ADD CONSTRAINT container_type_domain_chk CHECK (domain IN ('CLINICAL', 'ENVIRONMENTAL', 'VECTOR'));
+  </sql>
+  <rollback>
+   <dropTable schemaName="clinlims" tableName="container_type_sample_type"/>
+   <dropTable schemaName="clinlims" tableName="container_type_domain"/>
+   <dropTable schemaName="clinlims" tableName="container_type"/>
+   <dropSequence schemaName="clinlims" sequenceName="container_type_seq"/>
+  </rollback>
+ </changeSet>
+
+ <changeSet id="OGC-1611-container-type-seed" author="openelisglobal" runOnChange="true">
+  <comment>OGC-1611 FR-G4, Appendix A: the clinical containers with ISO 6710 cap colours. A container type an administrator edited is never overwritten; a sample type the deployment does not have is skipped, never created.</comment>
+  <sql splitStatements="true">
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'K2EDTA4', 'K2EDTA tube 4 mL', 'Blood', 'K2EDTA', 4, 'mL', '#B57EDC', 'Lavender', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'K2EDTA4');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'K2EDTA4' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'K2EDTA2', 'K2EDTA tube 2 mL (paediatric)', 'Blood', 'K2EDTA', 2, 'mL', '#B57EDC', 'Lavender', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'K2EDTA2');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'K2EDTA2' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'EDTAMICRO', 'EDTA microtainer', 'Blood', 'K2EDTA', NULL, NULL, '#B57EDC', 'Lavender', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'EDTAMICRO');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'EDTAMICRO' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'CITRATE', 'Sodium citrate 3.2% tube', 'Blood', 'Sodium citrate', NULL, NULL, '#ADD8E6', 'Light blue', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'CITRATE');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'CITRATE' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'SERUMPLAIN', 'Plain serum tube', 'Blood', 'Clot activator', NULL, NULL, '#D32F2F', 'Red', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'SERUMPLAIN');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'SERUMPLAIN' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'SST', 'Serum separator tube (SST)', 'Blood', 'Clot activator, gel', NULL, NULL, '#D4AF37', 'Gold', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'SST');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'SST' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'LIHEP', 'Lithium heparin tube', 'Blood', 'Lithium heparin', NULL, NULL, '#2E7D32', 'Green', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'LIHEP');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'LIHEP' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'PST', 'Plasma separator tube (PST)', 'Blood', 'Lithium heparin, gel', NULL, NULL, '#90EE90', 'Light green', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'PST');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'PST' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'NAHEP', 'Sodium heparin tube', 'Blood', 'Sodium heparin', NULL, NULL, '#006400', 'Dark green', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'NAHEP');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'NAHEP' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'FLUOX', 'Fluoride oxalate tube', 'Blood', 'Sodium fluoride, potassium oxalate', NULL, NULL, '#808080', 'Grey', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'FLUOX');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'FLUOX' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'TRACE', 'Trace element tube', 'Blood', 'None or K2EDTA', NULL, NULL, '#4169E1', 'Royal blue', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'TRACE');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'TRACE' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'ACD', 'ACD tube', 'Blood', 'Acid citrate dextrose', NULL, NULL, '#FFD700', 'Yellow', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'ACD');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'ACD' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'ESR', 'ESR tube', 'Blood', 'Sodium citrate', NULL, NULL, '#000000', 'Black', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'ESR');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'ESR' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'DBSCARD', 'Dried blood spot card', 'Blood', 'None', NULL, NULL, NULL, NULL, true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'DBSCARD');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'DBSCARD' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'CAPILLARY', 'Capillary tube', 'Blood', 'Heparin or none', NULL, NULL, NULL, NULL, true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'CAPILLARY');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'CAPILLARY' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'BCAERO', 'Aerobic blood culture bottle', 'Blood culture', 'Broth', NULL, NULL, '#1E88E5', 'Blue', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'BCAERO');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'BCAERO' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'BCANAERO', 'Anaerobic blood culture bottle', 'Blood culture', 'Broth', NULL, NULL, '#800080', 'Purple', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'BCANAERO');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'BCANAERO' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'BCPAED', 'Paediatric blood culture bottle', 'Blood culture', 'Broth', NULL, NULL, '#FFC0CB', 'Pink', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'BCPAED');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'BCPAED' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'SWABDRY', 'Dry swab', 'Swab', 'None', NULL, NULL, NULL, NULL, true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'SWABDRY');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'SWABDRY' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'SWABAMIES', 'Amies gel transport swab', 'Swab', 'Amies gel', NULL, NULL, '#1E88E5', 'Blue', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'SWABAMIES');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'SWABAMIES' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'ESWAB', 'Liquid Amies flocked swab (ESwab)', 'Swab', 'Liquid Amies', NULL, NULL, '#FFFFFF', 'White', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'ESWAB');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'ESWAB' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'VTM', 'Viral transport medium tube with swab', 'Swab', 'VTM', NULL, NULL, '#D32F2F', 'Red', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'VTM');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'VTM' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'MTM', 'Molecular transport tube with swab', 'Swab', 'Inactivating medium', NULL, NULL, '#FFA500', 'Orange', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'MTM');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'MTM' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'URINE', 'Sterile urine container', 'Urine', 'None', NULL, NULL, '#FFFFFF', 'White', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'URINE');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'URINE' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'URINEBORIC', 'Boric acid urine tube', 'Urine', 'Boric acid', NULL, NULL, '#D32F2F', 'Red', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'URINEBORIC');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'URINEBORIC' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'URINE24H', '24-hour urine container', 'Urine', 'None or preservative', NULL, NULL, '#FFA500', 'Orange', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'URINE24H');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'URINE24H' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'URINEMOL', 'Urine molecular transport tube', 'Urine', 'Preservative', NULL, NULL, '#FFD700', 'Yellow', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'URINEMOL');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'URINEMOL' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'STOOL', 'Stool container', 'Stool', 'None', NULL, NULL, '#8B4513', 'Brown', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'STOOL');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'STOOL' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'CARYBLAIR', 'Cary-Blair transport', 'Stool', 'Cary-Blair', NULL, NULL, '#FFA500', 'Orange', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'CARYBLAIR');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'CARYBLAIR' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'FORMALIN', 'Formalin or SAF vial', 'Stool', 'Formalin or SAF', NULL, NULL, '#2E7D32', 'Green', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'FORMALIN');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'FORMALIN' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'SPUTUM', 'Sputum container', 'Respiratory', 'None', NULL, NULL, '#D32F2F', 'Red', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'SPUTUM');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'SPUTUM' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'CSF', 'Sterile CSF tube', 'Other', 'None', NULL, NULL, '#FFFFFF', 'White', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'CSF');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'CSF' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'STERILE', 'Sterile container', 'Other', 'None', NULL, NULL, '#FFFFFF', 'White', true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'STERILE');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'STERILE' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'SLIDE', 'Microscope slide', 'Other', 'None', NULL, NULL, NULL, NULL, true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'SLIDE');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'SLIDE' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type (id, code, name, category, additive, nominal_volume, volume_unit, cap_colour_hex, cap_colour_name, is_active, edited, last_updated)
+    SELECT nextval('clinlims.container_type_seq'), 'OTHER', 'Other (specify)', 'Other', 'None', NULL, NULL, NULL, NULL, true, false, now()
+    WHERE NOT EXISTS (SELECT 1 FROM clinlims.container_type WHERE code = 'OTHER');
+   INSERT INTO clinlims.container_type_domain (container_type_id, domain)
+    SELECT ct.id, 'CLINICAL' FROM clinlims.container_type ct WHERE ct.code = 'OTHER' AND ct.edited = false
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_domain d WHERE d.container_type_id = ct.id AND d.domain = 'CLINICAL');
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'K2EDTA4' AND ct.edited = false
+    AND (lower(tos.description) IN ('whole blood', 'plasma') OR lower(tos.local_abbrev) IN ('whole blood', 'plasma'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'K2EDTA2' AND ct.edited = false
+    AND (lower(tos.description) IN ('whole blood', 'plasma') OR lower(tos.local_abbrev) IN ('whole blood', 'plasma'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'EDTAMICRO' AND ct.edited = false
+    AND (lower(tos.description) IN ('whole blood') OR lower(tos.local_abbrev) IN ('whole blood'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'CITRATE' AND ct.edited = false
+    AND (lower(tos.description) IN ('plasma (citrated)') OR lower(tos.local_abbrev) IN ('plasma (citrated)'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'SERUMPLAIN' AND ct.edited = false
+    AND (lower(tos.description) IN ('serum') OR lower(tos.local_abbrev) IN ('serum'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'SST' AND ct.edited = false
+    AND (lower(tos.description) IN ('serum') OR lower(tos.local_abbrev) IN ('serum'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'LIHEP' AND ct.edited = false
+    AND (lower(tos.description) IN ('plasma', 'whole blood') OR lower(tos.local_abbrev) IN ('plasma', 'whole blood'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'PST' AND ct.edited = false
+    AND (lower(tos.description) IN ('plasma') OR lower(tos.local_abbrev) IN ('plasma'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'NAHEP' AND ct.edited = false
+    AND (lower(tos.description) IN ('whole blood', 'plasma') OR lower(tos.local_abbrev) IN ('whole blood', 'plasma'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'FLUOX' AND ct.edited = false
+    AND (lower(tos.description) IN ('plasma') OR lower(tos.local_abbrev) IN ('plasma'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'TRACE' AND ct.edited = false
+    AND (lower(tos.description) IN ('serum', 'whole blood') OR lower(tos.local_abbrev) IN ('serum', 'whole blood'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'ACD' AND ct.edited = false
+    AND (lower(tos.description) IN ('whole blood') OR lower(tos.local_abbrev) IN ('whole blood'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'ESR' AND ct.edited = false
+    AND (lower(tos.description) IN ('whole blood') OR lower(tos.local_abbrev) IN ('whole blood'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'DBSCARD' AND ct.edited = false
+    AND (lower(tos.description) IN ('dried blood spot') OR lower(tos.local_abbrev) IN ('dried blood spot'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'CAPILLARY' AND ct.edited = false
+    AND (lower(tos.description) IN ('whole blood') OR lower(tos.local_abbrev) IN ('whole blood'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'BCAERO' AND ct.edited = false
+    AND (lower(tos.description) IN ('blood (culture)') OR lower(tos.local_abbrev) IN ('blood (culture)'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'BCANAERO' AND ct.edited = false
+    AND (lower(tos.description) IN ('blood (culture)') OR lower(tos.local_abbrev) IN ('blood (culture)'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'BCPAED' AND ct.edited = false
+    AND (lower(tos.description) IN ('blood (culture)') OR lower(tos.local_abbrev) IN ('blood (culture)'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'SWABDRY' AND ct.edited = false
+    AND (lower(tos.description) IN ('swab') OR lower(tos.local_abbrev) IN ('swab'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'SWABAMIES' AND ct.edited = false
+    AND (lower(tos.description) IN ('swab') OR lower(tos.local_abbrev) IN ('swab'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'ESWAB' AND ct.edited = false
+    AND (lower(tos.description) IN ('swab') OR lower(tos.local_abbrev) IN ('swab'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'VTM' AND ct.edited = false
+    AND (lower(tos.description) IN ('swab (viral)') OR lower(tos.local_abbrev) IN ('swab (viral)'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'MTM' AND ct.edited = false
+    AND (lower(tos.description) IN ('swab (molecular)') OR lower(tos.local_abbrev) IN ('swab (molecular)'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'URINE' AND ct.edited = false
+    AND (lower(tos.description) IN ('urine') OR lower(tos.local_abbrev) IN ('urine'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'URINEBORIC' AND ct.edited = false
+    AND (lower(tos.description) IN ('urine') OR lower(tos.local_abbrev) IN ('urine'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'URINE24H' AND ct.edited = false
+    AND (lower(tos.description) IN ('urine (24 h)') OR lower(tos.local_abbrev) IN ('urine (24 h)'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'URINEMOL' AND ct.edited = false
+    AND (lower(tos.description) IN ('urine (molecular)') OR lower(tos.local_abbrev) IN ('urine (molecular)'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'STOOL' AND ct.edited = false
+    AND (lower(tos.description) IN ('stool') OR lower(tos.local_abbrev) IN ('stool'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'CARYBLAIR' AND ct.edited = false
+    AND (lower(tos.description) IN ('stool (culture)') OR lower(tos.local_abbrev) IN ('stool (culture)'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'FORMALIN' AND ct.edited = false
+    AND (lower(tos.description) IN ('stool (parasitology)') OR lower(tos.local_abbrev) IN ('stool (parasitology)'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'SPUTUM' AND ct.edited = false
+    AND (lower(tos.description) IN ('sputum') OR lower(tos.local_abbrev) IN ('sputum'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'CSF' AND ct.edited = false
+    AND (lower(tos.description) IN ('csf') OR lower(tos.local_abbrev) IN ('csf'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'STERILE' AND ct.edited = false
+    AND (lower(tos.description) IN ('body fluid', 'tissue') OR lower(tos.local_abbrev) IN ('body fluid', 'tissue'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'SLIDE' AND ct.edited = false
+    AND (lower(tos.description) IN ('smear') OR lower(tos.local_abbrev) IN ('smear'))
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+   INSERT INTO clinlims.container_type_sample_type (container_type_id, type_of_sample_id)
+    SELECT ct.id, tos.id FROM clinlims.container_type ct, clinlims.type_of_sample tos WHERE ct.code = 'OTHER' AND ct.edited = false AND tos.domain = 'CLINICAL'
+    AND NOT EXISTS (SELECT 1 FROM clinlims.container_type_sample_type x WHERE x.container_type_id = ct.id AND x.type_of_sample_id = tos.id);
+  </sql>
+ </changeSet>
+
+</databaseChangeLog>
