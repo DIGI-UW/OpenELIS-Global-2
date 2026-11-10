@@ -406,6 +406,8 @@
   "siteInformation.description.pathology.stage.COVERSLIPPING.enabled": "If true, cases pass through the Coverslipping & QC stage; if false, it cannot be chosen and is not applicable",
   "siteInformation.name.pathology.stage.UNDER_REVIEW.enabled": "Pathology stage: Under Pathologist Review",
   "siteInformation.description.pathology.stage.UNDER_REVIEW.enabled": "If true, cases pass through the Under Pathologist Review stage; if false, it cannot be chosen and is not applicable",
+  "siteInformation.name.pathology.microtomy.scanVerificationRequired": "Pathology: scan verification of slide labels",
+  "siteInformation.description.pathology.microtomy.scanVerificationRequired": "If true, each slide label is scanned against its block before the case is sent for staining; if false, the technician types the block and slide identifiers as printed and the same record is kept",
   "admin.page.configuration.formEntryConfigMenu.name": "Name",
   "admin.page.configuration.formEntryConfigMenu.select": "Select",
   "admin.page.configuration.formEntryConfigMenu.value": "Value",
