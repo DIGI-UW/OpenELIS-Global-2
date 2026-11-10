@@ -215,7 +215,7 @@ test.describe.serial("EQA participant lane", () => {
         await expect(
           page
             .getByTestId(`cycle-expanded-${seed.cycleId}`)
-            .getByText("Validated", { exact: true }),
+            .getByTitle("Validated", { exact: true }),
         ).toBeVisible();
       });
 
