@@ -336,6 +336,9 @@ public abstract class ConfigurationProperties {
         // OGC-1147: does an open QC failure block release, or only warn
         QC_FAIL_BLOCKS_VALIDATION("qcFailBlocksValidation", "text"),
         BLOCK_SELF_VALIDATION("blockSelfValidation", "text"),
+        // OGC-1364: when true the validation policy decides which results wait
+        // for review instead of ALWAYS_VALIDATE_RESULTS.
+        USE_MULTI_LEVEL_VALIDATION("useMultiLevelValidation", "text"),
 
         // FR-2.3: per-deployment switches for the optional pathology bench
         // stages. The mandatory stages (ACCESSIONED, GROSSING, READY_PATHOLOGIST,
