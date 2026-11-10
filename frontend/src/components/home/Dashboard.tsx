@@ -68,6 +68,7 @@ import {
 } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import ExtensionSlot from "../../modules/ExtensionSlot";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 
@@ -329,7 +330,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       value: counts.ordersRejectedToday,
     },
     {
-      title: <FormattedMessage id="dashboard.unprints.results.label" />,
+      title: <FormattedMessage id="dashboard.unprinted.results.label" />,
       type: "UN_PRINTED_RESULTS",
       value: counts.unPritendResults,
     },
@@ -396,6 +397,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         : setSelectedTestSection(testSections[0]?.id);
     }
   };
+
+  const openTile = (tile) =>
+    tile.type === "UN_PRINTED_RESULTS"
+      ? navigate("/ReportPrintQueue?type=patient&printStatus=unprinted")()
+      : handleMaximizeClick(tile);
 
   const handleMaximizeClick = (tile) => {
     if (
@@ -554,7 +560,8 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               <ClickableTile
                 key={index}
                 className="dashboard-tile"
-                onClick={() => handleMaximizeClick(tile)}
+                role="button"
+                onClick={() => openTile(tile)}
               >
                 {TileIcon && (
                   <div className="tile-leading-icon">
@@ -569,7 +576,10 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
 
                 <div className="tile-icon">
                   <div
-                    onClick={() => handleMaximizeClick(tile)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openTile(tile);
+                    }}
                     className="icon-wrapper"
                   >
                     <Maximize
@@ -582,6 +592,10 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               </ClickableTile>
             );
           })}
+          <ExtensionSlot
+            name="home.dashboard.cards"
+            context={{ user: userSessionDetails }}
+          />
         </div>
       ) : (
         <div className="dashboard-view">

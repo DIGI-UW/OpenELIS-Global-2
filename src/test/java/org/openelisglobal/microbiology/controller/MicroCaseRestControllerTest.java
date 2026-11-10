@@ -21,8 +21,6 @@ import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
 import org.openelisglobal.microbiology.form.MicroCaseNonconformanceRequestForm;
 import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.microbiology.form.MicroCultureAnalyzerEventRequestForm;
-import org.openelisglobal.microbiology.form.MicroIsolateForm;
-import org.openelisglobal.microbiology.form.MicroIsolateRequestForm;
 import org.openelisglobal.microbiology.form.MicroLotSelectionRequestForm;
 import org.openelisglobal.microbiology.service.MicroCaseNonconformanceResult;
 import org.openelisglobal.microbiology.service.MicroCaseNonconformanceService;
@@ -31,15 +29,11 @@ import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
 import org.openelisglobal.microbiology.service.MicroCultureAnalyzerEventCommand;
 import org.openelisglobal.microbiology.service.MicroCultureAnalyzerEventService;
-import org.openelisglobal.microbiology.service.MicroIdentificationHistoryService;
-import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
-import org.openelisglobal.microbiology.valueholder.MicroIsolate;
-import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
@@ -106,20 +100,23 @@ public class MicroCaseRestControllerTest {
     }
 
     @Test
-    public void getCaseDetailRejectsUserWithoutLabUnitAccessBeforeLoadingPatientData() {
+    public void getCaseDetailWithoutLabUnitRightsReturnsReadOnlyDirectView() {
         MicroCaseService service = org.mockito.Mockito.mock(MicroCaseService.class);
         MicrobiologyCaseAccessService accessService = org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class);
         UserModuleService userModuleService = org.mockito.Mockito.mock(UserModuleService.class);
         MockHttpServletRequest request = requestFor("7");
         when(userModuleService.isUserAdmin(request)).thenReturn(false);
         when(accessService.canAccessCase("case-1", "7", false)).thenReturn(false);
+        var detail = new MicroCaseDetailForm();
+        detail.id = "case-1";
+        when(service.getCaseDetail("case-1")).thenReturn(detail);
 
         ResponseEntity<MicroCaseDetailForm> response = controller(service, accessService, userModuleService,
                 org.mockito.Mockito.mock(MicroCaseStateService.class),
                 org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCaseDetail("case-1", request);
 
-        assertEquals(403, response.getStatusCode().value());
-        verify(service, never()).getCaseDetail("case-1");
+        assertEquals(200, response.getStatusCode().value());
+        org.junit.Assert.assertTrue(response.getBody().readOnlyAccess);
     }
 
     @Test
@@ -192,32 +189,13 @@ public class MicroCaseRestControllerTest {
     }
 
     @Test
-    public void createIsolateReturnsIsolateDto() {
-        MicroIsolateService isolateService = org.mockito.Mockito.mock(MicroIsolateService.class);
-        MicroIsolate isolate = new MicroIsolate();
-        isolate.setId("iso-1");
-        isolate.setCaseId("case-1");
-        isolate.setIsolateLabel("ISO-1");
-        isolate.setGramStain("Gram negative rods");
-        isolate.setColonyMorphology("Lactose fermenting colonies");
-        isolate.setSignificance(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());
-        when(isolateService.createIsolate(eq("case-1"), eq("ISO-1"), eq("Gram negative rods"),
-                eq("Lactose fermenting colonies"), eq(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT), eq("42")))
-                .thenReturn(isolate);
-        MicroIsolateRequestForm request = new MicroIsolateRequestForm();
-        request.caseId = "case-1";
-        request.isolateLabel = "ISO-1";
-        request.gramStain = "Gram negative rods";
-        request.colonyMorphology = "Lactose fermenting colonies";
-        request.significance = MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name();
-
-        ResponseEntity<MicroIsolateForm> response = new MicroIsolateRestController(isolateService,
-                org.mockito.Mockito.mock(MicroIdentificationHistoryService.class))
-                .createIsolate(request, requestFor("42"));
-
-        assertEquals(200, response.getStatusCode().value());
-        assertEquals("iso-1", response.getBody().id);
-        assertEquals("ISO-1", response.getBody().isolateLabel);
+    public void pickIsolateUsesAuthenticatedActor() {
+        var service = org.mockito.Mockito
+                .mock(org.openelisglobal.microbiology.service.MicroIsolateWorkspaceService.class);
+        var body = new org.openelisglobal.microbiology.form.MicroIsolateWorkspaceRequestForm();
+        body.cultureId = "row-1";
+        new MicroIsolateRestController(service).pick("case-1", body, requestFor("42"));
+        verify(service).pick("case-1", body, "42");
     }
 
     @Test

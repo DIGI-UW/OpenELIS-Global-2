@@ -75,30 +75,23 @@ test.describe("Server paging through Carbon", () => {
     await page.goto("/WorkPlanByTestSection", {
       waitUntil: "domcontentloaded",
     });
-    const unit = page.locator("#select-1");
+    const unit = page.getByRole("combobox", { name: "Unit Type" });
     await expect(unit).toBeVisible({ timeout: NAV_TIMEOUT });
-    await expect
-      .poll(() => unit.locator("option").count(), { timeout: NAV_TIMEOUT })
-      .toBeGreaterThan(1);
-    const units = await unit
-      .locator("option")
-      .evaluateAll((options) =>
-        options
-          .map((option) => (option as HTMLOptionElement).value)
-          .filter(Boolean),
-      );
+    const units: { id: string; value: string }[] = await page.request
+      .get("/api/OpenELIS-Global/rest/user-test-sections/Results")
+      .then((response) => response.json());
     test.skip(units.length === 0, "needs a lab unit to open");
 
     const main = page.getByRole("main");
     const carbon = main.locator(".cds--pagination").first();
     let totalPages = 0;
-    for (const unitId of units) {
+    for (const { id: unitId, value: unitName } of units) {
       const loaded = page.waitForResponse((response) =>
         response
           .url()
           .includes(`WorkPlanByTestSection?test_section_id=${unitId}`),
       );
-      await unit.selectOption(unitId);
+      await chooseCarbonOption(unit, unitName);
       await loaded;
       await carbon.waitFor({ state: "visible", timeout: 1_500 }).catch(() => {
         // a unit with nothing to work on renders no table and no pagination

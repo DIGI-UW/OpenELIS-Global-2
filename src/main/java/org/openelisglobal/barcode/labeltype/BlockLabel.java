@@ -52,7 +52,7 @@ public class BlockLabel extends Label {
 
         if (useBlockId)
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.blockNumber"),
-                    String.valueOf(block.getBlockNumber()), 4));
+                    block.displayIdentifier(), 4));
         if (useSpecimenType) {
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.specimenType"),
                     StringUtils.defaultString(specimenType), 4));
@@ -124,5 +124,17 @@ public class BlockLabel extends Label {
     public int getMaxNumLabels() {
         return BarcodeConfigUtil.parseIntSafe(
                 ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_BLOCK_LABEL_PRINTED), 10);
+    }
+
+    // The order, block and slide labels all print the lab number, so they shared
+    // one print count and the first kind printed used up the other two.
+    @Override
+    protected String labelInfoCode() {
+        return getCode() + "-B";
+    }
+
+    @Override
+    protected String labelInfoType() {
+        return "block";
     }
 }

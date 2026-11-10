@@ -9,17 +9,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   activateAnalyzer,
+  getAnalyzerDeliveryIssues,
+  startAnalyzerSetupReception,
+  retryAnalyzerDelivery,
   getAnalyzerActivationReadiness,
   resetAnalyzerProfile,
   testConnection,
   updateAnalyzer,
 } from "../../../services/analyzerService";
 import messages from "../../../languages/en.json";
-import AnalyzerConnectionSetup from "./AnalyzerConnectionSetup";
+import AnalyzerConnectionSetup, {
+  receivedSenders,
+} from "./AnalyzerConnectionSetup";
 
 vi.mock("../../../services/analyzerService", () => ({
   activateAnalyzer: vi.fn(),
+  startAnalyzerSetupReception: vi.fn(),
+  retryAnalyzerDelivery: vi.fn(),
   getAnalyzerActivationReadiness: vi.fn(),
+  getAnalyzerDeliveryIssues: vi.fn(),
   resetAnalyzerProfile: vi.fn(),
   testConnection: vi.fn(),
   updateAnalyzer: vi.fn(),
@@ -179,6 +187,8 @@ const renderConnection = ({
   onClose = vi.fn(),
   onVerifyMappings,
   onProfileReset,
+  onContinue,
+  protocol,
 } = {}) => {
   const history = createMemoryHistory({
     initialEntries: [
@@ -190,10 +200,12 @@ const renderConnection = ({
       <IntlProvider locale="en" messages={messages}>
         <AnalyzerConnectionSetup
           candidate={shown}
+          protocol={protocol}
           onCandidateChange={onCandidateChange}
           onClose={onClose}
           onVerifyMappings={onVerifyMappings}
           onProfileReset={onProfileReset}
+          onContinue={onContinue}
         />
       </IntlProvider>
     </Router>,
@@ -216,6 +228,43 @@ describe("AnalyzerConnectionSetup", () => {
     updateAnalyzer.mockImplementation((_id, _payload, callback) =>
       callback(candidate),
     );
+  });
+
+  it("keeps unavailable-type recovery visible in the connect-first wizard", async () => {
+    const onProfileReset = vi.fn();
+    resetAnalyzerProfile.mockImplementation((_id, callback) =>
+      callback({ ok: true }),
+    );
+    renderConnection({
+      shown: {
+        ...candidate,
+        connection: {
+          ...connection,
+          readiness: {
+            ready: false,
+            blockers: [
+              {
+                key: "profile-unavailable",
+                messageKey: "analyzer.connection.readiness.profileUnavailable",
+              },
+            ],
+          },
+        },
+      },
+      onContinue: vi.fn(),
+      onProfileReset,
+    });
+    expect(
+      await screen.findByText(/which the Analyzer Bridge no longer has/),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Reset analyzer type" }),
+    );
+    expect(resetAnalyzerProfile).toHaveBeenCalledWith(
+      "42",
+      expect.any(Function),
+    );
+    expect(onProfileReset).toHaveBeenCalledOnce();
   });
 
   it("says why the Bridge set this connection aside", async () => {
@@ -948,4 +997,117 @@ describe("AnalyzerConnectionSetup", () => {
     expect(activateAnalyzer).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+});
+
+describe("receivedSenders", () => {
+  it("offers each sender the Bridge holds unowned or for this connection, once", () => {
+    const rows = [
+      { sender: "CPHL^GeneXpert^6.2", connectionId: null },
+      { sender: "CPHL^GeneXpert^6.2", connectionId: null },
+      { sender: "MBT^Bruker^4.1", connectionId: "bridge-9" },
+      { sender: "EPICENTER^EpiCenter", connectionId: "bridge-other" },
+      { sender: null, connectionId: null },
+    ];
+
+    expect(receivedSenders(rows, "bridge-9")).toEqual([
+      "CPHL^GeneXpert^6.2",
+      "MBT^Bruker^4.1",
+    ]);
+  });
+});
+
+describe("adopting an observed sender", () => {
+  it.each([true, false])(
+    "starts setup before retrying the original receipt (acknowledged: %s)",
+    async (receiving) => {
+      vi.resetAllMocks();
+      const source = {
+        id: "recv-v1:123",
+        state: "DMQ",
+        connectionId: null,
+        sender: "GeneXpert PC^GeneXpert^1.0",
+        sourceId: "10.1.2.3",
+        listenerPort: 12001,
+        protocol: "ASTM",
+        transport: "TCP",
+        failureReason: "UNREGISTERED_SOURCE",
+      };
+      const shown = {
+        ...candidate,
+        connection: {
+          ...connection,
+          fields: [
+            {
+              key: "connectionRole",
+              inputKind: "TEXT",
+              currentValue: "SERVER",
+            },
+            { key: "host", inputKind: "TEXT" },
+            { key: "senderId", inputKind: "TEXT" },
+            { key: "port", inputKind: "NUMBER", currentValue: 12001 },
+          ],
+        },
+      };
+      getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+        callback({
+          analyzerId: "42",
+          ready: false,
+          activated: false,
+          blockers: [],
+        }),
+      );
+      getAnalyzerDeliveryIssues.mockImplementation((callback) =>
+        callback({ status: "success", data: { rows: [source] } }),
+      );
+      updateAnalyzer.mockImplementation((_id, _body, callback) =>
+        callback(shown),
+      );
+      startAnalyzerSetupReception.mockImplementation((_id, callback) =>
+        callback({
+          analyzerId: "42",
+          receiving,
+          status: receiving ? "VALIDATION" : "SETUP",
+          blockers: [],
+        }),
+      );
+      retryAnalyzerDelivery.mockImplementation((id, callback) =>
+        callback({ id, status: "accepted", state: "QUEUED" }),
+      );
+      renderConnection({ shown, protocol: "ASTM", onContinue: vi.fn() });
+      await userEvent.click(
+        screen.getByRole("button", { name: "This is my analyzer" }),
+      );
+      expect(updateAnalyzer).toHaveBeenCalledWith(
+        "42",
+        expect.objectContaining({
+          connectionValues: {
+            connectionRole: "SERVER",
+            host: source.sourceId,
+            senderId: source.sender,
+            port: 12001,
+          },
+        }),
+        expect.any(Function),
+      );
+      expect(startAnalyzerSetupReception).toHaveBeenCalledWith(
+        "42",
+        expect.any(Function),
+      );
+      if (receiving) {
+        expect(retryAnalyzerDelivery).toHaveBeenCalledWith(
+          source.id,
+          expect.any(Function),
+        );
+        expect(
+          startAnalyzerSetupReception.mock.invocationCallOrder[0],
+        ).toBeLessThan(retryAnalyzerDelivery.mock.invocationCallOrder[0]);
+        expect(screen.getByText(/Setup sample queued/)).toBeVisible();
+      } else {
+        expect(retryAnalyzerDelivery).not.toHaveBeenCalled();
+        expect(
+          screen.queryByText(/Setup sample queued/),
+        ).not.toBeInTheDocument();
+      }
+    },
+  );
 });

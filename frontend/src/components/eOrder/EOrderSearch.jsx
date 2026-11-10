@@ -7,7 +7,7 @@ import {
   TextInput,
   Loading,
 } from "@carbon/react";
-import { React, useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";

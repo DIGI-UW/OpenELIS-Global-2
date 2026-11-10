@@ -71,7 +71,9 @@ jobs:
   # the key this job saves.
   pre-warm-playwright:
     name: Pre-warm Playwright cache
-    runs-on: ubuntu-latest
+    # Pinned: the Playwright release in package.json ships no browser build
+    # for ubuntu-latest's Ubuntu 26.04 image, so the install step fails there.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -128,7 +130,9 @@ jobs:
   test-shards:
     name: ${{ inputs.artifact_prefix }} ${{ matrix.shard_index }}/${{ strategy.job-total }}
     needs: pre-warm-playwright
-    runs-on: ubuntu-latest
+    # Pinned: the Playwright release in package.json ships no browser build
+    # for ubuntu-latest's Ubuntu 26.04 image, so the install step fails there.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: read
@@ -181,6 +185,11 @@ jobs:
       - name: Install Playwright browsers
         timeout-minutes: 15
         run: |
+          # --with-deps runs apt-get update, which fails the whole install when
+          # any source fails; packages.microsoft.com answered 403 on a runner
+          # (2026-10-20). Chromium's dependencies come from the Ubuntu archive.
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list \
+            /etc/apt/sources.list.d/microsoft-prod.sources
           for attempt in 1 2 3; do
             echo "::group::Playwright install attempt $attempt"
             # A timed-out --with-deps attempt orphans apt-get still holding the

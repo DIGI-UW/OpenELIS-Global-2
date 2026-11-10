@@ -4,6 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,6 +21,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerMappingDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
+import org.openelisglobal.terminology.Coding;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 
@@ -25,6 +29,9 @@ import org.openelisglobal.testresult.valueholder.TestResult;
 public class AnalyzerTypeCatalogServiceTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Mock
+    private AnalyzerMappingConfirmationService confirmationService;
 
     @Mock
     private BridgeProfileCatalogService bridgeCatalogService;
@@ -38,15 +45,113 @@ public class AnalyzerTypeCatalogServiceTest {
     @Mock
     private TestResultService testResultService;
 
+    @Mock
+    private AnalyzerMappingService mappingService;
+
     private AnalyzerTypeCatalogService service;
+
+    @Test
+    public void catalogReadsLocalTestsOnceForManyConfirmedAnalyzersAndRefreshesOnNextRequest() throws Exception {
+        var confirmations = mock(org.openelisglobal.analyzer.dao.AnalyzerMappingConfirmationDAO.class);
+        var realConfirmationService = new AnalyzerMappingConfirmationServiceImpl(confirmations,
+                mock(org.openelisglobal.audittrail.dao.AuditTrailService.class),
+                mock(org.openelisglobal.systemuser.service.SystemUserService.class), mappingCatalogService);
+        service = new AnalyzerTypeCatalogServiceImpl(bridgeCatalogService, mappingDAO,
+                new AnalyzerMappingDefaults(mappingCatalogService, testResultService), mappingCatalogService,
+                realConfirmationService, mappingService);
+        var analyzers = new java.util.ArrayList<Analyzer>();
+        for (int i = 0; i < 30; i++) {
+            Analyzer analyzer = analyzer("catalog-" + i, "Catalog bench " + i, 3, 1);
+            AnalyzerMapping mapping = analyzer.getMapping();
+            mapping.setId("mapping-" + i);
+            mapping.setAnalyzer(analyzer);
+            mapping.setMappingFingerprint("sha256:" + "a".repeat(64));
+            mapping.setProfileFingerprint("sha256:" + "b".repeat(64));
+            var row = new org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest();
+            row.setId(new org.openelisglobal.analyzer.valueholder.AnalyzerMappingTestPK(mapping.getId(), "WBC"));
+            row.setMappingState(org.openelisglobal.analyzer.valueholder.AnalyzerMappingState.BOUND);
+            row.setTestId("100");
+            var snapshot = new AnalyzerMappingSnapshot(mapping, List.of(row), List.of());
+            var confirmation = new org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation();
+            confirmation.setMapping(mapping);
+            confirmation.setProfileId(mapping.getProfileId());
+            confirmation.setMappingFingerprint(mapping.getMappingFingerprint());
+            confirmation.setConfirmedBy("17");
+            confirmation.setConfirmedAt(java.sql.Timestamp.from(java.time.Instant.parse("2026-11-01T12:00:00Z")));
+            confirmation.setAuditEventId("audit-" + i);
+            confirmation.setConfirmedRowsJson("[{\"sourceRowKey\":\"WBC\",\"rawValue\":null,\"subIdentity\":\"\"}]");
+            confirmation.setExcludedRowsJson("[]");
+            when(confirmations.findByMappingId(mapping.getId())).thenReturn(Optional.of(confirmation));
+            when(mappingService.findById(mapping.getId())).thenReturn(Optional.of(snapshot));
+            analyzers.add(analyzer);
+        }
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology")).thenReturn(analyzers);
+        when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
+
+        var first = service.getCatalog().types().get(0);
+        assertEquals(30, first.affectedAnalyzers().size());
+        assertTrue(first.affectedAnalyzers().stream()
+                .allMatch(AnalyzerTypeCatalogView.AffectedAnalyzer::mappingConfirmed));
+        verify(mappingCatalogService, times(1)).searchActiveTests(null);
+
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
+        var refreshed = service.getCatalog().types().get(0);
+        assertTrue(refreshed.affectedAnalyzers().stream()
+                .noneMatch(AnalyzerTypeCatalogView.AffectedAnalyzer::mappingConfirmed));
+        assertEquals(0, refreshed.testMappings().mapped());
+        verify(mappingCatalogService, times(2)).searchActiveTests(null);
+    }
 
     @Before
     public void setUp() {
+        org.mockito.Mockito.lenient().when(bridgeCatalogService.isConfigured()).thenReturn(true);
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest("100")));
         when(mappingCatalogService.getActiveResultOptions("100")).thenReturn(answers());
         when(testResultService.getActiveTestResultsByTest("100")).thenReturn(List.of(numericResult()));
         service = new AnalyzerTypeCatalogServiceImpl(bridgeCatalogService, mappingDAO,
-                new AnalyzerMappingDefaults(mappingCatalogService, testResultService), mappingCatalogService);
+                new AnalyzerMappingDefaults(mappingCatalogService, testResultService), mappingCatalogService,
+                confirmationService, mappingService);
+    }
+
+    /**
+     * OGC-1594: with no Bridge address there are no types to offer, and the page
+     * says so; it used to answer 502 as if the Bridge had failed.
+     */
+    @Test
+    public void withoutABridgeAddressTheCatalogIsEmptyAndSaysSo() {
+        when(bridgeCatalogService.isConfigured()).thenReturn(false);
+
+        AnalyzerTypeCatalogView result = service.getCatalog();
+
+        assertEquals(false, result.bridgeConfigured());
+        assertEquals(0, result.summary().total());
+        assertEquals(List.of(), result.types());
+        org.mockito.Mockito.verify(bridgeCatalogService, org.mockito.Mockito.never()).getCatalog();
+    }
+
+    /**
+     * A Bridge that is not paired holds the types but cannot be asked for them
+     * yet: the catalog is empty and says it is not paired, where it answered 502.
+     */
+    @Test
+    public void withAnUnpairedBridgeTheCatalogIsEmptyAndSaysSo() {
+        when(bridgeCatalogService.getCatalog()).thenThrow(BridgeProfileCatalogException
+                .notPaired(new BridgeHttpClient.BridgeNotPairedException()));
+
+        AnalyzerTypeCatalogView result = service.getCatalog();
+
+        assertEquals(true, result.bridgeConfigured());
+        assertEquals(false, result.bridgePaired());
+        assertEquals(0, result.summary().total());
+        assertEquals(List.of(), result.types());
+    }
+
+    @Test
+    public void anUnreachableBridgeStillFailsTheCatalog() {
+        when(bridgeCatalogService.getCatalog())
+                .thenThrow(new BridgeProfileCatalogException("Bridge profile catalog request failed"));
+
+        org.junit.Assert.assertThrows(BridgeProfileCatalogException.class, () -> service.getCatalog());
     }
 
     @Test
@@ -59,6 +164,8 @@ public class AnalyzerTypeCatalogServiceTest {
 
         AnalyzerTypeCatalogView result = service.getCatalog();
 
+        assertEquals(true, result.bridgeConfigured());
+        assertEquals(true, result.bridgePaired());
         assertEquals("1.0", result.schemaVersion());
         assertEquals(2, result.summary().total());
         assertEquals(1, result.summary().inUse());
@@ -273,6 +380,81 @@ public class AnalyzerTypeCatalogServiceTest {
         assertTrue(result.resultMappings().mapped() <= result.resultMappings().total());
     }
 
+    @Test
+    public void eachAnalyzerOnTheTypeSaysWhetherItsMappingIsConfirmedAndCurrent() throws Exception {
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest("100")));
+        Analyzer confirmed = analyzer("501", "Hematology - Main Lab", 3, 1);
+        confirmed.getMapping().setId("mapping-501");
+        Analyzer behind = analyzer("502", "Hematology - Annex", 3, 1);
+        behind.getMapping().setId("mapping-502");
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology")).thenReturn(List.of(confirmed, behind));
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.retired-file")).thenReturn(List.of());
+        when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
+        var current = new AnalyzerMappingSnapshot(confirmed.getMapping(), List.of(), List.of());
+        var stale = new AnalyzerMappingSnapshot(behind.getMapping(), List.of(), List.of());
+        when(mappingService.findById("mapping-501")).thenReturn(Optional.of(current));
+        when(mappingService.findById("mapping-502")).thenReturn(Optional.of(stale));
+        var approval = new org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation();
+        when(confirmationService.assessCurrent(org.mockito.ArgumentMatchers.eq(current), org.mockito.ArgumentMatchers.any(AnalyzerMappingCatalogState.class))).thenReturn(AnalyzerMappingVerificationAssessment.current(approval));
+        when(confirmationService.assessCurrent(org.mockito.ArgumentMatchers.eq(stale), org.mockito.ArgumentMatchers.any(AnalyzerMappingCatalogState.class))).thenReturn(new AnalyzerMappingVerificationAssessment(false, approval));
+
+        AnalyzerTypeCatalogView.TypeSummary type = service.getCatalog().types().get(0);
+
+        assertTrue(type.affectedAnalyzers().get(0).mappingConfirmed());
+        assertFalse(type.affectedAnalyzers().get(1).mappingConfirmed());
+    }
+
+    @Test
+    public void localApprovalDoesNotFetchHistoricalBridgeProfiles() throws Exception {
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest("100")));
+        List<Analyzer> analyzers = List.of(analyzer("501", "Main", 3, 1), analyzer("502", "Annex", 3, 1),
+                analyzer("503", "Night", 2, 1), analyzer("504", "Outreach", 2, 1));
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology")).thenReturn(analyzers);
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.retired-file")).thenReturn(List.of());
+        when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
+
+        service.getCatalog();
+
+        org.mockito.Mockito.verify(bridgeCatalogService, org.mockito.Mockito.never())
+                .getProfile("site.mock-hematology", 3);
+        org.mockito.Mockito.verify(bridgeCatalogService, org.mockito.Mockito.never()).getProfile("site.mock-hematology", 2);
+    }
+
+    @Test
+    public void codesTheProfileExcludesByDefaultCountAsDecidedAndTheTypeIsReady() throws Exception {
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-epicenter")).thenReturn(List.of());
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest("100", "58410-2")));
+        when(mappingCatalogService.getActiveResultOptions("100")).thenReturn(answers());
+        JsonNode profile = objectMapper.readTree(
+                """
+                        {
+                          "schemaVersion":"1.0",
+                          "profileMeta":{"id":"site.mock-epicenter","version":"1.0.0","displayName":"Mock EpiCenter","confidence":"VALIDATED"},
+                          "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                          "default_test_mappings":[
+                            {"test_code":"GROWTH","loinc":"58410-2","result_type":"qualitative","values":["POS","NEG","IN PROGRESS"],
+                             "value_codes":{"POS":[{"system":"http://loinc.org","code":"LA6576-8"}],"NEG":[{"system":"http://loinc.org","code":"LA6577-6"}]},
+                             "value_defaults":{"IN PROGRESS":"EXCLUDED"}},
+                            {"test_code":"AMK","loinc":"18860-7","result_type":"text","default":"EXCLUDED"}
+                          ],
+                          "catalog":{"revision":1,"revisionFingerprint":"sha256:5555555555555555555555555555555555555555555555555555555555555555","source":"SHIPPED","status":"ACTIVE"}
+                        }
+                        """);
+        when(bridgeCatalogService.getProfile("site.mock-epicenter", 1)).thenReturn(
+                new BridgeProfileCatalog.ProfileRevision(profile, objectMapper.createObjectNode().put("action", "CREATED")));
+
+        AnalyzerTypeCatalogView.TypeSummary result = service.getType("site.mock-epicenter", 1);
+
+        assertEquals(1, result.testMappings().mapped());
+        assertEquals(1, result.testMappings().excluded());
+        assertEquals(2, result.testMappings().total());
+        assertEquals("COMPLETE", result.testMappings().state());
+        assertEquals(2, result.resultMappings().mapped());
+        assertEquals(1, result.resultMappings().excluded());
+        assertEquals("COMPLETE", result.resultMappings().state());
+        assertEquals("READY", result.readiness());
+    }
+
     private static AnalyzerMapping mapping(int revisionNumber, int profileRevision) {
         AnalyzerMapping mapping = new AnalyzerMapping();
         mapping.setRevisionNumber(revisionNumber);
@@ -291,7 +473,8 @@ public class AnalyzerTypeCatalogServiceTest {
     }
 
     private static AnalyzerMappingCatalogService.TestOption activeTest(String id, String... loincCodes) {
-        return new AnalyzerMappingCatalogService.TestOption(id, "Mock active Test " + id, "MOCK", List.of(loincCodes));
+        return new AnalyzerMappingCatalogService.TestOption(id, "Mock active Test " + id, "MOCK",
+                java.util.Arrays.stream(loincCodes).map(Coding::loinc).toList());
     }
 
     private static List<AnalyzerMappingCatalogService.ResultOption> answers() {
@@ -384,7 +567,7 @@ public class AnalyzerTypeCatalogServiceTest {
         return new BridgeProfileCatalog.ProfileRevision(profile, publication);
     }
 
-    private static List<AnalyzerMappingCatalogService.AnswerCoding> loinc(String code) {
-        return List.of(new AnalyzerMappingCatalogService.AnswerCoding("http://loinc.org", code));
+    private static List<Coding> loinc(String code) {
+        return List.of(new Coding("http://loinc.org", code));
     }
 }

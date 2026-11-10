@@ -177,6 +177,44 @@ public class AnalyzerInstanceServiceTest {
     }
 
     @Test
+    public void settingAnInactiveAnalyzerUpOnANewTypeMovesItsConnectionWithTheValuesEntered() {
+        AnalyzerInstanceState onNewType = new AnalyzerInstanceState("42", "Synthetic bench 1", List.of("7"),
+                "fixture.new-type", 1, ADOPTED_FINGERPRINT, "bridge-connection-42", Analyzer.AnalyzerStatus.INACTIVE,
+                0L);
+        when(localStateService.update("42", request, "17")).thenReturn(onNewType);
+        request.setConnectionValues(JSON.createObjectNode().put("senderId", "CPHL-GX"));
+        ObjectNode moved = bridgeConnection.deepCopy();
+        moved.with("profileRef").put("profileId", "fixture.new-type").put("revision", 1);
+        moved.put("configRevision", 2);
+        when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
+                any(ObjectNode.class))).thenReturn(moved);
+
+        AnalyzerInstanceView result = service.update("42", request, "17");
+
+        ArgumentCaptor<ObjectNode> updateRequest = ArgumentCaptor.forClass(ObjectNode.class);
+        verify(bridgeClient).updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
+                updateRequest.capture());
+        ObjectNode sent = updateRequest.getValue();
+        assertEquals("fixture.new-type", sent.path("profileRef").path("profileId").asText());
+        assertEquals(1, sent.path("profileRef").path("revision").asInt());
+        assertEquals("CPHL-GX", sent.path("values").path("senderId").asText());
+        assertNull(result.connectionErrorKey());
+        assertEquals(moved, result.connection());
+    }
+
+    @Test
+    public void aRunningAnalyzerWhoseConnectionIsOnAnotherTypeIsNotMovedBySetup() {
+        AnalyzerInstanceState running = new AnalyzerInstanceState("42", "Synthetic bench 1", List.of("7"),
+                "fixture.new-type", 1, ADOPTED_FINGERPRINT, "bridge-connection-42", Analyzer.AnalyzerStatus.ACTIVE, 0L);
+        when(localStateService.update("42", request, "17")).thenReturn(running);
+
+        AnalyzerInstanceView result = service.update("42", request, "17");
+
+        assertEquals("analyzer.bridge.connection.invalidEvidence", result.connectionErrorKey());
+        verify(bridgeClient, never()).updateConnection(any(), any());
+    }
+
+    @Test
     public void appliesTheReviewedMappingWithoutRewritingBridgeConfiguration() {
         AnalyzerInstanceState connectedState = localState.withBridgeConnectionId("bridge-connection-42");
         when(localStateService.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17"))
@@ -319,6 +357,37 @@ public class AnalyzerInstanceServiceTest {
                 () -> service.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17"));
 
         assertEquals("analyzer.bridge.connection.reconcileRequired", failed.messageKey());
+    }
+
+    @Test
+    public void savingStoppedSetupSettingsDoesNotRestartReception() {
+        setupReceptionUpdate("INACTIVE");
+
+        AnalyzerInstanceView result = service.update("42", request, "17");
+
+        assertEquals("INACTIVE", result.connection().path("actualRuntimeState").asText());
+        verify(activationService, never()).startSetupReception(any(), any());
+    }
+
+    @Test
+    public void savingRunningSetupSettingsRestoresReception() {
+        setupReceptionUpdate("ACTIVE");
+        when(activationService.startSetupReception("42", "17")).thenReturn(
+                new AnalyzerSetupReceptionResult("42", Analyzer.AnalyzerStatus.VALIDATION, true, List.of()));
+
+        service.update("42", request, "17");
+
+        verify(activationService).startSetupReception("42", "17");
+    }
+
+    private void setupReceptionUpdate(String runtimeState) {
+        AnalyzerInstanceState setup = new AnalyzerInstanceState("42", "Synthetic bench 1", List.of("7"),
+                "fixture.synthetic-connection", 3, PROFILE_FINGERPRINT, "bridge-connection-42",
+                Analyzer.AnalyzerStatus.VALIDATION, 0L);
+        when(localStateService.update("42", request, "17")).thenReturn(setup);
+        bridgeConnection.put("actualRuntimeState", runtimeState);
+        when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
+                any(ObjectNode.class))).thenReturn(bridgeConnection.deepCopy().put("actualRuntimeState", "INACTIVE"));
     }
 
     private AnalyzerInstanceState adopted() {

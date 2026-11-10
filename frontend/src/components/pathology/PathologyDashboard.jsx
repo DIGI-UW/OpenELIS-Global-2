@@ -39,7 +39,11 @@ import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { inProgressStageIds, stageLabel } from "./pathologyStages";
+import {
+  inProgressStageIds,
+  notCompletedStageIds,
+  stageLabel,
+} from "./pathologyStages";
 import { labNow } from "../utils/labClock";
 
 function PathologyDashboard() {
@@ -84,12 +88,12 @@ function PathologyDashboard() {
       // Set all statuses
       setStatuses(statusList);
 
-      // Mirrors the backend dashboard tile grouping (everything except
-      // awaiting-review and complete counts as in progress) so the filter
-      // and the tiles never disagree about which cases are in progress.
-      const filteredStatuses = inProgressStageIds(
-        statusList.map((status) => status.id),
-      );
+      const servedStageIds = statusList.map((status) => status.id);
+
+      // The "In Progress" option mirrors the backend dashboard tile grouping
+      // (everything except awaiting-review and complete) so the option and
+      // the tile never disagree about which cases are in progress.
+      const filteredStatuses = inProgressStageIds(servedStageIds);
 
       setInProgressStatuses(filteredStatuses);
 
@@ -98,10 +102,14 @@ function PathologyDashboard() {
         filteredStatuses.map((statusId) => ({ id: statusId })),
       );
 
-      // Set filters using the updated state
+      // The landing worklist is wider than that grouping: every stage but
+      // COMPLETED, so a case waiting for a pathologist is listed, not only
+      // counted.
       setFilters((prev) => ({
         ...prev,
-        statuses: filteredStatuses.map((statusId) => ({ id: statusId })),
+        statuses: notCompletedStageIds(servedStageIds).map((statusId) => ({
+          id: statusId,
+        })),
       }));
     }
   };
@@ -200,6 +208,13 @@ function PathologyDashboard() {
 
     if (value === "All") {
       setFilters({ ...filters, statuses: statuses });
+    } else if (value === "NOT_COMPLETED") {
+      setFilters({
+        ...filters,
+        statuses: notCompletedStageIds(statuses.map((status) => status.id)).map(
+          (statusId) => ({ id: statusId }),
+        ),
+      });
     } else if (value === "IN_PROGRESS") {
       setFilters({ ...filters, statuses: inProgressStatusObjects });
     } else {
@@ -207,16 +222,25 @@ function PathologyDashboard() {
     }
   };
 
-  const getSelectedValue = () => {
-    const selectedValue =
-      filters.statuses.length === inProgressStatuses.length &&
-      filters.statuses.every((status) => inProgressStatuses.includes(status.id))
-        ? "IN_PROGRESS"
-        : filters.statuses.length > 1
-          ? "All"
-          : filters.statuses[0]?.id || "IN_PROGRESS";
+  const holdsExactly = (stageIds) =>
+    filters.statuses.length === stageIds.length &&
+    filters.statuses.every((status) => stageIds.includes(status.id));
 
-    return selectedValue;
+  const getSelectedValue = () => {
+    if (holdsExactly(inProgressStatuses)) {
+      return "IN_PROGRESS";
+    }
+    if (
+      holdsExactly(notCompletedStageIds(statuses.map((status) => status.id)))
+    ) {
+      return "NOT_COMPLETED";
+    }
+    if (filters.statuses.length > 1) {
+      return "All";
+    }
+    // Before the stage list arrives, name the set the landing load will ask
+    // for.
+    return filters.statuses[0]?.id || "NOT_COMPLETED";
   };
 
   const filtersToParameters = () => {
@@ -421,6 +445,10 @@ function PathologyDashboard() {
                 <SelectItem
                   text={intl.formatMessage({ id: "common.all" })}
                   value="All"
+                />
+                <SelectItem
+                  text={intl.formatMessage({ id: "common.notCompleted" })}
+                  value="NOT_COMPLETED"
                 />
                 <SelectItem
                   text={intl.formatMessage({ id: "common.inProgress" })}

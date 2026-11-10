@@ -109,7 +109,6 @@ const samplesFixture = () => [
   {
     index: 1,
     sampleTypeId: "3",
-    name: "Blood",
     tests: [{ id: "1", name: "CBC" }],
     panels: [],
     referralItems: [],
@@ -118,7 +117,6 @@ const samplesFixture = () => [
   {
     index: 2,
     sampleTypeId: "5",
-    name: "Urine",
     tests: [{ id: "2", name: "ESR" }],
     panels: [],
     referralItems: [],
@@ -173,7 +171,14 @@ describe("AddOrder — order-level label aggregation (OGC-285 M5b)", () => {
   beforeEach(() => {
     utilsMock.getFromOpenElisServer.mockReset();
     utilsMock.postToOpenElisServerJsonResponse.mockReset();
-    utilsMock.getFromOpenElisServer.mockImplementation(() => {});
+    utilsMock.getFromOpenElisServer.mockImplementation((endPoint, callback) => {
+      if (endPoint === "/rest/user-sample-types") {
+        callback([
+          { id: "3", value: "Blood" },
+          { id: "5", value: "Urine" },
+        ]);
+      }
+    });
   });
 
   test("POSTs the aggregation with positional sample_id_local + deduped numeric test ids", () => {
@@ -211,12 +216,32 @@ describe("AddOrder — order-level label aggregation (OGC-285 M5b)", () => {
       within(tables[1]).getByRole("columnheader", { name: "Specimen Label" }),
     ).toBeInTheDocument();
 
-    // Sample rows are labelled by the sample type name (our formatter).
+    // Sample rows are named as the Result Reporting headings name them: the
+    // sample's place on the form and the sample type chosen on it.
     expect(
-      within(tables[1]).getByRole("rowheader", { name: "Blood" }),
+      within(tables[1]).getByRole("rowheader", { name: "Sample 1: Blood" }),
     ).toBeInTheDocument();
     expect(
-      within(tables[1]).getByRole("rowheader", { name: "Urine" }),
+      within(tables[1]).getByRole("rowheader", { name: "Sample 2: Urine" }),
+    ).toBeInTheDocument();
+  });
+
+  test("numbers a sample label row by the sample's place on the form", () => {
+    wireAggregationResponse({
+      ...labelRequestFixture(),
+      sample_rows: [labelRequestFixture().sample_rows[0]],
+    });
+    const [blood, urine] = samplesFixture();
+    renderAddOrder({ samples: [{ ...blood, tests: [] }, urine] });
+
+    const tables = screen.getAllByRole("table");
+    expect(
+      within(tables[1]).getByRole("rowheader", { name: "Sample 2: Urine" }),
+    ).toBeInTheDocument();
+    expect(
+      within(tables[1]).getByRole("spinbutton", {
+        name: /^Sample 2: Urine Specimen Label quantity$/,
+      }),
     ).toBeInTheDocument();
   });
 
@@ -251,7 +276,7 @@ describe("AddOrder — order-level label aggregation (OGC-285 M5b)", () => {
     // Edit a sample-label quantity (Sample 1 / Specimen Label) to 4.
     const tables = screen.getAllByRole("table");
     const sampleInput = within(tables[1]).getByRole("spinbutton", {
-      name: /Sample 1 Specimen Label quantity/i,
+      name: /Sample 1: Blood Specimen Label quantity/i,
     });
     fireEvent.change(sampleInput, { target: { value: "4" } });
 

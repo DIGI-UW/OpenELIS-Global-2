@@ -56,7 +56,8 @@ public final class QiReportSupport {
     public static String periodKey(LocalDate date, String interval) {
         String resolved = interval == null ? "DAILY" : interval.toUpperCase();
         return switch (resolved) {
-        case "WEEKLY" -> date.getYear() + "-W" + String.format("%02d", date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
+        case "WEEKLY" -> date.get(IsoFields.WEEK_BASED_YEAR) + "-W"
+                + String.format("%02d", date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
         case "MONTHLY" -> date.getYear() + "-" + String.format("%02d", date.getMonthValue());
         default -> date.toString();
         };

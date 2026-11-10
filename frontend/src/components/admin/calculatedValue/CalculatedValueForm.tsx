@@ -29,7 +29,11 @@ import {
   OperationType,
   OperationModel,
 } from "../../formModel/innitialValues/CalculatedValueFormSchema";
-import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerFullResponse,
+  resolveApiErrorMessage,
+} from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -433,10 +437,24 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     setCalculationList(list);
   };
 
-  const handleCalculationSubmited = (status, index) => {
+  const refusalMessage = async (
+    response: Response | undefined,
+    fallbackId: string,
+  ): Promise<string> => {
+    const body = await response
+      ?.clone()
+      .json()
+      .catch(() => null);
+    return resolveApiErrorMessage(intl, body, fallbackId);
+  };
+
+  const handleCalculationSubmited = async (
+    response: Response | undefined,
+    index: number,
+  ) => {
     setIsSubmitting(false);
-    setNotificationVisible(true);
-    if (status == "200") {
+    if (response?.status === 200) {
+      setNotificationVisible(true);
       const element = document.getElementById(
         "submit_" + index,
       ) as HTMLInputElement;
@@ -444,25 +462,21 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: "Succesfuly saved",
+        message: intl.formatMessage({ id: "save.success" }),
       });
     } else {
+      const message = await refusalMessage(
+        response,
+        "error.duplicate.calculationname",
+      );
+      setNotificationVisible(true);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: "Duplicate Calculation Name or Error while saving",
+        message,
       });
     }
   };
-
-  function replaceString(
-    string: string,
-    sequenceToReplace: string,
-    replacement: string,
-  ) {
-    const regex = new RegExp(sequenceToReplace, "g");
-    return string.replace(regex, replacement);
-  }
 
   const handleSubmit = (event: any, index: number) => {
     event.preventDefault();
@@ -470,30 +484,12 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       return;
     }
     setIsSubmitting(true);
-    let mathematicalOperation = "";
     calculationList[index]["operations"].forEach(
       (operation, operationIndex) => {
         operation.order = operationIndex;
-        mathematicalOperation = mathematicalOperation + operation.value + " ";
       },
     );
-    // for the function validation , remove text values
-    mathematicalOperation = replaceString(mathematicalOperation, "AGE", "0");
-    mathematicalOperation = replaceString(mathematicalOperation, "WEIGHT", "0");
-    mathematicalOperation = replaceString(
-      mathematicalOperation,
-      "IS_IN_NORMAL_RANGE",
-      ">=0 && 1<=10",
-    );
-    mathematicalOperation = replaceString(
-      mathematicalOperation,
-      "IS_OUTSIDE_NORMAL_RANGE",
-      "<0 || 1>10",
-    );
-
     try {
-      // Code that might throw an error
-      eval(mathematicalOperation);
       // Same as the reflex builder: the pickers display a default component,
       // and the calculation has to carry the one it is displaying rather than
       // save against none.
@@ -520,17 +516,18 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
               : operation,
         ),
       };
-      postToOpenElisServer(
+      postToOpenElisServerFullResponse(
         "/rest/test-calculation",
         JSON.stringify(calculation),
-        (status) => handleCalculationSubmited(status, index),
+        (response) => handleCalculationSubmited(response, index),
       );
-    } catch (error) {
+    } catch {
+      setIsSubmitting(false);
       setNotificationVisible(true);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: "Invalid Calculation Logic : " + error.message,
+        message: intl.formatMessage({ id: "error.invalid.calculation.logic" }),
       });
     }
   };
@@ -635,7 +632,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 labelText={
                   <FormattedMessage id="testcalculation.label.mathFucntion" />
                 }
-                value={operation.value}
+                value={operation.value ?? ""}
                 onChange={(e) => {
                   handleOperationFieldChange(e, index, operationIndex);
                 }}
@@ -662,7 +659,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 labelText={
                   <FormattedMessage id="testcalculation.label.integer" />
                 }
-                value={operation.value}
+                value={operation.value ?? ""}
                 onChange={(e) => {
                   handleOperationFieldChange(e, index, operationIndex);
                 }}
@@ -681,7 +678,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 labelText={
                   <FormattedMessage id="testcalculation.label.patientAttribute" />
                 }
-                value={operation.value}
+                value={operation.value ?? ""}
                 onChange={(e) => {
                   handleOperationFieldChange(e, index, operationIndex);
                 }}
@@ -689,7 +686,6 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
               >
                 <SelectItem text="" value="" />
                 <SelectItem text="Patient Age(Years)" value="AGE" />
-                <SelectItem text="Patient Weight(Kg)" value="WEIGHT" />
               </Select>
             </Column>
             <Column lg={5}> </Column>
@@ -785,8 +781,9 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       const endpoint = e
         ? "/rest/activate-test-calculation/" + calculation.id
         : "/rest/deactivate-test-calculation/" + calculation.id;
-      postToOpenElisServer(endpoint, {}, (status) => {
-        if (status != 200) {
+      postToOpenElisServerFullResponse(endpoint, "{}", async (response) => {
+        if (response?.status !== 200) {
+          const message = await refusalMessage(response, "save.error.msg");
           const revert = [...list];
           revert[index]["active"] = !e;
           setCalculationList(revert);
@@ -794,7 +791,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
           addNotification({
             kind: NotificationKinds.error,
             title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage({ id: "save.error.msg" }),
+            message,
           });
         }
       });

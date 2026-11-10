@@ -7,7 +7,7 @@ import { describe, it, expect, vi } from "vitest";
 import messages from "../../languages/en.json";
 import ProgressRail from "./ProgressRail";
 
-const GROSS_EXAM = messages["pathology.label.grossexam"];
+const GROSS_EXAM = messages["pathology.label.grossExam"];
 const BLOCKS = messages["pathology.label.blocks"];
 const SLIDES = messages["pathology.label.slides"];
 const PENDING = "cassette A4 outstanding";
@@ -35,7 +35,7 @@ const step = (label) => screen.getByText(label).closest("button");
 const row = (label) => step(label).closest("li");
 
 const threeStages = [
-  { id: "grossing", labelKey: "pathology.label.grossexam" },
+  { id: "grossing", labelKey: "pathology.label.grossExam" },
   { id: "blocks", labelKey: "pathology.label.blocks" },
   { id: "slides", labelKey: "pathology.label.slides" },
 ];
@@ -60,7 +60,7 @@ describe("ProgressRail", () => {
       items: [
         {
           id: "grossing",
-          labelKey: "pathology.label.grossexam",
+          labelKey: "pathology.label.grossExam",
           complete: true,
         },
         { id: "blocks", labelKey: "pathology.label.blocks" },
@@ -92,7 +92,7 @@ describe("ProgressRail", () => {
           notApplicable: true,
         },
         { id: "blocks", labelKey: "pathology.label.blocks" },
-        { id: "grossing", labelKey: "pathology.label.grossexam" },
+        { id: "grossing", labelKey: "pathology.label.grossExam" },
       ],
       currentIndex: 2,
     });
@@ -116,7 +116,7 @@ describe("ProgressRail", () => {
     // every deployment; it is disabled in place, never hidden.
     renderRail({
       items: [
-        { id: "grossing", labelKey: "pathology.label.grossexam" },
+        { id: "grossing", labelKey: "pathology.label.grossExam" },
         {
           id: "coverslipping",
           labelKey: "pathology.label.slides",
@@ -138,7 +138,7 @@ describe("ProgressRail", () => {
   it("names what is pending in both the step's accessible name and its hover title", () => {
     renderRail({
       items: [
-        { id: "grossing", labelKey: "pathology.label.grossexam" },
+        { id: "grossing", labelKey: "pathology.label.grossExam" },
         {
           id: "blocks",
           labelKey: "pathology.label.blocks",
@@ -207,11 +207,11 @@ describe("ProgressRail", () => {
 
   it("formats step labels through react-intl rather than showing a raw key", () => {
     renderRail({
-      items: [{ id: "grossing", labelKey: "pathology.label.grossexam" }],
+      items: [{ id: "grossing", labelKey: "pathology.label.grossExam" }],
     });
 
     expect(screen.getByText(GROSS_EXAM)).toBeInTheDocument();
-    expect(screen.queryByText("pathology.label.grossexam")).toBeNull();
+    expect(screen.queryByText("pathology.label.grossExam")).toBeNull();
   });
 
   it("labels the rail landmark and leaves the list itself to Carbon", () => {

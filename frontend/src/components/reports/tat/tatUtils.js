@@ -24,7 +24,7 @@ export const INTERVALS = [
  * size of the move, and whether that direction is good news. A difference
  * smaller than `flat` is no movement at all.
  */
-function windowDelta(diff, flat, format, higherBetter) {
+export function windowDelta(diff, flat, format, higherBetter) {
   const isFlat = Math.abs(diff) < flat;
   return {
     tone: isFlat ? "flat" : (higherBetter ? diff > 0 : diff < 0) ? "good" : "bad",

@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "../../../helpers/test-base";
 import { openSideNavItem } from "../../../helpers/sidenav";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * Routine and study report forms, reached through the side nav.
@@ -21,7 +22,7 @@ import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 type FormKind =
   /** ReportByDate: disabled until a date is given; both dates checked on click. */
   | "dateRange"
-  /** ReportByDate with the Search By select (activity reports). */
+  /** ReportByDate with the searchable Search By list (activity reports). */
   | "dateRangeAndValue"
   /** ReportByLabNo: disabled until a lab number is given. */
   | "labNumberRange"
@@ -35,7 +36,7 @@ type FormKind =
   | "patientStatus"
   /** NonConformityNotification: always enabled, lab number + site. */
   | "labNumberAndSite"
-  /** ReferredOut: always enabled, date range + referral lab. */
+  /** ReferredOut: always enabled, date range + searchable referral lab. */
   | "referredOut";
 
 interface ReportForm {
@@ -45,6 +46,8 @@ interface ReportForm {
   /** `report` parameter the printable version must be opened with. */
   report: string;
   kind: FormKind;
+  /** REST list behind the Search By picker (dateRangeAndValue only). */
+  list?: string;
 }
 
 const ROUTINE = ["menu_reports", "menu_reports_routine"];
@@ -96,6 +99,7 @@ const ROUTINE_REPORTS: ReportForm[] = [
     heading: "Activity report By test",
     report: "activityReportByTest",
     kind: "dateRangeAndValue",
+    list: "/rest/test-list",
   },
   {
     menu: "Activity report by panel",
@@ -103,6 +107,7 @@ const ROUTINE_REPORTS: ReportForm[] = [
     heading: "Activity report By Panel",
     report: "activityReportByPanel",
     kind: "dateRangeAndValue",
+    list: "/rest/displayList/PANELS",
   },
   {
     menu: "Activity report by unit",
@@ -110,6 +115,7 @@ const ROUTINE_REPORTS: ReportForm[] = [
     heading: "Activity report By Test Section",
     report: "activityReportByTestSection",
     kind: "dateRangeAndValue",
+    list: "/rest/user-test-sections/Reports",
   },
   {
     menu: "Referred Out Tests Report",
@@ -382,19 +388,17 @@ async function exerciseForm(page: Page, form: ReportForm): Promise<URL> {
         await button.click();
         await expect(page.getByText("Please select a value.")).toBeVisible();
         expect(popups).toHaveLength(0);
-        const select = page.getByLabel("Search By", { exact: true });
-        const value = await select
-          .locator("option")
-          .evaluateAll(
-            (options) =>
-              options
-                .map((o) => (o as HTMLOptionElement).value)
-                .find(Boolean) ?? "",
-          );
-        expect(value, "the Search By list has no entries").not.toBe("");
-        await select.selectOption(value);
+        const entries: { id: string; value: string }[] = await page.request
+          .get(`/api/OpenELIS-Global${form.list}`)
+          .then((r) => r.json());
+        const entry = entries.find((e) => e.id && e.value);
+        expect(entry, "the Search By list has no entries").toBeTruthy();
+        await chooseCarbonOption(
+          page.getByRole("combobox", { name: "Search By", exact: true }),
+          entry!.value,
+        );
         const url = await generate(page);
-        expect(url.searchParams.get("selectList.selection")).toBe(value);
+        expect(url.searchParams.get("selectList.selection")).toBe(entry!.id);
         expect(url.searchParams.get("lowerDateRange")).toBe(today);
         expect(url.searchParams.get("upperDateRange")).toBe(today);
         return url;
@@ -453,16 +457,20 @@ async function exerciseForm(page: Page, form: ReportForm): Promise<URL> {
       await button.click();
       await expect(page.getByText("Please select study type.")).toBeVisible();
       expect(popups).toHaveLength(0);
-      const studyType = page.locator("select#studyType");
-      const study = await studyType
-        .locator("option")
-        .evaluateAll(
-          (options) =>
-            options.map((o) => (o as HTMLOptionElement).value).find(Boolean) ??
-            "",
-        );
-      expect(study, "the study type list has no entries").not.toBe("");
-      await studyType.selectOption(study);
+      const studies: Array<{ id: string; value: string }> = await (
+        await page.request.get(
+          `/api/OpenELIS-Global/rest/${
+            form.report === "CIStudyExport" ? "studyprojects" : "trendsprojects"
+          }`,
+        )
+      ).json();
+      const first = studies.find((entry) => entry.id && entry.value);
+      expect(first, "the study type list has no entries").toBeTruthy();
+      const study = String(first?.id);
+      await chooseCarbonOption(
+        page.getByRole("combobox", { name: "Select Study Type" }),
+        first?.value ?? "",
+      );
       if (form.report === "CIStudyExport") {
         await button.click();
         await expect(page.getByText("Please select date type.")).toBeVisible();
@@ -512,7 +520,25 @@ async function exerciseForm(page: Page, form: ReportForm): Promise<URL> {
       await expect(button).toBeEnabled();
       await fillDate(page, "startDate", today);
       await fillDate(page, "endDate", today);
+      // The report has nothing to show without a laboratory, so it asks first.
+      await button.click();
+      await expect(
+        page.getByText(
+          "Choose the referral center or laboratory to report on.",
+        ),
+      ).toBeVisible();
+      expect(popups).toHaveLength(0);
+      const labs: { id: string; value: string }[] = await page.request
+        .get("/api/OpenELIS-Global/rest/displayList/REFERRAL_ORGANIZATIONS")
+        .then((r) => r.json());
+      const lab = labs.find((entry) => entry.id && entry.value);
+      expect(lab, "a referral laboratory is configured").toBeTruthy();
+      await chooseCarbonOption(
+        page.getByRole("combobox", { name: "Referral Center or Laboratory" }),
+        lab!.value,
+      );
       const url = await generate(page);
+      expect(url.searchParams.get("locationCode")).toBe(lab!.id);
       expect(url.searchParams.get("lowerDateRange")).toBe(today);
       expect(url.searchParams.get("upperDateRange")).toBe(today);
       return url;

@@ -152,7 +152,7 @@ test.describe("A page loaded before another admin's change cannot undo it (OGC-1
         ).status(),
       ).toBe(200);
 
-      await page.locator("#terminology-source").selectOption("SNOMED");
+      await page.locator("#terminology-source").fill("SNOMED");
       await page.locator("#terminology-code").fill("1463001");
       await saveButton(page).click();
 
@@ -166,7 +166,7 @@ test.describe("A page loaded before another admin's change cannot undo it (OGC-1
       await expect(page.getByText("3333-3")).toBeVisible({
         timeout: UI_TIMEOUT,
       });
-      await page.locator("#terminology-source").selectOption("SNOMED");
+      await page.locator("#terminology-source").fill("SNOMED");
       await page.locator("#terminology-code").fill("1463001");
       const saved = page.waitForResponse(
         (r) =>
@@ -176,7 +176,7 @@ test.describe("A page loaded before another admin's change cannot undo it (OGC-1
       expect((await saved).status()).toBe(200);
       await expect.poll(codes).toContain("1463001");
 
-      await page.locator("#terminology-source").selectOption("SNOMED");
+      await page.locator("#terminology-source").fill("SNOMED");
       await page.locator("#terminology-code").fill("1463002");
       const again = page.waitForResponse(
         (r) =>

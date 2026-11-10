@@ -114,7 +114,8 @@ public class OrderReceiptAndArrivalIntegrationTest extends BaseWebContextSensiti
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> onlySample(String labNumber) {
-        ResponseEntity<Map<String, Object>> response = orderSearchRestController.searchOrder(labNumber);
+        ResponseEntity<Map<String, Object>> response = orderSearchRestController.searchOrder(labNumber,
+                new MockHttpServletRequest());
         assertEquals(HttpStatus.OK, response.getStatusCode());
         List<Map<String, Object>> samples = (List<Map<String, Object>>) response.getBody().get("samples");
         assertEquals(1, samples.size());

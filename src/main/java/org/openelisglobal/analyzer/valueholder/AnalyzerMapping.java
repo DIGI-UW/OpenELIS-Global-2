@@ -61,6 +61,17 @@ public class AnalyzerMapping extends BaseObject<String> {
     @Column(name = "mapping_fingerprint", length = 71, nullable = false, updatable = false)
     private String mappingFingerprint;
 
+    @Column(name = "source_definition_json", columnDefinition = "TEXT", updatable = false)
+    private String sourceDefinitionJson;
+
+    public String getSourceDefinitionJson() {
+        return sourceDefinitionJson;
+    }
+
+    public void setSourceDefinitionJson(String value) {
+        sourceDefinitionJson = value;
+    }
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supersedes_mapping_id", updatable = false)
     private AnalyzerMapping supersedes;

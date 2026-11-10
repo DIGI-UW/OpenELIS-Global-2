@@ -1,13 +1,8 @@
 import React, { useEffect, useState } from "react";
-import {
-  InlineNotification,
-  Modal,
-  Select,
-  SelectItem,
-  TextInput,
-} from "@carbon/react";
+import { InlineNotification, Modal, TextInput } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { createMyCycle, fetchMyPrograms } from "./cyclesApi";
+import SearchableSelect from "../../common/SearchableSelect";
 
 const EMPTY_NEW_CYCLE = {
   schemeName: "",
@@ -93,7 +88,7 @@ const NewEqaCycleModal = ({ schemeName = "", onClose, onCreated }) => {
           style={{ marginBottom: "1rem" }}
         />
       )}
-      <Select
+      <SearchableSelect
         id="new-cycle-scheme"
         labelText={t("eqa.cycle.new.scheme", "Scheme (from My EQA Schemes)")}
         helperText={
@@ -104,25 +99,22 @@ const NewEqaCycleModal = ({ schemeName = "", onClose, onCreated }) => {
               )
             : undefined
         }
+        options={[
+          ...(schemeName &&
+          !myPrograms.some((prog) => prog.programName === schemeName)
+            ? [{ id: schemeName, value: schemeName }]
+            : []),
+          ...myPrograms.map((prog) => ({
+            id: prog.programName,
+            value: prog.programName,
+          })),
+        ]}
         value={newCycle.schemeName}
         disabled={Boolean(schemeName)}
-        onChange={(e) =>
-          setNewCycle({ ...newCycle, schemeName: e.target.value })
+        onChange={(name) =>
+          setNewCycle((current) => ({ ...current, schemeName: name }))
         }
-      >
-        <SelectItem value="" text="" />
-        {schemeName &&
-          !myPrograms.some((prog) => prog.programName === schemeName) && (
-            <SelectItem value={schemeName} text={schemeName} />
-          )}
-        {myPrograms.map((prog) => (
-          <SelectItem
-            key={prog.id}
-            value={prog.programName}
-            text={prog.programName}
-          />
-        ))}
-      </Select>
+      />
       <TextInput
         id="new-cycle-name"
         labelText={t("eqa.cycle.new.name", "Cycle name")}

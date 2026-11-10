@@ -19,7 +19,14 @@ import {
   Link as CarbonLink,
   Loading,
   Modal,
+  Pagination,
   Tag,
+  Table,
+  TableHead,
+  TableRow,
+  TableHeader,
+  TableBody,
+  TableCell,
 } from "@carbon/react";
 import { ArrowLeft, Copy, Save } from "@carbon/icons-react";
 import { parsePath } from "history";
@@ -49,12 +56,100 @@ import { includesComboBoxText } from "../comboBoxSearch";
 import { analyzerErrorText } from "../analyzerErrors";
 import "./AnalyzerTypeMappingEditor.scss";
 
+const ReceivedValuesTable = ({ values, label }) => {
+  const intl = useIntl();
+  const [page, setPage] = useState(1);
+  const currentPage = Math.min(
+    page,
+    Math.max(1, Math.ceil(values.length / 10)),
+  );
+  return (
+    <section>
+      <h3>
+        <FormattedMessage id="analyzerType.mappingEditor.received.heading" />
+      </h3>
+      <Table
+        size="sm"
+        aria-label={intl.formatMessage(
+          { id: "analyzerType.mappingEditor.received.label" },
+          { code: label },
+        )}
+      >
+        <TableHead>
+          <TableRow>
+            {["raw", "kind", "value", "unit"].map((field) => (
+              <TableHeader key={field}>
+                <FormattedMessage
+                  id={`analyzerType.mappingEditor.received.${field}`}
+                />
+              </TableHeader>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {values
+            .slice((currentPage - 1) * 10, currentPage * 10)
+            .map((value, index) => (
+              <TableRow key={index}>
+                <TableCell>
+                  <code>{value.rawValue}</code>
+                </TableCell>
+                <TableCell>
+                  <FormattedMessage
+                    id={`analyzerType.mappingEditor.received.kind.${value.kind}`}
+                  />
+                </TableCell>
+                <TableCell>
+                  <code>{value.value}</code>
+                </TableCell>
+                <TableCell>{value.unit}</TableCell>
+              </TableRow>
+            ))}
+        </TableBody>
+      </Table>
+      <Pagination
+        page={currentPage}
+        pageSize={10}
+        pageSizes={[10]}
+        totalItems={values.length}
+        onChange={({ page }) => setPage(page)}
+        itemRangeText={(min, max, total) =>
+          intl.formatMessage(
+            { id: "pagination.item-range" },
+            { min, max, total },
+          )
+        }
+        itemText={(min, max) =>
+          intl.formatMessage({ id: "pagination.item" }, { min, max })
+        }
+        pageRangeText={(_page, total) =>
+          intl.formatMessage({ id: "pagination.page-range" }, { total })
+        }
+        pageText={(page) =>
+          intl.formatMessage({ id: "pagination.page" }, { page })
+        }
+        pageSelectLabelText={() =>
+          intl.formatMessage({ id: "pagination.page-number" })
+        }
+        backwardText={intl.formatMessage({ id: "pagination.previous" })}
+        forwardText={intl.formatMessage({ id: "pagination.next" })}
+        itemsPerPageText={intl.formatMessage({ id: "pagination.itemsPerPage" })}
+      />
+    </section>
+  );
+};
+
+const LOINC_SYSTEM = "http://loinc.org";
+
 const hasApiError = (response) =>
   !response || Boolean(response.error) || Number(response.status || 0) >= 400;
 
 const cloneTests = (tests = []) =>
   tests.map((test) => ({
     ...test,
+    requiresCallComponent: Boolean(
+      test.callComponentCode || test.callComponentId,
+    ),
     aliases: [...(test.aliases || [])],
     results: (test.results || []).map((result) => ({ ...result })),
   }));
@@ -75,7 +170,12 @@ const takesComponent = (test) =>
   Boolean(test.subIdentity || test.componentCode);
 
 const takesCallComponent = (test) =>
-  !test.subIdentity && Boolean(test.callComponentCode || test.callComponentId);
+  !test.subIdentity &&
+  Boolean(
+    test.requiresCallComponent ||
+    test.callComponentCode ||
+    test.callComponentId,
+  );
 
 const answerComponentId = (test) =>
   test.subIdentity ? test.componentId : test.callComponentId;
@@ -93,7 +193,7 @@ const missingTarget = (test) =>
   test.mappingState === "BOUND" &&
   (test.subIdentity
     ? !test.componentId
-    : Boolean(test.callComponentCode) && !test.callComponentId);
+    : takesCallComponent(test) && !test.callComponentId);
 
 const unresolvedResults = (results) =>
   results.map((result) => ({
@@ -107,7 +207,7 @@ const testItemText = (test) => {
   if (!test) {
     return "";
   }
-  const identity = [test.code, ...(test.loincCodes || [])]
+  const identity = [test.code, ...(test.codings || []).map((c) => c.code)]
     .filter(Boolean)
     .join(" · ");
   return identity ? `${test.name} · ${identity}` : test.name;
@@ -757,8 +857,6 @@ const AnalyzerTypeMappingEditor = ({
       analyzerId,
       {
         baseMappingFingerprint: mapping.mappingFingerprint,
-        recognitionFingerprint:
-          mapping.controlRecognition.recognitionFingerprint,
         confirmedRows,
         excludedRows,
       },
@@ -1070,6 +1168,11 @@ const AnalyzerTypeMappingEditor = ({
               ),
         )
       : undefined;
+    const targetComponent = components.find((component) =>
+      answerComponent ? component.id === answerComponent : component.primary,
+    );
+    const numericAnswerTarget =
+      !missingTarget(test) && targetComponent?.resultType === "N";
     const key = recordKey(test);
     const label = recordLabel(test);
     const planRow = adopting ? adoptionRows.get(key) : null;
@@ -1133,16 +1236,16 @@ const AnalyzerTypeMappingEditor = ({
                 <strong>{test.loinc}</strong>
               </div>
             )}
-            {test.normalizedCoding && (
-              <div>
-                <span className="analyzer-type-mapping__label">
-                  <FormattedMessage id="analyzerType.mappingEditor.normalized" />
-                </span>
-                <strong>
-                  {test.normalizedCoding.display || test.normalizedCoding.code}
-                </strong>
-              </div>
-            )}
+            {(test.codings || [])
+              .filter((coding) => coding.system !== LOINC_SYSTEM)
+              .map((coding) => (
+                <div key={`${coding.system}|${coding.code}`}>
+                  <span className="analyzer-type-mapping__label">
+                    {coding.system}
+                  </span>
+                  <strong>{coding.display || coding.code}</strong>
+                </div>
+              ))}
             {(test.aliases || []).map((alias) => (
               <span className="analyzer-type-mapping__alias" key={alias}>
                 <FormattedMessage
@@ -1179,7 +1282,13 @@ const AnalyzerTypeMappingEditor = ({
                 test.mappingState === "UNRESOLVED" ? null : selectedTest
               }
               disabled={readOnly || test.mappingState === "EXCLUDED"}
-              onChange={({ selectedItem }) => selectTest(key, selectedItem)}
+              onChange={({ selectedItem }) => {
+                // Clearing a saved excluded target also fires Carbon's onChange.
+                // A disabled picker must not undo the saved decision.
+                if (!readOnly && test.mappingState !== "EXCLUDED") {
+                  selectTest(key, selectedItem);
+                }
+              }}
             />
             {test.mappingState === "BOUND" && takesComponent(test) && (
               <Dropdown
@@ -1276,6 +1385,9 @@ const AnalyzerTypeMappingEditor = ({
             />
           </div>
 
+          {(test.receivedValues || []).length > 0 && (
+            <ReceivedValuesTable values={test.receivedValues} label={label} />
+          )}
           {test.results.length > 0 && test.mappingState !== "EXCLUDED" && (
             <div className="analyzer-type-mapping__results">
               <h3>
@@ -1295,7 +1407,36 @@ const AnalyzerTypeMappingEditor = ({
                     id: "analyzerType.mappingEditor.results.testFirst",
                   })}
                 />
-              ) : resultOptions === undefined ? (
+              ) : numericAnswerTarget ? (
+                <div className="analyzer-type-mapping__catalog-action">
+                  <InlineNotification
+                    kind="warning"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "analyzerType.mappingEditor.received.numericMismatch",
+                    })}
+                    subtitle={intl.formatMessage({
+                      id: "analyzerType.mappingEditor.received.numericCorrection",
+                    })}
+                  />
+                  <CarbonLink
+                    as={Link}
+                    to={`/analyzers/types?q=${encodeURIComponent(mapping?.displayName || "")}`}
+                  >
+                    <FormattedMessage id="analyzerType.mappingEditor.received.reviewType" />
+                  </CarbonLink>
+                  {!readOnly && (
+                    <CarbonLink
+                      as={Link}
+                      to={`/analyzers?setup=connect&analyzerId=${encodeURIComponent(analyzerId)}&profile=${encodeURIComponent(mapping.profileId)}&revision=${mapping.profileRevision}`}
+                    >
+                      <FormattedMessage id="analyzerType.mappingEditor.received.reviewConnection" />
+                    </CarbonLink>
+                  )}
+                </div>
+              ) : resultOptions === undefined ||
+                componentsByTest[test.testId] === undefined ? (
                 <Loading
                   small
                   withOverlay={false}
@@ -1337,11 +1478,7 @@ const AnalyzerTypeMappingEditor = ({
                     null;
                   return (
                     <div
-                      className={
-                        result.translationOf
-                          ? "analyzer-type-mapping__result-row analyzer-type-mapping__result-row--translation"
-                          : "analyzer-type-mapping__result-row"
-                      }
+                      className="analyzer-type-mapping__result-row"
                       key={`${key}:${result.rawValue}`}
                       ref={
                         test.rawCode === focusTest &&
@@ -1360,16 +1497,6 @@ const AnalyzerTypeMappingEditor = ({
                               />
                             </span>
                           )}
-                        {result.translationOf && (
-                          <span className="analyzer-type-mapping__translation-of">
-                            <FormattedMessage
-                              id="analyzerType.mappingEditor.translationOf"
-                              values={{
-                                value: result.translationOf,
-                              }}
-                            />
-                          </span>
-                        )}
                         {result.origin === "OVERRIDE" && (
                           <Tag type="blue" size="sm">
                             <FormattedMessage id="analyzerType.mappingEditor.origin.override" />
@@ -1651,68 +1778,70 @@ const AnalyzerTypeMappingEditor = ({
             </section>
           )}
 
-          <section
-            className="analyzer-type-mapping__recognition"
-            aria-labelledby="analyzer-type-recognition"
-          >
-            <div className="analyzer-type-mapping__section-heading">
-              <div>
-                <h2 id="analyzer-type-recognition">
-                  <FormattedMessage id="analyzerType.mappingEditor.recognition.heading" />
-                </h2>
-                <p>
+          {mapping.controlRecognition && (
+            <section
+              className="analyzer-type-mapping__recognition"
+              aria-labelledby="analyzer-type-recognition"
+            >
+              <div className="analyzer-type-mapping__section-heading">
+                <div>
+                  <h2 id="analyzer-type-recognition">
+                    <FormattedMessage id="analyzerType.mappingEditor.recognition.heading" />
+                  </h2>
+                  <p>
+                    {formatRecognitionMode(
+                      intl,
+                      mapping.controlRecognition.mode,
+                      mapping.controlRecognition.conditions,
+                    )}
+                  </p>
+                </div>
+                <Tag type="blue">
                   {formatRecognitionMode(
                     intl,
                     mapping.controlRecognition.mode,
                     mapping.controlRecognition.conditions,
                   )}
-                </p>
+                </Tag>
               </div>
-              <Tag type="blue">
-                {formatRecognitionMode(
-                  intl,
-                  mapping.controlRecognition.mode,
-                  mapping.controlRecognition.conditions,
-                )}
-              </Tag>
-            </div>
-            {mapping.controlRecognition.mode === "NONE" ? (
-              <InlineNotification
-                kind="info"
-                lowContrast
-                hideCloseButton
-                title={intl.formatMessage({
-                  id: "analyzerType.mappingEditor.recognition.none",
-                })}
-              />
-            ) : mapping.controlRecognition.conditions.length === 0 ? (
-              <InlineNotification
-                kind="warning"
-                lowContrast
-                hideCloseButton
-                title={intl.formatMessage({
-                  id: "analyzerType.recognition.mode.unconfigured",
-                })}
-              />
-            ) : (
-              <ul>
-                {mapping.controlRecognition.conditions.map((condition) => (
-                  <li key={condition.key}>
-                    <strong>
-                      {formatRecognitionCondition(intl, condition)}
-                    </strong>
-                    {(condition.controlLevel || condition.controlType) && (
-                      <span>
-                        {[condition.controlLevel, condition.controlType]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+              {mapping.controlRecognition.mode === "NONE" ? (
+                <InlineNotification
+                  kind="info"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage({
+                    id: "analyzerType.mappingEditor.recognition.none",
+                  })}
+                />
+              ) : mapping.controlRecognition.conditions.length === 0 ? (
+                <InlineNotification
+                  kind="warning"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage({
+                    id: "analyzerType.recognition.mode.unconfigured",
+                  })}
+                />
+              ) : (
+                <ul>
+                  {mapping.controlRecognition.conditions.map((condition) => (
+                    <li key={condition.key}>
+                      <strong>
+                        {formatRecognitionCondition(intl, condition)}
+                      </strong>
+                      {(condition.controlLevel || condition.controlType) && (
+                        <span>
+                          {[condition.controlLevel, condition.controlType]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
 
           {confirmation.state === "CURRENT" && (
             <InlineNotification

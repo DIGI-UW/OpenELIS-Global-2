@@ -49,7 +49,7 @@ const SAMPLE_RESULTS = {
       // Select-list type so the options + interpretations editors render (they are
       // progressively disclosed by type — options show for D/M/C, FR-30).
       resultType: "D",
-      significantDigits: 0,
+      reportingDecimalPlaces: 0,
       defaultResult: "",
       allowMultipleReadings: false,
       options: [{ id: "O1", value: "Male", sortOrder: 1, normal: true }],
@@ -127,6 +127,65 @@ beforeEach(() => {
 });
 
 describe("SampleResultsSection", () => {
+  it("keeps the received log association through a code rename and clears it when disabled", async () => {
+    let persisted = clone(TWO_COMPONENTS);
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      cb(
+        url === "/rest/test-list" || url === "/rest/uom"
+          ? []
+          : clone(persisted),
+      );
+    });
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) => {
+      persisted = JSON.parse(body);
+      cb({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+    renderSection();
+    await screen.findByDisplayValue("Systolic");
+    const enabled = screen.getAllByLabelText("Show log10 on reports")[0];
+    fireEvent.click(enabled);
+    fireEvent.change(screen.getByLabelText("Received log10 result field"), {
+      target: { value: "DIA" },
+    });
+    fireEvent.change(screen.getByDisplayValue("DIA"), {
+      target: { value: "RECEIVED_LOG" },
+    });
+    expect(screen.getByLabelText("Received log10 result field")).toHaveValue(
+      "RECEIVED_LOG",
+    );
+    fireEvent.click(saveButton());
+    expect(savedPayload().components[0].log10SourceComponentCode).toBe(
+      "RECEIVED_LOG",
+    );
+    putToOpenElisServerFullResponse.mockClear();
+    await screen.findByDisplayValue("RECEIVED_LOG");
+    fireEvent.click(screen.getAllByLabelText("Show log10 on reports")[0]);
+    fireEvent.click(saveButton());
+    expect(savedPayload().components[0].log10SourceComponentCode).toBeNull();
+    expect(savedPayload().components[0].displayLog10).toBe(false);
+  });
+
+  it("saves the explicit report logarithm setting on the selected component only", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      cb(
+        url === "/rest/test-list" || url === "/rest/uom"
+          ? []
+          : clone(TWO_COMPONENTS),
+      );
+    });
+    renderSection();
+    await screen.findByDisplayValue("Systolic");
+    const options = screen.getAllByLabelText("Show log10 on reports");
+    expect(options[0]).not.toBeChecked();
+    expect(options[1]).not.toBeChecked();
+    fireEvent.click(options[0]);
+    fireEvent.click(saveButton());
+    expect(savedPayload().components.map((c) => c.displayLog10)).toEqual([
+      true,
+      false,
+    ]);
+  });
+
   it("renders loaded components with their options and interpretations", async () => {
     const { container } = renderSection();
     expect(await screen.findByDisplayValue("SYS")).toBeInTheDocument();
@@ -425,6 +484,59 @@ describe("SampleResultsSection", () => {
     fireEvent.click(container.querySelector("#comp-primary-1"));
     expect(container.querySelector("#comp-code-1").value).toBe("PRIMARY");
     expect(container.querySelector("#comp-code-1")).toBeDisabled();
+  });
+
+  it("shows each component's Required setting and saves a change to it (OGC-1608)", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        const loaded = clone(TWO_COMPONENTS);
+        loaded.components[0].isPrimary = true;
+        loaded.components[0].isRequired = true;
+        loaded.components[1].isRequired = false;
+        cb(loaded);
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByDisplayValue("Systolic");
+
+    expect(container.querySelector("#comp-required-0")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(container.querySelector("#comp-required-1")).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    fireEvent.click(container.querySelector("#comp-required-1"));
+    fireEvent.click(saveButton());
+
+    const components = savedPayload().components;
+    expect(components[0].isRequired).toBe(true);
+    expect(components[1].isRequired).toBe(true);
+  });
+
+  it("makes a new test's first component required and a later one optional (OGC-1608)", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      cb(
+        url === "/rest/test-list" || url === "/rest/uom"
+          ? []
+          : { testId: "7", components: [] },
+      );
+    });
+    const { container } = renderSection();
+    fireEvent.click(await screen.findByTestId("add-component"));
+    fireEvent.click(screen.getByTestId("add-component"));
+
+    expect(container.querySelector("#comp-required-0")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(container.querySelector("#comp-required-1")).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
   });
 
   it("shows result types as primary cards with the legacy types behind a disclosure (FR-28)", async () => {
@@ -1349,6 +1461,9 @@ describe("SampleResultsSection typed options and refusals (OGC-1458)", () => {
   it.each([
     ["value.tooLong", "longer than"],
     ["unit.unknown", "unit of measure"],
+    ["logDisplay.numericRequired", "requires a numeric or alpha result"],
+    ["logDisplay.sourceInvalid", "requires another visible numeric result"],
+    ["decimalPlaces.invalid", "whole number from 0 to 10"],
   ])(
     "explains the %s refusal on the named component (OGC-1467)",
     async (refusal, wording) => {

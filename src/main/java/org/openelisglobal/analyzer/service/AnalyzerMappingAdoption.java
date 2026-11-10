@@ -120,12 +120,12 @@ public final class AnalyzerMappingAdoption {
             definitions.put(AnalyzerMappingRowKey.main(test.analyzerCode()),
                     List.of(Objects.toString(test.loinc(), ""), Objects.toString(test.unit(), ""),
                             Objects.toString(test.resultType(), ""), test.resultValues(), test.valueCodes(),
-                            test.translations(), Objects.toString(test.callComponent(), "")));
+                            Objects.toString(test.callComponent(), "")));
             for (var component : test.recordComponents()) {
                 definitions.put(new AnalyzerMappingRowKey(test.analyzerCode(), component.subIdentity()),
                         List.of(component.code(), Objects.toString(component.unit(), ""),
                                 Objects.toString(component.resultType(), ""), component.resultValues(),
-                                component.valueCodes(), component.translations()));
+                                component.valueCodes()));
             }
         }
         return definitions;

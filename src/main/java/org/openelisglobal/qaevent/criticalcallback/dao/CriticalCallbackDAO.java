@@ -9,4 +9,7 @@ public interface CriticalCallbackDAO extends BaseDAO<CriticalCallback, String> {
 
     /** Distinct result ids among the given ones that have a callback row. */
     List<String> getLoggedResultIds(Collection<String> resultIds);
+
+    /** The callbacks logged against the given analyses, newest first. */
+    List<CriticalCallback> getCallbacksForAnalyses(Collection<String> analysisIds);
 }

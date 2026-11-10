@@ -11,15 +11,23 @@ import { useIntl } from "react-intl";
 
 import {
   activateAnalyzer,
+  changeAnalyzerUse,
   deactivateAnalyzer,
   reactivateAnalyzer,
   type AnalyzerActivationResultView,
   type AnalyzerDeactivationResultView,
+  type AnalyzerUseChangeView,
 } from "../../../services/analyzerService";
 import { analyzerErrorText } from "../analyzerErrors";
 import type { Analyzer } from "../types";
 
-export type AnalyzerLifecycleAction = "activate" | "deactivate" | "reactivate";
+export type AnalyzerLifecycleAction =
+  | "activate"
+  | "deactivate"
+  | "reactivate"
+  | "retire"
+  | "restore"
+  | "delete";
 
 interface AnalyzerLifecycleModalProps {
   action: AnalyzerLifecycleAction;
@@ -46,6 +54,7 @@ const AnalyzerLifecycleModal = ({
   const [error, setError] = useState<string | null>(null);
   const [blockers, setBlockers] = useState<LifecycleBlocker[]>([]);
   const isDeactivation = action === "deactivate";
+  const isDanger = isDeactivation || action === "retire" || action === "delete";
 
   const message = (suffix: string) =>
     intl.formatMessage({ id: `analyzer.lifecycle.${action}.${suffix}` });
@@ -99,6 +108,18 @@ const AnalyzerLifecycleModal = ({
     );
   };
 
+  const handleUseChange =
+    (analyzerId: string) => (response: AnalyzerUseChangeView | undefined) => {
+      if (response?.changed) {
+        finish(analyzerId);
+        return;
+      }
+      setSubmitting(false);
+      setError(
+        analyzerErrorText(intl, response, `analyzer.lifecycle.${action}.error`),
+      );
+    };
+
   const handleConfirm = () => {
     if (!analyzer.id) {
       setError(message("error"));
@@ -108,7 +129,9 @@ const AnalyzerLifecycleModal = ({
     setSubmitting(true);
     setError(null);
     setBlockers([]);
-    if (isDeactivation) {
+    if (action === "retire" || action === "restore" || action === "delete") {
+      changeAnalyzerUse(analyzer.id, action, handleUseChange(analyzer.id));
+    } else if (isDeactivation) {
       deactivateAnalyzer(analyzer.id, handleDeactivation);
     } else if (action === "activate") {
       activateAnalyzer(analyzer.id, handleActivation);
@@ -128,7 +151,7 @@ const AnalyzerLifecycleModal = ({
       open={open}
       onClose={handleClose}
       preventCloseOnClickOutside
-      danger={isDeactivation}
+      danger={isDanger}
       data-testid="analyzer-lifecycle-modal"
     >
       <ModalHeader title={message("title")} />
@@ -172,7 +195,7 @@ const AnalyzerLifecycleModal = ({
           {message("cancel")}
         </Button>
         <Button
-          kind={isDeactivation ? "danger" : "primary"}
+          kind={isDanger ? "danger" : "primary"}
           onClick={handleConfirm}
           disabled={submitting}
         >

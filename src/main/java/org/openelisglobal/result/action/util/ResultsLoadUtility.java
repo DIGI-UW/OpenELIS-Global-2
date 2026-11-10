@@ -45,7 +45,6 @@ import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
-import org.openelisglobal.common.services.TestIdentityService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
@@ -738,6 +737,30 @@ public class ResultsLoadUtility {
     }
 
     /**
+     * The status a component row of a multi-component analysis shows. The parts are
+     * entered and validated one by one while the analysis stays in technical
+     * acceptance, so each row reports its own part: not tested while it has no
+     * value, finalized once it was validated on its own, technical acceptance while
+     * its value awaits validation. Any other analysis status (not started,
+     * finalized, rejected, cancelled) applies to every part alike.
+     *
+     * @param result the part's top-level result, null when it has none
+     */
+    public static String componentStatusId(String analysisStatusId, Result result) {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        if (!statusService.matches(analysisStatusId, AnalysisStatus.TechnicalAcceptance)) {
+            return analysisStatusId;
+        }
+        if (result == null || GenericValidator.isBlankOrNull(result.getValue())) {
+            return statusService.getStatusID(AnalysisStatus.NotStarted);
+        }
+        if (result.getValidatedDate() != null) {
+            return statusService.getStatusID(AnalysisStatus.Finalized);
+        }
+        return analysisStatusId;
+    }
+
+    /**
      * The component an existing result belongs to: via its test_result row's
      * component_id, defaulting to the primary component (NULL component_id rows are
      * legacy rows owned by the primary).
@@ -954,7 +977,8 @@ public class ResultsLoadUtility {
         String testMethodName = testService.getTestMethodName(test);
         List<TestResult> testResults = testService.getPossibleTestResults(test);
         // Multi-component rows see only their component's test_result rows so the
-        // widget type, dictionary options and significant digits are per component
+        // widget type, dictionary options and reporting decimal places are per
+        // component
         // (NULL component_id rows are legacy rows owned by the primary).
         if (component != null) {
             List<TestResult> componentRows = new ArrayList<>();
@@ -1100,7 +1124,8 @@ public class ResultsLoadUtility {
         testItem.setResultValue(getFormattedResultValue(result));
         testItem.setRawResultValue(result == null ? "" : StringUtil.blankIfNull(result.getEnteredValue()));
         testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
-        testItem.setAnalysisStatusId(analysisService.getStatusId(analysis));
+        testItem.setAnalysisStatusId(component == null ? analysisService.getStatusId(analysis)
+                : componentStatusId(analysisService.getStatusId(analysis), result));
         // Display type selection:
         // - For existing results with a stored non-blank value whose type differs
         // from the test's configured type, prefer the STORED type for display.
@@ -1132,9 +1157,14 @@ public class ResultsLoadUtility {
         // OGC-1022 (R3, FR-L1): computed here, after the value and result type are
         // both on the item — setResultLimitDependencies runs before the value is
         // set, so its valid/normal booleans can't see the saved value
-        testItem.setResultFlag(computeResultFlag(testItem.getResultValue(), testItem.getResultType(), resultLimit));
-        testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType(),
-                testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits()));
+        testItem.setValid(getIsValid(testItem.getRawResultValue(), resultLimit));
+        testItem.setNormal(getIsNormal(testItem.getRawResultValue(), resultLimit));
+        if (analysis != null && NUMERIC_RESULT_TYPE.equals(testItem.getResultType())) {
+            testItem.setComplianceStatuses(SpringContext.getBean(ResultLimitService.class)
+                    .getComplianceResultsForAnalysis(analysis, testItem.getRawResultValue()));
+        }
+        testItem.setResultFlag(computeResultFlag(testItem.getRawResultValue(), testItem.getResultType(), resultLimit));
+        testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType()));
 
         testItem.setTechnician(techSignature);
         testItem.setTechnicianSignatureId(techSignatureId);
@@ -1159,7 +1189,6 @@ public class ResultsLoadUtility {
                 analysisService.getTriggeredReflex(analysis) && analysisService.resultIsConclusion(result, analysis));
         testItem.setPastNotes(notes);
         testItem.setAnalysisNotes(buildAnalysisNotes(analysis));
-        testItem.setDisplayResultAsLog(hasLogValue(test));
         testItem.setResultFile(form);
         testItem.setNonconforming(
                 analysisService.isParentNonConforming(analysis) || SpringContext.getBean(IStatusService.class)
@@ -1177,7 +1206,6 @@ public class ResultsLoadUtility {
                 SampleEQA sampleEQA = sampleEQAService.findBySampleId(sampleId).orElse(null);
                 if (sampleEQA != null && Boolean.TRUE.equals(sampleEQA.getIsEqaSample())) {
                     testItem.setEqaSample(true);
-                    testItem.setEqaInHouse(sampleEQAService.isInHouse(sampleId));
                     if (sampleEQA.getEqaPriority() != null) {
                         testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
                     }
@@ -1187,7 +1215,6 @@ public class ResultsLoadUtility {
                 sampleEQAService.findPerAnalystSchemeId(sampleId).ifPresent(schemeId -> {
                     testItem.setEqaPerAnalyst(true);
                     testItem.setEqaSchemeId(String.valueOf(schemeId));
-                    // Preselect who the sample was sealed for; the bench can change it.
                     eqaParticipantResultService.findAssignedAnalystId(Long.valueOf(analysis.getId()))
                             .ifPresent(analystId -> testItem.setEqaAnalystId(String.valueOf(analystId)));
                 });
@@ -1206,8 +1233,8 @@ public class ResultsLoadUtility {
         }
 
         if (!testResults.isEmpty() && NUMERIC_RESULT_TYPE.equals(testResults.get(0).getTestResultType())
-                && !GenericValidator.isBlankOrNull(testResults.get(0).getSignificantDigits())) {
-            testItem.setSignificantDigits(Integer.parseInt(testResults.get(0).getSignificantDigits()));
+                && !GenericValidator.isBlankOrNull(testResults.get(0).getReportingDecimalPlaces())) {
+            testItem.setReportingDecimalPlaces(Integer.parseInt(testResults.get(0).getReportingDecimalPlaces()));
         }
 
         if (test.getDefaultTestResult() != null) {
@@ -1243,18 +1270,12 @@ public class ResultsLoadUtility {
             testItem.setLowerCritical(ValidationSignals.authoredBound(resultLimit.getLowCritical()));
             testItem.setHigherCritical(ValidationSignals.authoredBound(resultLimit.getHighCritical()));
 
-            testItem.setValid(getIsValid(testItem.getResultValue(), resultLimit));
-            testItem.setNormal(getIsNormal(testItem.getResultValue(), resultLimit));
+            testItem.setValid(getIsValid(testItem.getRawResultValue(), resultLimit));
+            testItem.setNormal(getIsNormal(testItem.getRawResultValue(), resultLimit));
             testItem.setNormalRange(SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(
-                    resultLimit, testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits(), " - "));
+                    resultLimit, testResults.isEmpty() ? null : testResults.get(0).getReportingDecimalPlaces(), " - "));
         }
 
-        if (analysis != null && !testResults.isEmpty()
-                && NUMERIC_RESULT_TYPE.equals(testResults.get(0).getTestResultType())) {
-            ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
-            testItem.setComplianceStatuses(
-                    resultLimitService.getComplianceResultsForAnalysis(analysis, testItem.getResultValue()));
-        }
     }
 
     private void setDictionaryResults(TestResultItem testItem, boolean isConclusion, Result result,
@@ -1335,27 +1356,7 @@ public class ResultsLoadUtility {
 
     private String getFormattedResultValue(Result result) {
         ResultService resultResultService = SpringContext.getBean(ResultService.class);
-        return result != null ? resultResultService.getResultValue(result, false) : "";
-    }
-
-    private boolean hasLogValue(Test test) { // Analysis analysis, String resultValue) {
-        // TO-DO refactor
-        // if ( ){
-        // if (GenericValidator.isBlankOrNull(resultValue)) {
-        // return true;
-        // }
-        // try {
-        // Double.parseDouble(resultValue);
-        // return true;
-        // } catch (NumberFormatException e) {
-        // return false;
-        // }
-
-        // return true;
-        // }
-
-        // return false;
-        return TestIdentityService.getInstance().isTestNumericViralLoad(test);
+        return result != null ? resultResultService.formatResultForDisplay(result, false) : "";
     }
 
     private List<IdValuePair> getAnyDictionaryValues(Result result) {

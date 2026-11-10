@@ -27,9 +27,9 @@ import org.springframework.mock.web.MockHttpSession;
 /**
  * OGC-949 M10 / OGC-957..958 — Terminology Mappings API, round-tripped against
  * a real DB. Exercises the new TestTerminologyMapping entity stack: the
- * load/save round-trip, in-request (source, code) dedupe → 422, the source enum
- * guard, soft-delete on removal, and — critically — that re-adding a removed
- * (source, code) reactivates its row instead of colliding with the
+ * load/save round-trip, in-request (source, code) dedupe → 422, the source
+ * length guard, soft-delete on removal, and — critically — that re-adding a
+ * removed (source, code) reactivates its row instead of colliding with the
  * {@code (test_id, source, code)} unique constraint.
  */
 public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextSensitiveTest {
@@ -163,11 +163,19 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
     }
 
     @org.junit.Test
-    public void save_invalidSourceReturns422() {
+    public void save_aSourceLongerThanItsColumnReturns422() {
         TerminologyResponse body = new TerminologyResponse();
         body.mappings = new java.util.ArrayList<>();
-        body.mappings.add(mapping("BOGUS", "X", null));
+        body.mappings.add(mapping("A".repeat(21), "X", null));
         assertEquals(422, controller.saveTerminology(testId(), body, authedRequest()).getStatusCode().value());
+    }
+
+    @org.junit.Test
+    public void save_aCodeInADistrosOwnSystemRoundTrips() {
+        put(mapping("CPHL", "VL-HIV", null), mapping("loinc", "1558-6", null));
+        TerminologyResponse loaded = controller.getTerminology(testId()).getBody();
+        assertEquals(java.util.Set.of("CPHL|VL-HIV", "LOINC|1558-6"), loaded.mappings.stream()
+                .map(m -> m.source + "|" + m.code).collect(java.util.stream.Collectors.toSet()));
     }
 
     @org.junit.Test

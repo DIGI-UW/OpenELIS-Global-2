@@ -66,56 +66,191 @@ We welcome community contributions to help improve OpenELIS Global!
 
 1. For development , you need to install [Java](https://openjdk.org/install/) 21
 
-### For Offline Installation Using the OpenELIS Global2 Installer
+### Install a published release
 
-Download the OpenELIS Global Installer for each Release from the
-[Release Assets](https://github.com/DIGI-UW/OpenELIS-Global-2/releases)
+Use a
+[released default distribution](https://github.com/DIGI-UW/openelis-docker/releases)
+and follow the README at that release tag. Manifest-enabled distributions select
+the exact images tested together by OE2 and generate installation-owned keys at
+first start. Configure private credentials, then use `docker compose pull`,
+`docker compose up -d --no-build`, and `docker compose ps`.
 
-Supported versions, branches, and the versioning policy are described in
-[RELEASES.md](RELEASES.md).
+See [installation guidance](docs/install.md) and [release policy](RELEASES.md).
+Do not use development tags for production. Historical offline packages retain
+their own tagged instructions. Current offline packages bundle the same release
+configuration and images; load them with `docker image load`, then start with
+`docker compose up -d --pull never --no-build`.
 
-see full
-[installation instructions](https://uwdigi.atlassian.net/wiki/x/EoBIDg#Downloaded-Installer-Offline-Setup)
-for Offline Installation
+### For running a light OpenELIS Global2 without the FHIR server and the Analyzer Bridge
 
-### For running OpenELIS Global2 in Docker with default Settings out of the Box
+The FHIR server and the Analyzer Bridge are only needed for exchanges with other
+systems: analyzers, electronic orders from an EMR or a consolidated server,
+referrals to and results from other laboratories, EQA exchange, sample shipments
+and the client registry. Every lab workflow (patients, orders, sample
+preparation and labels, results, validation, reports, non-conformities, storage,
+administration) runs from the OpenELIS database alone, and questionnaires are
+kept in the database when there is no FHIR store.
 
-see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
+With openelis-docker, remove the `#` in front of the `COMPOSE_FILE` line in its
+`.env` and run `docker compose up -d`; see its
+[light installation](https://github.com/DIGI-UW/openelis-docker#light-installation)
+section. In any other deployment, leave `org.openelisglobal.fhirstore.uri` empty
+in `common.properties` (or set the webapp's `ORG_OPENELISGLOBAL_FHIRSTORE_URI`
+environment variable to an empty value, which overrides the file), leave
+`ANALYZER_BRIDGE_URL` empty, and do not start the two services.
 
 ### For Running OpenELIS Global2 from Source Code
 
-Use the same launcher from any clone or worktree:
+Run every `scripts/dev-stack` command **from the root of this repository (the
+OpenELIS core checkout)**. Install the
+[development prerequisites](docs/dev_setup.md#work-on-source) first; `up`
+installs mkcert itself when it is missing. Each clone or worktree gets its own
+containers, ports and data.
+
+#### Quick start
 
 ```bash
-bash scripts/setup-workspace.sh
-scripts/dev-stack up
-scripts/dev-stack url
+bash scripts/setup-workspace.sh   # once per clone or worktree
+scripts/dev-stack up              # build the backend and start the stack
+scripts/dev-stack url             # print the address to open in the browser
 ```
 
-Install the [development prerequisites](docs/dev_setup.md#work-on-source),
-including mkcert, first. On the first start on a machine, `up` sets up trusted
-local HTTPS and may request administrator authentication. Later starts reuse
-that trust. Use the printed localhost URL; no manual certificate generation,
-browser warning bypass, domain setup or port selection is needed.
+`up` sets up trusted local HTTPS itself. If mkcert is missing (it is not
+installed by default on macOS or Linux), `up` installs it: with Homebrew when
+the machine has it, otherwise by downloading the official mkcert binary into
+`~/.cache/openelis-dev-stack/bin`. On the first start on a machine it then asks
+once for your administrator password to trust the local certificates, so run it
+in an interactive terminal. Open the address that `url` prints and log in as
+`admin` / `adminADMIN!`.
 
-The launcher builds the backend, frontend, Analyzer Bridge and mock from the
-checkout and checked-out submodules. Its containers, images, ports and data
-belong to this worktree. Frontend edits hot reload; re-run `up` after backend or
-dependency changes. Native builds, focused tests, domain setup and
-published-image deployment are described in
+A certificate problem never stops `up`: if mkcert cannot be installed, trusted
+or run on a machine, `up` warns and finishes with a self-signed certificate, and
+the browser then shows a certificate warning to click through. To skip mkcert
+entirely, use the self-signed certificate from the start:
+
+```bash
+DEV_STACK_TLS=self-signed scripts/dev-stack up   # or add DEV_STACK_TLS=self-signed to .env
+```
+
+#### Commands
+
+Every command has the form `scripts/dev-stack <command> [options]`. The command
+names are literal words: `url` is the command that prints the address, not a
+placeholder for one.
+
+| Command                                  | What it does                                                                                                                     |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/dev-stack up [options]`         | Builds a fresh backend WAR from this checkout (`mvn clean package`) and starts the stack. See [Options of `up`](#options-of-up). |
+| `scripts/dev-stack url`                  | Prints the address of the running stack, for example `https://localhost:55095`.                                                  |
+| `scripts/dev-stack env`                  | Prints every address of the stack (application, backend, database port and more) as shell `export` lines.                        |
+| `scripts/dev-stack status`               | Lists the stack's containers and its addresses.                                                                                  |
+| `scripts/dev-stack logs [services] [-f]` | Shows container logs; `-f` follows them. Example: `scripts/dev-stack logs -f oe.openelis.org`.                                   |
+| `scripts/dev-stack down`                 | Stops and removes the stack's containers and module dev servers. The data is kept.                                               |
+| `scripts/dev-stack down --volumes --yes` | Same, and also deletes the stack's data (database and other volumes). Both flags are required.                                   |
+| `scripts/dev-stack doctor`               | Checks the prerequisites without starting anything.                                                                              |
+| `scripts/dev-stack config`               | Prints the stack's merged Docker Compose configuration.                                                                          |
+| `scripts/dev-stack playwright [args]`    | Runs the Playwright tests against this stack; `args` go to Playwright.                                                           |
+
+#### Options of `up`
+
+An option's value follows it after a space, as in `--setup light` and
+`--module ../my-module` (`--setup=light` works too).
+
+| Option              | Default | What it does                                                                                                                                                                       |
+| ------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--setup full`      | yes     | Starts the whole stack: database, webapp, frontend, proxy, FHIR server, Analyzer Bridge and analyzer simulator.                                                                    |
+| `--setup light`     |         | Starts only the database, webapp, frontend and proxy. Every lab workflow runs without the other three (see the light setup above). Switching setups keeps the same database.       |
+| `--module <folder>` |         | Builds the module in `<folder>` and deploys it into the stack. Repeat it for several modules. See [Running a module from its source](#running-a-module-from-its-source).           |
+| `--build`           |         | Builds the container images from this checkout instead of pulling the published ones. Needed after changes to frontend dependencies, Dockerfiles, the Analyzer Bridge or the mock. |
+| `--skip-build`      |         | Builds and pulls nothing: reuses this checkout's last WAR and the images the last `up` ran. Cannot be combined with `--build`.                                                     |
+| `--no-wait`         |         | Returns without waiting for the login page.                                                                                                                                        |
+| `--no-scenarios`    |         | Does not create the analyzer test scenarios (the light setup never creates them).                                                                                                  |
+
+`status`, `env` and `down` follow the setup of the last `up`.
+
+#### Settings
+
+Set these in front of the command for one run, or as lines in the `.env` file at
+the root of this repository to keep them:
+
+| Setting                     | Default                       | What it does                                                                                                                                                                                     |
+| --------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DEV_STACK_IMAGE_TAG`       | `develop`                     | Tag of the published development images `up` pulls, for example a release such as `DEV_STACK_IMAGE_TAG=3.4.0`. `up --skip-build` keeps the images of the last `up` instead.                      |
+| `DEV_STACK_IMAGE_NAMESPACE` | `itechuw`                     | Docker Hub namespace of those images.                                                                                                                                                            |
+| `DEV_STACK_TLS`             | `local-ca` on localhost       | HTTPS mode: `local-ca` (trusted local certificates, needs mkcert), `self-signed` (no mkcert, the browser warns), or `letsencrypt` (a public domain).                                             |
+| `DEV_STACK_HTTPS_PORT`      | a free port, picked by Docker | Port the stack answers HTTPS on. Set `443` to open it at `https://localhost`; it must be free, so only one stack at a time can use it. `scripts/dev-stack url` always prints the address in use. |
+| `DEV_STACK_HTTP_PORT`       | a free port, picked by Docker | Port for plain HTTP, which redirects to HTTPS. Set `80` together with `DEV_STACK_HTTPS_PORT=443`.                                                                                                |
+| `LETSENCRYPT_DOMAIN`        | `localhost`                   | Domain the stack answers on; see [the development guide](docs/dev_setup.md) for domain setups.                                                                                                   |
+
+For example, for one run: `DEV_STACK_IMAGE_TAG=3.4.0 scripts/dev-stack up`, or
+to keep it, add the line `DEV_STACK_IMAGE_TAG=3.4.0` to `.env`. To open the
+stack at `https://localhost`, add these two lines to `.env`:
+
+```bash
+DEV_STACK_HTTPS_PORT=443
+DEV_STACK_HTTP_PORT=80
+```
+
+#### Common commands
+
+```bash
+scripts/dev-stack up                                   # full stack, from this checkout's source
+scripts/dev-stack up --setup light                     # database, webapp, frontend, proxy only
+scripts/dev-stack up --skip-build                      # restart quickly with the last build
+scripts/dev-stack up --module ../my-module             # also build and deploy a module
+scripts/dev-stack up --setup light --module ../my-module
+scripts/dev-stack url                                  # print the address
+scripts/dev-stack logs -f oe.openelis.org              # follow the webapp log
+scripts/dev-stack down                                 # stop, keep the data
+```
+
+While you work, frontend edits hot reload in the browser. After a backend
+change, run `scripts/dev-stack up` again. Native builds, focused tests, domain
+setup and published-image deployment are described in
 [the development guide](docs/dev_setup.md).
 
-#### The Instances can be accessed at
+#### Running a module from its source
 
-| Instance     |                      URL                       | credentials (user : password) |
-| ------------ | :--------------------------------------------: | ----------------------------: |
-| Legacy UI    | `<scripts/dev-stack url>/api/OpenELIS-Global/` |            admin: adminADMIN! |
-| New React UI |       output of `scripts/dev-stack url`        |            admin: adminADMIN! |
+Run `scripts/dev-stack up` **from this repository, not from the module's
+folder**, and pass the module's folder with `--module`:
 
-If you see a certificate warning, confirm you are using the URL printed by
-`scripts/dev-stack url` and that `scripts/dev-stack up` completed its trust
-setup. Restart the browser to refresh its trust settings. If the warning
-persists, follow [the development guide](docs/dev_setup.md); do not bypass it.
+```bash
+cd OpenELIS-Global-2                                  # the core checkout
+scripts/dev-stack up --module /path/to/my-module      # the module's source folder
+```
+
+The module folder is any [module](docs/modules.md) source checkout: a folder
+with a `pom.xml` and `src/main/resources/META-INF/openelis-module.json`. A
+relative path is resolved from the current directory. Every run builds and
+deploys both halves of each module again:
+
+- **Backend:** builds the module JAR against this checkout, installs it as
+  `volume/modules/<id>.jar` (replacing any other copy of that module) and
+  restarts the webapp, which migrates the module's tables and registers its
+  permissions, menus and pages.
+- **Frontend:** starts the module's Vite dev server (`npm run dev` in its
+  `frontend/`, log in `.dev-stack/modules/<id>-vite.log`) and routes the
+  module's pages to it, so page edits hot reload in the browser. This needs
+  Node.js on the host; without it the pages are served from the JAR.
+
+| To                                         | Do                                                                      |
+| ------------------------------------------ | ----------------------------------------------------------------------- |
+| Apply a Java, Liquibase or manifest change | Run the same `up --module ...` command again.                           |
+| Recover after the dev server stopped       | Run the same `up --module ...` command again.                           |
+| Use the pages built into the JAR           | Run `scripts/dev-stack up` without `--module`; the JAR stays installed. |
+| Remove the module                          | Delete `volume/modules/<id>.jar` and run `scripts/dev-stack up`.        |
+
+#### Opening the application
+
+| Instance     | Address                                          | Credentials (user : password) |
+| ------------ | ------------------------------------------------ | ----------------------------- |
+| New React UI | the address printed by `scripts/dev-stack url`   | admin : adminADMIN!           |
+| Legacy UI    | that address followed by `/api/OpenELIS-Global/` | admin : adminADMIN!           |
+
+If the browser shows a certificate warning, check that you opened the address
+printed by `scripts/dev-stack url` and that `scripts/dev-stack up` finished its
+trust setup, then restart the browser. If the warning stays, follow
+[the development guide](docs/dev_setup.md); do not bypass it.
 
 #### Formating the Source code after making changes
 

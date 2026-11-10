@@ -13,10 +13,10 @@ import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.paging.PagingUtility;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IResultSaveService;
@@ -236,8 +236,7 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
 
         request.getSession().setAttribute(SAVE_DISABLED, "true");
 
-        List<Result> checkPagedResults = (List<Result>) request.getSession()
-                .getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
+        List<Result> checkPagedResults = new PagingUtility<Result>().getLoadedPages(request.getSession());
         List<Result> checkResults = (List<Result>) checkPagedResults.get(0);
         if (checkResults.size() == 0) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "ResultValidation()", "Attempted save of stale page.");
@@ -560,7 +559,7 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
         ResultSaveBean bean = ResultSaveBeanAdapter.fromAnalysisItem(analysisItem);
         ResultSaveService resultSaveService = new ResultSaveService(analysis, getSysUserId(request));
         List<Result> results = resultSaveService.createResultsFromTestResultItem(bean, deletableList);
-        if (analysisService.patientReportHasBeenDone(analysis) && resultSaveService.isUpdatedResult()) {
+        if (analysisService.releasedResultHasBeenReported(analysis) && resultSaveService.isUpdatedResult()) {
             analysis.setCorrectedSincePatientReport(true);
             noteUpdateList.add(noteService.createSavableNote(analysis, NoteType.EXTERNAL,
                     MessageUtil.getMessage("note.corrected.result"), RESULT_SUBJECT, getSysUserId(request)));

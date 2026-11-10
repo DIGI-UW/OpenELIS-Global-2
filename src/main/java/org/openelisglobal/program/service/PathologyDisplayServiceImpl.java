@@ -4,7 +4,9 @@ import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -13,9 +15,11 @@ import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.RequestDisplayBean;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
@@ -110,6 +114,8 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
 
         displayItem.setGrossExam(pathologySample.getGrossExam());
         displayItem.setMicroscopyExam(pathologySample.getMicroscopyExam());
+        displayItem.setDecalcificationRequired(pathologySample.isDecalcificationRequired());
+        displayItem.setTissueTypeNames(tissueTypeNames(pathologySample.getBlocks()));
 
         displayItem.setConclusions(
                 pathologySample.getConclusions().stream().filter(e -> e.getType() == ConclusionType.DICTIONARY)
@@ -152,6 +158,19 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         // Not date.toInstant(): java.sql.Date, which the driver may hand back for a
         // date column, throws from it.
         return date == null ? null : Instant.ofEpochMilli(date.getTime()).atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    /**
+     * Names every tissue type the cassettes hold, retired entries included, which
+     * the category list the picker is filled from leaves out.
+     */
+    private Map<String, String> tissueTypeNames(List<PathologyBlock> blocks) {
+        Map<String, String> names = new LinkedHashMap<>();
+        blocks.stream().map(PathologyBlock::getTissueTypeId).filter(StringUtils::isNotBlank).distinct().forEach(id -> {
+            Dictionary entry = dictionaryService.getDataForId(id);
+            names.put(id, entry == null ? id : entry.getLocalizedName());
+        });
+        return names;
     }
 
     /**

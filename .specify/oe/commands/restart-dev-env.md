@@ -17,7 +17,8 @@ scripts/dev-stack status
 scripts/dev-stack url
 ```
 
-`up` builds the current source and pinned dependencies, recreates the running
+`up` builds the current source WAR, pulls the published development images
+(it never builds images unless `--build` is passed), recreates the running
 backend, waits for login readiness and prepares development scenarios through
 application services. It preserves existing data. The launcher reads `.env` and
 owns local or public-domain certificate setup; a missing public-domain setting
@@ -26,7 +27,11 @@ must not silently target a shared server.
 Supported options:
 
 - `--skip-build`: pass to `dev-stack up` to reuse this checkout's already-built
-  WAR and application images. Missing build artifacts must fail.
+  WAR and the application images the last `up` ran. Missing artifacts must
+  fail.
+- `--build`: only when the user asks for it or the change needs it (frontend
+  dependencies, Dockerfiles, Bridge or mock source), pass to `dev-stack up` to
+  build the application images from the checkout.
 - `--full-reset`: only when explicitly requested, run
   `scripts/dev-stack down --volumes --yes` before `up`. This deletes the owning
   development stack's data.

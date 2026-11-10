@@ -37,6 +37,14 @@ class AdminPage {
     });
   }
 
+  openMenuConfiguration() {
+    this.ensureAdminShell();
+    cy.contains("span", "Menu Configuration", { timeout: 20000 })
+      .scrollIntoView()
+      .should("exist")
+      .click({ force: true });
+  }
+
   goToLabNumberManagementPage() {
     cy.get(this.selectors.labNumberManagement)
       .scrollIntoView()
@@ -48,11 +56,7 @@ class AdminPage {
   }
 
   goToGlobalMenuConfigPage() {
-    this.ensureAdminShell();
-    cy.contains(this.selectors.span, "Menu Configuration")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.openMenuConfiguration();
     cy.get(this.selectors.globalMenuManagement)
       .scrollIntoView()
       .should("exist")
@@ -64,11 +68,7 @@ class AdminPage {
   }
 
   goToNonConformConfigPage() {
-    this.ensureAdminShell();
-    cy.contains("span", "Menu Configuration")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.openMenuConfiguration();
     cy.get("[data-cy='nonConformMenuMgmnt']")
       .scrollIntoView()
       .should("exist")
@@ -78,11 +78,7 @@ class AdminPage {
   }
 
   goToPatientConfigPage() {
-    this.ensureAdminShell();
-    cy.contains("span", "Menu Configuration")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.openMenuConfiguration();
     cy.get("[data-cy='patientMenuMgmnt']")
       .scrollIntoView()
       .should("exist")
@@ -92,11 +88,7 @@ class AdminPage {
   }
 
   goToStudyConfigPage() {
-    this.ensureAdminShell();
-    cy.contains("span", "Menu Configuration")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.openMenuConfiguration();
     cy.get("[data-cy='studyMenuMgmnt']")
       .scrollIntoView()
       .should("exist")
@@ -106,11 +98,7 @@ class AdminPage {
   }
 
   goToBillingConfigPage() {
-    this.ensureAdminShell();
-    cy.contains("span", "Menu Configuration")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.openMenuConfiguration();
     cy.get("[data-cy='billingMenuMgmnt']")
       .scrollIntoView()
       .should("exist")

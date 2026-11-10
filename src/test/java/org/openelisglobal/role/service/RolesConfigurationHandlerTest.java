@@ -77,6 +77,46 @@ public class RolesConfigurationHandlerTest {
     }
 
     @Test
+    public void testProcessConfiguration_NotFoundStubCreatesTheRole() throws Exception {
+        // RoleService.getRoleByName answers a stub with id -1 for an unknown name
+        String csv = "name,description,displayKey,active,editable,isGroupingRole,groupingParent\n"
+                + "RT Release Reviewer,Reviews releases,,Y,Y,N,\n";
+        InputStream inputStream = new ByteArrayInputStream(csv.getBytes());
+        Role stub = new Role();
+        stub.setId("-1");
+        stub.setName("RT Release Reviewer");
+        when(roleService.getRoleByName("RT Release Reviewer")).thenReturn(stub);
+        when(roleService.insert(any(Role.class))).thenReturn("7");
+        when(roleService.get("7")).thenReturn(testRole);
+
+        handler.processConfiguration(inputStream, "rt-roles.csv");
+
+        verify(roleService, times(1)).insert(any(Role.class));
+        verify(roleService, times(0)).update(any(Role.class));
+    }
+
+    @Test
+    public void testProcessConfiguration_StubParentDoesNotBecomeTheGroupingParent() throws Exception {
+        String csv = "name,description,displayKey,active,editable,isGroupingRole,groupingParent\n"
+                + "RT Child Role,Child,,Y,Y,N,RT Missing Parent\n";
+        InputStream inputStream = new ByteArrayInputStream(csv.getBytes());
+        Role stub = new Role();
+        stub.setId("-1");
+        when(roleService.getRoleByName("RT Child Role")).thenReturn(null);
+        when(roleService.getRoleByName("RT Missing Parent")).thenReturn(stub);
+        when(roleService.insert(any(Role.class))).thenAnswer(invocation -> {
+            Role created = invocation.getArgument(0);
+            assertEquals(null, created.getGroupingParent());
+            return "8";
+        });
+        when(roleService.get("8")).thenReturn(testRole);
+
+        handler.processConfiguration(inputStream, "rt-roles.csv");
+
+        verify(roleService, times(1)).insert(any(Role.class));
+    }
+
+    @Test
     public void testProcessConfiguration_UpdateExistingRoles() throws Exception {
         // Given
         String csv = "name,description,displayKey,active,editable\n"

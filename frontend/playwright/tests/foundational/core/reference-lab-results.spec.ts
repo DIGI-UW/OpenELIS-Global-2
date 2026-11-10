@@ -8,7 +8,7 @@ import {
   WHOLE_BLOOD,
   orderTests,
   referViaApi,
-  serverToday,
+  serverTodayFor,
   signIfAsked,
 } from "../../../helpers/results-nce-ui";
 import {
@@ -120,7 +120,6 @@ test.describe("Reference Lab Results", () => {
     test.setTimeout(120_000);
     const accession = await orderTests(page, WHOLE_BLOOD, [RBC_TEST]);
     const { referenceLab } = await referViaApi(page, accession, RBC_TEST);
-    const { serverDate } = await serverToday(page);
     const main = page.getByRole("main");
 
     await test.step("Enter result opens the order's worklist", async () => {
@@ -147,9 +146,10 @@ test.describe("Reference Lab Results", () => {
       ).toBeVisible();
       await resultRow.locator('input[id^="unifiedResultValue-"]').fill("4.5");
       await resultRow.getByRole("button", { name: "Expand row" }).click();
-      await main
-        .getByRole("textbox", { name: "Reference lab report date" })
-        .fill(serverDate);
+      const reportDate = main.getByRole("textbox", {
+        name: "Reference lab report date",
+      });
+      await reportDate.fill(await serverTodayFor(reportDate));
       await resultRow
         .getByRole("button", { name: "Save", exact: true })
         .click();

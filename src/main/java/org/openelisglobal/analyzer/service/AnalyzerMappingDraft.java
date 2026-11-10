@@ -21,9 +21,12 @@ public record AnalyzerMappingDraft(List<AnalyzerMappingTestDraft> tests, List<An
      * target on the test's main result.
      */
     public void requireComponentTargets(BridgeAnalyzerProfile profile) {
-        Set<String> callCodes = profile == null ? Set.of()
-                : profile.testDefinitions().stream().filter(definition -> definition.callComponent() != null)
-                        .map(BridgeAnalyzerProfile.TestDefinition::analyzerCode).collect(Collectors.toSet());
+        requireDeclaredComponentTargets(profile == null ? List.of() : profile.testDefinitions());
+    }
+
+    public void requireDeclaredComponentTargets(List<BridgeAnalyzerProfile.TestDefinition> definitions) {
+        Set<String> callCodes = definitions.stream().filter(definition -> definition.callComponent() != null)
+                .map(BridgeAnalyzerProfile.TestDefinition::analyzerCode).collect(Collectors.toSet());
         for (AnalyzerMappingTestDraft row : tests) {
             if (row.mappingState() != AnalyzerMappingState.BOUND) {
                 continue;

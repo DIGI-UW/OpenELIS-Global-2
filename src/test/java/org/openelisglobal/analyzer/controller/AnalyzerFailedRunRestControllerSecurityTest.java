@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.analyzerresults.service.AnalyzerFailedRunService;
+import org.openelisglobal.analyzerresults.service.AnalyzerHeldResultService;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.view.PageBuilderService;
@@ -33,13 +34,25 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 public class AnalyzerFailedRunRestControllerSecurityTest extends SecuritySliceMockMvcTest {
 
     private static final String FAILED_RUN = "/rest/analyzer/results/1004/failed-run";
+    private static final String DISMISS = "/rest/analyzer/results/1004/dismiss";
 
     @Autowired
     private AnalyzerFailedRunService failedRunService;
 
+    @Autowired
+    private AnalyzerHeldResultService heldResultService;
+
     @Before
     public void clearInteractions() {
-        org.mockito.Mockito.clearInvocations(failedRunService);
+        org.mockito.Mockito.clearInvocations(failedRunService, heldResultService);
+    }
+
+    @Test
+    public void dismissingAHeldResultRefusesCallersWhoCannotReviewAnalyzerResults() throws Exception {
+        mockMvc.perform(post(DISMISS)).andExpect(status().isUnauthorized());
+        mockMvc.perform(post(DISMISS).with(user("results").roles("RESULTS"))).andExpect(status().isForbidden());
+
+        verify(heldResultService, never()).dismiss(any(), any());
     }
 
     @Test
@@ -69,8 +82,14 @@ public class AnalyzerFailedRunRestControllerSecurityTest extends SecuritySliceMo
         }
 
         @Bean
-        AnalyzerFailedRunRestController analyzerFailedRunRestController(AnalyzerFailedRunService failedRunService) {
-            return new AnalyzerFailedRunRestController(failedRunService);
+        AnalyzerHeldResultService analyzerHeldResultService() {
+            return mock(AnalyzerHeldResultService.class);
+        }
+
+        @Bean
+        AnalyzerFailedRunRestController analyzerFailedRunRestController(AnalyzerFailedRunService failedRunService,
+                AnalyzerHeldResultService heldResultService) {
+            return new AnalyzerFailedRunRestController(failedRunService, heldResultService);
         }
 
         @Bean

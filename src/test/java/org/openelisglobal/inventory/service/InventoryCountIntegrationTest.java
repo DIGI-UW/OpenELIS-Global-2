@@ -241,7 +241,7 @@ public class InventoryCountIntegrationTest extends BaseWebContextSensitiveTest {
     public void findingStockInADisposedLotLeavesItDisposed() {
         Long itemId = createItem("Disposed item");
         Long lotId = stock(itemId, 10);
-        inventoryLotService.updateLotStatus(lotId, LotStatus.DISPOSED, SYS_USER_ID);
+        inventoryLotService.disposeLot(lotId, "EXPIRED", null, SYS_USER_ID);
 
         inventoryCountService.recordCount(List.of(entry(lotId, 4d)), SYS_USER_ID);
 

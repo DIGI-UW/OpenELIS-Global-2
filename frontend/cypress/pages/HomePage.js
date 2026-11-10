@@ -160,7 +160,7 @@ class HomePage {
   }
 
   selectUnPrintedResults() {
-    cy.contains(this.selectors.link, "UnPrinted Results").click();
+    cy.contains(this.selectors.link, "Unprinted results").click();
   }
 
   selectElectronicOrders() {

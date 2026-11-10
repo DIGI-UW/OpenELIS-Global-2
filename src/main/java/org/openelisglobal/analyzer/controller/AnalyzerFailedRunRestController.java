@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.analyzerresults.service.AnalyzerFailedRunService;
+import org.openelisglobal.analyzerresults.service.AnalyzerHeldResultService;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * A reviewer's decision that a held analyzer run failed and needs repeating.
+ * A reviewer's decisions on held analyzer results: a run that failed and needs
+ * repeating, or a held result dismissed from review.
  */
 @RestController
 @RequestMapping("/rest/analyzer/results")
@@ -23,15 +25,24 @@ import org.springframework.web.bind.annotation.RestController;
 public class AnalyzerFailedRunRestController extends BaseRestController {
 
     private final AnalyzerFailedRunService failedRunService;
+    private final AnalyzerHeldResultService heldResultService;
 
-    public AnalyzerFailedRunRestController(AnalyzerFailedRunService failedRunService) {
+    public AnalyzerFailedRunRestController(AnalyzerFailedRunService failedRunService,
+            AnalyzerHeldResultService heldResultService) {
         this.failedRunService = failedRunService;
+        this.heldResultService = heldResultService;
     }
 
     @PostMapping("/{id}/failed-run")
     public ResponseEntity<Map<String, String>> dismissAsFailedRun(@PathVariable String id, HttpServletRequest request) {
         String analysisId = failedRunService.dismissAsFailedRun(id, getSysUserId(request));
         return ResponseEntity.ok(Map.of("analysisId", analysisId));
+    }
+
+    @PostMapping("/{id}/dismiss")
+    public ResponseEntity<Void> dismissHeldResult(@PathVariable String id, HttpServletRequest request) {
+        heldResultService.dismiss(id, getSysUserId(request));
+        return ResponseEntity.noContent().build();
     }
 
     @ExceptionHandler(IllegalStateException.class)

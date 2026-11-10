@@ -2,13 +2,28 @@ package org.openelisglobal.program.service;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
+import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 public interface PathologySampleService extends BaseObjectService<PathologySample, Integer> {
+
+    /** Audit verb recorded when a cassette is cut. */
+    String PATHOLOGY_BLOCK_CREATED = "PATHOLOGY_BLOCK_CREATED";
+
+    /** Audit verb recorded when a cassette is embedded and becomes a block. */
+    String PATHOLOGY_BLOCK_EMBEDDED = "PATHOLOGY_BLOCK_EMBEDDED";
+
+    /** Audit verb recorded when a block is retired. */
+    String PATHOLOGY_BLOCK_DEACTIVATED = "PATHOLOGY_BLOCK_DEACTIVATED";
+
+    /** Audit verb recorded when a slide is retired. */
+    String PATHOLOGY_SLIDE_DEACTIVATED = "PATHOLOGY_SLIDE_DEACTIVATED";
 
     List<PathologySample> getWithStatus(List<PathologyStatus> statuses);
 
@@ -22,7 +37,45 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
 
     Long getCountWithOpenRequests();
 
+    /**
+     * The case's slides, copied inside a transaction so a caller holding the case
+     * outside any session can still iterate them.
+     */
+    List<PathologySlide> getSlides(Integer pathologySampleId);
+
     Long getCountWithStatusBetweenDates(List<PathologyStatus> statuses, Timestamp from, Timestamp to);
 
     void updateWithFormValues(Integer pathologySampleId, PathologySampleForm form);
+
+    /**
+     * Retires a block, keeping the row and the designation it carries. A block is
+     * held for years after its case closes and a label printed from it must still
+     * resolve, so a block is taken out of use rather than deleted.
+     *
+     * @return the block, or empty when no block carries that id
+     */
+    Optional<PathologyBlock> deactivateBlock(Integer blockId, String reason, String sysUserId);
+
+    /**
+     * Retires a slide, keeping the row and the designation it carries, on the same
+     * reasoning as {@link #deactivateBlock}.
+     *
+     * @return the slide, or empty when no slide carries that id
+     */
+    Optional<PathologySlide> deactivateSlide(Integer slideId, String reason, String sysUserId);
+
+    /**
+     * Embeds a cassette, so the same row becomes the block slides are cut from.
+     *
+     * @return the row, unchanged when it is already a block, or empty when no block
+     *         carries that id
+     * @throws PathologyCaseRuleException when the row has been retired
+     */
+    Optional<PathologyBlock> embedBlock(Integer blockId, String sysUserId);
+
+    /** The case a block belongs to, null when no case holds it. */
+    PathologySample getCaseOfBlock(Integer blockId);
+
+    /** The case a slide belongs to, null when no case holds it. */
+    PathologySample getCaseOfSlide(Integer slideId);
 }

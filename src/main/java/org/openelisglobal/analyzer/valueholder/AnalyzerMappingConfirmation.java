@@ -55,7 +55,7 @@ public class AnalyzerMappingConfirmation extends BaseObject<String> {
     private String mappingFingerprint;
 
     @Pattern(regexp = "^sha256:[0-9a-f]{64}$")
-    @Column(name = "recognition_fingerprint", length = 71, nullable = false, updatable = false)
+    @Column(name = "recognition_fingerprint", length = 71)
     private String recognitionFingerprint;
 
     @Column(name = "confirmed_rows_json", columnDefinition = "TEXT", nullable = false, updatable = false)
@@ -64,10 +64,19 @@ public class AnalyzerMappingConfirmation extends BaseObject<String> {
     @Column(name = "excluded_rows_json", columnDefinition = "TEXT", nullable = false, updatable = false)
     private String excludedRowsJson;
 
-    @Column(name = "confirmed_by", length = 36, nullable = false, updatable = false)
+    @Column(name = "readings_fingerprint", length = 71)
+    private String readingsFingerprint;
+
+    @Column(name = "row_readings_json", columnDefinition = "TEXT")
+    private String rowReadingsJson;
+
+    @Column(name = "type_reading_json", columnDefinition = "TEXT")
+    private String typeReadingJson;
+
+    @Column(name = "confirmed_by", length = 36, nullable = false)
     private String confirmedBy;
 
-    @Column(name = "confirmed_at", nullable = false, updatable = false)
+    @Column(name = "confirmed_at", nullable = false)
     private Timestamp confirmedAt;
 
     @Column(name = "audit_event_id", precision = 10, scale = 0)
@@ -177,5 +186,29 @@ public class AnalyzerMappingConfirmation extends BaseObject<String> {
 
     public void setAuditEventId(String auditEventId) {
         this.auditEventId = auditEventId;
+    }
+
+    public String getRowReadingsJson() {
+        return rowReadingsJson;
+    }
+
+    public void setRowReadingsJson(String rowReadingsJson) {
+        this.rowReadingsJson = rowReadingsJson;
+    }
+
+    public String getTypeReadingJson() {
+        return typeReadingJson;
+    }
+
+    public void setTypeReadingJson(String typeReadingJson) {
+        this.typeReadingJson = typeReadingJson;
+    }
+
+    public String getReadingsFingerprint() {
+        return readingsFingerprint;
+    }
+
+    public void setReadingsFingerprint(String readingsFingerprint) {
+        this.readingsFingerprint = readingsFingerprint;
     }
 }

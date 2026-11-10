@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.systemusermodule.dao.RoleModuleDAO;
@@ -119,6 +120,16 @@ public class RoleModuleServiceImpl extends AuditableBaseObjectServiceImpl<RoleMo
             if (moduleName != null && !moduleName.trim().isEmpty()) {
                 permissions.add(moduleName.trim());
             }
+        }
+        return permissions;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getPermittedModuleNames(Collection<String> roleNames) {
+        Set<String> permissions = new LinkedHashSet<>();
+        for (String prefix : Constants.PERMISSION_MODULE_PREFIXES) {
+            permissions.addAll(getPermittedModuleNames(roleNames, prefix));
         }
         return permissions;
     }

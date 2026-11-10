@@ -1,6 +1,7 @@
 package org.openelisglobal.barcode;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -27,21 +28,28 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.barcode.labeltype.BlankLabel;
 import org.openelisglobal.barcode.labeltype.Label;
 import org.openelisglobal.barcode.service.BarcodeLabelInfoService;
+import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
+import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
+import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DefaultConfigurationProperties;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.labelpreset.service.LabelQuantityRefusedException;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
+import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.testsupport.PdfText;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -225,6 +233,116 @@ public class BarcodeLabelMakerTest {
     }
 
     @Test
+    public void blockOrder_skipsARetiredBlock() {
+        PathologySample pathologySample = pathologySampleService.getAllMatching("sample.id", "S-1").get(0);
+        PathologyBlock retiredBlock = new PathologyBlock();
+        retiredBlock.setId(11);
+        retiredBlock.setBlockNumber(2);
+        retiredBlock.setActive(false);
+        pathologySample.getBlocks().add(retiredBlock);
+
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+
+        labelMaker.generateLabels("ACC-1", "blockOrder", "1", "false");
+
+        assertEquals(1, getQueuedLabels(labelMaker).size());
+    }
+
+    @Test
+    public void slideOrder_namesTheSlidesOwnBlock() {
+        when(configurationProperties.getPropertyValue(any(Property.class))).thenAnswer(invocation -> {
+            Property property = invocation.getArgument(0);
+            switch (property) {
+            case SLIDE_LABEL_BARCODE_WIDTH:
+            case SLIDE_LABEL_BARCODE_HEIGHT:
+                return "2";
+            case SLIDE_LABEL_FIELD_BLOCK_ID:
+                return "true";
+            case SLIDE_LABEL_FIELD_PATIENT_ID:
+            case SLIDE_LABEL_FIELD_SLIDE_ID:
+            case SLIDE_LABEL_FIELD_STAIN_TYPE:
+            case SLIDE_LABEL_FIELD_CASE_NUMBER:
+                return "false";
+            case MAX_SLIDE_LABEL_PRINTED:
+                return "10";
+            default:
+                return "";
+            }
+        });
+
+        // the fixture's own block, number 1, is the fallback this test must NOT see
+        PathologySample pathologySample = pathologySampleService.getAllMatching("sample.id", "S-1").get(0);
+        PathologyBlock secondBlock = new PathologyBlock();
+        secondBlock.setId(20);
+        secondBlock.setBlockNumber(5);
+        pathologySample.getBlocks().add(secondBlock);
+
+        PathologySlide slide = new PathologySlide();
+        slide.setId(30);
+        slide.setSlideNumber(1);
+        slide.setBlockId(20);
+        when(pathologySampleService.getSlides(99)).thenReturn(java.util.Collections.singletonList(slide));
+
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+
+        labelMaker.generateLabels("ACC-1", "slideOrder", "1", "false");
+
+        Label label = getQueuedLabels(labelMaker).get(0);
+        List<LabelField> fields = collectFields(label.getAboveFields());
+        assertTrue("the slide's own block names the context", fields.stream().anyMatch(field -> "5".equals(field.getValue())));
+        assertTrue("the first-block fallback must not win when the slide records its own block",
+                fields.stream().noneMatch(field -> "1".equals(field.getValue())));
+    }
+
+    @Test
+    public void slideOrder_withNoBlockRecorded_namesTheFirstBlockInUse() {
+        when(configurationProperties.getPropertyValue(any(Property.class))).thenAnswer(invocation -> {
+            Property property = invocation.getArgument(0);
+            switch (property) {
+            case SLIDE_LABEL_BARCODE_WIDTH:
+            case SLIDE_LABEL_BARCODE_HEIGHT:
+                return "2";
+            case SLIDE_LABEL_FIELD_BLOCK_ID:
+                return "true";
+            case SLIDE_LABEL_FIELD_PATIENT_ID:
+            case SLIDE_LABEL_FIELD_SLIDE_ID:
+            case SLIDE_LABEL_FIELD_STAIN_TYPE:
+            case SLIDE_LABEL_FIELD_CASE_NUMBER:
+                return "false";
+            case MAX_SLIDE_LABEL_PRINTED:
+                return "10";
+            default:
+                return "";
+            }
+        });
+
+        // a block retired before the slide was printed cannot be what its label points
+        // at, so it is passed over for the next one in use
+        PathologySample pathologySample = pathologySampleService.getAllMatching("sample.id", "S-1").get(0);
+        pathologySample.getBlocks().get(0).setActive(false);
+        PathologyBlock blockInUse = new PathologyBlock();
+        blockInUse.setId(20);
+        blockInUse.setBlockNumber(5);
+        pathologySample.getBlocks().add(blockInUse);
+
+        PathologySlide slide = new PathologySlide();
+        slide.setId(30);
+        slide.setSlideNumber(1);
+        when(pathologySampleService.getSlides(99)).thenReturn(java.util.Collections.singletonList(slide));
+
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+
+        labelMaker.generateLabels("ACC-1", "slideOrder", "1", "false");
+
+        Label label = getQueuedLabels(labelMaker).get(0);
+        List<LabelField> fields = collectFields(label.getAboveFields());
+        assertTrue("a slide that recorded no block is labelled with the case's first block in use, named as"
+                + " the bench names it", fields.stream().anyMatch(field -> "5".equals(field.getValue())));
+        assertTrue("never with a row id, which is printed on nothing and resolves for nobody",
+                fields.stream().noneMatch(field -> "20".equals(field.getValue())));
+    }
+
+    @Test
     public void generateLabels_freezerOrder_fallsBackToNationalIdWhenSubjectNumberMissing() {
         Sample sample = sampleService.getSampleByAccessionNumber("ACC-1");
         Patient patient = sampleService.getPatient(sample);
@@ -286,4 +404,83 @@ public class BarcodeLabelMakerTest {
         }
         return collectedFields;
     }
+
+    @Test
+    public void renderer_rejectsExcessiveQuantityBeforeProducingPartialPdf() {
+        Label valid = new BlankLabel("VALID");
+        Label invalid = new BlankLabel("INVALID");
+        invalid.setNumLabels(101);
+        BarcodeLabelMaker maker = new BarcodeLabelMaker(new ArrayList<>(List.of(valid, invalid)));
+        maker.setOverride("TRUE");
+        assertThrows(LabelQuantityRefusedException.class, maker::createLabelsAsStream);
+        assertThrows(LabelQuantityRefusedException.class, maker::createLabelsAsStreamWithMaximumPrints);
+    }
+
+    @Test
+    public void preprint_rejectsEmptyOrExcessiveJobsBeforeAllocatingAccessionNumbers() {
+        BarcodeLabelMaker maker = new BarcodeLabelMaker();
+        assertThrows(LabelQuantityRefusedException.class,
+                () -> maker.generatePrePrintLabels(0, 1, 1, "Test", List.of(), ""));
+        assertThrows(LabelQuantityRefusedException.class,
+                () -> maker.generatePrePrintLabels(1, 0, 0, "Test", List.of(), ""));
+        assertThrows(LabelQuantityRefusedException.class,
+                () -> maker.generatePrePrintLabels(Integer.MAX_VALUE, 1, 1, "Test", List.of(), ""));
+        assertTrue(maker.getLabels().isEmpty());
+    }
+
+    @Test
+    public void renderer_printsConfiguredMaximumWithCorrectContent() throws Exception {
+        when(configurationProperties.getPropertyValue(Property.MAX_REQUEST_LABEL_QUANTITY)).thenReturn("12");
+        Label label = new BlankLabel("CAP-12");
+        label.setNumLabels(12);
+        BarcodeLabelMaker maker = new BarcodeLabelMaker(new ArrayList<>(List.of(label)));
+        byte[] pdf = maker.createLabelsAsStream().toByteArray();
+        assertEquals(12, PdfText.pageCount(pdf));
+        try (PDDocument doc = Loader.loadPDF(pdf)) {
+            assertTrue(new org.apache.pdfbox.text.PDFTextStripper().getText(doc).contains("CAP-12"));
+        }
+    }
+
+    @Test
+    public void renderer_enforcesTotalAcrossLabelDefinitions() throws Exception {
+        when(configurationProperties.getPropertyValue(Property.MAX_REQUEST_LABEL_TOTAL)).thenReturn("12");
+        Label first = new BlankLabel("FIRST");
+        first.setNumLabels(6);
+        Label second = new BlankLabel("SECOND");
+        second.setNumLabels(6);
+        BarcodeLabelMaker maker = new BarcodeLabelMaker(new ArrayList<>(List.of(first, second)));
+        assertEquals(12, PdfText.pageCount(maker.createLabelsAsStream().toByteArray()));
+        second.setNumLabels(7);
+        assertThrows(LabelQuantityRefusedException.class, maker::createLabelsAsStream);
+        assertThrows(LabelQuantityRefusedException.class, maker::createLabelsAsStreamWithMaximumPrints);
+    }
+
+    @Test
+    public void preprint_rejectsMultipliedTotalWithoutIntegerOverflow() {
+        when(configurationProperties.getPropertyValue(Property.MAX_REQUEST_LABEL_QUANTITY))
+                .thenReturn(Integer.toString(Integer.MAX_VALUE));
+        BarcodeLabelMaker maker = new BarcodeLabelMaker();
+        LabelQuantityRefusedException ex = assertThrows(LabelQuantityRefusedException.class,
+                () -> maker.generatePrePrintLabels(65536, 65536, 0, "Test", List.of(), ""));
+        assertEquals(LabelQuantityRefusedException.JOB_TOO_LARGE, ex.getMessageKey());
+        assertTrue(maker.getLabels().isEmpty());
+    }
+
+    @Test
+    public void preprint_allowsOneUnusedLabelKindAndPreservesAccessionPerSet() throws Exception {
+        AccessionNumberValidatorFactory factory = org.mockito.Mockito.mock(AccessionNumberValidatorFactory.class);
+        IAccessionNumberGenerator generator = org.mockito.Mockito.mock(IAccessionNumberGenerator.class);
+        when(beanFactory.getBean(AccessionNumberValidatorFactory.class)).thenReturn(factory);
+        when(factory.getGenerator(AccessionFormat.MAIN)).thenReturn(generator);
+        when(generator.getNextAvailableAccessionNumber("", true)).thenReturn("PRE-001", "PRE-002");
+        BarcodeLabelMaker maker = new BarcodeLabelMaker();
+        maker.generatePrePrintLabels(2, 2, 0, "Test facility", List.of(), "");
+        byte[] pdf = maker.createLabelsAsStream().toByteArray();
+        assertEquals(4, PdfText.pageCount(pdf));
+        String text = PdfText.of(pdf);
+        assertTrue(text.contains("PRE-001"));
+        assertTrue(text.contains("PRE-002"));
+        org.mockito.Mockito.verify(generator, org.mockito.Mockito.times(2)).getNextAvailableAccessionNumber("", true);
+    }
+
 }

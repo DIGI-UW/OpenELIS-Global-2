@@ -12,6 +12,7 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.util.Objects;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.localization.ShippedLabels;
 import org.openelisglobal.localization.valueholder.Localization;
 
 @Entity
@@ -93,17 +94,11 @@ public class NceType extends BaseObject<Integer> {
     }
 
     /**
-     * Get the localized name for the current locale. Falls back to the name field
-     * if no localization is set.
+     * The name in the current user's language: through its display key when the
+     * value ships with OpenELIS, else its stored labels (OGC-1507 BR-1).
      */
     public String getLocalizedName() {
-        if (nameLocalization != null) {
-            String localized = nameLocalization.getLocalizedValue();
-            if (localized != null && !localized.isEmpty()) {
-                return localized;
-            }
-        }
-        return name;
+        return ShippedLabels.label(displayKey, nameLocalization, name);
     }
 
     @Override

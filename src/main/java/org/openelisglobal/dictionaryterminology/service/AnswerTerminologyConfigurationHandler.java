@@ -14,12 +14,13 @@ import org.openelisglobal.configuration.service.RowTransactionRunner;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping;
+import org.openelisglobal.terminology.TerminologySystems;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
  * Loads the {@code answer-terminology} catalog domain from CSV: the standard
- * codes (LOINC, SNOMED, CIEL, OCL) an answer carries.
+ * codes an answer carries, in any system.
  * <p>
  * Columns: {@code category,dictEntry,source,code,relationship,displayName}.
  * {@code category} and {@code dictEntry} name the answer as the dictionary CSV
@@ -33,7 +34,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class AnswerTerminologyConfigurationHandler extends AbstractCatalogCsvHandler {
 
-    private static final Set<String> SOURCES = Set.of("LOINC", "SNOMED", "CIEL", "OCL");
     private static final Set<String> RELATIONSHIPS = Set.of("SAME_AS", "BROADER_THAN", "NARROWER_THAN");
 
     @Autowired
@@ -93,15 +93,24 @@ public class AnswerTerminologyConfigurationHandler extends AbstractCatalogCsvHan
         }
 
         Map<String, DictionaryTerminologyMapping> byKey = new LinkedHashMap<>();
-        for (DictionaryTerminologyMapping existing : mappingService.getActiveByDictionaryId(answer.getId())) {
-            byKey.put(key(existing.getSource(), existing.getCode()), existing);
+        // Prefer the persisted alias when historical URI and alias rows coexist.
+        // Work on copies so Hibernate never rewrites a managed row's natural key.
+        for (DictionaryTerminologyMapping existing : mappingService.getActiveByDictionaryId(answer.getId()).stream()
+                .sorted(java.util.Comparator.comparing(
+                        mapping -> !mapping.getSource().equals(TerminologySystems.sourceOf(mapping.getSource()))))
+                .toList()) {
+            DictionaryTerminologyMapping desired = new DictionaryTerminologyMapping();
+            org.springframework.beans.BeanUtils.copyProperties(existing, desired);
+            desired.setSource(TerminologySystems.sourceOf(existing.getSource()));
+            byKey.putIfAbsent(key(existing.getSource(), existing.getCode()), desired);
         }
         List<Boolean> createdFlags = new ArrayList<>();
         for (CsvRow row : group) {
-            String source = row.get("source").toUpperCase(Locale.ROOT);
+            String source = TerminologySystems.sourceOf(row.get("source"));
             String code = row.get("code");
-            if (!SOURCES.contains(source)) {
-                throw new IllegalArgumentException("source must be one of " + SOURCES);
+            if (source == null) {
+                throw new IllegalArgumentException("line " + row.lineNumber() + " needs a source of 1 to "
+                        + TerminologySystems.MAX_SOURCE_LENGTH + " characters");
             }
             if (code.isEmpty()) {
                 throw new IllegalArgumentException("line " + row.lineNumber() + " has no code");
@@ -136,6 +145,6 @@ public class AnswerTerminologyConfigurationHandler extends AbstractCatalogCsvHan
     }
 
     private static String key(String source, String code) {
-        return source.toUpperCase(Locale.ROOT) + "|" + code.trim().toUpperCase(Locale.ROOT);
+        return TerminologySystems.systemOf(source) + "|" + code.trim().toUpperCase(Locale.ROOT);
     }
 }

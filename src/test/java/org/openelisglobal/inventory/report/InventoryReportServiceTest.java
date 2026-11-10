@@ -7,6 +7,8 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 
 import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
@@ -141,14 +143,21 @@ public class InventoryReportServiceTest {
     public void expiring_bucketsSitOnTheSevenAndThirtyDayBoundaries() {
         InventoryItem reagent = item(1L, "R1", "Reagent", "Cartridge");
         when(inventoryItemService.getAllActive()).thenReturn(List.of(reagent));
-        when(inventoryLotService.getAll()).thenReturn(List.of(lot(reagent, "L7", 1, LocalDate.now().plusDays(8)),
-                lot(reagent, "L30", 1, LocalDate.now().plusDays(31))));
+        Instant now = Instant.now();
+        // The report counts elapsed 24-hour periods, not calendar dates across DST.
+        List<InventoryLot> lots = List.of(7, 8, 30, 31).stream().map(days -> {
+            InventoryLot lot = lot(reagent, "L" + days, 1, null);
+            lot.setExpirationDate(Timestamp.from(now.plus(Duration.ofDays(days)).plus(Duration.ofHours(12))));
+            return lot;
+        }).toList();
+        when(inventoryLotService.getAll()).thenReturn(lots);
 
         ReportTable table = reportService.generateReport(request("EXPIRING", null, null, List.of()));
 
-        // Expiry sits at midnight, so "in 8 days" is 7 whole days away.
         assertEquals("This week", cell(table, 0, 7));
         assertEquals("This month", cell(table, 1, 7));
+        assertEquals("This month", cell(table, 2, 7));
+        assertEquals("Later", cell(table, 3, 7));
     }
 
     @Test

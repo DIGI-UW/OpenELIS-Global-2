@@ -40,6 +40,7 @@ import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.beanAdapters.ResultSaveBeanAdapter;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
@@ -86,6 +87,7 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.http.HttpStatus;
@@ -339,7 +341,7 @@ public class ResultUtil {
 
             Analysis analysis = resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
             analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate, analysis));
-            analysis.setSysUserId(ControllerUtills.getSysUserId(request));
+            analysis.setSysUserId(actionDataSet.getCurrentUserId());
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
             }
@@ -353,7 +355,7 @@ public class ResultUtil {
 
             actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
                     noteTypeForVisibility(testResultItem), testResultItem.getNote(),
-                    noteSubjectForContext(testResultItem), ControllerUtills.getSysUserId(request)), testResultItem));
+                    noteSubjectForContext(testResultItem), actionDataSet.getCurrentUserId()), testResultItem));
 
             // OGC-1021 (R2, FR-D5): a dilution changes the reported value, so the
             // factor and the raw measured value are preserved as an internal
@@ -365,7 +367,7 @@ public class ResultUtil {
                                         GenericValidator.isBlankOrNull(testResultItem.getMeasuredValue()) ? "?"
                                                 : testResultItem.getMeasuredValue(),
                                         testResultItem.getResultValue() }),
-                        RESULT_SUBJECT, ControllerUtills.getSysUserId(request)), testResultItem));
+                        RESULT_SUBJECT, actionDataSet.getCurrentUserId()), testResultItem));
             }
 
             // OGC-745: persist unconditional-acceptance justification as a
@@ -374,7 +376,7 @@ public class ResultUtil {
                     && !GenericValidator.isBlankOrNull(testResultItem.getForceTechApprovalNote())) {
                 actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
                         NoteType.UNCONDITIONAL_ACCEPTANCE_REASON, testResultItem.getForceTechApprovalNote(),
-                        RESULT_SUBJECT, ControllerUtills.getSysUserId(request)), testResultItem));
+                        RESULT_SUBJECT, actionDataSet.getCurrentUserId()), testResultItem));
             }
 
             // OGC-1026 (R7, FR-G1): the clinical interpretation goes with the
@@ -382,7 +384,7 @@ public class ResultUtil {
             if (!GenericValidator.isBlankOrNull(testResultItem.getInterpretation())) {
                 actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis, NoteType.EXTERNAL,
                         testResultItem.getInterpretation().trim(), INTERPRETATION_SUBJECT,
-                        ControllerUtills.getSysUserId(request)), testResultItem));
+                        actionDataSet.getCurrentUserId()), testResultItem));
             }
 
             if (testResultItem.isShadowRejected()) {
@@ -392,23 +394,23 @@ public class ResultUtil {
                 for (IdValuePair rejectReason : SpringContext.getBean(DisplayListService.class)
                         .getList(ListType.REJECTION_REASONS)) {
                     if (rejectedReasonId.equals(rejectReason.getId())) {
-                        actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
-                                NoteType.REJECTION_REASON, rejectReason.getValue(), RESULT_SUBJECT,
-                                ControllerUtills.getSysUserId(request)), testResultItem));
+                        actionDataSet.addToNoteList(scopedToComponent(
+                                noteService.createSavableNote(analysis, NoteType.REJECTION_REASON,
+                                        rejectReason.getValue(), RESULT_SUBJECT, actionDataSet.getCurrentUserId()),
+                                testResultItem));
                         break;
                     }
                 }
             }
 
             ResultSaveBean bean = ResultSaveBeanAdapter.fromTestResultItem(testResultItem);
-            ResultSaveService resultSaveService = new ResultSaveService(analysis,
-                    ControllerUtills.getSysUserId(request));
+            ResultSaveService resultSaveService = new ResultSaveService(analysis, actionDataSet.getCurrentUserId());
             // deletable Results will be written to, not read
             List<Result> results = resultSaveService.createResultsFromTestResultItem(bean,
                     actionDataSet.getDeletableResults());
 
             boolean correctedSinceReport = resultSaveService.isUpdatedResult()
-                    && analysisService.patientReportHasBeenDone(analysis);
+                    && analysisService.releasedResultHasBeenReported(analysis);
             if (correctedFlagComputedIds.add(analysis.getId())) {
                 analysis.setCorrectedSincePatientReport(correctedSinceReport);
             } else if (correctedSinceReport) {
@@ -418,11 +420,11 @@ public class ResultUtil {
             if (analysisService.hasBeenCorrectedSinceLastPatientReport(analysis)) {
                 Note note = noteService.createSavableNote(analysis, NoteType.EXTERNAL,
                         MessageUtil.getMessage("note.corrected.result"), RESULT_SUBJECT,
-                        ControllerUtills.getSysUserId(request));
+                        actionDataSet.getCurrentUserId());
                 if (!noteService.duplicateNoteExists(note)) {
                     actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
                             NoteType.EXTERNAL, MessageUtil.getMessage("note.corrected.result"), RESULT_SUBJECT,
-                            ControllerUtills.getSysUserId(request)), testResultItem));
+                            actionDataSet.getCurrentUserId()), testResultItem));
                 }
             }
 
@@ -439,6 +441,48 @@ public class ResultUtil {
             if (supportReferrals && testResultItem.isRefer()) {
                 handleReferrals(testResultItem, testResultItem.getReferralItem(), results, analysis, actionDataSet,
                         request);
+            }
+        }
+    }
+
+    /**
+     * OGC-1608: a save that would release a test while one of its required
+     * components still has no result leaves it awaiting validation instead, so the
+     * test is not complete and the patient report stays partial until that
+     * component is resulted. The values this save writes count as well as the
+     * stored ones.
+     */
+    public static void holdOpenWhileRequiredComponentsBlank(ResultsUpdateDataSet actionDataSet) {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        RuleResultScope scope = SpringContext.getBean(RuleResultScope.class);
+        ResultService resultService = SpringContext.getBean(ResultService.class);
+        TestResultComponentService componentService = SpringContext.getBean(TestResultComponentService.class);
+        for (Analysis analysis : actionDataSet.getModifiedAnalysis()) {
+            if (!statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
+                continue;
+            }
+            String testId = analysisService.getTest(analysis).getId();
+            Set<String> componentsWithResult = new HashSet<>();
+            for (Result stored : resultService.getResultsByAnalysis(analysis)) {
+                if (stored.getParentResult() == null && !GenericValidator.isBlankOrNull(stored.getValue())) {
+                    componentsWithResult.add(scope.componentIdOf(stored));
+                }
+            }
+            for (TestResultItem item : actionDataSet.getModifiedItems()) {
+                if (!analysis.getId().equals(item.getAnalysisId())) {
+                    continue;
+                }
+                String componentId = GenericValidator.isBlankOrNull(item.getTestResultComponentId())
+                        ? scope.primaryComponentId(testId)
+                        : item.getTestResultComponentId();
+                if (noResults(item.getShadowResultValue(), item.getMultiSelectResultValues(), item.getResultType())) {
+                    componentsWithResult.remove(componentId);
+                } else {
+                    componentsWithResult.add(componentId);
+                }
+            }
+            if (!componentService.getRequiredComponentsWithoutResult(testId, componentsWithResult).isEmpty()) {
+                analysis.setStatusId(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
             }
         }
     }
@@ -636,6 +680,9 @@ public class ResultUtil {
      * for a validator.
      */
     public static String getStatusForTestResult(TestResultItem testResult, boolean alwaysValidate, Analysis analysis) {
+        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.BLOCK_SELF_VALIDATION, "true")) {
+            alwaysValidate = true;
+        }
         if (testResult.isShadowRejected() && ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.VALIDATE_REJECTED_TESTS, "true")) {
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected);

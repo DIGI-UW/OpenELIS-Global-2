@@ -10,6 +10,7 @@ import {
   Grid,
   InlineNotification,
   Link as CarbonLink,
+  Modal,
   Pagination,
   Select,
   SelectItem,
@@ -62,6 +63,10 @@ export const buildHeldResultResolutionUrl = (row, analyzerId) => {
     "unknown_analyzer_result_value",
     "result_mapping_not_ready",
     "invalid_result_mapping",
+    "conflicting_answer_mapping",
+    "reading_changed",
+    "type_reading_changed",
+    "arrived_under_other_revision",
   ];
   if (
     !mappingIssues.includes(row.importIssueReason) ||
@@ -85,12 +90,14 @@ export const buildHeldResultResolutionUrl = (row, analyzerId) => {
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
   const draftEdits = useRef({});
+  const removalLauncher = useRef(null);
   const history = useHistory();
   const location = useLocation();
 
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
+  const formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
 
   const intl = useIntl();
 
@@ -100,6 +107,7 @@ const AnalyserResults = (props) => {
   const [resultAlert, setResultAlert] = useState(null);
   const [bundleReceiptId, setBundleReceiptId] = useState(null);
   const [dismissingRunIds, setDismissingRunIds] = useState([]);
+  const [removalCandidate, setRemovalCandidate] = useState(null);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -155,7 +163,13 @@ const AnalyserResults = (props) => {
   };
 
   const allResults = props.results?.resultList ?? [];
-  const patientResults = allResults.filter((r) => !r.isControl);
+  const setupResults = allResults.filter(
+    (row) => row.importIssueReason === "setup_capture",
+  );
+  const routineResults = allResults.filter(
+    (row) => row.importIssueReason !== "setup_capture",
+  );
+  const patientResults = routineResults.filter((r) => !r.isControl);
   // Accept, retest and ignore are decided per test: its first row carries the
   // decision, and the rows on its components show beneath its main result.
   const { decisionHeadIds, partsByHeadId, partIds } =
@@ -167,6 +181,9 @@ const AnalyserResults = (props) => {
   });
   const heldPatientResults = patientResults.filter(
     (result) => result.importIssueReason,
+  );
+  const needsPlacementDecision = heldPatientResults.some((result) =>
+    REVIEWABLE_HOLDS.includes(result.importIssueReason),
   );
   const actionablePatientResults = patientResults.filter(
     (result) =>
@@ -186,7 +203,7 @@ const AnalyserResults = (props) => {
             result.placement?.patient?.status ?? "NOT_REPORTED",
           ),
       );
-  const qcResults = allResults.filter((r) => r.isControl);
+  const qcResults = routineResults.filter((r) => r.isControl);
   const hasQcFailures = qcResults.some(
     (r) =>
       r.result && (/failed/i.test(r.result) || /\binvalid\b/i.test(r.result)),
@@ -250,7 +267,7 @@ const AnalyserResults = (props) => {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "5rem",
+      width: needsPlacementDecision ? "14rem" : "5rem",
     },
     {
       id: "notes",
@@ -414,21 +431,20 @@ const AnalyserResults = (props) => {
     return props.sampleGroup.some((item) => item.id === id);
   };
 
-  // The run produced no result: the reviewer records the failure on the order's
-  // waiting test, which stays open for the repeat.
-  const dismissFailedRun = (row) => {
+  // A reviewer's decision on a held row: a failed run is recorded on the order's
+  // waiting test, which stays open for the repeat; any held row can also be
+  // removed from review, which the audit trail records.
+  const decideHeldResult = (row, action, successKey, errorKey) => {
     setDismissingRunIds((ids) => [...ids, row.id]);
     postToOpenElisServerFullResponse(
-      `/rest/analyzer/results/${encodeURIComponent(row.id)}/failed-run`,
+      `/rest/analyzer/results/${encodeURIComponent(row.id)}/${action}`,
       JSON.stringify({}),
       // The response is undefined when the request never reached the server.
       async (response) => {
         setDismissingRunIds((ids) => ids.filter((id) => id !== row.id));
-        const succeeded = response?.status == 200;
+        const succeeded = response?.status == 200 || response?.status == 204;
         let message = intl.formatMessage({
-          id: succeeded
-            ? "analyzer.results.failedRun.dismissed"
-            : "analyzer.results.failedRun.error",
+          id: succeeded ? successKey : errorKey,
         });
         if (!succeeded) {
           const body = await response?.json?.().catch(() => null);
@@ -445,9 +461,30 @@ const AnalyserResults = (props) => {
         if (succeeded) {
           props.refreshResults?.(
             Number(props.results?.paging?.currentPage) || 1,
+            { ...draftEdits.current },
           );
         }
       },
+    );
+  };
+
+  const dismissFailedRun = (row) =>
+    decideHeldResult(
+      row,
+      "failed-run",
+      "analyzer.results.failedRun.dismissed",
+      "analyzer.results.failedRun.error",
+    );
+
+  const confirmHeldRemoval = () => {
+    if (!removalCandidate) return;
+    const row = removalCandidate;
+    setRemovalCandidate(null);
+    decideHeldResult(
+      row,
+      "dismiss",
+      "analyzer.results.held.removed",
+      "analyzer.results.held.removeError",
     );
   };
 
@@ -456,8 +493,19 @@ const AnalyserResults = (props) => {
     return (
       <div data-testid={`held-analyzer-result-${row.id}`}>
         <Tag type="warm-gray" size="sm">
-          <FormattedMessage id="analyzer.results.held.tag" />
+          <FormattedMessage
+            id={
+              row.importIssueReason === "setup_capture"
+                ? "analyzer.setup.reception.sample"
+                : "analyzer.results.held.tag"
+            }
+          />
         </Tag>
+        {row.importIssueReason === "setup_capture" && (
+          <p>
+            <FormattedMessage id="analyzer.setup.reception.sampleHelp" />
+          </p>
+        )}
         <div>
           <strong>{row.rawResultValue || row.result}</strong>
         </div>
@@ -484,6 +532,17 @@ const AnalyserResults = (props) => {
             />
           </div>
         )}
+        <Button
+          kind="ghost"
+          size="sm"
+          disabled={dismissingRunIds.includes(row.id)}
+          onClick={(event) => {
+            removalLauncher.current = event.currentTarget;
+            setRemovalCandidate(row);
+          }}
+        >
+          <FormattedMessage id="analyzer.results.held.remove" />
+        </Button>
         {row.importIssueReason === "run_failed" && !row.isControl && (
           <Button
             kind="tertiary"
@@ -509,12 +568,35 @@ const AnalyserResults = (props) => {
             )}
           </>
         )}
-        {row.importIssueReason === "arrived_under_other_revision" && (
+
+        {row.importIssueReason === "conflicting_answer_mapping" && (
           <div>
-            <FormattedMessage
-              id="analyzer.results.held.otherRevision"
-              values={{ revision: row.sourceProfileRevision }}
-            />
+            <FormattedMessage id="analyzer.results.held.conflictingAnswerMapping" />
+          </div>
+        )}
+        {row.importIssueReason === "qc_lot_missing" && (
+          <>
+            <div>
+              <FormattedMessage id="analyzer.results.held.qcLotMissing" />
+            </div>
+            <div>
+              <CarbonLink as={RouterLink} to="/qa/qc/control-lots">
+                <FormattedMessage id="analyzer.results.held.setQcLot" />
+              </CarbonLink>
+            </div>
+            {props.analyzerId && (
+              <CarbonLink
+                as={RouterLink}
+                to={`/analyzers/${encodeURIComponent(props.analyzerId)}/mapping`}
+              >
+                <FormattedMessage id="analyzer.results.held.retryQcMapping" />
+              </CarbonLink>
+            )}
+          </>
+        )}
+        {row.importIssueReason === "qc_value_unsupported" && (
+          <div>
+            <FormattedMessage id="analyzer.results.held.qcValueUnsupported" />
           </div>
         )}
         {row.importIssueReason === "qc_target_missing" && (
@@ -537,7 +619,6 @@ const AnalyserResults = (props) => {
   };
 
   const renderCell = (row, index, column, id) => {
-    let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
     const held = Boolean(row.importIssueReason);
     const awaitingReview = REVIEWABLE_HOLDS.includes(row.importIssueReason);
     switch (column.id) {
@@ -629,7 +710,7 @@ const AnalyserResults = (props) => {
                   id: "label.testCatalog.specimenType",
                 })}
                 helperText={intl.formatMessage({
-                  id: "notice.testCatalog.intake.awaitingSpecimen",
+                  id: "analyzer.placement.chooseSpecimen.help",
                 })}
                 defaultValue={row.typeOfSampleId || ""}
                 onChange={(e) => handleSampleTypeChoice(e, row.id)}
@@ -696,6 +777,23 @@ const AnalyserResults = (props) => {
         );
 
       case "ignore":
+        // A row held for placement is saved by its review decision, which never
+        // deletes a held row, so it is removed the way other held rows are.
+        if (awaitingReview) {
+          return (
+            <Button
+              kind="ghost"
+              size="sm"
+              disabled={dismissingRunIds.includes(row.id)}
+              onClick={(event) => {
+                removalLauncher.current = event.currentTarget;
+                setRemovalCandidate(row);
+              }}
+            >
+              <FormattedMessage id="analyzer.results.held.remove" />
+            </Button>
+          );
+        }
         if (held) {
           return null;
         }
@@ -799,7 +897,7 @@ const AnalyserResults = (props) => {
 
   return (
     <>
-      {patientResults.length === 0 && qcResults.length === 0 && (
+      {allResults.length === 0 && (
         <div
           className="orderLegendBody"
           data-testid="analyzer-results-empty"
@@ -816,7 +914,9 @@ const AnalyserResults = (props) => {
             { count: heldPatientResults.length },
           )}
           subtitle={intl.formatMessage({
-            id: "analyzer.results.held.subtitle",
+            id: needsPlacementDecision
+              ? "analyzer.results.held.placementGuidance"
+              : "analyzer.results.held.otherGuidance",
           })}
           lowContrast
           hideCloseButton
@@ -945,15 +1045,13 @@ const AnalyserResults = (props) => {
         {({ values, errors, touched, handleChange }) => (
           <Form onChange={handleChange}>
             {arrows.show && <ServerPageArrows {...arrows} />}
-            <DataTable
-              data={tableRows}
-              columns={columns}
-              isSortable
-            ></DataTable>
+            {tableRows.length > 0 && (
+              <DataTable data={tableRows} columns={columns} isSortable />
+            )}
             <Pagination
               {...serverPaginationProps({
                 paging: props.results?.paging,
-                rowsOnPage: patientResults.length,
+                rowsOnPage: allResults.length,
                 pageSize: props.serverPageSize,
                 onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
                 intl,
@@ -978,6 +1076,58 @@ const AnalyserResults = (props) => {
           </Form>
         )}
       </Formik>
+      {setupResults.length > 0 && (
+        <section data-testid="analyzer-setup-evidence">
+          <Accordion>
+            <AccordionItem
+              title={intl.formatMessage(
+                { id: "analyzer.results.setupEvidence.title" },
+                { count: setupResults.length },
+              )}
+            >
+              <p>
+                {intl.formatMessage({
+                  id: "analyzer.results.setupEvidence.help",
+                })}
+              </p>
+              <DataTable
+                data={setupResults}
+                columns={[
+                  {
+                    name: intl.formatMessage({ id: "column.name.sampleInfo" }),
+                    cell: (row) => (
+                      <div>
+                        {row.accessionNumber}
+                        {row.instrumentSampleFlags && (
+                          <div data-testid="InstrumentSampleFlags">
+                            <FormattedMessage
+                              id="analyzer.results.sampleFlags"
+                              values={{ flags: row.instrumentSampleFlags }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
+                    name: intl.formatMessage({ id: "column.name.testName" }),
+                    selector: (row) => row.rawTestCode || row.testName,
+                  },
+                  {
+                    name: intl.formatMessage({ id: "column.name.result" }),
+                    cell: (row) => (
+                      <div>
+                        {renderHeldResult(row)}
+                        <InstrumentReported row={row} />
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            </AccordionItem>
+          </Accordion>
+        </section>
+      )}
       {qcResults.length > 0 && (
         <Accordion style={{ marginTop: "24px" }}>
           <AccordionItem
@@ -1019,6 +1169,46 @@ const AnalyserResults = (props) => {
           </AccordionItem>
         </Accordion>
       )}
+      <Modal
+        open={Boolean(removalCandidate)}
+        danger
+        launcherButtonRef={
+          removalLauncher.current ? removalLauncher : undefined
+        }
+        size="sm"
+        modalHeading={intl.formatMessage({
+          id: "analyzer.results.removeConfirm.heading",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "analyzer.results.removeConfirm.remove",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestClose={() => setRemovalCandidate(null)}
+        onRequestSubmit={confirmHeldRemoval}
+      >
+        {removalCandidate && (
+          <p>
+            <FormattedMessage
+              id="analyzer.results.removeConfirm.body"
+              values={{
+                test:
+                  removalCandidate.componentLabel ||
+                  removalCandidate.testName ||
+                  removalCandidate.rawTestCode,
+                value:
+                  removalCandidate.rawResultValue ||
+                  removalCandidate.result ||
+                  "—",
+                accession: formatLabNum
+                  ? convertAlphaNumLabNumForDisplay(
+                      removalCandidate.accessionNumber,
+                    )
+                  : removalCandidate.accessionNumber,
+              }}
+            />
+          </p>
+        )}
+      </Modal>
       <ResultAlertModal
         open={Boolean(resultAlert)}
         alerts={resultAlert?.alerts || []}

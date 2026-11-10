@@ -37,24 +37,3 @@ export const OrderCurrentTestsHeaders = (
     header: intl.formatMessage({ id: "header.cancel.test" }),
   },
 ];
-
-export const OrderPossibleTestsHeaders = (
-  intl: IntlShape,
-): TableHeaderData[] => [
-  {
-    key: "accessionNumber",
-    header: intl.formatMessage({ id: "sample.label.labnumber" }),
-  },
-  {
-    key: "sampleType",
-    header: intl.formatMessage({ id: "sample.type" }),
-  },
-  {
-    key: "testName",
-    header: intl.formatMessage({ id: "sample.entry.project.testName" }),
-  },
-  {
-    key: "add",
-    header: intl.formatMessage({ id: "header.assign" }),
-  },
-];

@@ -75,6 +75,9 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
     @Autowired
     private ReferralService referralService;
 
+    @Autowired
+    private org.openelisglobal.sample.service.SampleLabUnitScopeService sampleLabUnitScopeService;
+
     @Override
     public void acceptReferral(String referralId, String actorUserId) {
         Referral referral = referralDAO.getReferralById(referralId);
@@ -107,8 +110,14 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
     @Override
     @Transactional(readOnly = true)
     public List<ReferenceLabReferralDTO> getDashboardReferrals(DashboardView view) {
+        return getDashboardReferrals(view, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReferenceLabReferralDTO> getDashboardReferrals(DashboardView view, String sysUserId) {
         List<Referral> referrals = referralDAO.getReferralsByStatus(statusesFor(view)).stream()
-                .filter(r -> belongsInBucket(r, view)).toList();
+                .filter(r -> belongsInBucket(r, view)).filter(r -> visibleTo(sysUserId, r)).toList();
         List<ReferenceLabReferralDTO> dtos = new ArrayList<>(referrals.size());
         for (Referral referral : referrals) {
             dtos.add(toDto(referral, view));
@@ -121,15 +130,30 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
     @Override
     @Transactional(readOnly = true)
     public ReferenceLabMetricsDTO getDashboardMetrics() {
-        long outstanding = referralDAO.getReferralsByStatus(OUTSTANDING_STATUSES).size();
-        List<Referral> completed = referralDAO.getReferralsByStatus(RETURNED_STATUSES);
+        return getDashboardMetrics(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isReferralVisible(String referralId, String sysUserId) {
+        Referral referral = referralDAO.getReferralById(referralId);
+        return referral == null || visibleTo(sysUserId, referral);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReferenceLabMetricsDTO getDashboardMetrics(String sysUserId) {
+        long outstanding = referralDAO.getReferralsByStatus(OUTSTANDING_STATUSES).stream()
+                .filter(r -> visibleTo(sysUserId, r)).count();
+        List<Referral> completed = referralDAO.getReferralsByStatus(RETURNED_STATUSES).stream()
+                .filter(r -> visibleTo(sysUserId, r)).toList();
         // Returned excludes both actioned cases: manual entries (OGC-799) and
         // Accepted/reconciled rows (OGC-803) — they belong in History, not Returned.
         long returned = completed.stream()
                 .filter(r -> !Boolean.TRUE.equals(r.getManuallyEntered()) && !Boolean.TRUE.equals(r.getReconciled()))
                 .count();
         long reconciledToday = completed.stream().filter(r -> reconciledOn(r, LocalDate.now())).count();
-        long rejectedThisWeek = countRejectedSince(LocalDate.now().minusDays(7));
+        long rejectedThisWeek = countRejectedSince(LocalDate.now().minusDays(7), sysUserId);
         return new ReferenceLabMetricsDTO(outstanding, returned, reconciledToday, rejectedThisWeek,
                 resolveStuckThresholdDays());
     }
@@ -166,9 +190,25 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
         };
     }
 
-    private long countRejectedSince(LocalDate cutoff) {
+    /**
+     * A referral is read by the users who may read its order; with no user given
+     * every referral counts.
+     */
+    private boolean visibleTo(String sysUserId, Referral referral) {
+        if (sysUserId == null) {
+            return true;
+        }
+        Analysis analysis = referral.getAnalysis();
+        if (analysis == null || analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+            return true;
+        }
+        return sampleLabUnitScopeService.isVisible(sysUserId, analysis.getSampleItem().getSample());
+    }
+
+    private long countRejectedSince(LocalDate cutoff, String sysUserId) {
         Instant cutoffInstant = cutoff.atStartOfDay(ZoneId.systemDefault()).toInstant();
         return referralDAO.getReferralsByStatus(Collections.singletonList(ReferralStatus.REJECTED)).stream()
+                .filter(r -> visibleTo(sysUserId, r))
                 .filter(r -> r.getLastupdated() != null && !r.getLastupdated().toInstant().isBefore(cutoffInstant))
                 .count();
     }

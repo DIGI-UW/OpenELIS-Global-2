@@ -6,8 +6,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.charset.StandardCharsets;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -17,11 +15,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.inventory.projection.InventoryProjection;
 import org.openelisglobal.inventory.projection.InventoryProjectionService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
-import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -32,9 +26,6 @@ public class InventoryItemTagsIntegrationTest extends BaseWebContextSensitiveTes
 
     @Autowired
     private InventoryProjectionService inventoryProjectionService;
-
-    @Autowired
-    private InventoryLotService inventoryLotService;
 
     @Autowired
     private javax.sql.DataSource dataSource;
@@ -154,58 +145,34 @@ public class InventoryItemTagsIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void anItemCreatedWithoutATypeStillSatisfiesTheLegacyColumn() {
-        Long id = inventoryItemService.insert(newItem("Typeless item", "Cartridge"));
-
-        assertEquals(ItemType.REAGENT, inventoryItemService.get(id).getItemType());
-    }
-
-    @Test
-    public void openingALotUsesTheStabilityPeriodWhateverTheLegacyType() {
-        InventoryItem cartridge = newItem("Legacy cartridge", "Cartridge");
-        cartridge.setItemType(ItemType.CARTRIDGE);
-        cartridge.setStabilityAfterOpening(30);
-        Long itemId = inventoryItemService.insert(cartridge);
-        try {
-            InventoryLot lot = new InventoryLot();
-            lot.setInventoryItem(inventoryItemService.get(itemId));
-            lot.setLotNumber("TAGTEST_LOT_" + itemId);
-            lot.setFhirUuid(UUID.randomUUID());
-            lot.setInitialQuantity(10.0);
-            lot.setCurrentQuantity(10.0);
-            lot.setStatus(LotStatus.ACTIVE);
-            lot.setQcStatus(QCStatus.PASSED);
-            lot.setSysUserId(SYS_USER_ID);
-            Long lotId = inventoryLotService.insert(lot);
-
-            inventoryLotService.openLot(lotId, Timestamp.valueOf(LocalDateTime.of(2026, 6, 1, 9, 0)), SYS_USER_ID);
-
-            assertEquals(Timestamp.valueOf(LocalDateTime.of(2026, 7, 1, 9, 0)),
-                    inventoryLotService.get(lotId).getCalculatedExpiryAfterOpening());
-        } finally {
-            jdbcTemplate.update("DELETE FROM clinlims.inventory_transaction WHERE lot_id IN"
-                    + " (SELECT id FROM clinlims.inventory_lot WHERE inventory_item_id = ?)", itemId);
-            jdbcTemplate.update("DELETE FROM clinlims.inventory_lot WHERE inventory_item_id = ?", itemId);
-            jdbcTemplate.update("DELETE FROM clinlims.inventory_item WHERE id = ?", itemId);
-        }
-    }
-
-    @Test
     public void theMigrationCarriesAnExistingItemsTypeAcrossAsATag() throws Exception {
         assertEquals("the seed changeset must be wired into base.xml", Integer.valueOf(1),
                 jdbcTemplate.queryForObject("SELECT COUNT(*) FROM databasechangelog"
                         + " WHERE id = 'OGC-438-seed-inventory-item-tag-from-item-type'", Integer.class));
+        assertEquals("and the drop must be wired in after it", Integer.valueOf(1),
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM databasechangelog" + " WHERE id = 'OGC-438-drop-inventory-item-type'",
+                        Integer.class));
 
-        Long legacyId = insertLegacyRow("CARTRIDGE");
-        assertEquals("the row has to start untagged for this case to prove anything", Integer.valueOf(0),
-                tagCount(legacyId));
+        restoreLegacyColumn();
+        try {
+            Long legacyId = insertLegacyRow("CARTRIDGE");
+            assertEquals("the row has to start untagged for this case to prove anything", Integer.valueOf(0),
+                    tagCount(legacyId));
 
-        jdbcTemplate.execute(seedSqlFromChangeset());
+            jdbcTemplate.execute(seedSqlFromChangeset());
 
-        assertEquals(Set.of("Cartridge"), tagsOf(legacyId));
+            assertEquals(Set.of("Cartridge"), tagsOf(legacyId));
 
-        jdbcTemplate.execute(seedSqlFromChangeset());
-        assertEquals(Integer.valueOf(1), tagCount(legacyId));
+            jdbcTemplate.execute(seedSqlFromChangeset());
+            assertEquals(Integer.valueOf(1), tagCount(legacyId));
+        } finally {
+            jdbcTemplate.execute("ALTER TABLE clinlims.inventory_item DROP COLUMN IF EXISTS item_type");
+        }
+    }
+
+    private void restoreLegacyColumn() {
+        jdbcTemplate.execute("ALTER TABLE clinlims.inventory_item ADD COLUMN IF NOT EXISTS item_type VARCHAR(50)");
     }
 
     private Long insertLegacyRow(String itemType) {

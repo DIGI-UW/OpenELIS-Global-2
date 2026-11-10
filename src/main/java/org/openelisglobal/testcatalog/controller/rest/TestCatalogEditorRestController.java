@@ -32,6 +32,7 @@ import org.openelisglobal.qc.valueholder.TestQcThreshold;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.terminology.TerminologySystems;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
@@ -1094,7 +1095,9 @@ public class TestCatalogEditorRestController {
         public Integer displayOrder;
         public String resultType;
         public String uomId;
-        public Integer significantDigits;
+        public Integer reportingDecimalPlaces;
+        public Boolean displayLog10;
+        public String log10SourceComponentCode;
         public String defaultResult;
         public Boolean allowMultipleReadings;
         // Exactly one component per test is primary — the one mirrored to the
@@ -1103,6 +1106,10 @@ public class TestCatalogEditorRestController {
         // Per-component default for printing on the patient report (OGC-1127).
         // Null/absent = true (backward-compatible: existing components print).
         public Boolean showOnReport;
+        // OGC-1608: a required component without a result keeps its test open.
+        // Null/absent keeps a stored component's value; a new one is required
+        // only when it is the primary.
+        public Boolean isRequired;
         // Detection limits of a quantitative component (OGC-1148), both optional.
         public java.math.BigDecimal lod;
         public java.math.BigDecimal loq;
@@ -1174,8 +1181,8 @@ public class TestCatalogEditorRestController {
      * 255, severity and color 20 (OGC-1467).
      */
     private static boolean componentTooLong(ResultComponentDto c) {
-        if (longerThan(c.code, 50) || longerThan(c.label, 255) || longerThan(c.defaultResult, 80)
-                || c.options.stream().anyMatch(o -> longerThan(o.value, 80))) {
+        if (longerThan(c.code, 50) || longerThan(c.log10SourceComponentCode, 50) || longerThan(c.label, 255)
+                || longerThan(c.defaultResult, 80) || c.options.stream().anyMatch(o -> longerThan(o.value, 80))) {
             return true;
         }
         return c.interpretations.stream().anyMatch(i -> longerThan(i.valueMatch, 80) || longerThan(i.text, 255)
@@ -1257,6 +1264,20 @@ public class TestCatalogEditorRestController {
             if (!knownResultType(c.resultType)) {
                 return refusedSampleResults(testId, "resultType.unknown", c.label);
             }
+            if (Boolean.TRUE.equals(c.displayLog10) && !"N".equals(c.resultType) && !"A".equals(c.resultType)) {
+                return refusedSampleResults(testId, "logDisplay.numericRequired", shortName(c.label));
+            }
+            if (!isBlank(c.log10SourceComponentCode) && (!Boolean.TRUE.equals(c.displayLog10) || body.components
+                    .stream()
+                    .noneMatch(source -> c.log10SourceComponentCode.trim().equals(source.code)
+                            && !source.code.equals(c.code) && "N".equals(source.resultType)
+                            && !Boolean.FALSE.equals(source.showOnReport) && !Boolean.TRUE.equals(source.displayLog10)
+                            && isBlank(source.log10SourceComponentCode)))) {
+                return refusedSampleResults(testId, "logDisplay.sourceInvalid", shortName(c.label));
+            }
+            if (c.reportingDecimalPlaces != null && (c.reportingDecimalPlaces < 0 || c.reportingDecimalPlaces > 10)) {
+                return refusedSampleResults(testId, "decimalPlaces.invalid", shortName(c.label));
+            }
             if (!codes.add(c.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
@@ -1295,11 +1316,14 @@ public class TestCatalogEditorRestController {
             e.setDisplayOrder(c.displayOrder != null ? c.displayOrder : 0);
             e.setResultType(c.resultType);
             e.setUomId(c.uomId);
-            e.setSignificantDigits(c.significantDigits);
+            e.setReportingDecimalPlaces(c.reportingDecimalPlaces);
+            e.setDisplayLog10(Boolean.TRUE.equals(c.displayLog10));
+            e.setLog10SourceComponentCode(c.log10SourceComponentCode);
             e.setDefaultResult(c.defaultResult);
             e.setAllowMultipleReadings(Boolean.TRUE.equals(c.allowMultipleReadings));
             e.setIsPrimary(Boolean.TRUE.equals(c.isPrimary));
             e.setShowOnReport(!Boolean.FALSE.equals(c.showOnReport));
+            e.setIsRequired(c.isRequired != null ? c.isRequired : storedIsRequired(testId, c));
             e.setLod(c.lod);
             e.setLoq(c.loq);
             desired.add(e);
@@ -1367,6 +1391,18 @@ public class TestCatalogEditorRestController {
         return components.isEmpty() ? null : components.get(0).getId();
     }
 
+    /**
+     * A save that leaves isRequired out keeps the value the component has: the one
+     * stored under its id, else under its code, else required only for the primary.
+     */
+    private boolean storedIsRequired(String testId, ResultComponentDto c) {
+        List<TestResultComponent> active = componentService.getActiveComponentsByTestId(testId);
+        TestResultComponent stored = active.stream().filter(e -> !isBlank(c.id) && c.id.equals(e.getId())).findFirst()
+                .orElseGet(() -> active.stream().filter(e -> !isBlank(c.code) && c.code.equalsIgnoreCase(e.getCode()))
+                        .findFirst().orElse(null));
+        return stored != null ? stored.getIsRequired() : Boolean.TRUE.equals(c.isPrimary);
+    }
+
     private SampleResults toSampleResults(String testId) {
         SampleResults sr = new SampleResults();
         sr.testId = testId;
@@ -1389,7 +1425,9 @@ public class TestCatalogEditorRestController {
             dto.displayOrder = c.getDisplayOrder();
             dto.resultType = c.getResultType();
             dto.uomId = c.getUomId();
-            dto.significantDigits = c.getSignificantDigits();
+            dto.reportingDecimalPlaces = c.getReportingDecimalPlaces();
+            dto.displayLog10 = c.getDisplayLog10();
+            dto.log10SourceComponentCode = c.getLog10SourceComponentCode();
             dto.defaultResult = c.getDefaultResult();
             if (isBlank(dto.defaultResult) && c.getId().equals(primaryId) && legacyDefault != null
                     && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(c.getResultType())) {
@@ -1398,6 +1436,7 @@ public class TestCatalogEditorRestController {
             dto.allowMultipleReadings = c.getAllowMultipleReadings();
             dto.isPrimary = c.getIsPrimary();
             dto.showOnReport = c.getShowOnReport();
+            dto.isRequired = c.getIsRequired();
             dto.lod = c.getLod();
             dto.loq = c.getLoq();
             for (TestResultInterpretation i : interpretationService.getActiveByComponentId(c.getId())) {
@@ -2255,8 +2294,6 @@ public class TestCatalogEditorRestController {
 
     // ── Terminology Mappings (OGC-957..958) ───────────────────────────────────
 
-    private static final Set<String> TERM_SOURCES = Set.of("LOINC", "SNOMED", "CIEL", "OCL");
-
     private static final Set<String> TERM_RELATIONSHIPS = Set.of("SAME_AS", "BROADER_THAN", "NARROWER_THAN");
 
     /** One terminology mapping: a standard-terminology code for this test. */
@@ -2345,15 +2382,16 @@ public class TestCatalogEditorRestController {
         Set<String> seen = new HashSet<>();
         List<TestTerminologyMapping> desired = new ArrayList<>();
         for (MappingDto m : body.mappings) {
-            // Source must be a known terminology; code required; relationship (if
-            // present) must be a known qualifier.
+            // Source is any identifier that fits its column; code required;
+            // relationship (if present) must be a known qualifier.
             if (longerThan(m.code, 80) || longerThan(m.displayName, 255)) {
                 TerminologyResponse refused = new TerminologyResponse();
                 refused.testId = testId;
                 refused.messageKey = "error.testCatalog.terminology.tooLong";
                 return ResponseEntity.unprocessableEntity().body(refused);
             }
-            if (isBlank(m.source) || !TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+            m.source = TerminologySystems.sourceOf(m.source);
+            if (m.source == null || isBlank(m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
@@ -2615,10 +2653,8 @@ public class TestCatalogEditorRestController {
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS_INACTIVE);
     }
 
-    // ── Panel terminology (OGC-224 C4) — parity with the sample-type mapper,
-    // including WHONET; the LOINC mapping is the panel's primary identifier ──
-
-    private static final Set<String> PANEL_TERM_SOURCES = Set.of("LOINC", "SNOMED", "CIEL", "OCL", "WHONET");
+    // ── Panel terminology (OGC-224 C4) — codes in any system; the LOINC mapping
+    // is the panel's primary identifier ──
 
     public static class PanelTerminologyMappingDto {
         public String id;
@@ -2690,7 +2726,8 @@ public class TestCatalogEditorRestController {
         Set<String> seen = new HashSet<>();
         List<org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping> desired = new ArrayList<>();
         for (PanelTerminologyMappingDto m : body.mappings) {
-            if (isBlank(m.source) || !PANEL_TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+            m.source = TerminologySystems.sourceOf(m.source);
+            if (m.source == null || isBlank(m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
@@ -2728,9 +2765,6 @@ public class TestCatalogEditorRestController {
         }
         return resp;
     }
-
-    /** An answer's codes come from the standard systems only. */
-    private static final Set<String> ANSWER_TERM_SOURCES = Set.of("LOINC", "SNOMED", "CIEL", "OCL");
 
     public static class AnswerTerminologyMappingDto {
         public String id;
@@ -2776,7 +2810,8 @@ public class TestCatalogEditorRestController {
         Set<String> seen = new HashSet<>();
         List<org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping> desired = new ArrayList<>();
         for (AnswerTerminologyMappingDto m : body.mappings) {
-            if (isBlank(m.source) || !ANSWER_TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+            m.source = TerminologySystems.sourceOf(m.source);
+            if (m.source == null || isBlank(m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {

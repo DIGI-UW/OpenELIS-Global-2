@@ -3,6 +3,7 @@ package org.openelisglobal.program.valueholder.pathology;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.util.IdValuePair;
@@ -57,6 +58,14 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
     private String grossExam;
 
     private String microscopyExam;
+
+    private boolean decalcificationRequired;
+
+    /**
+     * The name of every tissue type the case's cassettes hold, by dictionary id, so
+     * an entry retired after a cassette recorded it still reads as a name.
+     */
+    private Map<String, String> tissueTypeNames;
 
     private List<PathologyReport> reports;
 
@@ -162,6 +171,22 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
     public void setMicroscopyExam(String microscopyExam) {
         this.microscopyExam = microscopyExam;
+    }
+
+    public boolean isDecalcificationRequired() {
+        return decalcificationRequired;
+    }
+
+    public void setDecalcificationRequired(boolean decalcificationRequired) {
+        this.decalcificationRequired = decalcificationRequired;
+    }
+
+    public Map<String, String> getTissueTypeNames() {
+        return tissueTypeNames;
+    }
+
+    public void setTissueTypeNames(Map<String, String> tissueTypeNames) {
+        this.tissueTypeNames = tissueTypeNames;
     }
 
     public String getConclusionText() {

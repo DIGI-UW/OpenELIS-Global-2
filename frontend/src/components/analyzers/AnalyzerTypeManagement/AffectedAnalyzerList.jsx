@@ -1,5 +1,5 @@
 import React from "react";
-import { ListItem, UnorderedList } from "@carbon/react";
+import { ListItem, Tag, UnorderedList } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import { Link } from "react-router-dom";
 
@@ -24,6 +24,17 @@ const AffectedAnalyzerList = ({ analyzers = [], revision }) => {
           <ListItem key={analyzer.id}>
             <span className="analyzer-type-affected__item">
               <span>{analyzer.name}</span>
+              {analyzer.mappingConfirmed &&
+              !analyzer.newerProfileRevision &&
+              !analyzer.newerMappingRevision ? (
+                <Tag type="green" size="sm">
+                  <FormattedMessage id="analyzerType.affectedAnalyzers.current" />
+                </Tag>
+              ) : (
+                <Tag type="warm-gray" size="sm">
+                  <FormattedMessage id="analyzerType.affectedAnalyzers.behind" />
+                </Tag>
+              )}
               {analyzer.newerProfileRevision && (
                 <Link
                   to={`/analyzers/${analyzer.id}/adoption?revision=${revision}`}

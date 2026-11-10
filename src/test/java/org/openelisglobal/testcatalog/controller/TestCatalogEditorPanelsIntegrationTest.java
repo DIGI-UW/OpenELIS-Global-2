@@ -947,11 +947,13 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
             assertEquals("24331-1", jdbc.queryForObject("SELECT loinc FROM clinlims.panel WHERE id = ?", String.class,
                     Long.parseLong(panelId)));
 
-            // validation: unknown source and in-request duplicates are 422s
+            // validation: a source longer than its column and in-request duplicates are
+            // 422s
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                     .put("/rest/test-catalog/panels/" + panelId + "/terminology")
                     .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                    .content("{\"mappings\":[{\"source\":\"BOGUS\",\"code\":\"1\"}]}").session(authedSession()))
+                    .content("{\"mappings\":[{\"source\":\"ABCDEFGHIJKLMNOPQRSTU\",\"code\":\"1\"}]}")
+                    .session(authedSession()))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
                             .isUnprocessableEntity());
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders

@@ -1,18 +1,22 @@
 package org.openelisglobal.analyzer.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
+import org.openelisglobal.terminology.Coding;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.springframework.stereotype.Service;
 
 /**
- * Resolves a profile's defaults against the local catalog by exact
- * standard-code match, and says why when a row cannot be resolved. Test LOINC
- * selects the test; the answer code selects the answer. Never chooses between
- * two usable candidates.
+ * Resolves a profile's defaults against the local catalog by exact code match,
+ * and says why when a row cannot be resolved. A test or answer is selected by a
+ * coding it shares with the profile, in any system. Never chooses between two
+ * usable candidates.
  */
 @Service
 public class AnalyzerMappingDefaults {
@@ -44,14 +48,11 @@ public class AnalyzerMappingDefaults {
                 // does not run, so it starts off; the operator turns it on if it does.
                 tests.add(reason == AnalyzerUnresolvedReason.NO_MATCH ? resolution.draft().withAssay(false)
                         : resolution.draft());
-                definition.resultValues().forEach(raw -> results
-                        .addAll(translated(unresolvedAnswer(definition, raw, reason), definition.translations())));
+                definition.resultValues().forEach(raw -> results.add(unresolvedAnswer(definition, raw, reason)));
                 for (var component : definition.recordComponents()) {
                     tests.add(unresolvedRecord(definition, component, reason));
-                    component.resultValues()
-                            .forEach(raw -> results.addAll(translated(
-                                    unresolvedAnswer(definition.analyzerCode(), component.subIdentity(), raw, reason),
-                                    component.translations())));
+                    component.resultValues().forEach(raw -> results
+                            .add(unresolvedAnswer(definition.analyzerCode(), component.subIdentity(), raw, reason)));
                 }
                 continue;
             }
@@ -63,44 +64,80 @@ public class AnalyzerMappingDefaults {
             if (definition.callComponent() != null && callTarget == null) {
                 tests.add(new AnalyzerMappingTestDraft(definition.analyzerCode(), AnalyzerMappingState.UNRESOLVED, null,
                         AnalyzerUnresolvedReason.NO_MATCH));
-                definition.resultValues()
-                        .forEach(raw -> results
-                                .addAll(translated(unresolvedAnswer(definition, raw, AnalyzerUnresolvedReason.NO_MATCH),
-                                        definition.translations())));
+                definition.resultValues().forEach(
+                        raw -> results.add(unresolvedAnswer(definition, raw, AnalyzerUnresolvedReason.NO_MATCH)));
             } else {
                 tests.add(new AnalyzerMappingTestDraft(definition.analyzerCode(), AnalyzerMappingState.BOUND, testId,
                         null, null, null, "", callTarget));
                 var mainOptions = callTarget == null ? primaryOptions(resolution.options(), components)
                         : optionsOf(resolution.options(), callTarget);
-                definition.resultValues().forEach(raw -> results
-                        .addAll(translated(resolveAnswer(definition, raw, mainOptions), definition.translations())));
+                definition.resultValues().forEach(raw -> results.add(resolveAnswer(definition, raw, mainOptions)));
             }
 
             for (var component : definition.recordComponents()) {
                 String componentId = componentId(components, component.code());
                 if (componentId == null) {
                     tests.add(unresolvedRecord(definition, component, AnalyzerUnresolvedReason.NO_MATCH));
-                    component.resultValues()
-                            .forEach(
-                                    raw -> results
-                                            .addAll(translated(
-                                                    unresolvedAnswer(definition.analyzerCode(), component.subIdentity(),
-                                                            raw, AnalyzerUnresolvedReason.NO_MATCH),
-                                                    component.translations())));
+                    component.resultValues().forEach(raw -> results.add(unresolvedAnswer(definition.analyzerCode(),
+                            component.subIdentity(), raw, AnalyzerUnresolvedReason.NO_MATCH)));
                     continue;
                 }
                 tests.add(new AnalyzerMappingTestDraft(definition.analyzerCode(), AnalyzerMappingState.BOUND, testId,
                         componentId, null, null, component.subIdentity(), null));
                 var componentOptions = optionsOf(resolution.options(), componentId);
-                component.resultValues()
-                        .forEach(
-                                raw -> results.addAll(translated(
-                                        resolveAnswer(definition.analyzerCode(), component.subIdentity(),
-                                                component.valueCodes(), raw, componentOptions),
-                                        component.translations())));
+                component.resultValues().forEach(raw -> results.add(resolveAnswer(definition.analyzerCode(),
+                        component.subIdentity(), component.valueCodes(), raw, componentOptions)));
             }
         }
+        return excludedByDefault(profile, new AnalyzerMappingDraft(tests, results));
+    }
+
+    /**
+     * Rows the profile says a new analyzer starts without: a test or part marked
+     * {@code "default": "EXCLUDED"}, and each canonical value in
+     * {@code value_defaults}.
+     */
+    private static AnalyzerMappingDraft excludedByDefault(BridgeAnalyzerProfile profile, AnalyzerMappingDraft draft) {
+        Set<AnalyzerMappingRowKey> records = new HashSet<>();
+        Set<List<String>> values = new HashSet<>();
+        for (JsonNode test : profile.document().path("default_test_mappings")) {
+            String code = test.path("test_code").asText();
+            collectExclusions(code, "", test, records, values);
+            for (JsonNode component : test.path("components")) {
+                if (component.hasNonNull("sub_identity")) {
+                    collectExclusions(code, component.path("sub_identity").asText(), component, records, values);
+                }
+            }
+        }
+        if (records.isEmpty() && values.isEmpty()) {
+            return draft;
+        }
+        List<AnalyzerMappingTestDraft> tests = draft.tests().stream()
+                .map(row -> records.contains(row.rowKey())
+                        ? new AnalyzerMappingTestDraft(row.sourceRowKey(), AnalyzerMappingState.EXCLUDED, null, null,
+                                null, row.origin(), row.subIdentity(), null, row.enabled())
+                        : row)
+                .toList();
+        List<AnalyzerMappingResultDraft> results = draft.results().stream()
+                .map(row -> records.contains(row.rowKey())
+                        || values.contains(List.of(row.sourceRowKey(), row.subIdentity(), row.rawValue()))
+                                ? new AnalyzerMappingResultDraft(row.sourceRowKey(), row.rawValue(),
+                                        AnalyzerMappingState.EXCLUDED, null, null, row.origin(), row.subIdentity())
+                                : row)
+                .toList();
         return new AnalyzerMappingDraft(tests, results);
+    }
+
+    private static void collectExclusions(String code, String subIdentity, JsonNode owner,
+            Set<AnalyzerMappingRowKey> records, Set<List<String>> values) {
+        if ("EXCLUDED".equals(owner.path("default").asText(null))) {
+            records.add(new AnalyzerMappingRowKey(code, subIdentity));
+        }
+        owner.path("value_defaults").fields().forEachRemaining(entry -> {
+            if ("EXCLUDED".equals(entry.getValue().asText())) {
+                values.add(List.of(code, subIdentity, entry.getKey()));
+            }
+        });
     }
 
     /** Resolves one profile test against the active catalog. */
@@ -123,14 +160,13 @@ public class AnalyzerMappingDefaults {
      * it lands on.
      */
     public AnalyzerMappingResultDraft resolveAnswer(String code, String subIdentity,
-            Map<String, List<BridgeAnalyzerProfile.NormalizedCoding>> valueCodes, String rawValue,
+            Map<String, List<Coding>> valueCodes, String rawValue,
             List<AnalyzerMappingCatalogService.ResultOption> options) {
-        List<BridgeAnalyzerProfile.NormalizedCoding> codings = valueCodes.getOrDefault(rawValue, List.of());
+        List<Coding> codings = valueCodes.getOrDefault(rawValue, List.of());
         if (codings.isEmpty()) {
             return unresolvedAnswer(code, subIdentity, rawValue, AnalyzerUnresolvedReason.NO_MATCH);
         }
-        var matches = options.stream().filter(option -> option.codings().stream()
-                .anyMatch(answer -> codings.stream().anyMatch(value -> sameCoding(answer, value)))).toList();
+        var matches = options.stream().filter(option -> sharesACoding(option.codings(), codings)).toList();
         if (matches.size() > 1) {
             return unresolvedAnswer(code, subIdentity, rawValue, AnalyzerUnresolvedReason.AMBIGUOUS);
         }
@@ -139,21 +175,6 @@ public class AnalyzerMappingDefaults {
         }
         return new AnalyzerMappingResultDraft(code, rawValue, AnalyzerMappingState.BOUND, matches.get(0).id(), null,
                 null, subIdentity);
-    }
-
-    /**
-     * A declared value's row, followed by one row per translation of it carrying
-     * the same decision, so an instrument binds whatever language it runs.
-     */
-    private static List<AnalyzerMappingResultDraft> translated(AnalyzerMappingResultDraft row,
-            Map<String, List<String>> translations) {
-        List<AnalyzerMappingResultDraft> rows = new ArrayList<>();
-        rows.add(row);
-        for (String text : translations.getOrDefault(row.rawValue(), List.of())) {
-            rows.add(new AnalyzerMappingResultDraft(row.sourceRowKey(), text, row.mappingState(), row.testResultId(),
-                    row.unresolvedReason(), row.origin(), row.subIdentity()));
-        }
-        return rows;
     }
 
     private static String componentId(List<AnalyzerMappingCatalogService.ComponentOption> components, String code) {
@@ -189,9 +210,8 @@ public class AnalyzerMappingDefaults {
 
     private TestResolution resolve(BridgeAnalyzerProfile.TestDefinition definition,
             List<AnalyzerMappingCatalogService.TestOption> activeTests) {
-        String loinc = definition.loinc();
-        var candidates = loinc == null ? List.<AnalyzerMappingCatalogService.TestOption>of()
-                : activeTests.stream().filter(test -> test.loincCodes().contains(loinc)).toList();
+        var candidates = activeTests.stream().filter(test -> sharesACoding(test.codings(), definition.codings()))
+                .toList();
         if (candidates.isEmpty()) {
             return unresolvedTest(definition, AnalyzerUnresolvedReason.NO_MATCH);
         }
@@ -245,15 +265,8 @@ public class AnalyzerMappingDefaults {
                 subIdentity);
     }
 
-    /**
-     * An answer and a profile value share a coding when the system and the code
-     * agree; the code compares without case or surrounding space.
-     */
-    private static boolean sameCoding(AnalyzerMappingCatalogService.AnswerCoding answer,
-            BridgeAnalyzerProfile.NormalizedCoding value) {
-        return answer.system() != null && value.system() != null && answer.system().trim().equals(value.system().trim())
-                && answer.code() != null && value.code() != null && !answer.code().isBlank()
-                && answer.code().trim().equalsIgnoreCase(value.code().trim());
+    private static boolean sharesACoding(List<Coding> local, List<Coding> profile) {
+        return local.stream().anyMatch(coding -> profile.stream().anyMatch(coding::sameAs));
     }
 
     private record TestResolution(AnalyzerMappingTestDraft draft,

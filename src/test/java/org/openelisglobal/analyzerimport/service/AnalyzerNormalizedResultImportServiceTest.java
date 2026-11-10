@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -20,6 +21,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Observation;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -41,6 +43,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTestPK;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 
@@ -76,15 +79,27 @@ public class AnalyzerNormalizedResultImportServiceTest {
     private Analyzer analyzer;
     private AnalyzerMapping revision;
 
+    @Mock
+    private ResultRunService resultRunService;
+
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         service = new AnalyzerNormalizedResultImportServiceImpl(analyzerService, mappingService, analyzerResultsService,
                 testResultService, qcResultProcessingService, FHIR, receiptDAO, confirmationService,
-                mappingCatalogService, placementService, profileCatalogService);
+                mappingCatalogService, placementService, resultRunService);
+        org.mockito.Mockito.doAnswer(call -> {
+            List<AnalyzerResults> rows = call.getArgument(0);
+            for (int i = 0; i < rows.size(); i++) {
+                rows.get(i).setId("staged-" + i);
+            }
+            return null;
+        }).when(analyzerResultsService).insertAnalyzerResults(anyList(), any());
+        when(qcResultProcessingService.processQCResult(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(QCResultProcessingService.Outcome.RECORDED);
         when(placementService.accessionFor(any())).thenAnswer(call -> call.getArgument(0));
         when(receiptDAO.findByDelivery(any(), any())).thenReturn(Optional.empty());
-        when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(true);
+        when(confirmationService.hasMatchingConfirmation(any())).thenReturn(true);
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(
                 List.of(new AnalyzerMappingCatalogService.TestOption("501", "Numeric test", "NUM", List.of()),
                         new AnalyzerMappingCatalogService.TestOption("601", "Qualitative test", "QUAL", List.of())));
@@ -94,6 +109,210 @@ public class AnalyzerNormalizedResultImportServiceTest {
         analyzer = analyzer("site.mock-hematology", 1);
         when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
                 .thenReturn(Optional.of(analyzer));
+    }
+
+    @Test
+    public void setupSamplesStayReadOnlyEvenWithAnApprovedNumericMapping() throws IOException {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.VALIDATION);
+        analyzer.setActive(false);
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        var summary = service.importBundle(fixture("normalized-known-test.fhir.json"), "7");
+        AnalyzerResults row = capturedRow();
+        assertEquals(1, summary.resultsHeld());
+        assertEquals(0, summary.controlResultsProcessed());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE, row.getImportIssueReason());
+        assertTrue(row.isReadOnly());
+        assertNull(row.getTestId());
+        assertEquals("7.5", row.getResult());
+        assertTrue(row.getSourcePayload().contains("Observation"));
+    }
+
+    @Test
+    public void delayedSetupDeliveryStaysNonClinicalAfterRoutineActivation() throws IOException {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        analyzer.setActive(true);
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        var device = bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(org.hl7.fhir.r4.model.Device.class::isInstance).map(org.hl7.fhir.r4.model.Device.class::cast)
+                .findFirst().orElseThrow();
+        device.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-delivery-purpose",
+                new org.hl7.fhir.r4.model.CodeType("SETUP"));
+        var summary = service.importBundle(bundle, "7");
+        assertEquals(1, summary.resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE, capturedRow().getImportIssueReason());
+        assertTrue(capturedRow().isReadOnly());
+        assertNull(capturedRow().getTestId());
+        org.mockito.Mockito.verifyZeroInteractions(testResultService, qcResultProcessingService);
+    }
+
+    @Test
+    public void stoppedSetupStillCapturesRoutineTaggedTrafficBeforeFirstActivation() throws IOException {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
+        analyzer.setActive(false);
+        analyzer.setLastActivatedDate(null);
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        var summary = service.importBundle(fixture("normalized-known-test.fhir.json"), "7");
+        assertEquals(1, summary.resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE, capturedRow().getImportIssueReason());
+        assertTrue(capturedRow().isReadOnly());
+        assertNull(capturedRow().getTestId());
+        org.mockito.Mockito.verifyZeroInteractions(testResultService, qcResultProcessingService);
+    }
+
+    @Test
+    public void setupControlDoesNotRecordOperationalQualityControl() throws IOException {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.VALIDATION);
+        Bundle bundle = fixture("normalized-qc.fhir.json");
+        var summary = service.importBundle(bundle, "7");
+        assertEquals(0, summary.controlResultsProcessed());
+        assertTrue(capturedRow().getIsControl());
+        assertTrue(capturedRow().isReadOnly());
+        verify(qcResultProcessingService, never()).processQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void setupEvidenceIsNotPromotedByMappingRecoveryAfterActivation() {
+        AnalyzerResults held = new AnalyzerResults();
+        held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE);
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
+        assertEquals(0, service.recoverHeldMappingResults("42", "7"));
+        verify(analyzerResultsService, never()).update(any());
+        verify(analyzerResultsService, never()).delete(any(String.class), any(String.class));
+    }
+
+    @Test
+    public void unitDisplayLabelsDoNotReinterpretAnApprovedBinding() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(mappingCatalogService.getActiveComponents("501")).thenReturn(
+                List.of(new AnalyzerMappingCatalogService.ComponentOption("51", "MAIN", "Count", true, "N", "10³/µL")));
+        assertEquals(0, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsHeld());
+        assertEquals("10*3/uL", capturedRow().getUnits());
+        assertEquals("7.5", capturedRow().getResult());
+    }
+
+    @Test
+    public void aQuantityCannotLandOnAQualitativeLocalComponent() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(mappingCatalogService.getActiveComponents("501")).thenReturn(
+                List.of(new AnalyzerMappingCatalogService.ComponentOption("51", "MAIN", "Call", true, "D", null)));
+        assertEquals(1, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsHeld());
+    }
+
+    @Test
+    public void compatibleDeliveredQuantityKeepsItsUnitsWithoutConversion() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(mappingCatalogService.getActiveComponents("501")).thenReturn(List
+                .of(new AnalyzerMappingCatalogService.ComponentOption("51", "MAIN", "Count", true, "N", "10*3/uL")));
+        assertEquals(0, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsHeld());
+        assertEquals("7.5", capturedRow().getResult());
+        assertEquals("10*3/uL", capturedRow().getUnits());
+    }
+
+    @Test
+    public void removedLocalComponentCannotReceiveAResult() throws IOException {
+        var target = boundTest("WBC", "501");
+        target.setComponentId("retired");
+        arrangeBinding(List.of(target), List.of());
+        assertEquals(1, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsHeld());
+    }
+
+    @Test
+    public void normalizedDeliveryDoesNotConsultCurrentParsingConfiguration() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(profileCatalogService.getProfile(any(), anyInt()))
+                .thenThrow(new AssertionError("Delivery must not fetch a live profile"));
+
+        assertEquals(0, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsHeld());
+        assertEquals("7.5", capturedRow().getResult());
+        verify(profileCatalogService, never()).getProfile(any(), anyInt());
+    }
+
+    @Test
+    public void anUncodedOlderNumericDeliveryUsesAnUnchangedLocalTarget() throws IOException {
+        analyzer = analyzer("site.mock-hematology", 2);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(profileCatalogService.getProfile(any(), anyInt()))
+                .thenThrow(new AssertionError("A completed result is independent of the current profile"));
+        sourceMappingBeforeAdoption("501");
+
+        assertEquals(0, service.importBundle(uncodedNumericBundle(), "7").resultsHeld());
+        assertEquals("7.5", capturedRow().getResult());
+    }
+
+    @Test
+    public void anOlderResultUsesTheApprovedCorrectionToItsLocalTarget() throws IOException {
+        analyzer = analyzer("site.mock-hematology", 2);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(boundTest("WBC", "601")), List.of());
+        sourceMappingBeforeAdoption("501");
+        assertEquals(0, service.importBundle(uncodedNumericBundle(), "7").resultsHeld());
+        assertEquals("601", capturedRow().getTestId());
+    }
+
+    @Test
+    public void anOlderResultDoesNotRequireAHistoricalLocalDecision() throws IOException {
+        analyzer = analyzer("site.mock-hematology", 2);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        assertEquals(0, service.importBundle(uncodedNumericBundle(), "7").resultsHeld());
+    }
+
+    @Test
+    public void aCodedOlderResultDoesNotNeedHistoricalLocalMappings() throws IOException {
+        analyzer = analyzer("site.mock-hematology", 2);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(mappingCatalogService.searchActiveTests(null))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.TestOption("501", "Count", "WBC",
+                        List.of(org.openelisglobal.terminology.Coding.loinc("6690-2")))));
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        observations(bundle).findFirst().orElseThrow().getCode().addCoding().setSystem("http://loinc.org")
+                .setCode("6690-2");
+        assertEquals(0, service.importBundle(bundle, "7").resultsHeld());
+        verify(mappingService).findById(revision.getId());
+        org.mockito.Mockito.verifyNoMoreInteractions(mappingService);
+    }
+
+    private Bundle uncodedNumericBundle() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        observations(bundle).forEach(observation -> observation.getCode().getCoding().removeIf(
+                coding -> !"https://openelis-global.org/fhir/CodeSystem/analyzer-raw-code".equals(coding.getSystem())));
+        return bundle;
+    }
+
+    private void sourceMappingBeforeAdoption(String testId) {
+        var source = new AnalyzerMapping();
+        source.setId("before-adoption");
+        source.setProfileId("site.mock-hematology");
+        source.setProfileRevision(1);
+        revision.setSupersedes(source);
+        when(mappingService.findById(source.getId())).thenReturn(
+                Optional.of(new AnalyzerMappingSnapshot(source, List.of(boundTest(source, "WBC", testId)), List.of())));
+    }
+
+    @Test
+    public void localMappingRecoveryDoesNotRecheckHistoricalParsingSnapshots() throws IOException {
+        arrangeBinding(List.of(), List.of());
+        service.importBundle(fixture("normalized-known-test.fhir.json"), "7");
+        AnalyzerResults held = capturedRow();
+        held.setId("9001");
+        held.setArrivalReading("{\"type\":{\"connection.numberFormat\":\",\"},\"rows\":[]}");
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+
+        assertEquals(1, service.recoverHeldMappingResults("42", "7"));
+        ArgumentCaptor<AnalyzerResults> updated = ArgumentCaptor.forClass(AnalyzerResults.class);
+        verify(analyzerResultsService).update(updated.capture());
+        assertEquals("7.5", updated.getValue().getResult());
+        assertEquals("9001", updated.getValue().getId());
     }
 
     @Test
@@ -120,6 +339,18 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals("7.5", row.getRawResultValue());
         assertEquals("PATIENT", row.getResultClassification());
         assertFalse(row.getSourcePayload().isBlank());
+        verify(analyzerResultsService, never()).delete(any(), any());
+        verify(analyzerResultsService, never()).persistAnalyzerResults(anyList(), anyList(), any());
+        verify(placementService, never()).place(any(), any(), any(), any());
+    }
+
+    @Test
+    public void aTypedNumberCannotBeReplacedOrExcludedByARawAnswerMapping() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of(excludedResult("WBC", "7.5")));
+        assertEquals(1, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsStaged());
+        assertEquals("7.5", capturedRow().getResult());
+        assertEquals("N", capturedRow().getResultType());
+        org.mockito.Mockito.verifyZeroInteractions(testResultService);
     }
 
     @Test
@@ -227,7 +458,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
 
     @Test
     public void incomingResultIsHeldUntilItsSelectedMappingIsConfirmed() throws IOException {
-        when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(false);
+        when(confirmationService.hasMatchingConfirmation(any())).thenReturn(false);
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
 
         AnalyzerNormalizedResultImportSummary summary = service.importBundle(fixture("normalized-known-test.fhir.json"), "7");
@@ -269,7 +500,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST, held.getImportIssueReason());
 
         arrangeBinding(List.of(boundTest("VENDOR-NEW-42", "501")), List.of());
-        when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(false);
+        when(confirmationService.hasMatchingConfirmation(any())).thenReturn(false);
         when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
         when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
 
@@ -279,6 +510,35 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals("9001", updated.getValue().getId());
         assertEquals(AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY, updated.getValue().getImportIssueReason());
         assertTrue(updated.getValue().isReadOnly());
+    }
+
+    @Test
+    public void recoveryUsesReceiptVersionForOlderRetainedObservations() throws IOException {
+        arrangeBinding(List.of(), List.of());
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        service.importBundle(bundle, "7");
+        AnalyzerResults held = capturedRow();
+        held.setId("9001");
+        Observation observation = FHIR.newJsonParser().parseResource(Observation.class, held.getSourcePayload());
+        observation.getExtension().removeIf(e -> e.getUrl().endsWith("analyzer-contract-version"));
+        observation.addInterpretation().addCoding()
+                .setSystem("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation").setCode("POS");
+        held.setSourcePayload(FHIR.newJsonParser().encodeResourceToString(observation));
+        var device = (org.hl7.fhir.r4.model.Device) bundle.getEntry().stream()
+                .map(Bundle.BundleEntryComponent::getResource).filter(org.hl7.fhir.r4.model.Device.class::isInstance)
+                .findFirst().orElseThrow();
+        device.getExtension().removeIf(e -> e.getUrl().endsWith("analyzer-contract-version"));
+        device.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-contract-version",
+                new org.hl7.fhir.r4.model.StringType("1.1"));
+        var receipt = new org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt();
+        receipt.setBundleJson(FHIR.newJsonParser().encodeResourceToString(bundle));
+        when(receiptDAO.findByDelivery(held.getSourceConnectionId(), held.getSourceMessageId()))
+                .thenReturn(Optional.of(receipt));
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
+
+        assertThrows(IllegalArgumentException.class, () -> service.recoverHeldMappingResults("42", "7"));
+        verify(analyzerResultsService, never()).update(any());
     }
 
     @Test
@@ -378,6 +638,78 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
+    public void aReusedVendorCodeCannotOverrideAContradictoryClinicalMeaning() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(mappingCatalogService.searchActiveTests(null))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.TestOption("501", "Different test", "OTHER",
+                        List.of(org.openelisglobal.terminology.Coding.loinc("99999-9")))));
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        Observation observation = (Observation) bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).findFirst().orElseThrow();
+        observation.getCode().addCoding().setSystem("http://loinc.org").setCode("6690-2");
+        assertEquals(1, service.importBundle(bundle, "7").resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY, capturedRow().getImportIssueReason());
+    }
+
+    @Test
+    public void canonicalAnswerIgnoresObsoleteVendorSpellingMappings() throws IOException {
+        arrangeBinding(List.of(boundTest("HIV-INTERP", "601")),
+                List.of(boundResult("HIV-INTERP", "INDETERMINATE-VENDOR-X", "701"),
+                        boundResult("HIV-INTERP", "INDETERMINATE", "702")));
+        Bundle bundle = fixture("normalized-unknown-value.fhir.json");
+        Observation observation = (Observation) bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).findFirst().orElseThrow();
+        observation.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-canonical-answer",
+                new org.hl7.fhir.r4.model.StringType("INDETERMINATE"));
+        observation.setValue(new org.hl7.fhir.r4.model.StringType("INDETERMINATE"));
+
+        TestResult option = new TestResult();
+        option.setId("702");
+        option.setValue("9002");
+        option.setTestResultType("D");
+        when(testResultService.get("702")).thenReturn(option);
+        assertEquals(0, service.importBundle(bundle, "7").resultsHeld());
+        assertEquals("9002", capturedRow().getResult());
+        assertEquals("INDETERMINATE-VENDOR-X", capturedRow().getRawResultValue());
+        verify(testResultService, never()).get("701");
+    }
+
+    @Test
+    public void contradictoryDeliveredAnswerMeaningCannotUseTheSavedLocalAnswer() throws IOException {
+        Bundle bundle = codedAnswer("260385009");
+        assertEquals(1, service.importBundle(bundle, "7").resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING, capturedRow().getImportIssueReason());
+        verify(testResultService, never()).get("701");
+    }
+
+    @Test
+    public void matchingDeliveredAnswerMeaningUsesTheSavedLocalAnswer() throws IOException {
+        Bundle bundle = codedAnswer("10828004");
+        TestResult option = new TestResult();
+        option.setId("701");
+        option.setValue("9001");
+        option.setTestResultType("D");
+        when(testResultService.get("701")).thenReturn(option);
+        assertEquals(0, service.importBundle(bundle, "7").resultsHeld());
+        assertEquals("9001", capturedRow().getResult());
+    }
+
+    private Bundle codedAnswer(String code) throws IOException {
+        arrangeBinding(List.of(boundTest("HIV-INTERP", "601")), List.of(boundResult("HIV-INTERP", "POSITIVE", "701")));
+        when(mappingCatalogService.getActiveResultOptions("601"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("701", "9001", "Positive",
+                        List.of(new org.openelisglobal.terminology.Coding("http://snomed.info/sct", "10828004")))));
+        Bundle bundle = fixture("normalized-unknown-value.fhir.json");
+        Observation observation = (Observation) bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).findFirst().orElseThrow();
+        observation.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-canonical-answer",
+                new org.hl7.fhir.r4.model.StringType("POSITIVE"));
+        observation.setValue(new org.hl7.fhir.r4.model.CodeableConcept().setText("POSITIVE")
+                .addCoding(new org.hl7.fhir.r4.model.Coding("http://snomed.info/sct", code, null)));
+        return bundle;
+    }
+
+    @Test
     public void boundQualitativeValueUsesOnlyTheSelectedCatalogOption() throws IOException {
         arrangeBinding(List.of(boundTest("HIV-INTERP", "601")),
                 List.of(boundResult("HIV-INTERP", "INDETERMINATE-VENDOR-X", "701")));
@@ -394,6 +726,69 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals("601", row.getTestId());
         assertEquals("9001", row.getResult());
         assertEquals("D", row.getResultType());
+    }
+
+    @Test
+    public void anOlderAnswerUsesTheApprovedCorrectionToItsLocalOption() throws IOException {
+        olderUncodedAnswer("702");
+        assertEquals(0, service.importBundle(fixture("normalized-unknown-value.fhir.json"), "7").resultsHeld());
+        assertEquals("9001", capturedRow().getResult());
+        verify(testResultService).get("701");
+    }
+
+    @Test
+    public void anOlderUncodedAnswerUsesAnUnchangedLocalOption() throws IOException {
+        olderUncodedAnswer("701");
+        assertEquals(0, service.importBundle(fixture("normalized-unknown-value.fhir.json"), "7").resultsHeld());
+        assertEquals("9001", capturedRow().getResult());
+    }
+
+    @Test
+    public void anOlderAnswerDoesNotRequireAHistoricalLocalDecision() throws IOException {
+        olderUncodedAnswer(null);
+        assertEquals(0, service.importBundle(fixture("normalized-unknown-value.fhir.json"), "7").resultsHeld());
+        assertEquals("9001", capturedRow().getResult());
+    }
+
+    @Test
+    public void anOlderCodedAnswerUsesDeliveredMeaningInsteadOfTheFormerAnswerTarget() throws IOException {
+        olderUncodedAnswer("702");
+        assertEquals(0, service.importBundle(codedAnswer("10828004"), "7").resultsHeld());
+        assertEquals("9001", capturedRow().getResult());
+    }
+
+    @Test
+    public void anApprovedAnswerCorrectionDoesNotRequireHistoricalTargetEquality() throws IOException {
+        olderUncodedAnswer("702");
+        var coding = new org.openelisglobal.terminology.Coding("urn:test:local", "qualitative-test");
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List
+                .of(new AnalyzerMappingCatalogService.TestOption("601", "Qualitative test", "QUAL", List.of(coding))));
+        Bundle bundle = fixture("normalized-unknown-value.fhir.json");
+        observations(bundle).forEach(
+                observation -> observation.getCode().addCoding().setSystem(coding.system()).setCode(coding.code()));
+        assertEquals(0, service.importBundle(bundle, "7").resultsHeld());
+        assertEquals("9001", capturedRow().getResult());
+    }
+
+    private void olderUncodedAnswer(String sourceOption) {
+        analyzer = analyzer("site.mock-hematology", 2);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(boundTest("HIV-INTERP", "601")),
+                List.of(boundResult("HIV-INTERP", "INDETERMINATE-VENDOR-X", "701")));
+        var source = new AnalyzerMapping();
+        source.setId("before-adoption");
+        source.setProfileId("site.mock-hematology");
+        source.setProfileRevision(1);
+        revision.setSupersedes(source);
+        when(mappingService.findById(source.getId())).thenReturn(Optional.of(new AnalyzerMappingSnapshot(source,
+                List.of(boundTest(source, "HIV-INTERP", "601")), sourceOption == null ? List.of()
+                        : List.of(boundResult(source, "HIV-INTERP", "INDETERMINATE-VENDOR-X", sourceOption)))));
+        TestResult option = new TestResult();
+        option.setId("701");
+        option.setValue("9001");
+        option.setTestResultType("D");
+        when(testResultService.get("701")).thenReturn(option);
     }
 
     @Test
@@ -438,6 +833,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
         Analyzer second = new Analyzer();
         second.setId("43");
         second.setName("Second analyzer");
+        second.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        second.setActive(true);
         second.setBridgeConnectionId("bridge-connection-second");
         second.setMapping(successor);
         when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-second"))
@@ -473,7 +870,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
         // The fixture supplies the timestamp; the failure is independent of its
         // timezone conversion.
         org.mockito.Mockito.doThrow(new IllegalStateException("QC storage unavailable")).when(qcResultProcessingService)
-                .processQCResult(eq("42"), eq("501"), eq("QC-LOT-WBC-2026-08"), eq("LOT-WBC-2026-08"), eq("NORMAL"),
+                .processQCResult(eq("42"), eq("501"), eq("QC-LOT-WBC-2026-08"), eq("NORMAL"),
                         eq(new java.math.BigDecimal("7.1")), eq("10*3/uL"), any(java.time.LocalDateTime.class));
         Bundle bundle = fixture("normalized-qc.fhir.json");
 
@@ -481,7 +878,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
-    public void recognizedControlUsesThePinnedBindingThenEntersOperationalQc() throws IOException {
+    public void recognizedControlUsesLocalMappingAndPassesReportedLevelWithoutInventingALot() throws IOException {
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
 
         AnalyzerNormalizedResultImportSummary summary = service.importBundle(fixture("normalized-qc.fhir.json"), "7");
@@ -493,11 +890,113 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals("CONTROL", row.getResultClassification());
         assertEquals("RULES", row.getRecognitionMode());
         assertEquals("MATCH", row.getRecognitionOutcome());
-        assertEquals("LOT-WBC-2026-08", row.getLotNumber());
         assertEquals("NORMAL", row.getControlLevel());
-        verify(qcResultProcessingService).processQCResult(eq("42"), eq("501"), eq("QC-LOT-WBC-2026-08"),
-                eq("LOT-WBC-2026-08"), eq("NORMAL"), eq(new java.math.BigDecimal("7.1")), eq("10*3/uL"),
-                any(java.time.LocalDateTime.class));
+        verify(qcResultProcessingService).processQCResult(eq("42"), eq("501"), eq("QC-LOT-WBC-2026-08"), eq("NORMAL"),
+                eq(new java.math.BigDecimal("7.1")), eq("10*3/uL"), any(java.time.LocalDateTime.class));
+    }
+
+    @Test
+    public void numericControlWithoutLotIsHeldAndNotCounted() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(qcResultProcessingService.processQCResult(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(QCResultProcessingService.Outcome.NO_LOT);
+        var summary = service.importBundle(fixture("normalized-qc.fhir.json"), "7");
+        assertEquals(0, summary.controlResultsProcessed());
+        assertEquals(1, summary.resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_QC_LOT_MISSING, capturedRow().getImportIssueReason());
+        AnalyzerResults held = capturedRow();
+        verify(analyzerResultsService).update(held);
+    }
+
+    @Test
+    public void controlLotUsesTheReportedSpecimenNotTheResolvedPatientAccession() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(placementService.accessionFor(any())).thenReturn("PATIENT-ACCESSION");
+        service.importBundle(fixture("normalized-qc.fhir.json"), "7");
+        verify(qcResultProcessingService).processQCResult(eq("42"), eq("501"), eq("QC-LOT-WBC-2026-08"), eq("NORMAL"),
+                any(), any(), any());
+    }
+
+    @Test
+    public void auxiliaryControlComponentNeverCreatesAnAdditionalQcMeasurement() throws IOException {
+        var mapping = boundTest("WBC", "501");
+        mapping.setComponentId("52");
+        arrangeBinding(List.of(mapping), List.of());
+        when(mappingCatalogService.getActiveComponents("501")).thenReturn(List.of(
+                new AnalyzerMappingCatalogService.ComponentOption("51", "MAIN", "Measurement", true, "N", "10*3/uL"),
+                new AnalyzerMappingCatalogService.ComponentOption("52", "AUX", "Auxiliary", false, "N", "10*3/uL")));
+        var summary = service.importBundle(fixture("normalized-qc.fhir.json"), "7");
+        assertEquals(1, summary.resultsStaged());
+        assertEquals(0, summary.controlResultsProcessed());
+        verify(qcResultProcessingService, never()).processQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void explicitlyMappedPrimaryComponentRecordsAControl() throws IOException {
+        var mapping = boundTest("WBC", "501");
+        mapping.setComponentId("51");
+        arrangeBinding(List.of(mapping), List.of());
+        when(mappingCatalogService.getActiveComponents("501"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ComponentOption("51", "LOG", "Log measurement",
+                        true, "N", "10*3/uL")));
+        assertEquals(1, service.importBundle(fixture("normalized-qc.fhir.json"), "7").controlResultsProcessed());
+    }
+
+    @Test
+    public void controlBeyondTheMeasuringRangeIsVisibleRatherThanSilentlyUnrecorded() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        Bundle bundle = fixture("normalized-qc.fhir.json");
+        observations(bundle).forEach(observation -> observation.getValueQuantity()
+                .setComparator(org.hl7.fhir.r4.model.Quantity.QuantityComparator.GREATER_THAN));
+        var summary = service.importBundle(bundle, "7");
+        assertEquals(0, summary.controlResultsProcessed());
+        assertEquals(1, summary.resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_QC_VALUE_UNSUPPORTED, capturedRow().getImportIssueReason());
+        verify(qcResultProcessingService, never()).processQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void heldControlRecoversAfterLotSetupWithoutChangingItsRowOrReceipt() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(qcResultProcessingService.processQCResult(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(QCResultProcessingService.Outcome.NO_LOT);
+        service.importBundle(fixture("normalized-qc.fhir.json"), "7");
+        AnalyzerResults held = capturedRow();
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
+        assertEquals(0, service.recoverHeldMappingResults("42", "7"));
+        when(qcResultProcessingService.processQCResult(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(QCResultProcessingService.Outcome.RECORDED);
+        assertEquals(1, service.recoverHeldMappingResults("42", "7"));
+        ArgumentCaptor<AnalyzerResults> updated = ArgumentCaptor.forClass(AnalyzerResults.class);
+        verify(analyzerResultsService, times(2)).update(updated.capture());
+        AnalyzerResults recovered = updated.getValue();
+        assertEquals(held.getId(), recovered.getId());
+        assertEquals(held.getSourceMessageId(), recovered.getSourceMessageId());
+        assertFalse(recovered.isReadOnly());
+        assertNull(recovered.getImportIssueReason());
+        verify(receiptDAO, times(1)).insert(any());
+    }
+
+    @Test
+    public void retryReturnsItsReceiptButNewControlRunRecordsAgain() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        java.util.Map<String, org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt> receipts = new java.util.HashMap<>();
+        when(receiptDAO.findByDelivery(any(), any()))
+                .thenAnswer(call -> Optional.ofNullable(receipts.get(call.getArgument(1))));
+        org.mockito.Mockito.doAnswer(call -> {
+            org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt receipt = call.getArgument(0);
+            receipts.put(receipt.getMessageId(), receipt);
+            return "receipt";
+        }).when(receiptDAO).insert(any());
+        Bundle first = fixture("normalized-qc.fhir.json");
+        service.importBundle(first, "7");
+        service.importBundle(first, "7");
+        Bundle next = first.copy();
+        next.setIdentifier(first.getIdentifier().copy().setValue("new-control-run"));
+        service.importBundle(next, "7");
+        verify(qcResultProcessingService, times(2)).processQCResult(any(), any(), any(), any(), any(), any(), any());
+        verify(analyzerResultsService, times(2)).insertAnalyzerResults(anyList(), any());
     }
 
     @Test
@@ -513,16 +1012,15 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
-    public void mismatchedPinnedProfileIsRejectedBeforeMapping() throws IOException {
+    public void unrelatedProfileIsRetainedForLocalMappingInsteadOfRejected() throws IOException {
         analyzer = analyzer("different-profile", 1);
         when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
                 .thenReturn(Optional.of(analyzer));
-
-        AnalyzerNormalizedResultImportException error = assertThrows(AnalyzerNormalizedResultImportException.class,
-                () -> service.importBundle(fixture("normalized-known-test.fhir.json"), "7"));
-
-        assertEquals("analyzer.fhirImport.error.profileMismatch", error.getErrorKey());
-        verify(analyzerResultsService, never()).insertAnalyzerResults(anyList(), eq("7"));
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        assertEquals(1, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST, capturedRow().getImportIssueReason());
+        assertEquals("site.mock-hematology", capturedRow().getSourceProfileId());
+        verify(receiptDAO).insert(any());
     }
 
     private Analyzer analyzer(String profileId, int profileRevision) {
@@ -537,6 +1035,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
         Analyzer value = new Analyzer();
         value.setId("42");
         value.setName("Lab analyzer");
+        value.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        value.setActive(true);
         value.setBridgeConnectionId("bridge-connection-7f3c");
         value.setMapping(revision);
         return value;

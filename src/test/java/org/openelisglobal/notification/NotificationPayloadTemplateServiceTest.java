@@ -56,6 +56,37 @@ public class NotificationPayloadTemplateServiceTest extends BaseWebContextSensit
                 seeded.getMessageTemplate(), factory.getMessage());
     }
 
+    /**
+     * FR-D1 / FR-A14: a template naming the patient, or any field the slot does not
+     * offer, is refused with the fields named and nothing is stored.
+     */
+    @Test
+    public void aTemplateNamingThePatientOrAnUnknownFieldIsRefused() {
+        NotificationPayloadTemplate seeded = payloadTemplateService
+                .getSystemDefaultPayloadTemplateForType(NotificationPayloadType.REFERRAL_OUT);
+        String originalMessage = seeded.getMessageTemplate();
+        NotificationPayloadTemplate update = new NotificationPayloadTemplate();
+        update.setId(seeded.getId());
+        update.setType(NotificationPayloadType.REFERRAL_OUT);
+        update.setSubjectTemplate("Referred: [sampleAccessionNumber]");
+        update.setMessageTemplate("Patient [patientFirstName] [patientLastName], lab [labName], see [wardName]");
+        try {
+            payloadTemplateService.updatePayloadTemplateMessagesAndSubject(update, SYS_USER);
+            org.junit.Assert.fail("a patient name in the message must be refused");
+        } catch (org.openelisglobal.notification.service.NotificationPayloadTemplateServiceImpl.DisallowedFieldException e) {
+            assertEquals(java.util.List.of("patientFirstName", "patientLastName", "wardName"), e.getFields());
+        }
+        assertEquals("nothing stored", originalMessage, payloadTemplateService
+                .getSystemDefaultPayloadTemplateForType(NotificationPayloadType.REFERRAL_OUT).getMessageTemplate());
+        for (NotificationPayloadType type : NotificationPayloadType.values()) {
+            DefaultPayloadTemplates.Default factory = DefaultPayloadTemplates.forType(type);
+            assertNotNull("every message type ships a default: " + type, factory);
+            assertEquals("no identifying field in the default " + type, java.util.List.of(),
+                    org.openelisglobal.notification.service.EventVariableRegistry.disallowedTokens(type,
+                            factory.getSubject() + " " + factory.getMessage()));
+        }
+    }
+
     @Test
     public void updatePayloadTemplateMessagesAndSubject_persistsBothAndPreservesOtherFields() {
         NotificationPayloadTemplate seeded = payloadTemplateService

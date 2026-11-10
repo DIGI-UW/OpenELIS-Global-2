@@ -484,8 +484,8 @@ const ApiLabelsSection = ({
           rowHeaderRenderer={(row) => sampleLabelFor(row)}
           inputLabelFor={(row, col) =>
             intl.formatMessage(
-              { id: "orderEntry.labels.input.sample" },
-              { number: row.sampleNumber, column: col.name },
+              { id: "orderEntry.labels.input.sampleNamed" },
+              { sample: sampleLabelFor(row), column: col.name },
             )
           }
           quantityFor={(row, presetId) =>

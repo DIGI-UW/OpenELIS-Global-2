@@ -350,17 +350,15 @@ describe("AnalyzerTypeManagement", () => {
       screen.getByRole("columnheader", { name: "Protocol" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("columnheader", { name: "Tests mapped" }),
+      screen.getByRole("columnheader", { name: "Tests for a new analyzer" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("columnheader", { name: "Results mapped" }),
+      screen.getByRole("columnheader", { name: "Results for a new analyzer" }),
     ).toBeVisible();
     expect(screen.getByRole("columnheader", { name: "Used by" })).toBeVisible();
     expect(screen.getByText("Cepheid GeneXpert MTB/RIF")).toBeVisible();
     expect(screen.getByText("Mindray BC-5380")).toBeVisible();
-    expect(
-      screen.getByText("3 / 4 · 75% · 1 marked Do not receive"),
-    ).toBeVisible();
+    expect(screen.getByText("4 decided: 3 mapped, 1 excluded")).toBeVisible();
     expect(screen.queryByText("Tecan Infinite F50")).not.toBeInTheDocument();
 
     expect(screen.queryByText("Plugin class")).not.toBeInTheDocument();
@@ -415,6 +413,84 @@ describe("AnalyzerTypeManagement", () => {
 
     expect(getAnalyzerTypeCatalog).toHaveBeenCalledTimes(2);
     expect(await screen.findByText("Cepheid GeneXpert MTB/RIF")).toBeVisible();
+  });
+
+  it("says no Bridge is configured rather than that loading failed (OGC-1594)", async () => {
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        ...catalog,
+        types: [],
+        summary: { total: 0, inUse: 0, needsAttention: 0, deactivated: 0 },
+        bridgeConfigured: false,
+      }),
+    );
+
+    renderPage();
+
+    expect(
+      await screen.findByTestId("analyzer-types-bridge-not-configured"),
+    ).toHaveTextContent(
+      "No Analyzer Bridge address is configured for OpenELIS.",
+    );
+    expect(
+      screen.queryByText("Analyzer types could not be loaded"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("No analyzer types yet")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Adjust the search or filters to see other analyzer types.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says the Bridge is not paired rather than that loading failed (OGC-1594)", async () => {
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        ...catalog,
+        types: [],
+        summary: { total: 0, inUse: 0, needsAttention: 0, deactivated: 0 },
+        bridgeConfigured: true,
+        bridgePaired: false,
+      }),
+    );
+
+    renderPage();
+
+    const notice = await screen.findByTestId(
+      "analyzer-types-bridge-not-paired",
+    );
+    expect(notice).toHaveTextContent("The Analyzer Bridge is not paired");
+    expect(notice).toHaveTextContent(
+      "The analyzer types it serves are listed here once it is paired on the Analyzers page.",
+    );
+    expect(
+      screen.queryByText("Analyzer types could not be loaded"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-types-bridge-not-configured"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("No analyzer types yet")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Create Profile adds one."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers Create Profile when a site with a Bridge has no analyzer types yet", async () => {
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        ...catalog,
+        types: [],
+        summary: { total: 0, inUse: 0, needsAttention: 0, deactivated: 0 },
+        bridgeConfigured: true,
+      }),
+    );
+
+    renderPage();
+
+    expect(
+      await screen.findByText("No analyzer types yet"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Create Profile adds one.")).toBeInTheDocument();
   });
 
   it("names each profile file the Bridge set aside and still lists the others", async () => {
@@ -488,7 +564,7 @@ describe("AnalyzerTypeManagement", () => {
         "FILE",
       ),
     );
-    expect(screen.getByText("Tecan Infinite F50")).toBeVisible();
+    expect(await screen.findByText("Tecan Infinite F50")).toBeVisible();
   });
 
   it("opens the read-only defaults and preserves the filtered return URL", async () => {

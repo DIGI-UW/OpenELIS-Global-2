@@ -359,6 +359,14 @@ function ExternalConnectionAddModify() {
                           labelText=""
                           value={password}
                           onChange={handleFieldChange(setPassword)}
+                          placeholder={formData?.passwordSet ? "••••••••" : ""}
+                          helperText={
+                            formData?.passwordSet ? (
+                              <FormattedMessage id="externalconnections.password.set" />
+                            ) : (
+                              ""
+                            )
+                          }
                         />
                       </Column>
                     </Grid>

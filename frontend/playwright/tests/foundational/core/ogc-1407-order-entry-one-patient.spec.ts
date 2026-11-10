@@ -6,6 +6,7 @@ import {
   NAV_TIMEOUT,
   UI_TIMEOUT,
 } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1407: an order entered with a new patient keeps that one patient however
@@ -89,9 +90,10 @@ async function enterNewPatient(page: Page, nationalId: string) {
 
 async function chooseSerumWithOneTest(page: Page) {
   const sampleSection = page.getByTestId("order-sample-test-section");
-  await sampleSection
-    .getByLabel("Sample Type *")
-    .selectOption({ label: "Serum" });
+  await chooseCarbonOption(
+    sampleSection.getByRole("combobox", { name: /^Sample Type/ }),
+    "Serum",
+  );
   const firstTest = sampleSection.locator('label[for^="test-0-"]').first();
   await expect(firstTest).toBeVisible({ timeout: LONG_TIMEOUT });
   await firstTest.click();

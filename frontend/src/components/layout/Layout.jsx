@@ -10,7 +10,10 @@ import {
   buildLanguagesFromConfig,
 } from "../../languages";
 import TranslationOverrideProvider from "../../languages/TranslationOverrideProvider";
+import ModuleHostProvider from "../../modules/ModuleHostProvider";
+import ModuleMessagesProvider from "../../modules/ModuleMessagesProvider";
 import { ConfigurationContext, NotificationContext } from "./contexts";
+import { useNotificationList } from "./notificationList";
 
 // Declared in ./contexts so a component Layout renders can read one without
 // importing Layout back; re-exported here because this is where the rest of the
@@ -64,7 +67,12 @@ export default function Layout(props) {
   const [resetConfig, setResetConfig] = useState(false);
   const [configurationProperties, setConfigurationProperties] = useState({});
   const [notificationVisible, setNotificationVisible] = useState(false);
-  const [notifications, setNotifications] = useState([]);
+  const {
+    notifications,
+    addNotification,
+    removeNotification,
+    notificationShown,
+  } = useNotificationList();
   const [supportedLocales, setSupportedLocales] = useState([]);
   const [enabledLanguages, setEnabledLanguages] = useState(defaultLanguages);
 
@@ -110,18 +118,6 @@ export default function Layout(props) {
   // like /login have no sidenav to make room for.
   const isLocked =
     userSessionDetails.authenticated && navPersistent && !isFocusedAuthRoute;
-
-  const addNotification = (notificationBody) => {
-    setNotifications((current) => [...current, notificationBody]);
-  };
-
-  const removeNotification = (index) => {
-    setNotifications((current) => {
-      const newNotifications = [...current];
-      newNotifications.splice(index, 1);
-      return newNotifications;
-    });
-  };
 
   const fetchConfigurationProperties = (res) => {
     setConfigurationProperties((current) => res || current);
@@ -178,55 +174,60 @@ export default function Layout(props) {
   }, [sessionAnswered]);
 
   return (
-    <ConfigurationContext.Provider
-      value={{
-        configurationProperties: configurationProperties,
-        reloadConfiguration: () => {
-          setResetConfig(true);
-        },
-        supportedLocales: supportedLocales,
-        enabledLanguages: enabledLanguages,
-      }}
-    >
-      <TranslationOverrideProvider>
-        <NotificationContext.Provider
-          value={{
-            notificationVisible,
-            setNotificationVisible,
-            notifications,
-            addNotification,
-            removeNotification,
-          }}
-        >
-          <div className="d-flex flex-column min-vh-100">
-            <Header
-              onChangeLanguage={props.onChangeLanguage}
-              navOpen={navOpen}
-              isDesktop={isDesktop}
-              navPinned={navPinned}
-              navPersistent={navPersistent}
-              toggleNavPinned={toggleNavPinned}
-              toggleSideNav={() => setDrawerOpen((open) => !open)}
-              closeSideNav={closeSideNav}
-              navContext={navContext}
-              showSideNav={!isFocusedAuthRoute}
-            />
-            {/* Theme wrapper creates white theme zone for content area */}
-            {/* Global SCSS theme = blue header/nav, this = light content */}
-            <Theme theme="white">
-              <Content
-                data-testid="content-wrapper"
-                className={`${isLocked ? "content-nav-locked" : ""}${
-                  isAdminContext ? " content-admin-context" : ""
-                }`.trim()}
-              >
-                {children}
-              </Content>
-            </Theme>
-            <Footer />
-          </div>
-        </NotificationContext.Provider>
-      </TranslationOverrideProvider>
-    </ConfigurationContext.Provider>
+    <ModuleHostProvider>
+      <ConfigurationContext.Provider
+        value={{
+          configurationProperties: configurationProperties,
+          reloadConfiguration: () => {
+            setResetConfig(true);
+          },
+          supportedLocales: supportedLocales,
+          enabledLanguages: enabledLanguages,
+        }}
+      >
+        <TranslationOverrideProvider>
+          <ModuleMessagesProvider>
+            <NotificationContext.Provider
+              value={{
+                notificationVisible,
+                setNotificationVisible,
+                notifications,
+                addNotification,
+                removeNotification,
+                notificationShown,
+              }}
+            >
+              <div className="d-flex flex-column min-vh-100">
+                <Header
+                  onChangeLanguage={props.onChangeLanguage}
+                  navOpen={navOpen}
+                  isDesktop={isDesktop}
+                  navPinned={navPinned}
+                  navPersistent={navPersistent}
+                  toggleNavPinned={toggleNavPinned}
+                  toggleSideNav={() => setDrawerOpen((open) => !open)}
+                  closeSideNav={closeSideNav}
+                  navContext={navContext}
+                  showSideNav={!isFocusedAuthRoute}
+                />
+                {/* Theme wrapper creates white theme zone for content area */}
+                {/* Global SCSS theme = blue header/nav, this = light content */}
+                <Theme theme="white">
+                  <Content
+                    data-testid="content-wrapper"
+                    className={`${isLocked ? "content-nav-locked" : ""}${
+                      isAdminContext ? " content-admin-context" : ""
+                    }`.trim()}
+                  >
+                    {children}
+                  </Content>
+                </Theme>
+                <Footer />
+              </div>
+            </NotificationContext.Provider>
+          </ModuleMessagesProvider>
+        </TranslationOverrideProvider>
+      </ConfigurationContext.Provider>
+    </ModuleHostProvider>
   );
 }

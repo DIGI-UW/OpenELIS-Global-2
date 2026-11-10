@@ -135,6 +135,85 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     }
 
     @Test
+    public void separateNumericControlRunsWithTheSameValueBothReachQc() throws Exception {
+        assertIndependentControlRuns(prepareControl(true));
+    }
+
+    @Test
+    public void separateQualitativeControlRunsWithTheSameAnswerBothReachQc() throws Exception {
+        assertIndependentControlRuns(prepareQualitativeControl("POS", true));
+    }
+
+    @Test
+    public void unmatchedNumericControlRemainsVisibleAndRecoversExactlyOnceAfterLotCorrection() throws Exception {
+        Bundle bundle = prepareControl(true);
+        jdbc.update("UPDATE clinlims.qc_control_lot SET control_level = 'OTHER' WHERE id = ?", QC_LOT_ID);
+        var receipt = importService.importBundle(bundle, "1");
+        assertEquals(0, receipt.controlResultsProcessed());
+        assertEquals(1, receipt.resultsHeld());
+        AnalyzerResults held = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).get(0);
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_QC_LOT_MISSING, held.getImportIssueReason());
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+        assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
+        jdbc.update(
+                "UPDATE clinlims.qc_control_lot SET lot_number = 'QC-LOT-WBC-2026-08', control_level = 'NORMAL' WHERE id = ?",
+                QC_LOT_ID);
+        assertEquals(1, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
+        assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
+        assertFalse(resultsService.get(held.getId()).isReadOnly());
+        assertEquals(0, new BigDecimal("7.1").compareTo(jdbc.queryForObject(
+                "SELECT result_value FROM clinlims.qc_result WHERE control_lot_id = ?", BigDecimal.class, QC_LOT_ID)));
+        assertEquals(receipt, importService.importBundle(bundle, "1"));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+    }
+
+    @Test
+    public void aMultiRecordControlCreatesOnlyThePrimaryQcMeasurement() throws Exception {
+        Bundle bundle = prepareControl(true, false);
+        jdbc.update("INSERT INTO clinlims.test_result_component"
+                + " (id, test_id, code, label, display_order, is_active, result_type)"
+                + " VALUES ('comp-control-aux', ?, 'AUX', 'Control auxiliary', 1, 'Y', 'N')", TEST_ID);
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping_test"
+                + " (mapping_id, source_row_key, mapping_state, test_id, component_id, last_updated)"
+                + " VALUES (?, 'AUX', 'BOUND', ?, 'comp-control-aux', NOW())", MAPPING_ID, TEST_ID);
+        Observation auxiliary = bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow().copy();
+        auxiliary.getCode().getCodingFirstRep().setCode("AUX");
+        auxiliary.setId("auxiliary");
+        auxiliary.getValueQuantity().setValue(new BigDecimal("999"));
+        bundle.addEntry().setFullUrl("urn:uuid:control-auxiliary").setResource(auxiliary);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
+        var receipt = importService.importBundle(bundle, "1");
+        assertEquals(2, receipt.resultsStaged());
+        assertEquals(0, receipt.resultsHeld());
+        assertEquals(1, receipt.controlResultsProcessed());
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+        assertEquals(0, new BigDecimal("7.1").compareTo(jdbc.queryForObject(
+                "SELECT result_value FROM clinlims.qc_result WHERE control_lot_id = ?", BigDecimal.class, QC_LOT_ID)));
+    }
+
+    private void assertIndependentControlRuns(Bundle first) {
+        AnalyzerNormalizedResultImportSummary firstReceipt = importService.importBundle(first, "1");
+        assertEquals(1, firstReceipt.controlResultsProcessed());
+        Bundle second = first.copy();
+        second.getIdentifier().setValue(first.getIdentifier().getValue() + "-next-run");
+        second.getEntry().stream().map(entry -> entry.getResource()).filter(Observation.class::isInstance)
+                .map(Observation.class::cast).forEach(observation -> observation
+                        .setEffective(new org.hl7.fhir.r4.model.DateTimeType("2026-08-21T12:30:00Z")));
+        AnalyzerNormalizedResultImportSummary secondReceipt = importService.importBundle(second, "1");
+        assertEquals(1, secondReceipt.controlResultsProcessed());
+        assertEquals(Integer.valueOf(2), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+        assertEquals(secondReceipt, importService.importBundle(second, "1"));
+        assertEquals(firstReceipt, importService.importBundle(first, "1"));
+        assertEquals(Integer.valueOf(2), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+    }
+
+    @Test
     public void controlReplayDoesNotCreateAnotherOperationalQcResultAfterStagingRemoval() throws Exception {
         Bundle bundle = prepareControl(true);
         AnalyzerNormalizedResultImportSummary accepted = importService.importBundle(bundle, "1");
@@ -175,7 +254,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
 
         AnalyzerMappingSnapshot binding = bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow();
-        confirm(binding, bundle);
+        confirm(binding);
         assertEquals(1, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
 
         AnalyzerResults recovered = resultsService.get(originalId);
@@ -222,11 +301,15 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     }
 
     @Test
-    public void invalidProfileDoesNotCommitAReceipt() throws Exception {
+    public void anUnboundProfileIsReceiptedAndHeldForLocalMapping() throws Exception {
         Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
         jdbc.update("UPDATE clinlims.analyzer_mapping SET profile_id = 'site.other-analyzer' WHERE id = ?", MAPPING_ID);
-        assertThrows(AnalyzerNormalizedResultImportException.class, () -> importService.importBundle(bundle, "1"));
-        assertEquals(Integer.valueOf(0),
+        AnalyzerNormalizedResultImportSummary summary = importService.importBundle(bundle, "1");
+        assertEquals(1, summary.resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST,
+                jdbc.queryForObject("SELECT import_issue_reason FROM clinlims.analyzer_results WHERE analyzer_id = ?",
+                        String.class, ANALYZER_ID));
+        assertEquals(Integer.valueOf(1),
                 jdbc.queryForObject("SELECT COUNT(*) FROM clinlims.analyzer_delivery_receipt WHERE connection_id = ?",
                         Integer.class, CONNECTION_ID));
     }
@@ -321,7 +404,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertTrue("rejecting an unconfirmed revision must not release held results",
                 resultsService.get(id).isReadOnly());
 
-        confirm(updated, bundle);
+        confirm(updated);
         assertTrue("confirmation alone must not replay held results", resultsService.get(id).isReadOnly());
         localState.applyMapping(String.valueOf(ANALYZER_ID), updated.mapping().getId(),
                 updated.mapping().getRevisionNumber(), updated.mapping().getMappingFingerprint(), "1");
@@ -347,7 +430,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         known.getCode().getCoding().stream().filter(code -> code.getSystem().endsWith("analyzer-raw-code"))
                 .forEach(code -> code.setCode("KNOWN"));
         bundle.addEntry().setFullUrl("urn:uuid:known-result").setResource(known);
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
         AnalyzerNormalizedResultImportSummary receipt = importService.importBundle(bundle, "1");
         assertEquals(2, receipt.resultsStaged());
         assertEquals(1, receipt.resultsHeld());
@@ -378,7 +461,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         Observation observation = bundle.getEntry().stream().map(entry -> entry.getResource())
                 .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
         observation.setValue(new StringType("DETECTED"));
-        confirm(partial, bundle);
+        confirm(partial);
         localState.applyMapping(String.valueOf(ANALYZER_ID), partial.mapping().getId(),
                 partial.mapping().getRevisionNumber(), partial.mapping().getMappingFingerprint(), "1");
         var receipt = importService.importBundle(bundle, "1");
@@ -393,7 +476,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                         List.of(new AnalyzerMappingResultDraft("VENDOR-NEW-42", "DETECTED", AnalyzerMappingState.BOUND,
                                 String.valueOf(RESULT_OPTION_ID)))),
                 "1");
-        confirm(corrected, bundle);
+        confirm(corrected);
         assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
         localState.applyMapping(String.valueOf(ANALYZER_ID), corrected.mapping().getId(),
                 corrected.mapping().getRevisionNumber(), corrected.mapping().getMappingFingerprint(), "1");
@@ -433,7 +516,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
             record.getCode().getCodingFirstRep().setCode(code);
             bundle.addEntry().setFullUrl("urn:uuid:result-" + code).setResource(record);
         }
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
         importService.importBundle(bundle, "1");
 
@@ -461,7 +544,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         Bundle bundle = viralLoadBundle(number(record(null, "^1009.64"), "1009.64", null),
                 number(record("&LOG", "^3.00"), "3.00", null), call(record("HIV-1", "POS^"), "POS"),
                 number(record("HIV-1&Ct", "^33.0"), "33.0", null));
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
         importService.importBundle(bundle, "1");
 
@@ -487,7 +570,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 "https://openelis-global.org/fhir/StructureDefinition/analyzer-assay-version", new StringType("4"));
         main.addPerformer().setDisplay("Operator 12");
         Bundle bundle = viralLoadBundle(main);
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
         importService.importBundle(bundle, "1");
 
@@ -507,7 +590,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         main.addInterpretation(new CodeableConcept(new Coding(INTERPRETATION, "DET", "Detected")).setText("DETECTED"));
         Bundle bundle = viralLoadBundle(main,
                 number(record("&LOG", "^"), "1.60", Quantity.QuantityComparator.LESS_THAN));
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
         importService.importBundle(bundle, "1");
 
@@ -526,7 +609,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     public void aNotDetectedViralLoadFillsOnlyTheCall() throws Exception {
         bindViralLoadRecords();
         Bundle bundle = viralLoadBundle(call(record(null, "NOT DETECTED^"), "NOT DETECTED"));
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
         importService.importBundle(bundle, "1");
 
@@ -545,7 +628,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         Observation main = number(record(null, "DETECTED^"), "10000000", Quantity.QuantityComparator.GREATER_THAN);
         main.addInterpretation(new CodeableConcept(new Coding(INTERPRETATION, "DET", "Detected")).setText("DETECTED"));
         Bundle bundle = viralLoadBundle(main);
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
         importService.importBundle(bundle, "1");
 
@@ -560,7 +643,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     public void anInvalidViralLoadFillsOnlyTheCall() throws Exception {
         bindViralLoadRecords();
         Bundle bundle = viralLoadBundle(call(record(null, "INVALID^"), "INVALID"));
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
         importService.importBundle(bundle, "1");
 
@@ -581,7 +664,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 new Coding("http://terminology.hl7.org/CodeSystem/data-absent-reason", "error", "Error")));
         main.addNote().setText("Error 2097: Assay-Specific Termination Error #2: 47, 8, 1, 0");
         Bundle bundle = viralLoadBundle(main);
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
         importService.importBundle(bundle, "1");
 
@@ -600,7 +683,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         Bundle bundle = viralLoadBundle(
                 number(record(null, "^1009.64"), "1009.64", null).setEffective(completed.copy()),
                 number(record("HIV-1&EndPt", "^257.0"), "257.0", null).setEffective(completed.copy()));
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
         importService.importBundle(bundle, "1");
 
@@ -626,7 +709,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 + " (mapping_id, source_row_key, sub_identity, raw_value, mapping_state, test_result_id, last_updated)"
                 + " VALUES (?, 'HIVVL', '', 'NOT DETECTED', 'BOUND', ?, NOW())", MAPPING_ID, NEGATIVE_OPTION_ID);
         Bundle bundle = viralLoadBundle(number(record(null, "^1009.64"), "1009.64", null));
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
         importService.importBundle(bundle, "1");
 
@@ -643,16 +726,14 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     @Test
     public void aBelowRangeViralLoadKeepsItsNumberWhenItsCallIsMapped() throws Exception {
         bindViralLoadRecords();
-        jdbc.update("INSERT INTO clinlims.test_result"
-                + " (id, test_id, tst_rslt_type, value, is_active, sort_order, component_id, lastupdated)"
-                + " VALUES (?, ?, 'D', 'Detected', true, 1, 'comp-call', NOW())", RESULT_OPTION_ID, TEST_ID);
+        addCodedDetectedCallAnswer();
         jdbc.update("INSERT INTO clinlims.analyzer_mapping_result"
                 + " (mapping_id, source_row_key, sub_identity, raw_value, mapping_state, test_result_id, last_updated)"
                 + " VALUES (?, 'HIVVL', '', 'DETECTED', 'BOUND', ?, NOW())", MAPPING_ID, RESULT_OPTION_ID);
         Observation main = number(record(null, "DETECTED"), "40", Quantity.QuantityComparator.LESS_THAN);
         main.addInterpretation(new CodeableConcept(new Coding(INTERPRETATION, "DET", "Detected")).setText("DETECTED"));
         Bundle bundle = viralLoadBundle(main);
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
         importService.importBundle(bundle, "1");
 
@@ -660,7 +741,8 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals("the number and the call, once each", 2, staged.size());
         assertEquals("<40", stagedOn(staged, null).getResult());
         assertEquals("N", stagedOn(staged, null).getResultType());
-        assertEquals("Detected", stagedOn(staged, "comp-call").getResult());
+        assertEquals(String.valueOf(DETECTED_ENTRY_ID), stagedOn(staged, "comp-call").getResult());
+        assertFalse(stagedOn(staged, "comp-call").isReadOnly());
     }
 
     /**
@@ -676,7 +758,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         Observation main = number(record(null, "DETECTED^"), "40", Quantity.QuantityComparator.LESS_THAN);
         main.addInterpretation(new CodeableConcept(new Coding(INTERPRETATION, "DET", "Detected")).setText("DETECTED"));
         Bundle bundle = viralLoadBundle(main);
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
         importService.importBundle(bundle, "1");
 
@@ -690,7 +772,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 new AnalyzerMappingDraft(List.of(new AnalyzerMappingTestDraft("HIVVL", AnalyzerMappingState.BOUND,
                         String.valueOf(TEST_ID), null, null, null, "", "comp-call")), List.of()),
                 "1");
-        confirm(bound, bundle);
+        confirm(bound);
         localState.applyMapping(String.valueOf(ANALYZER_ID), bound.mapping().getId(),
                 bound.mapping().getRevisionNumber(), bound.mapping().getMappingFingerprint(), "1");
 
@@ -706,12 +788,13 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         jdbc.update("INSERT INTO clinlims.test_result_component"
                 + " (id, test_id, code, label, display_order, is_active) VALUES ('comp-call', ?, 'call', 'call', 1, 'Y')",
                 TEST_ID);
+        addCodedDetectedCallAnswer();
         var unresolved = bindings.appendRevision(analyzer(), new AnalyzerMappingDraft(
                 List.of(new AnalyzerMappingTestDraft("HIVVL", AnalyzerMappingState.UNRESOLVED, null)), List.of()), "1");
         Observation main = number(record(null, "DETECTED^"), "40", Quantity.QuantityComparator.LESS_THAN);
         main.addInterpretation(new CodeableConcept(new Coding(INTERPRETATION, "DET", "Detected")).setText("DETECTED"));
         Bundle bundle = viralLoadBundle(main);
-        confirm(unresolved, bundle);
+        confirm(unresolved);
         localState.applyMapping(String.valueOf(ANALYZER_ID), unresolved.mapping().getId(),
                 unresolved.mapping().getRevisionNumber(), unresolved.mapping().getMappingFingerprint(), "1");
         importService.importBundle(bundle, "1");
@@ -720,10 +803,13 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertTrue(held.get(0).isReadOnly());
 
         var bound = bindings.appendRevision(analyzer(),
-                new AnalyzerMappingDraft(List.of(new AnalyzerMappingTestDraft("HIVVL", AnalyzerMappingState.BOUND,
-                        String.valueOf(TEST_ID), null, null, null, "", "comp-call")), List.of()),
+                new AnalyzerMappingDraft(
+                        List.of(new AnalyzerMappingTestDraft("HIVVL", AnalyzerMappingState.BOUND,
+                                String.valueOf(TEST_ID), null, null, null, "", "comp-call")),
+                        List.of(new AnalyzerMappingResultDraft("HIVVL", "DETECTED", AnalyzerMappingState.BOUND,
+                                String.valueOf(RESULT_OPTION_ID)))),
                 "1");
-        confirm(bound, bundle);
+        confirm(bound);
         localState.applyMapping(String.valueOf(ANALYZER_ID), bound.mapping().getId(),
                 bound.mapping().getRevisionNumber(), bound.mapping().getMappingFingerprint(), "1");
 
@@ -731,7 +817,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals("the number and the call, once each", 2, recovered.size());
         assertTrue(recovered.stream().noneMatch(AnalyzerResults::isReadOnly));
         assertEquals("<40", stagedOn(recovered, null).getResult());
-        assertEquals("DETECTED", stagedOn(recovered, "comp-call").getResult());
+        assertEquals(String.valueOf(DETECTED_ENTRY_ID), stagedOn(recovered, "comp-call").getResult());
         assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
         assertEquals(2, resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).size());
     }
@@ -834,7 +920,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
      * for its answer it is held for that reason.
      */
     @Test
-    public void everyRowAControlHeldWholeRecoversIntoIsCheckedAgainstQc() throws Exception {
+    public void aControlHeldWholeRecoversItsMeasurementWithoutChartingItsAuxiliaryCall() throws Exception {
         Bundle bundle = prepareControl(true, false);
         jdbc.update("INSERT INTO clinlims.test_result_component"
                 + " (id, test_id, code, label, display_order, is_active) VALUES ('comp-call', ?, 'call', 'call', 1, 'Y')",
@@ -860,14 +946,17 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         jdbc.update("INSERT INTO clinlims.analyzer_mapping_result"
                 + " (mapping_id, source_row_key, raw_value, mapping_state, test_result_id, last_updated)"
                 + " VALUES (?, 'WBC', 'DETECTED', 'BOUND', ?, NOW())", MAPPING_ID, RESULT_OPTION_ID);
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
         importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1");
 
         List<AnalyzerResults> recovered = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
         assertEquals("the number and the call, once each", 2, recovered.size());
         AnalyzerResults call = stagedOn(recovered, "comp-call");
-        assertTrue(call.isReadOnly());
-        assertEquals(AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING, call.getImportIssueReason());
+        assertFalse(call.isReadOnly());
+        assertNull(call.getImportIssueReason());
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+        assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
     }
 
     @Test
@@ -882,7 +971,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         run.getExtensionByUrl("https://openelis-global.org/fhir/StructureDefinition/analyzer-raw-value")
                 .setValue(new StringType("ERROR"));
         run.addNote().setText("Error 2008: pressure abort");
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
         AnalyzerNormalizedResultImportSummary summary = importService.importBundle(bundle, "1");
 
@@ -927,7 +1016,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
             other.getCode().getCodingFirstRep().setCode(code);
             bundle.addEntry().setFullUrl("urn:uuid:result-" + code).setResource(other);
         }
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
         if (deactivateAnswer) {
             jdbc.update("UPDATE clinlims.test_result SET is_active = false WHERE id = ?", RESULT_OPTION_ID);
         } else {
@@ -1011,15 +1100,9 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         return analyzerService.getWithMapping(String.valueOf(ANALYZER_ID)).orElseThrow();
     }
 
-    private void confirm(AnalyzerMappingSnapshot candidate, Bundle bundle) {
+    private void confirm(AnalyzerMappingSnapshot candidate) {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             AnalyzerMappingSnapshot binding = bindings.findById(candidate.mapping().getId()).orElseThrow();
-            Observation observation = bundle.getEntry().stream().map(entry -> entry.getResource())
-                    .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
-            String fingerprint = observation
-                    .getExtensionByUrl(
-                            "https://openelis-global.org/fhir/StructureDefinition/analyzer-control-recognition")
-                    .getExtensionByUrl("recognitionFingerprint").getValue().primitiveValue();
             var tests = new ArrayList<AnalyzerMappingSourceRow>();
             binding.tests().stream().filter(row -> row.getMappingState() == AnalyzerMappingState.BOUND)
                     .map(row -> new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), null,
@@ -1029,12 +1112,10 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                     .map(row -> new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), row.getId().getRawValue(),
                             row.getId().getSubIdentity()))
                     .forEach(tests::add);
-            assertEquals(AnalyzerMappingConfirmationView.State.CURRENT,
-                    confirmations
-                            .confirm(binding, fingerprint, new AnalyzerMappingConfirmationRequest(
-                                    binding.mapping().getMappingFingerprint(), fingerprint, tests, List.of()), "1")
-                            .state());
-            assertTrue(confirmations.assessCurrent(binding, fingerprint).currentConfirmation().isPresent());
+            assertEquals(AnalyzerMappingConfirmationView.State.CURRENT, confirmations.confirm(binding,
+                    new AnalyzerMappingConfirmationRequest(binding.mapping().getMappingFingerprint(), tests, List.of()),
+                    "1").state());
+            assertTrue(confirmations.assessCurrent(binding).currentConfirmation().isPresent());
         });
     }
 
@@ -1073,7 +1154,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class,
                 Files.readString(FIXTURE.resolveSibling("normalized-qc.fhir.json")));
         if (confirmed)
-            confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+            confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
         return bundle;
     }
 
@@ -1111,7 +1192,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         control.setValue(new StringType(reported));
         control.getExtensionByUrl("https://openelis-global.org/fhir/StructureDefinition/analyzer-raw-value")
                 .setValue(new StringType(reported));
-        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
         return bundle;
     }
 
@@ -1120,6 +1201,20 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 + " (id, control_lot_id, calculation_date, mean, standard_deviation, num_values, calculation_method,"
                 + " validity_start, sys_user_id, last_updated) VALUES ('receipt-qc-stats', ?, NOW(), 7.1, 1, 20,"
                 + " 'INITIAL_RUNS', NOW(), 1, NOW())", QC_LOT_ID);
+    }
+
+    private void addCodedDetectedCallAnswer() {
+        jdbc.update("INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated)"
+                + " VALUES (?, 'Detected', 'Y', NOW())", DETECTED_ENTRY_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.dictionary_terminology_mapping (id, dictionary_id, source, code, relationship)"
+                        + " VALUES ('legacy-call-detected', ?, 'SNOMED', '260373001', 'SAME_AS')",
+                DETECTED_ENTRY_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.test_result"
+                        + " (id, test_id, tst_rslt_type, value, is_active, sort_order, component_id, lastupdated)"
+                        + " VALUES (?, ?, 'D', ?, true, 1, 'comp-call', NOW())",
+                RESULT_OPTION_ID, TEST_ID, String.valueOf(DETECTED_ENTRY_ID));
     }
 
     private void cleanup() {
@@ -1142,6 +1237,8 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         jdbc.update("DELETE FROM clinlims.analyzer_mapping WHERE analyzer_id = ?", ANALYZER_ID);
         jdbc.update("DELETE FROM clinlims.test_qc_target WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test_result WHERE id IN (?, ?)", RESULT_OPTION_ID, NEGATIVE_OPTION_ID);
+        jdbc.update("DELETE FROM clinlims.dictionary_terminology_mapping WHERE dictionary_id IN (?, ?)",
+                DETECTED_ENTRY_ID, NOT_DETECTED_ENTRY_ID);
         jdbc.update("DELETE FROM clinlims.dictionary WHERE id IN (?, ?)", DETECTED_ENTRY_ID, NOT_DETECTED_ENTRY_ID);
         jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id IN (?, ?, ?)", TEST_ID, OTHER_TEST_ID,
                 THIRD_TEST_ID);
