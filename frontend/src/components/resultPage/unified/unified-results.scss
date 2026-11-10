@@ -805,3 +805,30 @@
   font-size: 0.75rem;
   color: var(--cds-text-secondary, #525252);
 }
+
+.runChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.runSelectionBar {
+  margin-bottom: 1rem;
+
+  ul {
+    margin: 0.25rem 0 0.5rem 1rem;
+    list-style: disc;
+  }
+}
+
+.runSelectionActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.runSelectionFailed {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
