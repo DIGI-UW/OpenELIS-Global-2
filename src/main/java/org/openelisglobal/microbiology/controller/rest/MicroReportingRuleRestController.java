@@ -32,7 +32,7 @@ public class MicroReportingRuleRestController extends MicrobiologyRestController
 
     @PostMapping
     public MicroReportingRuleForm save(@RequestBody MicroReportingRuleForm form, HttpServletRequest request) {
-        return service.toForm(service.save(form, authenticatedUserId(request)));
+        return service.toForm(service.saveWithoutGroupConflict(form, authenticatedUserId(request)));
     }
 
     @GetMapping(value = "/export", produces = "text/csv")

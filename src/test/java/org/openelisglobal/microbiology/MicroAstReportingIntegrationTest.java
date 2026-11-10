@@ -1167,6 +1167,31 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     @Test
+    public void theAstRulesPageRefusesAGroupRuleThatDisagreesForAnOrganismInBothGroups() throws Exception {
+        String first = "Group A " + UUID.randomUUID();
+        String second = "Group B " + UUID.randomUUID();
+        groupOrganism(first);
+        groupOrganism(second);
+        reportingRule(null, first, List.of(), "DONT_REPORT");
+
+        assertEquals(200, postReportingRule(second, "DONT_REPORT"));
+        assertEquals(400, postReportingRule(second, "ALWAYS"));
+    }
+
+    private int postReportingRule(String organismGroup, String reportBehavior) throws Exception {
+        var session = new org.openelisglobal.login.valueholder.UserSessionData();
+        session.setSytemUserId(Integer.parseInt(writer));
+        return mockMvc
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/rest/microbiology/admin/reporting-rules")
+                        .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, session)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(new com.fasterxml.jackson.databind.ObjectMapper()
+                                .writeValueAsString(reportingRuleForm(null, organismGroup, List.of(), reportBehavior))))
+                .andReturn().getResponse().getStatus();
+    }
+
+    @Test
     public void aRuleForThePackagesOrganismGroupAloneNoLongerApplies() {
         reference.organism().setOrganismGroup("Enterobacterales");
         organisms.update(reference.organism());
