@@ -18,6 +18,7 @@ import { ConfigurationContext } from "../../../layout/Layout";
 import { createSampleOrderFormValues } from "../../../formModel/innitialValues/OrderEntryFormValues";
 import NewEqaCycleModal from "../../../eqa/MyCycles/NewEqaCycleModal";
 import { formatIsoDateForBackend } from "../../dateUtils";
+import SearchableSelect from "../../../common/SearchableSelect";
 
 const EQA_PRIORITIES = ["STANDARD", "URGENT"];
 
@@ -275,10 +276,19 @@ const EqaAndNoPatientSection = ({
           )}
           {!noEnrollments && (
             <Column lg={8} md={4} sm={4}>
-              <Select
+              <SearchableSelect
                 id="eqaProgramId"
+                required
                 labelText={intl.formatMessage({ id: "order.eqa.scheme" })}
-                aria-required="true"
+                placeholder={intl.formatMessage({
+                  id: "order.eqa.scheme.choose",
+                })}
+                options={(enrollments || []).map((enrollment) => ({
+                  id: String(enrollment.id),
+                  value: enrollment.provider
+                    ? `${enrollment.programName} (${enrollment.provider})`
+                    : enrollment.programName || String(enrollment.id),
+                }))}
                 value={enrollmentId}
                 invalid={Boolean(
                   fieldErrors["sampleOrderItems.eqaProgramId"] ||
@@ -292,32 +302,16 @@ const EqaAndNoPatientSection = ({
                       : "order.eqa.schemeRequired",
                 })}
                 onBlur={() => setSchemeTouched(true)}
-                onChange={(e) => {
+                onChange={(id) => {
                   setSchemeTouched(true);
                   updateOrder({
-                    eqaProgramId: e.target.value,
+                    eqaProgramId: id,
                     eqaCycleId: "",
                     ...(selectedCycle?.deadline ? { eqaDeadline: "" } : {}),
                   });
                 }}
                 disabled={isReadOnly}
-              >
-                <SelectItem
-                  value=""
-                  text={intl.formatMessage({ id: "order.eqa.scheme.choose" })}
-                />
-                {(enrollments || []).map((enrollment) => (
-                  <SelectItem
-                    key={enrollment.id}
-                    value={String(enrollment.id)}
-                    text={
-                      enrollment.provider
-                        ? `${enrollment.programName} (${enrollment.provider})`
-                        : enrollment.programName || String(enrollment.id)
-                    }
-                  />
-                ))}
-              </Select>
+              />
             </Column>
           )}
           {!noEnrollments && (

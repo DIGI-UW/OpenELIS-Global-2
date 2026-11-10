@@ -1,0 +1,15 @@
+{
+  "baseline": "82e70a45855b74187bdf59c092944b609c8adb2a",
+  "command": "npm run typecheck",
+  "diagnosticCounts": {
+    "baseline": 2568,
+    "final": 2569
+  },
+  "additionalDiagnostics": [
+    "playwright/tests/foundational/core/microbiology-ux-context.spec.ts(LINE): error TS2591: Cannot find name 'node:fs/promises'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.",
+    "src/components/admin/OrganizationManagement/organizationAddModifyNavigation.test.tsx(LINE): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ \"reporting.title\": string; \"reporting.description\": string; \"reporting.builder\": string; \"reporting.queue\": string; \"reporting.queueEmpty\": string; \"reporting.design.emptyQueuePage\": string; ... 13248 more ...; \"microbiology.testing.notesCount\": string; }'."
+  ],
+  "removedDiagnostics": [
+    "src/components/admin/OrganizationManagement/organizationAddModifyNavigation.test.tsx(LINE): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ \"reporting.title\": string; \"reporting.description\": string; \"reporting.builder\": string; \"reporting.queue\": string; \"reporting.queueEmpty\": string; \"reporting.design.emptyQueuePage\": string; ... 13219 more ...; \"microbiology.whonet.mapping.fixOrigin\": string; }'."
+  ]
+}

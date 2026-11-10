@@ -6,6 +6,7 @@ import org.openelisglobal.analyzer.service.AnalyzerActivationResult;
 import org.openelisglobal.analyzer.service.AnalyzerActivationService;
 import org.openelisglobal.analyzer.service.AnalyzerDeactivationResult;
 import org.openelisglobal.analyzer.service.AnalyzerRequestException;
+import org.openelisglobal.analyzer.service.AnalyzerSetupReceptionResult;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +44,13 @@ public class AnalyzerActivationRestController extends BaseRestController {
     public ResponseEntity<AnalyzerDeactivationResult> deactivate(@PathVariable String id, HttpServletRequest request) {
         AnalyzerDeactivationResult result = service.deactivate(id, getSysUserId(request));
         return ResponseEntity.status(result.deactivated() ? HttpStatus.OK : HttpStatus.BAD_GATEWAY).body(result);
+    }
+
+    @PostMapping("/{id}/setup-reception")
+    public ResponseEntity<AnalyzerSetupReceptionResult> startSetupReception(@PathVariable String id,
+            HttpServletRequest request) {
+        AnalyzerSetupReceptionResult result = service.startSetupReception(id, getSysUserId(request));
+        return ResponseEntity.status(result.receiving() ? HttpStatus.OK : HttpStatus.UNPROCESSABLE_ENTITY).body(result);
     }
 
     @PostMapping("/{id}/reactivate")

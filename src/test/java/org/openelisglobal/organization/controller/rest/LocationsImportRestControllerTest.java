@@ -396,6 +396,21 @@ public class LocationsImportRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
+     * OGC-1600: a geographic levels file reports a column it does not use, like the
+     * organizations file does.
+     */
+    @Test
+    public void anUnknownColumnInALevelsFile_isListedAsIgnored() throws Exception {
+        JsonNode plan = json(mockMvc.perform(multipart("/rest/locations/import/preview")
+                .file(new MockMultipartFile("files", "geography-levels.csv", "text/csv",
+                        "level,typeName,colour\n1,Province,blue\n".getBytes(StandardCharsets.UTF_8)))
+                .param("areas", "levels").param("mode", "merge")).andExpect(status().isOk()).andReturn());
+        assertEquals(0, plan.get("errors").size());
+        assertEquals(1, plan.get("ignoredColumns").size());
+        assertEquals("colour", plan.get("ignoredColumns").get(0).asText());
+    }
+
+    /**
      * OGC-1420 (2a): a referral lab that is also a referring clinic does not put
      * every referring clinic in a referral-lab file's scope.
      */

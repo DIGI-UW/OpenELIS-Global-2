@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "id": "kitfixture",
+  "kind": "module",
+  "name": "Test kit fixture",
+  "version": "1.0.0",
+  "description": "A well-formed module the test kit checks itself against.",
+  "requires": {
+    "openelis": ">=3.4.0",
+    "coreApi": "^1.0",
+    "frontendContract": "^1.0",
+    "spi": "^1.0"
+  },
+  "backend": {
+    "basePackages": [
+      "org.openelisglobal.module.kitfixture"
+    ],
+    "activator": "org.openelisglobal.module.kitfixture.Activator",
+    "entities": [
+      "org.openelisglobal.module.kitfixture.domain.Thing"
+    ],
+    "liquibase": "liquibase/base.xml",
+    "extensions": [
+      {
+        "spi": "report",
+        "class": "org.openelisglobal.module.kitfixture.report.ThingReport"
+      }
+    ]
+  },
+  "permissions": [
+    {
+      "key": "view",
+      "description": "See things"
+    }
+  ],
+  "menu": [
+    {
+      "elementId": "menu_mod_kitfixture",
+      "parent": "menu_sample",
+      "displayKey": "mod.kitfixture.menu.title",
+      "actionURL": "/m/kitfixture/things",
+      "permission": "view"
+    }
+  ],
+  "frontend": {
+    "entry": "remoteEntry.js",
+    "messages": "messages/{locale}.json",
+    "routes": [
+      {
+        "path": "/m/kitfixture/things",
+        "expose": "./Things",
+        "permission": "view"
+      }
+    ]
+  }
+}

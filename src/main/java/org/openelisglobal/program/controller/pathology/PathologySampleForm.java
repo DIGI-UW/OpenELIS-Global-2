@@ -2,10 +2,10 @@ package org.openelisglobal.program.controller.pathology;
 
 import jakarta.validation.constraints.Min;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import org.openelisglobal.barcode.form.LabelsSectionForm;
 import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
+import org.openelisglobal.program.service.ClinicalAttachmentUpload;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyReport;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
@@ -283,7 +283,7 @@ public class PathologySampleForm {
         this.immunoHistoChemistryTestIds = immunoHistoChemistryTestIds;
     }
 
-    public static class PathologySlideForm extends PathologySlide {
+    public static class PathologySlideForm extends PathologySlide implements ClinicalAttachmentUpload {
 
         private static final long serialVersionUID = 3142138533368581327L;
 
@@ -295,14 +295,10 @@ public class PathologySampleForm {
 
         public void setBase64Image(String base64Image) {
             this.base64Image = base64Image;
-            String[] imageInfo = base64Image.split(";base64,", 2);
-
-            setFileType(imageInfo[0]);
-            setImage(Base64.getDecoder().decode(imageInfo[1]));
         }
     }
 
-    public static class PathologyReportForm extends PathologyReport {
+    public static class PathologyReportForm extends PathologyReport implements ClinicalAttachmentUpload {
 
         private static final long serialVersionUID = 3142138533368581327L;
 
@@ -314,10 +310,6 @@ public class PathologySampleForm {
 
         public void setBase64Image(String base64Image) {
             this.base64Image = base64Image;
-            String[] imageInfo = base64Image.split(";base64,", 2);
-
-            setFileType(imageInfo[0]);
-            setImage(Base64.getDecoder().decode(imageInfo[1]));
         }
     }
 

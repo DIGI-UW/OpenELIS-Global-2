@@ -4,7 +4,8 @@
  */
 import React from "react";
 import { vi } from "vitest";
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
@@ -23,6 +24,11 @@ vi.mock("../utils/Utils", async (importOriginal) => {
         callback([
           { id: "1", value: "mL" },
           { id: "2", value: "uL" },
+        ]);
+      } else if (url === "/rest/user-sample-types") {
+        callback([
+          { id: "2", value: "Sérum" },
+          { id: "4", value: "Eau de surface" },
         ]);
       } else {
         callback([]);
@@ -66,34 +72,61 @@ describe("GenericSampleOrder — notebook picker", () => {
   });
 });
 
+const renderOrder = () =>
+  render(
+    <MemoryRouter>
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
+      >
+        <NotificationContext.Provider
+          value={{
+            setNotificationVisible: vi.fn(),
+            addNotification: vi.fn(),
+          }}
+        >
+          <IntlProvider locale="en" messages={messages}>
+            <GenericSampleOrder />
+          </IntlProvider>
+        </NotificationContext.Provider>
+      </ConfigurationContext.Provider>
+    </MemoryRouter>,
+  );
+
+const optionsOf = (combobox) =>
+  within(document.getElementById(combobox.getAttribute("aria-controls")))
+    .queryAllByRole("option")
+    .map((option) => option.textContent);
+
 /**
  * The unit list comes from /rest/uom, which every signed-in user may read;
- * the admin-only /rest/UomCreate left non-admin users with no units.
+ * the admin-only /rest/UomCreate left non-admin users with no units. The
+ * units and the sample types are searched by typing, ignoring case and
+ * accents (OGC-1515).
  */
-describe("GenericSampleOrder — sample unit of measure", () => {
-  it("offers the units /rest/uom lists", () => {
-    const { container } = render(
-      <MemoryRouter>
-        <ConfigurationContext.Provider
-          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
-        >
-          <NotificationContext.Provider
-            value={{
-              setNotificationVisible: vi.fn(),
-              addNotification: vi.fn(),
-            }}
-          >
-            <IntlProvider locale="en" messages={messages}>
-              <GenericSampleOrder />
-            </IntlProvider>
-          </NotificationContext.Provider>
-        </ConfigurationContext.Provider>
-      </MemoryRouter>,
-    );
+describe("GenericSampleOrder — sample type and unit of measure", () => {
+  it("offers the units /rest/uom lists and narrows them to what is typed", async () => {
+    renderOrder();
+    const units = screen.getByRole("combobox", {
+      name: messages["sample.uom.label"],
+    });
 
-    const select = container.querySelector("#sampleUnitOfMeasure");
-    expect(select).not.toBeNull();
-    const units = Array.from(select.options).map((o) => o.text);
-    expect(units).toEqual(expect.arrayContaining(["mL", "uL"]));
+    await userEvent.click(units);
+    expect(optionsOf(units)).toEqual(["mL", "uL"]);
+    await userEvent.type(units, "ML");
+    expect(optionsOf(units)).toEqual(["mL"]);
+    await userEvent.click(screen.getByRole("option", { name: "mL" }));
+    expect(units).toHaveValue("mL");
+  });
+
+  it("narrows the sample types to what is typed, ignoring accents", async () => {
+    renderOrder();
+    const sampleType = screen.getByRole("combobox", {
+      name: messages["sample.type"],
+    });
+
+    await userEvent.type(sampleType, "serum");
+    expect(optionsOf(sampleType)).toEqual(["Sérum"]);
+    await userEvent.click(screen.getByRole("option", { name: "Sérum" }));
+    expect(sampleType).toHaveValue("Sérum");
   });
 });

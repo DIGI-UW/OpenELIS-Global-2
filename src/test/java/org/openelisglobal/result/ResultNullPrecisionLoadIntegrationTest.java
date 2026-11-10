@@ -16,9 +16,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * OGC-1170 — loading a result that records no precision must not fail.
  *
  * <p>
- * {@code result.significant_digits} and {@code result.grouping} are nullable,
- * and both were mapped onto primitive {@code int} fields. Hibernate cannot
- * assign null to a primitive, so reading one such row threw
+ * {@code result.reporting_decimal_places} and {@code result.grouping} are
+ * nullable, and both were mapped onto primitive {@code int} fields. Hibernate
+ * cannot assign null to a primitive, so reading one such row threw
  * {@code PropertyAccessException} and aborted the whole query — the worklist
  * for the lab unit that happened to contain the row returned HTTP 500 while
  * every other unit returned 200, and the page showed the technician an empty
@@ -52,7 +52,7 @@ public class ResultNullPrecisionLoadIntegrationTest extends BaseWebContextSensit
         assertNotNull("fixture must provide a result to blank", all);
         String id = all.get(0).getId();
 
-        jdbc.update("UPDATE clinlims.result SET significant_digits = NULL, grouping = NULL WHERE id = ?",
+        jdbc.update("UPDATE clinlims.result SET reporting_decimal_places = NULL, grouping = NULL WHERE id = ?",
                 Integer.valueOf(id));
 
         // Reading it back is what used to throw; the query it belonged to went
@@ -61,7 +61,7 @@ public class ResultNullPrecisionLoadIntegrationTest extends BaseWebContextSensit
 
         assertNotNull("the row loads", reloaded);
         assertEquals("an unrecorded precision reports the value exactly as stored", -1,
-                reloaded.getSignificantDigits());
+                reloaded.getReportingDecimalPlaces());
         assertEquals("an unrecorded grouping is the only group", 0, reloaded.getGrouping());
     }
 
@@ -74,8 +74,22 @@ public class ResultNullPrecisionLoadIntegrationTest extends BaseWebContextSensit
         int before = resultService.getAll().size();
         String id = resultService.getAll().get(0).getId();
 
-        jdbc.update("UPDATE clinlims.result SET significant_digits = NULL WHERE id = ?", Integer.valueOf(id));
+        jdbc.update("UPDATE clinlims.result SET reporting_decimal_places = NULL WHERE id = ?", Integer.valueOf(id));
 
         assertEquals("every result still lists", before, resultService.getAll().size());
+    }
+
+    @Test
+    public void applicationMappingsDoNotRecreateTheRetiredColumnsOrImplicitDefaults() {
+        assertEquals(Integer.valueOf(0),
+                jdbc.queryForObject("SELECT count(*) FROM information_schema.columns WHERE table_schema = 'clinlims'"
+                        + " AND table_name IN ('result', 'test_result', 'test_result_component')"
+                        + " AND column_name = 'significant_digits'", Integer.class));
+        assertEquals(Integer.valueOf(3),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'clinlims'"
+                                + " AND table_name IN ('result', 'test_result', 'test_result_component')"
+                                + " AND column_name = 'reporting_decimal_places' AND column_default IS NULL",
+                        Integer.class));
     }
 }

@@ -22,13 +22,11 @@ import java.sql.Date;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
-import org.openelisglobal.reports.form.ReportForm.DateType;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 
 public class VLColumnBuilder extends CIColumnBuilder {
-    private DateType dateType;
 
     public VLColumnBuilder(DateRange dateRange, String projectStr) {
         super(dateRange, projectStr);
@@ -89,18 +87,7 @@ public class VLColumnBuilder extends CIColumnBuilder {
     @Override
     public void makeSQL() {
         String dateColumn = "s.entered_date ";
-        switch (dateType) {
-        case ORDER_DATE:
-            dateColumn = "s.entered_date ";
-            break;
-        case RESULT_DATE:
-            dateColumn = "a.released_date ";
-            break;
-        case PRINT_DATE:
-            dateColumn = "a.released_date ";
-        default:
-            break;
-        }
+
         String validStatusId = SpringContext.getBean(IStatusService.class)
                 .getStatusID(StatusService.AnalysisStatus.Finalized);
         Test test = SpringContext.getBean(TestService.class).getActiveTestsByName("Viral Load").get(0);

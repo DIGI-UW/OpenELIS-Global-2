@@ -15,6 +15,17 @@ public class MicroBreakpointRule extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    @Column(name = "clinical_context", length = 40)
+    private String clinicalContext;
+
+    public String getClinicalContext() {
+        return clinicalContext;
+    }
+
+    public void setClinicalContext(String value) {
+        clinicalContext = value;
+    }
+
     @Id
     @Column(name = "id", length = 36)
     private String id = UUID.randomUUID().toString();
@@ -73,6 +84,17 @@ public class MicroBreakpointRule extends BaseObject<String> {
 
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
+
+    @Column(name = "resistant_inclusive", nullable = false)
+    private boolean resistantInclusive = true;
+
+    public boolean isResistantInclusive() {
+        return resistantInclusive;
+    }
+
+    public void setResistantInclusive(boolean value) {
+        resistantInclusive = value;
+    }
 
     @Override
     public String getId() {
@@ -226,5 +248,16 @@ public class MicroBreakpointRule extends BaseObject<String> {
 
     public void setIsActive(String isActive) {
         this.isActive = isActive;
+    }
+
+    @Column(name = "disk_content", length = 40)
+    private String diskContent;
+
+    public String getDiskContent() {
+        return diskContent;
+    }
+
+    public void setDiskContent(String diskContent) {
+        this.diskContent = diskContent;
     }
 }

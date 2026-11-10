@@ -2,9 +2,13 @@ package org.openelisglobal.batchworkplan.controller.rest;
 
 import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.StaleStateException;
 import org.openelisglobal.batchworkplan.form.BatchGenerateRequest;
 import org.openelisglobal.batchworkplan.form.BatchQcStatusResponse;
@@ -14,11 +18,14 @@ import org.openelisglobal.batchworkplan.form.BatchWorkplanRequest;
 import org.openelisglobal.batchworkplan.form.BatchWorkplanResponse;
 import org.openelisglobal.batchworkplan.form.BatchWorkplanStatusRequest;
 import org.openelisglobal.batchworkplan.form.PendingBatchTestResponse;
+import org.openelisglobal.batchworkplan.form.PendingTestsPageResponse;
+import org.openelisglobal.batchworkplan.form.PendingTestsQuery;
 import org.openelisglobal.batchworkplan.service.BatchReleaseRefusedException;
 import org.openelisglobal.batchworkplan.service.BatchWorkplanNotFoundException;
 import org.openelisglobal.batchworkplan.service.BatchWorkplanService;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.qa.security.QaPermissions;
+import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -36,11 +43,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestController
 @RequestMapping("/rest/batch-workplans")
 @PreAuthorize("hasRole('RESULTS')")
 public class BatchWorkplanRestController extends BaseRestController {
+
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final BatchWorkplanService batchWorkplanService;
 
@@ -52,6 +62,67 @@ public class BatchWorkplanRestController extends BaseRestController {
     public List<PendingBatchTestResponse> pendingTests(@RequestParam(name = "limit", required = false) Integer limit,
             HttpServletRequest httpRequest) {
         return batchWorkplanService.getPendingTests(limit, getSysUserId(httpRequest));
+    }
+
+    /**
+     * One page of Pending Tests (OGC-1588). The filters, search and sort run in the
+     * query, so every pending test is reachable, and the answer carries the total
+     * and each filter's values across the whole pool.
+     */
+    @GetMapping(value = "/pending-tests/page", produces = MediaType.APPLICATION_JSON_VALUE)
+    public PendingTestsPageResponse pendingTestsPage(@RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "pageSize", defaultValue = "20") int pageSize,
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "testId", required = false) List<String> testIds,
+            @RequestParam(name = "panelId", required = false) List<String> panelIds,
+            @RequestParam(name = "testSectionId", required = false) List<String> testSectionIds,
+            @RequestParam(name = "priority", required = false) List<String> priorities,
+            @RequestParam(name = "fromDate", required = false) String fromDate,
+            @RequestParam(name = "toDate", required = false) String toDate,
+            @RequestParam(name = "sort", required = false) String sort,
+            @RequestParam(name = "direction", defaultValue = "ASC") String direction, HttpServletRequest httpRequest) {
+        if (page < 1 || pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
+            throw new IllegalArgumentException("Page must be 1 or more and page size between 1 and " + MAX_PAGE_SIZE);
+        }
+        PendingTestsQuery query = new PendingTestsQuery(page, pageSize, search, numericIds(testIds, "test"),
+                numericIds(panelIds, "panel"), numericIds(testSectionIds, "lab unit"), priorities(priorities),
+                isoDate(fromDate, "from"), isoDate(toDate, "to"), sort, !"DESC".equalsIgnoreCase(direction));
+        return batchWorkplanService.getPendingTestsPage(query, getSysUserId(httpRequest));
+    }
+
+    private static List<String> numericIds(List<String> ids, String what) {
+        if (ids == null) {
+            return List.of();
+        }
+        for (String id : ids) {
+            if (!StringUtils.isNumeric(id)) {
+                throw new IllegalArgumentException("Unknown " + what + ": " + id);
+            }
+        }
+        return ids;
+    }
+
+    private static List<String> priorities(List<String> values) {
+        if (values == null) {
+            return List.of();
+        }
+        for (String value : values) {
+            if (Arrays.stream(OrderPriority.values()).noneMatch(priority -> priority.name().equals(value))) {
+                throw new IllegalArgumentException("Unknown priority: " + value);
+            }
+        }
+        return values;
+    }
+
+    private static LocalDate isoDate(String value, String which) {
+        if (StringUtils.isBlank(value)) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("The " + which + " date must be yyyy-MM-dd: " + value);
+        }
     }
 
     /**
@@ -120,13 +191,27 @@ public class BatchWorkplanRestController extends BaseRestController {
     @PostMapping(value = "/batches/{id}/generate", produces = MediaType.APPLICATION_JSON_VALUE)
     public BatchWorkplanResponse generate(@PathVariable Long id,
             @RequestBody(required = false) BatchGenerateRequest request, HttpServletRequest httpRequest) {
-        return batchWorkplanService.generate(id, request != null && request.override(), mayOverrideQc(),
-                getSysUserId(httpRequest));
+        return batchWorkplanService.generate(id, request != null && request.override(),
+                request == null ? null : request.reason(), mayOverrideQc(), getSysUserId(httpRequest));
     }
 
     @ExceptionHandler(BatchWorkplanNotFoundException.class)
     public ResponseEntity<Map<String, Object>> notFound(BatchWorkplanNotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage()));
+    }
+
+    /**
+     * A batch id that is not a number names no batch, so it is answered like an
+     * unknown id; any other number parameter is named with the value it got.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> notANumber(MethodArgumentTypeMismatchException e) {
+        if ("id".equals(e.getName())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Batch workplan not found: " + e.getValue()));
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("message", e.getName() + " must be a whole number: " + e.getValue()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

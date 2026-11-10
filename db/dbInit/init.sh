@@ -1,11 +1,9 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-# Set default values if not provided
-: "${DB_PASSWORD:=clinlims}"         # default database name
-: "${DB_SUPERUSER_PASSWORD:=superuser}"         # default admin password
-# Substitute environment variables in SQL template
-envsubst < /docker-entrypoint-initdb.d/1-pgsqlPermissions.sql.template > /docker-entrypoint-initdb.d/1-pgsqlPermissions.sql
+# Runs only for an empty PostgreSQL data directory; existing roles are untouched.
+: "${DB_PASSWORD:?Set DB_PASSWORD for the application database role}"
+: "${DB_SUPERUSER_PASSWORD:?Set DB_SUPERUSER_PASSWORD for the database administrator}"
 
-# Execute the generated SQL
-psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /docker-entrypoint-initdb.d/1-pgsqlPermissions.sql
+psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+    -f /docker-entrypoint-initdb.d/permissions.psql

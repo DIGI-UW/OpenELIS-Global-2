@@ -400,12 +400,12 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     @org.junit.Test
     public void aNumberOnAComponentIsSavedWithTheComponentsDigits() {
         jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
-                + " significant_digits, lastupdated) VALUES ('c-main-1145', ?, 'PRIMARY', 'Viral load', true, 'Y', 0,"
+                + " reporting_decimal_places, lastupdated) VALUES ('c-main-1145', ?, 'PRIMARY', 'Viral load', true, 'Y', 0,"
                 + " NOW()), ('c-log-1145', ?, 'LOG', 'Log viral load', false, 'Y', 2, NOW())", MULTI_TYPE_TEST,
                 MULTI_TYPE_TEST);
         jdbc.update(
                 "INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, is_active, sort_order,"
-                        + " significant_digits, component_id, lastupdated) VALUES (97311, ?, 'N', '', true, 1, 0,"
+                        + " reporting_decimal_places, component_id, lastupdated) VALUES (97311, ?, 'N', '', true, 1, 0,"
                         + " 'c-main-1145', NOW()), (97312, ?, 'N', '', true, 2, 2, 'c-log-1145', NOW())",
                 MULTI_TYPE_TEST, MULTI_TYPE_TEST);
         jdbc.update("UPDATE clinlims.analyzer_results SET component_id = 'c-log-1145', result = '3.00',"
@@ -421,7 +421,7 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
 
         assertEquals("the log is kept to its component's two decimals", "2",
                 jdbc.queryForObject(
-                        "SELECT r.significant_digits::text FROM clinlims.result r"
+                        "SELECT r.reporting_decimal_places::text FROM clinlims.result r"
                                 + " JOIN clinlims.analysis a ON r.analysis_id = a.id"
                                 + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
                                 + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
@@ -431,12 +431,12 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     @org.junit.Test
     public void aMainResultLandsOnThePrimaryComponentWhateverOrderTheOptionsAreIn() {
         jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
-                + " significant_digits, lastupdated) VALUES ('c-log-1145', ?, 'LOG', 'Log viral load', false, 'Y', 2,"
+                + " reporting_decimal_places, lastupdated) VALUES ('c-log-1145', ?, 'LOG', 'Log viral load', false, 'Y', 2,"
                 + " NOW()), ('c-main-1145', ?, 'PRIMARY', 'Viral load', true, 'Y', 0, NOW())", MULTI_TYPE_TEST,
                 MULTI_TYPE_TEST);
         jdbc.update(
                 "INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, is_active, sort_order,"
-                        + " significant_digits, component_id, lastupdated) VALUES (97312, ?, 'N', '', true, 1, 2,"
+                        + " reporting_decimal_places, component_id, lastupdated) VALUES (97312, ?, 'N', '', true, 1, 2,"
                         + " 'c-log-1145', NOW()), (97311, ?, 'N', '', true, 2, 0, 'c-main-1145', NOW())",
                 MULTI_TYPE_TEST, MULTI_TYPE_TEST);
         jdbc.update("UPDATE clinlims.analyzer_results SET result = '1009.64', test_result_type = 'N'"
@@ -448,7 +448,7 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
         acceptService.acceptAndPersist(List.of(item), "1");
 
         java.util.Map<String, Object> saved = jdbc.queryForMap(
-                "SELECT r.test_result_id::text AS option, r.significant_digits::text AS digits FROM clinlims.result r"
+                "SELECT r.test_result_id::text AS option, r.reporting_decimal_places::text AS digits FROM clinlims.result r"
                         + " JOIN clinlims.analysis a ON r.analysis_id = a.id"
                         + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
                         + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
@@ -490,8 +490,8 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     @org.junit.Test
     public void aRerunThatReplacesAResultTakesTheComponentsCurrentDigits() {
         aNumberOnAComponentIsSavedWithTheComponentsDigits();
-        jdbc.update("UPDATE clinlims.test_result_component SET significant_digits = 3 WHERE id = 'c-log-1145'");
-        jdbc.update("UPDATE clinlims.test_result SET significant_digits = 3 WHERE id = 97312");
+        jdbc.update("UPDATE clinlims.test_result_component SET reporting_decimal_places = 3 WHERE id = 'c-log-1145'");
+        jdbc.update("UPDATE clinlims.test_result SET reporting_decimal_places = 3 WHERE id = 97312");
         entityManager.flush();
         entityManager.clear();
         entityManager.flush();
@@ -511,7 +511,7 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
 
         List<java.util.Map<String, Object>> results = jdbc
                 .queryForList(
-                        "SELECT r.value, r.significant_digits FROM clinlims.result r"
+                        "SELECT r.value, r.reporting_decimal_places FROM clinlims.result r"
                                 + " JOIN clinlims.analysis a ON r.analysis_id = a.id"
                                 + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
                                 + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
@@ -519,14 +519,15 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
         assertEquals("the rerun replaces the result", 1, results.size());
         assertEquals("3.10", String.valueOf(results.get(0).get("value")));
         assertEquals("the replaced result takes the component's three decimals", "3",
-                String.valueOf(results.get(0).get("significant_digits")));
+                String.valueOf(results.get(0).get("reporting_decimal_places")));
     }
 
     @org.junit.Test
     public void aRerunAfterTheComponentsDigitsAreClearedKeepsNoDigits() {
         aNumberOnAComponentIsSavedWithTheComponentsDigits();
-        jdbc.update("UPDATE clinlims.test_result_component SET significant_digits = NULL WHERE id = 'c-log-1145'");
-        jdbc.update("UPDATE clinlims.test_result SET significant_digits = NULL WHERE id = 97312");
+        jdbc.update(
+                "UPDATE clinlims.test_result_component SET reporting_decimal_places = NULL WHERE id = 'c-log-1145'");
+        jdbc.update("UPDATE clinlims.test_result SET reporting_decimal_places = NULL WHERE id = 97312");
         entityManager.flush();
         entityManager.clear();
         String rerunId = String.valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
@@ -544,7 +545,7 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
 
         List<java.util.Map<String, Object>> results = jdbc
                 .queryForList(
-                        "SELECT r.value, r.significant_digits FROM clinlims.result r"
+                        "SELECT r.value, r.reporting_decimal_places FROM clinlims.result r"
                                 + " JOIN clinlims.analysis a ON r.analysis_id = a.id"
                                 + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
                                 + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
@@ -552,7 +553,7 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
         assertEquals("the rerun replaces the result", 1, results.size());
         assertEquals("3.10", String.valueOf(results.get(0).get("value")));
         assertEquals("the replaced result drops the two decimals its component no longer has", null,
-                results.get(0).get("significant_digits"));
+                results.get(0).get("reporting_decimal_places"));
     }
 
     @org.junit.Test

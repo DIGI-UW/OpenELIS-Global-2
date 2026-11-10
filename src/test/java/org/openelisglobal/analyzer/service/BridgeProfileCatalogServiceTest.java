@@ -31,6 +31,28 @@ public class BridgeProfileCatalogServiceTest {
     }
 
     @Test
+    public void anUnpairedBridgeIsReportedAsNotPaired() throws Exception {
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenThrow(new BridgeHttpClient.BridgeNotPairedException());
+
+        BridgeProfileCatalogException failure = assertThrows(BridgeProfileCatalogException.class,
+                () -> service.getCatalog());
+
+        assertEquals(true, failure.bridgeNotPaired());
+    }
+
+    @Test
+    public void anUnreachableBridgeIsNotReportedAsNotPaired() throws Exception {
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenThrow(new java.io.IOException("Connection refused"));
+
+        BridgeProfileCatalogException failure = assertThrows(BridgeProfileCatalogException.class,
+                () -> service.getCatalog());
+
+        assertEquals(false, failure.bridgeNotPaired());
+    }
+
+    @Test
     public void getCatalogPreservesVersionedProfileAndPublicationData() throws Exception {
         when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
                 .thenReturn(new BridgeHttpClient.BridgeResponse(200, validCatalog()));

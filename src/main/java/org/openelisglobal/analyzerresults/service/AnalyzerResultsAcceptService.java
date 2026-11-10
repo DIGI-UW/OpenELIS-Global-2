@@ -37,5 +37,5 @@ public interface AnalyzerResultsAcceptService {
      * when it is on one, otherwise the test's first active result definition's.
      * Null when the result has no test or no value, or the definition sets none.
      */
-    String significantDigitsFor(AnalyzerResults staged);
+    String reportingDecimalPlacesFor(AnalyzerResults staged);
 }
