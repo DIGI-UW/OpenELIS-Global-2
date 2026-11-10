@@ -54,6 +54,11 @@ import BarcodeScannerBar from "./BarcodeScannerBar";
 import { useOrderContext } from "./OrderContext";
 import "./order-workflow.scss";
 import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
+import {
+  CANCEL_REASON_CATEGORY,
+  OTHER_REASON,
+  cancelReasonText as reasonText,
+} from "./cancelReasons";
 import useSiteDateFormat from "../common/useSiteDateFormat";
 
 /**
@@ -114,8 +119,6 @@ const PROGRESS_STATUS_TAG = {
   },
   CANCELLED: { type: "gray", labelId: "order.status.cancelled" },
 };
-
-const CANCEL_REASON_CATEGORY = "Order cancel reasons";
 
 const priorityOptions = (intl) => [
   {
@@ -411,8 +414,7 @@ const OrderDashboardContent = () => {
     setCancelOther("");
   };
 
-  const cancelReasonText =
-    cancelReason === "__other__" ? cancelOther.trim() : cancelReason;
+  const cancelReasonText = reasonText(cancelReason, cancelOther);
 
   const confirmCancel = async () => {
     if (!cancelTarget || !cancelReasonText) return;
@@ -748,11 +750,11 @@ const OrderDashboardContent = () => {
               />
             ))}
           <SelectItem
-            value="__other__"
+            value={OTHER_REASON}
             text={intl.formatMessage({ id: "order.dashboard.cancel.other" })}
           />
         </Select>
-        {cancelReason === "__other__" && (
+        {cancelReason === OTHER_REASON && (
           <TextInput
             id="cancel-order-reason-other"
             labelText={

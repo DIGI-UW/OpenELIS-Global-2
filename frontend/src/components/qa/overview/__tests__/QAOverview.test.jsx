@@ -145,7 +145,7 @@ beforeEach(() => {
   sessionStorage.clear();
   vi.clearAllMocks();
   // The TAT rollup asks for the 30-day window and the equal one before it.
-  const currentWindow = `fromDate=${isoDaysFromToday(-30)}`;
+  const currentWindow = `fromDate=${isoDaysFromToday(-29)}`;
   fetchFromOpenElisServer.mockImplementation((url) => {
     if (url.includes("/rest/nce/dashboard")) {
       return Promise.resolve({ nceList: NCE_LIST });
