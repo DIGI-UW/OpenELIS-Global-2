@@ -815,6 +815,31 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void aSpeciesRuleForTheSharedOrganismSettlesGroupRulesThatDisagree() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.35", "GROUPSPEC");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        String first = "Group A " + suffix();
+        String second = "Group B " + suffix();
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + first + "\n" + organism.getDisplayName()
+                + ",,," + second + "\n");
+        assertFalse(reloadOrganismGroups(false).hasErrors());
+        writeReportingRules(
+                RULES_HEADER + "GROUP," + first + ",ANY," + fixture.antibiotic + ",Synthetic,DONT_REPORT,,,,,,,,\n"
+                        + "GROUP," + second + ",ANY," + fixture.antibiotic + ",Synthetic,REPORT,,,,,,,,\n" + "SPECIES,"
+                        + organism.getDisplayName() + ",ANY," + fixture.antibiotic + ",Synthetic,REPORT,,,,,,,,\n");
+
+        var reloaded = reloadReportingRules(false);
+
+        assertFalse(reloaded.toString(), reloaded.hasErrors());
+        assertEquals(java.util.Set.of(first, second), rulesFor(antibioticId).stream().map(rule -> rule.organismGroup)
+                .filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet()));
+        assertEquals(1,
+                rulesFor(antibioticId).stream().filter(rule -> organism.getId().equals(rule.organismId)).count());
+    }
+
+    @Test
     public void groupFileThatPutsAnOrganismUnderTwoDisagreeingRulesFailsAndNamesBothGroups() throws Exception {
         var fixture = new ReferencePackageFixture("2099.34", "GROUPTIE2");
         load(fixture);
