@@ -55,6 +55,7 @@ import {
 } from "./sectionLayout";
 import { labNow } from "../../utils/labClock";
 import { ConfigurationContext } from "../../layout/Layout";
+import { methodOptions, useMethodChoices } from "./methodChoices";
 
 /**
  * OGC-1021 (R2 of OGC-811) — the expanded row panel.
@@ -248,6 +249,12 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
 
   const methodName =
     methods.find((m) => m.id === row.testMethod)?.value || row.testMethod || "";
+  const methodChoices = useMethodChoices(row.testId as string | undefined);
+  const methodsOffered = methodOptions(
+    methodChoices,
+    methods,
+    row.testMethod as string | undefined,
+  );
   const analyzerName =
     analyzers.find((a) => a.id === row.analyzerId)?.value ||
     row.analyzerId ||
@@ -407,7 +414,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                 }
               >
                 <SelectItem text="" value="" />
-                {methods.map((m) => (
+                {methodsOffered.map((m) => (
                   <SelectItem text={m.value} value={m.id} key={m.id} />
                 ))}
               </Select>

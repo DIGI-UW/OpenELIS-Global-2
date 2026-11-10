@@ -97,6 +97,7 @@ import SearchableSelect from "../../common/SearchableSelect";
 import { PatientRecord } from "../../patient/types";
 import "./unified-results.scss";
 import RunsChip from "./runs/RunsChip";
+import { clearMethodChoices } from "./methodChoices";
 import WaitingTag, { WaitingRun } from "./runs/WaitingTag";
 import { displayRange, rangeNotAppliedKey } from "../../common/rangeNotApplied";
 
@@ -335,6 +336,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   }, [labUnits, selectedLabUnit]);
 
   useEffect(() => {
+    clearMethodChoices();
     getFromOpenElisServer("/rest/results-entry/lab-units", (list: LabUnit[]) =>
       setLabUnits(list || []),
     );
