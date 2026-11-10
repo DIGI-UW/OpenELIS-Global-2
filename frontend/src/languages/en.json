@@ -12503,7 +12503,6 @@
   "eqa.cycle.new.create": "Create cycle",
   "eqa.cycle.new.created": "Cycle created. It is listed as Planned; use \"Receive panel\" when the panel arrives.",
   "eqa.cycle.new.error": "Could not create the cycle",
-  "eqa.cycle.new.noPrograms": "Enroll in a scheme under My EQA Schemes first.",
   "eqa.order.receipt.consignment": "Inbound consignment",
   "eqa.order.receipt.consignment.none": "None — received outside the shipment module",
   "eqa.order.receipt.consignment.thisCycle": "this cycle",
@@ -14657,5 +14656,10 @@
   "analyzer.setup.sources.retryError": "The connection was saved for setup, but the sample could not be queued. Check Undelivered results before retrying.",
   "analyzer.setup.sources.queued": "Setup sample queued. Check for setup samples to confirm it arrived; queued does not mean received.",
   "analyzer.results.setupEvidence.title": "Retained setup samples ({count})",
-  "analyzer.results.setupEvidence.help": "These samples were received during setup. They remain available as evidence and do not require clinical review."
+  "analyzer.results.setupEvidence.help": "These samples were received during setup. They remain available as evidence and do not require clinical review.",
+  "eqa.entry.validated": "Validated",
+  "eqa.cycle.new.noUsableEnrollments": "No active enrollment here matches a scheme on this instance. Enrollments are managed under My EQA Schemes, schemes under EQA Management, Schemes.",
+  "eqa.cycle.autoSubmit.noChannel": "This site has no automatic channel to the provider, so submit by hand.",
+  "eqa.cycle.autoSubmit.waiting": "Sends automatically at {time} unless you submit by hand now.",
+  "eqa.cycle.autoSubmit.due": "Sends automatically within a few minutes unless you submit by hand now."
 }
