@@ -82,6 +82,8 @@
   <include relativeToChangelogFile="true" file="048-result-run-batch.xml"/>
   <include relativeToChangelogFile="true" file="049-result-run-of-one.xml"/>
   <include relativeToChangelogFile="true" file="050-inventory-usage-fractional.xml"/>
+  <!-- Seeds default 'retroci.dbs.sampleType' configuration in site_information for RetroCI mode. -->
+  <include relativeToChangelogFile="true" file="052-retroci-dbs-sample-type-config.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>
