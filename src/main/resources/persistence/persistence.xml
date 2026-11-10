@@ -167,6 +167,7 @@
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.resultrun.valueholder.ResultRun</class>
         <class>org.openelisglobal.containertype.valueholder.ContainerType</class>
+        <class>org.openelisglobal.validationpolicy.valueholder.ValidationPolicy</class>
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt</class>
 
         <!-- Dictionary entities (migrated from HBM to JPA annotations) -->

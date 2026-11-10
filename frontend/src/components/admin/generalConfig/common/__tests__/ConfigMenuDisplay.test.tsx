@@ -200,6 +200,33 @@ describe("ConfigMenuDisplay", () => {
     expect(screen.getByText("Results only")).toBeInTheDocument();
   });
 
+  it("edits a stored setting key under its translated name and description", async () => {
+    const translated = {
+      ...config("false"),
+      name: "useMultiLevelValidation",
+      paramName: "useMultiLevelValidation",
+      description: "stored English text",
+    };
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url === `/rest/${MENU}`)
+          return callback({ menuList: [translated] });
+        if (url.startsWith(`/rest/${CONFIG}?ID=`)) return callback(translated);
+        return callback(undefined);
+      },
+    );
+
+    await openTheEditor();
+
+    expect(screen.getByText("Use the validation policy")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        messages["siteInformation.description.useMultiLevelValidation"],
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("stored English text")).not.toBeInTheDocument();
+  });
+
   it("names the menu in its breadcrumb with its translated title", async () => {
     const errors = vi.spyOn(console, "error");
     renderScreen();
@@ -588,5 +615,89 @@ describe("ConfigMenuDisplay behind a route", () => {
     expect(
       screen.queryByRole("heading", { name: "Edit Record" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * OGC-1364: on Result Configuration the validation policy replaces "validate
+ * all results" once "Use the validation policy" is on.
+ */
+describe("ConfigMenuDisplay on Result Configuration", () => {
+  const RESULT_MENU = "ResultConfigurationMenu";
+  const rows = [
+    {
+      id: "56",
+      name: "validate all results",
+      description: "all results should be validated even if normal",
+      value: "true",
+      valueType: "boolean",
+    },
+    {
+      id: "190",
+      name: "blockSelfValidation",
+      description: "Block self-validation",
+      value: "false",
+      valueType: "boolean",
+    },
+  ];
+
+  const renderResultMenu = (enabled: boolean) => {
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url === `/rest/${RESULT_MENU}`) return callback({ menuList: rows });
+        if (url === "/rest/validation-policy/default")
+          return callback({
+            trigger: "ALL",
+            levels: 1,
+            levelRoles: [{ level: 1, roleId: 10, roleName: "Validation" }],
+            enabled,
+            maxLevels: 1,
+            blockSelfValidation: false,
+          });
+        return callback(undefined);
+      },
+    );
+    render(
+      <MemoryRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <QueryClientProvider client={createQueryClient()}>
+            <NotificationContext.Provider
+              value={{
+                notificationVisible: false,
+                setNotificationVisible: vi.fn(),
+                addNotification: vi.fn(),
+              }}
+            >
+              <ConfigurationContext.Provider
+                value={{ reloadConfiguration: vi.fn() }}
+              >
+                <ConfigMenuDisplay
+                  id="sidenav.label.admin.formEntry.resultConfig"
+                  menuType={RESULT_MENU}
+                />
+              </ConfigurationContext.Provider>
+            </NotificationContext.Provider>
+          </QueryClientProvider>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+  };
+
+  it("keeps validate all results while the policy is off", async () => {
+    renderResultMenu(false);
+
+    expect(await screen.findByText("validate all results")).toBeInTheDocument();
+    expect(screen.queryByTestId("validation-policy")).not.toBeInTheDocument();
+  });
+
+  it("shows the policy in place of validate all results while it is on", async () => {
+    renderResultMenu(true);
+
+    expect(await screen.findByTestId("validation-policy")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Block self-validation"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("validate all results")).not.toBeInTheDocument();
   });
 });
