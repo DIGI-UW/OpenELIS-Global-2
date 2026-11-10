@@ -309,6 +309,18 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void panelFileWithTierAndReportBehaviorColumnsStillLoads() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.19", "PANELCOL");
+        load(fixture);
+        writePanels("panelName,antibioticWhonetCode,tier,reportBehavior\nSynthetic column panel," + fixture.antibiotic
+                + ",4,CASCADE\n");
+        var result = reloadPanels(false);
+        assertFalse(result.toString(), result.hasErrors());
+        var panel = panels.findCurrentByNameIgnoreCase("Synthetic column panel");
+        assertEquals(1, panelAntibiotics.getByPanelId(panel.getId()).size());
+    }
+
+    @Test
     public void freshLoadAndReloadKeepIdentifiersLocalEditsAndInactiveEdition() throws Exception {
         var fixture = new ReferencePackageFixture("2099.1", "RELOAD");
         load(fixture);
