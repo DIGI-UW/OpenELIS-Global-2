@@ -239,6 +239,29 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void blockingZoneRowWithoutDiskContentLoadsAndNeverMatches() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.63", "ZONEBLOCK");
+        var lines = fixture.files.get("breakpoints.csv").lines().toList();
+        fixture.files.put("breakpoints.csv", lines.get(0) + "\n" + lines.get(1) + "\n"
+                + lines.get(1).replace(",MIC,,MIC,1,,,4,mg/L,", ",ZONE,,ZONE,,,,,mm,") + "\n");
+        load(fixture);
+        load(fixture);
+        var standard = standard(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
+
+        assertEquals(2, rules.countByStandardId(standard.getId()));
+        var blocking = rules.findByContextualNaturalKey(standard.getId(), organism.getId(), null, antibiotic.getId(),
+                "ZONE", null, "ZONE", null, null).orElseThrow();
+        assertNull(blocking.getSusceptibleValue());
+        assertNull(blocking.getResistantValue());
+        assertNull(
+                rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null, "ZONE"));
+        assertNull(rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null,
+                "ZONE", null, "30ug"));
+    }
+
+    @Test
     public void zoneCorrectionNeedsDiskContentAndMatchesOnlyThatDisk() throws Exception {
         var fixture = new ReferencePackageFixture("2099.62", "ZONEDISK");
         load(fixture);

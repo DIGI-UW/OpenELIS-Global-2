@@ -278,9 +278,6 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         if (row.diskContent != null && !"ZONE".equals(row.method)) {
             throw new IllegalArgumentException("Disk content applies only to zone breakpoints");
         }
-        if (row.diskContent == null && "ZONE".equals(row.method)) {
-            throw new IllegalArgumentException("Disk content is required for zone breakpoints");
-        }
         if (row.diskContent != null && row.diskContent.length() > 40) {
             throw new IllegalArgumentException("Disk content is longer than 40 characters");
         }
@@ -324,6 +321,9 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         if (!values.isEmpty() && (row.susceptibleValue == null || row.resistantValue == null)) {
             throw new IllegalArgumentException(
                     "Both susceptible and resistant thresholds are required for a nonempty rule");
+        }
+        if (!values.isEmpty() && row.diskContent == null && "ZONE".equals(row.method)) {
+            throw new IllegalArgumentException("Disk content is required for zone breakpoints");
         }
         for (BigDecimal value : values) {
             if (value.signum() <= 0 || value.stripTrailingZeros().scale() > 4
