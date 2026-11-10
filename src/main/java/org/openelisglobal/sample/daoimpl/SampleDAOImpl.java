@@ -594,6 +594,22 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
 
     @Override
     @Transactional(readOnly = true)
+    public List<Sample> getEnvironmentalSamplesWithAccessionNumberStartingWith(String prefix, int max) {
+        try {
+            String escaped = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+            return entityManager
+                    .createQuery("from Sample s where s.domain = 'E' and s.accessionNumber like :prefix escape '\\'"
+                            + " order by s.accessionNumber", Sample.class)
+                    .setParameter("prefix", escaped + "%").setMaxResults(max).getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Sample getEnvironmentalSamplesWithAccessionNumberStartingWith()",
+                    e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public String getLargestAccessionNumberMatchingPattern(String startingWith, int accessionSize)
             throws LIMSRuntimeException {
         String greatestAccessionNumber = null;

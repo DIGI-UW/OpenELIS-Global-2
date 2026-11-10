@@ -27,6 +27,7 @@ import {
   InlineNotification,
   Modal,
   TextArea,
+  TextInput,
   InlineLoading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -83,6 +84,8 @@ export default function LaporanHasilReport() {
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [labNumber, setLabNumber] = useState("");
+  const [searchedLabNumber, setSearchedLabNumber] = useState("");
   const [standardFilter, setStandardFilter] = useState("all");
   const [complianceStatusFilter, setComplianceStatusFilter] = useState("all");
   const [generationStatusFilter, setGenerationStatusFilter] = useState("all");
@@ -150,6 +153,7 @@ export default function LaporanHasilReport() {
       const std = overrides.standardFilter ?? standardFilter;
       const cs = overrides.complianceStatusFilter ?? complianceStatusFilter;
       const gs = overrides.generationStatusFilter ?? generationStatusFilter;
+      const lab = (overrides.labNumber ?? labNumber).trim();
 
       setIsLoading(true);
       setError(null);
@@ -160,12 +164,14 @@ export default function LaporanHasilReport() {
       if (std && std !== "all") params.set("standardId", std);
       if (cs && cs !== "all") params.set("complianceStatus", cs);
       if (gs && gs !== "all") params.set("generationStatus", gs);
+      if (lab) params.set("labNumber", lab);
 
       getFromOpenElisServer(
         `/rest/complianceReport?${params.toString()}`,
         (data) => {
           if (data) {
             setReportData(data);
+            setSearchedLabNumber(lab);
           } else {
             setError(intl.formatMessage({ id: "laporanHasil.error" }));
           }
@@ -173,7 +179,15 @@ export default function LaporanHasilReport() {
         },
       );
     },
-    [dateFrom, dateTo, standardFilter, complianceStatusFilter, generationStatusFilter, intl],
+    [
+      dateFrom,
+      dateTo,
+      standardFilter,
+      complianceStatusFilter,
+      generationStatusFilter,
+      labNumber,
+      intl,
+    ],
   );
 
   const fetchReport = useCallback(() => doFetch(), [doFetch]);
@@ -350,6 +364,23 @@ export default function LaporanHasilReport() {
       )}
 
       <Grid narrow style={{ marginBottom: "1.5rem", alignItems: "flex-end" }}>
+        <Column lg={3} md={4} sm={4}>
+          <TextInput
+            id="filter-lab-number"
+            labelText={intl.formatMessage({ id: "laporanHasil.filter.labNumber" })}
+            helperText={intl.formatMessage({
+              id: "laporanHasil.filter.labNumber.help",
+            })}
+            value={labNumber}
+            onChange={(event) => setLabNumber(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                doFetch({ labNumber: event.currentTarget.value });
+              }
+            }}
+          />
+        </Column>
         <Column lg={3} md={4} sm={4}>
           <DatePicker
             dateFormat="Y-m-d"
@@ -573,8 +604,18 @@ export default function LaporanHasilReport() {
       )}
 
       {!isLoading && reportData && tableRows.length === 0 && (
-        <p style={{ marginTop: "1rem", color: "#525252" }}>
-          <FormattedMessage id="laporanHasil.empty" />
+        <p
+          style={{ marginTop: "1rem", color: "#525252" }}
+          data-testid="laporan-hasil-empty"
+        >
+          {searchedLabNumber ? (
+            <FormattedMessage
+              id="laporanHasil.labNumber.notFound"
+              values={{ labNumber: searchedLabNumber }}
+            />
+          ) : (
+            <FormattedMessage id="laporanHasil.empty" />
+          )}
         </p>
       )}
 
