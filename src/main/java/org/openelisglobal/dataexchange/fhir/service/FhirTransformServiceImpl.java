@@ -787,9 +787,15 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             throws FhirTransformationException, FhirPersistanceException {
         FhirOperations fhirOperations = new FhirOperations();
         CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
+        Set<String> specimens = new HashSet<>();
 
         for (String analysisId : analysisIds) {
             Analysis analysis = analysisService.get(analysisId);
+            SampleItem sampleItem = analysis.getSampleItem();
+            if (sampleItem != null && specimens.add(sampleItem.getId())) {
+                this.addToOperations(fhirOperations, tempIdGenerator,
+                        specimenTransformService.transformToSpecimen(sampleItem));
+            }
             ServiceRequest serviceRequest = serviceRequestTransformService.transformToServiceRequest(analysis);
             if (serviceRequest != null) {
                 this.addServiceRequestWithSites(fhirOperations, tempIdGenerator, serviceRequest);

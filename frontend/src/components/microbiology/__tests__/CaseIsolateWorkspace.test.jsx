@@ -364,6 +364,52 @@ it("submits the shared specimen referral with only a receiving lab and scoped te
   ).toBeVisible();
 });
 
+it("explains a refused referral for a test that is already referred", async () => {
+  const service = api([]);
+  service.getIsolateOptions.mockResolvedValue({
+    ...options,
+    referralOrganizations: [{ id: "lab1", value: "Reference facility" }],
+    tests: [
+      { id: "test1", name: "Confirmatory PCR", sampleTypeIds: ["specimen"] },
+    ],
+  });
+  service.referSpecimen = vi.fn().mockRejectedValue(
+    Object.assign(new Error("request failed"), {
+      response: {
+        status: 400,
+        error: "MICROBIOLOGY_VALIDATION_ERROR",
+        message: "MICROBIOLOGY_ISOLATE_REFERRAL_EXISTS",
+      },
+    }),
+  );
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Refer specimen out" }),
+  );
+  const fields = within(screen.getByRole("dialog"));
+  fireEvent.change(fields.getByLabelText("Isolate or specimen item"), {
+    target: { value: "s1" },
+  });
+  fireEvent.change(
+    fields.getByLabelText("Requested referral or confirmatory test"),
+    { target: { value: "test1" } },
+  );
+  fireEvent.change(fields.getByRole("combobox", { name: "Reference lab" }), {
+    target: { value: "Reference facility" },
+  });
+  fireEvent.click(
+    await fields.findByRole("option", { name: "Reference facility" }),
+  );
+  fireEvent.click(fields.getByRole("button", { name: "Save Referral" }));
+  expect(
+    await fields.findByText(
+      messages[
+        "microbiology.isolateWorkspace.MICROBIOLOGY_ISOLATE_REFERRAL_EXISTS"
+      ],
+    ),
+  ).toBeVisible();
+});
+
 it("closes a committed pick before a failing options refresh can invite a duplicate save", async () => {
   const service = api([]);
   service.getIsolateOptions

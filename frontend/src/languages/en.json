@@ -14707,5 +14707,7 @@
   "microbiology.astQc.pass": "Pass",
   "microbiology.astQc.fail": "Fail",
   "microbiology.astQc.rangeMissing": "Load a QC range for every antibiotic before recording this control.",
-  "microbiology.astQc.saveError": "The control could not be recorded."
+  "microbiology.astQc.saveError": "The control could not be recorded.",
+  "microbiology.isolateWorkspace.MICROBIOLOGY_ISOLATE_REFERRAL_EXISTS": "This item already has an open referral for this test.",
+  "microbiology.testing.addTestsToCulture": "Add test or panel on culture {culture}"
 }

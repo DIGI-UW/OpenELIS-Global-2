@@ -346,6 +346,7 @@ export default function CaseTestingWorkspace({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [cultureId, setCultureId] = useState("");
+  const [cultureLabel, setCultureLabel] = useState("");
   const [pickCultureId, setPickCultureId] = useState("");
   const [cultureSource, setCultureSource] = useState(null);
   const scanParams = new URLSearchParams(scanSearch);
@@ -891,6 +892,7 @@ export default function CaseTestingWorkspace({
                     }}
                     onSelect={(row) => {
                       setCultureId(row.id);
+                      setCultureLabel(row.containerIdentifier);
                       setCultureSource({
                         ...row.source,
                         sampleTypeName: row.source?.specimenType,
@@ -901,6 +903,7 @@ export default function CaseTestingWorkspace({
                     }}
                     onChooseTests={(row, gramTest) => {
                       setCultureId(row.id);
+                      setCultureLabel(row.containerIdentifier);
                       if (gramTest) {
                         addGramStain(row, gramTest);
                         return;
@@ -976,7 +979,12 @@ export default function CaseTestingWorkspace({
                               : setSelection
                           }
                           isReadOnly={adding}
-                          titleId="microbiology.testing.addTests"
+                          titleId={
+                            placement === "CULTURE"
+                              ? "microbiology.testing.addTestsToCulture"
+                              : "microbiology.testing.addTests"
+                          }
+                          titleValues={{ culture: cultureLabel }}
                           helperId="microbiology.testing.chooserHelp"
                           cataloguePath={`/rest/microbiology/cases/${detail.id}/analyses/catalog`}
                           excludedTestIdsBySample={tests

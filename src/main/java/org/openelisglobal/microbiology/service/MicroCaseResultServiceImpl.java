@@ -54,7 +54,6 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     private org.openelisglobal.userrole.service.UserRoleService userRoles;
     private final MicroCaseDAO cases;
     private final MicroCaseAnalysisDAO links;
-    private final MicroCaseSearchDAO search;
     private final MicrobiologyCaseAccessService access;
     private final AnalysisService analyses;
     private final TestService tests;
@@ -71,7 +70,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     private final ResultValidationService validation;
     private final MicroCaseActivityDAO activities;
 
-    public MicroCaseResultServiceImpl(MicroCaseDAO cases, MicroCaseAnalysisDAO links, MicroCaseSearchDAO search,
+    public MicroCaseResultServiceImpl(MicroCaseDAO cases, MicroCaseAnalysisDAO links,
             MicrobiologyCaseAccessService access, AnalysisService analyses, TestService tests,
             TypeOfSampleTestService sampleTests, PanelItemService panels, ObjectProvider<ResultsLoadUtility> loaders,
             LogbookResultsPersistService persist, ResultService results, IStatusService statuses,
@@ -80,7 +79,6 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             org.openelisglobal.result.service.ResultEntryAcknowledgementService acknowledgements) {
         this.cases = cases;
         this.links = links;
-        this.search = search;
         this.access = access;
         this.analyses = analyses;
         this.tests = tests;
@@ -194,9 +192,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         var c = writeCase(caseId, actor, Constants.ROLE_RESULTS);
         if (request == null || !List.of("INITIAL", "ADDITIONAL", "CULTURE").contains(request.placement))
             bad("MICROBIOLOGY_PLACEMENT_REQUIRED");
-        var specimen = ("CULTURE".equals(request.placement) ? cultureRows.getSources(caseId)
-                : search.getSamples(caseId)).stream().filter(s -> s.getId().equals(request.sampleItemId)).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_SAMPLE_CASE_MISMATCH"));
+        var specimen = cultureRows.getSources(caseId).stream().filter(s -> s.getId().equals(request.sampleItemId))
+                .findFirst().orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_SAMPLE_CASE_MISMATCH"));
         if ("CULTURE".equals(request.placement)) {
             var culture = cultureRows.get(request.cultureId)
                     .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_CULTURE_REQUIRED"));

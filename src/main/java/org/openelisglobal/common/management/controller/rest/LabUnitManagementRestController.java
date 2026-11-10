@@ -439,6 +439,11 @@ public class LabUnitManagementRestController extends BaseRestController {
                 return ResponseEntity.unprocessableEntity().body(new ApiResponse<>(false,
                         "names." + tooLongLocale + " must be at most " + NAME_MAX_LENGTH + " characters", null));
             }
+            String gram = labUnitDTO.getGramStainTestId();
+            if (gram != null && !gram.isBlank() && testSectionService.getTestsInSection(labUnitId).stream()
+                    .noneMatch(t -> t.getId().equals(gram) && t.isActive() && Boolean.TRUE.equals(t.getOrderable())))
+                return ResponseEntity.unprocessableEntity()
+                        .body(new ApiResponse<>(false, "Select an active, orderable test in this lab unit", null));
 
             String userId = getSysUserId(request);
 
@@ -494,14 +499,8 @@ public class LabUnitManagementRestController extends BaseRestController {
 
             if (labUnitDTO.getRequireTrackedMedia() != null)
                 section.setRequireTrackedMedia(labUnitDTO.getRequireTrackedMedia());
-            if (labUnitDTO.getGramStainTestId() != null) {
-                String gram = labUnitDTO.getGramStainTestId();
-                if (!gram.isBlank() && testSectionService.getTestsInSection(labUnitId).stream().noneMatch(
-                        t -> t.getId().equals(gram) && t.isActive() && Boolean.TRUE.equals(t.getOrderable())))
-                    return ResponseEntity.unprocessableEntity()
-                            .body(new ApiResponse<>(false, "Select an active, orderable test in this lab unit", null));
+            if (gram != null)
                 section.setGramStainTestId(gram.isBlank() ? null : gram);
-            }
             section.setSysUserId(userId);
             testSectionService.update(section);
 

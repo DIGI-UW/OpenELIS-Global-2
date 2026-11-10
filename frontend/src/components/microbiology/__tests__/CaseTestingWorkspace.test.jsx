@@ -546,6 +546,11 @@ describe("culture test chooser", () => {
       }),
     );
     const chooser = document.getElementById("culture-test-chooser");
+    expect(
+      within(chooser).getByRole("heading", {
+        name: "Add test or panel on culture PLATE-1",
+      }),
+    ).toBeInTheDocument();
     fireEvent.click(within(chooser).getByRole("button", { name: /Sputum.*0/ }));
     fireEvent.click(
       await within(chooser).findByRole("button", { name: "Follow-up test" }),
