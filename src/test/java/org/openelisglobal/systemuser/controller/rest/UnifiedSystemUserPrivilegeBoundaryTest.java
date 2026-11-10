@@ -132,6 +132,53 @@ public class UnifiedSystemUserPrivilegeBoundaryTest extends BaseWebContextSensit
         assertTrue(userRoleService.getRoleIdsForUser(BWHITE).contains(GLOBAL_ADMINISTRATOR));
     }
 
+    @Test
+    public void userAccountAdministrator_cannotGrantGlobalAdministratorThroughAllLabUnits() throws Exception {
+        assertLabUnitGrantRefused("AllLabUnits");
+    }
+
+    @Test
+    public void userAccountAdministrator_cannotGrantGlobalAdministratorThroughOneLabUnit() throws Exception {
+        assertLabUnitGrantRefused("1");
+    }
+
+    private void assertLabUnitGrantRefused(String labUnit) throws Exception {
+        Map<String, Object> form = readForm(userAccountAdmin, BWHITE_FORM);
+        form.put("selectedRoles", List.of());
+        form.put("selectedTestSectionLabUnits", Map.of(labUnit, List.of(GLOBAL_ADMINISTRATOR)));
+        save(userAccountAdmin, form).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorKey").value(UnifiedSystemUserRestController.ERROR_GLOBAL_ADMIN_GRANT));
+        assertEquals(List.of(), userRoleService.getRoleIdsForUser(BWHITE));
+    }
+
+    @Test
+    public void userAccountAdministrator_cannotUseAnOrdinaryProfileToEditAnAdminLogin() throws Exception {
+        assertMismatchedAccountsRefused(userAccountAdmin);
+    }
+
+    @Test
+    public void globalAdministrator_cannotCombineDifferentAccountsEither() throws Exception {
+        assertMismatchedAccountsRefused(globalAdmin);
+    }
+
+    private void assertMismatchedAccountsRefused(MockHttpSession caller) throws Exception {
+        Map<String, Object> form = readForm(caller, BWHITE_FORM);
+        String storedHashBefore = loginService.get(7).getPassword();
+        form.put("loginUserId", "7");
+        form.put("userLoginName", "renamed");
+        form.put("accountLocked", IActionConstants.YES);
+        String replacement = java.util.UUID.randomUUID().toString() + "aA1!";
+        form.put("userPassword", replacement);
+        form.put("confirmPassword", replacement);
+        save(caller, form).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorKey").value(UnifiedSystemUserRestController.ERROR_ACCOUNT_IDENTITY));
+        assertEquals("asmith", loginService.get(7).getLoginName());
+        assertEquals(IActionConstants.NO, loginService.get(7).getAccountLocked());
+        assertEquals(storedHashBefore, loginService.get(7).getPassword());
+        assertEquals("bwhite", loginService.get(8).getLoginName());
+        assertEquals(List.of(), userRoleService.getRoleIdsForUser(BWHITE));
+    }
+
     private org.springframework.test.web.servlet.ResultActions save(MockHttpSession session, Map<String, Object> form)
             throws Exception {
         return mockMvc.perform(post("/rest/UnifiedSystemUser").session(session).contentType(MediaType.APPLICATION_JSON)

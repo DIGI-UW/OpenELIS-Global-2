@@ -77,6 +77,7 @@ public class UnifiedSystemUserRestController extends BaseController {
     public static final String ALL_LAB_UNITS = "AllLabUnits";
     static final String ERROR_GLOBAL_ADMIN_GRANT = "errors.user.globalAdmin.grant";
     static final String ERROR_GLOBAL_ADMIN_EDIT = "errors.user.globalAdmin.edit";
+    static final String ERROR_ACCOUNT_IDENTITY = "errors.user.identityMismatch";
     public static final String ERROR_ALL_LAB_UNITS_EXCLUSIVE = "labUnitRoles.allLabUnitsExclusive";
     private static final String RESERVED_ADMIN_NAME = "admin";
     private static final int NAME_MAX_LENGTH = 30;
@@ -354,7 +355,15 @@ public class UnifiedSystemUserRestController extends BaseController {
      */
     private Errors privilegeRefusal(UnifiedSystemUserForm form, String callerId) {
         Errors refusal = new BaseErrors();
-        if (GLOBAL_ADMIN_ID == null || userRoleService.getRoleIdsForUser(callerId).contains(GLOBAL_ADMIN_ID)) {
+        if (!loginMatchesSystemUser(form)) {
+            refusal.reject(ERROR_ACCOUNT_IDENTITY);
+            return refusal;
+        }
+        if (GLOBAL_ADMIN_ID == null) {
+            refusal.reject("errors.UpdateException");
+            return refusal;
+        }
+        if (userRoleService.getRoleIdsForUser(callerId).contains(GLOBAL_ADMIN_ID)) {
             return refusal;
         }
         if (grantsGlobalAdministrator(form)) {
@@ -370,9 +379,32 @@ public class UnifiedSystemUserRestController extends BaseController {
         if (form.getSelectedRoles() != null && form.getSelectedRoles().contains(GLOBAL_ADMIN_ID)) {
             return true;
         }
+        Map<String, Set<String>> labUnitRoles = form.getSelectedTestSectionLabUnits();
+        if (labUnitRoles != null
+                && labUnitRoles.values().stream().anyMatch(roles -> roles != null && roles.contains(GLOBAL_ADMIN_ID))) {
+            return true;
+        }
         String copiedFrom = form.getSystemUserIdToCopy() == null ? "" : form.getSystemUserIdToCopy().trim();
         return YES.equals(form.getAllowCopyUserRoles()) && !copiedFrom.isEmpty()
                 && userRoleService.getRoleIdsForUser(copiedFrom).contains(GLOBAL_ADMIN_ID);
+    }
+
+    private boolean loginMatchesSystemUser(UnifiedSystemUserForm form) {
+        if (GenericValidator.isBlankOrNull(form.getLoginUserId())) {
+            return true;
+        }
+        try {
+            LoginUser login = loginService.get(Integer.parseInt(form.getLoginUserId()));
+            if (login == null) {
+                return false;
+            }
+            // Login and profile are linked by the stored login name, not by the submitted
+            // name.
+            SystemUser owner = systemUserService.getDataForLoginUser(login.getLoginName());
+            return owner != null && owner.getId().equals(form.getSystemUserId());
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     private boolean targetsProtectedAccount(UnifiedSystemUserForm form) {
