@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import ReactDOM from "react-dom";
 import { useIntl } from "react-intl";
 import {
   Button,
@@ -116,74 +117,76 @@ export default function CaseReleaseActions({
           hideCloseButton
         />
       )}
-      {open && (
-        <Modal
-          open
-          modalHeading={intl.formatMessage({
-            id: detail.amendmentOpen
-              ? "microbiology.release.amended.confirmTitle"
-              : "microbiology.release.final.confirmTitle",
-          })}
-          primaryButtonText={intl.formatMessage({
-            id: detail.amendmentOpen
-              ? "microbiology.m6.amendedRelease"
-              : "microbiology.release.final.confirm",
-          })}
-          secondaryButtonText={intl.formatMessage({
-            id: "common.cancel",
-          })}
-          primaryButtonDisabled={
-            busy ||
-            !summary ||
-            (pendingIncomingIds.length > 0 && !confirmIncoming)
-          }
-          onRequestClose={() => setOpen(false)}
-          onSecondarySubmit={() => setOpen(false)}
-          onRequestSubmit={confirmRelease}
-        >
-          {summary ? (
-            <p>
-              {intl.formatMessage(
-                { id: "microbiology.release.final.confirmBody" },
-                { count: summary.count, version: summary.version },
-              )}
-            </p>
-          ) : (
-            <InlineLoading
-              description={intl.formatMessage({ id: "common.loading" })}
-            />
-          )}
-          {pendingIncomingIds.length > 0 && (
-            <Checkbox
-              id="confirm-incoming-release"
-              aria-label={intl.formatMessage({
-                id: "microbiology.incoming.confirmRelease",
-              })}
-              labelText={intl.formatMessage({
-                id: "microbiology.incoming.confirmRelease",
-              })}
-              checked={confirmIncoming}
-              onChange={(_, { checked }) => setConfirmIncoming(checked)}
-            />
-          )}
-          {error && (
-            <InlineNotification
-              kind="error"
-              title={intl.formatMessage({
-                id: "microbiology.release.failed",
-              })}
-              hideCloseButton
-            />
-          )}
-          {(error?.response?.blockers || []).length > 0 && (
-            <ul>
-              {error.response.blockers.map((blocker) => (
-                <li key={blocker}>{blockerLabel(blocker)}</li>
-              ))}
-            </ul>
-          )}
-        </Modal>
-      )}
+      {open &&
+        ReactDOM.createPortal(
+          <Modal
+            open
+            modalHeading={intl.formatMessage({
+              id: detail.amendmentOpen
+                ? "microbiology.release.amended.confirmTitle"
+                : "microbiology.release.final.confirmTitle",
+            })}
+            primaryButtonText={intl.formatMessage({
+              id: detail.amendmentOpen
+                ? "microbiology.m6.amendedRelease"
+                : "microbiology.release.final.confirm",
+            })}
+            secondaryButtonText={intl.formatMessage({
+              id: "common.cancel",
+            })}
+            primaryButtonDisabled={
+              busy ||
+              !summary ||
+              (pendingIncomingIds.length > 0 && !confirmIncoming)
+            }
+            onRequestClose={() => setOpen(false)}
+            onSecondarySubmit={() => setOpen(false)}
+            onRequestSubmit={confirmRelease}
+          >
+            {summary ? (
+              <p>
+                {intl.formatMessage(
+                  { id: "microbiology.release.final.confirmBody" },
+                  { count: summary.count, version: summary.version },
+                )}
+              </p>
+            ) : (
+              <InlineLoading
+                description={intl.formatMessage({ id: "common.loading" })}
+              />
+            )}
+            {pendingIncomingIds.length > 0 && (
+              <Checkbox
+                id="confirm-incoming-release"
+                aria-label={intl.formatMessage({
+                  id: "microbiology.incoming.confirmRelease",
+                })}
+                labelText={intl.formatMessage({
+                  id: "microbiology.incoming.confirmRelease",
+                })}
+                checked={confirmIncoming}
+                onChange={(_, { checked }) => setConfirmIncoming(checked)}
+              />
+            )}
+            {error && (
+              <InlineNotification
+                kind="error"
+                title={intl.formatMessage({
+                  id: "microbiology.release.failed",
+                })}
+                hideCloseButton
+              />
+            )}
+            {(error?.response?.blockers || []).length > 0 && (
+              <ul>
+                {error.response.blockers.map((blocker) => (
+                  <li key={blocker}>{blockerLabel(blocker)}</li>
+                ))}
+              </ul>
+            )}
+          </Modal>,
+          document.body,
+        )}
     </>
   );
 }

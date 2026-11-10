@@ -561,6 +561,18 @@ describe("case bar", () => {
     ).toBeDisabled();
   });
 
+  test("the release confirmation opens outside the sticky case bar", async () => {
+    renderPage(<CaseViewShell service={barService()} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    fireEvent.click(
+      await within(bar).findByRole("button", { name: "Release final report" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Release final report?",
+    });
+    expect(bar).not.toContainElement(dialog);
+  });
+
   test("final release asks for confirmation and says what will happen", async () => {
     const service = barService();
     renderPage(<CaseViewShell service={service} caseId="case-1" />);
