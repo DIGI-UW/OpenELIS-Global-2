@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.dao;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.common.dao.BaseDAO;
@@ -23,6 +24,8 @@ public interface MicroBreakpointRuleDAO extends BaseDAO<MicroBreakpointRule, Str
             String antibioticId, String method, String specimenTypeId, String breakpointType);
 
     List<MicroBreakpointRule> getByStandardId(String standardId);
+
+    List<MicroBreakpointRule> getActiveByAntibioticIds(Collection<String> antibioticIds);
 
     List<MicroBreakpointRule> search(String standardId, String q, String organism, String antibiotic, String method,
             String specimenTypeId, int offset, int limit);
