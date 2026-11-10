@@ -150,11 +150,18 @@ export default function CaseAstWorkspace({
   }, [detail.id, data, service, canListAnalyzers]);
   const canEnter = !readOnly && detail.canWrite && data?.canEnter;
   const canValidate = !readOnly && detail.canValidate && data?.canValidate;
+  const actionLabel = (action, run) =>
+    action === "acknowledge" &&
+    run?.intrinsicContradiction &&
+    !run?.analyzerExpertFlags
+      ? "confirmIdentification"
+      : action;
   const open = (action, isolate, run, reading, antibioticId) => {
     setError(false);
     setSelectedLots({});
     setDraft({
       action,
+      label: actionLabel(action, run),
       isolateId: isolate?.id,
       runId: run?.id,
       readingId: reading?.id,
@@ -212,7 +219,7 @@ export default function CaseAstWorkspace({
     setBusy(true);
     setError(false);
     try {
-      const { adjustPanel, ...request } = draft;
+      const { adjustPanel, label, ...request } = draft;
       if (draft.action === "resolve") {
         const { antibioticId, evidenceFingerprint, interpretation, reason } =
           draft;
@@ -273,7 +280,7 @@ export default function CaseAstWorkspace({
       kind="ghost"
       onClick={() => open(action, isolate, run, reading, antibioticId)}
     >
-      {t(`action.${action}`)}
+      {t(`action.${actionLabel(action, run)}`)}
     </Button>
   );
   const activeIsolate = data?.isolates?.find((i) => i.id === draft?.isolateId);
@@ -413,6 +420,15 @@ export default function CaseAstWorkspace({
                         hideCloseButton
                       />
                     )}
+                    {run.intrinsicContradiction &&
+                      !run.analyzerFlagsAcknowledgedAt && (
+                        <InlineNotification
+                          kind="warning"
+                          lowContrast
+                          title={t("intrinsicContradiction")}
+                          hideCloseButton
+                        />
+                      )}
                     <TableContainer>
                       <Table
                         size="sm"
@@ -485,8 +501,28 @@ export default function CaseAstWorkspace({
                                           )}
                                         </p>
                                       )}
-                                      {reading.overrideInterpretation && (
-                                        <Tag type="purple">{t("manual")}</Tag>
+                                      {reading.overrideRuleId ? (
+                                        <>
+                                          <Tag type="teal">
+                                            {t("expertRule")}
+                                          </Tag>
+                                          <p>
+                                            {intl.formatMessage(
+                                              {
+                                                id: "microbiology.m6.expertRuleLine",
+                                              },
+                                              {
+                                                organism: isolate.organism,
+                                                antibiotic:
+                                                  agent.antibioticName,
+                                              },
+                                            )}
+                                          </p>
+                                        </>
+                                      ) : (
+                                        reading.overrideInterpretation && (
+                                          <Tag type="purple">{t("manual")}</Tag>
+                                        )
                                       )}
                                       <br />
                                       {t("breakpoint")}: {run.breakpointVersion}{" "}
@@ -607,7 +643,8 @@ export default function CaseAstWorkspace({
                         run.status === "QC_FAILED" &&
                         button("qc-override", isolate, run)}
                       {canValidate &&
-                        run.analyzerExpertFlags &&
+                        (run.analyzerExpertFlags ||
+                          run.intrinsicContradiction) &&
                         !run.analyzerFlagsAcknowledgedAt &&
                         button("acknowledge", isolate, run)}
                     </div>
@@ -724,7 +761,7 @@ export default function CaseAstWorkspace({
       {draft && (
         <Modal
           open
-          modalHeading={t(`action.${draft.action}`)}
+          modalHeading={t(`action.${draft.label || draft.action}`)}
           primaryButtonText={t("save")}
           secondaryButtonText={t("cancel")}
           primaryButtonDisabled={

@@ -61,6 +61,9 @@ public class MicroAstReading extends BaseObject<String> {
     @Column(name = "override_reason")
     private String overrideReason;
 
+    @Column(name = "override_rule_id", length = 36)
+    private String overrideRuleId;
+
     @Column(name = "created_at", nullable = false)
     private Timestamp createdAt = new Timestamp(System.currentTimeMillis());
 
@@ -189,6 +192,14 @@ public class MicroAstReading extends BaseObject<String> {
         this.overrideReason = overrideReason;
     }
 
+    public String getOverrideRuleId() {
+        return overrideRuleId;
+    }
+
+    public void setOverrideRuleId(String overrideRuleId) {
+        this.overrideRuleId = overrideRuleId;
+    }
+
     public Timestamp getCreatedAt() {
         return createdAt;
     }
@@ -214,5 +225,10 @@ public class MicroAstReading extends BaseObject<String> {
 
     public void setEntrySequence(long value) {
         entrySequence = value;
+    }
+
+    public boolean contradictsExpertRule() {
+        return overrideRuleId != null
+                && ("SUSCEPTIBLE".equals(interpretation) || "INTERMEDIATE".equals(interpretation));
     }
 }
