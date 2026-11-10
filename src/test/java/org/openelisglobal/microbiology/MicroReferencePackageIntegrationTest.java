@@ -614,6 +614,80 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void panelOrganismCoverageCountsThePanelDrugsWithBreakpointsForEachOrganismAndLabGroup() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.65", "COVERAGE");
+        load(fixture);
+        var covered = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        String drug = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow().getId();
+        var uncovered = organism("Uncovered organism " + suffix());
+        var byGroup = organism("Group organism " + suffix());
+        byGroup.setOrganismGroup("Coverage group " + suffix());
+        organisms.update(byGroup);
+        var groupRule = new MicroBreakpointRule();
+        groupRule.setStandardId(standard(fixture).getId());
+        groupRule.setOrganismGroup(byGroup.getOrganismGroup());
+        groupRule.setAntibioticId(drug);
+        groupRule.setBreakpointType("MIC");
+        rules.insert(groupRule);
+        var tuberculosis = organism("TB organism " + suffix());
+        tuberculosis.setSusceptibilityProtocol("TB");
+        organisms.update(tuberculosis);
+        String labGroup = "Coverage lab group " + suffix();
+        writeOrganismGroups(GROUPS_HEADER + covered.getDisplayName() + ",,," + labGroup + "\n"
+                + uncovered.getDisplayName() + ",,," + labGroup + "\n");
+        assertFalse(reloadOrganismGroups(false).hasErrors());
+        String otherDrug = antibiotics.getAll().stream().map(MicroAntibiotic::getId).filter(id -> !id.equals(drug))
+                .findFirst().orElseThrow();
+
+        var coverage = referenceAdmin.getPanelOrganismCoverage(java.util.List.of(drug, otherDrug), "GENERAL");
+
+        java.util.function.Function<String, String> row = name -> coverage.stream()
+                .filter(entry -> entry.value.equals(name))
+                .map(entry -> entry.group + " " + entry.covered + "/" + entry.total).findFirst().orElse("absent");
+        assertEquals("false 1/2", row.apply(covered.getDisplayName()));
+        assertEquals("false 1/2", row.apply(byGroup.getDisplayName()));
+        assertEquals("false 0/2", row.apply(uncovered.getDisplayName()));
+        assertEquals("true 1/2", row.apply(labGroup));
+        assertEquals("absent", row.apply(tuberculosis.getDisplayName()));
+        assertTrue("Most covered first", coverage.get(0).covered >= coverage.get(coverage.size() - 1).covered);
+    }
+
+    @Test
+    public void defaultForSetOnThePanelsPageAssignsTheDefaultAndAFileLoadKeepsIt() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.66", "PAGEDEFAULT");
+        load(fixture);
+        var chosen = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var fileChoice = organism("File choice organism " + suffix());
+        String header = "panelName,antibioticWhonetCode,defaultFor\n";
+        writePanels(header + "Synthetic page panel," + fixture.antibiotic + "," + fileChoice.getDisplayName() + "\n");
+        assertFalse(reloadPanels(false).hasErrors());
+        var panel = referenceAdmin.getAstPanel(panels.findCurrentByNameIgnoreCase("Synthetic page panel").getId());
+        assertEquals(java.util.List.of(fileChoice.getDisplayName()), panel.defaultFor);
+        String republished = referenceAdmin.publishPanelVersion(panel.id, panel, "1").id;
+        assertEquals("An unchanged list stays the file's", "panels.csv",
+                panels.get(republished).orElseThrow().getDefaultForFile());
+
+        panel = referenceAdmin.getAstPanel(republished);
+        panel.defaultFor = java.util.List.of(chosen.getDisplayName());
+        String published = referenceAdmin.publishPanelVersion(panel.id, panel, "1").id;
+        assertEquals(published, organisms.get(chosen.getId()).orElseThrow().getDefaultAstPanelId());
+
+        assertFalse(reloadPanels(true).hasErrors());
+        var current = panels.findCurrentByNameIgnoreCase("Synthetic page panel");
+        assertEquals(chosen.getDisplayName(), current.getDefaultFor());
+        assertTrue(panelsHandler.getLastSummary().getRows().stream()
+                .anyMatch(row -> "defaultFor set on the AST panels page; file value not applied".equals(row.reason())));
+        assertEquals(current.getId(), organisms.get(chosen.getId()).orElseThrow().getDefaultAstPanelId());
+
+        var cleared = referenceAdmin.getAstPanel(current.getId());
+        cleared.defaultFor = java.util.List.of();
+        referenceAdmin.publishPanelVersion(cleared.id, cleared, "1");
+        assertFalse(reloadPanels(true).hasErrors());
+        assertEquals("A list cleared on the page stays cleared", java.util.List.of(), referenceAdmin
+                .getAstPanel(panels.findCurrentByNameIgnoreCase("Synthetic page panel").getId()).defaultFor);
+    }
+
+    @Test
     public void panelFileReportBehaviorLoadsWithAWarningPointingAtAstRules() throws Exception {
         var fixture = new ReferencePackageFixture("2099.19", "PANELCOL");
         load(fixture);

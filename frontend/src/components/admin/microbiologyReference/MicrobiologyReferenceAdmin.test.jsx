@@ -5,6 +5,7 @@ vi.mock("./api", () => ({
   saveReference: vi.fn(),
   setReferenceActive: vi.fn(),
   getAstPanel: vi.fn(),
+  getPanelOrganismCoverage: vi.fn(),
   publishAstPanel: vi.fn(),
   getBreakpointStandards: vi.fn(),
   getDefaultBreakpointStandard: vi.fn(),
@@ -39,6 +40,7 @@ import {
   getReferenceOptions,
   getReferencePage,
   getAstPanel,
+  getPanelOrganismCoverage,
   publishAstPanel,
   previewBreakpointImport,
   saveBreakpointRule,
@@ -71,6 +73,7 @@ beforeEach(() => {
   });
   getReferenceItem.mockResolvedValue({});
   getReferenceOptions.mockResolvedValue([]);
+  getPanelOrganismCoverage.mockResolvedValue([]);
 });
 
 describe("microbiology reference administration", () => {
@@ -578,6 +581,100 @@ describe("microbiology reference administration", () => {
       expect(row).not.toHaveProperty("tier");
       expect(row).not.toHaveProperty("reportBehavior");
     });
+  });
+
+  it("ranks default-for organisms by breakpoint coverage and publishes the chosen ones", async () => {
+    const user = userEvent.setup();
+    const panel = {
+      id: "panel-v1",
+      name: "Urine GN",
+      versionNumber: 1,
+      susceptibilityProtocol: "GENERAL",
+      current: true,
+      active: true,
+      defaultFor: ["Acinetobacter"],
+      antibiotics: [
+        {
+          antibioticId: "cip",
+          antibioticName: "Ciprofloxacin",
+          whonetCode: "CIP",
+        },
+      ],
+    };
+    getReferencePage.mockResolvedValue({ rows: [panel], total: 1 });
+    getAstPanel.mockResolvedValue(panel);
+    getPanelOrganismCoverage.mockResolvedValue([
+      { value: "Escherichia coli", group: false, covered: 1, total: 1 },
+      { value: "Enterobacterales", group: true, covered: 1, total: 1 },
+      {
+        value: "Streptococcus pneumoniae",
+        group: false,
+        covered: 0,
+        total: 1,
+      },
+    ]);
+    publishAstPanel.mockResolvedValue({ ...panel, id: "panel-v2" });
+
+    renderPage(
+      <AstPanelPage query={{ ...query, edit: panel.id }} setQuery={vi.fn()} />,
+    );
+
+    expect(await screen.findByText("Ciprofloxacin")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(getPanelOrganismCoverage).toHaveBeenCalledWith(
+        ["cip"],
+        "GENERAL",
+        expect.anything(),
+      ),
+    );
+    expect(screen.getByText("Acinetobacter")).toBeInTheDocument();
+    await user.click(screen.getByPlaceholderText("Search organisms or groups"));
+    const menu = () =>
+      within(document.getElementById("microbiology-panel-default-for__menu"));
+    await waitFor(() => expect(menu().getAllByRole("option")).toHaveLength(3));
+    expect(
+      menu()
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual([
+      "Escherichia coli · 1 of 1 with breakpoints",
+      "Enterobacterales (group) · 1 of 1 with breakpoints",
+      "Acinetobacter",
+    ]);
+
+    await user.click(
+      screen.getByText(
+        "Show organisms with no breakpoints for these antibiotics",
+      ),
+    );
+    await user.click(screen.getByPlaceholderText("Search organisms or groups"));
+    expect(
+      await screen.findByRole("option", {
+        name: "Streptococcus pneumoniae · 0 of 1 with breakpoints",
+      }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("option", {
+        name: "Escherichia coli · 1 of 1 with breakpoints",
+      }),
+    );
+    expect(screen.getByText("Escherichia coli")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", {
+        name: messages["microbiology.admin.astPanels.publishVersion"],
+      }),
+    );
+    await user.click(
+      await screen.findByRole("button", {
+        name: messages["microbiology.admin.astPanels.publishVersion"],
+      }),
+    );
+
+    await waitFor(() => expect(publishAstPanel).toHaveBeenCalledTimes(1));
+    expect(publishAstPanel.mock.calls[0][0].defaultFor).toEqual([
+      "Acinetobacter",
+      "Escherichia coli",
+    ]);
   });
 
   it("requires impact confirmation before deactivating a referenced organism", async () => {

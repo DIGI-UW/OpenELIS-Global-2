@@ -5,6 +5,7 @@ import {
   ComboBox,
   ComposedModal,
   DataTable,
+  FilterableMultiSelect,
   InlineNotification,
   Loading,
   ModalBody,
@@ -32,6 +33,7 @@ import { Add, ArrowDown, ArrowUp, TrashCan } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import {
   getAstPanel,
+  getPanelOrganismCoverage,
   getReferenceOptions,
   getReferencePage,
   publishAstPanel,
@@ -62,6 +64,8 @@ const AstPanelPage = ({ query, setQuery }) => {
   const [saving, setSaving] = useState(false);
   const [confirmingPublish, setConfirmingPublish] = useState(false);
   const [error, setError] = useState("");
+  const [coverage, setCoverage] = useState([]);
+  const [showAllOrganisms, setShowAllOrganisms] = useState(false);
   const { rememberReturnFocus, restoreReturnFocus } = useModalFocusReturn();
   const requestQuery = buildReferenceRequestQuery(query);
   const draft = query.edit
@@ -113,6 +117,27 @@ const AstPanelPage = ({ query, setQuery }) => {
       .catch((requestError) => setError(requestError.message));
     return () => controller.abort();
   }, [query.edit]);
+
+  const coverageKey = draft
+    ? [
+        draft.susceptibilityProtocol || "GENERAL",
+        ...draft.antibiotics.map((row) => row.antibioticId),
+      ].join("|")
+    : "";
+
+  useEffect(() => {
+    if (!coverageKey) {
+      return undefined;
+    }
+    const [protocol, ...antibioticIds] = coverageKey.split("|");
+    const controller = new AbortController();
+    getPanelOrganismCoverage(antibioticIds, protocol, controller.signal)
+      .then((rows) => setCoverage(rows || []))
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setError(requestError.message);
+      });
+    return () => controller.abort();
+  }, [coverageKey]);
 
   const headers = useMemo(
     () => [
@@ -208,6 +233,30 @@ const AstPanelPage = ({ query, setQuery }) => {
   };
 
   const readOnly = !!draft?.id && draft.current === false;
+  const defaultFor = draft?.defaultFor || [];
+  const coveredValues = new Set(coverage.map((row) => row.value));
+  const defaultForItems = [
+    ...coverage.filter(
+      (row) =>
+        showAllOrganisms || row.covered > 0 || defaultFor.includes(row.value),
+    ),
+    ...defaultFor
+      .filter((value) => !coveredValues.has(value))
+      .map((value) => ({ value })),
+  ];
+  const defaultForLabel = (item) =>
+    !item
+      ? ""
+      : item.total === undefined
+        ? item.value
+        : intl.formatMessage(
+            {
+              id: item.group
+                ? "microbiology.admin.astPanels.defaultFor.group"
+                : "microbiology.admin.astPanels.defaultFor.organism",
+            },
+            { name: item.value, covered: item.covered, total: item.total },
+          );
 
   if (loading && page.rows.length === 0) return <Loading withOverlay={false} />;
 
@@ -556,6 +605,48 @@ const AstPanelPage = ({ query, setQuery }) => {
                   </div>
                 ))}
               </div>
+              <Checkbox
+                id="microbiology-panel-show-all-organisms"
+                labelText={intl.formatMessage({
+                  id: "microbiology.admin.astPanels.defaultFor.showAll",
+                })}
+                checked={showAllOrganisms}
+                disabled={readOnly}
+                onChange={(_, detail) => setShowAllOrganisms(detail.checked)}
+              />
+              <FilterableMultiSelect
+                id="microbiology-panel-default-for"
+                titleText={intl.formatMessage({
+                  id: "microbiology.admin.astPanels.defaultFor",
+                })}
+                helperText={intl.formatMessage({
+                  id: "microbiology.admin.astPanels.defaultFor.help",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "microbiology.admin.astPanels.defaultFor.placeholder",
+                })}
+                items={defaultForItems}
+                itemToString={defaultForLabel}
+                selectedItems={defaultForItems.filter((item) =>
+                  defaultFor.includes(item.value),
+                )}
+                sortItems={(items) => items}
+                disabled={readOnly}
+                onChange={({ selectedItems }) =>
+                  updateDraft({
+                    defaultFor: selectedItems.map((item) => item.value),
+                  })
+                }
+              />
+              {defaultFor.length > 0 && (
+                <div className="microbiology-admin__tag-stack">
+                  {defaultFor.map((value) => (
+                    <Tag key={value} type="cool-gray">
+                      {value}
+                    </Tag>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </ModalBody>

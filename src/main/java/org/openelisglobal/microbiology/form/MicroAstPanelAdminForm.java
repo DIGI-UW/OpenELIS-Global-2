@@ -12,6 +12,7 @@ public class MicroAstPanelAdminForm {
     public String name;
     public String organismGroup;
     public String specimenTypeId;
+    public List<String> defaultFor;
     public boolean active = true;
     public boolean current = true;
     public String publishedBy;
