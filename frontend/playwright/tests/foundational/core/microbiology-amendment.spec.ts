@@ -138,6 +138,7 @@ test.describe("Microbiology final-report amendments", () => {
         .selectOption("AMENDMENT");
       await expect(page).toHaveURL(/scope=AMENDMENT$/);
       await page
+        .getByTestId("microbiology-amendment-card")
         .getByRole("button", { name: "Release amended report" })
         .click();
       await expect(

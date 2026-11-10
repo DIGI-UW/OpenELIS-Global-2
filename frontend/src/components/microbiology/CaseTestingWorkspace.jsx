@@ -382,10 +382,17 @@ export default function CaseTestingWorkspace({
   }, [routedScope, scanRow, scanSearch]);
   const handledJump = useRef(null);
   useEffect(() => {
-    if (!jump || handledJump.current === jump || placement !== jump.scope)
+    if (!jump || handledJump.current === jump) return;
+    if (placement !== jump.scope) {
+      setPlacement(jump.scope);
       return;
+    }
     handledJump.current = jump;
-    const heading = document.querySelector(`#case-scope-${jump.scope} button`);
+    const heading = document.querySelector(
+      jump.scope === "HISTORY"
+        ? "#case-history button"
+        : `#case-scope-${jump.scope} button`,
+    );
     heading?.scrollIntoView?.({ block: "center" });
     heading?.focus({ preventScroll: true });
   }, [jump, placement]);
