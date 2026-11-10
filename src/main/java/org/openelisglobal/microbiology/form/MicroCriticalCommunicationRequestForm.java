@@ -10,6 +10,7 @@ public class MicroCriticalCommunicationRequestForm {
     public String recipient;
     public String recipientContact;
     public String communicationMethod;
+    public String outcome;
     public String message;
     public boolean followUpNeeded;
     public String resolutionNote;

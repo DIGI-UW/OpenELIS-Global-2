@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+<changeSet id="154-amr-v3-critical-outcome" author="openelis">
+<addColumn schemaName="clinlims" tableName="micro_critical_communication"><column name="outcome" type="varchar(30)"/></addColumn>
+<sql>ALTER TABLE clinlims.micro_critical_communication ADD CONSTRAINT chk_micro_critical_communication_outcome CHECK (outcome IS NULL OR outcome IN ('CONFIRMED', 'REACHED_NO_READBACK', 'UNABLE_TO_REACH'));</sql>
+<rollback><sql splitStatements="false"><![CDATA[
+DO $$ BEGIN
+ IF EXISTS (SELECT 1 FROM clinlims.micro_critical_communication WHERE outcome IS NOT NULL) THEN
+  RAISE EXCEPTION 'Cannot discard the critical call outcomes';
+ END IF;
+END $$;
+]]></sql><dropColumn schemaName="clinlims" tableName="micro_critical_communication" columnName="outcome"/></rollback>
+</changeSet>
+</databaseChangeLog>
