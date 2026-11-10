@@ -20,30 +20,22 @@ import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.apache.http.HttpStatus;
-import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.conn.ClientConnectionManager;
-import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.ssl.SSLSocketFactory;
-import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.params.CoreConnectionPNames;
 import org.dom4j.DocumentException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.query.ExtendedPatientSearchResults;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Scope;
@@ -58,6 +50,10 @@ public class ExternalPatientSearch implements IExternalPatientSearch {
 
     @Value("${org.openelisglobal.externalSearch.timeout:5000}")
     private Integer timeout;
+
+    @Autowired
+    @Qualifier("patientSearchHttpClient")
+    private CloseableHttpClient httpClient;
 
     private static final String GET_PARAM_PWD = "pwd";
     private static final String GET_PARAM_NAME = "name";
@@ -171,80 +167,42 @@ public class ExternalPatientSearch implements IExternalPatientSearch {
                 && GenericValidator.isBlankOrNull(nationalId) && GenericValidator.isBlankOrNull(STNumber);
     }
 
-    // protected for unit testing called from synchronized block
+    // Called from the synchronized search operation.
     protected void doSearch() {
-
-        CloseableHttpClient httpclient = HttpClientBuilder.create().build();
-        setTimeout(httpclient);
-
-        HttpGet httpget = new HttpGet(connectionString);
-        URI getUri = buildConnectionString(httpget.getURI());
-        httpget.setURI(getUri);
-
-        CloseableHttpResponse getResponse = null;
+        returnStatus = HttpStatus.SC_BAD_GATEWAY;
+        URI endpoint;
         try {
-            // Ignore hostname mismatches and allow trust of self-signed certs
-            // TODO shouldn't let a self signed cert through
-            SSLSocketFactory sslsf = new SSLSocketFactory(new TrustSelfSignedStrategy(),
-                    SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-            Scheme https = new Scheme("https", 443, sslsf);
-            ClientConnectionManager ccm = httpclient.getConnectionManager();
-            ccm.getSchemeRegistry().register(https);
-
-            getResponse = httpclient.execute(httpget);
-            returnStatus = getResponse.getStatusLine().getStatusCode();
+            endpoint = new URI(connectionString);
+        } catch (URISyntaxException e) {
+            errors.add(URI_BUILD_FAILURE);
+            return;
+        }
+        if (!"https".equalsIgnoreCase(endpoint.getScheme()) || endpoint.getHost() == null
+                || endpoint.getUserInfo() != null || endpoint.getFragment() != null) {
+            errors.add("Patient search requires an HTTPS endpoint without embedded credentials or a fragment.");
+            return;
+        }
+        URI query = buildConnectionString(endpoint);
+        if (query == null) {
+            return;
+        }
+        HttpGet request = new HttpGet(query);
+        request.setConfig(RequestConfig.custom().setConnectTimeout(timeout).setSocketTimeout(timeout)
+                .setConnectionRequestTimeout(timeout).setRedirectsEnabled(false).build());
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
+            returnStatus = response.getStatusLine().getStatusCode();
             setPossibleErrors();
-            setResults(IOUtils.toString(getResponse.getEntity().getContent(), "UTF-8"));
+            if (returnStatus == HttpStatus.SC_OK && response.getEntity() != null) {
+                setResults(IOUtils.toString(response.getEntity().getContent(), "UTF-8"));
+            }
         } catch (SocketTimeoutException e) {
             errors.add("Response from patient information server took too long.");
-            LogEvent.logError(e);
-            // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", "Tinny
-            // time out"
-            // + e);
         } catch (ConnectException e) {
-            errors.add("Unable to connect to patient information form service. Service may not be running");
-            LogEvent.logError(e);
-            // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", "you no
-            // talks? "
-            // + e);
+            errors.add("Unable to connect to patient information service.");
         } catch (IOException e) {
-            errors.add("IO error trying to read input stream.");
-            LogEvent.logError(e);
-            // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", "all else
-            // failed
-            // " + e);
-        } catch (KeyManagementException e) {
-            errors.add("Key management error trying to connect to external search service.");
-            LogEvent.logError(e);
-        } catch (UnrecoverableKeyException e) {
-            errors.add("Unrecoverable key error trying to connect to external search service.");
-            LogEvent.logError(e);
-        } catch (NoSuchAlgorithmException e) {
-            errors.add("No such encyrption algorithm error trying to connect to external search service.");
-            LogEvent.logError(e);
-        } catch (KeyStoreException e) {
-            errors.add("Keystore error trying to connect to external search service.");
-            LogEvent.logError(e);
-        } catch (RuntimeException e) {
-            errors.add("Runtime error trying to retrieve patient information.");
-            LogEvent.logError(e);
-            httpget.abort();
-            throw e;
-        } finally {
-            if (getResponse != null) {
-                try {
-                    getResponse.close();
-                } catch (IOException e) {
-                    LogEvent.logError(e);
-                }
-            }
-
-            httpclient.getConnectionManager().shutdown();
-            try {
-                httpclient.close();
-            } catch (IOException e) {
-                LogEvent.logError(e.getMessage(), e);
-            }
+            errors.add("Unable to establish a verified connection or read the patient search response.");
+            // Request URLs contain search credentials and patient terms; never log them.
+            LogEvent.logError(getClass().getSimpleName(), "doSearch", e.getClass().getSimpleName());
         }
     }
 
@@ -283,15 +241,6 @@ public class ExternalPatientSearch implements IExternalPatientSearch {
                     + returnStatus);
         }
         }
-    }
-
-    private void setTimeout(HttpClient httpclient) {
-        // this one causes a timeout if a connection is established but there is
-        // no response within <timeout> seconds
-        httpclient.getParams().setParameter(CoreConnectionPNames.SO_TIMEOUT, timeout);
-
-        // this one causes a timeout if no connection is established within 10 seconds
-        httpclient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, timeout);
     }
 
     private URI buildConnectionString(URI uriStart) {

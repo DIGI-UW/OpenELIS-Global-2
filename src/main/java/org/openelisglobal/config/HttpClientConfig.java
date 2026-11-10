@@ -9,6 +9,7 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.Resource;
 
 @Configuration
@@ -39,6 +40,7 @@ public class HttpClientConfig {
     private Integer socketTimeout;
 
     @Bean
+    @Primary
     public CloseableHttpClient httpClient() throws Exception {
 
         HttpClientBuilder httpBuilder = HttpClientBuilder.create().setSSLSocketFactory(sslConnectionSocketFactory());
@@ -58,6 +60,16 @@ public class HttpClientConfig {
         }
 
         return httpBuilder.setSSLSocketFactory(sslConnectionSocketFactory()).build();
+    }
+
+    @Bean(name = "patientSearchHttpClient")
+    public CloseableHttpClient patientSearchHttpClient() throws Exception {
+        // Partner search uses its own credentials. Do not offer the installation's
+        // client key.
+        SSLContext serverTrust = SSLContextBuilder.create()
+                .loadTrustMaterial(trustStore.getFile(), trustStorePassword.toCharArray()).build();
+        return HttpClientBuilder.create().setSSLSocketFactory(new SSLConnectionSocketFactory(serverTrust))
+                .disableRedirectHandling().build();
     }
 
     public SSLConnectionSocketFactory sslConnectionSocketFactory() throws Exception {
