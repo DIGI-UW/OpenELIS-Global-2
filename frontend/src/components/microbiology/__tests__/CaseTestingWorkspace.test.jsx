@@ -812,6 +812,33 @@ test("a case bar jump scrolls to its section and focuses the heading on every ju
   expect(scroll.mock.contexts.filter((el) => el === heading)).toHaveLength(2);
   scroll.mockRestore();
 });
+test("a case bar jump reopens a section the user collapsed", async () => {
+  const api = service();
+  const view = (jump) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?scope=ADDITIONAL"
+        jump={jump}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(view(null));
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: messages["microbiology.testing.additional"],
+      expanded: true,
+    }),
+  );
+  const heading = await screen.findByRole("button", {
+    name: messages["microbiology.testing.additional"],
+    expanded: false,
+  });
+  rerender(view({ scope: "ADDITIONAL" }));
+  await waitFor(() => expect(heading).toHaveAttribute("aria-expanded", "true"));
+  await waitFor(() => expect(heading).toHaveFocus());
+});
 test("a case bar jump to the timeline scrolls to and focuses its heading on every jump", async () => {
   const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
   const api = service();
