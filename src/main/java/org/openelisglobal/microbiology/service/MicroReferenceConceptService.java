@@ -1,6 +1,10 @@
 package org.openelisglobal.microbiology.service;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.LoadedRow;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
@@ -23,13 +27,24 @@ public class MicroReferenceConceptService {
         this.antibiotics = antibiotics;
     }
 
-    public void validateIdentities(java.util.List<CsvRow> rows) {
-        var identities = new java.util.HashSet<java.util.List<String>>();
+    public List<LoadedRow<String>> loadAll(List<CsvRow> rows, Function<CsvRow, LoadedRow<String>> loader) {
+        var identities = new HashSet<List<String>>();
+        List<LoadedRow<String>> loaded = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
         for (CsvRow row : rows) {
-            if (!identities.add(java.util.List.of(required(row, "source", 80), required(row, "code", 120)))) {
-                throw new IllegalArgumentException("Duplicate source identity at line " + row.lineNumber());
+            try {
+                if (!identities.add(List.of(required(row, "source", 80), required(row, "code", 120)))) {
+                    throw new IllegalArgumentException("Duplicate source identity");
+                }
+                loaded.add(loader.apply(row));
+            } catch (IllegalArgumentException e) {
+                errors.add("Line " + row.lineNumber() + ": " + e.getMessage());
             }
         }
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join("; ", errors));
+        }
+        return loaded;
     }
 
     public LoadedRow<String> loadOrganism(CsvRow row) {

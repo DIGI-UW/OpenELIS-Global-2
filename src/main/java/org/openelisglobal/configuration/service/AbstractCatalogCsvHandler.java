@@ -102,9 +102,14 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
 
     /**
      * Persists the references the resolver could not satisfy while the last unit of
-     * work ran. Called after the row transaction has ended, so the records survive
-     * a rolled-back row and a dry run alike.
+     * work ran. The service writes in its own transaction, so the records survive a
+     * rolled-back file and a dry run alike.
      */
+    protected static String rowError(int lineNumber, RuntimeException failure) {
+        String reason = CsvLoadSummary.reason(failure);
+        return reason.startsWith("Line ") ? reason : "Line " + lineNumber + ": " + reason;
+    }
+
     protected void flushUnresolvedReferences(String fileName, int lineNumber) {
         if (unresolvedReferenceService != null) {
             unresolvedReferenceService.recordPending(getDomainName(), fileName, lineNumber);

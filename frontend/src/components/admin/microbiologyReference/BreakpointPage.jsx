@@ -220,6 +220,12 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
         header: intl.formatMessage({ id: "microbiology.admin.field.method" }),
       },
       {
+        key: "diskContent",
+        header: intl.formatMessage({
+          id: "microbiology.admin.astPanels.diskContent",
+        }),
+      },
+      {
         key: "susceptible",
         header: intl.formatMessage({
           id: "microbiology.admin.breakpoints.susceptible",
@@ -378,11 +384,18 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
     effectiveDate: standard.effectiveDate || "—",
     actions: standard.id,
   }));
+  const inactiveRuleIds = new Set(
+    rules.rows.filter((rule) => rule.active === false).map((rule) => rule.id),
+  );
   const ruleRows = rules.rows.map((rule) => ({
     id: rule.id,
-    organism: rule.organismName || rule.organismGroup,
+    organism:
+      rule.organismName ||
+      rule.organismGroup ||
+      intl.formatMessage({ id: "microbiology.admin.astRules.anyOrganism" }),
     antibiotic: `${rule.antibioticName || ""} (${rule.antibioticCode || ""})`,
     method: rule.method,
+    diskContent: rule.diskContent || "—",
     susceptible: rule.susceptibleValue ?? "—",
     intermediate:
       rule.intermediateLowerValue == null && rule.intermediateUpperValue == null
@@ -819,15 +832,24 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                         {row.cells.map((cell) => (
                           <TableCell key={cell.id}>
                             {cell.info.header === "source" ? (
-                              <Tag
-                                type={
-                                  cell.value === "LOCAL" ? "purple" : "cyan"
-                                }
-                              >
-                                {intl.formatMessage({
-                                  id: `microbiology.admin.breakpoints.source.${cell.value.toLowerCase()}`,
-                                })}
-                              </Tag>
+                              <>
+                                <Tag
+                                  type={
+                                    cell.value === "LOCAL" ? "purple" : "cyan"
+                                  }
+                                >
+                                  {intl.formatMessage({
+                                    id: `microbiology.admin.breakpoints.source.${cell.value.toLowerCase()}`,
+                                  })}
+                                </Tag>
+                                {inactiveRuleIds.has(row.id) && (
+                                  <Tag type="gray">
+                                    {intl.formatMessage({
+                                      id: "microbiology.admin.status.inactive",
+                                    })}
+                                  </Tag>
+                                )}
+                              </>
                             ) : cell.info.header === "actions" ? (
                               canEditRules && (
                                 <OverflowMenu

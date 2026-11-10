@@ -115,6 +115,10 @@ public class MicroReportingRuleService {
                         .collect(Collectors.toCollection(HashSet::new));
         MicroReportingRule rule = form.id == null ? new MicroReportingRule()
                 : rules.get(form.id).orElseThrow(() -> new IllegalArgumentException("REPORTING_RULE_NOT_FOUND"));
+        if (organismGroup != null && !organismGroup.equals(rule.getOrganismGroup())
+                && !organisms.getLabGroupNames().contains(organismGroup)) {
+            throw new IllegalArgumentException("REPORTING_RULE_GROUP_INVALID");
+        }
         String previousAntibioticId = rule.getAntibioticId();
         String before = form.id == null ? null : snapshot(rule);
         rule.setAntibioticId(antibioticId);

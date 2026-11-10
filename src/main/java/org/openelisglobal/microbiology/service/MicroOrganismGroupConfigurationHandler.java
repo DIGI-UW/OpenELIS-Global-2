@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.configuration.service.AbstractCatalogCsvHandler;
+import org.openelisglobal.configuration.service.CatalogReferenceResolver;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.LoadedRow;
@@ -23,13 +24,18 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
     private final MicroAntibioticDAO antibiotics;
     private final MicroReportingRuleService reportingRules;
     private final MicroGroupRuleConflictFinder conflicts;
+    private final MicroAstPanelConfigurationHandler panelDefaults;
+    private final CatalogReferenceResolver resolver;
 
     public MicroOrganismGroupConfigurationHandler(MicroOrganismDAO organisms, MicroAntibioticDAO antibiotics,
-            MicroReportingRuleService reportingRules, MicroGroupRuleConflictFinder conflicts) {
+            MicroReportingRuleService reportingRules, MicroGroupRuleConflictFinder conflicts,
+            MicroAstPanelConfigurationHandler panelDefaults, CatalogReferenceResolver resolver) {
         this.organisms = organisms;
         this.antibiotics = antibiotics;
         this.reportingRules = reportingRules;
         this.conflicts = conflicts;
+        this.panelDefaults = panelDefaults;
+        this.resolver = resolver;
     }
 
     @Override
@@ -49,6 +55,7 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
 
     @Override
     protected void load(List<CsvRow> rows, RowTransactionRunner transaction, CsvLoadSummary summary, String fileName) {
+        List<String> removals = new ArrayList<>();
         List<LoadedRow<String>> outcomes = transaction.run(() -> {
             List<String> errors = new ArrayList<>();
             List<MembershipRow> memberships = new ArrayList<>();
@@ -58,12 +65,17 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
                 try {
                     MicroOrganism organism = organism(row);
                     String group = required(row, "group");
+                    if (group.length() > 100) {
+                        throw new IllegalArgumentException(
+                                "Line " + row.lineNumber() + ": group is longer than 100 characters");
+                    }
                     groupNames.add(group);
                     linesByOrganismAndGroup.computeIfAbsent(organism.getId(), ignored -> new HashMap<>()).put(group,
                             row.lineNumber());
                     memberships.add(new MembershipRow(organism, !organism.getLabGroups().contains(group)));
                 } catch (RuntimeException e) {
                     errors.add(CsvLoadSummary.reason(e));
+                    flushUnresolvedReferences(fileName, row.lineNumber());
                 }
             }
             if (!errors.isEmpty()) {
@@ -76,8 +88,9 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
                 for (String group : groupNames) {
                     if (wanted.contains(group)) {
                         changed |= organism.getLabGroups().add(group);
-                    } else {
-                        changed |= organism.getLabGroups().remove(group);
+                    } else if (organism.getLabGroups().remove(group)) {
+                        removals.add(organism.getDisplayName() + " removed from group " + group);
+                        changed = true;
                     }
                 }
                 if (changed) {
@@ -111,17 +124,19 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
             if (!conflictErrors.isEmpty()) {
                 throw new IllegalArgumentException(String.join("; ", conflictErrors));
             }
+            panelDefaults.assignDefaults(Map.of());
 
             List<LoadedRow<String>> results = new ArrayList<>();
             for (MembershipRow membership : memberships) {
                 results.add(membership.created() ? LoadedRow.created(membership.organism().getId())
-                        : LoadedRow.skipped("Membership unchanged"));
+                        : LoadedRow.unchanged("Membership unchanged"));
             }
             return results;
         });
         for (int i = 0; i < outcomes.size(); i++) {
             summary.record(outcomes.get(i), getClass().getSimpleName(), rows.get(i).lineNumber());
         }
+        removals.forEach(removal -> summary.removed(getClass().getSimpleName(), removal));
     }
 
     private MicroOrganism organism(CsvRow row) {
@@ -132,8 +147,11 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
                     "Line " + row.lineNumber() + ": unknown organism " + row.get("organism")));
         }
         String name = required(row, "organism");
-        return organisms.findByDisplayNameIgnoreCase(name).orElseThrow(
-                () -> new IllegalArgumentException("Line " + row.lineNumber() + ": unknown organism " + name));
+        MicroOrganism organism = resolver.resolveOrganism(name, getDomainName());
+        if (organism == null) {
+            throw new IllegalArgumentException("Line " + row.lineNumber() + ": unknown organism " + name);
+        }
+        return organism;
     }
 
     private static String required(CsvRow row, String column) {

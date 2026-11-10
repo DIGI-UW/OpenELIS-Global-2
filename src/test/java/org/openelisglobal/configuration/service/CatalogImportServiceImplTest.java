@@ -189,6 +189,20 @@ public class CatalogImportServiceImplTest {
     }
 
     @Test
+    public void apply_removesTheFolderItCreatedForAFileThatFailed() {
+        doAnswer(invocation -> {
+            ConfigurationReloadOptions options = invocation.getArgument(0);
+            return new ConfigurationReloadResult(List.of(ConfigurationReloadFileResult
+                    .error(options.domains().iterator().next(), options.forcedFiles().iterator().next(), "bad rule")));
+        }).when(initializationService).reload(any(ConfigurationReloadOptions.class));
+
+        service.apply(List.of(csv("tests-bad.csv", 1)), null, "7");
+
+        assertFalse(Files.exists(stored("tests", "tests-bad.csv").getParent()));
+        assertTrue(Files.exists(tempFolder.getRoot().toPath()));
+    }
+
+    @Test
     public void apply_reportsAFileTheLoaderNeverSawAsAnError() {
         when(initializationService.reload(any(ConfigurationReloadOptions.class)))
                 .thenReturn(new ConfigurationReloadResult(List.of()));

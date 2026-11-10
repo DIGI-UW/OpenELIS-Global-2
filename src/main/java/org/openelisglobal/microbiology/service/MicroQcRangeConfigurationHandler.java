@@ -6,11 +6,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import org.openelisglobal.configuration.service.AbstractCatalogCsvHandler;
+import org.openelisglobal.configuration.service.CatalogReferenceResolver;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.LoadedRow;
 import org.openelisglobal.configuration.service.RowTransactionRunner;
-import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointStandardDAO;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
@@ -22,13 +22,13 @@ import org.springframework.stereotype.Component;
 public class MicroQcRangeConfigurationHandler extends AbstractCatalogCsvHandler {
 
     private final MicroQcRangeService qcRanges;
-    private final MicroAntibioticDAO antibiotics;
+    private final CatalogReferenceResolver resolver;
     private final MicroBreakpointStandardDAO standards;
 
-    public MicroQcRangeConfigurationHandler(MicroQcRangeService qcRanges, MicroAntibioticDAO antibiotics,
+    public MicroQcRangeConfigurationHandler(MicroQcRangeService qcRanges, CatalogReferenceResolver resolver,
             MicroBreakpointStandardDAO standards) {
         this.qcRanges = qcRanges;
-        this.antibiotics = antibiotics;
+        this.resolver = resolver;
         this.standards = standards;
     }
 
@@ -71,8 +71,10 @@ public class MicroQcRangeConfigurationHandler extends AbstractCatalogCsvHandler 
     private LoadedRow<String> loadRow(CsvRow row) {
         String strain = required(row, "qc_strain");
         String code = required(row, "agent");
-        MicroAntibiotic antibiotic = antibiotics.findByWhonetCodeIgnoreCase(code).orElseThrow(
-                () -> new IllegalArgumentException("Line " + row.lineNumber() + ": unknown antibiotic " + code));
+        MicroAntibiotic antibiotic = resolver.resolveAntibiotic(code, getDomainName());
+        if (antibiotic == null) {
+            throw new IllegalArgumentException("Line " + row.lineNumber() + ": unknown antibiotic " + code);
+        }
         MicroAstMethod method = method(row);
         String guideline = required(row, "guideline");
         String version = required(row, "version");
@@ -86,7 +88,7 @@ public class MicroQcRangeConfigurationHandler extends AbstractCatalogCsvHandler 
         Optional<MicroQcRange> existing = qcRanges.find(strain, antibiotic.getId(), method, diskContent,
                 standard.getId());
         if (!qcRanges.upsert(strain, antibiotic.getId(), method, diskContent, standard.getId(), low, high)) {
-            return LoadedRow.skipped("QC range unchanged");
+            return LoadedRow.unchanged("QC range unchanged");
         }
         String id = qcRanges.find(strain, antibiotic.getId(), method, diskContent, standard.getId())
                 .map(MicroQcRange::getId).orElse(null);

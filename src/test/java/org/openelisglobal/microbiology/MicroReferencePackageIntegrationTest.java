@@ -22,6 +22,10 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private MicroBreakpointConfigurationHandler breakpointsHandler;
     @Autowired
+    private MicroOrganismGroupConfigurationHandler groupsHandler;
+    @Autowired
+    private MicroAstPanelConfigurationHandler panelsHandler;
+    @Autowired
     private org.openelisglobal.configuration.service.ConfigurationInitializationService initialization;
     private org.openelisglobal.configuration.service.CatalogImportService catalog;
     @Autowired
@@ -113,7 +117,7 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         load(fixture);
         assertEquals(2, rules.countByStandardId(standard.getId()));
         assertEquals(indicated.getId(), rules.findByContextualNaturalKey(standard.getId(), organism.getId(), null,
-                antibiotic.getId(), "MIC", null, "MIC", "NON_MENINGITIS").orElseThrow().getId());
+                antibiotic.getId(), "MIC", null, "MIC", "NON_MENINGITIS", null).orElseThrow().getId());
     }
 
     @Test
@@ -140,6 +144,153 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertNull("MIC rules ignore disk content",
                 rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "MIC", null, "MIC")
                         .getDiskContent());
+    }
+
+    @Test
+    public void twoDiskStrengthsInOneEditionLoadAsSeparateRules() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.51", "DISKS");
+        var lines = fixture.files.get("breakpoints.csv").lines().toList();
+        String zone = lines.get(1).replace(",MIC,,MIC,1,,,4,mg/L,", ",ZONE,,ZONE,20,,,17,mm,");
+        fixture.files.put("breakpoints.csv", lines.get(0) + ",disk_content\n" + zone + ",30ug\n"
+                + zone.replace(",20,,,17,", ",15,,,12,") + ",10ug\n");
+        load(fixture);
+        load(fixture);
+        var standard = standard(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
+
+        assertEquals(2, rules.countByStandardId(standard.getId()));
+        assertEquals(MicroAstInterpretation.RESISTANT,
+                interpreter
+                        .interpret(
+                                rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(),
+                                        "ZONE", null, "ZONE", null, "30ug"),
+                                MicroAstMethod.ZONE, new BigDecimal("16")));
+        assertEquals(MicroAstInterpretation.SUSCEPTIBLE,
+                interpreter
+                        .interpret(
+                                rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(),
+                                        "ZONE", null, "ZONE", null, "10ug"),
+                                MicroAstMethod.ZONE, new BigDecimal("16")));
+    }
+
+    @Test
+    public void organismAndAntimicrobialFilesListEveryBadRowAndSaveNothing() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.56", "BADROWS");
+        fixture.files.put("organisms.csv", "source,code,displayName,whonetCode,gramStain\nAMR," + fixture.organism
+                + ",Synthetic organism BADROWS,,GRAM_NEGATIVE\nAMR,BADROWS_A,,,\nAMR,BADROWS_B,,,\n");
+        fixture.files.put("antimicrobials.csv",
+                "source,code,displayName,whonetCode,antibioticClass\nAMR," + fixture.antibiotic
+                        + ",Synthetic agent BADROWS," + fixture.antibiotic
+                        + ",Test class\nAMR,BADROWS_C,,BADROWS_C,\nAMR,BADROWS_D,,BADROWS_D,\n");
+        writeFiles(fixture);
+
+        var files = reload(true).files();
+
+        for (String domain : java.util.List.of("microbiology-organisms", "microbiology-antimicrobials")) {
+            String error = files.stream().filter(file -> domain.equals(file.domain())).findFirst().orElseThrow()
+                    .errorMessage();
+            assertTrue(domain + ": " + error, error != null && error.contains("Line 3:") && error.contains("Line 4:"));
+        }
+        assertTrue(organisms.findByReference("AMR", fixture.organism).isEmpty());
+        assertTrue(antibiotics.findByReference("AMR", fixture.antibiotic).isEmpty());
+    }
+
+    @Test
+    public void zoneReadingNeverMatchesARuleWithoutDiskContent() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.60", "NODISK");
+        load(fixture);
+        var standard = standard(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
+        var zone = new MicroBreakpointRule();
+        zone.setStandardId(standard.getId());
+        zone.setOrganismId(organism.getId());
+        zone.setAntibioticId(antibiotic.getId());
+        zone.setMethod("ZONE");
+        zone.setBreakpointType("ZONE");
+        zone.setSusceptibleValue(new BigDecimal("20"));
+        zone.setResistantValue(new BigDecimal("17"));
+        zone.setUnits("mm");
+        zone.setIsActive("Y");
+        zone.setLastUpdatedBy("1");
+        rules.insert(zone);
+
+        assertNull(rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null,
+                "ZONE", null, "30ug"));
+        assertNull(
+                rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null, "ZONE"));
+        assertNotNull("MIC readings are unaffected",
+                rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "MIC", null, "MIC"));
+    }
+
+    @Test
+    public void zoneRowWithoutDiskContentIsRejected() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.61", "ZONENODISK");
+        var lines = fixture.files.get("breakpoints.csv").lines().toList();
+        fixture.files.put("breakpoints.csv",
+                lines.get(0) + "\n" + lines.get(1).replace(",MIC,,MIC,1,,,4,mg/L,", ",ZONE,,ZONE,20,,,17,mm,") + "\n");
+        writeFiles(fixture);
+
+        String error = reload(true).files().stream().filter(file -> "microbiology-breakpoints".equals(file.domain()))
+                .findFirst().orElseThrow().errorMessage();
+
+        assertTrue(error, error != null && error.contains("Disk content is required for zone breakpoints"));
+    }
+
+    @Test
+    public void blockingZoneRowWithoutDiskContentLoadsAndNeverMatches() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.63", "ZONEBLOCK");
+        var lines = fixture.files.get("breakpoints.csv").lines().toList();
+        fixture.files.put("breakpoints.csv", lines.get(0) + "\n" + lines.get(1) + "\n"
+                + lines.get(1).replace(",MIC,,MIC,1,,,4,mg/L,", ",ZONE,,ZONE,,,,,mm,") + "\n");
+        load(fixture);
+        load(fixture);
+        var standard = standard(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
+
+        assertEquals(2, rules.countByStandardId(standard.getId()));
+        var blocking = rules.findByContextualNaturalKey(standard.getId(), organism.getId(), null, antibiotic.getId(),
+                "ZONE", null, "ZONE", null, null).orElseThrow();
+        assertNull(blocking.getSusceptibleValue());
+        assertNull(blocking.getResistantValue());
+        assertNull(
+                rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null, "ZONE"));
+        assertNull(rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null,
+                "ZONE", null, "30ug"));
+    }
+
+    @Test
+    public void zoneCorrectionNeedsDiskContentAndMatchesOnlyThatDisk() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.62", "ZONEDISK");
+        load(fixture);
+        String local = fixture.edition + "-LOCAL";
+        importer.apply(
+                importer.preview(fixture.files.get("breakpoints.csv").replace(fixture.edition, local)).previewToken,
+                "1");
+        String standardId = standards.findByAuthorityAndVersion("EUCAST", local).orElseThrow().getId();
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
+        var form = new MicroBreakpointRuleAdminForm();
+        form.organismId = organism.getId();
+        form.antibioticId = antibiotic.getId();
+        form.method = "DISK_DIFFUSION";
+        form.breakpointType = "ZONE";
+        form.susceptibleValue = new BigDecimal("20");
+        form.resistantValue = new BigDecimal("17");
+        form.units = "mm";
+
+        assertEquals("Disk content is required for zone breakpoints",
+                assertThrows(IllegalArgumentException.class, () -> administration.saveRule(standardId, null, form, "1"))
+                        .getMessage());
+        form.diskContent = "30ug";
+        assertEquals("30ug", administration.saveRule(standardId, null, form, "1").diskContent);
+
+        assertNotNull(rules.findContextualRule(standardId, organism.getId(), null, antibiotic.getId(), "DISK_DIFFUSION",
+                null, "ZONE", null, "30ug"));
+        assertNull(rules.findContextualRule(standardId, organism.getId(), null, antibiotic.getId(), "DISK_DIFFUSION",
+                null, "ZONE", null, "10ug"));
     }
 
     @Test
@@ -308,6 +459,7 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
             assertTrue(error, error.contains("Line 3: unknown sample type " + sampleType));
             assertTrue(error, error.contains("Line 4: unknown antibiotic NO_SUCH_AGENT"));
             assertTrue(error, error.contains("Line 5: unknown organism No such organism"));
+            assertFalse(error, error.contains("Line 2:"));
         }
         assertTrue(rulesFor(antibioticId).isEmpty());
         assertEquals(Integer.valueOf(3), unresolvedReferences.getOpen().stream()
@@ -361,15 +513,150 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
-    public void panelFileWithTierAndReportBehaviorColumnsStillLoads() throws Exception {
+    public void mostSpecificDefaultWinsAcrossPanelFilesWhateverTheirOrder() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.52", "ACROSS");
+        load(fixture);
+        String genusName = "Across" + suffix();
+        var organism = organism(genusName + " species");
+        String header = "panelName,antibioticWhonetCode,defaultFor\n";
+        String species = header + "Synthetic species panel ACROSS," + fixture.antibiotic + ","
+                + organism.getDisplayName() + "\n";
+        String genus = header + "Synthetic genus panel ACROSS," + fixture.antibiotic + "," + genusName + "\n";
+        for (var files : java.util.List.of(java.util.List.of(species, genus), java.util.List.of(genus, species))) {
+            writePanels("a-panels.csv", files.get(0));
+            writePanels("b-panels.csv", files.get(1));
+            var result = reloadPanels(true);
+            assertFalse(result.toString(), result.hasErrors());
+            assertEquals(panels.findCurrentByNameIgnoreCase("Synthetic species panel ACROSS").getId(),
+                    organisms.get(organism.getId()).orElseThrow().getDefaultAstPanelId());
+        }
+    }
+
+    @Test
+    public void panelsThatClaimAnOrganismEquallySpecificallyFailTheLoad() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.58", "TIE");
+        load(fixture);
+        var organism = organism("Tie organism " + suffix());
+        String first = "Tie group A " + suffix();
+        String second = "Tie group B " + suffix();
+        String third = "Tie group C " + suffix();
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + first + "\n" + organism.getDisplayName()
+                + ",,," + second + "\n" + organism.getDisplayName() + ",,," + third + "\n");
+        assertFalse(reloadOrganismGroups(false).hasErrors());
+        writePanels("other-panels.csv", "panelName,antibioticWhonetCode,defaultFor\nSynthetic third panel TIE,"
+                + fixture.antibiotic + "," + third + "\n");
+        assertFalse(reloadPanels(false).hasErrors());
+        writePanels("panelName,antibioticWhonetCode,defaultFor\nSynthetic first panel TIE," + fixture.antibiotic + ","
+                + first + "\nSynthetic second panel TIE," + fixture.antibiotic + "," + second + "\n");
+
+        String error = reloadPanels(false).files().stream().filter(file -> "panels.csv".equals(file.fileName()))
+                .findFirst().orElseThrow().errorMessage();
+
+        assertTrue(error, error.startsWith("Lines 2 and 3:"));
+        assertTrue(error, error.contains("\"Synthetic first panel TIE\" (\"" + first + "\", line 2)"));
+        assertTrue(error, error.contains("\"Synthetic second panel TIE\" (\"" + second + "\", line 3)"));
+        assertTrue(error, error.contains("\"Synthetic third panel TIE\" (\"" + third + "\", other-panels.csv)"));
+        assertTrue(error, error.contains(organism.getDisplayName()));
+        assertNull(panels.findCurrentByNameIgnoreCase("Synthetic first panel TIE"));
+    }
+
+    @Test
+    public void panelFileRefusesADefaultWhoseProtocolDiffersFromTheOrganisms() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.53", "PROTOCOL");
+        load(fixture);
+        var organism = organism("Protocol organism " + suffix());
+        organism.setSusceptibilityProtocol("TB");
+        organisms.update(organism);
+        writePanels("panelName,antibioticWhonetCode,defaultFor\nSynthetic general panel PROTOCOL," + fixture.antibiotic
+                + "," + organism.getDisplayName() + "\n");
+
+        String error = reloadPanels(true).files().get(0).errorMessage();
+
+        assertTrue(error, error.contains("Line 2:"));
+        assertTrue(error, error.contains(organism.getDisplayName()) && error.contains("TB"));
+        assertNull(organisms.get(organism.getId()).orElseThrow().getDefaultAstPanelId());
+    }
+
+    @Test
+    public void packageUpdateLeavesALocallyEditedPanelAlone() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.63", "LOCALEDIT");
+        load(fixture);
+        String header = "panelName,antibioticWhonetCode,diskContent\n";
+        writePanels(header + "Synthetic edited panel," + fixture.antibiotic + ",30ug\n" + "Synthetic untouched panel,"
+                + fixture.antibiotic + ",30ug\n");
+        assertFalse(reloadPanels(false).hasErrors());
+        var edited = panels.findCurrentByNameIgnoreCase("Synthetic edited panel");
+        var form = referenceAdmin.getAstPanel(edited.getId());
+        form.antibiotics.get(0).diskContent = "10ug";
+        String local = referenceAdmin.publishPanelVersion(edited.getId(), form, "1").id;
+        var legacy = panels.findCurrentByNameIgnoreCase("Synthetic untouched panel");
+        jdbcTemplate.update("UPDATE clinlims.micro_ast_panel SET configuration_content = NULL WHERE id = ?",
+                legacy.getId());
+
+        writePanels(header + "Synthetic edited panel," + fixture.antibiotic + ",5ug\n" + "Synthetic untouched panel,"
+                + fixture.antibiotic + ",5ug\n");
+        assertFalse(reloadPanels(false).hasErrors());
+
+        assertEquals(local, panels.findCurrentByNameIgnoreCase("Synthetic edited panel").getId());
+        assertEquals("10ug", panelAntibiotics.getByPanelId(local).get(0).getDiskContent());
+        assertTrue(panelsHandler.getLastSummary().getRows().stream()
+                .anyMatch(row -> "Panel edited locally; package version not applied".equals(row.reason())));
+        var updated = panels.findCurrentByNameIgnoreCase("Synthetic untouched panel");
+        assertNotEquals("A panel loaded before this rule still takes the package version", legacy.getId(),
+                updated.getId());
+        assertEquals("5ug", panelAntibiotics.getByPanelId(updated.getId()).get(0).getDiskContent());
+    }
+
+    @Test
+    public void packageLoadKeepsALocallyDeactivatedPanelAndALocalSpecimenType() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.64", "LOCALFLAGS");
+        load(fixture);
+        String header = "panelName,antibioticWhonetCode,diskContent\n";
+        writePanels(header + "Synthetic deactivated panel," + fixture.antibiotic + ",30ug\n"
+                + "Synthetic specimen panel," + fixture.antibiotic + ",30ug\n");
+        assertFalse(reloadPanels(false).hasErrors());
+        var deactivated = referenceAdmin
+                .getAstPanel(panels.findCurrentByNameIgnoreCase("Synthetic deactivated panel").getId());
+        deactivated.active = false;
+        String inactive = referenceAdmin.publishPanelVersion(deactivated.id, deactivated, "1").id;
+        var withSpecimen = referenceAdmin
+                .getAstPanel(panels.findCurrentByNameIgnoreCase("Synthetic specimen panel").getId());
+        withSpecimen.specimenTypeId = jdbcTemplate
+                .queryForObject("SELECT id::text FROM clinlims.type_of_sample ORDER BY id LIMIT 1", String.class);
+        String local = referenceAdmin.publishPanelVersion(withSpecimen.id, withSpecimen, "1").id;
+
+        assertFalse(reloadPanels(true).hasErrors());
+        writePanels(header + "Synthetic deactivated panel," + fixture.antibiotic + ",30ug\n"
+                + "Synthetic specimen panel," + fixture.antibiotic + ",5ug\n");
+        assertFalse(reloadPanels(false).hasErrors());
+
+        assertEquals(inactive, panels.findCurrentByNameIgnoreCase("Synthetic deactivated panel").getId());
+        assertEquals("N", panels.get(inactive).orElseThrow().getIsActive());
+        assertEquals(local, panels.findCurrentByNameIgnoreCase("Synthetic specimen panel").getId());
+        assertEquals(withSpecimen.specimenTypeId, panels.get(local).orElseThrow().getSpecimenTypeId());
+    }
+
+    @Test
+    public void panelFileReportBehaviorLoadsWithAWarningPointingAtAstRules() throws Exception {
         var fixture = new ReferencePackageFixture("2099.19", "PANELCOL");
         load(fixture);
         writePanels("panelName,antibioticWhonetCode,tier,reportBehavior\nSynthetic column panel," + fixture.antibiotic
-                + ",4,CASCADE\n");
+                + ",4,CASCADE\nSynthetic always panel," + fixture.antibiotic + ",1,ALWAYS\n");
         var result = reloadPanels(false);
         assertFalse(result.toString(), result.hasErrors());
         var panel = panels.findCurrentByNameIgnoreCase("Synthetic column panel");
         assertEquals(1, panelAntibiotics.getByPanelId(panel.getId()).size());
+        assertEquals(
+                java.util.List.of("2|reportBehavior CASCADE is not read from panel files: set it as a rule on the"
+                        + " AST rules page"),
+                panelsHandler.getLastSummary().getRows().stream().filter(
+                        row -> row.outcome() == org.openelisglobal.configuration.service.CsvLoadSummary.Outcome.WARNING)
+                        .map(row -> row.lineNumber() + "|" + row.reason()).toList());
+
+        assertFalse(reloadPanels(true).hasErrors());
+        assertEquals(java.util.List.of("2|UNCHANGED|Panel unchanged", "3|UNCHANGED|Panel unchanged"),
+                panelsHandler.getLastSummary().getRows().stream()
+                        .map(row -> row.lineNumber() + "|" + row.outcome() + "|" + row.reason()).toList());
     }
 
     @Test
@@ -431,6 +718,47 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertEquals(oldRule.getId(), rules.getByStandardId(old.getId()).get(0).getId());
         assertEquals(1, rules.countByStandardId(old.getId()));
         assertEquals(1, rules.countByStandardId(standard(next).getId()));
+    }
+
+    @Test
+    public void anyOrganismCorrectionCanBeCreatedAndEdited() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.57", "ANYORG");
+        load(fixture);
+        String local = fixture.edition + "-LOCAL";
+        var applied = importer.apply(
+                importer.preview(fixture.files.get("breakpoints.csv").replace(fixture.edition, local)).previewToken,
+                "1");
+        assertTrue(applied.errors.toString(), applied.errors.isEmpty());
+        String standardId = standards.findByAuthorityAndVersion("EUCAST", local).orElseThrow().getId();
+        var form = new MicroBreakpointRuleAdminForm();
+        form.antibioticId = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow().getId();
+        form.method = "MIC";
+        form.breakpointType = "MIC";
+        form.susceptibleValue = new BigDecimal("2");
+        form.resistantValue = new BigDecimal("8");
+        form.units = "mg/L";
+
+        var created = administration.saveRule(standardId, null, form, "1");
+        form.susceptibleValue = new BigDecimal("1");
+        var edited = administration.saveRule(standardId, created.id, form, "1");
+
+        assertNull(edited.organismId);
+        assertNull(edited.organismGroup);
+        assertEquals(0, new BigDecimal("1").compareTo(edited.susceptibleValue));
+    }
+
+    @Test
+    public void activatingAnActiveEditionAgainRecordsNoSecondEvent() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.66", "REACTIVATE");
+        load(fixture);
+        String standardId = standard(fixture).getId();
+
+        administration.activate(standardId, java.sql.Date.valueOf("2099-01-01"), "1");
+        administration.activate(standardId, java.sql.Date.valueOf("2099-01-01"), "1");
+
+        assertEquals(Integer.valueOf(1), jdbcTemplate.queryForObject(
+                "SELECT count(*)::int FROM clinlims.micro_breakpoint_activation_event WHERE standard_id = ? AND action = 'ACTIVATED'",
+                Integer.class, standardId));
     }
 
     @Test
@@ -822,6 +1150,7 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertFalse(loaded.toString(), loaded.hasErrors());
         assertEquals(java.util.List.of(nonEscppm, species), labGroups(klebsiella));
         assertEquals(java.util.List.of(nonEscppm), labGroups(coli));
+        assertEquals(nonEscppm + "; " + species, referenceAdmin.getOrganism(klebsiella.getId()).labGroups);
         var offered = referenceAdmin.getOptions("lab-organism-groups").stream().map(option -> option.label).toList();
         assertTrue(offered.toString(), offered.containsAll(java.util.List.of(species, nonEscppm)));
 
@@ -830,6 +1159,34 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertFalse(reloadOrganismGroups(false).hasErrors());
         assertEquals(java.util.List.of(species), labGroups(klebsiella));
         assertEquals(java.util.List.of(nonEscppm), labGroups(coli));
+        assertEquals(java.util.List.of(klebsiella.getDisplayName() + " removed from group " + nonEscppm),
+                groupsHandler.getLastSummary().getRows().stream().filter(
+                        row -> row.outcome() == org.openelisglobal.configuration.service.CsvLoadSummary.Outcome.REMOVED)
+                        .map(row -> row.reason()).toList());
+    }
+
+    @Test
+    public void organismGroupReloadMovesTheDefaultPanelWithTheGroups() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.54", "REGROUP");
+        load(fixture);
+        var organism = organism("Regroup organism " + suffix());
+        var other = organism("Regroup organism " + suffix());
+        String first = "Regroup first " + suffix();
+        String second = "Regroup second " + suffix();
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + first + "\n" + other.getDisplayName()
+                + ",,," + second + "\n");
+        assertFalse(reloadOrganismGroups(false).hasErrors());
+        writePanels("panelName,antibioticWhonetCode,defaultFor\nSynthetic first panel REGROUP," + fixture.antibiotic
+                + "," + first + "\nSynthetic second panel REGROUP," + fixture.antibiotic + "," + second + "\n");
+        assertFalse(reloadPanels(false).hasErrors());
+
+        writeOrganismGroups(GROUPS_HEADER + other.getDisplayName() + ",,," + first + "\n" + organism.getDisplayName()
+                + ",,," + second + "\n");
+        var result = reloadOrganismGroups(false);
+
+        assertFalse(result.toString(), result.hasErrors());
+        assertEquals(panels.findCurrentByNameIgnoreCase("Synthetic second panel REGROUP").getId(),
+                organisms.get(organism.getId()).orElseThrow().getDefaultAstPanelId());
     }
 
     @Test
@@ -964,7 +1321,11 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     private void writePanels(String csv) throws Exception {
-        Path target = configurationFiles.getRoot().toPath().resolve("microbiology-ast-panels").resolve("panels.csv");
+        writePanels("panels.csv", csv);
+    }
+
+    private void writePanels(String fileName, String csv) throws Exception {
+        Path target = configurationFiles.getRoot().toPath().resolve("microbiology-ast-panels").resolve(fileName);
         Files.createDirectories(target.getParent());
         Files.writeString(target, csv);
     }
@@ -993,6 +1354,78 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         var written = reportingRuleDAO.get(ruleId).orElseThrow().getLastupdated();
         assertFalse(reloadReportingRules(true).hasErrors());
         assertEquals(written, reportingRuleDAO.get(ruleId).orElseThrow().getLastupdated());
+    }
+
+    @Test
+    public void unknownOrganismAndAntibioticInARuleFileAreListedForADecisionAndAnAliasLoadsThem() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.55", "UNKNOWNOA");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibiotic = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow();
+        String organismName = "Organism alias " + suffix();
+        String agentCode = "AGENT_" + suffix().toUpperCase(java.util.Locale.ROOT);
+        writeReportingRules(RULES_HEADER + "SPECIES," + organismName + ",ANY," + fixture.antibiotic
+                + ",Synthetic,DONT_REPORT,,,,,,,,\n" + "ANY,,ANY," + agentCode + ",Synthetic,REPORT,,,,,,,,\n");
+        assertTrue(reloadReportingRules(false).hasErrors());
+
+        var open = unresolvedReferences.getOpen();
+        var organismItem = open.stream().filter(r -> organismName.equals(r.getReferenceValue())).findFirst()
+                .orElseThrow();
+        var agentItem = open.stream().filter(r -> agentCode.equals(r.getReferenceValue())).findFirst().orElseThrow();
+        assertEquals("ORGANISM", organismItem.getReferenceType());
+        assertEquals("ANTIBIOTIC", agentItem.getReferenceType());
+
+        unresolvedReferences.resolve(organismItem.getId(), "ALIAS", organism.getId(), "1");
+        unresolvedReferences.resolve(agentItem.getId(), "ALIAS", antibiotic.getId(), "1");
+        var reloaded = reloadReportingRules(true);
+        assertFalse(reloaded.toString(), reloaded.hasErrors());
+    }
+
+    @Test
+    public void serviceErrorsCarryTheirLineAndADatabaseErrorFailsTheFileAtOnce() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.64", "ROWERR");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        writeReportingRules(RULES_HEADER + "SPECIES," + organism.getDisplayName() + ",ANY," + fixture.antibiotic
+                + ",Synthetic,REPORT,,,,," + "x".repeat(1001) + ",ALWAYS,,\n");
+        String rulesError = reloadReportingRules(false).files().get(0).errorMessage();
+        assertTrue(rulesError, rulesError.contains("Line 2: REPORTING_RULE_NOTE_TOO_LONG"));
+
+        writePanels("panelName,antibioticWhonetCode\nSynthetic duplicate panel," + fixture.antibiotic
+                + "\nSynthetic duplicate panel," + fixture.antibiotic + "\n");
+        String duplicate = reloadPanels(true).files().get(0).errorMessage();
+        assertTrue(duplicate, duplicate.contains("Line 2: Duplicate antibiotic"));
+
+        writePanels("panelName,antibioticWhonetCode\n" + "P".repeat(300) + "," + fixture.antibiotic
+                + "\nSynthetic panel after a database error," + fixture.antibiotic + "\n");
+        String database = reloadPanels(true).files().get(0).errorMessage();
+        assertTrue(database, database.startsWith("Line 2: value too long for type character varying(255)"));
+        assertFalse(database, database.contains("ERROR:"));
+        assertFalse(database, database.contains("current transaction is aborted"));
+
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + "G".repeat(101) + "\n");
+        String group = reloadOrganismGroups(false).files().get(0).errorMessage();
+        assertTrue(group, group.contains("Line 2: group is longer than 100 characters"));
+    }
+
+    @Test
+    public void previewAloneListsUnknownOrganismsAndAntibioticsForADecision() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.65", "PREVIEWOA");
+        load(fixture);
+        String organismName = "Preview organism " + suffix();
+        String agentCode = "PREVIEW_" + suffix().toUpperCase(java.util.Locale.ROOT);
+        String csv = RULES_HEADER + "SPECIES," + organismName + ",ANY," + fixture.antibiotic
+                + ",Synthetic,DONT_REPORT,,,,,,,,\n" + "ANY,,ANY," + agentCode + ",Synthetic,REPORT,,,,,,,,\n";
+        var file = new org.springframework.mock.web.MockMultipartFile("files", "preview-rules.csv", "text/csv",
+                csv.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        var plan = catalog.preview(java.util.List.of(file), java.util.List.of("microbiology-reporting-rules"), "1");
+
+        assertNotNull(plan.files().get(0).error());
+        var open = unresolvedReferences.getOpen().stream().map(r -> r.getReferenceType() + ":" + r.getReferenceValue())
+                .toList();
+        assertTrue(open.toString(), open.contains("ORGANISM:" + organismName));
+        assertTrue(open.toString(), open.contains("ANTIBIOTIC:" + agentCode));
     }
 
     @Test

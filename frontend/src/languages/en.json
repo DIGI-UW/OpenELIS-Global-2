@@ -11124,6 +11124,7 @@
   "microbiology.admin.astRules.edit": "Edit",
   "microbiology.admin.astRules.editRule": "Edit rule",
   "microbiology.admin.astRules.error": "The reporting rules could not be updated.",
+  "microbiology.admin.astRules.error.REPORTING_RULE_GROUP_CONFLICT": "Another active group rule gives a different answer for an organism that is in both groups. Add a rule for that organism, or change one of the group rules.",
   "microbiology.admin.astRules.export": "Export",
   "microbiology.admin.astRules.history": "History",
   "microbiology.admin.astRules.historyFor": "History {antibiotic}",
@@ -14707,5 +14708,6 @@
   "microbiology.astQc.pass": "Pass",
   "microbiology.astQc.fail": "Fail",
   "microbiology.astQc.rangeMissing": "Load a QC range for every antibiotic before recording this control.",
-  "microbiology.astQc.saveError": "The control could not be recorded."
+  "microbiology.astQc.saveError": "The control could not be recorded.",
+  "microbiology.admin.field.labGroups": "Laboratory groups"
 }

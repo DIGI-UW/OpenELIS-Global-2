@@ -247,6 +247,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         published.setLogicalKey(current.getLogicalKey());
         published.setVersionNumber(current.getVersionNumber() + 1);
         published.setSupersedesPanelId(current.getId());
+        published.setDefaultFor(current.getDefaultFor());
+        published.setDefaultForFile(current.getDefaultForFile());
+        published.setConfigurationContent(current.getConfigurationContent());
         applyPanel(published, request, actorId);
         panelDAO.insert(published);
         savePanelRows(published.getId(), request.antibiotics);
@@ -369,6 +372,8 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.whonetCode = organism.getWhonetCode();
         form.oclCode = organism.getOclCode();
         form.organismGroup = organism.getOrganismGroup();
+        form.labGroups = organism.getLabGroups().isEmpty() ? null
+                : String.join("; ", new java.util.TreeSet<>(organism.getLabGroups()));
         form.susceptibilityProtocol = organism.getSusceptibilityProtocol();
         form.gramStain = organism.getGramStain();
         form.initialSignificance = organism.getInitialSignificance();

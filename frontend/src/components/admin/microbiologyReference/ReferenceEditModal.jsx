@@ -13,6 +13,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { RequiredMarker } from "../../common/RequiredMarker";
 
 const emptyValue = (fields) =>
   fields.reduce(
@@ -86,7 +87,12 @@ const ReferenceEditForm = ({ titleId, fields, value, onClose, onSave }) => {
         )}
         <div className="microbiology-admin__form">
           {fields.map((field) => {
-            const label = intl.formatMessage({ id: field.label });
+            const label = (
+              <>
+                {intl.formatMessage({ id: field.label })}
+                <RequiredMarker required={Boolean(field.required)} />
+              </>
+            );
             if (field.type === "dynamic-select") {
               return (
                 <Select

@@ -19,6 +19,7 @@ const EMPTY_RULE = {
   method: "MIC",
   specimenTypeId: "",
   breakpointType: "MIC",
+  diskContent: "",
   susceptibleValue: "",
   intermediateLowerValue: "",
   intermediateUpperValue: "",
@@ -44,7 +45,6 @@ const BreakpointRuleForm = ({
   const intl = useIntl();
   const [draft, setDraft] = useState(() => ({ ...EMPTY_RULE, ...value }));
 
-  const hasContext = Boolean(draft.organismId) !== Boolean(draft.organismGroup);
   const hasThreshold = useMemo(
     () =>
       [
@@ -55,9 +55,10 @@ const BreakpointRuleForm = ({
       ].some((threshold) => threshold !== "" && threshold !== null),
     [draft],
   );
+  const zone = draft.breakpointType === "ZONE";
   const valid =
-    hasContext &&
     Boolean(draft.antibioticId) &&
+    (!zone || Boolean(draft.diskContent?.trim())) &&
     Boolean(draft.method) &&
     Boolean(draft.breakpointType) &&
     hasThreshold;
@@ -68,6 +69,7 @@ const BreakpointRuleForm = ({
   const save = () =>
     onSave({
       ...draft,
+      diskContent: zone ? draft.diskContent.trim() : null,
       susceptibleValue: numericOrNull(draft.susceptibleValue),
       intermediateLowerValue: numericOrNull(draft.intermediateLowerValue),
       intermediateUpperValue: numericOrNull(draft.intermediateUpperValue),
@@ -100,7 +102,12 @@ const BreakpointRuleForm = ({
               }))
             }
           >
-            <SelectItem value="" text="" />
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "microbiology.admin.astRules.anyOrganism",
+              })}
+            />
             {organisms.map((item) => (
               <SelectItem
                 key={item.id}
@@ -195,6 +202,21 @@ const BreakpointRuleForm = ({
               })}
             />
           </Select>
+          {zone && (
+            <TextInput
+              id="microbiology-breakpoint-rule-disk"
+              labelText={intl.formatMessage({
+                id: "microbiology.admin.astPanels.diskContent",
+              })}
+              helperText={intl.formatMessage({
+                id: "microbiology.admin.astPanels.diskContent.help",
+              })}
+              maxLength={40}
+              required
+              value={draft.diskContent || ""}
+              onChange={(event) => update("diskContent", event.target.value)}
+            />
+          )}
           {[
             ["susceptibleValue", "microbiology.admin.breakpoints.susceptible"],
             [

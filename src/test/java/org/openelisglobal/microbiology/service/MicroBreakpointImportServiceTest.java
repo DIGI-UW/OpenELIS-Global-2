@@ -205,6 +205,15 @@ public class MicroBreakpointImportServiceTest {
         verify(ruleDAO, never()).insert(org.mockito.ArgumentMatchers.any());
     }
 
+    private String withDisk(String content) {
+        var lines = content.lines().toList();
+        StringBuilder csv = new StringBuilder(lines.get(0)).append(",disk_content\n");
+        for (String line : lines.subList(1, lines.size())) {
+            csv.append(line).append(line.contains(",ZONE,") ? ",30ug\n" : ",\n");
+        }
+        return csv.toString();
+    }
+
     private String csv(String rows) {
         return "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,"
                 + "breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,"
@@ -215,14 +224,14 @@ public class MicroBreakpointImportServiceTest {
     public void intermediateIntervalsCannotOverrideSusceptibleOrResistantResults() {
         for (String fields : List.of("MIC,,MIC,1,0.5,2,4,ug/mL", "MIC,,MIC,1,1,2,4,ug/mL", "MIC,,MIC,1,2,4,4,ug/mL",
                 "ZONE,,ZONE,22,20,22,18,mm", "ZONE,,ZONE,22,18,20,18,mm")) {
-            var result = service.preview(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n"));
+            var result = service.preview(withDisk(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n")));
             assertEquals(fields, 0, result.validRows);
             assertTrue(fields, result.errors.get(0).message.contains("overlap"));
         }
         for (String fields : List.of("MIC,,MIC,1,2,4,4,ug/mL", "ZONE,,ZONE,22,18,20,18,mm")) {
             String content = csv("EUCAST,2026,Escherichia coli,CIP," + fields + ",false\n")
                     .replace("resistant_value,units\n", "resistant_value,units,resistant_inclusive\n");
-            assertEquals(fields, 1, service.preview(content).validRows);
+            assertEquals(fields, 1, service.preview(withDisk(content)).validRows);
         }
     }
 
@@ -230,7 +239,7 @@ public class MicroBreakpointImportServiceTest {
     public void partialTerminalRulesAreRejectedInsteadOfSilentlyBecomingNoBreakpoint() {
         for (String fields : List.of("MIC,,MIC,1,,,,ug/mL", "MIC,,MIC,,,,4,ug/mL", "MIC,,MIC,,2,3,,ug/mL",
                 "ZONE,,ZONE,22,,,,mm", "ZONE,,ZONE,,,,18,mm")) {
-            var preview = service.preview(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n"));
+            var preview = service.preview(withDisk(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n")));
             assertEquals(fields, 0, preview.validRows);
             assertTrue(fields, preview.errors.get(0).message.contains("Both susceptible and resistant"));
         }
@@ -240,12 +249,12 @@ public class MicroBreakpointImportServiceTest {
     @Test
     public void equalTerminalThresholdsRequireStrictResistanceForBothMethods() {
         for (String fields : List.of("MIC,,MIC,1,,,1,ug/mL", "ZONE,,ZONE,20,,,20,mm")) {
-            var inclusive = service.preview(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n"));
+            var inclusive = service.preview(withDisk(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n")));
             assertEquals(fields, 0, inclusive.validRows);
             assertTrue(fields, inclusive.errors.get(0).message.contains("Thresholds are out of order"));
             String strict = csv("EUCAST,2026,Escherichia coli,CIP," + fields + ",false\n")
                     .replace("resistant_value,units\n", "resistant_value,units,resistant_inclusive\n");
-            assertEquals(fields, 1, service.preview(strict).validRows);
+            assertEquals(fields, 1, service.preview(withDisk(strict)).validRows);
         }
     }
 

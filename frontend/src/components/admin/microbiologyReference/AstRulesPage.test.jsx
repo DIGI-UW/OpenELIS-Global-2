@@ -227,6 +227,29 @@ it("lists only the fields a rule was created with", async () => {
   expect(screen.queryByText(/organismGroup/)).not.toBeInTheDocument();
 });
 
+it("names the drug, organism and sample types in a rule's history", async () => {
+  getReportingRuleHistory.mockResolvedValue([
+    {
+      revision: 1,
+      changedAt: "2026-10-26T10:00:00Z",
+      changedBy: "5",
+      changedByName: "Kila Lavu",
+      before: null,
+      after: '{"antibioticId":"amk","organismId":"ab","sampleTypeIds":["7"]}',
+    },
+  ]);
+  show();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "History Ceftriaxone" }),
+  );
+  await screen.findByText("Kila Lavu");
+  expect(screen.getByText("antibioticId: → Amikacin")).toBeInTheDocument();
+  expect(
+    screen.getByText("organismId: → Acinetobacter baumannii"),
+  ).toBeInTheDocument();
+  expect(screen.getByText("sampleTypeIds: → Blood")).toBeInTheDocument();
+});
+
 it("names a local standard the way the picker does", async () => {
   getReportingRuleSettings.mockResolvedValue({
     writtenFor: "LOCAL",
@@ -249,6 +272,23 @@ it("shows a failed save inside the rule editor", async () => {
   expect(
     await within(dialog).findByText(
       messages["microbiology.admin.astRules.error"],
+    ),
+  ).toBeInTheDocument();
+});
+
+it("says why a group rule that disagrees with another group rule was refused", async () => {
+  saveReportingRule.mockRejectedValue(
+    new Error("REPORTING_RULE_GROUP_CONFLICT"),
+  );
+  show();
+  fireEvent.click(await screen.findByRole("button", { name: "Add rule" }));
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+  expect(
+    await within(dialog).findByText(
+      messages[
+        "microbiology.admin.astRules.error.REPORTING_RULE_GROUP_CONFLICT"
+      ],
     ),
   ).toBeInTheDocument();
 });
