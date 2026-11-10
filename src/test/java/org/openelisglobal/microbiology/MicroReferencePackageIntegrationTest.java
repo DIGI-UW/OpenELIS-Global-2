@@ -783,6 +783,23 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertTrue(qcRanges.find("E. coli ATCC 25922", antibioticId, MicroAstMethod.MIC, "10", standardId).isEmpty());
     }
 
+    @Test
+    public void qcRangeFileRejectsALimitTheColumnCannotKeepExactlyOrThatIsNotPositive() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.19", "QCLIMIT");
+        load(fixture);
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        for (String limits : new String[] { "0.03125,1", "0,1", "-1,1", "0.25,123456789" }) {
+            writeQcRanges(QC_RANGES_HEADER + "E. coli ATCC 25922," + fixture.antibiotic + ",MIC,,EUCAST,"
+                    + fixture.edition + "," + limits + "\n");
+            var result = reloadQcRanges(true);
+            assertTrue(limits, result.hasErrors());
+            assertTrue(result.files().get(0).errorMessage(), result.files().get(0).errorMessage().contains("Line 2"));
+        }
+        assertTrue(
+                qcRanges.find("E. coli ATCC 25922", antibioticId, MicroAstMethod.MIC, null, standard(fixture).getId())
+                        .isEmpty());
+    }
+
     private static final String QC_RANGES_HEADER = "qc_strain,agent,method,disk_content,guideline,version,low,high\n";
 
     private void writeQcRanges(String csv) throws Exception {
