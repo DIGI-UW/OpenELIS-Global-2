@@ -65,4 +65,42 @@ describe("a result's Method list (OGC-1614)", () => {
     ]);
     expect(methodOptions(null, ALL, "")).toEqual(ALL);
   });
+
+  it("does not keep a failed request, so the row offers every method and the next expand asks again", async () => {
+    vi.mocked(getFromOpenElisServer)
+      .mockImplementationOnce((url: string, callback: (r: unknown) => void) =>
+        callback(undefined),
+      )
+      .mockImplementation((url: string, callback: (r: unknown) => void) =>
+        callback({ methods: [{ id: "48", value: "AUTO" }] }),
+      );
+
+    const first = render(<Choices testId="4" />);
+    expect(screen.getByTestId("choices").textContent).toBe("loading");
+    expect(methodOptions(null, ALL, "")).toEqual(ALL);
+    first.unmount();
+    render(<Choices testId="4" />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("choices").textContent).toBe("AUTO"),
+    );
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks again after the choices are cleared, as when Results opens or a link changes", async () => {
+    vi.mocked(getFromOpenElisServer).mockImplementation(
+      (url: string, callback: (r: unknown) => void) =>
+        callback({ methods: [{ id: "48", value: "AUTO" }] }),
+    );
+    const first = render(<Choices testId="4" />);
+    await waitFor(() =>
+      expect(screen.getByTestId("choices").textContent).toBe("AUTO"),
+    );
+    first.unmount();
+
+    clearMethodChoices();
+    render(<Choices testId="4" />);
+
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(2);
+  });
 });

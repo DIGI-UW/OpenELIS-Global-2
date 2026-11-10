@@ -26,8 +26,10 @@ import {
   patchToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import { requestFailed } from "../../../utils/requestOutcome";
+import { clearMethodChoices } from "../../../resultPage/unified/methodChoices";
 
 const CODE_REGEX = /^[A-Z0-9]{3,10}$/;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const failureMessageKey = (res, conflictKey) => {
   const status = res && res.status;
@@ -74,6 +76,7 @@ export default function MethodsSection({ testId }) {
 
   const loadLinks = useCallback(() => {
     if (!testId) return;
+    clearMethodChoices();
     getFromOpenElisServer(`/rest/test/${testId}/methods`, (res) => {
       if (mounted.current) setLinks(Array.isArray(res) ? res : []);
     });
@@ -450,6 +453,10 @@ export default function MethodsSection({ testId }) {
             <DatePickerInput
               id="inline-effective-date"
               placeholder="YYYY-MM-DD"
+              onChange={(event) => {
+                const typed = event.target.value.trim();
+                setCreateEffectiveDate(ISO_DATE.test(typed) ? typed : "");
+              }}
               labelText={intl.formatMessage({
                 id: "admin.testCatalog.methods.effectiveDate.label",
               })}
@@ -583,6 +590,10 @@ export default function MethodsSection({ testId }) {
               <DatePickerInput
                 id="link-effective-date"
                 placeholder="YYYY-MM-DD"
+                onChange={(event) => {
+                  const typed = event.target.value.trim();
+                  setLinkEffectiveDate(ISO_DATE.test(typed) ? typed : "");
+                }}
                 labelText={intl.formatMessage({
                   id: "admin.testCatalog.methods.effectiveDate.label",
                 })}

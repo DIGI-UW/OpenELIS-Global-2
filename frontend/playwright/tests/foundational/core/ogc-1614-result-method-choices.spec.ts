@@ -172,7 +172,7 @@ test.describe("OGC-1614 result method choices", () => {
       { waitUntil: "domcontentloaded" },
     );
     const main = page.getByRole("main");
-    const methodOptions = async (name: RegExp, last = false) => {
+    const methodSelect = async (name: RegExp, last = false) => {
       const row = main
         .locator("tr", { hasText: accessionNumber })
         .filter({ hasText: name })
@@ -182,27 +182,66 @@ test.describe("OGC-1614 result method choices", () => {
         .getByRole("button", { name: "Expand row", exact: true })
         .click();
       const selects = main.locator("select[id^='method-']");
-      const select = last ? selects.last() : selects.first();
-      await expect(select.locator("option").nth(1)).toBeAttached({
-        timeout: NAV_TIMEOUT,
-      });
-      return (await select.locator("option").allTextContents()).filter(
-        (text) => text.trim() !== "",
-      );
+      return last ? selects.last() : selects.first();
     };
 
     await test.step("The linked test offers its two methods, A to Z", async () => {
-      const offered = await methodOptions(/OGC1614 L \d+/);
-      expect(offered).toEqual([second.value, first.value]);
+      const select = await methodSelect(/OGC1614 L \d+/);
+      await expect(select.locator("option")).toHaveText(
+        ["", second.value, first.value],
+        { timeout: NAV_TIMEOUT },
+      );
     });
 
     await test.step("A test with no link offers every active method, A to Z", async () => {
-      const offered = await methodOptions(/OGC1614 U \d+/, true);
-      expect(offered).toEqual([...offered].sort(byName));
-      expect(offered).toEqual(active.map((method) => method.value));
+      const names = active.map((method) => method.value);
+      expect(names).toEqual([...names].sort(byName));
       for (const method of inactive) {
-        expect(offered).not.toContain(method.value);
+        expect(names).not.toContain(method.value);
       }
+      const select = await methodSelect(/OGC1614 U \d+/, true);
+      await expect(select.locator("option")).toHaveText(["", ...names], {
+        timeout: NAV_TIMEOUT,
+      });
     });
+  });
+
+  test("a typed effective date links a method without the calendar", async ({
+    page,
+  }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    const testId = await createNumericTest(page, "D");
+    const [method] = (
+      await getJson<{ methods: Method[] }>(
+        page,
+        `/rest/methods-for-test/${testId}`,
+      )
+    ).methods;
+
+    await page.goto(`/MasterListsPage/TestCatalogEditor/${testId}/methods`, {
+      waitUntil: "domcontentloaded",
+    });
+    const main = page.getByRole("main");
+    await main
+      .getByRole("button", { name: "+ Link Method", exact: true })
+      .first()
+      .click({ timeout: NAV_TIMEOUT });
+    const dialog = page.getByRole("dialog", { name: "Link Method" });
+    await dialog.locator("#link-method-select").fill(method.value);
+    await page.getByRole("option", { name: method.value, exact: true }).click();
+    const confirm = dialog.getByRole("button", {
+      name: "+ Link Method",
+      exact: true,
+    });
+    await expect(confirm).toBeDisabled();
+
+    await dialog.locator("#link-effective-date").fill("2026-11-10");
+    await dialog.locator("#link-effective-date").press("Tab");
+    await expect(confirm).toBeEnabled();
+    await confirm.click();
+
+    await expect(
+      main.locator("tr", { hasText: method.value }).first(),
+    ).toContainText("2026-11-10", { timeout: NAV_TIMEOUT });
   });
 });
