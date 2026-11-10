@@ -14017,7 +14017,6 @@
   "microbiology.enum.SAMPLE_JOINED": "Sample attached",
   "microbiology.testing.resultNote": "Result note (required for corrections when configured)",
   "microbiology.testing.title": "Testing and results",
-  "microbiology.testing.scope": "Testing section",
   "microbiology.testing.initial": "Initial testing",
   "microbiology.testing.additional": "Additional testing",
   "microbiology.testing.test": "Test",

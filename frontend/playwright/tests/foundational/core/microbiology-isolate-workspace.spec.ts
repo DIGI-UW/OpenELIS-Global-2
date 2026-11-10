@@ -1,4 +1,7 @@
-import { selectCultureMedium } from "../../../helpers/microbiology-ui";
+import {
+  openMicrobiologyCaseScope,
+  selectCultureMedium,
+} from "../../../helpers/microbiology-ui";
 import { expect, test } from "../../../helpers/test-base";
 import { seedMicrobiologyIsolateWorkspace } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
@@ -26,9 +29,7 @@ test("picks a growth isolate, retains identification history and refers its dema
   await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
     waitUntil: "domcontentloaded",
   });
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("CULTURE");
+  await openMicrobiologyCaseScope(page, "CULTURE");
   await page
     .getByRole("button", { name: "Inoculate culture", exact: true })
     .click();
@@ -135,9 +136,7 @@ test("picks a growth isolate, retains identification history and refers its dema
       .getByText("Draft", { exact: true }),
   ).toBeVisible();
   await page.reload();
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("ISOLATES");
+  await openMicrobiologyCaseScope(page, "ISOLATES");
   await expect(page.getByText("Referred", { exact: true }).first()).toBeVisible(
     { timeout: LONG_TIMEOUT },
   );
@@ -175,9 +174,7 @@ test("received isolate preserves sender identification and requires validator ac
   await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
     waitUntil: "domcontentloaded",
   });
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("CULTURE");
+  await openMicrobiologyCaseScope(page, "CULTURE");
   const culture = page.locator('[data-testid^="culture-row-"]');
   await expect(culture).toHaveCount(1, { timeout: LONG_TIMEOUT });
   await expect(
@@ -186,9 +183,7 @@ test("received isolate preserves sender identification and requires validator ac
   await expect(
     culture.getByRole("button", { name: "Edit positive time", exact: true }),
   ).toHaveCount(0);
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("ISOLATES");
+  await openMicrobiologyCaseScope(page, "ISOLATES");
   const isolate = page.locator('[data-testid^="isolate-"]');
   await expect(isolate).toHaveCount(1, { timeout: LONG_TIMEOUT });
   await expect(
@@ -261,9 +256,7 @@ test("refers the original specimen using only the shared form's required receivi
   await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
     waitUntil: "domcontentloaded",
   });
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("ISOLATES");
+  await openMicrobiologyCaseScope(page, "ISOLATES");
   await page
     .getByRole("button", { name: "Refer specimen out", exact: true })
     .click();
@@ -290,9 +283,7 @@ test("refers the original specimen using only the shared form's required receivi
     table.getByRole("cell", { name: receivingLab, exact: true }),
   ).toBeVisible();
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("ISOLATES");
+  await openMicrobiologyCaseScope(page, "ISOLATES");
   await expect(
     table.getByRole("cell", { name: receivingLab, exact: true }),
   ).toBeVisible({ timeout: LONG_TIMEOUT });

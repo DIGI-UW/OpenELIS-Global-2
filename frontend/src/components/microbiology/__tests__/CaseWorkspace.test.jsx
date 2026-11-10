@@ -482,6 +482,71 @@ const barService = (
 });
 
 describe("case bar", () => {
+  test("section links replace the history entry instead of adding one", async () => {
+    const history = renderPage(
+      <CaseViewShell service={barService()} caseId="case-1" />,
+      "/Microbiology/cases/case-1",
+    );
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    const entries = history.length;
+    fireEvent.click(within(bar).getByRole("button", { name: "Culture" }));
+    fireEvent.click(within(bar).getByRole("button", { name: "AST / DST" }));
+    expect(history.length).toBe(entries);
+    expect(new URLSearchParams(history.location.search).get("scope")).toBe(
+      "AST",
+    );
+  });
+
+  test("marks the open section in the section links", async () => {
+    renderPage(
+      <CaseViewShell service={barService()} caseId="case-1" />,
+      "/Microbiology/cases/case-1?scope=CULTURE",
+    );
+    const nav = await screen.findByRole("navigation", {
+      name: "Jump to section",
+    });
+    expect(
+      within(nav).getByRole("button", { name: "Culture" }),
+    ).toHaveAttribute("aria-current", "true");
+    expect(
+      within(nav).getByRole("button", { name: "AST / DST" }),
+    ).not.toHaveAttribute("aria-current");
+  });
+
+  test("keeps the way back to the worklist on the case bar", async () => {
+    renderPage(
+      <CaseViewShell service={barService()} caseId="case-1" />,
+      "/Microbiology/cases/case-1?grain=cultures&labUnitIds=10",
+    );
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    expect(
+      within(bar).getByRole("link", { name: "Microbiology worklist" }),
+    ).toHaveAttribute(
+      "href",
+      "/Microbiology/worklist?grain=cultures&labUnitIds=10",
+    );
+  });
+
+  test("case info starts collapsed unless the link asks for it", async () => {
+    renderPage(
+      <CaseViewShell service={barService()} caseId="case-1" />,
+      "/Microbiology/cases/case-1",
+    );
+    expect(
+      await screen.findByRole("button", { name: "Case info" }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("a case info link opens case info", async () => {
+    renderPage(
+      <CaseViewShell service={barService()} caseId="case-1" />,
+      "/Microbiology/cases/case-1?section=case-info",
+    );
+    expect(
+      await screen.findByRole("button", { name: "Case info" }),
+    ).toHaveAttribute("aria-expanded", "true");
+  });
+
   test("keeps the case actions on the case bar", async () => {
     renderPage(
       <CaseViewShell service={barService()} caseId="case-1" />,
