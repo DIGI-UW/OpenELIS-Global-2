@@ -433,6 +433,24 @@ describe("case actions", () => {
     });
   });
 
+  test.each([
+    "Log critical notification",
+    "Report NCE",
+    "Open amendment",
+    "Mark lost",
+  ])("%s adds a history entry, so Back returns to the case", async (name) => {
+    const history = caseActions({
+      canAmend: true,
+      finalReleaseState: "FINAL_RELEASED",
+    });
+    const items = await openCaseActions();
+    const entries = history.length;
+    fireEvent.click(items.find((item) => item.textContent.startsWith(name)));
+    expect(history.length).toBe(entries + 1);
+    act(() => history.goBack());
+    expect(history.location.search).toBe("");
+  });
+
   test("Mark lost opens the nonconformity section in lost mode", async () => {
     const history = caseActions();
     const items = await openCaseActions();
@@ -497,21 +515,24 @@ describe("case bar", () => {
     );
   });
 
-  test("marks the open section in the section links", async () => {
-    renderPage(
-      <CaseViewShell service={barService()} caseId="case-1" />,
-      "/Microbiology/cases/case-1?scope=CULTURE",
-    );
-    const nav = await screen.findByRole("navigation", {
-      name: "Jump to section",
-    });
-    expect(
-      within(nav).getByRole("button", { name: "Culture" }),
-    ).toHaveAttribute("aria-current", "true");
-    expect(
-      within(nav).getByRole("button", { name: "AST / DST" }),
-    ).not.toHaveAttribute("aria-current");
-  });
+  test.each(["?scope=CULTURE", "?grain=cultures"])(
+    "marks the open section in the section links from %s",
+    async (search) => {
+      renderPage(
+        <CaseViewShell service={barService()} caseId="case-1" />,
+        `/Microbiology/cases/case-1${search}`,
+      );
+      const nav = await screen.findByRole("navigation", {
+        name: "Jump to section",
+      });
+      expect(
+        within(nav).getByRole("button", { name: "Culture" }),
+      ).toHaveAttribute("aria-current", "true");
+      expect(
+        within(nav).getByRole("button", { name: "AST / DST" }),
+      ).not.toHaveAttribute("aria-current");
+    },
+  );
 
   test("keeps the way back to the worklist on the case bar", async () => {
     renderPage(
@@ -687,5 +708,23 @@ describe("case bar", () => {
       ),
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  test("release stays available while the case refreshes", async () => {
+    const service = barService();
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    const partial = await within(bar).findByRole("button", {
+      name: "Release partial report",
+    });
+    await waitFor(() => expect(partial).toBeEnabled());
+    const loaded = await service.getCase.mock.results[0].value;
+    service.getCase.mockResolvedValue({ ...loaded });
+    service.getReadiness.mockReturnValue(new Promise(() => {}));
+    fireEvent.click(partial);
+    await waitFor(() => expect(service.getReadiness).toHaveBeenCalledTimes(2));
+    expect(
+      within(bar).getByRole("button", { name: "Release partial report" }),
+    ).toBeEnabled();
   });
 });

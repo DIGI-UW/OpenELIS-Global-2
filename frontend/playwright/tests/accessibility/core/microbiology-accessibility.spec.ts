@@ -63,14 +63,16 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     await page.goto(`/Microbiology/cases/${seeded.caseId}?view=workbench`, {
       waitUntil: "domcontentloaded",
     });
-    await expect(
-      page.getByRole("heading", { name: "Microbiology case" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    const caseHeading = page.getByRole("heading", {
+      level: 1,
+      name: `Case ${seeded.accessionNumber}`,
+    });
+    await expect(caseHeading).toBeVisible({ timeout: LONG_TIMEOUT });
     await attachViewportEvidence(
       page,
       testInfo,
       "microbiology-case-overview",
-      page.getByRole("heading", { name: "Microbiology case" }),
+      caseHeading,
     );
     await expectNoWcag21AaViolations(
       page,
