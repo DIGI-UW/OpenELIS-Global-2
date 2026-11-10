@@ -167,6 +167,13 @@ public class MicroAstQcService {
             planned.add(new PlannedRow(runAntibiotic.getAntibioticId(), measured.get(runAntibiotic.getAntibioticId()),
                     range.get()));
         }
+        List<Long> lotIds = request.lotIds == null ? List.of() : request.lotIds;
+        Set<Long> lotsUnderTest = new HashSet<>(usageLinks.getAstRunLotIds(runId));
+        candidateLots(lotsUnderTest).forEach(lot -> lotsUnderTest.add(lot.getId()));
+        if (!lotsUnderTest.containsAll(lotIds)) {
+            throw new IllegalArgumentException(
+                    "A lot under test must be one of the run's lots or a QC pending lot of the same reagent");
+        }
 
         String controlId = UUID.randomUUID().toString();
         List<MicroAstQcResultForm.Row> rows = new ArrayList<>();
@@ -204,7 +211,6 @@ public class MicroAstQcService {
             passed = passed && rowPassed;
         }
 
-        List<Long> lotIds = request.lotIds == null ? List.of() : request.lotIds;
         for (Long lotId : lotIds) {
             MicroAstQcLot astQcLot = new MicroAstQcLot();
             astQcLot.setControlId(controlId);
@@ -283,23 +289,11 @@ public class MicroAstQcService {
         }
 
         Set<Long> lotIds = new LinkedHashSet<>(usageLinks.getAstRunLotIds(runId));
-        Set<Long> itemIds = new LinkedHashSet<>();
         for (Long lotId : lotIds) {
-            InventoryLot inventoryLot = inventoryLots.get(lotId);
-            if (inventoryLot == null) {
-                continue;
-            }
-            form.lots.add(viewLot(inventoryLot));
-            if (inventoryLot.getInventoryItem() != null) {
-                itemIds.add(inventoryLot.getInventoryItem().getId());
-            }
+            form.lots.add(viewLot(inventoryLots.get(lotId)));
         }
-        for (Long itemId : itemIds) {
-            for (InventoryLot inventoryLot : inventoryLots.getByInventoryItemId(itemId)) {
-                if (QCStatus.PENDING.equals(inventoryLot.getQcStatus()) && !lotIds.contains(inventoryLot.getId())) {
-                    form.candidateLots.add(viewLot(inventoryLot));
-                }
-            }
+        for (InventoryLot inventoryLot : candidateLots(lotIds)) {
+            form.candidateLots.add(viewLot(inventoryLot));
         }
 
         Map<String, List<MicroAstQcResult>> byControl = new LinkedHashMap<>();
@@ -338,6 +332,22 @@ public class MicroAstQcService {
         form.controls.sort(Comparator.comparing((MicroAstQcViewForm.Control control) -> control.recordedAt,
                 Comparator.nullsLast(Comparator.reverseOrder())));
         return form;
+    }
+
+    private List<InventoryLot> candidateLots(Set<Long> runLotIds) {
+        Set<Long> itemIds = new LinkedHashSet<>();
+        for (Long lotId : runLotIds) {
+            itemIds.add(inventoryLots.get(lotId).getInventoryItem().getId());
+        }
+        List<InventoryLot> candidates = new ArrayList<>();
+        for (Long itemId : itemIds) {
+            for (InventoryLot inventoryLot : inventoryLots.getByInventoryItemId(itemId)) {
+                if (QCStatus.PENDING.equals(inventoryLot.getQcStatus()) && !runLotIds.contains(inventoryLot.getId())) {
+                    candidates.add(inventoryLot);
+                }
+            }
+        }
+        return candidates;
     }
 
     private MicroAstQcViewForm.Lot viewLot(InventoryLot inventoryLot) {

@@ -184,7 +184,7 @@ public class MicroAstQcIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void controlWithinEveryRangePassesStoresQcResultsAndPassesThePendingLotUnderTest() {
-        var run = start(isolate("ISO-1"), List.of());
+        var run = start(isolate("ISO-1"), List.of(selection(lot(QCStatus.PASSED))));
         InventoryLot newLot = lot(QCStatus.PENDING);
 
         MicroAstQcResultForm recorded = qc.recordControl(run.getId(), request(List.of(newLot.getId()), "2", "8"),
@@ -220,7 +220,8 @@ public class MicroAstQcIntegrationTest extends BaseWebContextSensitiveTest {
         caseAnalyses.linkAnalysis(c, analysis, null);
         var usedRun = start(isolate("ISO-USED"),
                 List.of(new MicroLotSelection(analysis.getId(), reagentLink.getId(), usedLot.getId())));
-        var recordedOn = start(isolate("ISO-QC"), List.of());
+        var recordedOn = start(isolate("ISO-QC"),
+                List.of(new MicroLotSelection(analysis.getId(), reagentLink.getId(), usedLot.getId())));
         var unrelated = start(isolate("ISO-OTHER"), List.of());
         var reviewedRun = start(isolate("ISO-DONE"),
                 List.of(new MicroLotSelection(analysis.getId(), reagentLink.getId(), usedLot.getId())));
@@ -385,6 +386,33 @@ public class MicroAstQcIntegrationTest extends BaseWebContextSensitiveTest {
         assertThrows(IllegalArgumentException.class, () -> qc.getView(other.getId(), run.getId(), writer));
     }
 
+    @Test
+    public void controlRefusesALotThatIsNeitherTheRunsNorAPendingLotOfTheSameReagent() {
+        var run = start(isolate("ISO-1"), List.of(selection(lot(QCStatus.PASSED))));
+        InventoryLot otherReagent = lot(cardItem(), QCStatus.PENDING);
+        InventoryLot unusedPassed = lot(QCStatus.PASSED);
+
+        for (Long lotId : List.of(otherReagent.getId(), unusedPassed.getId(), -1L)) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> qc.recordControl(run.getId(), request(List.of(lotId), "2", "8"), writer));
+        }
+
+        em.flush();
+        assertEquals(0L, em.createQuery("select count(r) from QCResult r where r.controlLotId = :lot", Long.class)
+                .setParameter("lot", controlLot.getId()).getSingleResult().longValue());
+        em.clear();
+        assertEquals(QCStatus.PENDING, inventoryLots.get(otherReagent.getId()).getQcStatus());
+    }
+
+    private MicroLotSelection selection(InventoryLot lot) {
+        var reagentLink = reagentLink();
+        var analysis = fixtures.createAnalysis(
+                em.find(org.openelisglobal.sampleitem.valueholder.SampleItem.class, c.getSampleItemId()),
+                em.find(org.openelisglobal.test.valueholder.Test.class, reagentLink.getTestId()));
+        caseAnalyses.linkAnalysis(c, analysis, null);
+        return new MicroLotSelection(analysis.getId(), reagentLink.getId(), lot.getId());
+    }
+
     private void assertHeld(MicroAstRun run) {
         assertTrue(qc.getView(c.getId(), run.getId(), writer).held);
         var error = assertThrows(MicroAstConflictException.class, () -> ast.reviewRun(run.getId(), validator));
@@ -443,8 +471,12 @@ public class MicroAstQcIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     private InventoryLot lot(QCStatus status) {
+        return lot(cards, status);
+    }
+
+    private InventoryLot lot(InventoryItem item, QCStatus status) {
         var lot = new InventoryLot();
-        lot.setInventoryItem(cards);
+        lot.setInventoryItem(item);
         lot.setLotNumber("AST-" + UUID.randomUUID().toString().substring(0, 12));
         lot.setExpirationDate(Timestamp.from(Instant.now().plusSeconds(30L * 86_400L)));
         lot.setInitialQuantity(10.0);
