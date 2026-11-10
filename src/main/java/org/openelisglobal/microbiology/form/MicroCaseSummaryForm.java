@@ -19,4 +19,7 @@ public class MicroCaseSummaryForm {
     public String stage;
     public String priority;
     public Timestamp createdAt;
+    public String caseStatus;
+    public java.util.List<String> statusTags = new java.util.ArrayList<>();
+    public boolean stat;
 }
