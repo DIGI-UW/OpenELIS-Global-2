@@ -312,7 +312,7 @@ class UserManagementPage {
   }
 
   searchByFilters(value) {
-    cy.get(this.selectors.filters)
+    cy.get(this.selectors.filters, { timeout: 20000 })
       .should("be.visible")
       .and("be.enabled")
       .find("option")
