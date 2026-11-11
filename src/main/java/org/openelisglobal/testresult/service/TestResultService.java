@@ -27,6 +27,13 @@ public interface TestResultService extends BaseObjectService<TestResult, String>
      */
     TestResult getTestResultsByTestAndDictonaryResult(String testId, String result, String componentId);
 
+    /**
+     * Whether a coded value records an answer the catalog marks critical: the
+     * answer row of the value on the component (test-wide when the component has
+     * none) carries {@code is_critical}.
+     */
+    boolean isCriticalAnswer(String testId, String componentId, String resultType, String value);
+
     List<TestResult> getTestResultsByTestAndResultGroup(TestAnalyte testAnalyte);
 
     List<TestResult> getAllSortedTestResults();

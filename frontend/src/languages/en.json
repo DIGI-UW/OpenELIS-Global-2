@@ -7468,6 +7468,7 @@
   "label.testCatalog.sampleResults.option.sortOrder": "Sort order",
   "label.testCatalog.sampleResults.option.sortOrder.helper": "Options are shown to technicians in ascending sort order — lower numbers appear first.",
   "label.testCatalog.sampleResults.option.normal": "Normal",
+  "label.testCatalog.sampleResults.option.critical": "Critical",
   "label.testCatalog.sampleResults.option.qualifiable": "Qualifiable",
   "error.testCatalog.sampleResults.duplicateOption": "{component} lists {options} more than once. Remove the extra row so result entry offers each option once.",
   "label.testCatalog.sampleResults.addOption": "Add option",

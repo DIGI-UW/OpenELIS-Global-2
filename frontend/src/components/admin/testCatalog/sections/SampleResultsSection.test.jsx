@@ -291,6 +291,16 @@ describe("SampleResultsSection", () => {
     expect(savedPayload().components[0].options[0].qualifiable).toBe(true);
   });
 
+  it("marks an option critical and sends it", async () => {
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.click(document.getElementById("opt-critical-0-0"));
+    fireEvent.click(saveButton());
+
+    expect(savedPayload().components[0].options[0].critical).toBe(true);
+  });
+
   it("keeps one Normal option per select list", async () => {
     const twoOptions = clone(SAMPLE_RESULTS);
     twoOptions.components[0].options.push({

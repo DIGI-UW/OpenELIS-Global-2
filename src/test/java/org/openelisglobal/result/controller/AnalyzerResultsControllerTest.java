@@ -340,6 +340,61 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
         new JdbcTemplate(dataSource).update("UPDATE clinlims.analyzer_results SET result = '5.6' WHERE id = 1001");
     }
 
+    @Test
+    public void acceptingACodedRowChangedToACriticalAnswer_isRefusedUntilAcknowledged() throws Exception {
+        String detected = codedAnswer("OGC1610 Detected", true);
+        String notDetected = codedAnswer("OGC1610 Not detected", false);
+        stageCodedAnswer(notDetected);
+        MockHttpSession session = new MockHttpSession();
+        String loaded = mockMvc.perform(
+                get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        mockMvc.perform(post("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).with(csrf()).session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(acceptRow(loaded, "1001", detected)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].rowId").value("1001"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].value").value("OGC1610 Detected"));
+    }
+
+    @Test
+    public void anUneditedCodedInstrumentAnswer_andANonCriticalOne_oweNothing() {
+        String detected = codedAnswer("OGC1610 Detected", true);
+        String notDetected = codedAnswer("OGC1610 Not detected", false);
+        stageCodedAnswer(detected);
+        ResultEntryAcknowledgementService acknowledgementService = securityContext.getParent()
+                .getBean(ResultEntryAcknowledgementService.class);
+
+        AnalyzerResultItem unedited = new AnalyzerResultItem();
+        unedited.setId("1001");
+        unedited.setResult(detected);
+        unedited.setIsAccepted(true);
+        org.junit.Assert.assertEquals(List.of(), acknowledgementService.alertsForAnalyzerItems(List.of(unedited)));
+
+        AnalyzerResultItem changed = new AnalyzerResultItem();
+        changed.setId("1001");
+        changed.setResult(notDetected);
+        changed.setIsAccepted(true);
+        org.junit.Assert.assertEquals(List.of(), acknowledgementService.alertsForAnalyzerItems(List.of(changed)));
+    }
+
+    private String codedAnswer(String entry, boolean critical) {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        String id = jdbc.queryForObject("SELECT nextval('clinlims.dictionary_seq')::text", String.class);
+        jdbc.update("INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated) VALUES (?::numeric, ?,"
+                + " 'Y', NOW())", id, entry);
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, sort_order, is_active,"
+                + " is_critical, lastupdated) VALUES (nextval('clinlims.test_result_seq'), 4001, 'D', ?, 1, true, ?,"
+                + " NOW())", id, critical);
+        return id;
+    }
+
+    private void stageCodedAnswer(String answer) {
+        new JdbcTemplate(dataSource).update(
+                "UPDATE clinlims.analyzer_results SET test_result_type = 'D', result = ? WHERE id = 1001", answer);
+    }
+
     private void seedGlucoseCriticalLimit() {
         new JdbcTemplate(dataSource).update("INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id,"
                 + " min_age, max_age, low_normal, high_normal, low_valid, high_valid, low_reporting_range,"

@@ -1136,6 +1136,24 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
                 Long.class, TEST_ID));
     }
 
+    @org.junit.Test
+    public void aCriticalOptionRoundTrips() {
+        ResultComponentDto primary = selectList(null, opt(null, "SRIT-Positive", 1), opt(null, "SRIT-Negative", 2));
+        primary.options.get(0).critical = true;
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest());
+
+        ResultComponentDto saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0);
+        assertTrue(optionNamed(saved, "SRIT-Positive").critical);
+        assertTrue(!optionNamed(saved, "SRIT-Negative").critical);
+
+        optionNamed(saved, "SRIT-Positive").critical = false;
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(saved), authedRequest());
+        assertEquals(Long.valueOf(0L),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.test_result WHERE test_id = ? AND is_active AND is_critical",
+                        Long.class, TEST_ID));
+    }
+
     /**
      * Result entry pre-selects test.default_test_result_id; the primary select
      * list's default result is mirrored there, including a default typed as a new

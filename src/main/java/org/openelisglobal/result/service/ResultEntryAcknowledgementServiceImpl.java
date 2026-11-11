@@ -18,10 +18,13 @@ import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.common.services.IResultSaveService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.action.util.ResultEntryAlert;
@@ -37,6 +40,7 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.test.beanItems.TestResultItem;
+import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -78,6 +82,12 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
     private AnalyzerResultsService analyzerResultsService;
     @Autowired
     private SampleService sampleService;
+    @Autowired
+    private TestResultService testResultService;
+    @Autowired
+    private DictionaryService dictionaryService;
+    @Autowired
+    private RuleResultScope ruleResultScope;
 
     public ResultEntryAcknowledgementServiceImpl() {
         super(ResultEntryAcknowledgement.class);
@@ -234,19 +244,26 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
                 continue;
             }
             AnalyzerResults staged = analyzerResultsService.get(item.getId());
-            if (staged == null || staged.isReadOnly() || !"N".equals(staged.getResultType())
-                    || GenericValidator.isBlankOrNull(staged.getTestId())) {
+            if (staged == null || staged.isReadOnly() || GenericValidator.isBlankOrNull(staged.getTestId())) {
                 continue;
             }
-            Sample sample = sampleService.getSampleByAccessionNumber(staged.getAccessionNumber());
-            Patient patient = sample == null ? null : sampleHumanService.getPatientForSample(sample);
             String componentId = multiComponent(staged.getTestId()) ? staged.getComponentId() : null;
-            ResultLimit limit = GenericValidator.isBlankOrNull(componentId)
-                    ? resultLimitService.getResultLimitForTestAndPatient(staged.getTestId(), patient,
-                            item.getTypeOfSampleId())
-                    : resultLimitService.getResultLimitForComponentAndPatient(componentId, patient,
-                            item.getTypeOfSampleId());
-            for (ResultEntryAlert alert : alertsFor(limit, "N", item.getResult(), staged.getResult())) {
+            List<ResultEntryAlert> owed;
+            if ("D".equals(staged.getResultType())) {
+                owed = answerAlerts(staged.getTestId(), staged.getComponentId(), item.getResult(), staged.getResult());
+            } else if ("N".equals(staged.getResultType())) {
+                Sample sample = sampleService.getSampleByAccessionNumber(staged.getAccessionNumber());
+                Patient patient = sample == null ? null : sampleHumanService.getPatientForSample(sample);
+                ResultLimit limit = GenericValidator.isBlankOrNull(componentId)
+                        ? resultLimitService.getResultLimitForTestAndPatient(staged.getTestId(), patient,
+                                item.getTypeOfSampleId())
+                        : resultLimitService.getResultLimitForComponentAndPatient(componentId, patient,
+                                item.getTypeOfSampleId());
+                owed = alertsFor(limit, "N", item.getResult(), staged.getResult());
+            } else {
+                continue;
+            }
+            for (ResultEntryAlert alert : owed) {
                 alert.setRowId(staged.getId());
                 alert.setTestId(staged.getTestId());
                 alert.setComponentId(componentId);
@@ -267,7 +284,7 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
 
     private List<ResultEntryAlert> alertsForEntry(String analysisId, String resultId, String componentId,
             String resultType, String value) {
-        if (!"N".equals(resultType) || GenericValidator.isBlankOrNull(value)
+        if (!("N".equals(resultType) || "D".equals(resultType)) || GenericValidator.isBlankOrNull(value)
                 || GenericValidator.isBlankOrNull(analysisId)) {
             return new ArrayList<>();
         }
@@ -276,14 +293,36 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
             return new ArrayList<>();
         }
         Result stored = GenericValidator.isBlankOrNull(resultId) ? null : resultService.get(resultId);
+        String previousValue = stored == null ? null : stored.getValue();
         String scope = componentScope(analysis, componentId);
-        ResultLimit limit = resultLimitService.selectResultLimitForResult(analysis, stored, patientOf(analysis), scope)
-                .getResultLimit();
-        List<ResultEntryAlert> alerts = alertsFor(limit, resultType, value, stored == null ? null : stored.getValue());
+        List<ResultEntryAlert> alerts;
+        if ("D".equals(resultType)) {
+            alerts = answerAlerts(analysis.getTest().getId(), componentId, value, previousValue);
+        } else {
+            ResultLimit limit = resultLimitService
+                    .selectResultLimitForResult(analysis, stored, patientOf(analysis), scope).getResultLimit();
+            alerts = alertsFor(limit, resultType, value, previousValue);
+        }
         for (ResultEntryAlert alert : alerts) {
             alert.setAnalysisId(analysis.getId());
             alert.setComponentId(scope);
         }
+        return alerts;
+    }
+
+    private List<ResultEntryAlert> answerAlerts(String testId, String componentId, String value, String previousValue) {
+        List<ResultEntryAlert> alerts = new ArrayList<>();
+        String answer = value.trim();
+        // A blank component is the main record, as the save binds it.
+        String component = GenericValidator.isBlankOrNull(componentId) ? ruleResultScope.primaryComponentId(testId)
+                : componentId;
+        if (answer.equals(StringUtil.blankIfNull(previousValue).trim())
+                || !testResultService.isCriticalAnswer(testId, component, "D", answer)) {
+            return alerts;
+        }
+        Dictionary label = dictionaryService.getDictionaryById(answer);
+        alerts.add(new ResultEntryAlert(ResultEntryAlert.KIND_CRITICAL,
+                label == null ? answer : label.getLocalizedName()));
         return alerts;
     }
 

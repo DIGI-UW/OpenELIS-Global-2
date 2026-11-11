@@ -816,6 +816,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 co.setValue(so.getValue());
                 co.setSortOrder(so.getSortOrder());
                 co.setIsNormal(so.getIsNormal());
+                co.setIsCritical(so.getIsCritical());
                 co.setTestResultType(so.getTestResultType());
                 optionCopies.add(co);
             }

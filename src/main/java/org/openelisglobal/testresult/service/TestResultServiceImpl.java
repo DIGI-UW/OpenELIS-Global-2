@@ -130,6 +130,7 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
                 match.setValue(d.getValue());
                 match.setSortOrder(d.getSortOrder());
                 match.setIsNormal(d.getIsNormal());
+                match.setIsCritical(d.getIsCritical());
                 match.setIsQuantifiable(d.getIsQuantifiable());
                 match.setTestResultType(d.getTestResultType());
                 match.setSysUserId(sysUserId);
@@ -212,6 +213,16 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
     @Transactional(readOnly = true)
     public TestResult getTestResultsByTestAndDictonaryResult(String id, String value, String componentId) {
         return baseObjectDAO.getTestResultsByTestAndDictonaryResult(id, value, componentId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isCriticalAnswer(String testId, String componentId, String resultType, String value) {
+        if (!"D".equals(resultType) || StringUtils.isBlank(testId) || StringUtils.isBlank(value)) {
+            return false;
+        }
+        TestResult answer = baseObjectDAO.getTestResultsByTestAndDictonaryResult(testId, value.trim(), componentId);
+        return answer != null && Boolean.TRUE.equals(answer.getIsCritical());
     }
 
     @Override

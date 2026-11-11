@@ -45,12 +45,12 @@ import org.springframework.transaction.annotation.Transactional;
  * for others - For Dictionary types, resultValue should match an existing
  * dictionary entry - sortOrder is optional (auto-assigned if not provided) -
  * isQuantifiable defaults to "N" if not specified - isActive defaults to "Y" if
- * not specified - isNormal defaults to "N" if not specified -
- * reportingDecimalPlaces is optional, used for numeric types - flags is
- * optional (e.g., "H" for high, "L" for low) - componentCode is optional and
- * names the result component the option belongs to (blank: the primary result)
- * - Existing test results with matching test, value and component will be
- * updated
+ * not specified - isNormal defaults to "N" if not specified - isCritical (Y/N)
+ * marks a coded answer critical, "N" if not specified - reportingDecimalPlaces
+ * is optional, used for numeric types - flags is optional (e.g., "H" for high,
+ * "L" for low) - componentCode is optional and names the result component the
+ * option belongs to (blank: the primary result) - Existing test results with
+ * matching test, value and component will be updated
  */
 @Component
 public class TestResultConfigurationHandler implements DomainConfigurationHandler {
@@ -116,6 +116,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         int isQuantifiableIndex = findColumnIndex(headers, "isQuantifiable");
         int isActiveIndex = findColumnIndex(headers, "isActive");
         int isNormalIndex = findColumnIndex(headers, "isNormal");
+        int isCriticalIndex = findColumnIndex(headers, "isCritical");
         int reportingDecimalPlacesIndex = -1;
         for (String name : new String[] { "reportingDecimalPlaces", "decimalPlaces", "significantDigits" }) {
             int index = findColumnIndex(headers, name);
@@ -151,8 +152,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 String[] values = parseCsvLine(line);
                 int resultsCreated = processCsvLine(values, testNameIndex, resultTypeIndex, resultValueIndex,
                         dictionaryCategoryIndex, sortOrderIndex, isQuantifiableIndex, isActiveIndex, isNormalIndex,
-                        reportingDecimalPlacesIndex, flagsIndex, significanceIndex, componentCodeIndex, lineNumber,
-                        fileName, touchedTestIds);
+                        isCriticalIndex, reportingDecimalPlacesIndex, flagsIndex, significanceIndex, componentCodeIndex,
+                        lineNumber, fileName, touchedTestIds);
                 if (resultsCreated > 0) {
                     totalResultsCreated += resultsCreated;
                 } else {
@@ -260,8 +261,9 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
      */
     private int processCsvLine(String[] values, int testNameIndex, int resultTypeIndex, int resultValueIndex,
             int dictionaryCategoryIndex, int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex,
-            int isNormalIndex, int reportingDecimalPlacesIndex, int flagsIndex, int significanceIndex,
-            int componentCodeIndex, int lineNumber, String fileName, Set<String> touchedTestIds) {
+            int isNormalIndex, int isCriticalIndex, int reportingDecimalPlacesIndex, int flagsIndex,
+            int significanceIndex, int componentCodeIndex, int lineNumber, String fileName,
+            Set<String> touchedTestIds) {
 
         String testName = getValueOrEmpty(values, testNameIndex);
         String resultType = getValueOrEmpty(values, resultTypeIndex);
@@ -365,13 +367,13 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
 
             if (existingResult != null) {
                 updateTestResult(existingResult, values, sortOrderIndex, isQuantifiableIndex, isActiveIndex,
-                        isNormalIndex, reportingDecimalPlacesIndex, flagsIndex, significanceIndex);
+                        isNormalIndex, isCriticalIndex, reportingDecimalPlacesIndex, flagsIndex, significanceIndex);
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                         "Updated existing test result for test: " + test.getDescription());
             } else {
                 createTestResult(test, resultType, resultValue, componentId, values, sortOrderIndex,
-                        isQuantifiableIndex, isActiveIndex, isNormalIndex, reportingDecimalPlacesIndex, flagsIndex,
-                        significanceIndex);
+                        isQuantifiableIndex, isActiveIndex, isNormalIndex, isCriticalIndex, reportingDecimalPlacesIndex,
+                        flagsIndex, significanceIndex);
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                         "Created new test result for test: " + test.getDescription());
             }
@@ -506,8 +508,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
     }
 
     private TestResult updateTestResult(TestResult testResult, String[] values, int sortOrderIndex,
-            int isQuantifiableIndex, int isActiveIndex, int isNormalIndex, int reportingDecimalPlacesIndex,
-            int flagsIndex, int significanceIndex) {
+            int isQuantifiableIndex, int isActiveIndex, int isNormalIndex, int isCriticalIndex,
+            int reportingDecimalPlacesIndex, int flagsIndex, int significanceIndex) {
 
         // Update sort order
         String sortOrder = getValueOrEmpty(values, sortOrderIndex);
@@ -532,6 +534,11 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         String isNormal = getValueOrEmpty(values, isNormalIndex);
         if (!isNormal.isEmpty()) {
             testResult.setIsNormal("Y".equalsIgnoreCase(isNormal) || "true".equalsIgnoreCase(isNormal));
+        }
+
+        String isCritical = getValueOrEmpty(values, isCriticalIndex);
+        if (!isCritical.isEmpty()) {
+            testResult.setIsCritical("Y".equalsIgnoreCase(isCritical) || "true".equalsIgnoreCase(isCritical));
         }
 
         // Blank import cells preserve laboratory-authored reporting policy.
@@ -560,7 +567,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
 
     private TestResult createTestResult(Test test, String resultType, String resultValue, String componentId,
             String[] values, int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex, int isNormalIndex,
-            int reportingDecimalPlacesIndex, int flagsIndex, int significanceIndex) {
+            int isCriticalIndex, int reportingDecimalPlacesIndex, int flagsIndex, int significanceIndex) {
 
         TestResult testResult = new TestResult();
         testResult.setTest(test);
@@ -602,6 +609,9 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         } else {
             testResult.setIsNormal(false);
         }
+
+        String isCritical = getValueOrEmpty(values, isCriticalIndex);
+        testResult.setIsCritical("Y".equalsIgnoreCase(isCritical) || "true".equalsIgnoreCase(isCritical));
 
         // Set reporting decimal places
         String reportingDecimalPlaces = getValueOrEmpty(values, reportingDecimalPlacesIndex);
