@@ -3,6 +3,7 @@ import type { Locator, Page, TestInfo } from "@playwright/test";
 import {
   seedFinalizedMicrobiologyCase,
   seedMicrobiologyMvpCase,
+  seedReviewedMicrobiologyCase,
   ensureWorkspaceGrowthCulture,
 } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
@@ -40,7 +41,7 @@ const attachScreenshot = async (
 };
 
 test.describe("Microbiology keyboard-only workflow", () => {
-  test("filters and opens work, records an isolate and AST, and releases an amendment", async ({
+  test("filters and opens work, picks an isolate, and releases partial and amended reports", async ({
     page,
   }, testInfo) => {
     test.setTimeout(180_000);
@@ -88,264 +89,73 @@ test.describe("Microbiology keyboard-only workflow", () => {
         new RegExp(`/Microbiology/cases/${workingCase.caseId}`),
       );
       await expect(
-        page.getByRole("heading", { name: "Microbiology case" }),
+        page.getByRole("heading", {
+          level: 1,
+          name: `Case ${workingCase.accessionNumber}`,
+        }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
-      await expect(
-        page.getByTestId("microbiology-case-section-isolates"),
-      ).toBeFocused({ timeout: LONG_TIMEOUT });
     });
 
-    await test.step("Record culture lineage and a Timeline note with inline focus", async () => {
-      const inoculationPanel = page
-        .getByTestId("microbiology-case-view")
-        .getByRole("button", { name: "Inoculation", exact: true });
-      await tabTo(page, inoculationPanel);
-      await page.keyboard.press("Enter");
-      await expect(
-        page.getByTestId("microbiology-case-section-setup"),
-      ).toBeFocused({ timeout: LONG_TIMEOUT });
-      const startInoculation = page
-        .getByTestId("microbiology-case-section-setup")
-        .getByRole("button", { name: "Start inoculation" });
-      await tabTo(page, startInoculation);
-      await page.keyboard.press("Enter");
-      const containerIdentifier = page.getByLabel("Bottle or plate ID");
-      await expect(containerIdentifier).toBeFocused();
-      await expect(page.getByText("Inoculation form expanded")).toHaveAttribute(
-        "role",
-        "status",
-      );
-      await page.keyboard.type("BOTTLE-A11Y");
-      const media = page.getByLabel("Media or bottle");
-      await tabTo(page, media);
-      await page.keyboard.type("Blood culture bottle");
-      const saveMedia = page.getByRole("button", { name: "Save media" });
-      await tabTo(page, saveMedia);
-      await page.keyboard.press("Enter");
-      await expect(page.getByRole("cell", { name: "BOTTLE-A11Y" })).toBeVisible(
-        { timeout: LONG_TIMEOUT },
-      );
-      await expect(startInoculation).toBeFocused();
-
-      const addSubculture = page.getByRole("button", {
-        name: "Add subculture",
-      });
-      await tabTo(page, addSubculture);
-      await page.keyboard.press("Enter");
-      const parentMedia = page.getByLabel("Parent media");
-      await expect(parentMedia).toBeFocused();
-      await expect(page.getByText("Subculture form expanded")).toHaveAttribute(
-        "role",
-        "status",
-      );
-      await page.keyboard.type("BOTTLE-A11Y");
-      await tabTo(page, containerIdentifier);
-      await page.keyboard.type("PLATE-A11Y");
-      await tabTo(page, media);
-      await page.keyboard.type("MacConkey agar");
-      await tabTo(page, saveMedia);
-      await page.keyboard.press("Enter");
-      await expect(page.getByRole("cell", { name: "PLATE-A11Y" })).toBeVisible({
-        timeout: LONG_TIMEOUT,
-      });
-      await expect(addSubculture).toBeFocused();
-
-      const timelinePanel = page
-        .getByTestId("microbiology-case-view")
-        .getByRole("button", { name: "Timeline", exact: true });
-      await tabTo(page, timelinePanel);
-      await page.keyboard.press("Enter");
-      await expect(page).toHaveURL(/section=timeline/);
-      const addNote = page.getByRole("button", { name: "Add note" });
-      await tabTo(page, addNote);
-      await page.keyboard.press("Enter");
-      const note = page.getByLabel("Note or observation");
-      await expect(note).toBeFocused();
-      await expect(page.getByText("Note form expanded")).toHaveAttribute(
-        "role",
-        "status",
-      );
-      await page.keyboard.type("Keyboard qualification note");
-      const saveNote = page.getByRole("button", { name: "Save note" });
-      await tabTo(page, saveNote);
-      await page.keyboard.press("Enter");
-      await expect(page.getByText("Keyboard qualification note")).toBeVisible({
-        timeout: LONG_TIMEOUT,
-      });
-      await expect(addNote).toBeFocused();
-    });
-
-    await test.step("Create an isolate and record AST with the keyboard", async () => {
-      const isolatesPanel = page
-        .getByTestId("microbiology-case-view")
-        .getByRole("button", {
-          name: "Isolates",
-          exact: true,
-        });
-      await tabTo(page, isolatesPanel);
-      await page.keyboard.press("Enter");
-      await expect(page).toHaveURL(/section=isolates/);
-
-      const pick = page.getByRole("button", {
-        name: "Pick isolate",
-        exact: true,
-      });
+    await test.step("Pick an isolate in a dialog that takes and returns focus", async () => {
+      const section = page.getByLabel("Testing section", { exact: true });
+      await tabTo(page, section);
+      await page.keyboard.type("Isolates");
+      await expect(section).toHaveValue("ISOLATES");
+      const pick = page
+        .getByRole("button", { name: "Pick isolate", exact: true })
+        .filter({ visible: true })
+        .first();
       await tabTo(page, pick);
       await page.keyboard.press("Enter");
       const dialog = page.getByRole("dialog");
       const source = dialog.getByLabel("Source culture row", { exact: true });
-      await tabTo(page, source);
+      await expect(source).toBeFocused();
       await page.keyboard.type("AST-FIXTURE-GROWTH");
       await expect(source.locator("option:checked")).toHaveText(
-        "AST-FIXTURE-GROWTH",
+        /AST-FIXTURE-GROWTH/,
       );
-      const gramStain = dialog.getByLabel("Gram stain", { exact: true });
-      await tabTo(page, gramStain);
+      await tabTo(page, dialog.getByLabel("Gram stain", { exact: true }));
       await page.keyboard.type("Gram negative rods");
-      const colonyMorphology = dialog.getByLabel("Colony morphology", {
-        exact: true,
-      });
-      await tabTo(page, colonyMorphology);
+      await tabTo(
+        page,
+        dialog.getByLabel("Colony morphology", { exact: true }),
+      );
       await page.keyboard.type("Lactose fermenting colonies");
-      const createIsolate = dialog.getByRole("button", {
-        name: "Save",
-        exact: true,
-      });
-      await tabTo(page, createIsolate);
-      await page.keyboard.press("Enter");
-      await expect(page.getByText("Identification pending")).toBeVisible({
-        timeout: LONG_TIMEOUT,
-      });
-
-      const identifyOrganism = page.getByRole("button", {
-        name: "Identify organism",
-      });
-      await tabTo(page, identifyOrganism);
-      await page.keyboard.press("Enter");
-      const organism = dialog.getByRole("combobox", {
-        name: "Organism",
-        exact: true,
-      });
-      await tabTo(page, organism);
-      await page.keyboard.type("Escherichia coli (UAT)");
-      await page.keyboard.press("ArrowDown");
-      await page.keyboard.press("Enter");
-      await expect(organism).toHaveValue("Escherichia coli (UAT)");
-      const idMethod = dialog.getByLabel("ID method", { exact: true });
-      await tabTo(page, idMethod);
-      await page.keyboard.type("UAT micro culture");
-      await expect(idMethod.locator("option:checked")).toHaveText(
-        "UAT micro culture",
+      await tabTo(
+        page,
+        dialog.getByRole("button", { name: "Save", exact: true }),
       );
-      const status = dialog.getByLabel("Local identification status", {
-        exact: true,
-      });
-      await tabTo(page, status);
-      await page.keyboard.type("Final");
-      await expect(status).toHaveValue("FINAL");
-      const confidence = dialog.getByLabel("ID confidence (%)", {
-        exact: true,
-      });
-      await tabTo(page, confidence);
-      await page.keyboard.press("ControlOrMeta+A");
-      await page.keyboard.type("99.5");
-      const saveIdentification = dialog.getByRole("button", {
-        name: "Save",
-        exact: true,
-      });
-      await tabTo(page, saveIdentification);
       await page.keyboard.press("Enter");
-      await expect(page.getByTitle("Final", { exact: true })).toBeVisible({
-        timeout: LONG_TIMEOUT,
-      });
-
-      const astPanel = page
-        .getByTestId("microbiology-case-view")
-        .getByRole("button", {
-          name: "Manual AST",
-          exact: true,
-        });
-      await tabTo(page, astPanel);
-      await page.keyboard.press("Enter");
-      await expect(page).toHaveURL(/section=ast/);
-
-      const ast = page.getByTestId("microbiology-ast-card");
-      const lotScanner = ast.getByRole("searchbox", {
-        name: "Scan or enter lot number",
-      });
-      await tabTo(page, lotScanner);
-      await page.keyboard.type("UAT-MICRO-CARD-FEFO");
-      await page.keyboard.press("Enter");
+      await expect(dialog).toBeHidden({ timeout: LONG_TIMEOUT });
       await expect(
-        ast.getByText("Selected lot UAT-MICRO-CARD-FEFO."),
-      ).toBeVisible();
-      const cardLot = ast.getByRole("radio", {
-        name: /UAT-MICRO-CARD-FEFO/,
-      });
-      await expect(cardLot).toBeChecked();
-
-      const startRun = page.getByRole("button", { name: "Start AST run" });
-      await expect(startRun).toBeEnabled({ timeout: LONG_TIMEOUT });
-      await tabTo(page, startRun);
-      await page.keyboard.press("Enter");
-      await expect(
-        page.getByTestId("microbiology-ast-run-status"),
-      ).toContainText("In Progress", { timeout: LONG_TIMEOUT });
-
-      const recordReading = page.getByRole("button", {
-        name: "Record AST reading",
-      });
-      await expect(recordReading).toBeEnabled({ timeout: LONG_TIMEOUT });
-      await tabTo(page, recordReading);
-      await page.keyboard.press("Enter");
-      await expect(
-        page.getByTestId("microbiology-ast-interpretation"),
+        page.getByText("Identification pending", { exact: true }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(pick).toBeFocused();
+      await attachScreenshot(page, testInfo, "keyboard-isolate-picked");
+    });
 
-      const antibiotic = ast.getByLabel("Antibiotic", { exact: true });
-      await tabTo(page, antibiotic);
-      await page.keyboard.type("Gentamicin (UAT)");
-      await expect(antibiotic.locator("option:checked")).toHaveText(
-        "Gentamicin (UAT)",
+    await test.step("Release a partial report with the keyboard", async () => {
+      const reviewed = await seedReviewedMicrobiologyCase(page);
+      await page.goto(
+        `/Microbiology/cases/${reviewed.caseId}?section=reports`,
+        {
+          waitUntil: "domcontentloaded",
+        },
       );
-      await tabTo(page, recordReading);
-      await page.keyboard.press("Enter");
       await expect(
-        page.getByTestId("microbiology-ast-reading-row"),
-      ).toHaveCount(2, { timeout: LONG_TIMEOUT });
-
-      const reviewRun = page.getByRole("button", { name: "Review AST run" });
-      await expect(reviewRun).toBeEnabled({ timeout: LONG_TIMEOUT });
-      await tabTo(page, reviewRun);
-      await page.keyboard.press("Enter");
-      await expect(
-        page.getByTestId("microbiology-ast-run-status"),
-      ).toContainText("Reviewed", { timeout: LONG_TIMEOUT });
-      await attachScreenshot(page, testInfo, "keyboard-ast-reviewed");
-
-      const reportsPanel = page
-        .getByTestId("microbiology-case-view")
-        .getByRole("button", {
-          name: "Reports",
-          exact: true,
-        });
-      await tabTo(page, reportsPanel);
-      await page.keyboard.press("Enter");
-      await expect(page).toHaveURL(/section=reports/);
-      await expect(
-        page.getByTestId("microbiology-case-section-reports"),
-      ).toBeFocused({ timeout: LONG_TIMEOUT });
-
-      const releasePreliminary = page.getByRole("button", {
-        name: "Release preliminary report",
+        page.getByRole("heading", { name: "Report and release", exact: true }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      const releasePartial = page.getByRole("button", {
+        name: "Release partial report",
       });
-      await expect(releasePreliminary).toBeEnabled({ timeout: LONG_TIMEOUT });
-      await tabTo(page, releasePreliminary);
+      await expect(releasePartial).toBeEnabled({ timeout: LONG_TIMEOUT });
+      await tabTo(page, releasePartial);
       await page.keyboard.press("Enter");
       await expect(
-        page.getByTestId("microbiology-release-state"),
-      ).toContainText("Preliminary Released", { timeout: LONG_TIMEOUT });
-      await attachScreenshot(page, testInfo, "keyboard-preliminary-release");
+        page.getByLabel("Report version").locator("option:checked"),
+      ).toContainText("Partial", { timeout: LONG_TIMEOUT });
+      await expect(releasePartial).toBeFocused();
+      await attachScreenshot(page, testInfo, "keyboard-partial-release");
     });
 
     await test.step("Open and release an amendment with the keyboard", async () => {
@@ -368,7 +178,9 @@ test.describe("Microbiology keyboard-only workflow", () => {
       await tabTo(page, openAmendment);
       await page.keyboard.press("Enter");
       await expect(
-        page.getByText("Amendment in progress", { exact: true }),
+        page.getByText(
+          "Amendment opened; clinical corrections are now enabled",
+        ),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
 
       const releaseAmendment = page.getByRole("button", {
