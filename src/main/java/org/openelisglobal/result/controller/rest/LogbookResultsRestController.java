@@ -516,7 +516,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         rejectEqaRowsMissingAnalyst(tests);
 
         for (TestResultItem modified : actionDataSet.getModifiedItems()) {
-            Optional<WaitingRun> waiting = resultRunService.waitingFor(analysisService.get(modified.getAnalysisId()));
+            Optional<WaitingRun> waiting = resultRunService.waitingFor(analysisService.get(modified.getAnalysisId()),
+                    modified.getTestResultComponentId());
             if (waiting.isPresent()) {
                 Map<String, Object> refusal = new HashMap<>();
                 refusal.put("error",

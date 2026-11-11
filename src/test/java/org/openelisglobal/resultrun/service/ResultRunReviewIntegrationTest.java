@@ -6,6 +6,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.Before;
@@ -220,6 +221,55 @@ public class ResultRunReviewIntegrationTest extends BaseWebContextSensitiveTest 
         assertEquals(2, counts.held());
         assertEquals(1, counts.exceptions());
         assertEquals(0, counts.critical());
+    }
+
+    /**
+     * A run row is accepted into its worklist row with the value the import
+     * resolved: the dictionary choice, while the instrument's text stays on view. A
+     * main value staged without a component names the test's primary component,
+     * which is the row the worklist shows it on.
+     */
+    @Test
+    public void aRowNamesTheChoiceItIsAcceptedAsAndTheMainValueItsPrimaryPart() {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_active,"
+                + " lastupdated, is_primary) VALUES ('rvw-main', ?::numeric, 'MAIN', 'Main', 0, 'Y', NOW(), true),"
+                + " ('rvw-call', ?::numeric, 'CALL', 'Call', 1, 'Y', NOW(), false)", TEST, TEST);
+        AnalyzerResults positive = row("9101");
+        positive.setRawResultValue("POS");
+        positive.setResultType("D");
+        AnalyzerResults call = row("12");
+        call.setComponentId("rvw-call");
+        ResultRun run = open("m-entry", List.of(positive, call));
+
+        List<ResultRunRow> rows = resultRunService.getRows(run.getId(), viewer(), ResultRunChip.ALL, 1, 25)
+                .orElseThrow().rows();
+
+        ResultRunRow main = rows.stream().filter(r -> r.id().equals(positive.getId())).findFirst().orElseThrow();
+        assertEquals("what the instrument sent", "POS", main.value());
+        assertEquals("the dictionary choice the import resolved", "9101", main.stagedResult());
+        assertEquals("rvw-main", main.componentId());
+        ResultRunRow part = rows.stream().filter(r -> r.id().equals(call.getId())).findFirst().orElseThrow();
+        assertEquals("rvw-call", part.componentId());
+    }
+
+    /**
+     * A test with one part shows one worklist row that names no part, so a value of
+     * that test names none either, whether or not the import gave it the part.
+     */
+    @Test
+    public void aValueOfATestWithOnePartNamesNoPartLikeItsWorklistRow() {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_active,"
+                + " lastupdated, is_primary) VALUES ('rvw-only', ?::numeric, 'ONLY', 'Only', 0, 'Y', NOW(), true)",
+                TEST);
+        AnalyzerResults named = row("15");
+        named.setComponentId("rvw-only");
+        AnalyzerResults unnamed = row("16");
+        ResultRun run = open("m-one-part", List.of(named, unnamed));
+
+        List<ResultRunRow> rows = resultRunService.getRows(run.getId(), viewer(), ResultRunChip.ALL, 1, 25)
+                .orElseThrow().rows();
+
+        assertEquals(List.of(), rows.stream().map(ResultRunRow::componentId).filter(Objects::nonNull).toList());
     }
 
     private AnalyzerResults row(String value) {
