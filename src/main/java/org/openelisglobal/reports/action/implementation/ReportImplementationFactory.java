@@ -22,8 +22,12 @@ public class ReportImplementationFactory {
 
     public static IReportParameterSetter getParameterSetter(String report) {
         if (!GenericValidator.isBlankOrNull(report)) {
-            ReportRegistry registry = SpringContext.getBean(ReportRegistry.class);
-            return registry.getParameterSetter(report);
+            try {
+                ReportRegistry registry = SpringContext.getBean(ReportRegistry.class);
+                return registry.getParameterSetter(report);
+            } catch (RuntimeException e) {
+                return null;
+            }
         }
         return null;
     }
@@ -84,7 +88,11 @@ public class ReportImplementationFactory {
             return null;
         }
 
-        ReportRegistry registry = SpringContext.getBean(ReportRegistry.class);
-        return registry.getReportCreator(report);
+        try {
+            ReportRegistry registry = SpringContext.getBean(ReportRegistry.class);
+            return registry.getReportCreator(report);
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 }
