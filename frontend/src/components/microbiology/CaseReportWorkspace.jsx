@@ -18,6 +18,7 @@ import {
   TableRow,
   Tile,
 } from "@carbon/react";
+import { returnFocus } from "./returnFocus";
 
 export function MicrobiologyReportBlock({ report }) {
   const intl = useIntl(),
@@ -187,6 +188,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
         : current.current.canValidate)
     )
       return;
+    const trigger = document.activeElement;
     setBusy(true);
     setError(false);
     try {
@@ -203,6 +205,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       setError(true);
     } finally {
       setBusy(false);
+      returnFocus(trigger);
     }
   };
   const select = async (analysisId, selected) => {

@@ -403,3 +403,22 @@ it("shows a preopened pick load failure and lets the user close it", async () =>
   );
   expect(close).toHaveBeenCalledTimes(1);
 });
+it("moves keyboard focus into the pick dialog and back to Pick isolate after saving", async () => {
+  show(api([]));
+  const trigger = await screen.findByRole("button", { name: "Pick isolate" });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const dialog = screen.getByRole("dialog");
+  const culture = within(dialog).getByLabelText("Source culture row");
+  expect(culture).toHaveFocus();
+  fireEvent.change(culture, { target: { value: "r1" } });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Pick isolate" })).toHaveFocus(),
+  );
+});

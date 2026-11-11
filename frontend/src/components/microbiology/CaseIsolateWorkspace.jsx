@@ -34,6 +34,7 @@ import {
 } from "@carbon/react";
 import ReferralStatusTag from "../order/steps/referOut/referralStatusTag";
 import OrderReferOutForm from "../order/steps/referOut/OrderReferOutForm";
+import { MODAL_FIRST_FIELD, useReturnFocus } from "./returnFocus";
 
 const labels = {
   referred: "label.results.history.event.REFERRAL",
@@ -72,6 +73,7 @@ function IsolateAction({
   onClose,
 }) {
   const intl = useIntl();
+  useReturnFocus();
   const t = (key, values) =>
     intl.formatMessage(
       { id: labels[key] || `microbiology.isolateWorkspace.${key}` },
@@ -207,6 +209,7 @@ function IsolateAction({
       primaryButtonText={t("save")}
       secondaryButtonText={t("cancel")}
       primaryButtonDisabled={!valid || saving}
+      selectorPrimaryFocus={MODAL_FIRST_FIELD}
       onRequestSubmit={submit}
       onRequestClose={() => {
         if (!saving) onClose();
