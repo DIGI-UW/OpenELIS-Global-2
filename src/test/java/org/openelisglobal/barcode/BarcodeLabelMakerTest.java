@@ -403,6 +403,47 @@ public class BarcodeLabelMakerTest {
         verify(dictionaryService, times(1)).getDataForId("77");
     }
 
+    /**
+     * A slide label scanned to the bare lab number, the same as its block and its
+     * order, so the label could not be checked against the block it was cut from.
+     * The printed symbol is now the slide's own barcode, while the print count is
+     * still kept against the order.
+     */
+    @Test
+    public void slideOrder_printsTheSlidesOwnBarcodeAndCountsPrintsPerOrder() throws Exception {
+        when(configurationProperties.getPropertyValue(any(Property.class))).thenAnswer(invocation -> {
+            Property property = invocation.getArgument(0);
+            switch (property) {
+            case BAR_CODE_TYPE:
+                return "BARCODE";
+            case SLIDE_LABEL_BARCODE_WIDTH:
+            case SLIDE_LABEL_BARCODE_HEIGHT:
+                return "2";
+            case SLIDE_LABEL_FIELD_SLIDE_ID:
+                return "true";
+            case MAX_SLIDE_LABEL_PRINTED:
+                return "10";
+            default:
+                return "false";
+            }
+        });
+        PathologySlide slide = new PathologySlide();
+        slide.setId(30);
+        slide.setDesignation("1");
+        slide.setBarcode("ACC-1.A1.1");
+        slide.setBlockId(10);
+        when(pathologySampleService.getSlides(99)).thenReturn(List.of(slide));
+
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+        labelMaker.generateLabels("ACC-1", "slideOrder", "1", "false");
+
+        assertEquals("the label carries the slide's own barcode", "ACC-1.A1.1",
+                getQueuedLabels(labelMaker).get(0).getCode());
+        verify(barcodeLabelInfoService).getDataByCode("ACC-1-S");
+        Result decoded = decodeFirstPage(labelMaker.createLabelsAsStream().toByteArray());
+        assertEquals("and a scanner reads that barcode off the printed label", "ACC-1.A1.1", decoded.getText());
+    }
+
     @Test
     public void generateLabels_freezerOrder_fallsBackToNationalIdWhenSubjectNumberMissing() {
         Sample sample = sampleService.getSampleByAccessionNumber("ACC-1");

@@ -1,4 +1,5 @@
 import { expect, Page, Response } from "@playwright/test";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { UI_TIMEOUT } from "./timeouts";
 
 /**
@@ -38,4 +39,56 @@ export async function expectPdf(response: Response) {
     contentType,
     `label servlet answered ${contentType} instead of a PDF: ${preview}`,
   ).toMatch(/^application\/pdf/);
+}
+
+/**
+ * Click a print button and return the text of the labels it printed, with
+ * the address the servlet was called at. The answer is taken from the route
+ * before the browser hands the PDF off, so its bytes are read whole; a
+ * servlet that answers anything but a PDF fails here, as expectPdf does.
+ */
+export async function printedLabelText(page: Page, buttonName: string) {
+  const servlet = "**/LabelMakerServlet**";
+  let pdf: Buffer | undefined;
+  let url = "";
+  await page.context().route(servlet, async (route) => {
+    const response = await route.fetch();
+    url = route.request().url();
+    expect(response.status(), "label servlet status").toBe(200);
+    expect(response.headers()["content-type"] ?? "").toMatch(
+      /^application\/pdf/,
+    );
+    pdf = await response.body();
+    await route.fulfill({ response });
+  });
+  try {
+    const popupOpened = page.waitForEvent("popup");
+    await page.getByRole("button", { name: buttonName, exact: true }).click();
+    const popup = await popupOpened;
+    await expect
+      .poll(() => pdf?.subarray(0, 5).toString(), { timeout: UI_TIMEOUT })
+      .toBe("%PDF-");
+    await popup.close();
+
+    const document = await getDocument({
+      data: new Uint8Array(pdf!),
+      useSystemFonts: true,
+    }).promise;
+    try {
+      const pages: string[] = [];
+      for (let index = 1; index <= document.numPages; index += 1) {
+        const content = await (await document.getPage(index)).getTextContent();
+        pages.push(
+          content.items
+            .map((item) => ("str" in item ? item.str : ""))
+            .join(" "),
+        );
+      }
+      return { url, text: pages.join(" ").replace(/\s+/g, " ") };
+    } finally {
+      await document.destroy();
+    }
+  } finally {
+    await page.context().unroute(servlet);
+  }
 }

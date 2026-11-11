@@ -522,11 +522,12 @@ test.describe
       const slide = rowNamed(slidesUnder(page, "A1"), "1");
       await expect(slide).toBeVisible();
 
-      // Upload file and the slide's Deactivate are the actions a person can
-      // see; Carbon's second, hidden uploader trigger is not one they can hit.
+      // Verify label, Upload file and the slide's Deactivate are the actions
+      // a person can see; Carbon's second, hidden uploader trigger is not one
+      // they can hit.
       await expect(
         slide.locator(".pathology-case-view__row-actions button:visible"),
-      ).toHaveCount(2);
+      ).toHaveCount(3);
 
       // Every control on the slide row sits clear of the others at this
       // width.
@@ -534,6 +535,10 @@ test.describe
         slide.locator(".pathology-case-view__row-identity"),
         slide.getByLabel(`Level ${barcode}`, { exact: true }),
         slide.getByRole("combobox", { name: `Stain ${barcode}`, exact: true }),
+        slide.getByRole("button", {
+          name: "Verify label of A1.1",
+          exact: true,
+        }),
         slide.getByRole("button", { name: "Upload file" }).first(),
         slide.getByRole("button", {
           name: `Deactivate slide ${barcode}`,

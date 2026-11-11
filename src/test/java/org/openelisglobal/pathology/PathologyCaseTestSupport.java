@@ -11,13 +11,16 @@ import java.util.Map;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.function.ThrowingRunnable;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm.PathologySlideForm;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.service.PathologySampleService.LabelVerification;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
@@ -193,6 +196,37 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
      */
     protected void storeAsBlock(int blockId) {
         jdbcTemplate.update("UPDATE clinlims.pathology_block SET cassette_state = 'BLOCK' WHERE id = ?", blockId);
+    }
+
+    /**
+     * A cassette A1 cut at grossing and stored as a block, so slides are cut from
+     * it.
+     */
+    protected int cutEmbeddedBlock() {
+        saveBlocks(postedBlock(null, "Bench A"));
+        int blockId = idOfBlockDesignated("A1");
+        storeAsBlock(blockId);
+        return blockId;
+    }
+
+    /**
+     * Checks a slide's label with the barcodes stored on it and its block, as a
+     * scanner would read them.
+     */
+    protected LabelVerification verifyStoredLabel(int slideId) {
+        Map<String, Object> slide = slideRow(slideId);
+        Assert.assertNotNull("no slide on the case has id " + slideId, slide);
+        String blockBarcode = (String) blockRow(((Number) slide.get("block_id")).intValue()).get("barcode");
+        return pathologySampleService
+                .verifySlideLabel(slideId, blockBarcode, (String) slide.get("barcode"), TECHNICIAN_ID)
+                .orElseThrow(() -> new AssertionError("no slide carries id " + slideId));
+    }
+
+    /** The call is refused with the message id the screen translates. */
+    protected LocalizedValidationException assertRefusedWith(String errorCode, ThrowingRunnable call) {
+        LocalizedValidationException refusal = Assert.assertThrows(LocalizedValidationException.class, call);
+        Assert.assertEquals("the refusal carries the message the screen translates", errorCode, refusal.getErrorCode());
+        return refusal;
     }
 
     protected void saveSlides(PathologySlideForm... slides) {

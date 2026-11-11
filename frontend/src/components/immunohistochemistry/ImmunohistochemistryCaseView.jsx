@@ -40,6 +40,7 @@ import QuestionnaireResponse from "../common/QuestionnaireResponse";
 import "./../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
+import LabelVerificationTag from "../pathology/LabelVerificationTag";
 import {
   activeRows,
   blockIdentifier,
@@ -1481,6 +1482,14 @@ function ImmunohistochemistryCaseView() {
                                 slide,
                                 immunohistochemistrySampleInfo.blocks,
                               )}
+                            />
+                            {/* Whether the slide's label was checked against
+                                its block at microtomy, read only here. */}
+                            <LabelVerificationTag
+                              slide={slide}
+                              labelVerifications={
+                                immunohistochemistrySampleInfo.labelVerifications
+                              }
                             />
                           </Column>
                           <Column lg={2} md={2} sm={1}>

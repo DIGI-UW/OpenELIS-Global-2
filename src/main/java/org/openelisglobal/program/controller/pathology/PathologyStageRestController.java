@@ -79,9 +79,8 @@ public class PathologyStageRestController extends PathologyRestController {
      */
     @ExceptionHandler({ OptimisticLockingFailureException.class, OptimisticLockException.class,
             StaleStateException.class })
-    public ResponseEntity<Map<String, Object>> versionConflict(RuntimeException e) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("conflict", "version", "error",
-                "another change to this case landed at the same moment; reload the case and try again"));
+    public ResponseEntity<Map<String, Object>> onVersionConflict(RuntimeException e) {
+        return versionConflict("case");
     }
 
     /**

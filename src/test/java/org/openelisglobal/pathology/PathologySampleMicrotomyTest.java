@@ -240,7 +240,7 @@ public class PathologySampleMicrotomyTest extends PathologyCaseTestSupport {
 
         save(caseViewForm());
 
-        assertEquals("a save that cuts nothing writes no creation entry", 2, slideAuditCount());
+        assertEquals("a save that cuts nothing writes no creation entry", 2, auditEntriesOnEverySlide());
     }
 
     /**
@@ -259,7 +259,7 @@ public class PathologySampleMicrotomyTest extends PathologyCaseTestSupport {
 
         assertTrue("a save that changes nothing on the case leaves no case audit entry: " + caseAudit(),
                 caseAudit().isEmpty());
-        assertEquals("and no slide audit entry", 0, slideAuditCount());
+        assertEquals("and no slide audit entry", 0, auditEntriesOnEverySlide());
     }
 
     // ---- two cuts at once ----
@@ -307,7 +307,7 @@ public class PathologySampleMicrotomyTest extends PathologyCaseTestSupport {
             assertEquals("one slide under the block per saved cut", won, slides.size());
             assertEquals("designated in the order they were cut", won == 1 ? List.of("1") : List.of("1", "2"),
                     slides.stream().map(row -> String.valueOf(row.get("designation"))).sorted().toList());
-            assertEquals("one slide audit entry per surviving slide", won, slideAuditCount());
+            assertEquals("one slide audit entry per surviving slide", won, auditEntriesOnEverySlide());
             for (Map<String, Object> row : slides) {
                 List<History> audit = historyService.getHistoryByRefIdAndRefTableId(String.valueOf(row.get("id")),
                         slideReferenceTableId);
@@ -425,7 +425,8 @@ public class PathologySampleMicrotomyTest extends PathologyCaseTestSupport {
         return stainId == null ? null : ((Number) stainId).intValue();
     }
 
-    private int slideAuditCount() {
+    /** The audit entries on every slide, of this case or any other. */
+    private int auditEntriesOnEverySlide() {
         return jdbcTemplate.queryForObject("SELECT count(*) FROM clinlims.history WHERE reference_table = ?",
                 Integer.class, Integer.parseInt(slideReferenceTableId));
     }

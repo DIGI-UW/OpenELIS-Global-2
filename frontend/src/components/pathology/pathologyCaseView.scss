@@ -59,14 +59,19 @@ $field-inline-size: 12rem;
   flex: 0 0 auto;
 }
 
-// Keep the shared guidance above the action row. Carbon's own description
-// remains available through its uploader's existing accessible association.
-.pathology-case-view__upload-hint {
+// A line of guidance in helper text, such as the upload hint above a slide's
+// actions (Carbon's own description stays on the uploader) or what a label
+// check asks the bench to scan.
+.pathology-case-view__hint {
   @include type.type-style("helper-text-01");
 
   color: var(--cds-text-secondary);
-  flex-basis: 100%;
   margin: 0;
+}
+
+// Something in a wrapping line of controls that takes a line of its own.
+.pathology-case-view__own-line {
+  flex-basis: 100%;
 }
 
 .pathology-case-view__slide-upload .cds--label-description {
@@ -283,7 +288,6 @@ $field-inline-size: 12rem;
 
 // Why a block's Add slide is held back, on a line of its own under it.
 .pathology-case-view__group-hint {
-  flex-basis: 100%;
   text-align: end;
 }
 
@@ -295,4 +299,25 @@ $field-inline-size: 12rem;
 
 .pathology-case-view__group-body > .pathology-case-view__row:last-child {
   border-block-end: 0;
+}
+
+// A slide's label check: the hint, a mismatch when there is one, and the two
+// scanned fields with their buttons, under the row's own fields.
+.pathology-case-view__verify {
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-03;
+}
+
+// The buttons line up with the inputs, below the fields' labels.
+.pathology-case-view__verify-fields {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}
+
+// A verified slide's tag and the sentence naming who checked it.
+.pathology-case-view__label-verification {
+  display: inline-flex;
 }

@@ -97,6 +97,11 @@ const caseAtStage = (status, overrides = {}) => ({
       location: "",
     },
   ],
+  // The slide's label has been checked against its block, as microtomy
+  // requires before the case is sent on.
+  labelVerifications: {
+    5: { verifiedAt: "02/11/2026 10:05", verifiedBy: "Tech, Tina" },
+  },
   reports: [],
   requests: [],
   techniques: [],
@@ -374,6 +379,55 @@ describe("PathologyCaseView stage transitions", () => {
     withNone.unmount();
 
     servedCase = caseAtStage("MICROTOMY");
+    renderCaseView();
+    await loaded();
+
+    primary = primaryButton("pathology.action.sendForStaining");
+    expect(primary).toBeEnabled();
+    expect(primary).not.toHaveAttribute("title");
+  });
+
+  // FR-7.5: a slide whose label was never checked against its block holds
+  // the case at microtomy, named, as the server holds it.
+  it("holds microtomy back while a slide's label is unchecked, naming it, and lets the case on once the read covers it", async () => {
+    servedCase = caseAtStage("MICROTOMY", {
+      slides: [
+        ...caseAtStage("MICROTOMY").slides,
+        {
+          id: 6,
+          designation: "2",
+          barcode: "ACC9.A1.2",
+          blockId: 1,
+          active: true,
+          location: "",
+        },
+      ],
+    });
+    const unchecked = renderCaseView();
+    await loaded();
+
+    const reason = intl.formatMessage(
+      { id: "pathology.locked.slidesUnverified" },
+      {
+        outstanding: intl.formatMessage(
+          { id: "pathology.badge.outstanding" },
+          { designations: "A1.2" },
+        ),
+      },
+    );
+    let primary = primaryButton("pathology.action.sendForStaining");
+    expect(primary).toBeDisabled();
+    expect(primary).toHaveAttribute("title", reason);
+    expect(describedBy(primary)).toHaveTextContent(reason);
+    unchecked.unmount();
+
+    servedCase = {
+      ...servedCase,
+      labelVerifications: {
+        ...servedCase.labelVerifications,
+        6: { verifiedAt: "02/11/2026 10:06", verifiedBy: "Tech, Tina" },
+      },
+    };
     renderCaseView();
     await loaded();
 

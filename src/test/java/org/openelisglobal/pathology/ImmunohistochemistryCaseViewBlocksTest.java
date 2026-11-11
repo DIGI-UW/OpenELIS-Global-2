@@ -16,6 +16,7 @@ import org.openelisglobal.program.valueholder.immunohistochemistry.Immunohistoch
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -48,6 +49,9 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
     @Autowired
     private ReferenceTablesService referenceTablesService;
 
+    @Autowired
+    private SystemUserService systemUserService;
+
     /**
      * The immunohistochemistry row and the audit entries survive the fixture
      * reload, so both are cleared before each test as well as after it; otherwise
@@ -72,6 +76,7 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
 
     private void clearOwnRows() {
         jdbcTemplate.update("DELETE FROM clinlims.immunohistochemistry_sample WHERE id = ?", IHC_SAMPLE_ID);
+        PathologyCaseRows.clearLabelStamp(jdbcTemplate, LEGACY_SLIDE_ID);
         jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = NULL WHERE stain_id = ?", STAIN);
         DictionaryRows.removeEntries(jdbcTemplate, STAIN);
         if (insertedTheStainCategory) {
@@ -126,5 +131,23 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
 
         assertEquals("the referred slide's stain is named, not left as a dictionary id",
                 Map.of(String.valueOf(STAIN), STAIN_NAME), displayItem.getStainNames());
+    }
+
+    /**
+     * The referred view shows whether each slide's label was checked against its
+     * block, read from the same map the pathology case view reads.
+     */
+    @Test
+    public void caseView_namesWhoVerifiedTheReferredSlidesLabels() {
+        ImmunohistochemistryCaseViewDisplayItem unverified = immunohistochemistryDisplayService
+                .convertToCaseDisplayItem(IHC_SAMPLE_ID);
+        assertTrue("a slide never checked is absent", unverified.getLabelVerifications().isEmpty());
+
+        PathologyCaseRows.stampLabel(jdbcTemplate, LEGACY_SLIDE_ID, "1001");
+        ImmunohistochemistryCaseViewDisplayItem verified = immunohistochemistryDisplayService
+                .convertToCaseDisplayItem(IHC_SAMPLE_ID);
+
+        assertEquals("the verified slide is named by its verifier", systemUserService.get("1001").getDisplayName(),
+                verified.getLabelVerifications().get(LEGACY_SLIDE_ID).verifiedBy());
     }
 }

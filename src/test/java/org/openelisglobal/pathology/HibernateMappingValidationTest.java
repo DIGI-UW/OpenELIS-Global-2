@@ -145,6 +145,20 @@ public class HibernateMappingValidationTest {
     }
 
     /**
+     * A slide records when its label was checked against its block and by whom, as
+     * two plain columns, so the row the case view posts back carries no user.
+     */
+    @Test
+    public void pathologySlide_mapsItsLabelVerification() {
+        EntityType<PathologySlide> slide = sessionFactory.getMetamodel().entity(PathologySlide.class);
+
+        assertEquals("the verifier is a plain column, not an association", Attribute.PersistentAttributeType.BASIC,
+                slide.getAttribute("labelVerifiedBy").getPersistentAttributeType());
+        assertColumn(PathologySlide.class, "labelVerifiedAt", "label_verified_at");
+        assertColumn(PathologySlide.class, "labelVerifiedBy", "label_verified_by");
+    }
+
+    /**
      * Dropping a block or slide from its collection must not delete the row, which
      * 42 CFR 493.1105 requires the laboratory to retain.
      */

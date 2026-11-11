@@ -86,13 +86,82 @@ export function parentBlockOf(slide, blocks) {
 /**
  * A slide's name on a screen that lists slides without their blocks: under its
  * block when one is recorded, since a slide designation repeats under every
- * block, and on its own otherwise.
+ * block, and on its own otherwise. The join is the default identifier
+ * separator; the server joins with the configured one, which only differs
+ * where a deployment changed pathology.identifier.separator.
  */
 export function slideOnBlockName(slide, blocks) {
   const parent = parentBlockOf(slide, blocks);
   return parent
     ? blockIdentifier(parent) + "." + slideIdentifier(slide)
     : slideIdentifier(slide);
+}
+
+/**
+ * Whether a slide's label has been checked against its block. The case read
+ * carries the verified slides in `labelVerifications`, keyed by slide id, and
+ * the screen reads that map only, never a field of the row itself.
+ */
+export function isLabelVerified(slide, labelVerifications) {
+  if (isUnsavedRow(slide) || !labelVerifications) {
+    return false;
+  }
+  return Object.prototype.hasOwnProperty.call(
+    labelVerifications,
+    String(slide.id),
+  );
+}
+
+/**
+ * Whether a slide's label can be checked at all: it is saved, so its label
+ * can be printed, and it names the block it was cut from, which the scan is
+ * checked against. A slide cut before slides named their block has neither.
+ */
+export function hasVerifiableLabel(slide) {
+  return (
+    !isUnsavedRow(slide) &&
+    slide?.blockId !== null &&
+    slide?.blockId !== undefined &&
+    slide?.blockId !== ""
+  );
+}
+
+/**
+ * The saved slides in use whose labels are still unchecked, in list order,
+ * each with the name it goes by under its block. These hold the case at
+ * microtomy, as the server holds it (FR-7.5).
+ */
+export function unverifiedSlides(blocks, slides, labelVerifications) {
+  return activeRows(slides)
+    .filter(hasVerifiableLabel)
+    .filter((slide) => !isLabelVerified(slide, labelVerifications))
+    .map((slide) => ({ slide, name: slideOnBlockName(slide, blocks) }));
+}
+
+/**
+ * The row after the given one in a list of rows still to be worked, wrapping
+ * to the first, or undefined when the given one is the last left. A row no
+ * longer on the list still has a next, the first. Ids arrive as numbers or
+ * strings, so they are compared as strings.
+ */
+export function nextAfter(rows, row) {
+  const sameRow = (candidate) => String(candidate.id) === String(row?.id);
+  const at = rows.findIndex(sameRow);
+  const rest = [...rows.slice(at + 1), ...rows.slice(0, Math.max(at, 0))];
+  return rest.find((candidate) => !sameRow(candidate));
+}
+
+/**
+ * The unchecked slide after the given one, in list order and wrapping to the
+ * first, or undefined when the given one is the last left.
+ */
+export function nextUnverifiedSlide(blocks, slides, labelVerifications, slide) {
+  return nextAfter(
+    unverifiedSlides(blocks, slides, labelVerifications).map(
+      (entry) => entry.slide,
+    ),
+    slide,
+  );
 }
 
 // Whether a row belongs on a list that shows retired rows only on request.
@@ -197,12 +266,7 @@ export function embeddingSummary(blocks) {
  * Ids arrive as numbers or strings, so they are compared as strings.
  */
 export function nextOutstandingCassette(blocks, block) {
-  const outstanding = outstandingRows(blocks);
-  const at = outstanding.findIndex(
-    (candidate) => String(candidate.id) === String(block?.id),
-  );
-  const rest = [...outstanding.slice(at + 1), ...outstanding.slice(0, at)];
-  return rest.find((candidate) => String(candidate.id) !== String(block?.id));
+  return nextAfter(outstandingRows(blocks), block);
 }
 
 /**

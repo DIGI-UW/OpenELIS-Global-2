@@ -7,13 +7,17 @@ import {
   countedRows,
   deactivatedCount,
   embeddingSummary,
+  hasVerifiableLabel,
   isDeactivatedRow,
   isEmbeddedRow,
+  isLabelVerified,
   isUnsavedRow,
   heldOrServedItems,
   labelStreamUrl,
   microtomyGroups,
+  nextAfter,
   nextOutstandingCassette,
+  nextUnverifiedSlide,
   newRowName,
   objectNaming,
   parentBlockOf,
@@ -23,6 +27,7 @@ import {
   slideOnBlockName,
   stripClientKeys,
   unsavedPosition,
+  unverifiedSlides,
   withClientKey,
 } from "./pathologyRows";
 
@@ -540,6 +545,25 @@ describe("embeddingSummary", () => {
   });
 });
 
+describe("nextAfter", () => {
+  const rows = [{ id: 1 }, { id: "2" }, { id: 3 }];
+
+  it("moves to the row after the given one, matching ids as strings", () => {
+    expect(nextAfter(rows, { id: "1" })).toBe(rows[1]);
+    expect(nextAfter(rows, { id: 2 })).toBe(rows[2]);
+  });
+
+  it("wraps to the first after the last, and finds none once the given row is the only one left", () => {
+    expect(nextAfter(rows, rows[2])).toBe(rows[0]);
+    expect(nextAfter([rows[1]], rows[1])).toBeUndefined();
+  });
+
+  it("starts from the first when the given row is no longer on the list", () => {
+    expect(nextAfter(rows, { id: 9 })).toBe(rows[0]);
+    expect(nextAfter([], { id: 9 })).toBeUndefined();
+  });
+});
+
 describe("nextOutstandingCassette", () => {
   const cassette = (id, designation, overrides = {}) => ({
     id,
@@ -587,5 +611,88 @@ describe("isEmbeddedRow", () => {
     expect(isEmbeddedRow({ cassetteState: "CASSETTE" })).toBe(false);
     expect(isEmbeddedRow({})).toBe(false);
     expect(isEmbeddedRow(undefined)).toBe(false);
+  });
+});
+
+describe("slide label verification", () => {
+  const blocks = [
+    { id: 1, designation: "A1", cassetteState: "BLOCK" },
+    { id: 2, designation: "A2", cassetteState: "BLOCK" },
+  ];
+  const stamp = { verifiedAt: "09/11/2026 10:00", verifiedBy: "Tech, Tina" };
+
+  // The case read keys the map by slide id as JSON does, as a string; a row's
+  // id arrives as a number or a string depending on the path.
+  it.each([
+    [
+      "a numeric id against a string key",
+      { id: 5, blockId: 1 },
+      { 5: stamp },
+      true,
+    ],
+    ["a string id", { id: "5", blockId: 1 }, { 5: stamp }, true],
+    [
+      "a slide missing from the map",
+      { id: 6, blockId: 1 },
+      { 5: stamp },
+      false,
+    ],
+    ["no map at all", { id: 5, blockId: 1 }, undefined, false],
+    ["an unsaved slide", { blockId: 1 }, { undefined: stamp }, false],
+  ])("isLabelVerified reads %s", (_, slide, map, expected) => {
+    expect(isLabelVerified(slide, map)).toBe(expected);
+  });
+
+  it.each([
+    ["a saved slide with a block", { id: 5, blockId: 1 }, true],
+    ["a slide whose block id is a string", { id: 5, blockId: "1" }, true],
+    ["an unsaved slide", { blockId: 1 }, false],
+    ["a slide with no block recorded", { id: 5, blockId: null }, false],
+    ["a slide whose row has no block id", { id: 5 }, false],
+  ])("hasVerifiableLabel says %s can be checked: %s", (_, slide, expected) => {
+    expect(hasVerifiableLabel(slide)).toBe(expected);
+  });
+
+  it("lists the unchecked slides in use in list order, named under their block", () => {
+    const slides = [
+      { id: 5, designation: "1", blockId: 1, active: true },
+      { id: 6, designation: "2", blockId: 1, active: true },
+      { id: 7, designation: "1", blockId: 2, active: true },
+      { id: 8, designation: "3", blockId: 1, active: false },
+      { designation: "", blockId: 2 },
+      { id: 9, designation: "4", blockId: null, active: true },
+    ];
+
+    expect(
+      unverifiedSlides(blocks, slides, { 6: stamp }).map((entry) => [
+        entry.slide.id,
+        entry.name,
+      ]),
+    ).toEqual([
+      [5, "A1.1"],
+      [7, "A2.1"],
+    ]);
+    expect(
+      unverifiedSlides(blocks, slides, { 5: stamp, 6: stamp, 7: stamp }),
+    ).toEqual([]);
+    expect(unverifiedSlides(blocks, undefined, undefined)).toEqual([]);
+  });
+
+  it("finds the unchecked slide after the given one, wrapping to the first, and none once it is the last", () => {
+    const slides = [
+      { id: 5, designation: "1", blockId: 1, active: true },
+      { id: 6, designation: "2", blockId: 1, active: true },
+      { id: 7, designation: "1", blockId: 2, active: true },
+    ];
+
+    expect(nextUnverifiedSlide(blocks, slides, {}, slides[0])?.id).toBe(6);
+    expect(nextUnverifiedSlide(blocks, slides, {}, slides[2])?.id).toBe(5);
+    expect(
+      nextUnverifiedSlide(blocks, slides, { 5: stamp, 7: stamp }, slides[1]),
+    ).toBeUndefined();
+    // A slide no longer among the unchecked ones still has a next.
+    expect(
+      nextUnverifiedSlide(blocks, slides, { 6: stamp }, slides[1])?.id,
+    ).toBe(5);
   });
 });

@@ -351,6 +351,9 @@ public abstract class ConfigurationProperties {
         PATHOLOGY_STAGE_COVERSLIPPING_ENABLED("pathology.stage.COVERSLIPPING.enabled", "text"),
         PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED("pathology.stage.UNDER_REVIEW.enabled", "text"),
 
+        // Whether a slide label must be scanned against its block before sectioning.
+        PATHOLOGY_SCAN_VERIFICATION_REQUIRED("pathology.microtomy.scanVerificationRequired", "boolean"),
+
         // FR-9.3: how a deployment names and barcodes the cassettes, blocks and
         // slides cut from a case. A missing row means the scheme below.
         PATHOLOGY_IDENTIFIER_PART_SCHEME("pathology.identifier.partScheme", "text"),

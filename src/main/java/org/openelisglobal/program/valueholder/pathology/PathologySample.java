@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.LazyCollection;
 import org.hibernate.annotations.LazyCollectionOption;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.valueholder.ProgramSample;
@@ -262,7 +263,10 @@ public class PathologySample extends ProgramSample {
                     + (e.getBlockId() == null ? "" : e.getBlockId()) + ", Location: "
                     + StringUtils.defaultString(e.getLocation()) + ", Level: " + StringUtils.defaultString(e.getLevel())
                     + ", Stain: " + dictionaryName(e.getStainId()) + ", Active: " + e.isActive() + ", File Type: "
-                    + StringUtils.defaultString(e.getFileType())).collect(Collectors.toList()), "; ");
+                    + StringUtils.defaultString(e.getFileType()) + ", Label verified: "
+                    + (e.getLabelVerifiedAt() == null ? ""
+                            : DateUtil.convertTimestampToStringDateAndConfiguredHourTime(e.getLabelVerifiedAt())))
+                    .collect(Collectors.toList()), "; ");
         }
     }
 

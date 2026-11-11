@@ -283,6 +283,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         slide.setLevel(stored.getLevel());
         slide.setStainId(stored.getStainId());
         slide.setStainStatus(stored.getStainStatus());
+        slide.setLabelVerifiedAt(stored.getLabelVerifiedAt());
+        slide.setLabelVerifiedBy(stored.getLabelVerifiedBy());
         slide.setLastupdated(stored.getLastupdated());
         return slide;
     }
@@ -439,6 +441,92 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         recordRowEvent(BLOCK_REFERENCE_TABLE, block.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
                 sysUserId);
         return Optional.of(block);
+    }
+
+    @Transactional
+    @Override
+    public Optional<LabelVerification> verifySlideLabel(Integer slideId, String block, String slide, String sysUserId) {
+        Optional<PathologySlide> found = pathologySlideDAO.get(slideId);
+        if (found.isEmpty()) {
+            return Optional.empty();
+        }
+        String scannedBlock = StringUtils.trimToNull(block);
+        String scannedSlide = StringUtils.trimToNull(slide);
+        if (scannedBlock == null || scannedSlide == null) {
+            throw new LocalizedValidationException("pathology.error.scanBothFields",
+                    "a slide label is checked with both the block and the slide label scanned or typed");
+        }
+        PathologySlide stored = found.get();
+        if (!stored.isActive()) {
+            throw new LocalizedValidationException("pathology.error.slideRetired",
+                    "slide " + slideId + " has been deactivated, so its label is not checked");
+        }
+        if (stored.getBlockId() == null) {
+            throw new LocalizedValidationException("pathology.error.slideHasNoBlock",
+                    "slide " + slideId + " has no block on record, so its label cannot be checked against one");
+        }
+        PathologySample owningCase = baseObjectDAO.getCaseOfSlide(slideId);
+        refuseOnACompletedCase(owningCase);
+
+        boolean scanRequired = scanVerificationRequired();
+        String mode = scanRequired ? "scan" : "confirm";
+        DesignationScheme scheme = DesignationScheme.fromConfiguration();
+        PathologyBlock parentBlock = pathologyBlockDAO.get(stored.getBlockId()).orElse(null);
+        boolean blockMatches = parentBlock != null && (sameIdentifier(scannedBlock, parentBlock.getBarcode())
+                || (!scanRequired && sameIdentifier(scannedBlock, parentBlock.displayIdentifier())));
+        boolean slideMatches = sameIdentifier(scannedSlide, stored.getBarcode())
+                || (!scanRequired && sameIdentifier(scannedSlide, slideOnBlockName(stored, parentBlock, scheme)));
+
+        if (!(blockMatches && slideMatches)) {
+            Map<String, Object> payload = labelCheckPayload(PATHOLOGY_SLIDE_LABEL_MISMATCH, scannedBlock, scannedSlide);
+            payload.put("mode", mode);
+            recordRowEvent(SLIDE_REFERENCE_TABLE, stored.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                    sysUserId);
+            return Optional.of(new LabelVerification(stored, false));
+        }
+        if (stored.getLabelVerifiedAt() != null) {
+            return Optional.of(new LabelVerification(stored, true));
+        }
+
+        // Taken before the stamp, so the case's own audit trail records it as the
+        // slide's change; the slide is saved on its own, so no save of the case
+        // would.
+        PathologySample storedState = owningCase == null ? null : auditedStateOf(owningCase);
+        stored.setLabelVerifiedAt(new Timestamp(System.currentTimeMillis()));
+        stored.setLabelVerifiedBy(sysUserId);
+        stored.setSysUserId(sysUserId);
+        pathologySlideDAO.update(stored);
+        if (owningCase != null) {
+            saveHistoryAgainst(owningCase, storedState, sysUserId);
+        }
+
+        Map<String, Object> payload = labelCheckPayload(PATHOLOGY_SLIDE_LABEL_VERIFIED, scannedBlock, scannedSlide);
+        payload.put("match", true);
+        payload.put("mode", mode);
+        recordRowEvent(SLIDE_REFERENCE_TABLE, stored.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
+        return Optional.of(new LabelVerification(stored, true));
+    }
+
+    /** The part of a label check's audit entry both outcomes share. */
+    private static Map<String, Object> labelCheckPayload(String verb, String scannedBlock, String scannedSlide) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", verb);
+        payload.put("blockBarcode", scannedBlock);
+        payload.put("slideBarcode", scannedSlide);
+        return payload;
+    }
+
+    /** Scanners and typists differ in case and stray spaces, never in content. */
+    private static boolean sameIdentifier(String given, String expected) {
+        return StringUtils.isNotBlank(expected)
+                && StringUtils.equalsIgnoreCase(StringUtils.trim(given), StringUtils.trim(expected));
+    }
+
+    /** A slide as its label names it, block first ("A1.1"). */
+    private static String slideOnBlockName(PathologySlide slide, PathologyBlock block, DesignationScheme scheme) {
+        return PathologyDesignations.slideOnBlockName(block == null ? null : block.displayIdentifier(),
+                slide.displayIdentifier(), scheme);
     }
 
     @Transactional
@@ -613,7 +701,11 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * Grossing is finished once the specimen is described and at least one cassette
      * is cut (FR-3.4); embedding once there is a cassette in use and every one is a
      * block (FR-6.3); microtomy once at least one slide is cut and in use, since a
-     * block may be held without slides. No other stage has a condition yet.
+     * block may be held without slides, and once every slide in use that has a
+     * block on record has had its label checked against it (FR-7.5), with or
+     * without a scanner. A slide with no block on record has nothing to be checked
+     * against, so it does not hold the case back. No other stage has a condition
+     * yet.
      */
     private void refuseAnUnfinishedStage(PathologySample storedCase) {
         List<PathologyBlock> inUse = storedCase.getBlocks() == null ? List.of()
@@ -639,10 +731,26 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                         Map.of("designations", designations));
             }
         }
-        if (storedCase.getStatus() == PathologyStatus.MICROTOMY && (storedCase.getSlides() == null
-                || storedCase.getSlides().stream().noneMatch(slide -> slide.getId() != null && slide.isActive()))) {
-            throw new LocalizedValidationException("pathology.error.microtomyIncomplete",
-                    "pathology case " + storedCase.getId() + " has no slide cut, so it cannot move on");
+        if (storedCase.getStatus() == PathologyStatus.MICROTOMY) {
+            List<PathologySlide> slides = storedCase.getSlides() == null ? List.of() : storedCase.getSlides();
+            if (slides.stream().noneMatch(PathologySlide::isActive)) {
+                throw new LocalizedValidationException("pathology.error.microtomyIncomplete",
+                        "pathology case " + storedCase.getId() + " has no slide cut, so it cannot move on");
+            }
+            DesignationScheme scheme = DesignationScheme.fromConfiguration();
+            List<PathologyBlock> blocks = storedCase.getBlocks() == null ? List.of() : storedCase.getBlocks();
+            List<String> unverified = slides.stream().filter(
+                    slide -> slide.isActive() && slide.getBlockId() != null && slide.getLabelVerifiedAt() == null)
+                    .map(slide -> slideOnBlockName(slide, blocks.stream()
+                            .filter(block -> slide.getBlockId().equals(block.getId())).findFirst().orElse(null),
+                            scheme))
+                    .collect(Collectors.toList());
+            if (!unverified.isEmpty()) {
+                String designations = String.join(", ", unverified);
+                throw new LocalizedValidationException("pathology.error.slidesUnverified",
+                        "pathology case " + storedCase.getId() + " has slide labels still to verify: " + designations,
+                        Map.of("designations", designations));
+            }
         }
     }
 
@@ -780,10 +888,25 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * and a missing one leaves it in, as the case view reads them.
      */
     private static Predicate<PathologyStatus> deploymentEnabled() {
-        return stage -> PathologyStages.enablementProperty(stage)
-                .map(property -> !"false".equalsIgnoreCase(
-                        StringUtils.trim(ConfigurationProperties.getInstance().getPropertyValue(property))))
+        return stage -> PathologyStages.enablementProperty(stage).map(PathologySampleServiceImpl::switchedOn)
                 .orElse(true);
+    }
+
+    /**
+     * Whether slide labels are scanned against their block; a setting of false is a
+     * laboratory without a scanner, and a missing one asks for the scan.
+     */
+    private static boolean scanVerificationRequired() {
+        return switchedOn(Property.PATHOLOGY_SCAN_VERIFICATION_REQUIRED);
+    }
+
+    /**
+     * A pathology switch is on unless it says false, in any case and with stray
+     * spaces, the way the case view reads it; a missing one is on.
+     */
+    private static boolean switchedOn(Property property) {
+        return !"false"
+                .equalsIgnoreCase(StringUtils.trim(ConfigurationProperties.getInstance().getPropertyValue(property)));
     }
 
     /**
@@ -994,6 +1117,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         }
         String level = levelAfterSave(posted.getLevel());
         String stainId = dictionaryEntryAfterSave(slide.getStainId(), posted.getStainId(), STAIN_CATEGORY);
+        // The label check is stamped only by verifySlideLabel, so a posted stamp is
+        // never copied.
         slide.setLocation(posted.getLocation());
         slide.setLevel(level);
         slide.setStainId(stainId);
@@ -1057,6 +1182,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         slide.setLocation(posted.getLocation());
         slide.setLevel(levelAfterSave(posted.getLevel()));
         slide.setStainId(dictionaryEntryAfterSave(null, posted.getStainId(), STAIN_CATEGORY));
+        // A new slide's label has not been printed yet, so a posted stamp is never
+        // copied.
         slide.setImage(posted.getImage());
         slide.setFileType(posted.getFileType());
         slide.setSysUserId(pathologySample.getSysUserId());
@@ -1431,9 +1558,15 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     public List<PathologySample> searchWithStatusAndTerm(List<PathologyStatus> statuses, String searchTerm) {
         List<PathologySample> pathologySamples = baseObjectDAO.getWithStatus(statuses);
         if (StringUtils.isNotBlank(searchTerm)) {
+            // The search is by the order's own lab number, not the term: a scanned
+            // label carries more than the lab number.
             Sample sample = sampleService.getSampleByAccessionNumber(searchTerm);
+            if (sample == null) {
+                sample = sampleOfScannedLabel(searchTerm);
+            }
             if (sample != null) {
-                pathologySamples = baseObjectDAO.searchWithStatusAndAccesionNumber(statuses, searchTerm);
+                pathologySamples = baseObjectDAO.searchWithStatusAndAccesionNumber(statuses,
+                        sample.getAccessionNumber());
             } else {
                 List<PathologySample> filteredpathologySamples = new ArrayList<>();
                 pathologySamples.forEach(pathologySample -> {
@@ -1448,6 +1581,22 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         }
 
         return pathologySamples;
+    }
+
+    /**
+     * The order a scanned block or slide label belongs to. Those labels carry the
+     * row's own barcode, which the lab number only opens. The accession lookup
+     * reads the lab number off the front of a dotted term, but a scheme with
+     * another separator leaves nothing it can read, so the term is looked up as a
+     * block or slide barcode. Null when no block or slide carries it.
+     */
+    private Sample sampleOfScannedLabel(String searchTerm) {
+        String barcode = StringUtils.trim(searchTerm);
+        PathologySample owner = pathologyBlockDAO.getByBarcode(barcode)
+                .map(block -> baseObjectDAO.getCaseOfBlock(block.getId())).or(() -> pathologySlideDAO
+                        .getByBarcode(barcode).map(slide -> baseObjectDAO.getCaseOfSlide(slide.getId())))
+                .orElse(null);
+        return owner == null ? null : owner.getSample();
     }
 
     @Override

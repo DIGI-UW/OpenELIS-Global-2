@@ -656,6 +656,7 @@ export async function ensureStain(page: Page): Promise<Stain> {
 interface CaseBlock {
   id?: number | string;
   designation?: string;
+  barcode?: string;
   cassetteState?: string;
   active?: boolean;
   location?: string;
@@ -674,6 +675,12 @@ export interface CaseSlide {
   location?: string;
 }
 
+/** A slide label's check against its block, as the case view reads it. */
+export interface SlideLabelVerification {
+  verifiedAt?: string;
+  verifiedBy?: string;
+}
+
 /** The parts of a stored case the stage moves below read and post back. */
 export interface StoredPathologyCase {
   status: PathologyStageId;
@@ -687,6 +694,8 @@ export interface StoredPathologyCase {
   assignedPathologistId?: string | null;
   blocks?: CaseBlock[];
   slides?: CaseSlide[];
+  /** Who checked each slide's label against its block and when, by slide id. */
+  labelVerifications?: Record<string, SlideLabelVerification | null>;
   reports?: unknown[];
   techniques?: { id?: string }[];
   requests?: { id?: string; status?: string }[];
@@ -798,14 +807,61 @@ export async function saveCaseThroughApi(
 }
 
 /**
+ * Check the label of every slide of the case that still waits for it, through
+ * the endpoint the microtomy section posts to, with the block's and the
+ * slide's barcodes as the server stores them: what a scanner reads off a
+ * block and off the slide label printed for it. A slide whose label was
+ * already checked, a deactivated slide, and a slide that names no block are
+ * left as they are, since none of them holds a case at microtomy. Throws with
+ * the server's body when a check is refused or does not match. Returns the
+ * barcodes of the slides it checked.
+ */
+export async function verifySlideLabels(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+): Promise<string[]> {
+  const caseId = seeded.pathologySampleId;
+  const stored = await readCase(page, caseId);
+  const blocks = new Map(
+    (stored.blocks ?? []).map((block) => [String(block.id), block]),
+  );
+  const verified: string[] = [];
+  for (const slide of stored.slides ?? []) {
+    if (
+      slide.id == null ||
+      slide.active === false ||
+      slide.blockId == null ||
+      stored.labelVerifications?.[String(slide.id)]
+    ) {
+      continue;
+    }
+    const block = blocks.get(String(slide.blockId));
+    if (!block?.barcode || !slide.barcode) {
+      throw new Error(
+        `Slide ${slide.id} of case ${caseId} or its block carries no barcode to scan.`,
+      );
+    }
+    await apiPost(
+      page,
+      `${API_PREFIX}/rest/pathology/slide/${slide.id}/verify-label`,
+      { block: block.barcode, slide: slide.barcode },
+      `Verifying the label of slide ${slide.barcode} of case ${caseId}`,
+    );
+    verified.push(slide.barcode);
+  }
+  return verified;
+}
+
+/**
  * Bring a case to a stage for a test's setup, doing the bench's work on the
  * way rather than going round it: the server refuses to send a case on from
  * grossing until it is described and has a cassette, from embedding until
- * every cassette is a block, and from microtomy until a slide is cut, so a
- * blank description is filled in and a cassette cut through the case save,
- * each outstanding cassette is embedded through its own endpoint, and one
- * slide is cut under the first block through the case save, exactly as the
- * screen would. Nothing is done at the target stage itself, so a case brought
+ * every cassette is a block, and from microtomy until a slide is cut and
+ * every slide's label is checked against its block, so a blank description
+ * is filled in and a cassette cut through the case save, each outstanding
+ * cassette is embedded through its own endpoint, and one slide is cut under
+ * the first block through the case save and every label checked through
+ * verifySlideLabels, exactly as the screen would. Nothing is done at the target stage itself, so a case brought
  * to microtomy arrives there with no slide. A target
  * behind the case is reached by returning it, one stage at a time, with a
  * reason.
@@ -905,6 +961,7 @@ export async function moveCaseToStage(
           addSlideUnder: parent.id,
         });
       }
+      await verifySlideLabels(page, seeded);
     }
 
     const now = await moveCaseOnce(page, caseId, "advance", stored.status);
