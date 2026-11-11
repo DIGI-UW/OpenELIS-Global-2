@@ -164,7 +164,7 @@ describe("BatchTile release", () => {
     ).toBeInTheDocument();
     expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
       "/rest/batch-workplans/batches/7/generate",
-      JSON.stringify({ override: false }),
+      JSON.stringify({ override: false, reason: null }),
       expect.any(Function),
     );
   });
@@ -185,12 +185,67 @@ describe("BatchTile release", () => {
         }),
     );
     fireEvent.click(proceed);
+    expect(
+      screen.getByText("Give the reason before releasing the batch."),
+      "OGC-1588: an override is not sent without a reason",
+    ).toBeInTheDocument();
+    expect(postToOpenElisServerFullResponse).not.toHaveBeenCalled();
+
+    fireEvent.change(
+      screen.getByLabelText(/Reason for releasing without passing QC/),
+      { target: { value: "  Control rerun booked for 14:00  " } },
+    );
+    fireEvent.click(proceed);
 
     expect(postToOpenElisServerFullResponse).toHaveBeenLastCalledWith(
       "/rest/batch-workplans/batches/7/generate",
-      JSON.stringify({ override: true }),
+      JSON.stringify({
+        override: true,
+        reason: "Control rerun booked for 14:00",
+      }),
       expect.any(Function),
     );
+  });
+
+  it("marks the override reason as required", async () => {
+    renderTile(draftBatch("VIOLATION"), { canOverride: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate workplan" }));
+    const reason = await screen.findByLabelText(
+      /Reason for releasing without passing QC/,
+    );
+
+    expect(reason).toHaveAttribute("aria-required", "true");
+    expect(
+      document.querySelector(`label[for="${reason.id}"] .requiredlabel`),
+    ).toHaveTextContent("*");
+  });
+
+  it("shows the reason recorded for the latest override", () => {
+    const batch = draftBatch("VIOLATION");
+    batch.releases = [
+      {
+        controlLotId: "lot-1",
+        qcStatus: "VIOLATION",
+        overridden: true,
+        overrideReason: "Control rerun booked for 14:00",
+        nceNumber: "NCE-0009",
+        releasedAt: "2026-11-02T08:00:00Z",
+      },
+    ];
+    renderTile(batch);
+
+    expect(screen.getByTestId("batch-7-override-reason")).toHaveTextContent(
+      "Override reason: Control rerun booked for 14:00",
+    );
+  });
+
+  it("shows QC as due now while it is failing, not at a later time", () => {
+    const batch = draftBatch("FAILED");
+    batch.qc.lots = [lot({ status: "FAILED", qcRequired: true })];
+    renderTile(batch);
+
+    expect(screen.getAllByText("Due now").length).toBeGreaterThan(0);
   });
 
   it("disables release when no current control lot covers the batch", () => {
@@ -276,6 +331,61 @@ describe("BatchTile setup", () => {
       expect.any(Function),
     );
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
+  });
+});
+
+describe("BatchTile setup options", () => {
+  it("asks again for the reagents once a test is added to the batch", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("setup-options")) {
+        const calls = getFromOpenElisServer.mock.calls.filter(([called]) =>
+          called.includes("setup-options"),
+        ).length;
+        callback(
+          calls === 1 ? { reagents: [], instruments: [] } : setupOptions,
+        );
+        return;
+      }
+      callback(null);
+    });
+    const batch = draftBatch(undefined);
+    batch.reagentId = null;
+    batch.reagentLotId = null;
+    batch.items = [
+      { analysisId: "11", accessionNumber: "DEV-001", testId: "5" },
+    ];
+    const tile = (current) => (
+      <MemoryRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <BatchTile
+            batch={current}
+            expanded
+            onToggle={vi.fn()}
+            onChanged={vi.fn()}
+            notify={vi.fn()}
+            canOverride={false}
+          />
+        </IntlProvider>
+      </MemoryRouter>
+    );
+    const { rerender } = render(tile(batch));
+    expect(await screen.findByText("No reagents")).toBeInTheDocument();
+
+    rerender(
+      tile({
+        ...batch,
+        itemCount: 2,
+        items: [
+          ...batch.items,
+          { analysisId: "12", accessionNumber: "DEV-002", testId: "1" },
+        ],
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText("No reagents")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText("Reagent")).toBeInTheDocument();
   });
 });
 

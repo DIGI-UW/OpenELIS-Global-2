@@ -1,4 +1,4 @@
-import { React, useState, useEffect, useMemo, useRef, useContext } from "react";
+import React, { useState, useEffect, useMemo, useRef, useContext } from "react";
 import { FormattedMessage, useIntl, injectIntl } from "react-intl";
 import {
   Grid,

@@ -20,7 +20,10 @@ export type RowEditState =
   | "EDITING_DIRTY"
   // A saved result with a referral waiting to be saved alongside it. Savable,
   // but the result itself stays locked and the save is not a revision of it.
-  | "DISPOSITION_PENDING";
+  | "DISPOSITION_PENDING"
+  // OGC-1200 FR-D3: an analyzer value for this pending test is waiting in a
+  // run. It is resulted from the run, never entered around it here.
+  | "WAITING";
 
 export type RowEditEvent =
   | { type: "VALUE_CHANGED" }
@@ -35,9 +38,18 @@ export type RowEditEvent =
   | { type: "SAVE_SUCCEEDED" }
   | { type: "SAVE_REJECTED_STALE" };
 
-/** Initial state from the loaded row: saved value present ⇒ SAVED else EMPTY. */
-export function initialRowState(hasSavedValue: boolean): RowEditState {
-  return hasSavedValue ? "SAVED" : "EMPTY";
+/**
+ * Initial state from the loaded row: saved value present ⇒ SAVED; otherwise
+ * WAITING when a run holds its analyzer value, else EMPTY.
+ */
+export function initialRowState(
+  hasSavedValue: boolean,
+  waitingInRun = false,
+): RowEditState {
+  if (hasSavedValue) {
+    return "SAVED";
+  }
+  return waitingInRun ? "WAITING" : "EMPTY";
 }
 
 /** Fields are writable only in EMPTY/DIRTY (un-resulted) or while editing. */
@@ -97,6 +109,9 @@ export function nextRowState(
   state: RowEditState,
   event: RowEditEvent,
 ): RowEditState {
+  if (state === "WAITING") {
+    return state;
+  }
   switch (event.type) {
     case "VALUE_CHANGED":
       if (state === "EMPTY") {

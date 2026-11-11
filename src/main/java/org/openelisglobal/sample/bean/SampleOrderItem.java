@@ -273,6 +273,10 @@ public class SampleOrderItem implements Serializable {
     // for display
     private Collection testLocationCodeList;
 
+    // for display: the entry of testLocationCodeList that asks for a typed
+    // location
+    private String otherTestLocationCodeId;
+
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
     private String program;
@@ -794,6 +798,14 @@ public class SampleOrderItem implements Serializable {
 
     public void setTestLocationCodeList(Collection testLocationCodeList) {
         this.testLocationCodeList = testLocationCodeList;
+    }
+
+    public String getOtherTestLocationCodeId() {
+        return otherTestLocationCodeId;
+    }
+
+    public void setOtherTestLocationCodeId(String otherTestLocationCodeId) {
+        this.otherTestLocationCodeId = otherTestLocationCodeId;
     }
 
     public String getProgram() {

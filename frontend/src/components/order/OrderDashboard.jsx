@@ -54,6 +54,12 @@ import BarcodeScannerBar from "./BarcodeScannerBar";
 import { useOrderContext } from "./OrderContext";
 import "./order-workflow.scss";
 import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
+import {
+  CANCEL_REASON_CATEGORY,
+  OTHER_REASON,
+  cancelReasonText as reasonText,
+} from "./cancelReasons";
+import useSiteDateFormat from "../common/useSiteDateFormat";
 
 /**
  * OrderDashboard - Default landing page for "Add Order" menu (DSH-1 to DSH-9)
@@ -114,8 +120,6 @@ const PROGRESS_STATUS_TAG = {
   CANCELLED: { type: "gray", labelId: "order.status.cancelled" },
 };
 
-const CANCEL_REASON_CATEGORY = "Order cancel reasons";
-
 const priorityOptions = (intl) => [
   {
     id: "all",
@@ -141,6 +145,7 @@ const priorityOptions = (intl) => [
 
 const OrderDashboardContent = () => {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const STATUS_OPTIONS = useMemo(() => statusOptions(intl), [intl]);
   const PRIORITY_OPTIONS = useMemo(() => priorityOptions(intl), [intl]);
   const history = useHistory();
@@ -409,8 +414,7 @@ const OrderDashboardContent = () => {
     setCancelOther("");
   };
 
-  const cancelReasonText =
-    cancelReason === "__other__" ? cancelOther.trim() : cancelReason;
+  const cancelReasonText = reasonText(cancelReason, cancelOther);
 
   const confirmCancel = async () => {
     if (!cancelTarget || !cancelReasonText) return;
@@ -746,11 +750,11 @@ const OrderDashboardContent = () => {
               />
             ))}
           <SelectItem
-            value="__other__"
+            value={OTHER_REASON}
             text={intl.formatMessage({ id: "order.dashboard.cancel.other" })}
           />
         </Select>
-        {cancelReason === "__other__" && (
+        {cancelReason === OTHER_REASON && (
           <TextInput
             id="cancel-order-reason-other"
             labelText={
@@ -847,6 +851,8 @@ const OrderDashboardContent = () => {
             </div>
             <div className="dashboard-filter-item">
               <DatePicker
+                dateFormat={siteDate.dateFormat}
+                parseDate={siteDate.parseDate}
                 datePickerType="single"
                 onChange={(dates) =>
                   applyFilter(setDateRange)((prev) => ({
@@ -857,7 +863,7 @@ const OrderDashboardContent = () => {
               >
                 <DatePickerInput
                   id="date-start"
-                  placeholder="mm/dd/yyyy"
+                  placeholder={siteDate.placeholder}
                   labelText={intl.formatMessage({
                     id: "order.filter.dateFrom",
                     defaultMessage: "From",
@@ -868,6 +874,8 @@ const OrderDashboardContent = () => {
             </div>
             <div className="dashboard-filter-item">
               <DatePicker
+                dateFormat={siteDate.dateFormat}
+                parseDate={siteDate.parseDate}
                 datePickerType="single"
                 onChange={(dates) =>
                   applyFilter(setDateRange)((prev) => ({
@@ -878,7 +886,7 @@ const OrderDashboardContent = () => {
               >
                 <DatePickerInput
                   id="date-end"
-                  placeholder="mm/dd/yyyy"
+                  placeholder={siteDate.placeholder}
                   labelText={intl.formatMessage({
                     id: "order.filter.dateTo",
                     defaultMessage: "To",

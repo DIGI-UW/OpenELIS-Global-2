@@ -168,7 +168,8 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         assertRefused(BatchReleaseRefusedException.Reason.OVERRIDE_NOT_PERMITTED, true, false);
         assertEquals("DRAFT", batchStatus());
 
-        BatchWorkplanResponse released = batchWorkplanService.generate(batchId, true, true, ACTOR);
+        BatchWorkplanResponse released = batchWorkplanService.generate(batchId, true, "Control repeat booked", true,
+                ACTOR);
 
         assertEquals(BatchWorkplanStatus.ACTIVE, released.getStatus());
         assertEquals(1, released.getReleases().size());
@@ -185,6 +186,15 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
                         "SELECT count(*)::int FROM clinlims.batch_workplan_qc_release WHERE batch_workplan_id = ?"
                                 + " AND nce_id IS NOT NULL AND overridden AND qc_status = 'NOT_RUN'",
                         Integer.class, batchId));
+        assertEquals("OGC-1588: the reason is kept with the release", "Control repeat booked",
+                jdbcTemplate.queryForObject(
+                        "SELECT override_reason FROM clinlims.batch_workplan_qc_release WHERE batch_workplan_id = ?",
+                        String.class, batchId));
+        assertEquals("Control repeat booked", released.getReleases().get(0).overrideReason());
+        assertTrue(jdbcTemplate
+                .queryForObject("SELECT description FROM clinlims.nc_event WHERE id = ?", String.class,
+                        released.getReleases().get(0).nceId())
+                .contains("Reason given for the override: Control repeat booked"));
     }
 
     @Test
@@ -192,7 +202,7 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         recordBenchRun(QCQualitativeOutcome.PASS, LocalDateTime.now().minusMinutes(5));
 
         assertEquals(BatchQcStatus.PASS, batchWorkplanService.getQcStatus(batchId, ACTOR).status());
-        BatchWorkplanResponse released = batchWorkplanService.generate(batchId, false, false, ACTOR);
+        BatchWorkplanResponse released = batchWorkplanService.generate(batchId, false, null, false, ACTOR);
 
         assertEquals(BatchWorkplanStatus.ACTIVE, released.getStatus());
         assertFalse(released.getReleases().get(0).overridden());
@@ -247,7 +257,7 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         benchLot.setQcFrequencyType(QCFrequencyType.PER_RUN);
         controlLotService.update(benchLot);
         recordBenchRun(QCQualitativeOutcome.PASS, LocalDateTime.now().minusMinutes(5));
-        batchWorkplanService.generate(batchId, false, false, ACTOR);
+        batchWorkplanService.generate(batchId, false, null, false, ACTOR);
 
         Long second = createDraftBatch(createAnalysis());
 
@@ -265,7 +275,8 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
 
     private void assertRefused(BatchReleaseRefusedException.Reason reason, boolean override, boolean mayOverride) {
         try {
-            batchWorkplanService.generate(batchId, override, mayOverride, ACTOR);
+            batchWorkplanService.generate(batchId, override, override ? "Control repeat booked" : null, mayOverride,
+                    ACTOR);
             fail("Expected the release to be refused with " + reason);
         } catch (BatchReleaseRefusedException refused) {
             assertEquals(reason, refused.getReason());

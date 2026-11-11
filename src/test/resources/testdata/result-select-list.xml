@@ -47,16 +47,16 @@
         antimicrobial_resistance="false" />
 
     <test_result id="1" test_id="1" result_group="1"
-        flags="FLAG1" tst_rslt_type="DMC" value="201" significant_digits="2"
-        quant_limit="10.0" cont_level="High" lastupdated="2025-04-01 12:00:00"
-        sort_order="1" is_quantifiable="true" is_active="true"
-        is_normal="true" />
+        flags="FLAG1" tst_rslt_type="DMC" value="201"
+        reporting_decimal_places="2" quant_limit="10.0" cont_level="High"
+        lastupdated="2025-04-01 12:00:00" sort_order="1"
+        is_quantifiable="true" is_active="true" is_normal="true" />
 
     <test_result id="2" test_id="2" result_group="2"
-        flags="FLAG2" tst_rslt_type="DMC" value="202" significant_digits="0"
-        quant_limit="15.1" cont_level="High" lastupdated="2025-04-01 12:30:00"
-        sort_order="2" is_quantifiable="true" is_active="true"
-        is_normal="false" />
+        flags="FLAG2" tst_rslt_type="DMC" value="202"
+        reporting_decimal_places="0" quant_limit="15.1" cont_level="High"
+        lastupdated="2025-04-01 12:30:00" sort_order="2"
+        is_quantifiable="true" is_active="true" is_normal="false" />
 
     <dictionary_category id="1"
         description="Category Description 1" local_Abbrev="CA1"

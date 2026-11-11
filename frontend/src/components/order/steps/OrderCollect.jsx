@@ -219,8 +219,9 @@ const OrderCollect = () => {
     }
   };
 
-  // Save and next opens Sample check when the laboratory uses it; otherwise
-  // this save finishes order entry (FR-K15) and the dashboard says so. An
+  // Save and next opens Sample check when the laboratory uses it, with the
+  // same saved message as Save (OGC-1598); otherwise this save finishes order
+  // entry (FR-K15) and the dashboard says so. An
   // order whose every tube is referred out has nothing for the in-house
   // Sample check, so it finishes here too (OGC-1423).
   const fullyReferred = isFullyReferred(samples);
@@ -229,6 +230,15 @@ const OrderCollect = () => {
       await saveOrder(false, false, null, false, progressStep);
       markStepComplete("collect");
       if (sampleCheckEnabled && !fullyReferred) {
+        addNotification({
+          kind: NotificationKinds.success,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: orderSavedMessage(
+            intl,
+            labNumber || orderData?.sampleOrderItems?.labNo,
+          ),
+        });
+        setNotificationVisible(true);
         history.push(
           labNumber
             ? `${workflowPrefix}/qa?order=${encodeURIComponent(labNumber)}`

@@ -14,11 +14,12 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.Test;
 import org.openelisglobal.audittrail.valueholder.History;
-import org.openelisglobal.program.controller.pathology.PathologySampleForm;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm.PathologySlideForm;
 import org.openelisglobal.program.service.PathologyCaseRuleException;
 import org.openelisglobal.program.valueholder.pathology.CassetteState;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 
 /**
@@ -69,6 +70,7 @@ public class PathologySampleSaveIdentityTest extends PathologyCaseTestSupport {
 
         saveBlocks(postedBlock(null, "Bench A"));
         int blockId = idOfBlockDesignated("A1");
+        storeAsBlock(blockId);
         saveSlides(postedSlide(blockId));
         Map<String, Object> slide = slidesCutFrom(blockId).get(0);
         clearCaseAudit();
@@ -195,6 +197,7 @@ public class PathologySampleSaveIdentityTest extends PathologyCaseTestSupport {
     public void aNewSlide_isNamedUnderItsBlock() {
         saveBlocks(postedBlock(null, "Bench A"));
         int blockId = idOfBlockDesignated("A1");
+        storeAsBlock(blockId);
 
         saveSlides(postedSlide(blockId));
 
@@ -210,6 +213,7 @@ public class PathologySampleSaveIdentityTest extends PathologyCaseTestSupport {
         assertEquals("slides are numbered within their own block", Arrays.asList("1", "2"),
                 designationsOfSlidesCutFrom(blockId));
 
+        storeAsBlock(LEGACY_BLOCK_ID);
         saveSlides(postedSlide(LEGACY_BLOCK_ID));
 
         Map<String, Object> underLegacyBlock = slidesCutFrom(LEGACY_BLOCK_ID).get(0);
@@ -262,8 +266,10 @@ public class PathologySampleSaveIdentityTest extends PathologyCaseTestSupport {
     public void deactivateSlide_retiresTheRowAndWritesOneHistoryRow() {
         saveBlocks(postedBlock(null, "Bench A"));
         int blockId = idOfBlockDesignated("A1");
+        storeAsBlock(blockId);
         saveSlides(postedSlide(blockId));
         int slideId = ((Number) slidesCutFrom(blockId).get(0).get("id")).intValue();
+        clearSlideAudit();
 
         Optional<PathologySlide> retired = pathologySampleService.deactivateSlide(slideId, "section folded",
                 TECHNICIAN_ID);
@@ -293,12 +299,52 @@ public class PathologySampleSaveIdentityTest extends PathologyCaseTestSupport {
                 pathologySampleService.deactivateSlide(424242, null, TECHNICIAN_ID).isEmpty());
     }
 
+    /** A signed-out case's blocks and slides change only after a reopen. */
+    @Test
+    public void retiringOnACompletedCase_isRefused() {
+        saveBlocks(postedBlock(null, "Bench A"));
+        int blockId = idOfBlockDesignated("A1");
+        storeAsBlock(blockId);
+        saveSlides(postedSlide(blockId));
+        int slideId = ((Number) slidesCutFrom(blockId).get(0).get("id")).intValue();
+        storeAt(PathologyStatus.COMPLETED);
+
+        LocalizedValidationException block = assertThrows(LocalizedValidationException.class,
+                () -> pathologySampleService.deactivateBlock(blockId, "reason", TECHNICIAN_ID));
+        LocalizedValidationException slide = assertThrows(LocalizedValidationException.class,
+                () -> pathologySampleService.deactivateSlide(slideId, "reason", TECHNICIAN_ID));
+
+        assertEquals("a signed-out case's block is not retired", "pathology.error.caseCompleted", block.getErrorCode());
+        assertEquals("nor its slide", "pathology.error.caseCompleted", slide.getErrorCode());
+        assertEquals("the block is still in use", Boolean.TRUE, blockRow(blockId).get("active"));
+        assertEquals("and so is the slide", Boolean.TRUE, slidesCutFrom(blockId).get(0).get("active"));
+    }
+
+    /**
+     * Retiring a row already retired is still answered as nothing to do on a
+     * signed-out case, since nothing would change.
+     */
+    @Test
+    public void retiringARetiredBlockOnACompletedCase_isStillANoOp() {
+        pathologySampleService.deactivateBlock(LEGACY_BLOCK_ID, "cassette cracked", TECHNICIAN_ID);
+        storeAt(PathologyStatus.COMPLETED);
+
+        Optional<PathologyBlock> again = pathologySampleService.deactivateBlock(LEGACY_BLOCK_ID, "second try",
+                TECHNICIAN_ID);
+
+        assertTrue("the retired block is answered rather than refused", again.isPresent());
+        assertEquals("and nothing is audited a second time", 1, historyService
+                .getHistoryByRefIdAndRefTableId(String.valueOf(LEGACY_BLOCK_ID), blockReferenceTableId).size());
+    }
+
     @Test
     public void retiringABlock_leavesTheSlidesCutFromItInUse() {
         saveBlocks(postedBlock(null, "Bench A"));
         int blockId = idOfBlockDesignated("A1");
+        storeAsBlock(blockId);
         saveSlides(postedSlide(blockId));
         int slideId = ((Number) slidesCutFrom(blockId).get(0).get("id")).intValue();
+        clearSlideAudit();
 
         pathologySampleService.deactivateBlock(blockId, "cassette cracked", TECHNICIAN_ID);
 
@@ -312,47 +358,9 @@ public class PathologySampleSaveIdentityTest extends PathologyCaseTestSupport {
 
     // helpers
 
-    private void saveSlides(PathologySlideForm... slides) {
-        PathologySampleForm form = caseViewForm();
-        form.setSlides(Arrays.asList(slides));
-        save(form);
-    }
-
-    private PathologySlideForm postedSlide(Integer blockId) {
-        PathologySlideForm slide = new PathologySlideForm();
-        slide.setBlockId(blockId);
-        slide.setLocation("Slide Storage 1");
-        return slide;
-    }
-
-    private List<Map<String, Object>> slidesOnCase() {
-        return jdbcTemplate.queryForList("SELECT id, block_id, designation, barcode, location, active FROM"
-                + " clinlims.pathology_slide WHERE pathology_sample_id = ? ORDER BY id", CASE_ID);
-    }
-
-    private List<Map<String, Object>> slidesCutFrom(int blockId) {
-        return jdbcTemplate.queryForList("SELECT id, block_id, designation, barcode, active FROM"
-                + " clinlims.pathology_slide WHERE block_id = ? ORDER BY id", blockId);
-    }
-
     private List<String> designationsOfSlidesCutFrom(int blockId) {
         return jdbcTemplate.queryForList(
                 "SELECT designation FROM clinlims.pathology_slide WHERE block_id = ?" + " ORDER BY id", String.class,
                 blockId);
-    }
-
-    private Map<String, Object> slideRow(int slideId) {
-        for (Map<String, Object> slide : slidesOnCase()) {
-            if (Integer.valueOf(slideId).equals(slide.get("id"))) {
-                return slide;
-            }
-        }
-        return null;
-    }
-
-    private int idOfBlockDesignated(String designation) {
-        Map<String, Object> block = blockDesignated(designation);
-        assertNotNull("no block on the case is designated " + designation, block);
-        return ((Number) block.get("id")).intValue();
     }
 }

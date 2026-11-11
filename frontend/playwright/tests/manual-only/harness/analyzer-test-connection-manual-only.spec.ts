@@ -34,7 +34,6 @@ test.describe("Real GeneXpert Test Connection (Manual Only)", () => {
     await setup.selectProfile("Cepheid GeneXpert (ASTM Mode)");
     await setup.fillName(analyzerName);
     await setup.selectFirstLabUnit();
-    await setup.continueToVerify();
     await setup.continueToConnect();
     await setup.fillNetworkAddress(GENEXPERT_HOST!);
     await setup.fillPort(GENEXPERT_PORT);

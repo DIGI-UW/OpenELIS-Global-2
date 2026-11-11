@@ -13,6 +13,7 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.Test;
+import org.openelisglobal.IsolatedDatabase;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
@@ -24,6 +25,7 @@ import org.testcontainers.utility.MountableFile;
  * database here is brought to that state: the core line's constraint, one
  * FREEZER_HUMIDITY alert, and qa-057/qa-084 not yet applied.
  */
+@IsolatedDatabase
 public class AlertTypeCheckUpgradeLiquibaseTest {
 
     private static final String QA_057 = "qa-057-extend-alert-type-check-for-eqa-submission";

@@ -25,6 +25,11 @@ import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
 public interface OrderLabelRequestService {
 
     /**
+     * Reject invalid quantities before an order or its saved label requests change.
+     */
+    void validateQuantities(OrderLabelPersistRequest payload);
+
+    /**
      * Persist one {@code order_label_request} row per chosen per-order cell and one
      * per chosen (sample, preset) cell.
      *

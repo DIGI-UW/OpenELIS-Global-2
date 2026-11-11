@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	import="org.openelisglobal.common.action.IActionConstants,
 			org.openelisglobal.localization.valueholder.Localization"%>
@@ -56,7 +57,7 @@
 				<form:hidden path="menuList[${iter.index}].id" />
 				<tr>
 					<td style="border-top: solid thin;">&nbsp;</td>
-					<td style="border-top: solid thin;">${notificationConfig.test.augmentedTestName}</td>
+                    <td style="border-top: solid thin;">${enc:html(notificationConfig.test.augmentedTestName)}</td>
 					<td
 						style="border-top: solid thin; text-align: center; vertical-align: middle;">
 						<form:checkbox path="menuList[${iter.index}].patientEmail.active"

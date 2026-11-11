@@ -1,19 +1,11 @@
 import React, { useEffect, useState, useRef } from "react";
-import {
-  Form,
-  Heading,
-  Select,
-  SelectItem,
-  Grid,
-  Column,
-  Section,
-  Button,
-} from "@carbon/react";
+import { Form, Heading, Grid, Column, Section, Button } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../../Style.css";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import { AlertDialog } from "../../common/CustomNotification";
 import CustomDatePicker from "../../common/CustomDatePicker";
+import SearchableSelect from "../../common/SearchableSelect";
 import config from "../../../config.json";
 import { encodeDate } from "../../utils/Utils";
 
@@ -28,21 +20,25 @@ const ReferredOut = () => {
   const componentMounted = useRef(false);
   const [locationCodes, setLocationCodes] = useState([]);
   const [selectedLocationCode, setSelectedLocationCode] = useState("");
+  const [locationMissing, setLocationMissing] = useState(false);
 
-  const handleSelectionChange = (event) => {
-    const selectedValue = event.target.value;
-    setSelectedLocationCode(selectedValue);
+  const handleSelectionChange = (locationCode) => {
+    setSelectedLocationCode(locationCode);
+    setLocationMissing(!locationCode);
   };
 
   const fetchLocationCodes = (locationCodez) => {
     if (componentMounted.current) {
-      setLocationCodes(locationCodez);
+      setLocationCodes(Array.isArray(locationCodez) ? locationCodez : []);
     }
   };
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/displayList/REFERRAL_ORGANIZATIONS", fetchLocationCodes);
+    getFromOpenElisServer(
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
+      fetchLocationCodes,
+    );
     return () => {
       componentMounted.current = false;
     };
@@ -58,27 +54,18 @@ const ReferredOut = () => {
   ];
 
   const handleDatePickerChangeDate = (datePicker, date) => {
-    let updatedDate = encodeDate(date);
-    let obj = null;
-    switch (datePicker) {
-      case "startDate":
-        obj = {
-          ...reportFormValues,
-          startDate: updatedDate,
-        };
-        break;
-      case "endDate":
-        obj = {
-          ...reportFormValues,
-          endDate: updatedDate,
-        };
-        break;
-      default:
-    }
-    setReportFormValues(obj);
+    const updatedDate = encodeDate(date);
+    setReportFormValues((current) => ({
+      ...current,
+      [datePicker]: updatedDate,
+    }));
   };
 
   const handlePrinting = () => {
+    if (!selectedLocationCode) {
+      setLocationMissing(true);
+      return;
+    }
     setLoading(true);
     const baseParams = "report=referredOut&type=patient";
     const baseUrl = `${config.serverBaseUrl}/ReportPrint`;
@@ -159,26 +146,23 @@ const ReferredOut = () => {
                 </Section>
               </Column>
               <Column lg={10} md={8} sm={4}>
-                {locationCodes.length > 0 && (
-                  <Select
-                    id="locationcode"
-                    value={selectedLocationCode}
-                    onChange={handleSelectionChange}
-                    labelText={intl.formatMessage({
-                      id: "select.referral.centre",
-                      defaultMessage: "Laboratory",
-                    })}
-                  >
-                    <SelectItem value="" text="" />
-                    {locationCodes.map((locationcode) => (
-                      <SelectItem
-                        key={locationcode.id}
-                        value={locationcode.id}
-                        text={locationcode.value}
-                      />
-                    ))}
-                  </Select>
-                )}
+                <SearchableSelect
+                  id="locationcode"
+                  labelText={intl.formatMessage({
+                    id: "select.referral.centre",
+                    defaultMessage: "Laboratory",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "select.referral.centre.search",
+                  })}
+                  options={locationCodes}
+                  value={selectedLocationCode}
+                  onChange={handleSelectionChange}
+                  invalid={locationMissing}
+                  invalidText={intl.formatMessage({
+                    id: "select.referral.centre.choose",
+                  })}
+                />
               </Column>
             </Grid>
             <br />

@@ -6,6 +6,14 @@ import {
 } from "../../../helpers/test-base";
 import { createProgramOrder } from "../../../helpers/program-order";
 import {
+  moveCaseToStage,
+  type PathologyStageId,
+} from "../../../helpers/seed-pathology-data";
+import {
+  expectStage as expectSummaryStage,
+  STAGE_LABELS,
+} from "../../../helpers/pathology-case-view";
+import {
   LONG_TIMEOUT,
   NAV_TIMEOUT,
   UI_TIMEOUT,
@@ -26,11 +34,13 @@ import {
  * that case, so dashboards holding other cases do not affect it.
  *
  * Immunohistochemistry and Cytology use native selects and one save button.
- * Pathology runs on the case-view shell: the stage is a Dropdown in the
- * action bar, the assignment and release controls sit in accordion sections
- * that unlock with the stage and are expanded before use, and the case is
- * saved with Save draft. Each program names the screen driver that knows
- * which of the two it is talking to.
+ * Pathology runs on the case-view shell: the case is sent on one stage at a
+ * time, each move doing the bench's work for that stage first, so the test
+ * takes the case to the stage it needs through the same move endpoints the
+ * screen posts to and reads the case again; the assignment and release
+ * controls sit in accordion sections that unlock with the stage and are
+ * expanded before use, and the case is saved with Save draft. Each program
+ * names the screen driver that knows which of the two it is talking to.
  */
 
 interface CaseProgram {
@@ -40,8 +50,11 @@ interface CaseProgram {
   dashboardPath: string;
   caseViewPath: RegExp;
   heading: string;
-  /** The accessible name of the stage control. */
-  statusLabel: string;
+  /**
+   * The accessible name of the stage select, on the screens that have one.
+   * The case-view shell has none: its case is sent on with buttons.
+   */
+  statusLabel?: string;
   pathologistLabel: string;
   /**
    * A stage the case view offers, by its label, at which the pathologist can
@@ -69,18 +82,22 @@ interface CaseScreen {
   afterSave?(page: Page): Promise<unknown>;
 }
 
+/** The stage select of a legacy case view, by its accessible name. */
+function stageSelect(page: Page, program: CaseProgram) {
+  if (!program.statusLabel) {
+    throw new Error(`${program.name} names no stage select`);
+  }
+  return page.getByLabel(program.statusLabel, { exact: true });
+}
+
 /** The legacy case views: native selects, every control always in reach. */
 const nativeSelectScreen: CaseScreen = {
   async setStage(page, program, label) {
-    await page
-      .getByLabel(program.statusLabel, { exact: true })
-      .selectOption({ label });
+    await stageSelect(page, program).selectOption({ label });
   },
   async expectStage(page, program, label) {
     await expect(
-      page
-        .getByLabel(program.statusLabel, { exact: true })
-        .locator("option:checked"),
+      stageSelect(page, program).locator("option:checked"),
     ).toHaveText(label, { timeout: UI_TIMEOUT });
   },
   async reachPathologist() {
@@ -116,18 +133,23 @@ async function expandSection(page: Page, sectionId: string) {
 
 /** The pathology case view on the case-view shell. */
 const caseViewShellScreen: CaseScreen = {
-  async setStage(page, program, label) {
-    const stage = page.getByRole("combobox", { name: program.statusLabel });
-    await stage.click();
-    const options = page.locator('#status [role="option"]');
-    await expect(options.first()).toBeVisible({ timeout: UI_TIMEOUT });
-    await options.filter({ hasText: new RegExp(`^${label}$`) }).click();
-    await expect(stage).toContainText(label);
+  async setStage(page, _program, label) {
+    const stageId = (Object.keys(STAGE_LABELS) as PathologyStageId[]).find(
+      (id) => STAGE_LABELS[id] === label,
+    );
+    if (!stageId) {
+      throw new Error(`No pathology stage is labelled "${label}"`);
+    }
+    const caseId = /\/PathologyCaseView\/(\d+)/.exec(page.url())?.[1];
+    if (!caseId) {
+      throw new Error(`Not on a pathology case: ${page.url()}`);
+    }
+    await moveCaseToStage(page, { pathologySampleId: caseId }, stageId);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expectSummaryStage(page, label);
   },
-  async expectStage(page, program, label) {
-    await expect(
-      page.getByRole("combobox", { name: program.statusLabel }),
-    ).toContainText(label, { timeout: UI_TIMEOUT });
+  async expectStage(page, _program, label) {
+    await expectSummaryStage(page, label);
   },
   // The pathologist's sections stay locked until the case reaches their stage.
   async reachPathologist(page, program) {
@@ -165,7 +187,6 @@ const PROGRAMS: CaseProgram[] = [
     dashboardPath: "/PathologyDashboard",
     caseViewPath: /\/PathologyCaseView\/\d+$/,
     heading: "Pathology",
-    statusLabel: "Status",
     pathologistLabel: "Select Pathologist",
     workingStage: "Ready for Pathologist",
     screen: caseViewShellScreen,
