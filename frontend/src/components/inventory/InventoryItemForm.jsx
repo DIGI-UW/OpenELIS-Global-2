@@ -14,6 +14,7 @@ import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import { InventoryItemAPI } from "./InventoryService";
 import { useIsMounted } from "./useIsMounted";
+import { RequiredMarker } from "../common/RequiredMarker";
 
 // Same rule as the server's CodeGenerator.toCode; it does not truncate, the
 // server does, so a code that grows on upper-casing (e.g. ß to SS) is cut there.
@@ -77,6 +78,7 @@ const InventoryItemForm = ({
   const isMounted = useIsMounted();
 
   const [error, setError] = useState(null);
+  const [fieldError, setFieldError] = useState(null);
   const [tagSuggestions, setTagSuggestions] = useState([]);
   const [tagDraft, setTagDraft] = useState("");
 
@@ -124,6 +126,7 @@ const InventoryItemForm = ({
 
   // Handle input changes
   const handleChange = (field, value) => {
+    if (fieldError?.field === field) setFieldError(null);
     // Convert empty string or NaN to 0 for numeric fields
     // The optional numbers stay blank; a 0 there is rejected by the server.
     const numericFields = ["lowStockThreshold"];
@@ -174,14 +177,16 @@ const InventoryItemForm = ({
 
   // Validate form
   const validate = () => {
-    if (!formData.name?.trim()) {
-      setError(intl.formatMessage({ id: "catalog.item.error.nameRequired" }));
-      return false;
+    for (const [field, id] of [
+      ["name", "catalog.item.error.nameRequired"],
+      ["units", "catalog.item.error.unitsRequired"],
+    ]) {
+      if (!formData[field]?.trim()) {
+        setFieldError({ field, message: intl.formatMessage({ id }) });
+        return false;
+      }
     }
-    if (!formData.units?.trim()) {
-      setError(intl.formatMessage({ id: "catalog.item.error.unitsRequired" }));
-      return false;
-    }
+    setFieldError(null);
     return true;
   };
 
@@ -282,10 +287,17 @@ const InventoryItemForm = ({
 
         <TextInput
           id="name"
-          labelText={<FormattedMessage id="catalog.item.name" />}
+          labelText={
+            <>
+              <FormattedMessage id="catalog.item.name" />
+              <RequiredMarker />
+            </>
+          }
           value={formData.name}
           onChange={(e) => handleChange("name", e.target.value)}
           required
+          invalid={fieldError?.field === "name"}
+          invalidText={fieldError?.message}
         />
 
         <TextInput
@@ -404,10 +416,17 @@ const InventoryItemForm = ({
           />
           <TextInput
             id="units"
-            labelText={<FormattedMessage id="catalog.item.units" />}
+            labelText={
+              <>
+                <FormattedMessage id="catalog.item.units" />
+                <RequiredMarker />
+              </>
+            }
             value={formData.units}
             onChange={(e) => handleChange("units", e.target.value)}
             required
+            invalid={fieldError?.field === "units"}
+            invalidText={fieldError?.message}
             maxLength={50}
             placeholder={intl.formatMessage({
               id: "catalog.item.units.placeholder",

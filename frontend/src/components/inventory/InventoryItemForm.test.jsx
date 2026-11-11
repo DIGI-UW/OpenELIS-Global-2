@@ -247,7 +247,20 @@ describe("InventoryItemForm — item type is a tag now", () => {
 
     expect(screen.getByText("Units are required.")).toBeInTheDocument();
     expect(screen.getByLabelText(/units/i)).toBeRequired();
+    expect(screen.getByLabelText(/units/i)).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
     expect(InventoryItemAPI.create).not.toHaveBeenCalled();
+  });
+
+  it("marks item name and units as required next to their labels", async () => {
+    await renderForm();
+    for (const id of ["name", "units"]) {
+      expect(
+        document.querySelector(`label[for="${id}"] .requiredlabel`),
+      ).toHaveTextContent("*");
+    }
   });
 
   it("shows the example placeholders from the message bundle", async () => {
