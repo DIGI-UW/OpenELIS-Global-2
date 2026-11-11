@@ -148,6 +148,22 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
         assertEquals(Boolean.FALSE, required("extra"));
     }
 
+    @Test
+    public void aFilesPrimaryTakesOverThePrimaryANewTestStartsWith() throws Exception {
+        String other = PREFIX + "Marburg PCR";
+        load(testHandler, "testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure\n" + other
+                + "," + SECTION + "," + PREFIX + "Plasma,86574-1,Y,Y,91,\n", "tests-marburg.csv");
+
+        load(componentHandler, "testName,code,label,resultType,isPrimary\n" + other + ",RESULT,Result,D,Y\n" + other
+                + ",MARV,Marburg,D,N\n", "result-components-marburg.csv");
+
+        assertEquals(List.of("MARV:false:false", "RESULT:true:true"), jdbc.queryForList(
+                "SELECT code || ':' || is_primary || ':' || is_required FROM clinlims.test_result_component"
+                        + " WHERE is_active = 'Y' AND test_id = (SELECT id FROM clinlims.test WHERE description = ?)"
+                        + " ORDER BY code",
+                String.class, other));
+    }
+
     private Boolean required(String code) {
         return jdbc.queryForObject(
                 "SELECT is_required FROM clinlims.test_result_component WHERE is_active = 'Y'"
