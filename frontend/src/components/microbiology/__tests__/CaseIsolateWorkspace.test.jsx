@@ -422,3 +422,11 @@ it("moves keyboard focus into the pick dialog and back to Pick isolate after sav
     expect(screen.getByRole("button", { name: "Pick isolate" })).toHaveFocus(),
   );
 });
+it("lets keyboard users focus and scroll the referrals table", async () => {
+  show(api());
+  expect(
+    await screen.findByRole("table", {
+      name: messages["microbiology.isolateWorkspace.referrals"],
+    }),
+  ).toHaveAttribute("tabindex", "0");
+});

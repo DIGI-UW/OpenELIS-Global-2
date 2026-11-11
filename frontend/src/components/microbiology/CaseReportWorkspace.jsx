@@ -87,7 +87,7 @@ export function MicrobiologyReportBlock({ report }) {
             key={isolate.id}
             title={`${isolate.label}: ${isolate.organism}`}
           >
-            <Table aria-label={`${isolate.label} ${t("ast")}`}>
+            <Table tabIndex={0} aria-label={`${isolate.label} ${t("ast")}`}>
               <TableHead>
                 <TableRow>
                   {["agent", "raw", "interpretation", "breakpoint"].map(

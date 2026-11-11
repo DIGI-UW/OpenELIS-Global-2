@@ -175,3 +175,9 @@ it("allows a partial report from no-growth-ready without requiring final release
   ).toBeEnabled();
   expect(screen.getByRole("button", { name: t("finalRelease") })).toBeEnabled();
 });
+it("lets keyboard users focus and scroll each isolate's AST table", async () => {
+  show();
+  expect(
+    await screen.findByRole("table", { name: "ISO-1: E. coli" }),
+  ).toHaveAttribute("tabindex", "0");
+});

@@ -678,7 +678,7 @@ export default function CaseIsolateWorkspace({
             </Tile>
           ))}
           <TableContainer title={t("referrals")}>
-            <Table aria-label={t("referrals")}>
+            <Table tabIndex={0} aria-label={t("referrals")}>
               <TableHead>
                 <TableRow>
                   {[
