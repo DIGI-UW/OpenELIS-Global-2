@@ -179,15 +179,6 @@
                   "openInNewWindow": false,
                   "hideInOldUI": false,
                   "presentationOrder": 6
-                },
-                {
-                  "elementId": "menu_reports_whonet_export",
-                  "displayKey": "reports.export.whonet",
-                  "actionURL": "/Report?type=patient&report=ExportWHONETReportByDate",
-                  "isActive": true,
-                  "openInNewWindow": false,
-                  "hideInOldUI": false,
-                  "presentationOrder": 7
                 }
               ]
             }
