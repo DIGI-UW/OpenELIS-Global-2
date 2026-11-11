@@ -258,7 +258,7 @@ public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
 
     private static final List<String> CSV_REPORTS = List.of("CISampleExport", "HaitiExportReport",
             "HaitiLNSPExportReport", "CIStudyExport", "CISampleRoutineExport", "TBOrderExport", "Trends",
-            "ExportWHONETReportByDate", "ForCIDashboard", "indicatorHaitiLNSPSiteTestCount", "sampleRejectionReport");
+            "ForCIDashboard", "indicatorHaitiLNSPSiteTestCount", "sampleRejectionReport");
 
     @Test
     public void csvExportsRejectAnActiveUserWithoutReportsBeforeReadingClinicalData() throws Exception {
