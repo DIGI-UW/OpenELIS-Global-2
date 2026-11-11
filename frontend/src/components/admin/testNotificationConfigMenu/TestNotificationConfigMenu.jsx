@@ -44,6 +44,13 @@ let breadcrumbs = [
   },
 ];
 
+const CHANNEL_LABEL_IDS = {
+  patientEmail: "testnotification.patient.email",
+  patientSMS: "testnotification.patient.sms",
+  providerEmail: "testnotification.provider.email",
+  providerSMS: "testnotification.provider.sms",
+};
+
 function TestNotificationConfigMenu() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -268,7 +275,18 @@ function TestNotificationConfigMenu() {
         <TableCell key={cell.id}>
           <Checkbox
             id={`checkbox-${row.id}-${cell.info.header}`}
-            labelText=""
+            hideLabel
+            labelText={intl.formatMessage(
+              { id: "testnotification.checkbox.label" },
+              {
+                channel: intl.formatMessage({
+                  id: CHANNEL_LABEL_IDS[cell.info.header],
+                }),
+                test:
+                  row.cells.find((c) => c.info.header === "testName")?.value ||
+                  row.id,
+              },
+            )}
             checked={
               testNotificationConfigMenuDataPost?.menuList.find(
                 (item) => item.testId === row.id,

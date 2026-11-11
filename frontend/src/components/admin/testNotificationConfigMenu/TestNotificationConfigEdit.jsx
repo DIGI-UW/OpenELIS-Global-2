@@ -432,7 +432,7 @@ function TestNotificationConfigEdit() {
                     setSysDefaultMsg(!sysDefaultMsg);
                   }}
                 >
-                  Edit
+                  <FormattedMessage id="button.edit" />
                 </Button>
               </Column>
             </Grid>
@@ -445,7 +445,9 @@ function TestNotificationConfigEdit() {
                 <TextInput
                   id="subject"
                   type="text"
-                  labelText=""
+                  labelText={intl.formatMessage({
+                    id: "testnotification.subjecttemplate",
+                  })}
                   hideLabel={true}
                   disabled={sysDefaultMsg}
                   placeholder={intl.formatMessage({
@@ -483,7 +485,9 @@ function TestNotificationConfigEdit() {
                 <TextArea
                   id="message"
                   type="text"
-                  labelText=""
+                  labelText={intl.formatMessage({
+                    id: "testnotification.messagetemplate",
+                  })}
                   hideLabel={true}
                   disabled={sysDefaultMsg}
                   placeholder={intl.formatMessage({
@@ -536,7 +540,10 @@ function TestNotificationConfigEdit() {
                 <TextInput
                   id="testDefaultSubjectTemplate"
                   type="text"
-                  labelText=""
+                  hideLabel={true}
+                  labelText={intl.formatMessage({
+                    id: "testnotification.subjecttemplate",
+                  })}
                   value={readTemplateField(
                     "config.defaultPayloadTemplate",
                     "subjectTemplate",
@@ -559,7 +566,10 @@ function TestNotificationConfigEdit() {
               <Column lg={16} md={8} sm={4}>
                 <TextArea
                   id="testDefaultMessageTemplate"
-                  labelText=""
+                  hideLabel={true}
+                  labelText={intl.formatMessage({
+                    id: "testnotification.messagetemplate",
+                  })}
                   value={readTemplateField(
                     "config.defaultPayloadTemplate",
                     "messageTemplate",
@@ -667,7 +677,10 @@ function TestNotificationConfigEdit() {
                     <TextInput
                       id={`${individualChannelKey}-subject`}
                       type="text"
-                      labelText=""
+                      hideLabel={true}
+                      labelText={intl.formatMessage({
+                        id: "testnotification.subjecttemplate",
+                      })}
                       value={readTemplateField(
                         `config.${individualChannelKey}.payloadTemplate`,
                         "subjectTemplate",
@@ -690,7 +703,10 @@ function TestNotificationConfigEdit() {
                   <Column lg={16} md={8} sm={4}>
                     <TextArea
                       id={`${individualChannelKey}-message`}
-                      labelText=""
+                      hideLabel={true}
+                      labelText={intl.formatMessage({
+                        id: "testnotification.messagetemplate",
+                      })}
                       value={readTemplateField(
                         `config.${individualChannelKey}.payloadTemplate`,
                         "messageTemplate",
@@ -737,7 +753,10 @@ function TestNotificationConfigEdit() {
                   <Column lg={16} md={8} sm={4}>
                     <TextArea
                       id={`${individualChannelKey}-message`}
-                      labelText=""
+                      hideLabel={true}
+                      labelText={intl.formatMessage({
+                        id: "testnotification.messagetemplate",
+                      })}
                       value={readTemplateField(
                         `config.${individualChannelKey}.payloadTemplate`,
                         "messageTemplate",
