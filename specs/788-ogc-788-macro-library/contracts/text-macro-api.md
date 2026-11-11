@@ -1,0 +1,148 @@
+# REST And URL Contract: OGC-788 M1-M2
+
+This file records the first engineering contract. Product acceptance remains in
+`spec.md`.
+
+## Runtime Lookup
+
+`GET /rest/text-macros?context={context}&q={query}&limit={limit}`
+
+- Requires an authenticated user.
+- `context` is required and must be recognized.
+- `q` is optional. A blank query returns the first active entries for the
+  context; a dot/code or phrase fragment matches canonical code and expansion
+  text case-insensitively.
+- `limit` defaults to 20 and is capped at 50.
+- Sort order is canonical code ascending for deterministic keyboard behavior.
+
+Response:
+
+```json
+{
+  "items": [
+    {
+      "id": "generated-id",
+      "code": ".ng24",
+      "expansionText": "No growth at 24 hours",
+      "category": "CULTURE",
+      "contexts": ["MICROBIOLOGY_CULTURE_READING"]
+    }
+  ]
+}
+```
+
+Runtime responses omit audit and package-management fields.
+
+## Administrative List
+
+`GET /rest/text-macros/admin?q={query}&context={context}&category={category}&source={source}&status={status}&sort={sort}&page={page}&pageSize={pageSize}`
+
+- Requires the existing administrator role.
+- `category`: `all` or one category. `source`: `all`, `local`, or `packaged`.
+- `status`: `active`, `inactive`, or `all`.
+- M1 sorts: `code:asc`, `code:desc`, `updated:desc`, `updated:asc`.
+- `page` is one-based. `pageSize` accepts 10, 20, 50, or 100.
+- Response includes `items`, `page`, `pageSize`, and `total`.
+
+## Administrative Writes
+
+- `POST /rest/text-macros/admin`
+- `PUT /rest/text-macros/admin/{id}`
+
+Request:
+
+```json
+{
+  "code": ".ng24",
+  "expansionText": "No growth at 24 hours",
+  "category": "CULTURE",
+  "contexts": ["MICROBIOLOGY_CULTURE_READING"],
+  "active": true
+}
+```
+
+The request has no ID on create, actor, timestamp, provenance, source key, or
+source version. M1 writes are local and the server derives attribution from the
+authenticated request.
+
+Expected errors use a stable `code` and human-safe message key:
+
+- `400 INVALID_MACRO_CODE`
+- `400 MACRO_CODE_RESERVED`
+- `400 MACRO_TEXT_REQUIRED`
+- `400 MACRO_TEXT_TOO_LONG`
+- `400 MACRO_CATEGORY_REQUIRED`
+- `400 INVALID_MACRO_CATEGORY`
+- `400 MACRO_CONTEXT_REQUIRED`
+- `400 INVALID_MACRO_CONTEXT`
+- `404 MACRO_NOT_FOUND`
+- `409 MACRO_CODE_EXISTS`
+- `403` for unauthorized administration
+
+## Administrative Export
+
+`GET /rest/text-macros/admin/export`
+
+- Requires the existing administrator role.
+- Returns `text/csv; charset=UTF-8` as
+  `attachment; filename="openelis-text-macros.csv"`.
+- The first row is
+  `code,expansion_text,category,contexts,active,provenance,source_key,source_version`.
+- Rows are ordered by canonical code ascending. Context names are ordered and
+  joined with `|`; RFC 4180 quoting preserves commas, quotes, and newlines in
+  phrase text.
+- Export contains no database ID, audit actor, or timestamp.
+
+## Administrative Bulk Action
+
+`POST /rest/text-macros/admin/bulk`
+
+```json
+{
+  "ids": ["generated-id-1", "generated-id-2"],
+  "action": "DEACTIVATE"
+}
+```
+
+Supported actions are `ACTIVATE`, `DEACTIVATE`, and `DELETE_LOCAL`.
+
+- The request contains 1-100 unique generated IDs and no actor.
+- The service derives the actor from the authenticated request, loads the full
+  selection, validates every row, then applies the action in one transaction.
+- `DELETE_LOCAL` rejects the complete request if any selected phrase is not
+  locally authored. It never removes a packaged phrase, and the irreversible
+  removal is written to the existing audit trail with the authenticated actor
+  before the row is deleted.
+- Already expanded clinical text is plain text and is unaffected.
+- The response includes the action, affected count, and affected canonical codes
+  in ascending order.
+- Stable errors include `MACRO_SELECTION_REQUIRED`,
+  `MACRO_SELECTION_LIMIT_EXCEEDED`, `DUPLICATE_MACRO_IDS`,
+  `INVALID_MACRO_BULK_ACTION`, `MACRO_NOT_FOUND`, and
+  `PACKAGED_MACRO_REMOVAL_NOT_ALLOWED`.
+
+## Canonical Administration URL
+
+`/admin/MacroLibrary?q=&context=all&category=all&source=all&status=active&sort=code:asc&page=1&pageSize=20&edit=`
+
+- Default values may be omitted after canonicalization only if a reload produces
+  identical state.
+- `edit=new` opens create state.
+- `edit={id}` opens the exact edit state.
+- Closing create/edit removes only `edit` and preserves list state.
+- Successful save returns to the preserved list state and refreshes visible
+  data.
+
+## Controlled Field Contract
+
+The reusable runtime field receives:
+
+- `id`, `labelText`, `value`, and `onChange` compatible with a controlled Carbon
+  text area;
+- one recognized `context`;
+- optional existing Carbon text-area props.
+
+It emits plain expanded text through `onChange`. It does not submit macro IDs,
+change the parent form contract, or save data independently. When the field
+has a `maxLength` and the expansion would exceed it, the code stays as typed and
+the field announces why.
