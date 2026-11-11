@@ -435,6 +435,17 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     return component?.resultList || [];
   };
 
+  const componentSuffix = (
+    index: number,
+    operationIndex: number,
+    componentId: any,
+  ) => {
+    const component = operandComponentsFor(index, operationIndex).find(
+      (c) => String(c.id) === String(componentId),
+    );
+    return component ? " / " + component.value : "";
+  };
+
   const answerLabel = (index: number, operationIndex: number, value: any) =>
     answersFor(index, operationIndex).find(
       (answer) => String(answer.id) === String(value),
@@ -1068,7 +1079,13 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                           ]?.filter(
                                             (test) =>
                                               test.id == operation.value,
-                                          )[0]?.value + "'"
+                                          )[0]?.value +
+                                          componentSuffix(
+                                            index,
+                                            operationIndex,
+                                            operation.componentId,
+                                          ) +
+                                          "'"
                                         : ""
                                       : operation.type === "ANSWER"
                                         ? answerLabel(
