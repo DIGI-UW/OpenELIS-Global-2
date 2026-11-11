@@ -111,6 +111,26 @@ synonyms (R-19); breakpoints in the package's native columns with indication
 reporting rules generated from the package (R-08); and "Keep local" or "Use
 pack value" on a new package version (FR-R25.5), which needs Import Review.
 
+## Metadata issues raised on 2026-11-09 (AMR call)
+
+Checked against the DIGI-UW/AMR fork (`c/ogc-1533-reference-package`) and
+develop. None of them changes the export design; two change what is loaded.
+
+| Raised | Finding | Owner |
+|---|---|---|
+| Genus entries ("Klebsiella sp.") have no WHONET code | The data is there: `microorganisms.codes` holds 6,293 codes, 1,753 pointing at a genus. `data-raw/openelis/export.R:222-228` keeps a code only when its source text equals `WHONET (<fullname>)`. For a genus the source text is `WHONET (Klebsiella sp.)` and the fullname is `Klebsiella`, so 444 genera lose their code and 4 keep one. | Exporter fix in the AMR fork (OGC-1533) |
+| Users expect "Klebsiella sp.", not a bare genus | The same source text carries the WHONET name. The exporter writes only `displayName = fullname`. | Exporter: add the WHONET name; display choice is V3's |
+| Organisms missing from the list (about 443 loaded) | By design of the first package: breakpoint targets plus species with `prevalence == 1` and a WHONET mapping (`export.R:18-33`). The source has 103,222 taxa. V3 FR-R13.1 asks for the whole list. | Package scope (OGC-1533) and V3 R-13 |
+| "Most common organisms" for panel setup | The source has a `prevalence` column (1, 1.15, 1.25, 1.5, 2); V3 FR-R13.1a ranks pickers by it. No WHONET-curated list is published. | V3 R-13 |
+| AST panels cannot be linked to organisms | Linking exists as a `defaultFor` column on `microbiology-ast-panels` (develop) but has no screen there. V3 PRs #4995 and #5009 add the matching and the panels page control. | V3 stack |
+| Entering S, I or R directly when no measurement or breakpoint applies | No requirement found in the V3 FRS (searched; R-30 keeps the measurement and reports "No breakpoint"). | Product decision |
+| Antibiogram and GLASS submission | Deferred to a separate surveillance epic (D-340). | After V3 |
+
+What it means for this work: panel-to-organism links and the lab's organism
+shortlist are lab-owned data, so they belong in the PR 4 exports. The exporter
+fix adds a column to `organisms.csv`; the organisms loader and its export must
+carry it.
+
 ## Design
 
 1. **Export hook on the handler contract.** `DomainConfigurationHandler` gains
