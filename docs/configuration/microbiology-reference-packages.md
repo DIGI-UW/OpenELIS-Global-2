@@ -9,24 +9,38 @@ read release archives, download metadata or run R.
 
 | Folder under `configuration/backend/` | Required columns                         | Order |
 | ------------------------------------- | ---------------------------------------- | ----- |
+| `microbiology-whonet-organisms/`      | WHONET's `Organisms.txt`, see below      | 305   |
 | `microbiology-organisms/`             | `source,code,displayName,whonetCode`     | 310   |
 | `microbiology-antimicrobials/`        | `source,code,displayName,whonetCode`     | 320   |
 | `microbiology-breakpoints/`           | Existing breakpoint import columns below | 330   |
 
-Organisms also accept `gramStain`, `organism_group`, `whonetName`, `rank` and
-`prevalence`; antimicrobials accept `antibioticClass`. `source` and `code`
-identify a reference concept independently of its local name and database
-identifier. An existing source identity retains local values and activity.
-Unambiguous pre-existing name/code matches can adopt an identity; conflicting
-matches fail the catalog import. These files do not choose a site's panels,
-routing, significance or clinical protocol.
+Organisms also accept `gramStain`; antimicrobials accept `antibioticClass`.
+`source` and `code` identify a reference concept independently of its local name
+and database identifier. An existing source identity retains local values and
+activity. Unambiguous pre-existing name/code matches can adopt an identity;
+conflicting matches fail the catalog import. These files do not choose a site's
+panels, routing, significance or clinical protocol.
 
-The organism file is the source of an organism's WHONET code and name, `rank`
-and `prevalence`: a later file replaces them on the organisms it identifies, and
-a blank cell changes nothing. A blank organism group takes the file's group; a
-group a laboratory set stays. If another organism already uses a WHONET code the
-file assigns, the file fails and names that organism. `prevalence` is a number
-from 0 to under 100; lower means more common in human infections.
+## WHONET's organism list
+
+`microbiology-whonet-organisms/` takes `Organisms.txt` exactly as
+[WHONET publishes it](https://github.com/AClark-WHONET/AMRIE): tab-separated,
+with WHONET's column names. The `amr-reference` package carries the file
+unchanged, so OpenELIS offers the organisms, names and codes a WHONET user
+knows.
+
+- The whole table is kept, every row and column, including the older names a
+  code has carried and codes WHONET has replaced. Loading a file replaces the
+  table with that file.
+- Each current entry (`TAXONOMIC_STATUS` of `C`) is an organism, under WHONET's
+  name and identified by its WHONET code. "Klebsiella sp." is `kl-`;
+  "Escherichia coli" (`eco`) and "Escherichia coli O157:H7" (`157`) are separate
+  organisms.
+- An organism the laboratory already has under a WHONET code keeps its record,
+  panel and notes, and takes WHONET's current name. One with the same name and
+  no code takes the code.
+- If WHONET's name for a code already belongs to an organism with a different
+  code, the file is not loaded and the report names both codes.
 
 Breakpoint files use the existing administrator CSV importer:
 

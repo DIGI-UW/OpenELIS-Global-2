@@ -158,68 +158,6 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
-    public void whonetCodeNameRankAndPrevalenceFollowTheLatestPackage() throws Exception {
-        var fixture = new ReferencePackageFixture("2099.9", "WHONET");
-        load(fixture);
-        assertNull(organisms.findByReference("AMR", fixture.organism).orElseThrow().getWhonetCode());
-
-        String header = "source,code,displayName,whonetCode,whonetName,gramStain,rank,prevalence\n";
-        String row = "AMR," + fixture.organism + ",Synthetic organism WHONET,";
-        fixture.files.put("organisms.csv", header + row + "zq9,Synthetic sp.,GRAM_NEGATIVE,genus,1.25\n");
-        load(fixture);
-        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
-        assertEquals("zq9", organism.getWhonetCode());
-        assertEquals("Synthetic sp.", organism.getWhonetName());
-        assertEquals("genus", organism.getTaxonomicRank());
-        assertEquals(0, new BigDecimal("1.25").compareTo(organism.getPrevalence()));
-
-        organism.setDisplayName("Laboratory name for WHONET");
-        organism.setSysUserId("1");
-        organisms.update(organism);
-        fixture.files.put("organisms.csv", header + row + "zq8,Other sp.,GRAM_NEGATIVE,species,2\n");
-        load(fixture);
-        var corrected = organisms.findByReference("AMR", fixture.organism).orElseThrow();
-        assertEquals("zq8", corrected.getWhonetCode());
-        assertEquals("Other sp.", corrected.getWhonetName());
-        assertEquals("species", corrected.getTaxonomicRank());
-        assertEquals(0, new BigDecimal("2").compareTo(corrected.getPrevalence()));
-        assertEquals("The laboratory's own name stays", "Laboratory name for WHONET", corrected.getDisplayName());
-    }
-
-    @Test
-    public void whonetCodeHeldByAnotherOrganismStopsTheLoadAndNamesIt() throws Exception {
-        var fixture = new ReferencePackageFixture("2099.9", "TAKEN");
-        load(fixture);
-        var local = new MicroOrganism();
-        local.setDisplayName("Laboratory organism TAKEN");
-        local.setWhonetCode("zq7");
-        local.setSysUserId("1");
-        organisms.insert(local);
-
-        fixture.files.put("organisms.csv", "source,code,displayName,whonetCode,whonetName,gramStain\nAMR,"
-                + fixture.organism + ",Synthetic organism TAKEN,zq7,Synthetic sp.,GRAM_NEGATIVE\n");
-        writeFiles(fixture);
-        var failure = reload(true);
-        assertTrue(failure.toString(), failure.files().stream().anyMatch(
-                file -> file.errorMessage() != null && file.errorMessage().contains("Laboratory organism TAKEN")));
-        assertNull(organisms.findByReference("AMR", fixture.organism).orElseThrow().getWhonetCode());
-        assertEquals(local.getId(), organisms.findByWhonetCodeIgnoreCase("zq7").orElseThrow().getId());
-    }
-
-    @Test
-    public void newPackageOrganismKeepsItsWhonetNameRankAndPrevalence() throws Exception {
-        var fixture = new ReferencePackageFixture("2099.9", "FRESH");
-        fixture.files.put("organisms.csv", "source,code,displayName,whonetCode,whonetName,gramStain,rank,prevalence\n"
-                + "AMR," + fixture.organism + ",Synthetic organism FRESH,zq6,Synthetic sp.,GRAM_NEGATIVE,genus,1\n");
-        load(fixture);
-        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
-        assertEquals("zq6", organism.getWhonetCode());
-        assertEquals("Synthetic sp.", organism.getWhonetName());
-        assertEquals("genus", organism.getTaxonomicRank());
-        assertEquals(0, BigDecimal.ONE.compareTo(organism.getPrevalence()));
-    }
-
-    @Test
     public void panelFileCreatesVersionsAndAssignsTheMostSpecificDefault() throws Exception {
         var fixture = new ReferencePackageFixture("2099.8", "PANEL");
         load(fixture);
