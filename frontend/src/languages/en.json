@@ -13841,6 +13841,7 @@
   "lot.error.locationRequired": "Assign a storage location.",
   "lot.status.select": "Select lot status",
   "catalog.item.error.nameRequired": "Item name is required.",
+  "catalog.item.error.unitsRequired": "Units are required.",
   "sidenav.label.inventory.items": "Items",
   "sidenav.label.inventory.items.tooltip": "What you have and what to reorder",
   "sidenav.label.inventory.receive": "Receive",

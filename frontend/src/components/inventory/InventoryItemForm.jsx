@@ -178,6 +178,10 @@ const InventoryItemForm = ({
       setError(intl.formatMessage({ id: "catalog.item.error.nameRequired" }));
       return false;
     }
+    if (!formData.units?.trim()) {
+      setError(intl.formatMessage({ id: "catalog.item.error.unitsRequired" }));
+      return false;
+    }
     return true;
   };
 
@@ -403,6 +407,8 @@ const InventoryItemForm = ({
             labelText={<FormattedMessage id="catalog.item.units" />}
             value={formData.units}
             onChange={(e) => handleChange("units", e.target.value)}
+            required
+            maxLength={50}
             placeholder="e.g., mL, tests, kits"
           />
         </div>

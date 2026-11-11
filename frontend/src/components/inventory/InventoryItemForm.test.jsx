@@ -234,6 +234,22 @@ describe("InventoryItemForm — item type is a tag now", () => {
     );
   });
 
+  it("refuses to save without units and says why in a translated message", async () => {
+    await renderForm();
+    fireEvent.change(screen.getByLabelText(/item name/i), {
+      target: { value: "Examination gloves" },
+    });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "   " },
+    });
+
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(screen.getByText("Units are required.")).toBeInTheDocument();
+    expect(screen.getByLabelText(/units/i)).toBeRequired();
+    expect(InventoryItemAPI.create).not.toHaveBeenCalled();
+  });
+
   it("says this defines a kind of item, not a delivery of one", async () => {
     await renderForm();
 
@@ -388,6 +404,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
       code: "CULTURE-AGAR",
       name: "Culture agar",
       itemType: "REAGENT",
+      units: "plates",
       stabilityAfterOpening: 1,
       usualAtmosphereId: "42",
       usualTemperature: 37,
@@ -431,6 +448,9 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     fireEvent.change(await screen.findByLabelText(/^item name/i), {
       target: { value: "My Reagent" },
     });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "mL" },
+    });
     const codeInput = screen.getByLabelText(/^code$/i);
     fireEvent.change(codeInput, { target: { value: "my reagent 1" } });
     expect(codeInput).toHaveValue("my reagent 1");
@@ -460,6 +480,9 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
 
     fireEvent.change(await screen.findByLabelText(/^item name/i), {
       target: { value: "My Reagent" },
+    });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "mL" },
     });
     const codeInput = screen.getByLabelText(/^code$/i);
     expect(codeInput).toHaveAttribute("maxlength", "64");
@@ -501,6 +524,9 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
 
     fireEvent.change(await screen.findByLabelText(/^item name/i), {
       target: { value: "Auto Generated Item" },
+    });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "mL" },
     });
     fireEvent.change(screen.getByLabelText(/stability after opening/i), {
       target: { value: "30" },
@@ -547,6 +573,9 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     fireEvent.change(await screen.findByLabelText(/^item name/i), {
       target: { value: "Examination gloves" },
     });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "mL" },
+    });
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() => expect(InventoryItemAPI.create).toHaveBeenCalled());
@@ -568,6 +597,9 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
 
     fireEvent.change(await screen.findByLabelText(/^item name/i), {
       target: { value: "My Reagent" },
+    });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "mL" },
     });
     fireEvent.change(screen.getByLabelText(/stability after opening/i), {
       target: { value: "30" },
