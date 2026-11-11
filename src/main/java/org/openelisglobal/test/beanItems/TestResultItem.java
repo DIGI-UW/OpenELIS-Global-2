@@ -17,22 +17,29 @@ package org.openelisglobal.test.beanItems;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import org.openelisglobal.analysis.valueholder.ResultFile;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.common.util.YesNoBooleanDeserializer;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.result.action.util.ResultItem;
 import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
+import org.openelisglobal.resultrun.form.WaitingRun;
 import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidAccessionNumber;
 import org.openelisglobal.validation.annotations.ValidDate;
@@ -84,6 +91,10 @@ public class TestResultItem implements ResultItem, Serializable {
     @ValidDate(relative = DateRelation.PAST, acceptTime = true, groups = { LogbookResultsForm.LogbookResults.class })
     private String testDate;
 
+    private String collectionDate;
+
+    private String timeHolding;
+
     @ValidDate(relative = DateRelation.PAST, acceptTime = true, groups = { WorkplanForm.PrintWorkplan.class })
     private String receivedDate;
     /*
@@ -121,16 +132,53 @@ public class TestResultItem implements ResultItem, Serializable {
     private double upperAbnormalRange;
     private double lowerAbnormalRange;
     private String normalRange = "";
-    private double lowerCritical;
-    private double higherCritical;
+    /** Message key saying why no reference range was applied, or null. */
+    private String rangeNotAppliedReason;
+    // Authored critical bounds, null when the range has none (OGC-1121).
+    private Double lowerCritical;
+    private Double higherCritical;
+    private List<ComplianceEvaluation> complianceStatuses = Collections.emptyList();
 
-    private int significantDigits = 0;
+    /**
+     * OGC-1022 (R3, FR-L1) — NORMAL | ABNORMAL | CRITICAL | INVALID, computed
+     * server-side from the patient-conditional ResultLimit for numeric results;
+     * null when there is no value or no limit to judge against.
+     */
+    private String resultFlag;
+
+    /**
+     * OGC-1022 (R3) — display string for the critical bounds ("&lt; 50", "&gt;
+     * 400", or "&lt; 50 or &gt; 400"); empty when no critical bounds are authored.
+     */
+    private String criticalRange = "";
+
+    private int reportingDecimalPlaces = -1;
+
+    private String expandedUncertainty;
+
+    private String coverageFactor;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String shadowResultValue;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
     private String resultValue;
+
+    /**
+     * The value exactly as stored, where {@link #resultValue} is the value as
+     * reported.
+     *
+     * <p>
+     * The two differ whenever reporting formats: a numeric result on a test
+     * configured for no decimal places reports 23.7 as "23", and an alphanumeric
+     * one reports only the part before its first bracket. An editor repopulated
+     * from the reported value and saved back writes the reported form over the
+     * stored one — a silent truncation of the patient's result, recorded in the
+     * audit trail as the technician's own edit (OGC-1179). An editor needs the
+     * value it is about to overwrite.
+     */
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { LogbookResultsForm.LogbookResults.class })
+    private String rawResultValue;
 
     private String remarks;
 
@@ -159,6 +207,11 @@ public class TestResultItem implements ResultItem, Serializable {
     private ResultDisplayType resultDisplayType = ResultDisplayType.TEXT;
     private boolean isModified = false;
 
+    // OGC-1417: the person entering the value has acknowledged it as critical,
+    // or confirmed it although it lies outside the valid range
+    private boolean criticalAcknowledged = false;
+    private boolean invalidResultConfirmed = false;
+
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String analysisId;
 
@@ -168,7 +221,129 @@ public class TestResultItem implements ResultItem, Serializable {
     @Pattern(regexp = "^[0-9]*$", groups = { LogbookResultsForm.LogbookResults.class })
     private String analysisLastupdated;
 
+    /**
+     * OGC-1021 (R2, FR-B1/B2) — the specific instrument instance
+     * (Analysis.analyzerId), distinct from the method. Loaded for display and
+     * round-tripped on save; null means "not sent" (legacy pages), so an absent
+     * field never clears a stored analyzer.
+     */
+    private String analyzerId;
+
+    /**
+     * OGC-1021 (R2, FR-J1) — visibility axis of the note carried in {@code note}:
+     * "I" internal (default, legacy behavior) or "E" send-with-result.
+     */
+    private String noteVisibility;
+
+    /**
+     * OGC-1021 (R2, FR-J1) — context axis of the note carried in {@code note}:
+     * "ENTRY" (default) or "MODIFICATION"; auto-set by the client's edit-state
+     * machine, never user-chosen.
+     */
+    private String noteContext;
+
+    /**
+     * OGC-1026 (R7, FR-G1) / OGC-1021 (R2 FR-G) — clinical interpretation text
+     * entered on the unified Results page. Persisted as an EXTERNAL note with
+     * subject "Interpretation" so it reaches the patient report and the analysis
+     * timeline without new schema.
+     */
+    private String interpretation;
+
+    /**
+     * OGC-1021 (R2, FR-D5) — dilution factor applied to a quantitative result. The
+     * client stores the computed reported value (= measured × factor) in
+     * {@code resultValue}; factor and measured value are captured in an internal
+     * provenance note. Not persisted as a column (reuse-first: no new schema).
+     */
+    private String dilutionFactor;
+
+    /** OGC-1021 (R2, FR-D5) — the raw measured value before dilution. */
+    private String measuredValue;
+
+    /**
+     * OGC-1021 (R2, FR-J1) — this analysis's notes, structured so the panel can
+     * render each with its context/visibility tags (pastNotes remains the legacy
+     * flat string).
+     */
+    private List<AnalysisNote> analysisNotes;
+
+    public static class AnalysisNote {
+        private String text;
+        private String noteType;
+        private String subject;
+        private String author;
+        private String date;
+        /** OGC-811 — null means analysis-level; set means scoped to one component. */
+        private String testResultComponentId;
+
+        public String getText() {
+            return text;
+        }
+
+        public void setText(String text) {
+            this.text = text;
+        }
+
+        public String getNoteType() {
+            return noteType;
+        }
+
+        public void setNoteType(String noteType) {
+            this.noteType = noteType;
+        }
+
+        public String getSubject() {
+            return subject;
+        }
+
+        public void setSubject(String subject) {
+            this.subject = subject;
+        }
+
+        public String getAuthor() {
+            return author;
+        }
+
+        public void setAuthor(String author) {
+            this.author = author;
+        }
+
+        public String getDate() {
+            return date;
+        }
+
+        public void setDate(String date) {
+            this.date = date;
+        }
+
+        public String getTestResultComponentId() {
+            return testResultComponentId;
+        }
+
+        public void setTestResultComponentId(String testResultComponentId) {
+            this.testResultComponentId = testResultComponentId;
+        }
+    }
+
     private String sampleItemExternalId;
+
+    /**
+     * Set when this row's analysis is anchored to a vector_pool rather than a
+     * sample_item. The frontend uses it (along with {@link #vectorPoolMemberCount})
+     * to cluster pool rows under a collapsible header.
+     */
+    private String vectorPoolId;
+
+    /**
+     * Number of organisms in the pool. Combined with the row's already-localized
+     * {@code sampleType} on the frontend to render a label like "Pool of N
+     * {animal}" via React Intl — server-side concatenation here would leak English
+     * into non-English locales.
+     */
+    private Integer vectorPoolMemberCount;
+
+    private String vectorPoolLabel;
 
     private String analysisStatusId;
 
@@ -220,6 +395,7 @@ public class TestResultItem implements ResultItem, Serializable {
     private String sampleType;
     private boolean failedValidation = false;
     private boolean nonconforming = false;
+    private WaitingRun waitingRun;
     private String testSortOrder = null;
     private boolean isReflexGroup = false;
     private int reflexParentGroup = 0;
@@ -258,8 +434,60 @@ public class TestResultItem implements ResultItem, Serializable {
     private boolean isEqaSample = false;
     private String eqaPriority;
 
+    /**
+     * The row's scheme captures who ran the sample, so result entry shows the
+     * Analyst column for it.
+     */
+    private boolean eqaPerAnalyst = false;
+
+    /** The scheme the Analyst picker reads its eligible-analyst list from. */
+    private String eqaSchemeId;
+
+    /** The analyst chosen at result entry; round-trips back on save. */
+    private String eqaAnalystId;
+
+    // QC profile metadata (null on client samples). Sourced from
+    // SampleItemQcProfile.
+    private String qcType;
+    private String parentSampleItemId;
+    // Latest QcEvaluation result for display ("PASS" / "FAIL" / null).
+    private String qcStatus;
+    private String qcDetail;
+
     private ReferralItem referralItem;
     private ResultFileForm resultFile;
+
+    public String getQcType() {
+        return qcType;
+    }
+
+    public void setQcType(String qcType) {
+        this.qcType = qcType;
+    }
+
+    public String getParentSampleItemId() {
+        return parentSampleItemId;
+    }
+
+    public void setParentSampleItemId(String parentSampleItemId) {
+        this.parentSampleItemId = parentSampleItemId;
+    }
+
+    public String getQcStatus() {
+        return qcStatus;
+    }
+
+    public void setQcStatus(String qcStatus) {
+        this.qcStatus = qcStatus;
+    }
+
+    public String getQcDetail() {
+        return qcDetail;
+    }
+
+    public void setQcDetail(String qcDetail) {
+        this.qcDetail = qcDetail;
+    }
 
     public String getConsiderRejectReason() {
         return considerRejectReason;
@@ -279,6 +507,22 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public boolean isRejected() {
         return rejected;
+    }
+
+    public boolean isCriticalAcknowledged() {
+        return criticalAcknowledged;
+    }
+
+    public void setCriticalAcknowledged(boolean criticalAcknowledged) {
+        this.criticalAcknowledged = criticalAcknowledged;
+    }
+
+    public boolean isInvalidResultConfirmed() {
+        return invalidResultConfirmed;
+    }
+
+    public void setInvalidResultConfirmed(boolean invalidResultConfirmed) {
+        this.invalidResultConfirmed = invalidResultConfirmed;
     }
 
     public void setRejected(boolean rejected) {
@@ -461,26 +705,35 @@ public class TestResultItem implements ResultItem, Serializable {
         this.lowerAbnormalRange = lowerAbnormalRange;
     }
 
-    public double getLowerCritical() {
+    public Double getLowerCritical() {
         return lowerCritical;
     }
 
-    public void setLowerCritical(double lowerCritical) {
+    public void setLowerCritical(Double lowerCritical) {
         this.lowerCritical = lowerCritical;
     }
 
-    public double getHigherCritical() {
+    public Double getHigherCritical() {
         return higherCritical;
     }
 
-    public void setHigherCritical(double higherCritical) {
+    public void setHigherCritical(Double higherCritical) {
         this.higherCritical = higherCritical;
+    }
+
+    public List<ComplianceEvaluation> getComplianceStatuses() {
+        return complianceStatuses;
+    }
+
+    public void setComplianceStatuses(List<ComplianceEvaluation> complianceStatuses) {
+        this.complianceStatuses = complianceStatuses != null ? complianceStatuses : Collections.emptyList();
     }
 
     public String getReportable() {
         return reportable ? IActionConstants.YES : IActionConstants.NO;
     }
 
+    @JsonDeserialize(using = YesNoBooleanDeserializer.class)
     public void setReportable(boolean reportable) {
         this.reportable = reportable;
     }
@@ -554,6 +807,22 @@ public class TestResultItem implements ResultItem, Serializable {
         this.testDate = testDate;
     }
 
+    public String getCollectionDate() {
+        return collectionDate;
+    }
+
+    public void setCollectionDate(String collectionDate) {
+        this.collectionDate = collectionDate;
+    }
+
+    public String getTimeHolding() {
+        return timeHolding;
+    }
+
+    public void setTimeHolding(String timeHolding) {
+        this.timeHolding = timeHolding;
+    }
+
     public String getTestMethod() {
         return testMethod;
     }
@@ -599,11 +868,19 @@ public class TestResultItem implements ResultItem, Serializable {
     public String getResultValueLog() {
         try {
             DecimalFormat df = new DecimalFormat("###.##");
-            double val = Double.parseDouble(this.resultValue);
+            double val = Double.parseDouble(StringUtil.normalizeScientificNotation(this.resultValue));
             return df.format(Math.log10(val));
         } catch (Exception e) {
             return "--";
         }
+    }
+
+    public String getRawResultValue() {
+        return rawResultValue;
+    }
+
+    public void setRawResultValue(String rawResultValue) {
+        this.rawResultValue = rawResultValue;
     }
 
     public String getShadowResultValue() {
@@ -668,6 +945,30 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setSampleItemExternalId(String sampleItemExternalId) {
         this.sampleItemExternalId = sampleItemExternalId;
+    }
+
+    public String getVectorPoolId() {
+        return vectorPoolId;
+    }
+
+    public void setVectorPoolId(String vectorPoolId) {
+        this.vectorPoolId = vectorPoolId;
+    }
+
+    public Integer getVectorPoolMemberCount() {
+        return vectorPoolMemberCount;
+    }
+
+    public void setVectorPoolMemberCount(Integer vectorPoolMemberCount) {
+        this.vectorPoolMemberCount = vectorPoolMemberCount;
+    }
+
+    public String getVectorPoolLabel() {
+        return vectorPoolLabel;
+    }
+
+    public void setVectorPoolLabel(String vectorPoolLabel) {
+        this.vectorPoolLabel = vectorPoolLabel;
     }
 
     public void setAnalysisStatusId(String analysisStatusId) {
@@ -901,6 +1202,22 @@ public class TestResultItem implements ResultItem, Serializable {
         this.normal = normal;
     }
 
+    public String getResultFlag() {
+        return resultFlag;
+    }
+
+    public void setResultFlag(String resultFlag) {
+        this.resultFlag = resultFlag;
+    }
+
+    public String getCriticalRange() {
+        return criticalRange;
+    }
+
+    public void setCriticalRange(String criticalRange) {
+        this.criticalRange = criticalRange;
+    }
+
     public boolean isDisplayResultAsLog() {
         return displayResultAsLog;
     }
@@ -911,6 +1228,19 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public boolean isNonconforming() {
         return nonconforming;
+    }
+
+    /**
+     * OGC-1200 FR-D3: the run an analyzer value for this pending test is waiting
+     * in. Set by the server when the worklist loads; never read from a request.
+     */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    public WaitingRun getWaitingRun() {
+        return waitingRun;
+    }
+
+    public void setWaitingRun(WaitingRun waitingRun) {
+        this.waitingRun = waitingRun;
     }
 
     public void setNonconforming(boolean nonconforming) {
@@ -931,6 +1261,30 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setEqaPriority(String eqaPriority) {
         this.eqaPriority = eqaPriority;
+    }
+
+    public boolean getEqaPerAnalyst() {
+        return eqaPerAnalyst;
+    }
+
+    public void setEqaPerAnalyst(boolean eqaPerAnalyst) {
+        this.eqaPerAnalyst = eqaPerAnalyst;
+    }
+
+    public String getEqaSchemeId() {
+        return eqaSchemeId;
+    }
+
+    public void setEqaSchemeId(String eqaSchemeId) {
+        this.eqaSchemeId = eqaSchemeId;
+    }
+
+    public String getEqaAnalystId() {
+        return eqaAnalystId;
+    }
+
+    public void setEqaAnalystId(String eqaAnalystId) {
+        this.eqaAnalystId = eqaAnalystId;
     }
 
     public String getQualifiedDictionaryId() {
@@ -1005,12 +1359,28 @@ public class TestResultItem implements ResultItem, Serializable {
         this.normalRange = normalRange;
     }
 
-    public int getSignificantDigits() {
-        return significantDigits;
+    public int getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(int significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(int reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
+    }
+
+    public String getExpandedUncertainty() {
+        return expandedUncertainty;
+    }
+
+    public void setExpandedUncertainty(String expandedUncertainty) {
+        this.expandedUncertainty = expandedUncertainty;
+    }
+
+    public String getCoverageFactor() {
+        return coverageFactor;
+    }
+
+    public void setCoverageFactor(String coverageFactor) {
+        this.coverageFactor = coverageFactor;
     }
 
     public boolean isServingAsTestGroupIdentifier() {
@@ -1096,5 +1466,69 @@ public class TestResultItem implements ResultItem, Serializable {
             }
         }
 
+    }
+
+    public String getAnalyzerId() {
+        return analyzerId;
+    }
+
+    public void setAnalyzerId(String analyzerId) {
+        this.analyzerId = analyzerId;
+    }
+
+    public String getNoteVisibility() {
+        return noteVisibility;
+    }
+
+    public void setNoteVisibility(String noteVisibility) {
+        this.noteVisibility = noteVisibility;
+    }
+
+    public String getNoteContext() {
+        return noteContext;
+    }
+
+    public void setNoteContext(String noteContext) {
+        this.noteContext = noteContext;
+    }
+
+    public String getInterpretation() {
+        return interpretation;
+    }
+
+    public void setInterpretation(String interpretation) {
+        this.interpretation = interpretation;
+    }
+
+    public String getDilutionFactor() {
+        return dilutionFactor;
+    }
+
+    public void setDilutionFactor(String dilutionFactor) {
+        this.dilutionFactor = dilutionFactor;
+    }
+
+    public String getMeasuredValue() {
+        return measuredValue;
+    }
+
+    public void setMeasuredValue(String measuredValue) {
+        this.measuredValue = measuredValue;
+    }
+
+    public List<AnalysisNote> getAnalysisNotes() {
+        return analysisNotes;
+    }
+
+    public void setAnalysisNotes(List<AnalysisNote> analysisNotes) {
+        this.analysisNotes = analysisNotes;
+    }
+
+    public String getRangeNotAppliedReason() {
+        return rangeNotAppliedReason;
+    }
+
+    public void setRangeNotAppliedReason(String rangeNotAppliedReason) {
+        this.rangeNotAppliedReason = rangeNotAppliedReason;
     }
 }

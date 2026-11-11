@@ -9,9 +9,12 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { InventoryLotAPI } from "./InventoryService";
+import { useIsMounted } from "./useIsMounted";
 
 const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
   const intl = useIntl();
+
+  const isMounted = useIsMounted();
 
   const disposalReasons = [
     { id: "EXPIRED", text: "Expired" },
@@ -37,12 +40,14 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
 
   const validate = () => {
     if (!formData.reason) {
-      setError("Please select a disposal reason");
+      setError(intl.formatMessage({ id: "disposal.error.reasonRequired" }));
       return false;
     }
 
     if (formData.reason === "OTHER" && !formData.notes?.trim()) {
-      setError("Please provide notes when selecting 'Other' as reason");
+      setError(
+        intl.formatMessage({ id: "common.error.notesRequiredForOther" }),
+      );
       return false;
     }
 
@@ -66,9 +71,9 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
       onSave();
     } catch (err) {
       console.error("Error disposing lot:", err);
-      setError(err.message || "Error disposing lot");
+      if (isMounted()) setError(err.message || "Error disposing lot");
     } finally {
-      setSaving(false);
+      if (isMounted()) setSaving(false);
     }
   };
 
@@ -143,7 +148,9 @@ const DisposeLotModal = ({ open, onClose, onSave, lot }) => {
           label={intl.formatMessage({ id: "disposal.reason.select" })}
           items={disposalReasons}
           itemToString={(item) => (item ? item.text : "")}
-          selectedItem={disposalReasons.find((r) => r.id === formData.reason)}
+          selectedItem={
+            disposalReasons.find((r) => r.id === formData.reason) ?? null
+          }
           onChange={({ selectedItem }) =>
             handleChange("reason", selectedItem.id)
           }

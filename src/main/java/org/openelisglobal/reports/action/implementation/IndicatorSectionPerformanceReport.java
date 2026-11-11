@@ -18,8 +18,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
@@ -75,17 +73,8 @@ public class IndicatorSectionPerformanceReport extends RetroCIReport implements 
     }
 
     @Override
-    protected String reportFileName() {
-        return "RetroCI_backlog";
-    }
-
-    @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        if (!initialized) {
-            throw new IllegalStateException("initializeReport not called first");
-        }
-
-        return new JRBeanCollectionDataSource(reportItems);
+    protected byte[] renderReport() {
+        return SectionPerformancePdf.render(reportItems);
     }
 
     @Override

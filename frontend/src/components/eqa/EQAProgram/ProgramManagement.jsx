@@ -1,13 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
   Grid,
   Column,
   ClickableTile,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
   DataTable,
   Table,
   TableHead,
@@ -27,14 +22,12 @@ import {
   DataCheck,
   GroupPresentation,
   ChartBar,
-  Settings,
 } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, hasQaPermission } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ProgramForm from "./ProgramForm";
-import ParticipantsTab from "./ParticipantsTab";
-import SystemSettingsTab from "./SystemSettingsTab";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -47,6 +40,8 @@ const breadcrumbs = [
 
 const ProgramManagement = () => {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const canManage = hasQaPermission(userSessionDetails, "qa.eqa.provider");
   const [programs, setPrograms] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingProgram, setEditingProgram] = useState(null);
@@ -98,6 +93,10 @@ const ProgramManagement = () => {
       header: intl.formatMessage({ id: "eqa.admin.col.provider" }),
     },
     {
+      key: "schemeType",
+      header: intl.formatMessage({ id: "eqa.filter.schemeType" }),
+    },
+    {
       key: "participantCount",
       header: intl.formatMessage({ id: "eqa.admin.col.participants" }),
     },
@@ -114,7 +113,13 @@ const ProgramManagement = () => {
   const rows = programs.map((p) => ({
     id: String(p.id),
     name: p.name,
-    provider: p.provider || "",
+    provider: p.provider || "—",
+    schemeType: p.schemeType
+      ? intl.formatMessage({
+          id: `eqa.scheme.type.${p.schemeType.toLowerCase()}`,
+          defaultMessage: p.schemeType.replace(/_/g, " "),
+        })
+      : "—",
     participantCount: p.participantCount != null ? p.participantCount : 0,
     status: p.isActive
       ? intl.formatMessage({ id: "eqa.program.active" })
@@ -246,7 +251,6 @@ const ProgramManagement = () => {
         </Column>
       </Grid>
 
-      {/* Tabs */}
       <div
         style={{
           backgroundColor: "#fff",
@@ -255,158 +259,127 @@ const ProgramManagement = () => {
           padding: "1rem",
         }}
       >
-        <Tabs>
-          <TabList aria-label="EQA Admin tabs">
-            <Tab renderIcon={DataCheck}>
-              {intl.formatMessage({ id: "eqa.admin.tab.programs" })}
-            </Tab>
-            <Tab renderIcon={GroupPresentation}>
-              {intl.formatMessage({ id: "eqa.admin.tab.participants" })}
-            </Tab>
-            <Tab renderIcon={Settings}>
-              {intl.formatMessage({ id: "eqa.admin.tab.systemSettings" })}
-            </Tab>
-          </TabList>
-          <TabPanels>
-            {/* EQA Programs Tab */}
-            <TabPanel>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "1rem",
-                  marginTop: "1rem",
-                }}
-              >
-                <div>
-                  <h4>
-                    {intl.formatMessage({ id: "eqa.admin.programs.title" })}
-                  </h4>
-                  <p
-                    style={{
-                      color: "#525252",
-                      fontSize: "0.875rem",
-                      marginTop: "0.25rem",
-                    }}
-                  >
-                    {intl.formatMessage({ id: "eqa.admin.programs.subtitle" })}
-                  </p>
-                </div>
-                <Button renderIcon={Add} onClick={handleCreate}>
-                  {intl.formatMessage({ id: "eqa.admin.addProgram" })}
-                </Button>
-              </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "1rem",
+          }}
+        >
+          <div>
+            <h4>{intl.formatMessage({ id: "eqa.admin.programs.title" })}</h4>
+            <p
+              style={{
+                color: "#525252",
+                fontSize: "0.875rem",
+                marginTop: "0.25rem",
+              }}
+            >
+              {intl.formatMessage({ id: "eqa.admin.programs.subtitle" })}
+            </p>
+          </div>
+          {canManage && (
+            <Button renderIcon={Add} onClick={handleCreate}>
+              {intl.formatMessage({ id: "eqa.admin.addProgram" })}
+            </Button>
+          )}
+        </div>
 
-              {programs.length === 0 ? (
-                <p style={{ color: "#525252", padding: "2rem 0" }}>
-                  {intl.formatMessage({ id: "eqa.program.empty" })}
-                </p>
-              ) : (
-                <DataTable rows={rows} headers={headers}>
-                  {({
-                    rows: tableRows,
-                    headers: tableHeaders,
-                    getTableProps,
-                    getHeaderProps,
-                    getRowProps,
-                  }) => (
-                    <Table {...getTableProps()}>
-                      <TableHead>
-                        <TableRow>
-                          {tableHeaders.map((header) => (
-                            <TableHeader
-                              key={header.key}
-                              {...getHeaderProps({ header })}
-                            >
-                              {header.header}
-                            </TableHeader>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {tableRows.map((row) => {
-                          const rawProgram = programs.find(
-                            (p) => String(p.id) === row.id,
-                          );
-                          return (
-                            <TableRow key={row.id} {...getRowProps({ row })}>
-                              {row.cells.map((cell) => {
-                                if (cell.info.header === "status") {
-                                  return (
-                                    <TableCell key={cell.id}>
-                                      <Tag
-                                        type={
-                                          rawProgram?.isActive
-                                            ? "green"
-                                            : "gray"
-                                        }
+        {programs.length === 0 ? (
+          <p style={{ color: "#525252", padding: "2rem 0" }}>
+            {intl.formatMessage({ id: "eqa.program.empty" })}
+          </p>
+        ) : (
+          <DataTable rows={rows} headers={headers}>
+            {({
+              rows: tableRows,
+              headers: tableHeaders,
+              getTableProps,
+              getHeaderProps,
+              getRowProps,
+            }) => (
+              <Table {...getTableProps()}>
+                <TableHead>
+                  <TableRow>
+                    {tableHeaders.map((header) => (
+                      <TableHeader
+                        key={header.key}
+                        {...getHeaderProps({ header })}
+                      >
+                        {header.header}
+                      </TableHeader>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {tableRows.map((row) => {
+                    const rawProgram = programs.find(
+                      (p) => String(p.id) === row.id,
+                    );
+                    return (
+                      <TableRow key={row.id} {...getRowProps({ row })}>
+                        {row.cells.map((cell) => {
+                          if (cell.info.header === "status") {
+                            return (
+                              <TableCell key={cell.id}>
+                                <Tag
+                                  type={rawProgram?.isActive ? "green" : "gray"}
+                                  size="sm"
+                                >
+                                  {cell.value}
+                                </Tag>
+                              </TableCell>
+                            );
+                          }
+                          if (cell.info.header === "actions") {
+                            return (
+                              <TableCell key={cell.id}>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: "0.5rem",
+                                  }}
+                                >
+                                  {canManage && (
+                                    <>
+                                      <Button
+                                        kind="ghost"
                                         size="sm"
-                                      >
-                                        {cell.value}
-                                      </Tag>
-                                    </TableCell>
-                                  );
-                                }
-                                if (cell.info.header === "actions") {
-                                  return (
-                                    <TableCell key={cell.id}>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          gap: "0.5rem",
-                                        }}
-                                      >
-                                        <Button
-                                          kind="ghost"
-                                          size="sm"
-                                          hasIconOnly
-                                          iconDescription={intl.formatMessage({
-                                            id: "eqa.program.edit",
-                                          })}
-                                          renderIcon={Edit}
-                                          onClick={() => handleEdit(rawProgram)}
-                                        />
-                                        <Button
-                                          kind="ghost"
-                                          size="sm"
-                                          hasIconOnly
-                                          iconDescription={intl.formatMessage({
-                                            id: "eqa.admin.delete",
-                                          })}
-                                          renderIcon={TrashCan}
-                                        />
-                                      </div>
-                                    </TableCell>
-                                  );
-                                }
-                                return (
-                                  <TableCell key={cell.id}>
-                                    {cell.value}
-                                  </TableCell>
-                                );
-                              })}
-                            </TableRow>
+                                        hasIconOnly
+                                        iconDescription={intl.formatMessage({
+                                          id: "eqa.program.edit",
+                                        })}
+                                        renderIcon={Edit}
+                                        onClick={() => handleEdit(rawProgram)}
+                                      />
+                                      <Button
+                                        kind="ghost"
+                                        size="sm"
+                                        hasIconOnly
+                                        iconDescription={intl.formatMessage({
+                                          id: "eqa.admin.delete",
+                                        })}
+                                        renderIcon={TrashCan}
+                                      />
+                                    </>
+                                  )}
+                                </div>
+                              </TableCell>
+                            );
+                          }
+                          return (
+                            <TableCell key={cell.id}>{cell.value}</TableCell>
                           );
                         })}
-                      </TableBody>
-                    </Table>
-                  )}
-                </DataTable>
-              )}
-            </TabPanel>
-
-            {/* Participants Tab */}
-            <TabPanel>
-              <ParticipantsTab programs={programs} />
-            </TabPanel>
-
-            {/* System Settings Tab */}
-            <TabPanel>
-              <SystemSettingsTab />
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </DataTable>
+        )}
       </div>
 
       {showForm && (

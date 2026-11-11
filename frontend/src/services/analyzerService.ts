@@ -1,7 +1,7 @@
 /**
  * Analyzer Service API Client
  *
- * Provides methods for CRUD operations on analyzers and analyzer field mappings
+ * Provides the lab-facing analyzer instance and Analyzer Type operations.
  * Follows OpenELIS pattern using getFromOpenElisServer, postToOpenElisServerJsonResponse, and fetch for PUT/DELETE
  *
  * Pattern Reference: AGENTS.md Section 5 (Frontend Data Fetching Pattern)
@@ -15,29 +15,23 @@ import type {
   Analyzer,
   AnalyzerApiError,
   AnalyzerApiResponse,
+  AnalyzerProtocol,
+  AnalyzerProfileRef,
 } from "../components/analyzers/types";
 import config from "../config.json";
 
 type ExtraParams = unknown;
 type JsonObject = Record<string, unknown>;
 type ApiCallback<T = AnalyzerApiResponse> = (
-  response: T,
+  response: T | undefined,
   extraParams?: ExtraParams,
 ) => void;
 type DataCallback<T> = (data: T) => void;
-type SuccessCallback = (
-  success: boolean,
-  error: AnalyzerApiError | null,
-) => void;
-
-const asExtraParamsObject = (extraParams?: ExtraParams): JsonObject =>
-  typeof extraParams === "object" && extraParams !== null
-    ? (extraParams as JsonObject)
-    : {};
 
 export interface AnalyzerFilters {
   status?: string;
   search?: string;
+  includeRetired?: boolean;
   testUnit?: string;
   analyzerType?: string;
 }
@@ -46,61 +40,321 @@ export interface AnalyzersResponse {
   analyzers?: Analyzer[];
 }
 
-export interface PreviewMappingRequest {
-  astmMessage?: string;
-  includeDetailedParsing?: boolean;
-  validateAllMappings?: boolean;
-  [key: string]: unknown;
+export interface AnalyzerTypeSummary {
+  profileId: string;
+  revision: number;
+  revisionFingerprint: string;
+  displayName: string;
+  manufacturer?: string | null;
+  model?: string | null;
+  source: "SHIPPED" | "SITE" | string;
+  status: "ACTIVE" | "INACTIVE" | string;
+  protocol: AnalyzerProtocol;
+  parentProfileId?: string | null;
+  parentRevision?: number | null;
+  affectedAnalyzers?: Array<{
+    id: string;
+    name: string;
+    active: boolean;
+  }>;
 }
 
-export interface CopyMappingsRequest {
-  sourceAnalyzerId?: string;
-  overwriteExisting?: boolean;
-  skipIncompatible?: boolean;
-  [key: string]: unknown;
+export interface AnalyzerTypeCatalog {
+  schemaVersion: string;
+  catalogFingerprint: string;
+  summary: {
+    total: number;
+    inUse: number;
+    needsAttention: number;
+    deactivated: number;
+  };
+  types: AnalyzerTypeSummary[];
+  /** Profile files the Bridge set aside, with why; always present, maybe empty. */
+  issues: AnalyzerCatalogIssue[];
 }
 
-export interface AnalyzerTypeFilters {
-  active?: boolean;
-  genericOnly?: boolean;
-  search?: string;
+export interface AnalyzerCatalogIssue {
+  source: string;
+  reason: string;
 }
 
-/**
- * Preview mapping for analyzer
- * @param {String} analyzerId - Analyzer ID
- * @param {Object} previewData - Preview data { astmMessage, includeDetailedParsing, validateAllMappings }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const previewMapping = (
-  analyzerId: string,
-  previewData: PreviewMappingRequest,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/preview-mapping`;
-  const payload = JSON.stringify(previewData);
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
-};
+export interface AnalyzerLabUnit {
+  id: string;
+  name: string;
+}
 
-/**
- * Copy mappings from source analyzer to target analyzer
- * @param {String} targetAnalyzerId - Target analyzer ID
- * @param {Object} copyData - Copy data { sourceAnalyzerId, overwriteExisting, skipIncompatible }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const copyMappings = (
-  targetAnalyzerId: string,
-  copyData: CopyMappingsRequest,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${targetAnalyzerId}/copy-mappings`;
-  const payload = JSON.stringify(copyData);
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
-};
+export interface AnalyzerInstancePayload extends JsonObject {
+  name?: string;
+  profileId?: string;
+  profileRevision?: number;
+  testUnitIds?: string[];
+  connectionValues?: Record<string, unknown>;
+}
+
+export interface AnalyzerMappingSelection extends JsonObject {
+  mappingId: string;
+  revision: number;
+  mappingFingerprint: string;
+}
+
+export interface AnalyzerConnectionProbeCheck {
+  key: string;
+  status: "PASSED" | "FAILED" | "SKIPPED" | string;
+  messageKey: string;
+  durationMillis: number;
+  details: Record<string, unknown>;
+}
+
+export interface AnalyzerConnectionProbeView extends Omit<
+  AnalyzerApiError,
+  "status"
+> {
+  schemaVersion: "1.0";
+  requestId: string;
+  connectionId: string;
+  profileRef: AnalyzerProfileRef;
+  configRevision: number;
+  configFingerprint: string;
+  nonMutating: true;
+  status: "SUCCEEDED" | "FAILED" | "TIMEOUT" | "BLOCKED" | string;
+  startedAt: string;
+  completedAt: string;
+  checks: AnalyzerConnectionProbeCheck[];
+}
+
+export interface AnalyzerActivationResultView extends Omit<
+  AnalyzerApiError,
+  "status"
+> {
+  analyzerId: string;
+  status: string;
+  ready: boolean;
+  activated: boolean;
+  blockers: Array<{
+    code: string;
+    args?: Record<string, unknown>;
+  }>;
+}
+
+export interface AnalyzerDeactivationResultView extends Omit<
+  AnalyzerApiError,
+  "status"
+> {
+  analyzerId: string;
+  status: string;
+  deactivated: boolean;
+  failure?: string | null;
+}
+
+export type AnalyzerMappingState = "BOUND" | "EXCLUDED" | "UNRESOLVED";
+
+export type AnalyzerUnresolvedReason =
+  | "NO_MATCH"
+  | "AMBIGUOUS"
+  | "INCOMPATIBLE";
+
+/** A code in a code system: a canonical URI or a catalog's own identifier. */
+export interface Coding {
+  system: string;
+  code: string;
+  display?: string | null;
+}
+
+export interface AnalyzerMappingTestOption {
+  id: string;
+  name: string;
+  code?: string | null;
+  /** Every code the test carries, in any system. */
+  codings: Coding[];
+}
+
+export interface AnalyzerMappingResultOption {
+  id: string;
+  value: string;
+  label: string;
+  /** Every code the answer carries, in any system. */
+  codings?: Coding[];
+  componentId?: string | null;
+}
+
+export interface AnalyzerMappingComponentOption {
+  id: string;
+  code?: string | null;
+  label?: string | null;
+}
+
+export type AnalyzerMappingOrigin = "DEFAULT" | "OVERRIDE";
+
+export interface AnalyzerTypeMappingResultRow {
+  rawValue: string;
+  mappingState: AnalyzerMappingState;
+  origin?: AnalyzerMappingOrigin;
+  resultOptionId?: string | null;
+  selectedOption?: AnalyzerMappingResultOption | null;
+  suggestedOption?: AnalyzerMappingResultOption | null;
+  unresolvedReason?: AnalyzerUnresolvedReason | null;
+}
+
+export interface AnalyzerTypeMappingTestRow {
+  sourceRowKey: string;
+  rawCode: string;
+  aliases: string[];
+  testNameHint?: string | null;
+  loinc?: string | null;
+  unit?: string | null;
+  resultType?: string | null;
+  /** The codes the profile names the test by, its LOINC code first. */
+  codings?: Coding[];
+  mappingState: AnalyzerMappingState;
+  origin?: AnalyzerMappingOrigin;
+  testId?: string | null;
+  componentId?: string | null;
+  /** Empty for a test's main record. */
+  subIdentity?: string;
+  callComponentId?: string | null;
+  /** The component code the profile declares for this record. */
+  componentCode?: string | null;
+  /** The component code the profile declares for the main record's call. */
+  callComponentCode?: string | null;
+  selectedTest?: AnalyzerMappingTestOption | null;
+  suggestedTest?: AnalyzerMappingTestOption | null;
+  unresolvedReason?: AnalyzerUnresolvedReason | null;
+  results: AnalyzerTypeMappingResultRow[];
+}
+
+export interface AnalyzerTypeMappingView {
+  /** Null for the read-only defaults a new analyzer on the profile would get. */
+  analyzerId?: string | null;
+  profileId: string;
+  profileRevision: number;
+  profileFingerprint: string;
+  displayName: string;
+  protocol: AnalyzerProtocol;
+  mappingId?: string | null;
+  mappingRevision: number;
+  mappingFingerprint?: string | null;
+  tests: AnalyzerTypeMappingTestRow[];
+  controlRecognition: {
+    recognitionFingerprint: string;
+    mode: "RULES" | "NONE" | string;
+    description: string;
+    affirmedNoControlResults: boolean;
+    conditions: Array<{
+      key: string;
+      kind: string;
+      sourceLabel: string;
+      value?: string | null;
+      description: string;
+      controlLevel?: string | null;
+      controlType?: string | null;
+    }>;
+  };
+  confirmation: {
+    state: "UNCONFIRMED" | "CURRENT" | "STALE" | string;
+    profileId?: string | null;
+    profileRevision: number;
+    mappingFingerprint?: string | null;
+    recognitionFingerprint?: string | null;
+    confirmedBy?: string | null;
+    confirmedByDisplayName?: string | null;
+    confirmedAt?: string | null;
+    confirmedRows: AnalyzerMappingSourceRow[];
+    excludedRows: AnalyzerMappingSourceRow[];
+  };
+}
+
+export interface AnalyzerMappingSourceRow {
+  sourceRowKey: string;
+  subIdentity?: string;
+  rawValue?: string | null;
+}
+
+export interface AnalyzerTypeMappingUpdate {
+  baseMappingFingerprint?: string | null;
+  tests: Array<{
+    sourceRowKey: string;
+    subIdentity: string;
+    mappingState: AnalyzerMappingState;
+    testId?: string | null;
+    componentId?: string | null;
+    callComponentId?: string | null;
+  }>;
+  results: Array<{
+    sourceRowKey: string;
+    subIdentity: string;
+    rawValue: string;
+    mappingState: AnalyzerMappingState;
+    testResultId?: string | null;
+  }>;
+}
+
+export interface AnalyzerTypeMappingConfirmationRequest {
+  baseMappingFingerprint: string;
+  confirmedRows: AnalyzerMappingSourceRow[];
+  excludedRows: AnalyzerMappingSourceRow[];
+}
+
+export interface AnalyzerProfileDraftResponse extends AnalyzerApiError {
+  draftId?: string;
+  kind?: "CREATE" | "DUPLICATE" | "UPDATE" | string;
+  baseProfileId?: string | null;
+  baseRevision?: number | null;
+  profile?: JsonObject & {
+    profileMeta?: {
+      id?: string;
+      displayName?: string;
+    };
+    catalog?: {
+      revision?: number;
+      source?: string;
+      status?: string;
+    };
+  };
+  validationIssues?: string[];
+}
+
+export interface AnalyzerControlRecognitionCondition {
+  key?: string | null;
+  kind: string;
+  sourceKey?: string | null;
+  sourceLabel?: string | null;
+  description?: string | null;
+  value?: string | null;
+  editable?: boolean;
+  controlLevel?: string | null;
+  controlType?: string | null;
+}
+
+export interface AnalyzerControlRecognitionDraft extends AnalyzerApiError {
+  draftId?: string;
+  kind?: "CREATE" | "DUPLICATE" | "UPDATE" | string;
+  baseProfileId?: string | null;
+  baseRevision?: number | null;
+  displayName?: string;
+  updatedBy?: string;
+  updatedAt?: string;
+  validationIssues?: string[];
+  recognition?: {
+    mode?: "RULES" | "NONE" | string | null;
+    affirmedNoControlResults: boolean;
+    description?: string;
+    conditions: AnalyzerControlRecognitionCondition[];
+    availableSources: Array<{ key: string; label: string }>;
+  };
+}
+
+export interface AnalyzerControlRecognitionUpdate {
+  mode: "RULES" | "NONE" | string;
+  affirmedNoControlResults: boolean;
+  conditions: Array<{
+    key?: string | null;
+    kind: string;
+    sourceKey?: string | null;
+    value?: string | null;
+    controlLevel?: string | null;
+    controlType?: string | null;
+  }>;
+}
 
 /**
  * Get all analyzers with optional filters
@@ -108,6 +362,78 @@ export const copyMappings = (
  * @param {Function} callback - Callback function (data) => void
  * @param {AbortSignal|null} signal - Optional AbortSignal to cancel on unmount
  */
+export interface AnalyzerDeliveryIssuesResponse {
+  status: string;
+  data?: {
+    count: number;
+    rows: Array<{ id: string; state: string; actionable: boolean }>;
+    /** False when OpenELIS has no Analyzer Bridge address. */
+    bridgeConfigured?: boolean;
+    /** False when the Bridge is not paired yet; it may still hold results. */
+    bridgePaired?: boolean;
+  };
+}
+
+/** Results the Analyzer Bridge received but has not delivered to OpenELIS. */
+export const getAnalyzerDeliveryIssues = (
+  callback: DataCallback<AnalyzerDeliveryIssuesResponse | undefined>,
+  signal: AbortSignal | null = null,
+) => {
+  getFromOpenElisServer("/rest/analyzer/delivery-issues", callback, signal);
+};
+
+/** Requeue one retained Bridge receipt without changing its identity. */
+export const retryAnalyzerDelivery = (
+  id: string,
+  callback: DataCallback<
+    { status: string; id: string; state: string } | undefined
+  >,
+) =>
+  postToOpenElisServerJsonResponse(
+    `/rest/analyzer/delivery-issues/${encodeURIComponent(id)}/retry`,
+    "{}",
+    callback,
+  );
+
+export interface BridgePairingStatus {
+  bridgeUrl: string;
+  paired: boolean;
+  bridgeCertificateSha256?: string | null;
+  clientCertificateSha256?: string | null;
+  pairedAt?: string | null;
+  pairsAutomatically: boolean;
+  pinCheck?:
+    | "MATCHES"
+    | "OTHER_CERTIFICATE"
+    | "BRIDGE_UNPAIRED"
+    | "UNREACHABLE"
+    | null;
+  clientKeyReadable?: boolean;
+}
+
+export type BridgePairingResponse = BridgePairingStatus & {
+  errorKey?: string;
+  status?: number;
+};
+
+export const getBridgePairing = (
+  callback: DataCallback<BridgePairingStatus | undefined>,
+  signal: AbortSignal | null = null,
+) => {
+  getFromOpenElisServer("/rest/analyzer/bridge-pairing", callback, signal);
+};
+
+export const pairBridge = (
+  code: string,
+  callback: (response: BridgePairingResponse | undefined) => void,
+) => {
+  postToOpenElisServerJsonResponse<BridgePairingResponse>(
+    "/rest/analyzer/bridge-pairing",
+    JSON.stringify({ code }),
+    callback,
+  );
+};
+
 export const getAnalyzers = (
   filters: AnalyzerFilters = {},
   callback: DataCallback<AnalyzersResponse | undefined>,
@@ -122,6 +448,9 @@ export const getAnalyzers = (
     }
     if (filters.search) {
       params.append("search", filters.search);
+    }
+    if (filters.includeRetired) {
+      params.append("includeRetired", "true");
     }
   }
 
@@ -140,19 +469,31 @@ export const getAnalyzers = (
 export const getAnalyzer = (
   id: string,
   callback: DataCallback<Analyzer | undefined>,
+  signal: AbortSignal | null = null,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${id}`;
-  getFromOpenElisServer(endpoint, callback);
+  getFromOpenElisServer(endpoint, callback, signal);
+};
+
+export const getAnalyzerLabUnits = (
+  callback: DataCallback<AnalyzerLabUnit[]>,
+  signal: AbortSignal | null = null,
+) => {
+  getFromOpenElisServer<AnalyzerLabUnit[]>(
+    "/rest/test-catalog/lab-units",
+    (response) => callback(response ?? []),
+    signal,
+  );
 };
 
 /**
  * Create new analyzer
- * @param {Object} analyzerData - Analyzer data { name, analyzerType, ipAddress, port, testUnitIds, active }
+ * @param {Object} analyzerData - Profile pin, lab units, and role-applicable instance settings
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
 export const createAnalyzer = (
-  analyzerData: Partial<Analyzer> & JsonObject,
+  analyzerData: AnalyzerInstancePayload,
   callback: ApiCallback,
   extraParams?: ExtraParams,
 ) => {
@@ -168,24 +509,20 @@ export const createAnalyzer = (
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams - Optional extra parameters passed to callback
  */
-export const updateAnalyzer = (
-  id: string,
-  analyzerData: Partial<Analyzer> & JsonObject,
+const putAnalyzerJson = (
+  endpoint: string,
+  data: JsonObject,
   callback: ApiCallback,
   extraParams?: ExtraParams,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${id}`;
-  const payload = JSON.stringify(analyzerData);
-
-  // Use fetch directly to get JSON response (controllers return Map<String, Object>)
   fetch(config.serverBaseUrl + endpoint, {
     credentials: "include",
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
     },
-    body: payload,
+    body: JSON.stringify(data),
   })
     .then(async (response) => {
       if (!response.ok) {
@@ -220,75 +557,32 @@ export const updateAnalyzer = (
     });
 };
 
-/**
- * Delete analyzer (soft delete - sets active=false)
- *
- * Note: Uses POST /delete endpoint instead of DELETE HTTP method due to Spring
- * Security 6 CSRF protection issues with DELETE requests.
- *
- * @param {String} id - Analyzer ID
- * @param {Function} callback - Callback function (success, error) => void
- */
-export const deleteAnalyzer = (id: string, callback: SuccessCallback) => {
-  const endpoint = `/rest/analyzer/analyzers/${id}/delete`;
-  const csrfToken = localStorage.getItem("CSRF");
+export const updateAnalyzer = (
+  id: string,
+  analyzerData: AnalyzerInstancePayload,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) =>
+  putAnalyzerJson(
+    `/rest/analyzer/analyzers/${id}`,
+    analyzerData,
+    callback,
+    extraParams,
+  );
 
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken,
-    },
-  })
-    .then(async (response) => {
-      // Read response body if present
-      let responseData = null;
-      try {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-          responseData = await response.json();
-        } else if (response.status !== 204) {
-          await response.text();
-        }
-      } catch {
-        // Response body could not be parsed
-      }
-
-      if (response.ok || response.status === 204 || response.status === 200) {
-        callback(true, null);
-      } else {
-        // Parse error response
-        let errorData;
-        try {
-          const contentType = response.headers.get("content-type");
-          if (contentType && contentType.indexOf("application/json") !== -1) {
-            errorData = responseData || {
-              error: `HTTP ${response.status}: ${response.statusText}`,
-              status: response.status,
-              statusText: response.statusText,
-            };
-          } else {
-            errorData = {
-              error: `HTTP ${response.status}: ${response.statusText}`,
-              status: response.status,
-              statusText: response.statusText,
-            };
-          }
-        } catch {
-          errorData = {
-            error: `HTTP ${response.status}: ${response.statusText}`,
-            status: response.status,
-            statusText: response.statusText,
-          };
-        }
-        callback(false, errorData);
-      }
-    })
-    .catch((error: Error) => {
-      callback(false, { error: error.message || "Network error" });
-    });
-};
+/** Puts the analyzer's reviewed mapping revision in force. */
+export const applyAnalyzerMapping = (
+  id: string,
+  selection: AnalyzerMappingSelection,
+  callback: ApiCallback,
+  extraParams?: ExtraParams,
+) =>
+  putAnalyzerJson(
+    `/rest/analyzer/analyzers/${id}/mapping/apply`,
+    selection,
+    callback,
+    extraParams,
+  );
 
 /**
  * Test TCP connection to analyzer
@@ -298,7 +592,7 @@ export const deleteAnalyzer = (id: string, callback: SuccessCallback) => {
  */
 export const testConnection = (
   id: string,
-  callback: ApiCallback,
+  callback: ApiCallback<AnalyzerConnectionProbeView>,
   extraParams?: ExtraParams,
 ) => {
   const endpoint = `/rest/analyzer/analyzers/${id}/test-connection`;
@@ -311,179 +605,181 @@ export const testConnection = (
   );
 };
 
-/**
- * Query analyzer for available fields (ASTM query)
- * @param {String} id - Analyzer ID
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const queryAnalyzer = (
+export const getAnalyzerActivationReadiness = (
+  id: string,
+  callback: DataCallback<AnalyzerActivationResultView | undefined>,
+  signal: AbortSignal | null = null,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer/analyzers/${id}/activation-readiness`,
+    callback,
+    signal,
+  );
+};
+
+export const activateAnalyzer = (
+  id: string,
+  callback: ApiCallback<AnalyzerActivationResultView>,
+) => {
+  postAnalyzerLifecycle<AnalyzerActivationResultView>(
+    id,
+    "activate",
+    callback,
+    (error) => ({
+      analyzerId: id,
+      status: "UNKNOWN",
+      ready: false,
+      activated: false,
+      blockers: [],
+      error,
+      statusCode: 0,
+    }),
+  );
+};
+
+export const startAnalyzerSetupReception = (
   id: string,
   callback: ApiCallback,
-  extraParams?: ExtraParams,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${id}/query`;
-  postToOpenElisServerJsonResponse(
-    endpoint,
-    JSON.stringify({}),
+  postAnalyzerLifecycle(id, "setup-reception", callback, (error) => ({
+    analyzerId: id,
+    receiving: false,
+    blockers: [],
+    error,
+    statusCode: 0,
+  }));
+};
+
+export const reactivateAnalyzer = (
+  id: string,
+  callback: ApiCallback<AnalyzerActivationResultView>,
+) => {
+  postAnalyzerLifecycle<AnalyzerActivationResultView>(
+    id,
+    "reactivate",
     callback,
-    extraParams,
+    (error) => ({
+      analyzerId: id,
+      status: "UNKNOWN",
+      ready: false,
+      activated: false,
+      blockers: [],
+      error,
+      statusCode: 0,
+    }),
+  );
+};
+
+export const deactivateAnalyzer = (
+  id: string,
+  callback: ApiCallback<AnalyzerDeactivationResultView>,
+) => {
+  postAnalyzerLifecycle<AnalyzerDeactivationResultView>(
+    id,
+    "deactivate",
+    callback,
+    (error) => ({
+      analyzerId: id,
+      status: "UNKNOWN",
+      deactivated: false,
+      failure: error,
+      error,
+      statusCode: 0,
+    }),
   );
 };
 
 /**
- * Get query job status
- * @param {String} analyzerId
- * @param {String} jobId
- * @param {Function} callback - Callback (data) => void
+ * Returns an analyzer whose type the Bridge no longer has to the state the
+ * upgrade migration leaves one in, so it can be set up again on an available type.
  */
-export const getQueryStatus = (
-  analyzerId: string,
-  jobId: string,
-  callback: DataCallback<AnalyzerApiResponse | undefined>,
+export const resetAnalyzerProfile = (
+  id: string,
+  callback: (result: { ok: boolean; messageKey?: string }) => void,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/query/${jobId}/status`;
-  getFromOpenElisServer(endpoint, callback);
-};
-
-/**
- * Get all analyzer fields for an analyzer
- * @param {String} analyzerId - Analyzer ID
- * @param {Function} callback - Callback function (data) => void
- */
-export const getFields = (
-  analyzerId: string,
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/fields`;
-  getFromOpenElisServer(endpoint, callback);
-};
-
-/**
- * Get all field mappings for an analyzer
- * @param {String} analyzerId - Analyzer ID
- * @param {Function} callback - Callback function (data) => void
- */
-export const getMappings = (
-  analyzerId: string,
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings`;
-  getFromOpenElisServer(endpoint, callback);
-};
-
-/**
- * Create new field mapping
- * @param {String} analyzerId - Analyzer ID
- * @param {Object} mappingData - Mapping data { analyzerFieldId, openelisFieldId, openelisFieldType, mappingType, isRequired, isActive, specimenTypeConstraint, panelConstraint }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const createMapping = (
-  analyzerId: string,
-  mappingData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings`;
-  const payload = JSON.stringify(mappingData);
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
-};
-
-/**
- * Update field mapping
- * @param {String} analyzerId - Analyzer ID
- * @param {String} mappingId - Mapping ID
- * @param {Object} mappingData - Mapping data to update
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const updateMapping = (
-  analyzerId: string,
-  mappingId: string,
-  mappingData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings/${mappingId}`;
-  const payload = JSON.stringify(mappingData);
-
-  // Use fetch directly to get JSON response (controllers return Map<String, Object>)
-  fetch(config.serverBaseUrl + endpoint, {
+  fetch(config.serverBaseUrl + `/rest/analyzer/analyzers/${id}/reset-profile`, {
     credentials: "include",
-    method: "PUT",
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
     },
-    body: payload,
+    body: JSON.stringify({}),
   })
     .then(async (response) => {
-      if (!response.ok) {
-        // For error responses, try to parse JSON error message
-        const errorJson = await response.json().catch(() => ({
-          error: `HTTP ${response.status}: ${response.statusText}`,
-        }));
-        callback(
-          {
-            ...errorJson,
-            status: response.status,
-            statusCode: response.status,
-            statusText: response.statusText,
-          },
-          extraParams,
-        );
-        return;
-      }
-      // For successful responses, parse JSON normally
-      const json = await response.json();
-      callback(json, extraParams);
+      const json = await response.json().catch(() => ({}));
+      callback({ ok: response.ok, messageKey: json?.messageKey });
+    })
+    .catch(() => callback({ ok: false }));
+};
+
+export interface AnalyzerUseChangeView {
+  changed: boolean;
+  error?: string;
+  messageKey?: string;
+  statusCode?: number;
+}
+
+/** Retires, restores or deletes an analyzer. */
+export const changeAnalyzerUse = (
+  id: string,
+  action: "retire" | "restore" | "delete",
+  callback: ApiCallback<AnalyzerUseChangeView>,
+) => {
+  const path =
+    action === "delete"
+      ? `/rest/analyzer/analyzers/${id}`
+      : `/rest/analyzer/analyzers/${id}/${action}`;
+  fetch(config.serverBaseUrl + path, {
+    credentials: "include",
+    method: action === "delete" ? "DELETE" : "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
+    },
+  })
+    .then(async (response) => {
+      const json = response.ok ? {} : await response.json().catch(() => ({}));
+      callback({
+        ...json,
+        changed: response.ok,
+        ...(!response.ok ? { statusCode: response.status } : {}),
+      });
     })
     .catch((error: Error) => {
-      callback(
-        {
-          error: error.message || "Network error",
-          message: error.message || "Network error",
-          status: 0,
-        },
-        extraParams,
-      );
+      callback({ changed: false, error: error.message || "Network error" });
     });
 };
 
-/**
- * Delete field mapping
- * @param {String} analyzerId - Analyzer ID
- * @param {String} mappingId - Mapping ID
- * @param {Function} callback - Callback function (success, error) => void
- */
-export const deleteMapping = (
-  analyzerId: string,
-  mappingId: string,
-  callback: SuccessCallback,
+const postAnalyzerLifecycle = <T extends object>(
+  id: string,
+  action: "activate" | "deactivate" | "reactivate" | "setup-reception",
+  callback: ApiCallback<T>,
+  networkFailure: (error: string) => T,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/mappings/${mappingId}`;
-
-  fetch(config.serverBaseUrl + endpoint, {
+  fetch(config.serverBaseUrl + `/rest/analyzer/analyzers/${id}/${action}`, {
     credentials: "include",
-    method: "DELETE",
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
     },
+    body: JSON.stringify({}),
   })
     .then(async (response) => {
-      if (response.ok || response.status === 204) {
-        callback(true, null);
-      } else {
-        const errorData = await response.json().catch(() => ({
-          error: `HTTP ${response.status}: ${response.statusText}`,
-        }));
-        callback(false, errorData);
-      }
+      const json = await response.json().catch(() => ({}));
+      callback({
+        ...json,
+        ...(!response.ok
+          ? {
+              statusCode: response.status,
+              statusText: response.statusText,
+            }
+          : {}),
+      } as T);
     })
     .catch((error: Error) => {
-      callback(false, { error: error.message || "Network error" });
+      callback(networkFailure(error.message || "Network error"));
     });
 };
 
@@ -503,578 +799,304 @@ export const createField = (
   postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
 };
 
-/**
- * Get all custom field types
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const getCustomFieldTypes = (
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-  extraParams?: ExtraParams,
+export const getAnalyzerTypeCatalog = (
+  callback: DataCallback<AnalyzerTypeCatalog | undefined>,
+  signal: AbortSignal | null = null,
 ) => {
-  const endpoint = "/rest/analyzer/custom-field-types";
-  getFromOpenElisServer(endpoint, callback, extraParams);
+  getFromOpenElisServer("/rest/analyzer-types", callback, signal);
 };
 
-/**
- * Get active custom field types
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const getActiveCustomFieldTypes = (
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-  extraParams?: ExtraParams,
+export const getAnalyzerTypeRevision = (
+  profileId: string,
+  revision: number,
+  callback: DataCallback<AnalyzerTypeSummary | undefined>,
 ) => {
-  const endpoint = "/rest/analyzer/custom-field-types/active";
-  getFromOpenElisServer(endpoint, callback, extraParams);
+  getFromOpenElisServer(
+    `/rest/analyzer-types/${encodeURIComponent(profileId)}?revision=${revision}`,
+    callback,
+  );
 };
 
-/**
- * Get a specific custom field type by ID
- * @param {String} id - Custom field type ID
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const getCustomFieldType = (
-  id: string,
-  callback: DataCallback<AnalyzerApiResponse | undefined>,
-  extraParams?: ExtraParams,
+/** The defaults a new analyzer on this profile revision would get. Read-only. */
+export const getAnalyzerTypeDefaults = (
+  profileId: string,
+  revision: number,
+  callback: DataCallback<AnalyzerTypeMappingView | undefined>,
 ) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${id}`;
-  getFromOpenElisServer(endpoint, callback, extraParams);
+  getFromOpenElisServer(
+    `/rest/analyzer-types/${encodeURIComponent(profileId)}/mapping?revision=${revision}`,
+    callback,
+  );
 };
 
-/**
- * Create a new custom field type
- * @param {Object} fieldTypeData - Field type data { typeName, displayName, validationPattern, valueRangeMin, valueRangeMax, allowedCharacters, isActive }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const createCustomFieldType = (
-  fieldTypeData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
+export const getAnalyzerMappingTests = (
+  callback: DataCallback<AnalyzerMappingTestOption[] | undefined>,
 ) => {
-  const endpoint = "/rest/analyzer/custom-field-types";
-  const payload = JSON.stringify(fieldTypeData);
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
+  getFromOpenElisServer("/rest/analyzer-types/mapping-catalog/tests", callback);
 };
 
-/**
- * Update an existing custom field type
- * @param {String} id - Custom field type ID
- * @param {Object} fieldTypeData - Field type data { typeName, displayName, validationPattern, valueRangeMin, valueRangeMax, allowedCharacters, isActive }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const updateCustomFieldType = (
-  id: string,
-  fieldTypeData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
+export const getAnalyzerMappingResultOptions = (
+  testId: string,
+  callback: DataCallback<AnalyzerMappingResultOption[] | undefined>,
 ) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${id}`;
-  const payload = JSON.stringify(fieldTypeData);
-  fetch(`${config.serverBaseUrl}${endpoint}`, {
-    method: "PUT",
+  getFromOpenElisServer(
+    `/rest/analyzer-types/mapping-catalog/tests/${encodeURIComponent(testId)}/result-options`,
+    callback,
+  );
+};
+
+export const getAnalyzerMappingComponents = (
+  testId: string,
+  callback: DataCallback<AnalyzerMappingComponentOption[] | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer-types/mapping-catalog/tests/${encodeURIComponent(testId)}/components`,
+    callback,
+  );
+};
+
+const mutateAnalyzerType = <T>(
+  endpoint: string,
+  method: "POST" | "PUT",
+  body: JsonObject,
+  callback: ApiCallback<T & AnalyzerApiError>,
+) => {
+  fetch(config.serverBaseUrl + endpoint, {
+    credentials: "include",
+    method,
     headers: {
       "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
     },
-    body: payload,
+    body: JSON.stringify(body),
   })
     .then(async (response) => {
-      const data = await response.json().catch(() => ({}));
-      if (response.ok) {
-        callback(data, extraParams);
-      } else {
-        callback(null, {
-          ...asExtraParamsObject(extraParams),
-          error: data.error || `HTTP ${response.status}`,
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        callback({
+          ...json,
+          status: response.status,
+          statusCode: response.status,
+          statusText: response.statusText,
         });
+        return;
       }
+      callback(json);
     })
     .catch((error: Error) => {
-      callback(null, {
-        ...asExtraParamsObject(extraParams),
+      callback({
         error: error.message || "Network error",
-      });
+        message: error.message || "Network error",
+        status: 0,
+      } as T & AnalyzerApiError);
     });
 };
 
-/**
- * Delete a custom field type
- * @param {String} id - Custom field type ID
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const deleteCustomFieldType = (
-  id: string,
-  callback: SuccessCallback,
-  _extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${id}`;
-  fetch(`${config.serverBaseUrl}${endpoint}`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-  })
-    .then(async (response) => {
-      if (response.ok || response.status === 204) {
-        callback(true, null);
-      } else {
-        const errorData = await response.json().catch(() => ({
-          error: `HTTP ${response.status}: ${response.statusText}`,
-        }));
-        callback(false, errorData);
-      }
-    })
-    .catch((error: Error) => {
-      callback(false, { error: error.message || "Network error" });
-    });
-};
+/** One record's decision in an adoption plan. */
+export interface AnalyzerAdoptionDecision {
+  test: {
+    sourceRowKey: string;
+    subIdentity: string;
+    mappingState: AnalyzerMappingState;
+    testId?: string | null;
+    componentId?: string | null;
+    callComponentId?: string | null;
+    origin?: string | null;
+  };
+  results: Array<{
+    sourceRowKey: string;
+    subIdentity: string;
+    rawValue: string;
+    mappingState: AnalyzerMappingState;
+    testResultId?: string | null;
+  }>;
+}
 
-/**
- * Get validation rules for a custom field type
- * @param {String} customFieldTypeId - Custom field type ID
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const getValidationRules = (
-  customFieldTypeId: string,
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules`;
-  getFromOpenElisServer(endpoint, callback, extraParams);
-};
+export type AnalyzerAdoptionBucket =
+  | "UNCHANGED"
+  | "CHANGED"
+  | "NEEDS_MAPPING"
+  | "BLOCKED"
+  | "RETIRED";
 
-/**
- * Create a validation rule for a custom field type
- * @param {String} customFieldTypeId - Custom field type ID
- * @param {Object} ruleData - Rule data { ruleName, ruleType, ruleExpression, errorMessage, isActive }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const createValidationRule = (
-  customFieldTypeId: string,
-  ruleData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules`;
-  const payload = JSON.stringify(ruleData);
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
-};
+/** What adopting a newer profile revision does to each record. */
+export interface AnalyzerAdoptionReview {
+  analyzerId: string;
+  profileId: string;
+  fromRevision: number;
+  toRevision: number;
+  rows: Array<{
+    key: { sourceRowKey: string; subIdentity: string };
+    bucket: AnalyzerAdoptionBucket;
+    current: AnalyzerAdoptionDecision | null;
+    newDefault: AnalyzerAdoptionDecision | null;
+    proposed: AnalyzerAdoptionDecision | null;
+    alsoDefault: boolean;
+    blockReason: "INACTIVE_TEST" | "HELD_RESULTS" | null;
+  }>;
+  /** The mapping adoption saves if the operator changes nothing. */
+  proposal: AnalyzerTypeMappingView;
+}
 
-/**
- * Update a validation rule
- * @param {String} customFieldTypeId - Custom field type ID
- * @param {String} ruleId - Validation rule ID
- * @param {Object} ruleData - Rule data { ruleName, ruleType, ruleExpression, errorMessage, isActive }
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const updateValidationRule = (
-  customFieldTypeId: string,
-  ruleId: string,
-  ruleData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules/${ruleId}`;
-  const payload = JSON.stringify(ruleData);
-  fetch(`${config.serverBaseUrl}${endpoint}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-    body: payload,
-  })
-    .then(async (response) => {
-      const data = await response.json().catch(() => ({}));
-      if (response.ok) {
-        callback(data, extraParams);
-      } else {
-        callback(null, {
-          ...asExtraParamsObject(extraParams),
-          error: data.error || `HTTP ${response.status}`,
-        });
-      }
-    })
-    .catch((error: Error) => {
-      callback(null, {
-        ...asExtraParamsObject(extraParams),
-        error: error.message || "Network error",
-      });
-    });
-};
-
-/**
- * Delete a validation rule
- * @param {String} customFieldTypeId - Custom field type ID
- * @param {String} ruleId - Validation rule ID
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-/**
- * Validate a field value against custom field type validation rules
- * @param {String} analyzerId - Analyzer ID
- * @param {String} fieldId - Analyzer field ID
- * @param {String} value - Value to validate
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams - Optional extra parameters passed to callback
- */
-export const validateFieldValue = (
+export const getAnalyzerAdoption = (
   analyzerId: string,
-  fieldId: string,
-  value: string,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
+  revision: number,
+  callback: DataCallback<AnalyzerAdoptionReview | undefined>,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/fields/${fieldId}/validate-value`;
-  const payload = JSON.stringify({ value });
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
+  getFromOpenElisServer(
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/adoption?revision=${revision}`,
+    callback,
+  );
 };
 
-export const deleteValidationRule = (
-  customFieldTypeId: string,
-  ruleId: string,
-  callback: SuccessCallback,
-  _extraParams?: ExtraParams,
-) => {
-  const endpoint = `/rest/analyzer/custom-field-types/${customFieldTypeId}/validation-rules/${ruleId}`;
-  fetch(`${config.serverBaseUrl}${endpoint}`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-  })
-    .then(async (response) => {
-      if (response.ok || response.status === 204) {
-        callback(true, null);
-      } else {
-        const errorData = await response.json().catch(() => ({
-          error: `HTTP ${response.status}: ${response.statusText}`,
-        }));
-        callback(false, errorData);
-      }
-    })
-    .catch((error: Error) => {
-      callback(false, { error: error.message || "Network error" });
-    });
-};
-
-/**
- * Get all analyzer plugin types from the analyzer_type table.
- *
- * <p>Returns plugin type definitions including:
- * - id: Database ID
- * - name: Human-readable name (e.g., "Generic ASTM", "Horiba Pentra 60")
- * - protocol: Communication protocol (ASTM, HL7, FILE)
- * - isGenericPlugin: Whether this is a dashboard-configurable generic plugin
- * - identifierPattern: Regex pattern for generic plugins
- *
- *
- * @param {Object} filters - Optional filters { active, genericOnly, search }
- * @param {Function} callback - Callback function (data) => void
- */
-export const getAnalyzerTypes = (
-  filters: AnalyzerTypeFilters = {},
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-) => {
-  let endpoint = "/rest/analyzer-types";
-  const params = new URLSearchParams();
-
-  if (filters) {
-    if (filters.active !== undefined) {
-      params.append("active", String(filters.active));
-    }
-    if (filters.genericOnly !== undefined) {
-      params.append("genericOnly", String(filters.genericOnly));
-    }
-    if (filters.search) {
-      params.append("search", filters.search);
-    }
-  }
-
-  if (params.toString()) {
-    endpoint += "?" + params.toString();
-  }
-
-  getFromOpenElisServer(endpoint, callback);
-};
-
-/**
- * Get list of available default analyzer configurations.
- *
- * <p>Returns minimal metadata for each template:
- * - id (e.g., "astm/mindray-ba88a")
- * - protocol ("ASTM" or "HL7")
- * - analyzerName (from JSON)
- *
- *
- * @param {Function} callback - Callback function (data) => void
- */
-export const getDefaultConfigs = (
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
-) => {
-  const endpoint = "/rest/analyzer/profiles";
-  getFromOpenElisServer(endpoint, callback);
-};
-
-/**
- * Get specific default analyzer configuration template.
- *
- * <p>Loads JSON template from filesystem for the specified protocol and name.
- *
- *
- * @param {String} protocol - Protocol type ("astm" or "hl7")
- * @param {String} name - Template name (without .json extension)
- * @param {Function} callback - Callback function (data) => void
- */
-export const getDefaultConfig = (
-  protocol: string,
-  name: string,
-  callback: DataCallback<AnalyzerApiResponse | undefined>,
-) => {
-  const endpoint = `/rest/analyzer/profiles/${protocol}/${name}`;
-  getFromOpenElisServer(endpoint, callback);
-};
-
-/**
- * Get plugin-config JSON payload for an analyzer.
- * @param {String} analyzerId
- * @param {Function} callback - Callback function (data) => void
- */
-export const getPluginConfig = (
+/** Saves the reviewed decisions as the analyzer's next revision on the newer profile revision. */
+export const adoptAnalyzerRevision = (
   analyzerId: string,
-  callback: DataCallback<AnalyzerApiResponse | undefined>,
+  revision: number,
+  update: AnalyzerTypeMappingUpdate,
+  callback: ApiCallback<
+    {
+      mappingId: string;
+      mappingRevision: number;
+      mappingFingerprint: string;
+    } & AnalyzerApiError
+  >,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/plugin-config`;
-  getFromOpenElisServer(endpoint, callback);
+  mutateAnalyzerType(
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/adoption?revision=${revision}`,
+    "POST",
+    update as unknown as JsonObject,
+    callback,
+  );
 };
 
-/**
- * Update plugin-config JSON payload for an analyzer.
- * @param {String} analyzerId
- * @param {Object} pluginConfig
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams
- */
-export const updatePluginConfig = (
+export const getAnalyzerMapping = (
   analyzerId: string,
-  pluginConfig: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
+  callback: DataCallback<AnalyzerTypeMappingView | undefined>,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/plugin-config`;
-  const payload = JSON.stringify(pluginConfig);
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-    body: payload,
-  })
-    .then(async (response) => {
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        callback(
-          {
-            ...json,
-            status: response.status,
-            statusCode: response.status,
-            statusText: response.statusText,
-            error:
-              json.error || `HTTP ${response.status}: ${response.statusText}`,
-          },
-          extraParams,
-        );
-        return;
-      }
-      callback(json, extraParams);
-    })
-    .catch((error: Error) => {
-      callback(
-        {
-          error: error.message || "Network error",
-          status: 0,
-        },
-        extraParams,
-      );
-    });
+  getFromOpenElisServer(
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/mapping`,
+    callback,
+  );
 };
 
-/**
- * Get pending unmapped codes for an analyzer.
- * @param {String} analyzerId
- * @param {Function} callback - Callback function (data) => void
- */
-export const getPendingCodes = (
+export const saveAnalyzerMapping = (
   analyzerId: string,
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
+  update: AnalyzerTypeMappingUpdate,
+  callback: ApiCallback<AnalyzerTypeMappingView & AnalyzerApiError>,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/pending-codes`;
-  getFromOpenElisServer(endpoint, callback);
+  mutateAnalyzerType(
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/mapping`,
+    "PUT",
+    update as unknown as JsonObject,
+    callback,
+  );
 };
 
-/**
- * Update pending-code status for an analyzer.
- * @param {String} analyzerId
- * @param {String} pendingCodeId
- * @param {String} status - PENDING, MAPPED, IGNORED
- * @param {Function} callback - Callback function (response, extraParams) => void
- * @param {*} extraParams
- */
-// ============================================================
-// FR-15: QC Sample Identification Rules
-// ============================================================
-
-export const getQcRules = (
+export const confirmAnalyzerMapping = (
   analyzerId: string,
-  callback: DataCallback<AnalyzerApiResponse[] | undefined>,
+  request: AnalyzerTypeMappingConfirmationRequest,
+  callback: ApiCallback<
+    AnalyzerTypeMappingView["confirmation"] & AnalyzerApiError
+  >,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules`;
-  getFromOpenElisServer(endpoint, callback);
+  mutateAnalyzerType(
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/mapping/confirm`,
+    "POST",
+    request as unknown as JsonObject,
+    callback,
+  );
 };
 
-export const createQcRule = (
-  analyzerId: string,
-  ruleData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
+export const createAnalyzerTypeDraft = (
+  displayName: string,
+  callback: ApiCallback<AnalyzerProfileDraftResponse>,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules`;
-  const payload = JSON.stringify(ruleData);
-  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
+  postToOpenElisServerJsonResponse(
+    "/rest/analyzer-types/drafts",
+    JSON.stringify({ displayName }),
+    callback,
+  );
 };
 
-export const updateQcRule = (
-  analyzerId: string,
-  ruleId: string,
-  ruleData: JsonObject,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
+export const getAnalyzerTypeDraft = (
+  draftId: string,
+  callback: DataCallback<AnalyzerProfileDraftResponse | undefined>,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules/${ruleId}`;
-  const payload = JSON.stringify(ruleData);
-
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-    body: payload,
-  })
-    .then(async (response) => {
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        callback(
-          {
-            ...json,
-            status: response.status,
-            error: json.error || `HTTP ${response.status}`,
-          },
-          extraParams,
-        );
-        return;
-      }
-      callback(json, extraParams);
-    })
-    .catch((error: Error) => {
-      callback(
-        { error: error.message || "Network error", status: 0 },
-        extraParams,
-      );
-    });
+  getFromOpenElisServer(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}`,
+    callback,
+  );
 };
 
-export const deleteQcRule = (
-  analyzerId: string,
-  ruleId: string,
-  callback: SuccessCallback,
+export const updateAnalyzerTypeDraft = (
+  draftId: string,
+  profile: JsonObject,
+  callback: ApiCallback<AnalyzerProfileDraftResponse>,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules/${ruleId}`;
-
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-  })
-    .then(async (response) => {
-      if (response.ok || response.status === 204) {
-        callback(true, null);
-      } else {
-        const errorData = await response.json().catch(() => ({
-          error: `HTTP ${response.status}: ${response.statusText}`,
-        }));
-        callback(false, errorData);
-      }
-    })
-    .catch((error: Error) => {
-      callback(false, { error: error.message || "Network error" });
-    });
+  mutateAnalyzerType(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}`,
+    "PUT",
+    { profile },
+    callback,
+  );
 };
 
-// ============================================================
-// Pending Codes
-// ============================================================
-
-export const updatePendingCodeStatus = (
-  analyzerId: string,
-  pendingCodeId: string,
-  status: string,
-  callback: ApiCallback,
-  extraParams?: ExtraParams,
+export const getAnalyzerTypeControlRecognition = (
+  draftId: string,
+  callback: DataCallback<AnalyzerControlRecognitionDraft | undefined>,
 ) => {
-  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/pending-codes/${pendingCodeId}/status`;
-  const payload = JSON.stringify({ status });
-  fetch(config.serverBaseUrl + endpoint, {
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": localStorage.getItem("CSRF"),
-    },
-    body: payload,
-  })
-    .then(async (response) => {
-      const json = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        callback(
-          {
-            ...json,
-            status: response.status,
-            statusCode: response.status,
-            statusText: response.statusText,
-            error:
-              json.error || `HTTP ${response.status}: ${response.statusText}`,
-          },
-          extraParams,
-        );
-        return;
-      }
-      callback(json, extraParams);
-    })
-    .catch((error: Error) => {
-      callback(
-        {
-          error: error.message || "Network error",
-          status: 0,
-        },
-        extraParams,
-      );
-    });
+  getFromOpenElisServer(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}/control-recognition`,
+    callback,
+  );
+};
+
+export const updateAnalyzerTypeControlRecognition = (
+  draftId: string,
+  update: AnalyzerControlRecognitionUpdate,
+  callback: ApiCallback<AnalyzerControlRecognitionDraft>,
+) => {
+  mutateAnalyzerType(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}/control-recognition`,
+    "PUT",
+    update as unknown as JsonObject,
+    callback,
+  );
+};
+
+export const duplicateAnalyzerType = (
+  profileId: string,
+  sourceRevision: number,
+  displayName: string,
+  callback: ApiCallback<AnalyzerProfileDraftResponse>,
+) => {
+  postToOpenElisServerJsonResponse(
+    `/rest/analyzer-types/${encodeURIComponent(profileId)}/duplicate`,
+    JSON.stringify({ sourceRevision, displayName }),
+    callback,
+  );
+};
+
+export const updateSharedAnalyzerType = (
+  profileId: string,
+  sourceRevision: number,
+  callback: ApiCallback<AnalyzerProfileDraftResponse>,
+) => {
+  postToOpenElisServerJsonResponse(
+    `/rest/analyzer-types/${encodeURIComponent(profileId)}/update`,
+    JSON.stringify({ sourceRevision }),
+    callback,
+  );
+};
+
+export const publishAnalyzerTypeDraft = (
+  draftId: string,
+  callback: ApiCallback<AnalyzerProfileDraftResponse>,
+) => {
+  postToOpenElisServerJsonResponse(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}/publish`,
+    "{}",
+    callback,
+  );
 };

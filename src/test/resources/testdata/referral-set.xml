@@ -35,6 +35,10 @@
         code="200" status_type="ANALYSIS" lastupdated="2024-01-01 12:30:00"
         name="Finalized" display_key="status.finalized" is_active="Y" />
 
+    <status_of_sample id="3" description="Finished"
+        code="300" status_type="ORDER" lastupdated="2024-01-01 10:00:00"
+        name="Testing finished" display_key="status.finished" is_active="Y" />
+
     <organization id="401" lastupdated="2024-06-03 12:00:00.0"
         name="Global Health Org" city="New York" zip_code="10001"
         mls_sentinel_lab_flag="Y" short_name="GHG" multiple_unit="NYC Unit"
@@ -72,12 +76,12 @@
 
     <result id="300" sort_order="1" result_type="N" value="85.0"
         is_reportable="Y" lastupdated="2025-04-04 14:00:00" min_normal="70.0"
-        max_normal="100.0" significant_digits="1" grouping="0"
+        max_normal="100.0" reporting_decimal_places="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
 
     <result id="301" sort_order="2" result_type="N" value="14.5"
         is_reportable="Y" lastupdated="2025-07-07 14:00:00" min_normal="12.0"
-        max_normal="16.0" significant_digits="1" grouping="0"
+        max_normal="16.0" reporting_decimal_places="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
     <sample id="1" accession_number="12345" status_id="1"
@@ -140,7 +144,7 @@
         organization_name="African Health Org"
         send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
         result_recieved_date="2018-02-16 23:45:59" referral_reason_id="1"
-        referral_type_id="1" requester_name="Doctor" Status="SENT"
+        referral_type_id="1" requester_name="Doctor" Status="DRAFT"
         lastUpdated="2018-02-16 23:45:59" canceled="false"
         referral_request_date="2018-02-16 21:45:59"
         fhir_uuid="436a353f-8ac9-4a30-86db-bb6eda979b57" />
@@ -148,7 +152,7 @@
         organization_name="Health Corporations Ltd"
         send_ready_date="2018-02-16 23:45:59" sent_date="2018-02-16 22:45:59"
         result_recieved_date="2018-02-16 23:45:59" referral_reason_id="2"
-        referral_type_id="2" requester_name="Doctor" status="RECEIVED"
+        referral_type_id="2" requester_name="Doctor" status="REQUESTED"
         lastUpdated="2018-02-16 23:45:59" canceled="false"
         referral_request_date="2018-02-16 21:45:59"
         fhir_uuid="386e3e0c-013b-425b-ab5f-46f40278c5d3" />
@@ -177,5 +181,14 @@
     <referral_result id="904" referral_id="103"
         test_id="202" referral_report_date="2025-01-02 11:00:00"
         lastupdated="2025-07-02 11:30:00" />
+
+    <!-- Empty elements so DbUnit's REFRESH cleans these tables before this
+        fixture loads. Without them, rows from referral.xml (e.g. subcontract id=10,
+        history id=100) survive across the prior test class and the clinlims.referral_subcontract_seq
+        sequence eventually collides with the lingering id=10 inside this class's
+        createSave tests. -->
+    <referral_subcontract />
+    <referral_status_history />
+    <note />
 
 </dataset>

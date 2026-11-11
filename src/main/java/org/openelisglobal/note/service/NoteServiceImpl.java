@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.analysis.service.AnalysisAnchorService;
 import org.openelisglobal.analysis.service.AnalysisServiceImpl;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
@@ -72,6 +73,8 @@ public class NoteServiceImpl extends AuditableBaseObjectServiceImpl<Note, String
     private SampleQaEventService sampleQAService;
     @Autowired
     private ReferenceTablesService refTableService;
+    @Autowired
+    private AnalysisAnchorService analysisAnchorService;
 
     @PostConstruct
     public void initializeGlobalVariables() {
@@ -146,15 +149,22 @@ public class NoteServiceImpl extends AuditableBaseObjectServiceImpl<Note, String
         Sample sample = null;
         SampleItem sampleItem = null;
 
-        // get parent objects and the qa notes
         if (noteObject.getBoundTo() == BoundTo.ANALYSIS) {
-            sampleItem = ((Analysis) noteObject).getSampleItem();
-            notes.addAll(getNotesChronologicallyByRefIdAndRefTableAndType(sampleItem.getId(),
-                    SampleItemServiceImpl.getSampleItemTableReferenceId(), filter));
-
-            sample = sampleItem.getSample();
-            notes.addAll(baseObjectDAO.getNotesChronologicallyByRefIdAndRefTableAndType(sample.getId(),
-                    SampleServiceImpl.getTableReferenceId(), filter));
+            Analysis analysis = (Analysis) noteObject;
+            sampleItem = analysis.getSampleItem();
+            if (sampleItem != null) {
+                notes.addAll(getNotesChronologicallyByRefIdAndRefTableAndType(sampleItem.getId(),
+                        SampleItemServiceImpl.getSampleItemTableReferenceId(), filter));
+                sample = sampleItem.getSample();
+            } else {
+                // Pool-anchored: resolve the parent Sample via the anchor service
+                // so sample-level non-conformity notes still attach.
+                sample = analysisAnchorService.resolveSample(analysis);
+            }
+            if (sample != null) {
+                notes.addAll(baseObjectDAO.getNotesChronologicallyByRefIdAndRefTableAndType(sample.getId(),
+                        SampleServiceImpl.getTableReferenceId(), filter));
+            }
         } else if (noteObject.getBoundTo() == BoundTo.SAMPLE_ITEM) {
             sampleItem = (SampleItem) noteObject;
             sample = sampleItem.getSample();
@@ -438,4 +448,5 @@ public class NoteServiceImpl extends AuditableBaseObjectServiceImpl<Note, String
     public boolean duplicateNoteExists(Note note) {
         return getBaseObjectDAO().duplicateNoteExists(note);
     }
+
 }

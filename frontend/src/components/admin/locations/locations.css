@@ -1,0 +1,145 @@
+.locationsPage .locationsIntro {
+  max-width: 60rem;
+  margin-bottom: 1rem;
+}
+
+/* Pinned below the header so a message is seen wherever the page is scrolled. */
+.locationsPage .locationsToasts {
+  position: fixed;
+  top: 3.5rem;
+  right: 1rem;
+  z-index: 8000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(32rem, calc(100vw - 2rem));
+}
+
+.locationsPage .locationsToast {
+  max-width: 100%;
+  margin: 0;
+}
+
+.locationsPage .cds--table-toolbar {
+  height: auto;
+  min-height: 3rem;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.locationsPage .cds--table-toolbar .cds--toolbar-search-container-persistent {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  flex: 1 1 100%;
+}
+
+.locationsPage .locationsToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+  justify-content: flex-start;
+  height: auto;
+  width: 100%;
+  padding: 0.5rem 1rem;
+}
+
+.locationsPage .locationsToolbar > * {
+  min-width: 12rem;
+  flex: 0 1 auto;
+}
+
+.locationsPage .locationsToolbarActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.locationsPage .locationsFilterTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.5rem 1rem;
+}
+
+.locationsPage .locationsForm {
+  padding: 1rem 1.5rem 0 3rem;
+  background: var(--cds-layer-01);
+}
+
+.locationsPage .locationsForm .cds--fieldset {
+  margin-bottom: 1rem;
+}
+
+.locationsPage .cds--data-table-content {
+  overflow: visible;
+}
+
+.locationsPage .locationsStickyBar {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  background: var(--cds-layer-01);
+  border-top: 1px solid var(--cds-border-subtle-01);
+}
+
+.locationsPage [data-testid="locations-wards"] td:nth-child(1) input,
+.locationsPage [data-testid="locations-wards"] td:nth-child(3) select {
+  min-width: 11rem;
+}
+
+.locationsPage [data-testid="locations-wards"] td:nth-child(2) input,
+.locationsPage [data-testid="locations-wards"] td:nth-child(4) input,
+.locationsPage [data-testid="locations-wards"] td:nth-child(5) input,
+.locationsPage [data-testid="locations-wards"] td:nth-child(6) input {
+  min-width: 7rem;
+}
+
+.locationsPage .locationsImportActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.locationsPage .lo-highlight {
+  background: var(--cds-highlight);
+}
+
+.locationsPage .locationsTree tr[tabindex]:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+.locationsPage .locationsEmpty {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.locationsPage .locationsFooterNote {
+  padding: 1rem 0;
+}
+
+.locationsPage .locationsHistory {
+  margin-top: 1rem;
+}
+
+/* OGC-1420 (9c): the import page fits a 1280 px screen; long rows wrap. */
+.locationsPage .locationsImport .cds--stack-horizontal {
+  flex-wrap: wrap;
+}
+
+.locationsPage .locationsImport td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.locationsPage .locationsCollisions ul {
+  margin: 0 0 1rem 1rem;
+  list-style: disc;
+}

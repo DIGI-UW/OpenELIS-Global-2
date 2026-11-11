@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <!-- Minimal Compliance Standards Test Data for Unit Tests. Sample types
+        now live in compliance_standard_sample_type (FRS S-01 FR-1-007a join-table
+        model). The legacy applicable_sample_types TEXT column was dropped by liquibase
+        024. -->
+    <compliance_standard id="30001"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440001" name="Test Standard"
+        version="1.0" description="Test compliance standard for unit testing"
+        issuing_body="Test Organization" regulation_number="TEST-001-2024"
+        country_region="Test Region" status="ACTIVE"
+        effective_date="2024-01-01" expiry_date="2025-12-31" sys_user_id="1"
+        last_updated="2024-01-01 10:00:00.000" />
+
+    <!-- Separate entity for delete testing to avoid optimistic locking conflicts -->
+    <compliance_standard id="30999"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440099"
+        name="Test Standard for Delete" version="1.0"
+        description="Test compliance standard for deletion testing"
+        issuing_body="Test Organization" regulation_number="TEST-999-2024"
+        country_region="Test Region" status="ACTIVE"
+        effective_date="2024-01-01" expiry_date="2025-12-31" sys_user_id="1"
+        last_updated="2024-01-01 10:00:00.000" />
+
+    <parameter_group id="30001"
+        fhir_uuid="660e8400-e29b-41d4-a716-446655440001" standard_id="30001"
+        name="Test Parameter Group"
+        description="Test parameter group for unit testing" sort_order="1"
+        is_mandatory="true" sys_user_id="1"
+        last_updated="2024-01-01 10:00:00.000" />
+
+    <!-- test_id intentionally left null - the previous "TEST_001" string no
+        longer satisfies the fk_compliance_threshold_test FK constraint (commit 9).
+        Tests that need a linked test should set up their own. -->
+    <compliance_threshold id="30001"
+        fhir_uuid="770e8400-e29b-41d4-a716-446655440001" group_id="30001"
+        parameter_code="TEST_PARAM" display_name="Test Parameter"
+        threshold_type="RANGE" min_value="5.0" max_value="10.0" units="mg/L"
+        method_reference="TEST_METHOD" detection_limit="0.1"
+        is_mandatory="true" sort_order="1"
+        notes="Test threshold for unit testing" sys_user_id="1"
+        last_updated="2024-01-01 10:00:00.000" />
+
+    <!-- Standard with the natural key the uniqueness test attempts to duplicate.
+        Also provides the third row required by testGetAll (>= 3 standards). -->
+    <compliance_standard id="30002"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440022"
+        name="PP No. 22/2021 - Water Quality" version="2021"
+        description="Indonesian government water quality regulation"
+        issuing_body="Government of Indonesia" regulation_number="PP 22/2021"
+        country_region="Indonesia" status="ACTIVE" effective_date="2021-01-01"
+        expiry_date="2030-12-31" sys_user_id="1"
+        last_updated="2024-01-01 10:00:00.000" />
+
+    <!-- Sample-type join rows (replaces the old applicable_sample_types comma-string
+        column). -->
+    <compliance_standard_sample_type
+        standard_id="30001" sample_type="Water" />
+    <compliance_standard_sample_type
+        standard_id="30999" sample_type="Water" />
+    <compliance_standard_sample_type
+        standard_id="30002" sample_type="Water" />
+
+</dataset>

@@ -1,0 +1,6 @@
+description,localAbbreviation,domain,isActive,sortOrder,localization:en
+# localAbbreviation must match sampleTypeAbbrev in configuration/vector-species/vector-species.csv
+Mosquito,MOSQUITO,V,Y,320,Mosquito
+Flea,FLEA,V,Y,321,Flea
+Fly,FLY,V,Y,322,Fly
+Rodent,RODENT,V,Y,323,Rodent

@@ -2,10 +2,10 @@ package org.openelisglobal.program.controller.pathology;
 
 import jakarta.validation.constraints.Min;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import org.openelisglobal.barcode.form.LabelsSectionForm;
 import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
+import org.openelisglobal.program.service.ClinicalAttachmentUpload;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyReport;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
@@ -14,6 +14,11 @@ import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 
 public class PathologySampleForm {
 
+    /**
+     * Nothing reads this any more: the case moves between stages only through the
+     * advance and return transitions, which record who moved it. It still binds so
+     * an older client's post is accepted and has no effect on the stage.
+     */
     private PathologyStatus status;
 
     private List<PathologyBlock> blocks;
@@ -35,6 +40,15 @@ public class PathologySampleForm {
     private String grossExam;
 
     private String microscopyExam;
+
+    /** Null when the client did not post it, so the stored flag stands. */
+    private Boolean decalcificationRequired;
+
+    /**
+     * The processor run, written once on the case's Processing entry. Null when the
+     * client did not post it; ignored whenever no entry would take it.
+     */
+    private String runReference;
 
     private List<String> conclusions;
 
@@ -139,6 +153,22 @@ public class PathologySampleForm {
 
     public void setMicroscopyExam(String microscopyExam) {
         this.microscopyExam = microscopyExam;
+    }
+
+    public Boolean getDecalcificationRequired() {
+        return decalcificationRequired;
+    }
+
+    public void setDecalcificationRequired(Boolean decalcificationRequired) {
+        this.decalcificationRequired = decalcificationRequired;
+    }
+
+    public String getRunReference() {
+        return runReference;
+    }
+
+    public void setRunReference(String runReference) {
+        this.runReference = runReference;
     }
 
     public String getConclusionText() {
@@ -272,7 +302,7 @@ public class PathologySampleForm {
         this.immunoHistoChemistryTestIds = immunoHistoChemistryTestIds;
     }
 
-    public static class PathologySlideForm extends PathologySlide {
+    public static class PathologySlideForm extends PathologySlide implements ClinicalAttachmentUpload {
 
         private static final long serialVersionUID = 3142138533368581327L;
 
@@ -284,14 +314,10 @@ public class PathologySampleForm {
 
         public void setBase64Image(String base64Image) {
             this.base64Image = base64Image;
-            String[] imageInfo = base64Image.split(";base64,", 2);
-
-            setFileType(imageInfo[0]);
-            setImage(Base64.getDecoder().decode(imageInfo[1]));
         }
     }
 
-    public static class PathologyReportForm extends PathologyReport {
+    public static class PathologyReportForm extends PathologyReport implements ClinicalAttachmentUpload {
 
         private static final long serialVersionUID = 3142138533368581327L;
 
@@ -303,10 +329,6 @@ public class PathologySampleForm {
 
         public void setBase64Image(String base64Image) {
             this.base64Image = base64Image;
-            String[] imageInfo = base64Image.split(";base64,", 2);
-
-            setFileType(imageInfo[0]);
-            setImage(Base64.getDecoder().decode(imageInfo[1]));
         }
     }
 

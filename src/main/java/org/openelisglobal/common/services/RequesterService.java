@@ -51,6 +51,7 @@ public class RequesterService {
 
     private String sampleId;
     private Person person;
+    private Person requestorPerson;
     private List<SampleRequester> requesters;
     private Organization organization;
     private Organization organizationDepartment;
@@ -148,6 +149,48 @@ public class RequesterService {
         return person;
     }
 
+    /**
+     * The standalone Environmental/Vector Requestor contact, distinct from
+     * {@link #getPerson()} (the Clinical Provider). Lazily resolved the same way as
+     * person/organization above, via
+     * {@code TableIdService.REQUESTOR_CONTACT_REQUESTER_TYPE_ID}.
+     */
+    public Person getRequestorPerson() {
+        if (requestorPerson == null) {
+            buildRequesters();
+        }
+
+        return requestorPerson;
+    }
+
+    public String getRequestorPersonId() {
+        return getRequestorPerson() == null ? null : getRequestorPerson().getId();
+    }
+
+    public String getRequestorFirstName() {
+        return getRequestorPerson() == null ? null : personService.getFirstName(getRequestorPerson());
+    }
+
+    public String getRequestorLastName() {
+        return getRequestorPerson() == null ? null : personService.getLastName(getRequestorPerson());
+    }
+
+    public String getRequestorPhone() {
+        return getRequestorPerson() == null ? null : personService.getWorkPhone(getRequestorPerson());
+    }
+
+    public String getRequestorFax() {
+        return getRequestorPerson() == null ? null : personService.getFax(getRequestorPerson());
+    }
+
+    public String getRequestorEmail() {
+        return getRequestorPerson() == null ? null : personService.getEmail(getRequestorPerson());
+    }
+
+    public String getRequestorDepartment() {
+        return getRequestorPerson() == null ? null : getRequestorPerson().getDepartment();
+    }
+
     public Organization getOrganization() {
         if (organization == null) {
             buildRequesters();
@@ -199,6 +242,8 @@ public class RequesterService {
         requesters = sampleRequesterService.getRequestersForSampleId(sampleId);
         Sample sample = sampleService.get(sampleId);
         person = sampleService.getPersonRequester(sample);
+        requestorPerson = sampleService.getPersonRequester(sample,
+                TableIdService.getInstance().REQUESTOR_CONTACT_REQUESTER_TYPE_ID);
         organization = sampleService.getOrganizationRequester(sampleService.get(sampleId),
                 TableIdService.getInstance().REFERRING_ORG_TYPE_ID);
         organizationDepartment = sampleService.getOrganizationRequester(sampleService.get(sampleId),

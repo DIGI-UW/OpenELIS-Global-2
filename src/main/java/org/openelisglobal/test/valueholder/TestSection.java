@@ -162,20 +162,20 @@ public class TestSection extends EnumValueItemImpl {
         this.isActive = isActive;
     }
 
-    public Localization getLocalization() {
-        return (Localization) localization.getValue();
-    }
-
-    public void setLocalization(Localization localization) {
-        this.localization.setValue(localization);
-    }
-
     public String getDomain() {
         return domain;
     }
 
     public void setDomain(String domain) {
         this.domain = domain;
+    }
+
+    public Localization getLocalization() {
+        return (Localization) localization.getValue();
+    }
+
+    public void setLocalization(Localization localization) {
+        this.localization.setValue(localization);
     }
 
     @Override
@@ -192,4 +192,11 @@ public class TestSection extends EnumValueItemImpl {
     public int hashCode() {
         return Objects.hash(id);
     }
+
+    @lombok.Getter
+    @lombok.Setter
+    private boolean requireTrackedMedia;
+    @lombok.Getter
+    @lombok.Setter
+    private String gramStainTestId;
 }

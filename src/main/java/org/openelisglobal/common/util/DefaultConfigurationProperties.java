@@ -255,6 +255,8 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.restrictFreeTextRefSiteEntry, "false");
         properties.setPropertyValue(Property.restrictFreeTextMethodEntry, "false");
         properties.setPropertyValue(Property.restrictFreeTextProviderEntry, "false");
+        properties.setPropertyValue(Property.restrictFreeTextRequestorEntry, "false");
+        properties.setPropertyValue(Property.restrictFreeTextSampSiteEntry, "false");
         properties.setPropertyValue(Property.autoFillTechNameBox, "false");
         properties.setPropertyValue(Property.autoFillTechNameUser, "false");
         properties.setPropertyValue(Property.failedValidationMarker, "true");
@@ -271,6 +273,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.ReflexAction, "Haiti");
         properties.setPropertyValue(Property.AccessionFormat, "SITEYEARNUM");
         properties.setPropertyValue(Property.TRACK_PATIENT_PAYMENT, "false");
+        properties.setPropertyValue(Property.SHOW_FAX_FIELDS, "false");
         properties.setPropertyValue(Property.ACCESSION_NUMBER_VALIDATE, "false");
         properties.setPropertyValue(Property.ALERT_FOR_INVALID_RESULTS, "false");
         properties.setPropertyValue(Property.DEFAULT_DATE_LOCALE, "fr-FR");
@@ -279,6 +282,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.CONDENSE_NFS_PANEL, "false");
         properties.setPropertyValue(Property.PATIENT_DATA_ON_RESULTS_BY_ROLE, "false");
         properties.setPropertyValue(Property.USE_PAGE_NUMBERS_ON_REPORTS, "true");
+        properties.setPropertyValue(Property.REPORT_PAPER_SIZE, "A4");
         properties.setPropertyValue(Property.QA_SORT_EVENT_LIST, "true");
         properties.setPropertyValue(Property.ALWAYS_VALIDATE_RESULTS, "true");
         properties.setPropertyValue(Property.ADDITIONAL_SITE_INFO, "");
@@ -293,6 +297,9 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.ACCESSION_NUMBER_PREFIX, "");
         properties.setPropertyValue(Property.NOTE_EXTERNAL_ONLY_FOR_VALIDATION, "false");
         properties.setPropertyValue(Property.PHONE_FORMAT, "(ddd) dddd-dddd");
+        properties.setPropertyValue(Property.SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_CLINICAL, "OPTIONAL");
+        properties.setPropertyValue(Property.SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_ENVIRONMENTAL, "OPTIONAL");
+        properties.setPropertyValue(Property.SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_VECTOR, "OPTIONAL");
         properties.setPropertyValue(Property.PHONE_FORMAT_LABEL, "");
         properties.setPropertyValue(Property.PHONE_INTERNATIONAL_VALIDATION, "NONE");
         properties.setPropertyValue(Property.PHONE_INTERNATIONAL_FORMAT_LABEL, "");
@@ -314,6 +321,8 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.PATIENT_ID_REQUIRED, "true");
         properties.setPropertyValue(Property.PATIENT_SUBJECT_NUMBER_REQUIRED, "true");
         properties.setPropertyValue(Property.PATIENT_NATIONAL_ID_REQUIRED, "true");
+        properties.setPropertyValue(Property.PATIENT_SEX_REQUIRED, "true");
+        properties.setPropertyValue(Property.PATIENT_AGE_REQUIRED, "true");
 
         properties.setPropertyValue(Property.QA_SAMPLE_ID_REQUIRED, "false");
         properties.setPropertyValue(Property.MAX_ORDER_LABEL_PRINTED, "10");
@@ -323,6 +332,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.MAX_BLOCK_LABEL_PRINTED, "1");
         properties.setPropertyValue(Property.MAX_FREEZER_LABEL_PRINTED, "1");
         properties.setPropertyValue(Property.MAX_REQUEST_LABEL_QUANTITY, "100");
+        properties.setPropertyValue(Property.MAX_REQUEST_LABEL_TOTAL, "1000");
         properties.setPropertyValue(Property.DEFAULT_ORDER_LABEL_PRINTED, "2");
         properties.setPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED, "1");
         properties.setPropertyValue(Property.DEFAULT_ALIQUOT_LABEL_PRINTED, "1");
@@ -385,6 +395,26 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.GPS_ACCURACY_METERS, "100");
         properties.setPropertyValue(Property.GPS_TIMEOUT_SECONDS, "10");
         properties.setPropertyValue(Property.USE_NEW_ADDRESS_HIERARCHY, "true"); // Default to new address hierarchy
+
+        // A deployment whose site_information row is missing or deleted still visits
+        // every optional pathology bench stage, so a stage can never be switched off
+        // by the absence of its row (FR-2.3).
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_DECALCIFICATION_ENABLED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_PROCESSING_ENABLED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_EMBEDDING_ENABLED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_MICROTOMY_ENABLED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_STAINING_ENABLED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_SCAN_VERIFICATION_REQUIRED, "true");
+
+        // The scheme a deployment falls back to when it has configured none: parts
+        // lettered A, B, C, a block named for its part and its number, a slide named
+        // for its number alone, and a dot between the segments of a barcode.
+        properties.setPropertyValue(Property.PATHOLOGY_IDENTIFIER_PART_SCHEME, "ALPHA");
+        properties.setPropertyValue(Property.PATHOLOGY_IDENTIFIER_BLOCK_FORMAT, "{part}{n}");
+        properties.setPropertyValue(Property.PATHOLOGY_IDENTIFIER_SLIDE_FORMAT, "{n}");
+        properties.setPropertyValue(Property.PATHOLOGY_IDENTIFIER_SEPARATOR, ".");
         return properties;
     }
 
@@ -431,6 +461,8 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         loadExternalConnection(properties, ProgrammedConnection.SMPP_SERVER, Property.PATIENT_RESULTS_SMPP_SMS_ENABLED,
                 Property.PATIENT_RESULTS_SMPP_SMS_ADDRESS, Property.PATIENT_RESULTS_SMPP_SMS_USERNAME,
                 Property.PATIENT_RESULTS_SMPP_SMS_PASSWORD);
+        // WHATSAPP_SERVER intentionally NOT loaded here — WhatsAppNotificationSender
+        // reads URI + Basic auth directly from ExternalConnectionService at send time.
     }
 
     // two properties are used as the database logic to properties supposrts more

@@ -38,8 +38,8 @@ describe("useMenuAutoExpand", () => {
             {
               menu: {
                 id: "1.1",
-                displayKey: "menu.analyzers.errors",
-                actionURL: "/analyzers/errors",
+                displayKey: "menu.analyzers.types",
+                actionURL: "/analyzers/types",
                 isActive: true,
               },
               childMenus: [],
@@ -49,8 +49,7 @@ describe("useMenuAutoExpand", () => {
         },
       ];
 
-      // Simulate being on /analyzers/errors route
-      window.history.pushState({}, "", "/analyzers/errors");
+      window.history.pushState({}, "", "/analyzers/types");
 
       const { result } = renderHook(() => useMenuAutoExpand(menus), {
         wrapper,
@@ -77,8 +76,8 @@ describe("useMenuAutoExpand", () => {
             {
               menu: {
                 id: "1.1",
-                displayKey: "menu.analyzers.errors",
-                actionURL: "/analyzers/errors",
+                displayKey: "menu.analyzers.types",
+                actionURL: "/analyzers/types",
                 isActive: true,
               },
               childMenus: [],
@@ -212,8 +211,8 @@ describe("useMenuAutoExpand", () => {
             {
               menu: {
                 id: "1.1",
-                displayKey: "menu.analyzers.errors",
-                actionURL: "/analyzers/errors",
+                displayKey: "menu.analyzers.types",
+                actionURL: "/analyzers/types",
                 isActive: true,
               },
               childMenus: [],
@@ -253,8 +252,8 @@ describe("useMenuAutoExpand", () => {
             {
               menu: {
                 id: "1.1",
-                displayKey: "menu.analyzers.errors",
-                actionURL: "/analyzers/errors",
+                displayKey: "menu.analyzers.types",
+                actionURL: "/analyzers/types",
                 isActive: true,
               },
               childMenus: [],
@@ -300,6 +299,33 @@ describe("useMenuAutoExpand", () => {
   });
 
   describe("edge cases", () => {
+    test.each([false, true])(
+      "inactive menu branches do not select or expand destinations (inactive parent=%s)",
+      (inactiveParent) => {
+        const menus = [
+          {
+            menu: { id: "parent", actionURL: "", isActive: !inactiveParent },
+            childMenus: [
+              {
+                menu: {
+                  id: "child",
+                  actionURL: "/Storage/rooms",
+                  isActive: inactiveParent,
+                },
+                childMenus: [],
+              },
+            ],
+          },
+        ];
+        window.history.pushState({}, "", "/Storage/rooms");
+        const { result } = renderHook(() => useMenuAutoExpand(menus), {
+          wrapper,
+        });
+        expect(result.current[0].expanded).toBe(false);
+        expect(result.current[0].childMenus[0].routeActive).toBe(false);
+      },
+    );
+
     /**
      * Test: Handles empty menus array
      */

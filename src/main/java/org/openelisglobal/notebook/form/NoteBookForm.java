@@ -1,6 +1,5 @@
 package org.openelisglobal.notebook.form;
 
-import java.util.Base64;
 import java.util.List;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 import org.openelisglobal.notebook.valueholder.NoteBookFile;
@@ -190,10 +189,6 @@ public class NoteBookForm {
 
         public void setBase64File(String base64File) {
             this.base64File = base64File;
-            String[] imageInfo = base64File.split(";base64,", 2);
-
-            setFileType(imageInfo[0]);
-            setFileData(Base64.getDecoder().decode(imageInfo[1]));
         }
     }
 

@@ -71,6 +71,15 @@ public class Person extends BaseObject<String> {
     @Email
     private String email;
 
+    private String department;
+
+    /**
+     * The local abbreviation of a {@code providerTitle} dictionary entry, so a rank
+     * is one value everywhere rather than free text typed into a name. Only the
+     * provider surfaces set it today (OGC-1223).
+     */
+    private String titleCode;
+
     // OGC-650 (LO-01-01): patient registration GPS coordinates. Toggle-gated by
     // the PATIENT_GPS_CAPTURE_ENABLED config property — only rendered when on.
     private java.math.BigDecimal gpsLatitude;
@@ -132,6 +141,22 @@ public class Person extends BaseObject<String> {
 
     public void setFax(String fax) {
         this.fax = fax;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getTitleCode() {
+        return titleCode;
+    }
+
+    public void setTitleCode(String titleCode) {
+        this.titleCode = titleCode;
     }
 
     public String getFirstName() {

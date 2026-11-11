@@ -123,3 +123,11 @@
   visibility: visible;
 }
 */
+
+/* Mono and extra tracking so 0 and O stay distinct when read off a printed label. */
+.lot-details-barcode {
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  letter-spacing: 0.04em;
+  word-break: break-all;
+}

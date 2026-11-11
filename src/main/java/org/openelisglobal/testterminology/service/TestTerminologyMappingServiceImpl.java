@@ -52,6 +52,12 @@ public class TestTerminologyMappingServiceImpl extends AuditableBaseObjectServic
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<TestTerminologyMapping> getAllActive() {
+        return getAllMatching("isActive", "Y");
+    }
+
+    @Override
     @Transactional
     public void saveMappingsForTest(String testId, List<TestTerminologyMapping> desired, String sysUserId) {
         // Key everything (active + soft-deleted) by the natural key the DB enforces
@@ -119,6 +125,29 @@ public class TestTerminologyMappingServiceImpl extends AuditableBaseObjectServic
             }
         }
         return scoped.isEmpty() ? shared : scoped;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getTestIdsWithActiveSource(String source) {
+        Set<String> testIds = new HashSet<>();
+        for (TestTerminologyMapping m : getAllMatching("source", source)) {
+            if ("Y".equals(m.getIsActive())) {
+                testIds.add(m.getTestId());
+            }
+        }
+        return testIds;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean hasActiveMappingForSource(String testId, String source) {
+        for (TestTerminologyMapping m : getActiveByTestId(testId)) {
+            if (Objects.equals(source, m.getSource())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

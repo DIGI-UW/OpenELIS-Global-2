@@ -78,17 +78,6 @@
   margin: 5px;
 }
 
-.searchActionButtons {
-  padding: 2px;
-  margin: 5px;
-  display: inline-block;
-}
-
-.searchActionButtons button {
-  margin: 10px;
-  text-align: center;
-}
-
 .sampleType {
   margin-top: 20px;
   /*padding-bottom: 10px;*/
@@ -112,15 +101,11 @@
   margin-left: 5px;
 }
 
-.inputTime {
-  margin-left: 2px;
-}
-
-.cds--accordion__heading {
+.orderWorkFlowDiv .cds--accordion__heading {
   background-color: #d9d8d9;
 }
 
-.cds--accordion__content {
+.orderWorkFlowDiv .cds--accordion__content {
   padding: 0px !important;
 }
 
@@ -169,17 +154,6 @@
 
 .orderEntrySuccessActions {
   margin-top: 1rem;
-}
-.printBarCodeBtn {
-  width: 220px;
-  text-align: center;
-}
-.confirmPrintCodeBtn {
-  height: 30px;
-  width: 70px;
-  text-align: center;
-  margin-top: 26px;
-  margin-left: 10px;
 }
 .placeAnotherOrderBtn {
   width: 220px;

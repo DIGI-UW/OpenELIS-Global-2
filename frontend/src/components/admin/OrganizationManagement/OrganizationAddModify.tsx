@@ -30,9 +30,10 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
-import { useLocation } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AutoComplete from "../../common/AutoComplete";
+import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 
 interface OrganizationType {
   id: string;
@@ -62,6 +63,7 @@ interface OrganizationResponse {
   cliaNum?: string;
   streetAddress?: string;
   city?: string;
+  email?: string;
   orgTypes: OrganizationType[];
   organization?: ParentOrganization;
   lastupdated?: string;
@@ -84,6 +86,7 @@ interface OrganizationFormData extends ParentOrganization {
   cliaNum?: string;
   streetAddress?: string;
   city?: string;
+  email?: string;
   organization?: ParentOrganization;
   [key: string]: unknown;
 }
@@ -154,6 +157,7 @@ function OrganizationAddModify() {
   >([]);
 
   const location = useLocation();
+  const history = useHistory();
   const ID = (() => {
     const search = location.search;
     if (search) {
@@ -174,7 +178,7 @@ function OrganizationAddModify() {
       );
     } else {
       setTimeout(() => {
-        window.location.assign("/MasterListsPage/organizationManagement");
+        history.replace("/MasterListsPage/organizationManagement");
       }, 1000);
     }
     return () => {
@@ -231,6 +235,7 @@ function OrganizationAddModify() {
         cliaNum: typeOfActivity.cliaNum,
         streetAddress: typeOfActivity.streetAddress,
         city: typeOfActivity.city,
+        email: typeOfActivity.email,
       };
 
       const organizationsManagementIdInfoPost = {
@@ -256,6 +261,7 @@ function OrganizationAddModify() {
         cliaNum: typeOfActivity.cliaNum,
         streetAddress: typeOfActivity.streetAddress,
         city: typeOfActivity.city,
+        email: typeOfActivity.email,
       };
       setOrgInfo(organizationsManagementIdInfo);
       setOrgInfoPost(organizationsManagementIdInfoPost);
@@ -338,6 +344,18 @@ function OrganizationAddModify() {
     setOrgInfo((prevOrgInfo) => ({
       ...prevOrgInfo,
       city: e.target.value,
+    }));
+  }
+
+  function handleEmailChange(e: ChangeEvent<HTMLInputElement>) {
+    setSaveButton(false);
+    setOrgInfoPost((prevOrgInfoPost) => ({
+      ...prevOrgInfoPost,
+      email: e.target.value,
+    }));
+    setOrgInfo((prevOrgInfo) => ({
+      ...prevOrgInfo,
+      email: e.target.value,
     }));
   }
 
@@ -452,13 +470,25 @@ function OrganizationAddModify() {
     postToOpenElisServerJsonResponse(
       `/rest/Organization?ID=${ID}&startingRecNo=1`,
       JSON.stringify(orgInfoPost),
-      () => {
-        submitAddUpdatedOrgInfoCallback();
-      },
+      submitAddUpdatedOrgInfoCallback,
     );
   }
 
-  const submitAddUpdatedOrgInfoCallback = () => {
+  const submitAddUpdatedOrgInfoCallback = (response?: {
+    success?: boolean;
+  }) => {
+    // loading is inverted: false shows the spinner.
+    if (!response?.success) {
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "notification.organization.post.error",
+        }),
+        kind: NotificationKinds.error,
+      });
+      setNotificationVisible(true);
+      return;
+    }
     setLoading(false);
     addNotification({
       title: intl.formatMessage({
@@ -470,7 +500,7 @@ function OrganizationAddModify() {
       kind: NotificationKinds.success,
     });
     setTimeout(() => {
-      window.location.assign("/MasterListsPage/organizationManagement");
+      history.push("/MasterListsPage/organizationManagement");
     }, 200);
     setNotificationVisible(true);
   };
@@ -538,17 +568,21 @@ function OrganizationAddModify() {
               >
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="org-name">
                       <FormattedMessage id="organization.organizationName" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="org-name"
+                      {...requiredProps()}
+                      labelText={intl.formatMessage({
+                        id: "organization.organizationName",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
-                      labelText=""
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder",
                       })}
@@ -573,9 +607,12 @@ function OrganizationAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="org-prefix"
+                      labelText={intl.formatMessage({
+                        id: "organization.short.CI",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
-                      labelText=""
                       maxLength={15}
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder",
@@ -592,17 +629,21 @@ function OrganizationAddModify() {
                 </Grid>
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="is-active">
                       <FormattedMessage id="organization.isActive" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="is-active"
+                      {...requiredProps()}
+                      labelText={intl.formatMessage({
+                        id: "organization.isActive",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
-                      labelText=""
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder.active",
                       })}
@@ -625,9 +666,12 @@ function OrganizationAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="org-internet-address"
+                      labelText={intl.formatMessage({
+                        id: "organization.internetaddress",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
-                      labelText=""
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder.internetAddress",
                       })}
@@ -651,10 +695,14 @@ function OrganizationAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="org-street-address"
+                      labelText={intl.formatMessage({
+                        id: "organization.streetAddress",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
-                      labelText=""
-                      maxLength={15}
+                      enableCounter
+                      maxCount={30}
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder",
                       })}
@@ -679,10 +727,14 @@ function OrganizationAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="org-city"
+                      labelText={intl.formatMessage({
+                        id: "organization.city",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
-                      labelText=""
-                      maxLength={15}
+                      enableCounter
+                      maxCount={30}
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder",
                       })}
@@ -697,12 +749,37 @@ function OrganizationAddModify() {
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <>
+                      <FormattedMessage id="organization.email" /> :
+                    </>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id="org-email"
+                      labelText={intl.formatMessage({
+                        id: "organization.email",
+                      })}
+                      hideLabel
+                      className="defalut"
+                      type="email"
+                      maxLength={255}
+                      value={orgInfo && orgInfo.email ? orgInfo.email : ""}
+                      onChange={(e) => handleEmailChange(e)}
+                    />
+                  </Column>
+                </Grid>
+                <Grid fullWidth={true}>
+                  <Column lg={8} md={4} sm={4}>
+                    <>
                       <FormattedMessage id="organization.clia.number" /> :
                     </>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="org-clia-number"
+                      labelText={intl.formatMessage({
+                        id: "organization.clia.number",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
                       placeholder={intl.formatMessage({
@@ -744,7 +821,7 @@ function OrganizationAddModify() {
                       label={
                         <>
                           <FormattedMessage id="organization.search.parent.name" />{" "}
-                          <span className="requiredlabel">*</span>
+                          <RequiredMarker announce />
                         </>
                       }
                       style={{ width: "!important 100%" }}
@@ -767,7 +844,7 @@ function OrganizationAddModify() {
                     <Heading>
                       <>
                         <FormattedMessage id="organization.type.CI" />
-                        <span className="requiredlabel">*</span>
+                        <RequiredMarker announce />
                       </>
                     </Heading>
                   </Section>
@@ -910,9 +987,7 @@ function OrganizationAddModify() {
               </Button>{" "}
               <Button
                 onClick={() =>
-                  window.location.assign(
-                    "/MasterListsPage/organizationManagement",
-                  )
+                  history.push("/MasterListsPage/organizationManagement")
                 }
                 kind="tertiary"
                 type="button"

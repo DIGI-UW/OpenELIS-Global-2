@@ -38,9 +38,13 @@ import { priorities } from "../data/orderOptions";
 import { NotificationKinds } from "../common/CustomNotification";
 import AutoComplete from "../common/AutoComplete";
 import OrderResultReporting from "./OrderResultReporting";
-import LabelsSection from "../barcodeWorkflow/LabelsSection";
+import LabelsSection, {
+  seedPersistPayload,
+} from "../barcodeWorkflow/LabelsSection";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
+import SearchableSelect from "../common/SearchableSelect";
 const AddOrder = (props) => {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -61,11 +65,12 @@ const AddOrder = (props) => {
     stagedAttachments,
     setStagedAttachments,
   } = props;
-  const [otherSamplingVisible, setOtherSamplingVisible] = useState(false);
+  const [otherTestLocationCodeId, setOtherTestLocationCodeId] = useState("");
   const [providers, setProviders] = useState([]);
   const [paymentOptions, setPaymentOptions] = useState([]);
   const [samplingPerformed, setSamplingPerformed] = useState([]);
   const [siteNames, setSiteNames] = useState([]);
+  const [sampleTypeOptions, setSampleTypeOptions] = useState([]);
   // Ref (not state) because the value gates a one-time init inside an effect
   // and is never read during render — using state would trigger an extra
   // render and a react-hooks/set-state-in-effect lint violation.
@@ -78,6 +83,12 @@ const AddOrder = (props) => {
   // drives the order-level LabelsSection (API mode). Null until the first fetch
   // (or when no sample carries tests), in which case the section is not shown.
   const [labelRequest, setLabelRequest] = useState(null);
+
+  // OGC-1191: deliberate Lab Number reassignment on the modify path. The
+  // confirmation dialog holds the candidate number locally; only an explicit
+  // Confirm writes it to newAccessionNumber (the SampleEdit reassignment field).
+  const [reassignOpen, setReassignOpen] = useState(false);
+  const [pendingReassign, setPendingReassign] = useState("");
 
   const ATTACHMENT_MAX_FILES = 5;
   const ATTACHMENT_MAX_SIZE = 10 * 1024 * 1024;
@@ -275,7 +286,15 @@ const AddOrder = (props) => {
         setSiteNames(response.sampleOrderItems.referringSiteList);
         setPaymentOptions(response.sampleOrderItems.paymentOptions);
         setSamplingPerformed(response.sampleOrderItems.testLocationCodeList);
+        setOtherTestLocationCodeId(
+          response.sampleOrderItems.otherTestLocationCodeId || "",
+        );
         setProviders(response.sampleOrderItems.providersList);
+      }
+    });
+    getFromOpenElisServer("/rest/user-sample-types", (response) => {
+      if (componentMounted.current && Array.isArray(response)) {
+        setSampleTypeOptions(response);
       }
     });
     window.scrollTo(0, 0);
@@ -389,18 +408,15 @@ const AddOrder = (props) => {
     });
   }
 
-  const handleSamplingPerformed = (e) => {
-    const { value } = e.target;
-    if (value === "1310") {
-      setOtherSamplingVisible(!otherSamplingVisible);
-    } else {
-      setOtherSamplingVisible(false);
-    }
+  const handleSamplingPerformed = (value) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
         ...orderFormValues.sampleOrderItems,
         testLocationCode: value,
+        ...(value === String(otherTestLocationCodeId)
+          ? {}
+          : { otherLocationCode: "" }),
       },
     });
   };
@@ -433,6 +449,44 @@ const AddOrder = (props) => {
       "/rest/SampleEntryGenerateScanProvider",
       fetchGeneratedAccessionNo,
     );
+  };
+
+  const openReassign = () => {
+    setPendingReassign(orderFormValues.newAccessionNumber || "");
+    setReassignOpen(true);
+  };
+
+  const cancelReassign = () => {
+    setReassignOpen(false);
+    setPendingReassign("");
+  };
+
+  const confirmReassign = () => {
+    setOrderFormValues({
+      ...orderFormValues,
+      newAccessionNumber: pendingReassign.trim(),
+    });
+    setReassignOpen(false);
+  };
+
+  const undoReassign = () => {
+    setOrderFormValues({
+      ...orderFormValues,
+      newAccessionNumber: "",
+    });
+    setPendingReassign("");
+  };
+
+  const handleReassignGeneration = (e) => {
+    if (e) {
+      e.preventDefault();
+    }
+    getFromOpenElisServer("/rest/SampleEntryGenerateScanProvider", (res) => {
+      if (res.status) {
+        setPendingReassign(res.body);
+        setNotificationVisible(false);
+      }
+    });
   };
 
   function accessionNumberValidationResults(res) {
@@ -646,7 +700,6 @@ const AddOrder = (props) => {
           ...orderFormValues.sampleOrderItems,
           requestDate: configurationProperties.currentDateAsText,
           receivedDateForDisplay: configurationProperties.currentDateAsText,
-          nextVisitDate: configurationProperties.currentDateAsText,
           receivedTime: configurationProperties.currentTimeAsText,
         },
       });
@@ -706,6 +759,23 @@ const AddOrder = (props) => {
     [samples],
   );
 
+  // The specimen names the sample-type picker offers, so the heading a sample is
+  // given here reads as the type the user chose on it rather than the number of
+  // the box it sits in. Same list the picker itself reads, so the two cannot
+  // disagree.
+  const sampleTypeNamesById = useMemo(() => {
+    const byId = {};
+    (sampleTypeOptions || []).forEach((type) => {
+      byId[String(type.id)] = type.value;
+    });
+    return byId;
+  }, [sampleTypeOptions]);
+
+  const sampleTypeNameOf = (sample) =>
+    sample && sample.sampleTypeId
+      ? sampleTypeNamesById[String(sample.sampleTypeId)]
+      : undefined;
+
   // Stable signature of the selected tests + sample types — re-fetch the
   // aggregation only when these change (not on every unrelated AddOrder render).
   const orderLabelSignature = useMemo(
@@ -721,10 +791,17 @@ const AddOrder = (props) => {
 
   // Fetch POST /api/orderEntry/labelRequest with all selected test ids + the
   // filtered samples (each carrying its positional sample_id_local). Renders via
-  // LabelsSection's API mode. Clears when no sample carries tests.
+  // LabelsSection's API mode. Clears when no sample carries tests. Modify Order
+  // shares this component but its save (/rest/SampleEdit) carries no label
+  // request, so the section is not offered there.
   useEffect(() => {
+    if (isModifyOrder) {
+      setLabelRequest(null);
+      return;
+    }
     if (orderLabelSamples.length === 0) {
       setLabelRequest(null);
+      setOrderFormValues((prev) => ({ ...prev, labelPersistRequest: null }));
       return;
     }
     const testIds = [
@@ -747,29 +824,40 @@ const AddOrder = (props) => {
       (response) => {
         if (response && !response.error) {
           setLabelRequest(response);
+          setOrderFormValues((prev) => ({
+            ...prev,
+            labelPersistRequest: seedPersistPayload(response),
+          }));
         }
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderLabelSignature]);
+  }, [orderLabelSignature, isModifyOrder]);
 
-  // Human-facing row label for the sample table: the sample type name, falling
-  // back to "Sample N" (the filtered position the backend correlates by).
+  // Human-facing row label for the sample table, as the Result Reporting
+  // headings read it: "Sample N: <sample type>", numbered by the sample's place
+  // on the form so both sections name a sample alike.
   const orderLabelSampleFormatter = (row) => {
     const sample = orderLabelSamples[Number(row.sampleIdLocal)];
-    if (sample && sample.name) {
-      return sample.name;
-    }
-    return intl.formatMessage(
+    const position = sample ? samples.indexOf(sample) : -1;
+    const heading = intl.formatMessage(
       { id: "orderEntry.labels.sampleRow.header" },
-      { number: row.sampleNumber, id: row.sampleIdLocal },
+      {
+        number: position >= 0 ? position + 1 : row.sampleNumber,
+        id: row.sampleIdLocal,
+      },
     );
+    const typeName = sampleTypeNameOf(sample);
+    return typeName ? `${heading}: ${typeName}` : heading;
   };
 
   // Capture the LabelsSection's chosen quantities (persistPayload, already shaped
   // as OrderLabelPersistRequest) and lift it onto orderFormValues so Index.jsx's
   // save POST body carries it as the top-level labelPersistRequest.
   const handleOrderLabelsChange = ({ persistPayload }) => {
+    if (isModifyOrder) {
+      return;
+    }
     setOrderFormValues((prev) => ({
       ...prev,
       labelPersistRequest: persistPayload,
@@ -809,7 +897,9 @@ const AddOrder = (props) => {
                   type="hidden"
                   name="externalOrderNumber"
                   id="externalOrderNumber"
-                  value={orderFormValues.sampleOrderItems.externalOrderNumber}
+                  value={
+                    orderFormValues.sampleOrderItems.externalOrderNumber ?? ""
+                  }
                 />
               </Column>
             )}
@@ -820,52 +910,150 @@ const AddOrder = (props) => {
                   <FormattedMessage id="sample.label.labnumber" />:{" "}
                   {orderFormValues.accessionNumber}
                 </h5>
+                {orderFormValues.newAccessionNumber ? (
+                  <InlineNotification
+                    kind="warning"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "sample.labnumber.reassign.pending.title",
+                    })}
+                    subtitle={intl.formatMessage(
+                      { id: "sample.labnumber.reassign.pending" },
+                      { number: orderFormValues.newAccessionNumber },
+                    )}
+                    data-cy="reassign-labNumber-pending"
+                  />
+                ) : null}
+                <div
+                  className="reassignLabNumberActions"
+                  style={{
+                    display: "flex",
+                    gap: "0.5rem",
+                    alignItems: "center",
+                  }}
+                >
+                  {orderFormValues.newAccessionNumber ? (
+                    <Button
+                      kind="tertiary"
+                      size="sm"
+                      data-cy="reassign-labNumber-undo"
+                      onClick={undoReassign}
+                    >
+                      <FormattedMessage id="sample.labnumber.reassign.undo" />
+                    </Button>
+                  ) : null}
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    data-cy="reassign-labNumber-open"
+                    onClick={openReassign}
+                  >
+                    <FormattedMessage id="sample.labnumber.reassign.button" />
+                  </Button>
+                </div>
+                <Modal
+                  open={reassignOpen}
+                  danger
+                  size="sm"
+                  modalHeading={intl.formatMessage({
+                    id: "sample.labnumber.reassign.heading",
+                  })}
+                  primaryButtonText={intl.formatMessage({
+                    id: "sample.labnumber.reassign.confirm",
+                  })}
+                  secondaryButtonText={intl.formatMessage({
+                    id: "label.button.cancel",
+                  })}
+                  primaryButtonDisabled={!pendingReassign.trim()}
+                  onRequestClose={cancelReassign}
+                  onRequestSubmit={confirmReassign}
+                  data-cy="reassign-labNumber-modal"
+                >
+                  <p>
+                    <FormattedMessage id="sample.labnumber.reassign.warning" />
+                  </p>
+                  <p>
+                    <FormattedMessage id="sample.labnumber.reassign.current" />
+                    {": "}
+                    <strong>{orderFormValues.accessionNumber}</strong>
+                  </p>
+                  <CustomLabNumberInput
+                    name="reassign-labNo"
+                    id="reassign-labNo"
+                    placeholder={intl.formatMessage({
+                      id: "input.placeholder.labNo",
+                    })}
+                    value={pendingReassign}
+                    onChange={(e, rawVal) =>
+                      setPendingReassign(rawVal ? rawVal : e?.target?.value)
+                    }
+                    labelText={
+                      <FormattedMessage id="sample.label.labnumber.new" />
+                    }
+                  />
+                  <div>
+                    <FormattedMessage id="label.order.scan.text" />{" "}
+                    <Link
+                      data-cy="reassign-generate-labNumber"
+                      href="#"
+                      onClick={(e) => handleReassignGeneration(e)}
+                    >
+                      <FormattedMessage id="sample.label.labnumber.generate" />
+                    </Link>
+                  </div>
+                </Modal>
               </Column>
             )}
 
-            <Column lg={8} md={4} sm={4}>
-              <div>
-                <CustomLabNumberInput
-                  name="labNo"
-                  placeholder={intl.formatMessage({
-                    id: "input.placeholder.labNo",
-                  })}
-                  value={
-                    isModifyOrder
-                      ? orderFormValues.newAccessionNumber
-                      : orderFormValues.sampleOrderItems.labNo
-                  }
-                  //onMouseLeave={handleLabNoValidation}
-                  onClick={() => handleChange("sampleOrderItems.labNo")}
-                  onChange={handleLabNo}
-                  onKeyPress={handleKeyPress}
-                  labelText={
-                    <>
-                      <FormattedMessage id="sample.label.labnumber" />{" "}
-                      <span className="requiredlabel">*</span>
-                    </>
-                  }
-                  id="labNo"
-                  invalid={
-                    changed["sampleOrderItems.labNo"] &&
-                    error("sampleOrderItems.labNo")
-                      ? true
-                      : false
-                  }
-                  invalidText={error("sampleOrderItems.labNo")}
-                />
+            {/* OGC-1191 — Editing an existing order must never silently reassign
+                the specimen's accession number. On the modify path the number is
+                shown as static text above with a deliberate, confirmed Reassign
+                action; the editable input bound to newAccessionNumber (the
+                SampleEdit reassignment field) and its Generate link are offered
+                only when creating a new order. */}
+            {!isModifyOrder && (
+              <Column lg={8} md={4} sm={4}>
                 <div>
-                  <FormattedMessage id="label.order.scan.text" />{" "}
-                  <Link
-                    data-cy="generate-labNumber"
-                    href="#"
-                    onClick={(e) => handleLabNoGeneration(e)}
-                  >
-                    <FormattedMessage id="sample.label.labnumber.generate" />
-                  </Link>
+                  <CustomLabNumberInput
+                    name="labNo"
+                    placeholder={intl.formatMessage({
+                      id: "input.placeholder.labNo",
+                    })}
+                    value={orderFormValues.sampleOrderItems.labNo ?? ""}
+                    //onMouseLeave={handleLabNoValidation}
+                    onClick={() => handleChange("sampleOrderItems.labNo")}
+                    onChange={handleLabNo}
+                    onKeyPress={handleKeyPress}
+                    labelText={
+                      <>
+                        <FormattedMessage id="sample.label.labnumber" />
+                        <RequiredMarker />
+                      </>
+                    }
+                    {...requiredProps()}
+                    id="labNo"
+                    invalid={
+                      changed["sampleOrderItems.labNo"] &&
+                      error("sampleOrderItems.labNo")
+                        ? true
+                        : false
+                    }
+                    invalidText={error("sampleOrderItems.labNo")}
+                  />
+                  <div>
+                    <FormattedMessage id="label.order.scan.text" />{" "}
+                    <Link
+                      data-cy="generate-labNumber"
+                      href="#"
+                      onClick={(e) => handleLabNoGeneration(e)}
+                    >
+                      <FormattedMessage id="sample.label.labnumber.generate" />
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            </Column>
+              </Column>
+            )}
             <Column lg={8} md={4} sm={4}>
               <Select
                 id="priorityId"
@@ -875,11 +1063,11 @@ const AddOrder = (props) => {
                 onChange={handlePriority}
                 required
               >
-                {priorities.map((priority, index) => {
+                {priorities.map((priority) => {
                   return (
                     <SelectItem
-                      key={index}
-                      text={priority.label}
+                      key={priority.value}
+                      text={intl.formatMessage({ id: priority.labelId })}
                       value={priority.value}
                     />
                   );
@@ -942,7 +1130,7 @@ const AddOrder = (props) => {
                 labelText={intl.formatMessage({
                   id: "sample.entry.nextVisit.date",
                 })}
-                value={orderFormValues.sampleOrderItems.nextVisitDate}
+                value={orderFormValues.sampleOrderItems.nextVisitDate ?? ""}
                 autofillDate={false}
                 disallowPastDate={true}
                 onChange={(date) =>
@@ -973,8 +1161,8 @@ const AddOrder = (props) => {
                 onSelect={handleAutoCompleteSiteName}
                 label={
                   <>
-                    <FormattedMessage id="order.search.site.name" />{" "}
-                    <span className="requiredlabel">*</span>
+                    <FormattedMessage id="order.search.site.name" />
+                    <RequiredMarker />
                   </>
                 }
                 style={{ width: "!important 100%" }}
@@ -991,7 +1179,8 @@ const AddOrder = (props) => {
                 onChange={handleRequesterDept}
                 required
                 value={
-                  orderFormValues.sampleOrderItems.referringSiteDepartmentId
+                  orderFormValues.sampleOrderItems.referringSiteDepartmentId ??
+                  ""
                 }
               >
                 <SelectItem value="" text="" />
@@ -1022,8 +1211,12 @@ const AddOrder = (props) => {
                 onChange={clearProviderId}
                 label={
                   <>
-                    <FormattedMessage id="order.search.requester.label" />{" "}
-                    <span className="requiredlabel">*</span>
+                    <FormattedMessage id="order.search.requester.label" />
+                    <RequiredMarker
+                      required={
+                        configurationProperties.REQUESTER_REQUIRED === "true"
+                      }
+                    />
                   </>
                 }
                 style={{ width: "!important 100%" }}
@@ -1031,7 +1224,7 @@ const AddOrder = (props) => {
                   <FormattedMessage id="order.invalid.requester.name.label" />
                 }
                 suggestions={providers.length > 0 ? providers : []}
-                required
+                required={configurationProperties.REQUESTER_REQUIRED === "true"}
               />
             </Column>
             <Column lg={8} md={4} sm={4}>
@@ -1042,7 +1235,8 @@ const AddOrder = (props) => {
                 })}
                 onChange={handleProvisionalClinicalDiagnosisChange}
                 value={
-                  orderFormValues.sampleOrderItems.provisionalClinicalDiagnosis
+                  orderFormValues.sampleOrderItems
+                    .provisionalClinicalDiagnosis ?? ""
                 }
                 labelText={intl.formatMessage({
                   id: "order.requester.provisionalDiagnosis.label",
@@ -1067,9 +1261,16 @@ const AddOrder = (props) => {
                 labelText={
                   <>
                     <FormattedMessage id="order.requester.firstName.label" />
-                    <span className="requiredlabel">*</span>
+                    <RequiredMarker
+                      required={
+                        configurationProperties.REQUESTER_REQUIRED === "true"
+                      }
+                    />
                   </>
                 }
+                {...requiredProps(
+                  configurationProperties.REQUESTER_REQUIRED === "true",
+                )}
                 disabled={
                   configurationProperties.restrictFreeTextProviderEntry ===
                   "true"
@@ -1078,7 +1279,7 @@ const AddOrder = (props) => {
                 onClick={() =>
                   handleChange("sampleOrderItems.providerFirstName")
                 }
-                value={orderFormValues.sampleOrderItems.providerFirstName}
+                value={orderFormValues.sampleOrderItems.providerFirstName ?? ""}
                 invalid={
                   changed["sampleOrderItems.providerFirstName"] &&
                   error("sampleOrderItems.providerFirstName")
@@ -1087,6 +1288,10 @@ const AddOrder = (props) => {
                 }
                 invalidText={error("sampleOrderItems.providerFirstName")}
                 id="requesterFirstName"
+                aria-required={
+                  configurationProperties.REQUESTER_REQUIRED === "true" ||
+                  undefined
+                }
               />
             </Column>
 
@@ -1099,19 +1304,30 @@ const AddOrder = (props) => {
                 labelText={
                   <>
                     <FormattedMessage id="order.requester.lastName.label" />
-                    <span className="requiredlabel">*</span>
+                    <RequiredMarker
+                      required={
+                        configurationProperties.REQUESTER_REQUIRED === "true"
+                      }
+                    />
                   </>
                 }
+                {...requiredProps(
+                  configurationProperties.REQUESTER_REQUIRED === "true",
+                )}
                 disabled={
                   configurationProperties.restrictFreeTextProviderEntry ===
                   "true"
                 }
-                value={orderFormValues.sampleOrderItems.providerLastName}
+                value={orderFormValues.sampleOrderItems.providerLastName ?? ""}
                 onClick={() =>
                   handleChange("sampleOrderItems.providerLastName")
                 }
                 onChange={handleRequesterLastName}
                 id="requesterLastName"
+                aria-required={
+                  configurationProperties.REQUESTER_REQUIRED === "true" ||
+                  undefined
+                }
                 invalid={
                   changed["sampleOrderItems.providerLastName"] &&
                   error("sampleOrderItems.providerLastName")
@@ -1136,7 +1352,7 @@ const AddOrder = (props) => {
                   "true"
                 }
                 onChange={handleRequesterWorkPhone}
-                value={orderFormValues.sampleOrderItems.providerWorkPhone}
+                value={orderFormValues.sampleOrderItems.providerWorkPhone ?? ""}
                 onMouseLeave={handlePhoneNoValidation}
                 labelText={intl.formatMessage({
                   id: "order.requester.phone.label",
@@ -1159,7 +1375,7 @@ const AddOrder = (props) => {
                   "true"
                 }
                 onChange={handleRequesterFax}
-                value={orderFormValues.sampleOrderItems.providerFax}
+                value={orderFormValues.sampleOrderItems.providerFax ?? ""}
                 id="providerFaxId"
               />
             </Column>
@@ -1181,7 +1397,7 @@ const AddOrder = (props) => {
                   "true"
                 }
                 onChange={handleRequesterEmail}
-                value={orderFormValues.sampleOrderItems.providerEmail}
+                value={orderFormValues.sampleOrderItems.providerEmail ?? ""}
                 id="providerEmailId"
                 invalid={error("sampleOrderItems.providerEmail") ? true : false}
                 invalidText={intl.formatMessage({
@@ -1194,7 +1410,9 @@ const AddOrder = (props) => {
               <Select
                 id="paymentOptionSelectionId"
                 name="paymentOptionSelections"
-                value={orderFormValues.sampleOrderItems.paymentOptionSelection}
+                value={
+                  orderFormValues.sampleOrderItems.paymentOptionSelection ?? ""
+                }
                 labelText={intl.formatMessage({
                   id: "order.payment.status.label",
                 })}
@@ -1219,35 +1437,27 @@ const AddOrder = (props) => {
               &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
             </Column>
             <Column lg={8} md={4} sm={4}>
-              <Select
+              <SearchableSelect
                 id="testLocationCodeId"
-                name="testLocationCode"
-                value={orderFormValues.sampleOrderItems.testLocationCode}
-                labelText={
-                  <FormattedMessage id="order.sampling.performed.label" />
-                }
-                onChange={(e) => handleSamplingPerformed(e)}
-                required
-              >
-                <SelectItem value="" text="" />
-                {samplingPerformed.map((option) => {
-                  return (
-                    <SelectItem
-                      key={option.id}
-                      value={option.id}
-                      text={option.value}
-                    />
-                  );
+                labelText={intl.formatMessage({
+                  id: "order.sampling.performed.label",
                 })}
-              </Select>
+                options={samplingPerformed || []}
+                value={orderFormValues.sampleOrderItems.testLocationCode ?? ""}
+                onChange={handleSamplingPerformed}
+              />
             </Column>
             <Column lg={8} md={4} sm={4}>
               <TextInput
                 name="testLocationCodeOther"
                 labelText={intl.formatMessage({ id: "order.if.other.label" })}
                 onChange={handleOtherLocationCode}
-                value={orderFormValues.sampleOrderItems.otherLocationCode}
-                disabled={!otherSamplingVisible}
+                value={orderFormValues.sampleOrderItems.otherLocationCode ?? ""}
+                disabled={
+                  !otherTestLocationCodeId ||
+                  String(orderFormValues.sampleOrderItems.testLocationCode) !==
+                    String(otherTestLocationCodeId)
+                }
                 id="testLocationCodeOtherId"
               />
             </Column>
@@ -1297,7 +1507,8 @@ const AddOrder = (props) => {
                       id: "placeholder.informedConsent.formReference",
                     })}
                     value={
-                      orderFormValues.sampleOrderItems.consentFormReference
+                      orderFormValues.sampleOrderItems.consentFormReference ??
+                      ""
                     }
                     onChange={handleConsentReferenceChange}
                     id="consentFormReferenceId"
@@ -1323,7 +1534,9 @@ const AddOrder = (props) => {
                       id: "placeholder.informedConsent.recordedBy",
                     })}
                     maxLength={255}
-                    value={orderFormValues.sampleOrderItems.consentRecordedBy}
+                    value={
+                      orderFormValues.sampleOrderItems.consentRecordedBy ?? ""
+                    }
                     onChange={handleConsentRecordedByChange}
                     id="consentRecordedById"
                   />
@@ -1344,7 +1557,9 @@ const AddOrder = (props) => {
                       id: "label.informedConsent.recordedAt",
                     })}
                     autofillDate={false}
-                    value={orderFormValues.sampleOrderItems.consentRecordedAt}
+                    value={
+                      orderFormValues.sampleOrderItems.consentRecordedAt ?? ""
+                    }
                     disallowFutureDate={true}
                     onChange={(date) =>
                       handleDatePickerChange("consentRecordedAt", date)
@@ -1590,6 +1805,9 @@ const AddOrder = (props) => {
                   <h4>
                     {" "}
                     <FormattedMessage id="label.button.sample" /> {index + 1}
+                    {sampleTypeNameOf(sample)
+                      ? ": " + sampleTypeNameOf(sample)
+                      : ""}
                   </h4>
                   <OrderResultReporting
                     selectedTests={sample.tests}

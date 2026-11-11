@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Add stuck-referral threshold (in days) to site_information.
+       Drives the aging banner on the Reference Lab Results page (OGC-801). -->
+  <changeSet author="oe" id="shipment-017-1">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'referralStuckThresholdDays'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq" />
+      <column name="name" value="referralStuckThresholdDays" />
+      <column name="description" value="Days a referral can wait at the reference lab before being flagged as stuck on the Reference Lab Results page." />
+      <column name="value" value="7" />
+      <column name="value_type" value="int" />
+      <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
+      <column name="lastupdated" valueDate="now()" />
+    </insert>
+    <rollback>
+        <delete schemaName="clinlims" tableName="site_information">
+            <where>name = 'referralStuckThresholdDays'</where>
+        </delete>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

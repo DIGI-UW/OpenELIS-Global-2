@@ -4,12 +4,9 @@ import jakarta.transaction.Transactional;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
-import org.hl7.fhir.r4.model.Questionnaire;
-import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
-import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -21,9 +18,12 @@ import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
+import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -37,9 +37,11 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
     @Autowired
     private DictionaryService dictionaryService;
     @Autowired
-    private FhirUtil fhirUtil;
+    private QuestionnaireStorageService questionnaireStorageService;
     @Autowired
     private OrganizationService organizationService;
+    @Autowired
+    private SystemUserService systemUserService;
 
     @Override
     @Transactional
@@ -89,11 +91,10 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
         displayItem.setLabNumber(immunohistochemistrySample.getSample().getAccessionNumber());
         displayItem.setImmunohistochemistrySampleId(immunohistochemistrySample.getId());
         displayItem.setPatientPK(patient.getId());
-        displayItem.setProgramQuestionnaire(fhirUtil.getLocalFhirClient().read().resource(Questionnaire.class)
-                .withId(immunohistochemistrySample.getProgram().getQuestionnaireUUID().toString()).execute());
-        displayItem.setProgramQuestionnaireResponse(
-                fhirUtil.getLocalFhirClient().read().resource(QuestionnaireResponse.class)
-                        .withId(immunohistochemistrySample.getQuestionnaireResponseUuid().toString()).execute());
+        displayItem.setProgramQuestionnaire(questionnaireStorageService
+                .getQuestionnaire(immunohistochemistrySample.getProgram().getQuestionnaireUUID()).orElse(null));
+        displayItem.setProgramQuestionnaireResponse(questionnaireStorageService
+                .getQuestionnaireResponse(immunohistochemistrySample.getQuestionnaireResponseUuid()).orElse(null));
 
         SampleOrderService sampleOrderService = new SampleOrderService(immunohistochemistrySample.getSample());
         SampleOrderItem sampleItem = sampleOrderService.getSampleOrderItem();
@@ -114,6 +115,10 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
             pathologySample.getSlides().size();
             displayItem.setBlocks(pathologySample.getBlocks());
             displayItem.setSlides(pathologySample.getSlides());
+            displayItem.setStainNames(PathologyDisplayServiceImpl.dictionaryNames(
+                    pathologySample.getSlides().stream().map(PathologySlide::getStainId), dictionaryService));
+            displayItem.setLabelVerifications(
+                    PathologyDisplayServiceImpl.labelVerifications(pathologySample.getSlides(), systemUserService));
             displayItem.setGrossExam(pathologySample.getGrossExam());
             displayItem.setMicroscopyExam(pathologySample.getMicroscopyExam());
 

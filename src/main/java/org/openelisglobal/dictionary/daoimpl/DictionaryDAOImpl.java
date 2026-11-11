@@ -18,6 +18,7 @@ package org.openelisglobal.dictionary.daoimpl;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -169,6 +170,12 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
     // is unique
     @Override
     public boolean duplicateDictionaryExists(Dictionary dictionary) throws LIMSRuntimeException {
+        return !findDuplicates(dictionary).isEmpty();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Dictionary> findDuplicates(Dictionary dictionary) throws LIMSRuntimeException {
         try {
             // local_abbrev is nullable in the schema (e.g. legacy 2012 seed
             // categories like marital status). Build the abbreviation clause
@@ -210,11 +217,11 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
             }
             query.setParameter("param3", dictId);
 
-            return !query.list().isEmpty();
+            return query.list();
         } catch (RuntimeException e) {
             // bugzilla 2154
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in duplicateDictionaryExists()", e);
+            throw new LIMSRuntimeException("Error in findDuplicates()", e);
         }
     }
 
@@ -247,9 +254,20 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
         }
     }
 
+    /**
+     * The id column is numeric, so a non-numeric id can never match a row.
+     * Malformed callers pass raw result text here (e.g. a legacy free-text
+     * select-list option); that is treated as not-found instead of letting the id
+     * parse blow up the whole request.
+     */
     @Override
     @Transactional(readOnly = true)
     public Dictionary getDictionaryById(String dictionaryId) throws LIMSRuntimeException {
+        if (dictionaryId == null || !StringUtils.isNumeric(dictionaryId.trim())) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "getDictionaryById",
+                    "non-numeric dictionary id ignored: " + dictionaryId);
+            return null;
+        }
         try {
             return entityManager.unwrap(Session.class).get(Dictionary.class, dictionaryId);
         } catch (RuntimeException e) {

@@ -77,6 +77,8 @@ public class Analysis extends BaseObject<String> implements NoteObject {
     private ValueHolderInterface parentAnalysis;
     private ValueHolderInterface parentResult;
     private ValueHolderInterface panel;
+    /** Mutually exclusive with {@link #sampleItem} (DB CHECK constraint). */
+    private String vectorPoolId;
     private Boolean triggeredReflex = false;
     private Boolean resultCalculated = false;
     private String statusId;
@@ -494,6 +496,14 @@ public class Analysis extends BaseObject<String> implements NoteObject {
 
     public void setPanel(Panel panel) {
         this.panel.setValue(panel);
+    }
+
+    public String getVectorPoolId() {
+        return vectorPoolId;
+    }
+
+    public void setVectorPoolId(String vectorPoolId) {
+        this.vectorPoolId = vectorPoolId;
     }
 
     public boolean isReferredOut() {

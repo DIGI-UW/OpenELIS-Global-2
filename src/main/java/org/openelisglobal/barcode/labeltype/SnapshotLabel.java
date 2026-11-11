@@ -1,8 +1,11 @@
 package org.openelisglobal.barcode.labeltype;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.barcode.LabelField;
+import org.openelisglobal.labelpreset.valueholder.LabelFieldKey;
 import org.openelisglobal.labelpreset.valueholder.PresetSnapshotDto;
 
 /**
@@ -35,11 +38,25 @@ public class SnapshotLabel extends Label {
      * @param labNo    the accession/lab number that becomes the barcode payload
      */
     public SnapshotLabel(PresetSnapshotDto snapshot, String labNo) {
+        this(snapshot, labNo, Collections.emptyMap());
+    }
+
+    /**
+     * Build a label whose frame and content come only from the snapshot, printing
+     * next to each field name the value the order knows ({@code values}, keyed by
+     * field key). A field without a value prints as a line to write on; the lab
+     * number is the barcode's own text and is not repeated as a row.
+     *
+     * @param snapshot the frozen preset snapshot (must be non-null with a non-null
+     *                 {@code preset} block)
+     * @param labNo    the accession/lab number that becomes the barcode payload
+     * @param values   the printed values by field key; may be empty
+     */
+    public SnapshotLabel(PresetSnapshotDto snapshot, String labNo, Map<String, String> values) {
         if (snapshot == null || snapshot.getPreset() == null) {
             throw new IllegalArgumentException("SnapshotLabel requires a snapshot with a non-null preset block");
         }
         PresetSnapshotDto.PresetSnapshotPreset preset = snapshot.getPreset();
-
         // Dimensions are used only as a ratio (pdfWidth is hardcoded to 350 in the
         // maker), but they MUST come from the snapshot — this is what AC-20 proves.
         if (preset.getHeightMm() != null) {
@@ -48,7 +65,7 @@ public class SnapshotLabel extends Label {
         if (preset.getWidthMm() != null) {
             this.width = preset.getWidthMm().floatValue();
         }
-
+        Map<String, String> printed = values == null ? Collections.emptyMap() : values;
         // Snapshot fields render above the barcode, ordered by display_order. The
         // snapshot list is already ordered (preset.fields @OrderBy displayOrder) but
         // we sort defensively so JSONB read-order can never reshuffle the label.
@@ -60,16 +77,19 @@ public class SnapshotLabel extends Label {
                 int orderB = b.getDisplayOrder() == null ? Integer.MAX_VALUE : b.getDisplayOrder();
                 return Integer.compare(orderA, orderB);
             }).forEach(field -> {
+                if (LabelFieldKey.LAB_NUMBER.name().equals(field.getFieldKey())) {
+                    return;
+                }
                 String fieldLabel = field.getFieldLabel() != null ? field.getFieldLabel() : field.getFieldKey();
-                LabelField labelField = new LabelField(fieldLabel == null ? "" : fieldLabel, "", 20);
+                String value = printed.get(field.getFieldKey());
+                LabelField labelField = new LabelField(fieldLabel == null ? "" : fieldLabel, value == null ? "" : value,
+                        20);
                 labelField.setDisplayFieldName(true);
-                labelField.setUnderline(true);
+                labelField.setUnderline(value == null || value.isBlank());
                 aboveFields.add(labelField);
             });
         }
-
         belowFields = new ArrayList<>();
-
         setCode(labNo);
     }
 

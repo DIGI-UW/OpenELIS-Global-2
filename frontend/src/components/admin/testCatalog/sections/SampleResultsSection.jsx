@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   Stack,
   Accordion,
@@ -15,6 +15,7 @@ import {
   Button,
   Loading,
   InlineNotification,
+  Modal,
   Table,
   TableHead,
   TableRow,
@@ -27,9 +28,43 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
+import StaleSaveNotice, {
+  isStaleConflict,
+} from "../../../common/StaleSaveNotice";
+
+/**
+ * OGC-1234: the source test's components as unsaved rows of this test. Copy
+ * replaces, it never merges: the save inserts what the source has and
+ * soft-deletes every current component, option and interpretation it does
+ * not. A source option whose value this test's component (same code) already
+ * offers keeps that option's id, so the save updates the row in place instead
+ * of leaving an inactive twin that result lookups by value can still match.
+ */
+const stageCopiedComponents = (sourceComponents, currentComponents) =>
+  sourceComponents.map(({ id: _id, ...component }) => {
+    const current = (currentComponents || []).find(
+      (c) => c.code === component.code,
+    );
+    const currentOptionIds = new Map(
+      ((current && current.options) || [])
+        .filter((o) => o.id)
+        .map((o) => [o.value, o.id]),
+    );
+    return {
+      ...component,
+      options: (component.options || []).map(({ id: _id, ...option }) =>
+        currentOptionIds.has(option.value)
+          ? { ...option, id: currentOptionIds.get(option.value) }
+          : option,
+      ),
+      interpretations: (component.interpretations || []).map(
+        ({ id: _id, ...interpretation }) => interpretation,
+      ),
+    };
+  });
 
 /**
  * OGC-949 M5 / OGC-749 — Sample & Results section.
@@ -49,9 +84,12 @@ const PRIMARY_RESULT_TYPES = ["N", "D", "R"];
 const ADVANCED_RESULT_TYPES = ["M", "C", "T", "A"];
 
 // A single component renders as one flat block (no accordion chrome); 2+
-// components render as accordion panels (FR-34). PlainPanel is the flat wrapper —
-// it ignores the accordion-only `open`/`title` props.
-const PlainPanel = ({ children }) => <div>{children}</div>;
+// components render as accordion panels (FR-34) — for ANY count. The wrapper
+// element types must never depend on components.length: flipping
+// Fragment/PlainPanel to Accordion/AccordionItem when the second component is
+// added made React unmount and remount the entire section (different element
+// types are irreconcilable), losing focus and resetting the scroll position
+// to the top of the page.
 
 /**
  * Live result-entry preview (FR-35): renders a read-only representation of the
@@ -134,6 +172,31 @@ const ResultEntryPreview = ({ component, uoms, intl }) => {
   );
 };
 
+// OGC-1458 — the rule a refused (422) save names, and what to tell the admin.
+const SAVE_REFUSALS = {
+  "logDisplay.numericRequired":
+    "error.testCatalog.sampleResults.logNumericRequired",
+  "logDisplay.sourceInvalid":
+    "error.testCatalog.sampleResults.logDisplay.sourceInvalid",
+  "decimalPlaces.invalid":
+    "error.testCatalog.sampleResults.decimalPlacesInvalid",
+  "components.activeNeedsComponent":
+    "error.testCatalog.sampleResults.activeNeedsComponent",
+  "resultType.unknown": "label.testCatalog.sampleResults.resultTypeRequired",
+  "value.tooLong": "error.testCatalog.sampleResults.valueTooLong",
+  "unit.unknown": "error.testCatalog.sampleResults.unitUnknown",
+};
+
+/** Column widths the server enforces (OGC-1467); the inputs stop there. */
+const COLUMN_MAX = {
+  code: 50,
+  label: 255,
+  defaultResult: 80,
+  optionValue: 80,
+  valueMatch: 80,
+  interpretationText: 255,
+};
+
 const SampleResultsSection = ({ testId }) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
@@ -145,6 +208,14 @@ const SampleResultsSection = ({ testId }) => {
   const [components, setComponents] = useState([]);
   const [otherTests, setOtherTests] = useState([]);
   const [copyFromId, setCopyFromId] = useState("");
+  // Remounts the picker after a copy is staged: Carbon's ComboBox keeps its
+  // own selection when selectedItem returns to null, so picking the same test
+  // again would not fire onChange.
+  const [copyPickerKey, setCopyPickerKey] = useState(0);
+  const [copyConfirmOpen, setCopyConfirmOpen] = useState(false);
+  // Name of the test whose configuration is staged in the editor and not yet
+  // saved; null when the editor shows this test's own saved configuration.
+  const [copiedFrom, setCopiedFrom] = useState(null);
   const [uoms, setUoms] = useState([]);
   // Dictionary typeahead results + a reset counter (per component) so the ComboBox
   // clears its input after an option is added.
@@ -159,6 +230,12 @@ const SampleResultsSection = ({ testId }) => {
   // { ci, name, code, ucumCode, description } for the component at index ci.
   const [unitForm, setUnitForm] = useState(null);
 
+  // Aborted when the section unmounts, so a late response never updates a
+  // screen that is gone.
+  const loadAbort = useRef(null);
+  const [version, setVersion] = useState(null);
+  const [stale, setStale] = useState(false);
+
   const load = () => {
     setLoading(true);
     setError(false);
@@ -171,25 +248,40 @@ const SampleResultsSection = ({ testId }) => {
           return;
         }
         setComponents(res.components);
+        setVersion(res.version || null);
+        setStale(false);
+        setCopiedFrom(null);
       },
+      loadAbort.current ? loadAbort.current.signal : null,
     );
   };
 
   useEffect(() => {
     if (!testId) {
-      return;
+      return undefined;
     }
+    const controller = new AbortController();
+    loadAbort.current = controller;
     load();
-    getFromOpenElisServer("/rest/test-list", (res) => {
-      if (Array.isArray(res)) {
-        setOtherTests(res.filter((t) => t.id !== testId));
-      }
-    });
-    getFromOpenElisServer("/rest/uom", (res) => {
-      if (Array.isArray(res)) {
-        setUoms(res);
-      }
-    });
+    getFromOpenElisServer(
+      "/rest/test-list",
+      (res) => {
+        if (Array.isArray(res)) {
+          setOtherTests(res.filter((t) => t.id !== testId));
+        }
+      },
+      controller.signal,
+    );
+    getFromOpenElisServer(
+      "/rest/uom",
+      (res) => {
+        if (Array.isArray(res)) {
+          setUoms(res);
+        }
+      },
+      controller.signal,
+    );
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
@@ -202,8 +294,12 @@ const SampleResultsSection = ({ testId }) => {
     if (nextType !== "N") {
       // Numeric-only fields.
       patch.uomId = "";
-      patch.significantDigits = null;
+      patch.reportingDecimalPlaces = null;
       patch.allowMultipleReadings = false;
+    }
+    if (!["N", "A"].includes(nextType)) {
+      patch.displayLog10 = false;
+      patch.log10SourceComponentCode = null;
     }
     if (!isSelectList) {
       // Select-list options are meaningless for non-list types.
@@ -215,7 +311,13 @@ const SampleResultsSection = ({ testId }) => {
   // ── Immutable updaters ─────────────────────────────────────────────────────
   const patchComponent = (ci, patch) =>
     setComponents((prev) =>
-      prev.map((c, i) => (i === ci ? { ...c, ...patch } : c)),
+      prev.map((c, i) => {
+        if (i === ci) return { ...c, ...patch };
+        return patch.code !== undefined &&
+          c.log10SourceComponentCode === prev[ci].code
+          ? { ...c, log10SourceComponentCode: patch.code }
+          : c;
+      }),
     );
 
   // FR-29: create a unit inline, then append it to the picker and select it on
@@ -328,26 +430,46 @@ const SampleResultsSection = ({ testId }) => {
     );
   };
 
+  // After Add Component, land the user on the new component's first field
+  // instead of leaving them wherever the page happens to be.
+  const [focusComponentIndex, setFocusComponentIndex] = useState(null);
+  useEffect(() => {
+    if (focusComponentIndex === null) {
+      return;
+    }
+    const label = document.getElementById(`comp-label-${focusComponentIndex}`);
+    if (label) {
+      label.focus({ preventScroll: true });
+      label.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    setFocusComponentIndex(null);
+  }, [focusComponentIndex]);
+
   const addComponent = () =>
-    setComponents((prev) => [
-      ...prev,
-      {
-        // The first (only) component is the primary; its code is fixed to
-        // PRIMARY (mirrored to the legacy test columns).
-        code: prev.length === 0 ? "PRIMARY" : "",
-        label: "",
-        displayOrder: prev.length + 1,
-        // The type is an explicit choice (FR-56/28) — no silent Numeric default.
-        resultType: null,
-        significantDigits: null,
-        defaultResult: "",
-        allowMultipleReadings: false,
-        isPrimary: prev.length === 0,
-        showOnReport: true,
-        options: [],
-        interpretations: [],
-      },
-    ]);
+    setComponents((prev) => {
+      setFocusComponentIndex(prev.length);
+      return [
+        ...prev,
+        {
+          // The first (only) component is the primary; its code is fixed to
+          // PRIMARY (mirrored to the legacy test columns).
+          code: prev.length === 0 ? "PRIMARY" : "",
+          label: "",
+          displayOrder: prev.length + 1,
+          // The type is an explicit choice (FR-56/28) — no silent Numeric
+          // default.
+          resultType: null,
+          reportingDecimalPlaces: null,
+          defaultResult: "",
+          allowMultipleReadings: false,
+          isPrimary: prev.length === 0,
+          showOnReport: true,
+          isRequired: prev.length === 0,
+          options: [],
+          interpretations: [],
+        },
+      ];
+    });
 
   // Exactly one component is primary. While one is marked, the other
   // components' Primary toggles are disabled — the current primary must be
@@ -407,6 +529,23 @@ const SampleResultsSection = ({ testId }) => {
       ),
     );
 
+  // A select list has one reference value, so marking an option Normal unmarks
+  // the others in that component.
+  const markNormal = (ci, oi, checked) =>
+    setComponents((prev) =>
+      prev.map((c, i) =>
+        i === ci
+          ? {
+              ...c,
+              options: c.options.map((row, j) => ({
+                ...row,
+                normal: j === oi ? checked : checked ? false : row.normal,
+              })),
+            }
+          : c,
+      ),
+    );
+
   // Live dictionary search for the "add option" typeahead, scoped per component.
   const searchDictionary = (ci, query) => {
     if (!query || !query.trim()) {
@@ -438,6 +577,7 @@ const SampleResultsSection = ({ testId }) => {
                   resultType: c.resultType,
                   sortOrder: c.options.length + 1,
                   normal: false,
+                  qualifiable: false,
                 },
               ],
             }
@@ -461,9 +601,13 @@ const SampleResultsSection = ({ testId }) => {
                 {
                   value: "",
                   valueName: null,
+                  // Typed text, never a dictionary id even when it is a number
+                  // (OGC-1458: a typed "1" is the grade 1).
+                  freeText: true,
                   resultType: c.resultType,
                   sortOrder: c.options.length + 1,
                   normal: false,
+                  qualifiable: false,
                 },
               ],
             }
@@ -501,6 +645,47 @@ const SampleResultsSection = ({ testId }) => {
   // ── Save ───────────────────────────────────────────────────────────────────
   const toInt = (v) =>
     v === "" || v === null || v === undefined ? null : Number(v);
+
+  // FR-C2 (OGC-1148): both limits >= 0 and LOD <= LOQ when both are set.
+  const detectionLimitProblem = (c) => {
+    const lod = toInt(c.lod);
+    const loq = toInt(c.loq);
+    if ((lod !== null && lod < 0) || (loq !== null && loq < 0)) {
+      return "error.testCatalog.sampleResults.detectionLimitNegative";
+    }
+    if (lod !== null && loq !== null && lod > loq) {
+      return "error.testCatalog.sampleResults.lodGtLoq";
+    }
+    return null;
+  };
+  const detectionLimitsInvalid = (c) =>
+    detectionLimitProblem(c) === "error.testCatalog.sampleResults.lodGtLoq";
+
+  // Result entry lists every option row, so the same stored value twice shows
+  // twice; this is the check the server applies.
+  const duplicateOptionNames = (c) => {
+    const seen = new Set();
+    const duplicates = new Set();
+    (c.options || []).forEach((o) => {
+      const value = String(o.value || "").trim();
+      if (!value) {
+        return;
+      }
+      if (seen.has(value)) {
+        duplicates.add(o.valueName || value);
+      }
+      seen.add(value);
+    });
+    return [...duplicates];
+  };
+
+  // A select list's default must be one of its options; one it no longer offers
+  // is shown as "No default" and cleared on save.
+  const offeredDefault = (c) =>
+    !["D", "M", "C"].includes(c.resultType) ||
+    (c.options || []).some((o) => o.value && o.value === c.defaultResult)
+      ? c.defaultResult
+      : "";
 
   const handleSave = () => {
     // Every component needs a label (FR-29); the code isn't a separate user field,
@@ -541,13 +726,53 @@ const SampleResultsSection = ({ testId }) => {
       });
       return;
     }
+    // FR-C2 (OGC-1148) — detection limits must be coherent before they persist.
+    const badLimits = normalized.map(detectionLimitProblem).find(Boolean);
+    if (badLimits) {
+      setNotificationVisible(true);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({
+          id: "label.testCatalog.section.sample-results",
+        }),
+        message: intl.formatMessage({ id: badLimits }),
+      });
+      return;
+    }
+    const repeated = normalized.find(
+      (c) =>
+        ["D", "M", "C"].includes(c.resultType) &&
+        duplicateOptionNames(c).length > 0,
+    );
+    if (repeated) {
+      setNotificationVisible(true);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({
+          id: "label.testCatalog.section.sample-results",
+        }),
+        message: intl.formatMessage(
+          { id: "error.testCatalog.sampleResults.duplicateOption" },
+          {
+            component: repeated.label || repeated.code,
+            options: duplicateOptionNames(repeated).join(", "),
+          },
+        ),
+      });
+      return;
+    }
     setSaving(true);
     const payload = {
       testId,
+      version,
       components: normalized.map((c) => ({
         ...c,
+        defaultResult: offeredDefault(c),
         displayOrder: toInt(c.displayOrder),
-        significantDigits: toInt(c.significantDigits),
+        reportingDecimalPlaces: toInt(c.reportingDecimalPlaces),
+        displayLog10: c.displayLog10 === true,
+        lod: toInt(c.lod),
+        loq: toInt(c.loq),
         options: (c.options || []).map((o) => ({
           ...o,
           sortOrder: toInt(o.sortOrder),
@@ -558,13 +783,45 @@ const SampleResultsSection = ({ testId }) => {
         })),
       })),
     };
-    putToOpenElisServer(
+    putToOpenElisServerFullResponse(
       `/rest/test-catalog/tests/${testId}/sample-results`,
       JSON.stringify(payload),
-      (status) => {
+      async (response) => {
         setSaving(false);
+        if (response && response.status === 409) {
+          const conflict = await response.json().catch(() => null);
+          if (isStaleConflict(409, conflict)) {
+            setStale(true);
+            return;
+          }
+        }
         setNotificationVisible(true);
-        if (status === 200) {
+        if (response && response.status === 422) {
+          let body = null;
+          try {
+            body = await response.json();
+          } catch (e) {
+            body = null;
+          }
+          const refusal = body && SAVE_REFUSALS[body.refusal];
+          if (body && body.refusal === "components.activeNeedsComponent") {
+            load();
+          }
+          if (refusal) {
+            addNotification({
+              kind: "error",
+              title: intl.formatMessage({
+                id: "label.testCatalog.section.sample-results",
+              }),
+              message: intl.formatMessage(
+                { id: refusal },
+                { component: body.refusedComponent || "" },
+              ),
+            });
+            return;
+          }
+        }
+        if (response && response.status === 200) {
           addNotification({
             kind: "success",
             title: intl.formatMessage({
@@ -586,28 +843,54 @@ const SampleResultsSection = ({ testId }) => {
     );
   };
 
-  const handleCopyFrom = () => {
-    if (!copyFromId) {
-      return;
-    }
-    postToOpenElisServerJsonResponse(
-      `/rest/test-catalog/tests/${testId}/sample-results/copy-from/${copyFromId}`,
-      JSON.stringify({}),
+  const copySource = otherTests.find((t) => t.id === copyFromId) || null;
+  const copySourceName = copySource ? copySource.value : "";
+
+  const notifyCopy = (kind, messageId, source) => {
+    setNotificationVisible(true);
+    addNotification({
+      kind,
+      title: intl.formatMessage({
+        id: "label.testCatalog.section.sample-results",
+      }),
+      message: intl.formatMessage({ id: messageId }, { source }),
+    });
+  };
+
+  // OGC-1234: Copy replaces this test's configuration with the source's.
+  // Confirming only stages it in the editor; Save commits it.
+  const confirmCopyFrom = () => {
+    setCopyConfirmOpen(false);
+    const sourceId = copyFromId;
+    const sourceName = copySourceName;
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${sourceId}/sample-results`,
       (res) => {
-        if (res) {
-          setCopyFromId("");
-          load();
-          setNotificationVisible(true);
-          addNotification({
-            kind: "success",
-            title: intl.formatMessage({
-              id: "label.testCatalog.section.sample-results",
-            }),
-            message: intl.formatMessage({
-              id: "label.testCatalog.sampleResults.copied",
-            }),
-          });
+        if (!res || !Array.isArray(res.components)) {
+          notifyCopy(
+            "error",
+            "label.testCatalog.sampleResults.copyLoadError",
+            sourceName,
+          );
+          return;
         }
+        if (res.components.length === 0) {
+          notifyCopy(
+            "info",
+            "label.testCatalog.sampleResults.copyEmpty",
+            sourceName,
+          );
+          return;
+        }
+        setComponents((current) =>
+          stageCopiedComponents(res.components, current),
+        );
+        setAdvancedTypesOpen({});
+        setOptionSearch({});
+        setUnitForm(null);
+        setCopiedFrom(sourceName);
+        setCopyFromId("");
+        setCopyPickerKey((k) => k + 1);
       },
     );
   };
@@ -635,12 +918,9 @@ const SampleResultsSection = ({ testId }) => {
   }
 
   // One component → flat; several → accordion panels (FR-34).
-  const multipleComponents = components.length > 1;
-  const ListWrapper = multipleComponents ? Accordion : React.Fragment;
-  const ItemWrapper = multipleComponents ? AccordionItem : PlainPanel;
 
   return (
-    <Stack gap={6}>
+    <Stack gap={6} style={{ overflowWrap: "anywhere", minWidth: 0 }}>
       <p>
         <FormattedMessage id="label.testCatalog.sampleResults.purpose" />
       </p>
@@ -652,9 +932,9 @@ const SampleResultsSection = ({ testId }) => {
           <FormattedMessage id="label.testCatalog.sampleResults.empty" />
         </p>
       ) : (
-        <ListWrapper>
+        <Accordion>
           {components.map((c, ci) => (
-            <ItemWrapper
+            <AccordionItem
               key={c.id || `new-${ci}`}
               open
               title={componentTitle(c)}
@@ -708,8 +988,21 @@ const SampleResultsSection = ({ testId }) => {
                     patchComponent(ci, { showOnReport: checked })
                   }
                 />
+                <Toggle
+                  id={`comp-required-${ci}`}
+                  labelText={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.isRequired",
+                  })}
+                  labelA={intl.formatMessage({ id: "label.no" })}
+                  labelB={intl.formatMessage({ id: "label.yes" })}
+                  toggled={c.isRequired === true}
+                  onToggle={(checked) =>
+                    patchComponent(ci, { isRequired: checked })
+                  }
+                />
                 <TextInput
                   id={`comp-code-${ci}`}
+                  maxLength={COLUMN_MAX.code}
                   labelText={intl.formatMessage({
                     id: "label.testCatalog.sampleResults.code",
                   })}
@@ -719,6 +1012,7 @@ const SampleResultsSection = ({ testId }) => {
                 />
                 <TextInput
                   id={`comp-label-${ci}`}
+                  maxLength={COLUMN_MAX.label}
                   labelText={intl.formatMessage({
                     id: "label.testCatalog.sampleResults.label",
                   })}
@@ -840,40 +1134,191 @@ const SampleResultsSection = ({ testId }) => {
                       </div>
                     )}
                     <NumberInput
-                      id={`comp-sigdig-${ci}`}
+                      id={`comp-reporting-decimals-${ci}`}
                       label={intl.formatMessage({
-                        id: "label.testCatalog.sampleResults.significantDigits",
+                        id: "label.testCatalog.sampleResults.reportingDecimalPlaces",
                       })}
                       helperText={intl.formatMessage({
-                        id: "label.testCatalog.sampleResults.significantDigits.helper",
+                        id: "label.testCatalog.sampleResults.reportingDecimalPlaces.helper",
                       })}
                       min={0}
                       max={10}
                       allowEmpty
                       value={
-                        c.significantDigits === null ||
-                        c.significantDigits === undefined
+                        c.reportingDecimalPlaces === null ||
+                        c.reportingDecimalPlaces === undefined
                           ? ""
-                          : c.significantDigits
+                          : c.reportingDecimalPlaces
                       }
                       onChange={(_e, { value }) =>
                         patchComponent(ci, {
-                          significantDigits: value === "" ? null : value,
+                          reportingDecimalPlaces: value === "" ? null : value,
                         })
                       }
                     />
+                    {/* Detection limits (OGC-1148 FR-C1/C2): optional, LOD <= LOQ. */}
+                    <div
+                      style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}
+                      data-testid={`detection-limits-${ci}`}
+                    >
+                      <NumberInput
+                        id={`comp-lod-${ci}`}
+                        label={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.lod.label",
+                        })}
+                        helperText={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.lod.helper",
+                        })}
+                        min={0}
+                        allowEmpty
+                        hideSteppers
+                        invalid={detectionLimitsInvalid(c)}
+                        invalidText={intl.formatMessage({
+                          id: "error.testCatalog.sampleResults.lodGtLoq",
+                        })}
+                        value={
+                          c.lod === null || c.lod === undefined ? "" : c.lod
+                        }
+                        onChange={(_e, { value }) =>
+                          patchComponent(ci, {
+                            lod: value === "" ? null : value,
+                          })
+                        }
+                      />
+                      <NumberInput
+                        id={`comp-loq-${ci}`}
+                        label={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.loq.label",
+                        })}
+                        helperText={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.loq.helper",
+                        })}
+                        min={0}
+                        allowEmpty
+                        hideSteppers
+                        invalid={detectionLimitsInvalid(c)}
+                        invalidText={intl.formatMessage({
+                          id: "error.testCatalog.sampleResults.lodGtLoq",
+                        })}
+                        value={
+                          c.loq === null || c.loq === undefined ? "" : c.loq
+                        }
+                        onChange={(_e, { value }) =>
+                          patchComponent(ci, {
+                            loq: value === "" ? null : value,
+                          })
+                        }
+                      />
+                    </div>
                   </>
                 )}
-                <TextInput
-                  id={`comp-default-${ci}`}
-                  labelText={intl.formatMessage({
-                    id: "label.testCatalog.sampleResults.defaultResult",
-                  })}
-                  value={c.defaultResult || ""}
-                  onChange={(e) =>
-                    patchComponent(ci, { defaultResult: e.target.value })
-                  }
-                />
+                {["N", "A"].includes(c.resultType) && (
+                  <>
+                    <Checkbox
+                      id={`comp-display-log10-${ci}`}
+                      checked={c.displayLog10 === true}
+                      labelText={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.displayLog10",
+                      })}
+                      onChange={(_event, { checked }) =>
+                        patchComponent(ci, {
+                          displayLog10: checked,
+                          log10SourceComponentCode: checked
+                            ? c.log10SourceComponentCode
+                            : null,
+                        })
+                      }
+                    />
+                    <p>
+                      {intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.displayLog10.helper",
+                      })}
+                    </p>
+                    {c.displayLog10 && (
+                      <Select
+                        id={`comp-log10-source-${ci}`}
+                        labelText={intl.formatMessage({
+                          id: "label.testCatalog.sampleResults.log10Source",
+                        })}
+                        value={c.log10SourceComponentCode || ""}
+                        onChange={(event) =>
+                          patchComponent(ci, {
+                            log10SourceComponentCode:
+                              event.target.value || null,
+                          })
+                        }
+                      >
+                        <SelectItem
+                          value=""
+                          text={intl.formatMessage({
+                            id: "label.testCatalog.sampleResults.log10Source.none",
+                          })}
+                        />
+                        {components
+                          .filter(
+                            (source, i) =>
+                              i !== ci &&
+                              source.resultType === "N" &&
+                              source.showOnReport !== false &&
+                              !source.displayLog10,
+                          )
+                          .map((source) => (
+                            <SelectItem
+                              key={source.code}
+                              value={source.code}
+                              text={source.label || source.code}
+                            />
+                          ))}
+                      </Select>
+                    )}
+                  </>
+                )}
+                {["D", "M", "C"].includes(c.resultType) ? (
+                  <Select
+                    id={`comp-default-${ci}`}
+                    labelText={intl.formatMessage({
+                      id: "label.testCatalog.sampleResults.defaultResult",
+                    })}
+                    value={
+                      (c.options || []).some(
+                        (o) => o.value && o.value === c.defaultResult,
+                      )
+                        ? c.defaultResult
+                        : ""
+                    }
+                    onChange={(e) =>
+                      patchComponent(ci, { defaultResult: e.target.value })
+                    }
+                  >
+                    <SelectItem
+                      value=""
+                      text={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.defaultResult.none",
+                      })}
+                    />
+                    {(c.options || [])
+                      .filter((o) => o.value)
+                      .map((o) => (
+                        <SelectItem
+                          key={o.id || `default-${o.value}`}
+                          value={o.value}
+                          text={o.valueName || o.value}
+                        />
+                      ))}
+                  </Select>
+                ) : (
+                  <TextInput
+                    id={`comp-default-${ci}`}
+                    maxLength={COLUMN_MAX.defaultResult}
+                    labelText={intl.formatMessage({
+                      id: "label.testCatalog.sampleResults.defaultResult",
+                    })}
+                    value={c.defaultResult || ""}
+                    onChange={(e) =>
+                      patchComponent(ci, { defaultResult: e.target.value })
+                    }
+                  />
+                )}
                 <TextInput
                   id={`comp-order-${ci}`}
                   type="number"
@@ -919,7 +1364,9 @@ const SampleResultsSection = ({ testId }) => {
                     >
                       <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder.helper" />
                     </p>
-                    {(c.options || []).length === 0 && (
+                    {/* Empty state or table, never both: an unconditional
+                        TableHead leaves column headings with no rows under them. */}
+                    {(c.options || []).length === 0 ? (
                       <InlineNotification
                         kind="info"
                         lowContrast
@@ -928,86 +1375,118 @@ const SampleResultsSection = ({ testId }) => {
                           id: "label.testCatalog.sampleResults.options.empty",
                         })}
                       />
-                    )}
-                    <Table size="sm">
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.option.value" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.option.normal" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.actions" />
-                          </TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {(c.options || []).map((o, oi) => (
-                          <TableRow key={o.id || `opt-${oi}`}>
-                            <TableCell>
-                              {o.valueName ? (
-                                // Dictionary-backed option: show the entry name, not the
-                                // raw dictionary id stored in `value`.
-                                o.valueName
-                              ) : (
+                    ) : (
+                      <Table size="sm">
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.option.value" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.option.sortOrder" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.option.normal" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.option.qualifiable" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.actions" />
+                            </TableHeader>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {(c.options || []).map((o, oi) => (
+                            <TableRow key={o.id || `opt-${oi}`}>
+                              <TableCell>
+                                {o.valueName ? (
+                                  // Dictionary-backed option: show the entry name, not the
+                                  // raw dictionary id stored in `value`.
+                                  o.valueName
+                                ) : (
+                                  <TextInput
+                                    id={`opt-value-${ci}-${oi}`}
+                                    maxLength={COLUMN_MAX.optionValue}
+                                    labelText=""
+                                    value={o.value || ""}
+                                    onChange={(e) =>
+                                      patchChild(ci, "options", oi, {
+                                        value: e.target.value,
+                                      })
+                                    }
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell>
                                 <TextInput
-                                  id={`opt-value-${ci}-${oi}`}
+                                  id={`opt-order-${ci}-${oi}`}
+                                  type="number"
                                   labelText=""
-                                  value={o.value || ""}
+                                  value={o.sortOrder ?? ""}
                                   onChange={(e) =>
                                     patchChild(ci, "options", oi, {
-                                      value: e.target.value,
+                                      sortOrder: e.target.value,
                                     })
                                   }
                                 />
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <TextInput
-                                id={`opt-order-${ci}-${oi}`}
-                                type="number"
-                                labelText=""
-                                value={o.sortOrder ?? ""}
-                                onChange={(e) =>
-                                  patchChild(ci, "options", oi, {
-                                    sortOrder: e.target.value,
-                                  })
-                                }
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Checkbox
-                                id={`opt-normal-${ci}-${oi}`}
-                                labelText=""
-                                checked={!!o.normal}
-                                onChange={(_e, { checked }) =>
-                                  patchChild(ci, "options", oi, {
-                                    normal: checked,
-                                  })
-                                }
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                kind="ghost"
-                                size="sm"
-                                hasIconOnly
-                                renderIcon={TrashCan}
-                                iconDescription={intl.formatMessage({
-                                  id: "label.testCatalog.sampleResults.removeOption",
-                                })}
-                                onClick={() => removeChild(ci, "options", oi)}
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                              </TableCell>
+                              <TableCell>
+                                <Checkbox
+                                  id={`opt-normal-${ci}-${oi}`}
+                                  labelText=""
+                                  checked={!!o.normal}
+                                  onChange={(_e, { checked }) =>
+                                    markNormal(ci, oi, checked)
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Checkbox
+                                  id={`opt-qualifiable-${ci}-${oi}`}
+                                  labelText=""
+                                  checked={!!o.qualifiable}
+                                  onChange={(_e, { checked }) =>
+                                    patchChild(ci, "options", oi, {
+                                      qualifiable: checked,
+                                    })
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  hasIconOnly
+                                  renderIcon={TrashCan}
+                                  iconDescription={intl.formatMessage({
+                                    id: "label.testCatalog.sampleResults.removeOption",
+                                  })}
+                                  onClick={() => removeChild(ci, "options", oi)}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                    {duplicateOptionNames(c).length > 0 && (
+                      <InlineNotification
+                        kind="error"
+                        lowContrast
+                        hideCloseButton
+                        data-testid={`duplicate-options-${ci}`}
+                        title={intl.formatMessage(
+                          {
+                            id: "error.testCatalog.sampleResults.duplicateOption",
+                          },
+                          {
+                            component: c.label || c.code,
+                            options: duplicateOptionNames(c).join(", "),
+                          },
+                        )}
+                      />
+                    )}
                     <ComboBox
                       key={`opt-add-${ci}-${optionComboReset[ci] || 0}`}
                       id={`opt-add-${ci}`}
@@ -1042,7 +1521,9 @@ const SampleResultsSection = ({ testId }) => {
                     <h6>
                       <FormattedMessage id="label.testCatalog.sampleResults.interpretations" />
                     </h6>
-                    {(c.interpretations || []).length === 0 && (
+                    {/* Empty state and table are mutually exclusive: a column-header
+                        band with no rows under it reads as broken layout. */}
+                    {(c.interpretations || []).length === 0 ? (
                       <InlineNotification
                         kind="info"
                         lowContrast
@@ -1051,124 +1532,129 @@ const SampleResultsSection = ({ testId }) => {
                           id: "label.testCatalog.sampleResults.interpretations.empty",
                         })}
                       />
-                    )}
-                    <Table size="sm">
-                      <TableHead>
-                        <TableRow>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.interp.valueMatch" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.interp.text" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.interp.severity" />
-                          </TableHeader>
-                          <TableHeader>
-                            <FormattedMessage id="label.testCatalog.sampleResults.actions" />
-                          </TableHeader>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {(c.interpretations || []).map((it, ii) => (
-                          <TableRow key={it.id || `int-${ii}`}>
-                            <TableCell>
-                              {/* Value field adapts to the result type (FR-32):
-                                  select-list components pick a configured option;
-                                  numeric uses a free-text pattern (>N, N-M, exact). */}
-                              {["D", "M", "C"].includes(c.resultType) ? (
-                                <Select
-                                  id={`int-match-${ci}-${ii}`}
-                                  labelText=""
-                                  value={it.valueMatch || ""}
-                                  onChange={(e) =>
-                                    patchChild(ci, "interpretations", ii, {
-                                      valueMatch: e.target.value,
-                                    })
-                                  }
-                                >
-                                  <SelectItem
-                                    value=""
-                                    text={intl.formatMessage({
-                                      id: "label.testCatalog.sampleResults.interp.selectValue",
-                                    })}
-                                  />
-                                  {(c.options || []).map((o, oi) => (
+                    ) : (
+                      <Table size="sm">
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.interp.valueMatch" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.interp.text" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.interp.severity" />
+                            </TableHeader>
+                            <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.actions" />
+                            </TableHeader>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {(c.interpretations || []).map((it, ii) => (
+                            <TableRow key={it.id || `int-${ii}`}>
+                              <TableCell>
+                                {/* Value field adapts to the result type (FR-32):
+                                    select-list components pick a configured option;
+                                    numeric uses a free-text pattern (>N, N-M, exact). */}
+                                {["D", "M", "C"].includes(c.resultType) ? (
+                                  <Select
+                                    id={`int-match-${ci}-${ii}`}
+                                    labelText=""
+                                    value={it.valueMatch || ""}
+                                    onChange={(e) =>
+                                      patchChild(ci, "interpretations", ii, {
+                                        valueMatch: e.target.value,
+                                      })
+                                    }
+                                  >
                                     <SelectItem
-                                      key={o.id || oi}
-                                      value={o.value}
-                                      text={o.valueName || o.value}
+                                      value=""
+                                      text={intl.formatMessage({
+                                        id: "label.testCatalog.sampleResults.interp.selectValue",
+                                      })}
                                     />
-                                  ))}
-                                </Select>
-                              ) : (
+                                    {(c.options || []).map((o, oi) => (
+                                      <SelectItem
+                                        key={o.id || oi}
+                                        value={o.value}
+                                        text={o.valueName || o.value}
+                                      />
+                                    ))}
+                                  </Select>
+                                ) : (
+                                  <TextInput
+                                    id={`int-match-${ci}-${ii}`}
+                                    maxLength={COLUMN_MAX.valueMatch}
+                                    labelText=""
+                                    placeholder={intl.formatMessage({
+                                      id: "label.testCatalog.sampleResults.interp.numericHint",
+                                    })}
+                                    value={it.valueMatch || ""}
+                                    onChange={(e) =>
+                                      patchChild(ci, "interpretations", ii, {
+                                        valueMatch: e.target.value,
+                                      })
+                                    }
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell>
                                 <TextInput
-                                  id={`int-match-${ci}-${ii}`}
+                                  id={`int-text-${ci}-${ii}`}
+                                  maxLength={COLUMN_MAX.interpretationText}
                                   labelText=""
-                                  placeholder={intl.formatMessage({
-                                    id: "label.testCatalog.sampleResults.interp.numericHint",
-                                  })}
-                                  value={it.valueMatch || ""}
+                                  value={it.text || ""}
                                   onChange={(e) =>
                                     patchChild(ci, "interpretations", ii, {
-                                      valueMatch: e.target.value,
+                                      text: e.target.value,
                                     })
                                   }
                                 />
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <TextInput
-                                id={`int-text-${ci}-${ii}`}
-                                labelText=""
-                                value={it.text || ""}
-                                onChange={(e) =>
-                                  patchChild(ci, "interpretations", ii, {
-                                    text: e.target.value,
-                                  })
-                                }
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                id={`int-sev-${ci}-${ii}`}
-                                labelText=""
-                                value={it.severity || "NORMAL"}
-                                onChange={(e) =>
-                                  patchChild(ci, "interpretations", ii, {
-                                    severity: e.target.value,
-                                  })
-                                }
-                              >
-                                {["NORMAL", "ABNORMAL", "CRITICAL"].map((s) => (
-                                  <SelectItem
-                                    key={s}
-                                    value={s}
-                                    text={intl.formatMessage({
-                                      id: `label.testCatalog.sampleResults.severity.${s}`,
-                                    })}
-                                  />
-                                ))}
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                kind="ghost"
-                                size="sm"
-                                hasIconOnly
-                                renderIcon={TrashCan}
-                                iconDescription={intl.formatMessage({
-                                  id: "label.testCatalog.sampleResults.removeInterpretation",
-                                })}
-                                onClick={() =>
-                                  removeChild(ci, "interpretations", ii)
-                                }
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  id={`int-sev-${ci}-${ii}`}
+                                  labelText=""
+                                  value={it.severity || "NORMAL"}
+                                  onChange={(e) =>
+                                    patchChild(ci, "interpretations", ii, {
+                                      severity: e.target.value,
+                                    })
+                                  }
+                                >
+                                  {["NORMAL", "ABNORMAL", "CRITICAL"].map(
+                                    (s) => (
+                                      <SelectItem
+                                        key={s}
+                                        value={s}
+                                        text={intl.formatMessage({
+                                          id: `label.testCatalog.sampleResults.severity.${s}`,
+                                        })}
+                                      />
+                                    ),
+                                  )}
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  kind="ghost"
+                                  size="sm"
+                                  hasIconOnly
+                                  renderIcon={TrashCan}
+                                  iconDescription={intl.formatMessage({
+                                    id: "label.testCatalog.sampleResults.removeInterpretation",
+                                  })}
+                                  onClick={() =>
+                                    removeChild(ci, "interpretations", ii)
+                                  }
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
                     <Button
                       kind="ghost"
                       size="sm"
@@ -1191,13 +1677,14 @@ const SampleResultsSection = ({ testId }) => {
                   </Button>
                 </div>
               </Stack>
-            </ItemWrapper>
+            </AccordionItem>
           ))}
-        </ListWrapper>
+        </Accordion>
       )}
 
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
         <ComboBox
+          key={`copy-from-test-${copyPickerKey}`}
           id="copy-from-test"
           titleText={intl.formatMessage({
             id: "label.testCatalog.sampleResults.copyFrom",
@@ -1207,7 +1694,11 @@ const SampleResultsSection = ({ testId }) => {
           })}
           items={otherTests}
           itemToString={(t) => (t ? t.value : "")}
-          selectedItem={otherTests.find((t) => t.id === copyFromId) || null}
+          shouldFilterItem={({ item, inputValue }) =>
+            !inputValue ||
+            (item?.value || "").toLowerCase().includes(inputValue.toLowerCase())
+          }
+          selectedItem={copySource}
           onChange={({ selectedItem }) =>
             setCopyFromId(selectedItem ? selectedItem.id : "")
           }
@@ -1215,12 +1706,59 @@ const SampleResultsSection = ({ testId }) => {
         <Button
           kind="secondary"
           disabled={!copyFromId}
-          onClick={handleCopyFrom}
+          onClick={() => setCopyConfirmOpen(true)}
         >
           <FormattedMessage id="label.testCatalog.sampleResults.copyFromButton" />
         </Button>
       </div>
 
+      {copiedFrom && (
+        <div>
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            data-testid="copy-staged-warning"
+            title={intl.formatMessage(
+              { id: "label.testCatalog.sampleResults.copyStaged" },
+              { source: copiedFrom },
+            )}
+            subtitle={intl.formatMessage({
+              id: "label.testCatalog.sampleResults.copyStaged.helper",
+            })}
+          />
+          <Button kind="ghost" size="sm" onClick={load}>
+            <FormattedMessage id="label.testCatalog.sampleResults.copyDiscard" />
+          </Button>
+        </div>
+      )}
+
+      <Modal
+        open={copyConfirmOpen}
+        danger
+        size="sm"
+        modalHeading={intl.formatMessage({
+          id: "label.testCatalog.sampleResults.copyConfirm.title",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "label.testCatalog.sampleResults.copyConfirm.confirm",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestSubmit={confirmCopyFrom}
+        onRequestClose={() => setCopyConfirmOpen(false)}
+        onSecondarySubmit={() => setCopyConfirmOpen(false)}
+      >
+        <p>
+          {intl.formatMessage(
+            { id: "label.testCatalog.sampleResults.copyConfirm.body" },
+            { source: copySourceName },
+          )}
+        </p>
+      </Modal>
+
+      {stale && (
+        <StaleSaveNotice testId="sample-results-stale-save" onRefresh={load} />
+      )}
       <div style={{ display: "flex", gap: "0.5rem" }}>
         <Button
           kind="tertiary"
@@ -1230,7 +1768,7 @@ const SampleResultsSection = ({ testId }) => {
         >
           <FormattedMessage id="label.testCatalog.sampleResults.addComponent" />
         </Button>
-        <Button kind="primary" disabled={saving} onClick={handleSave}>
+        <Button kind="primary" disabled={saving || stale} onClick={handleSave}>
           <FormattedMessage id="label.button.save" />
         </Button>
       </div>

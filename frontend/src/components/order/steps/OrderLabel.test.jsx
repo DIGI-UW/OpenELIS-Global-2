@@ -50,6 +50,7 @@ vi.mock("react-router-dom", () => ({
 
 vi.mock("../OrderContext", () => ({
   useOrderContext: () => orderContextValue,
+  useWorkflowPrefix: () => "/order/clinical",
 }));
 
 vi.mock("../../layout/Layout", () => ({
@@ -169,5 +170,77 @@ describe("OrderLabel print URLs", () => {
     expect(addNotificationSpy.mock.calls[0][0].kind).toBe("error");
 
     warnSpy.mockRestore();
+  });
+
+  // OGC-1201 S: a blocked popup left the user with no way to print at all,
+  // and a blocker handing back a stub window instead of null was read as
+  // success.
+  test("a blocked popup still offers the labels as a link", () => {
+    openSpy.mockReturnValue(null);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(noop);
+
+    renderWithIntl(<OrderLabel />);
+    fireEvent.click(screen.getAllByRole("button", { name: "Print Label" })[0]);
+
+    const link = screen.getByRole("link", {
+      name: "Open the labels in a new tab",
+    });
+    expect(link).toHaveAttribute("href", expect.stringContaining("labNo="));
+    expect(link).toHaveAttribute("target", "_blank");
+
+    warnSpy.mockRestore();
+  });
+
+  test("treats a stub window from a blocker as a blocked print", () => {
+    openSpy.mockReturnValue({ closed: true });
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(noop);
+
+    renderWithIntl(<OrderLabel />);
+    fireEvent.click(screen.getAllByRole("button", { name: "Print Label" })[0]);
+
+    expect(addNotificationSpy).toHaveBeenCalledTimes(1);
+    expect(addNotificationSpy.mock.calls[0][0].kind).toBe("error");
+    expect(
+      screen.getByRole("link", { name: "Open the labels in a new tab" }),
+    ).toBeInTheDocument();
+
+    warnSpy.mockRestore();
+  });
+});
+
+// OGC-1192 walk: an environmental order has no patient, and its Order Label
+// read "Lab Nr: DEV01260000000000314 | Patient: ,".
+describe("OrderLabel order label content", () => {
+  const originalOrderData = orderContextValue.orderData;
+  afterEach(() => {
+    orderContextValue.orderData = originalOrderData;
+  });
+
+  test("a patientless order names its sampling site instead of an empty patient", () => {
+    orderContextValue.orderData = {
+      sampleOrderItems: {
+        labNo: "LAB-100",
+        environmentalFields: { samplingSiteName: "Bekasi Tepi Sungai" },
+      },
+      patientProperties: {},
+    };
+    renderWithIntl(<OrderLabel />);
+
+    expect(
+      screen.getByText("Lab Nr: LAB-100 | Bekasi Tepi Sungai"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Patient: ,/)).toBeNull();
+  });
+
+  test("a clinical order still names its patient", () => {
+    orderContextValue.orderData = {
+      sampleOrderItems: { labNo: "LAB-100" },
+      patientProperties: { lastName: "Doe", firstName: "Jane" },
+    };
+    renderWithIntl(<OrderLabel />);
+
+    expect(
+      screen.getByText("Lab Nr: LAB-100 | Patient: Doe, Jane"),
+    ).toBeInTheDocument();
   });
 });

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- A draft holds clinical history, so losing eligibility retires it with an
+       actor and a timestamp instead of deleting it outright. micro_case_activity
+       requires a case_id, which a pre-case draft does not have, so the record
+       lives on the draft row. This guard makes the renamed migration safe for a
+       database that applied the earlier 091 filename. -->
+  <changeSet id="OGC-782-microbiology-order-draft-discard-audit" author="OpenELIS">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists schemaName="clinlims" tableName="micro_case_order_detail" columnName="discarded_at"/>
+      </not>
+    </preConditions>
+    <addColumn schemaName="clinlims" tableName="micro_case_order_detail">
+      <column name="discarded_at" type="timestamp"/>
+      <column name="discarded_by" type="varchar(20)"/>
+    </addColumn>
+
+    <rollback>
+      <delete schemaName="clinlims" tableName="micro_case_order_detail">
+        <where>discarded_at IS NOT NULL</where>
+      </delete>
+      <dropColumn schemaName="clinlims" tableName="micro_case_order_detail" columnName="discarded_by"/>
+      <dropColumn schemaName="clinlims" tableName="micro_case_order_detail" columnName="discarded_at"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

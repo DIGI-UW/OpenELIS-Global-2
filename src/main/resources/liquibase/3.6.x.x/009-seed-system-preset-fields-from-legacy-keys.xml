@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-1218: fill the block changeset 031 deferred. Each system preset receives the
+         content fields the retired Barcode Configuration screen printed for it, read from
+         the legacy site_information element keys. A key that is absent (fresh install;
+         DefaultConfigurationProperties answers true) or 'true' yields a row, an explicit
+         'false' does not, so an upgraded site lands on exactly what it printed and a fresh
+         install on the shipped defaults. Runs only for a system preset that still carries
+         LAB_NUMBER alone, so a preset an administrator has already edited is left as it is.
+         Presets are matched by name (the stable key, see 031). -->
+    <changeSet id="label-preset-fields-009-system-defaults-from-legacy-keys" author="ogc-1218">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="label_preset_field" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN EXISTS (
+                    SELECT 1 FROM clinlims.label_preset p
+                    WHERE p.is_system = true
+                      AND NOT EXISTS (
+                          SELECT 1 FROM clinlims.label_preset_field f
+                          WHERE f.preset_id = p.id AND f.field_key &lt;&gt; 'LAB_NUMBER')
+                ) THEN 1 ELSE 0 END
+            </sqlCheck>
+        </preConditions>
+
+        <comment>Seed the v1 carry-over content fields of each system preset from the legacy site_information element keys (OGC-1218)</comment>
+
+        <sql>
+            WITH mapping(preset_name, legacy_key, field_key, position) AS (VALUES
+                ('Order Label',    'orderLabelPatientName',          'PATIENT_NAME',        2),
+                ('Order Label',    'orderLabelPatientDob',           'PATIENT_DOB',         3),
+                ('Order Label',    'orderLabelPatientId',            'PATIENT_ID',          4),
+                ('Order Label',    'orderLabelSiteId',               'SITE_ID',             5),
+                ('Specimen Label', 'specimenLabelPatientName',       'PATIENT_NAME',        2),
+                ('Specimen Label', 'specimenLabelPatientDob',        'PATIENT_DOB',         3),
+                ('Specimen Label', 'specimenLabelPatientId',         'PATIENT_ID',          4),
+                ('Specimen Label', 'specimenLabelPatientSex',        'PATIENT_SEX',         5),
+                ('Specimen Label', 'specimenLabelCollectionDate',    'COLLECTION_DATETIME', 6),
+                ('Specimen Label', 'specimenLabelCollectedBy',       'COLLECTED_BY',        7),
+                ('Specimen Label', 'specimenLabelTests',             'TESTS',               8),
+                ('Slide Label',    'slideLabelPatientId',            'PATIENT_ID',          2),
+                ('Slide Label',    'slideLabelSlideId',              'SLIDE_ID',            3),
+                ('Slide Label',    'slideLabelStainType',            'STAIN_TYPE',          4),
+                ('Slide Label',    'slideLabelBlockId',              'BLOCK_ID',            5),
+                ('Slide Label',    'slideLabelCaseNumber',           'CASE_NUMBER',         6),
+                ('Block Label',    'blockLabelPatientId',            'PATIENT_ID',          2),
+                ('Block Label',    'blockLabelBlockId',              'BLOCK_ID',            3),
+                ('Block Label',    'blockLabelSpecimenType',         'SPECIMEN_TYPE',       4),
+                ('Block Label',    'blockLabelCaseNumber',           'CASE_NUMBER',         5),
+                ('Freezer Label',  'freezerLabelPatientId',          'PATIENT_ID',          2),
+                ('Freezer Label',  'freezerLabelStorageLocation',    'STORAGE_LOCATION',    3),
+                ('Freezer Label',  'freezerLabelSpecimenType',       'SPECIMEN_TYPE',       4),
+                ('Freezer Label',  'freezerLabelCollectionDate',     'COLLECTION_DATETIME', 5),
+                ('Freezer Label',  'freezerLabelExpiryDate',         'EXPIRY_DATE',         6)
+            ),
+            wanted AS (
+                SELECT p.id AS preset_id, m.field_key, m.position
+                FROM mapping m
+                JOIN clinlims.label_preset p
+                  ON p.name = m.preset_name AND p.is_system = true
+                LEFT JOIN clinlims.site_information si ON si.name = m.legacy_key
+                WHERE COALESCE(lower(trim(si.value)), 'true') &lt;&gt; 'false'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM clinlims.label_preset_field f
+                      WHERE f.preset_id = p.id AND f.field_key &lt;&gt; 'LAB_NUMBER')
+            ),
+            ordered AS (
+                SELECT preset_id, field_key,
+                       1 + ROW_NUMBER() OVER (PARTITION BY preset_id ORDER BY position) AS display_order
+                FROM wanted
+            )
+            INSERT INTO clinlims.label_preset_field
+                (id, preset_id, field_key, source_type, is_required, display_order, last_updated)
+            SELECT nextval('clinlims.label_preset_field_seq'), preset_id, field_key, 'SYSTEM', false,
+                   display_order, CURRENT_TIMESTAMP
+            FROM ordered;
+        </sql>
+
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.label_preset_field
+                WHERE field_key &lt;&gt; 'LAB_NUMBER'
+                  AND preset_id IN (SELECT id FROM clinlims.label_preset WHERE is_system = true);
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

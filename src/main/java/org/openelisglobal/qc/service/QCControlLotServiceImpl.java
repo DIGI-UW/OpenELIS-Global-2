@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.UUID;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.qc.dao.QCControlLotDAO;
@@ -22,6 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCControlLot, String>
         implements QCControlLotService {
+
+    @Autowired
+    private org.openelisglobal.test.service.TestService testService;
 
     @Autowired
     private QCControlLotDAO controlLotDAO;
@@ -63,8 +67,12 @@ public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCCo
             controlLotDAO.update(persisted);
         }
 
-        // Seed default Westgard rule configs if none exist for this test+instrument
-        if (persisted != null) {
+        // Seed default Westgard rule configs if none exist for this test+instrument.
+        // Skipped for bench lots: westgard_rule_config is keyed (test_id,
+        // instrument_id) with instrument_id still NOT NULL, so there is nothing to
+        // key a bench config on. A manual method's limits come from the fixed
+        // manufacturer mean/SD anyway, not from run-history rules.
+        if (persisted != null && StringUtils.isNotBlank(persisted.getInstrumentId())) {
             ensureRuleConfigsExist(persisted.getTestId(), persisted.getInstrumentId());
         }
 
@@ -113,13 +121,32 @@ public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCCo
     @Override
     @Transactional(readOnly = true)
     public List<QCControlLot> getActiveControlLots(String testId, String instrumentId) {
-        return controlLotDAO.getActiveByTestAndInstrument(testId, instrumentId);
+        return withTestNames(controlLotDAO.getActiveByTestAndInstrument(testId, instrumentId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<QCControlLot> getActiveBenchControlLots(String testId) {
+        return withTestNames(controlLotDAO.getActiveBenchByTest(testId));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<QCControlLot> getActiveControlLotsByInstrument(String instrumentId) {
-        return controlLotDAO.getActiveByInstrument(instrumentId);
+        return withTestNames(controlLotDAO.getActiveByInstrument(instrumentId));
+    }
+
+    private List<QCControlLot> withTestNames(List<QCControlLot> lots) {
+        java.util.Map<String, String> names = new java.util.HashMap<>();
+        for (org.openelisglobal.test.valueholder.Test test : testService
+                .getTestsByIds(lots.stream().map(QCControlLot::getTestId).distinct().toList())) {
+            names.put(test.getId(), test.getLocalizedName());
+        }
+        for (QCControlLot lot : lots) {
+            String name = names.get(lot.getTestId());
+            lot.setTestName(name == null || name.isBlank() ? lot.getTestId() : name);
+        }
+        return lots;
     }
 
     @Override

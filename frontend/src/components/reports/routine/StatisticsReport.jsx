@@ -6,16 +6,14 @@ import {
   Column,
   Section,
   Button,
-  Loading,
   Dropdown,
   Heading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, Roles } from "../../utils/Utils";
 import "../../Style.css";
-import { AlertDialog } from "../../common/CustomNotification";
 import config from "../../../config.json";
-import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { labNow } from "../../utils/labClock";
 
 const timeFrames = [
   {
@@ -36,8 +34,8 @@ const StatisticsReport = () => {
   const [selectedPriorities, setSelectedPriorities] = useState([]);
   const [selectedTimeFrames, setSelectedTimeFrames] = useState([]);
   const [selectedYear, setSelectedYear] = useState({
-    value: new Date().getFullYear(),
-    label: new Date().getFullYear(),
+    value: labNow().getFullYear(),
+    label: labNow().getFullYear(),
   });
 
   const [loading, setLoading] = useState(false);
@@ -105,7 +103,7 @@ const StatisticsReport = () => {
     setSelectedTimeFrames(isChecked ? timeFrames.map((frame) => frame.id) : []);
   };
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = labNow().getFullYear();
   const years = Array.from({ length: currentYear - 2008 }, (_, index) => ({
     value: currentYear - index,
     label: (currentYear - index).toString(),

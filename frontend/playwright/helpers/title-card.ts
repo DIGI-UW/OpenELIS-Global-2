@@ -1,12 +1,21 @@
-import { Page, TestInfo } from "@playwright/test";
-import { isVideoProject } from "./video-pause";
+import { Locator, Page, TestInfo } from "@playwright/test";
+import { isVideoProject, videoPause } from "./video-pause";
+
+export type TitleCardOptions = {
+  eyebrow?: string;
+  accent?: string;
+  align?: "left" | "center";
+  /** Leave the card up after its duration; the next page load replaces it. */
+  hold?: boolean;
+};
 
 /**
  * Injects a full-screen title card overlay into the browser viewport.
  * Since Playwright records the viewport, these appear as title/transition
  * screens in the video with no post-processing needed.
  *
- * No-op when not recording video (i.e., outside *-demo-video projects).
+ * No-op when not recording video (i.e., outside *-demo-video projects, or
+ * without the test's TestInfo), as is every helper here.
  * Uses Carbon Design System dark theme colors and IBM Plex Sans.
  * Presentation only: do not use title cards to gate readiness or assertions.
  */
@@ -16,11 +25,14 @@ export async function showTitleCard(
   subtitle?: string,
   durationMs = 3000,
   testInfo?: TestInfo,
+  options: TitleCardOptions = {},
 ) {
-  if (testInfo && !isVideoProject(testInfo)) return;
+  if (!testInfo || !isVideoProject(testInfo)) return;
 
   await page.evaluate(
-    ({ title, subtitle }) => {
+    ({ title, subtitle, eyebrow, accent, align }) => {
+      document.getElementById("e2e-title-card")?.remove();
+      document.getElementById("e2e-scene-label")?.remove();
       const overlay = document.createElement("div");
       overlay.id = "e2e-title-card";
       Object.assign(overlay.style, {
@@ -29,41 +41,139 @@ export async function showTitleCard(
         zIndex: "99999",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
+        alignItems: align === "center" ? "center" : "flex-start",
         justifyContent: "center",
         background: "#161616",
         color: "#f4f4f4",
         fontFamily: "'IBM Plex Sans', Arial, sans-serif",
+        borderLeft: `6px solid ${accent}`,
+        boxSizing: "border-box",
+        padding: "0 64px",
+        pointerEvents: "none",
       });
+      if (eyebrow) {
+        const eyebrowText = document.createElement("p");
+        eyebrowText.textContent = eyebrow;
+        Object.assign(eyebrowText.style, {
+          fontSize: "0.95rem",
+          fontWeight: "600",
+          color: accent,
+          margin: "0 0 0.75rem",
+          textAlign: align,
+        });
+        overlay.appendChild(eyebrowText);
+      }
       const h1 = document.createElement("h1");
       h1.textContent = title;
       Object.assign(h1.style, {
-        fontSize: "2.5rem",
+        fontSize: "2.25rem",
         fontWeight: "600",
-        marginBottom: "0.5rem",
-        textAlign: "center",
-        padding: "0 2rem",
+        lineHeight: "1.2",
+        margin: "0",
+        maxWidth: "860px",
+        textAlign: align,
       });
       overlay.appendChild(h1);
       if (subtitle) {
         const p = document.createElement("p");
         p.textContent = subtitle;
         Object.assign(p.style, {
-          fontSize: "1.2rem",
-          color: "#a8a8a8",
-          textAlign: "center",
-          padding: "0 2rem",
+          fontSize: "1.25rem",
+          lineHeight: "1.5",
+          color: "#c6c6c6",
+          margin: "1rem 0 0",
+          maxWidth: "860px",
+          textAlign: align,
         });
         overlay.appendChild(p);
       }
       document.body.appendChild(overlay);
     },
-    { title, subtitle },
+    {
+      title,
+      subtitle,
+      eyebrow: options.eyebrow,
+      accent: options.accent ?? "#0f62fe",
+      align: options.align ?? "left",
+    },
   );
-  await page.waitForTimeout(durationMs);
+  await videoPause(page, durationMs, testInfo);
+  if (options.hold) return;
   await page.evaluate(() =>
     document.getElementById("e2e-title-card")?.remove(),
   );
+}
+
+/**
+ * Shows a narration line at the bottom of the viewport, replacing the previous
+ * one; null removes it. Clicks pass through it.
+ * No-op when not recording video.
+ */
+export async function showCaption(
+  page: Page,
+  text: string | null,
+  testInfo?: TestInfo,
+) {
+  if (!testInfo || !isVideoProject(testInfo)) return;
+
+  await page.evaluate((captionText) => {
+    let el = document.getElementById("e2e-caption");
+    if (!captionText) {
+      el?.remove();
+      return;
+    }
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "e2e-caption";
+      Object.assign(el.style, {
+        position: "fixed",
+        bottom: "28px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        maxWidth: "72%",
+        zIndex: "100000",
+        pointerEvents: "none",
+        background: "rgba(22,22,22,0.9)",
+        color: "#f4f4f4",
+        fontFamily: "'IBM Plex Sans', Arial, sans-serif",
+        fontSize: "19px",
+        lineHeight: "1.4",
+        textAlign: "center",
+        padding: "10px 22px",
+        borderLeft: "4px solid #0f62fe",
+        borderRadius: "4px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.35)",
+      });
+      document.body.appendChild(el);
+    }
+    el.textContent = captionText;
+  }, text);
+}
+
+/**
+ * Outlines one element on the page, for as long as `durationMs`.
+ * No-op when not recording video.
+ */
+export async function showHighlight(
+  locator: Locator,
+  durationMs: number,
+  testInfo?: TestInfo,
+) {
+  if (!testInfo || !isVideoProject(testInfo)) return;
+
+  await locator.scrollIntoViewIfNeeded();
+  await locator.evaluate((el: HTMLElement) => {
+    el.style.outline = "3px solid #f1c21b";
+    el.style.outlineOffset = "2px";
+  });
+  await videoPause(locator.page(), durationMs, testInfo);
+  // The element may have left the page meanwhile.
+  await locator
+    .evaluate((el: HTMLElement) => {
+      el.style.outline = "";
+      el.style.outlineOffset = "";
+    })
+    .catch(() => undefined);
 }
 
 /**
@@ -79,7 +189,7 @@ export async function showStepCard(
   durationMs = 2000,
   testInfo?: TestInfo,
 ) {
-  if (testInfo && !isVideoProject(testInfo)) return;
+  if (!testInfo || !isVideoProject(testInfo)) return;
 
   await page.evaluate(
     ({ stepNumber, description }) => {
@@ -104,7 +214,7 @@ export async function showStepCard(
     },
     { stepNumber, description },
   );
-  await page.waitForTimeout(durationMs);
+  await videoPause(page, durationMs, testInfo);
   await page.evaluate(() => document.getElementById("e2e-step-card")?.remove());
 }
 
@@ -118,7 +228,7 @@ export async function showSceneLabel(
   label: string,
   testInfo?: TestInfo,
 ) {
-  if (testInfo && !isVideoProject(testInfo)) return;
+  if (!testInfo || !isVideoProject(testInfo)) return;
 
   await page.evaluate((sceneLabel) => {
     document.getElementById("e2e-scene-label")?.remove();

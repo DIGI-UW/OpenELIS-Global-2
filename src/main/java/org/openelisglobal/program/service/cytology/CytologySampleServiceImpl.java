@@ -25,6 +25,7 @@ import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.controller.cytology.CytologySampleForm;
 import org.openelisglobal.program.dao.cytology.CytologySampleDAO;
+import org.openelisglobal.program.service.ClinicalAttachmentService;
 import org.openelisglobal.program.valueholder.cytology.CytologySample;
 import org.openelisglobal.program.valueholder.cytology.CytologySample.CytologyStatus;
 import org.openelisglobal.result.action.util.ResultSet;
@@ -129,6 +130,22 @@ public class CytologySampleServiceImpl extends AuditableBaseObjectServiceImpl<Cy
     @Override
     public void updateWithFormValues(Integer cytologySampleId, CytologySampleForm form) {
         CytologySample cytologySample = get(cytologySampleId);
+        if (form.getSlides() != null) {
+            form.getSlides().forEach(upload -> {
+                if (!cytologySample.getSlides().stream().anyMatch(stored -> ClinicalAttachmentService
+                        .isUnchanged(upload, stored.getId(), stored.getImage(), stored.getFileType()))) {
+                    ClinicalAttachmentService.validate(upload);
+                }
+            });
+        }
+        if (form.getReports() != null) {
+            form.getReports().forEach(upload -> {
+                if (!cytologySample.getReports().stream().anyMatch(stored -> ClinicalAttachmentService
+                        .isUnchanged(upload, stored.getId(), stored.getImage(), stored.getFileType()))) {
+                    ClinicalAttachmentService.validate(upload);
+                }
+            });
+        }
         if (!GenericValidator.isBlankOrNull(form.getAssignedCytoPathologistId())) {
             cytologySample.setCytoPathologist(systemUserService.get(form.getAssignedCytoPathologistId()));
         }
@@ -171,9 +188,9 @@ public class CytologySampleServiceImpl extends AuditableBaseObjectServiceImpl<Cy
         for (TestResultItem testResultItem : testResultItems) {
             if (!testResultItem.getIsGroupSeparator()) {
                 if (ResultType.isTextOnlyVariant(testResultItem.getResultType())) {
-                    testResultItem.setResultValue(MessageUtil.getMessage("result.cytoology.seereport"));
+                    testResultItem.setResultValue(MessageUtil.getMessage("result.cytology.seereport"));
                 }
-                Analysis analysis = analysisService.get(sample.getId());
+                Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
                 ResultSaveBean bean = ResultSaveBeanAdapter.fromTestResultItem(testResultItem);
                 ResultSaveService resultSaveService = new ResultSaveService(analysis, form.getSystemUserId());
                 List<Result> results = resultSaveService.createResultsFromTestResultItem(bean, new ArrayList<>());

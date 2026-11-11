@@ -1,9 +1,12 @@
 package org.openelisglobal.localization.service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.localization.ShippedLabels;
 import org.openelisglobal.localization.dao.LocalizationDAO;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.localization.valueholder.SupportedLocale;
@@ -139,6 +142,18 @@ public class LocalizationServiceImpl extends AuditableBaseObjectServiceImpl<Loca
         return super.insert(localization);
     }
 
+    /**
+     * Saves the localization and, when it names a test, the test's stored name
+     * (OGC-1442).
+     */
+    @Override
+    @Transactional
+    public Localization update(Localization localization) {
+        Localization updated = super.update(localization);
+        baseObjectDAO.syncStoredTestNames(updated.getId());
+        return updated;
+    }
+
     @Override
     @Transactional
     public void updateTestNames(Localization name, Localization reportingName) {
@@ -162,6 +177,18 @@ public class LocalizationServiceImpl extends AuditableBaseObjectServiceImpl<Loca
     @Transactional(readOnly = true)
     public List<Localization> findMissingTranslationsForLocale(String locale) {
         return baseObjectDAO.findMissingTranslationsForLocale(locale);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, String> shippedDisplayKeysByLocalizationId() {
+        Map<String, String> shipped = new HashMap<>();
+        baseObjectDAO.displayKeysByLocalizationId().forEach((id, key) -> {
+            if (ShippedLabels.isShipped(key)) {
+                shipped.put(id, key.trim());
+            }
+        });
+        return shipped;
     }
 
     @Override

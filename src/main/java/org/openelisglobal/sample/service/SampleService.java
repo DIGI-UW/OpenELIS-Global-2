@@ -29,6 +29,12 @@ public interface SampleService extends BaseObjectService<Sample, String> {
 
     String getLargestAccessionNumberWithPrefix(String prefix);
 
+    /**
+     * Environmental samples (domain E) whose lab number starts with the prefix,
+     * ignoring case, in lab number order, at most max.
+     */
+    List<Sample> getEnvironmentalSamplesWithAccessionNumberStartingWith(String prefix, int max);
+
     String getLargestAccessionNumberMatchingPattern(String startingWith, int size);
 
     List<Sample> getSamplesWithPendingQaEventsByService(String serviceId);
@@ -60,6 +66,8 @@ public interface SampleService extends BaseObjectService<Sample, String> {
 
     List<Sample> getPageOfSamples(int startingRecNo);
 
+    List<Sample> getSamplesNewestFirst(int startingRecNo, int pageSize);
+
     List<Sample> getSamplesForPatient(String patientID);
 
     String generateAccessionNumberAndInsert(Sample sample);
@@ -67,6 +75,14 @@ public interface SampleService extends BaseObjectService<Sample, String> {
     Organization getOrganizationRequester(Sample sample, String orgTypeId);
 
     Person getPersonRequester(Sample sample);
+
+    /**
+     * Generic form of getPersonRequester, taking an explicit requesterTypeId so
+     * callers can look up a Person requester of any type (e.g. the
+     * "requestor_contact" type used by Environmental/Vector Requestor contacts)
+     * rather than only the hardcoded "provider" type.
+     */
+    Person getPersonRequester(Sample sample, long requesterTypeId);
 
     List<SampleQaEvent> getSampleQAEventList(Sample sample);
 
@@ -120,4 +136,9 @@ public interface SampleService extends BaseObjectService<Sample, String> {
             LocalDate upperDate);
 
     List<Sample> getSamplesByPriority(OrderPriority priority);
+
+    List<Sample> findSamplesWithRequiredByBefore(Timestamp horizon);
+
+    List<Sample> getStatSamplesReceivedBetweenWithAnalysisIn(Timestamp since, Timestamp cutoff,
+            List<String> analysisStatusIds);
 }

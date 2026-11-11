@@ -1,18 +1,12 @@
-import { React, useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { FormattedMessage, useIntl, injectIntl } from "react-intl";
-import {
-  Checkbox,
-  Select,
-  SelectItem,
-  Grid,
-  Column,
-  TextInput,
-  NumberInput,
-  Button,
-} from "@carbon/react";
+import { Grid, Column, NumberInput, Button } from "@carbon/react";
+import config from "../../config.json";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
 import AutoComplete from "../common/AutoComplete";
+import SearchableSelect from "../common/SearchableSelect";
+import SearchableCheckboxList from "../common/SearchableCheckboxList";
 import "../Style.css";
 
 const PrePrint = () => {
@@ -26,6 +20,7 @@ const PrePrint = () => {
   );
   const [selectedTests, setSelectedTests] = useState([]);
   const [selectedPanels, setSelectedPanels] = useState([]);
+  const [handTickedTests, setHandTickedTests] = useState([]);
 
   const [labelSets, setLabelSets] = useState(1);
   const [orderLabelsPerSet, setOrderLabelsPerSet] = useState(1);
@@ -53,90 +48,50 @@ const PrePrint = () => {
     };
   }, []);
 
-  function findTestById(testId) {
-    return sampleTypeTests.tests.find((test) => test.id === testId);
-  }
-  function findTestIndex(testId) {
-    return sampleTypeTests.tests.findIndex((test) => test.id === testId);
-  }
+  const panelTestIds = (panel) =>
+    panel.testIds
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => sampleTypeTests.tests.some((test) => test.id === id));
 
-  function updateSampleTypeTests(test, userBenchChoice = false) {
-    let tests = [...sampleTypeTests.tests];
-    let testIndex = findTestIndex(test.id);
-    tests[testIndex].userBenchChoice = userBenchChoice;
-    setSampleTypeTests({ ...sampleTypeTests, tests: tests });
-  }
-
-  const triggerPanelCheckBoxChange = (isChecked, testIds) => {
-    const testIdsList = testIds.split(",").map((id) => id.trim());
-    testIdsList.map((testId) => {
-      let testIndex = findTestIndex(testId);
-      let test = findTestById(testId);
-      if (testIndex !== -1) {
-        updateSampleTypeTests(test, isChecked);
-        if (isChecked) {
-          setSelectedTests((prevState) => {
-            return [...prevState, { id: test.id, name: test.name }];
-          });
-        } else {
-          removeTestFromSelectedTests(test);
-        }
-      }
-    });
-  };
-
-  const addPanelToSelectedPanels = (panel) => {
-    setSelectedPanels([
-      ...selectedPanels,
-      { id: panel.id, name: panel.name, testIds: panel.testIds },
-    ]);
-    triggerPanelCheckBoxChange(true, panel.testIds);
-  };
-
-  const removePanelFromSelectedPanels = (panel) => {
-    let index = 0;
-    for (let i in selectedPanels) {
-      if (selectedPanels[i].id === panel.id) {
-        triggerPanelCheckBoxChange(false, selectedPanels[i].testIds);
-        const newPanels = selectedPanels;
-        newPanels.splice(index, 1);
-        setSelectedPanels([...newPanels]);
-        break;
-      }
-      index++;
-    }
-  };
-
-  const removeTestFromSelectedTests = (test) => {
-    let index = 0;
-    for (let i in selectedTests) {
-      if (selectedTests[i].id === test.id) {
-        const newTests = selectedTests;
-        newTests.splice(index, 1);
-        setSelectedTests([...newTests]);
-        break;
-      }
-      index++;
-    }
-  };
-
-  function addTestToSelectedTests(test) {
-    setSelectedTests([...selectedTests, { id: test.id, name: test.name }]);
-  }
-  const handlePanelCheckbox = (e, panel) => {
-    if (e.currentTarget.checked) {
-      addPanelToSelectedPanels(panel);
+  const togglePanel = (panel, checked) => {
+    const others = selectedPanels.filter((item) => item.id !== panel.id);
+    const ids = panelTestIds(panel);
+    if (checked) {
+      setSelectedPanels([...others, panel]);
+      setSelectedTests((prev) => [
+        ...prev,
+        ...ids.filter((id) => !prev.includes(id)),
+      ]);
     } else {
-      removePanelFromSelectedPanels(panel);
+      const kept = others.flatMap(panelTestIds);
+      setSelectedPanels(others);
+      setSelectedTests((prev) =>
+        prev.filter(
+          (id) =>
+            !ids.includes(id) ||
+            kept.includes(id) ||
+            handTickedTests.includes(id),
+        ),
+      );
     }
   };
-  const handleTestCheckbox = (e, test) => {
-    if (e.currentTarget.checked) {
-      addTestToSelectedTests(test);
-    } else {
-      removeTestFromSelectedTests(test);
-    }
+
+  const toggleTest = (test, checked) => {
+    setHandTickedTests((prev) =>
+      checked
+        ? [...prev.filter((id) => id !== test.id), test.id]
+        : prev.filter((id) => id !== test.id),
+    );
+    setSelectedTests((prev) =>
+      checked
+        ? prev.includes(test.id)
+          ? prev
+          : [...prev, test.id]
+        : prev.filter((id) => id !== test.id),
+    );
   };
+
   const fetchSamplesTypes = (res) => {
     setSampleTypes(res);
   };
@@ -145,18 +100,16 @@ const PrePrint = () => {
     setSampleTypeTests(res);
   };
 
-  const handleFetchSampleTypeTests = (e) => {
-    const { value } = e.target;
-    setSelectedSampleTypeId(value);
+  const chooseSampleType = (id) => {
+    setSelectedSampleTypeId(id || null);
+    setSampleTypeTests(sampleTypeTestsStructure);
     setSelectedTests([]);
     setSelectedPanels([]);
+    setHandTickedTests([]);
   };
 
   const prePrintLabels = () => {
-    console.log(selectedPanels);
-    const selectedTestIds = selectedTests
-      .map((selectedTest) => selectedTest.id)
-      .join(",");
+    const selectedTestIds = selectedTests.join(",");
     const params = new URLSearchParams({
       prePrinting: "true",
       numSetsOfLabels: labelSets,
@@ -165,7 +118,7 @@ const PrePrint = () => {
       facilityName: facilityId,
       testIds: selectedTestIds,
     });
-    setSource(`LabelMakerServlet?${params.toString()}`);
+    setSource(`${config.serverBaseUrl}/LabelMakerServlet?${params.toString()}`);
     setRenderBarcode(true);
   };
 
@@ -174,7 +127,7 @@ const PrePrint = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedSampleTypeId !== null) {
+    if (selectedSampleTypeId) {
       getFromOpenElisServer(
         `/rest/sample-type-tests?sampleType=${selectedSampleTypeId}`,
         fetchSampleTypeTests,
@@ -283,76 +236,51 @@ const PrePrint = () => {
             </h4>
           </Column>
           <Column lg={8} md={4} sm={4}>
-            <Select
+            <SearchableSelect
               id="selectSampleType"
-              labelText="Sample Type"
-              onChange={(e) => {
-                handleFetchSampleTypeTests(e);
-              }}
-            >
-              {selectedSampleTypeId === null && (
-                <SelectItem
-                  text={intl.formatMessage({ id: "sample.select.type" })}
-                  value=""
+              labelText={intl.formatMessage({ id: "sample.type" })}
+              placeholder={intl.formatMessage({ id: "sample.select.type" })}
+              options={sampleTypes ?? []}
+              value={selectedSampleTypeId ?? ""}
+              onChange={chooseSampleType}
+            />
+          </Column>
+          {selectedSampleTypeId && (
+            <>
+              <Column lg={16} md={8} sm={4}>
+                <h4>
+                  <FormattedMessage id="sample.entry.panels" />
+                </h4>
+                <SearchableCheckboxList
+                  key={`panels_${selectedSampleTypeId}`}
+                  id="preprint-panels"
+                  idPrefix="panel_"
+                  searchLabel={intl.formatMessage({
+                    id: "searchableList.search.panels",
+                  })}
+                  items={sampleTypeTests.panels ?? []}
+                  selectedIds={selectedPanels.map((panel) => panel.id)}
+                  onToggle={togglePanel}
                 />
-              )}
-              {sampleTypes?.map((sampleType, i) => (
-                <SelectItem
-                  text={sampleType.value}
-                  value={sampleType.id}
-                  key={i}
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <h4>
+                  <FormattedMessage id="sample.entry.available.tests" />
+                </h4>
+                <SearchableCheckboxList
+                  key={`tests_${selectedSampleTypeId}`}
+                  id="preprint-tests"
+                  idPrefix="test_"
+                  searchLabel={intl.formatMessage({
+                    id: "searchableList.search.tests",
+                  })}
+                  items={sampleTypeTests.tests ?? []}
+                  selectedIds={selectedTests}
+                  onToggle={toggleTest}
                 />
-              ))}
-            </Select>
-          </Column>
-          <Column lg={16} md={8} sm={4}>
-            {selectedSampleTypeId && (
-              <h4>
-                <FormattedMessage id="sample.entry.panels" />
-              </h4>
-            )}
-            {sampleTypeTests.panels !== null &&
-              sampleTypeTests.panels.map((panel) => {
-                return panel.name === "" ? (
-                  ""
-                ) : (
-                  <Checkbox
-                    onChange={(e) => handlePanelCheckbox(e, panel)}
-                    labelText={panel.name}
-                    id={"panel_" + panel.id}
-                    key={panel.id}
-                    checked={
-                      selectedPanels.filter((item) => item.id === panel.id)
-                        .length > 0
-                    }
-                  />
-                );
-              })}
-          </Column>
-          <Column lg={16} md={8} sm={4}>
-            {selectedSampleTypeId && (
-              <h4>
-                <FormattedMessage id="sample.entry.available.tests" />
-              </h4>
-            )}
-            {sampleTypeTests.tests != null &&
-              sampleTypeTests.tests.map((test) => {
-                return test.name === "" ? (
-                  ""
-                ) : (
-                  <Checkbox
-                    onChange={(e) => handleTestCheckbox(e, test)}
-                    labelText={test.name}
-                    id={"test_" + test.id}
-                    key={test.id}
-                    checked={
-                      selectedTests.filter((item) => item.id === test.id)
-                        .length > 0
-                    }
-                  />
-                );
-              })}
-          </Column>
+              </Column>
+            </>
+          )}
           <Column lg={16} md={8} sm={4}>
             {" "}
             <br></br>

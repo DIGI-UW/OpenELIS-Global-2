@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Fixture for SampleAcceptanceChecklistServiceTest (S-09 / OGC-580). executeDataSetWithStateManagement
+    TRUNCATEs every table named here with RESTART IDENTITY CASCADE, then REFRESH-inserts
+    these rows, giving a known clean state. Standalone *_seq sequences are NOT
+    reset by RESTART IDENTITY, so service-driven inserts in the test get high,
+    non-colliding ids. -->
+<dataset>
+
+    <!-- Sample Acceptance Checklist categories: lab-wide + the 3 domain lists -->
+    <dictionary_category id="1"
+        description="Sample Acceptance Checklist items - lab-wide"
+        local_Abbrev="SAcceptAll" name="SampleAcceptanceItem"
+        lastUpdated="2026-01-01 12:00:00" />
+    <dictionary_category id="2"
+        description="Sample Acceptance Checklist items - Clinical"
+        local_Abbrev="SAcceptCli" name="SampleAcceptanceItem_CLINICAL"
+        lastUpdated="2026-01-01 12:00:00" />
+    <dictionary_category id="3"
+        description="Sample Acceptance Checklist items - Environmental"
+        local_Abbrev="SAcceptEnv" name="SampleAcceptanceItem_ENVIRONMENTAL"
+        lastUpdated="2026-01-01 12:00:00" />
+    <dictionary_category id="4"
+        description="Sample Acceptance Checklist items - Vector"
+        local_Abbrev="SAcceptVec" name="SampleAcceptanceItem_VECTOR"
+        lastUpdated="2026-01-01 12:00:00" />
+
+    <!-- QA Checklist category + one item, present only to prove the two features
+        stay isolated -->
+    <dictionary_category id="5"
+        description="QA Checklist items" local_Abbrev="QACheck"
+        name="QAChecklistItem" lastUpdated="2026-01-01 12:00:00" />
+
+    <!-- 6 lab-wide acceptance items. IDs are intentionally REVERSED relative
+        to sort_order so a passing order-assertion proves sorting by sort_order (not
+        by id / insertion order). -->
+    <dictionary id="6" is_active="Y"
+        dict_entry="containerIntact"
+        local_Abbrev="Container intact / undamaged" dictionary_category_id="1"
+        sort_order="1" lastUpdated="2026-01-01 12:00:00" />
+    <dictionary id="5" is_active="Y" dict_entry="labelLegible"
+        local_Abbrev="Label legible and matches request"
+        dictionary_category_id="1" sort_order="2"
+        lastUpdated="2026-01-01 12:00:00" />
+    <dictionary id="4" is_active="Y" dict_entry="volumeAdequate"
+        local_Abbrev="Sample volume adequate" dictionary_category_id="1"
+        sort_order="3" lastUpdated="2026-01-01 12:00:00" />
+    <dictionary id="3" is_active="Y" dict_entry="coldChain"
+        local_Abbrev="Cold chain maintained" dictionary_category_id="1"
+        sort_order="4" lastUpdated="2026-01-01 12:00:00" />
+    <dictionary id="2" is_active="Y" dict_entry="transit"
+        local_Abbrev="Acceptable transit time / condition"
+        dictionary_category_id="1" sort_order="5"
+        lastUpdated="2026-01-01 12:00:00" />
+    <dictionary id="1" is_active="Y" dict_entry="paperwork"
+        local_Abbrev="Required paperwork present and complete"
+        dictionary_category_id="1" sort_order="6"
+        lastUpdated="2026-01-01 12:00:00" />
+
+    <!-- QA item (different category) -->
+    <dictionary id="7" is_active="Y"
+        dict_entry="patientInfoVerified"
+        local_Abbrev="Patient information is correct"
+        dictionary_category_id="5" sort_order="1"
+        lastUpdated="2026-01-01 12:00:00" />
+
+</dataset>

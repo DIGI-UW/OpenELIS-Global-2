@@ -3,6 +3,7 @@ package org.openelisglobal.organization.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -371,7 +372,14 @@ public class OrganizationRestController extends BaseController {
 
         // List states = getPossibleStates(form);
 
+        Timestamp storedVersion = organization.getLastupdated();
         PropertyUtils.copyProperties(organization, form);
+        // The form sends lastupdated in milliseconds; a stored version with
+        // microseconds is the same version when the milliseconds match.
+        if (storedVersion != null && form.getLastupdated() != null
+                && storedVersion.getTime() == form.getLastupdated().getTime()) {
+            organization.setLastupdated(storedVersion);
+        }
 
         if (FormFields.getInstance().useField(FormFields.Field.OrganizationParent)) {
             String parentOrgName = form.getParentOrgName();
@@ -464,25 +472,6 @@ public class OrganizationRestController extends BaseController {
     @GetMapping(value = "/organization/types", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<OrganizationType>> getOrganizationTypes() {
         return ResponseEntity.ok(organizationTypeService.getAll());
-    }
-
-    /**
-     * Generate a unique, sequential site code for new sampling sites. Format:
-     * SYYMMDD-NNNNN (e.g., S260408-00001) — max 14 chars, fits short_name(15). Uses
-     * a DB sequence (site_code_seq) for guaranteed uniqueness.
-     */
-    @GetMapping(value = "/organization/generate-site-code", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, String>> generateSiteCode() {
-        try {
-            String code = organizationService.generateSiteCode();
-            Map<String, String> response = new HashMap<>();
-            response.put("siteCode", code);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getName(), "generateSiteCode",
-                    "Error generating site code: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
     }
 
     private void persistAddressParts(Organization organization, Map<String, OrganizationAddress> addressParts) {
@@ -676,6 +665,9 @@ public class OrganizationRestController extends BaseController {
                 orgData.put("streetAddress", org.getStreetAddress());
                 orgData.put("city", org.getCity() != null ? org.getCity() : "");
                 orgData.put("state", org.getState());
+                orgData.put("phone", org.getPhone());
+                orgData.put("fax", org.getFax());
+                orgData.put("email", org.getEmail());
                 orgData.put("isActive", "Y".equals(org.getIsActive()));
 
                 List<String> typeIds = organizationService.getTypeIdsForOrganizationId(org.getId());

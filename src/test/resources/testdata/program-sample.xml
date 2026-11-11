@@ -33,15 +33,15 @@
     <test_section id="1" lastupdated="2024-06-10 12:00:00.0"
         name="Blood Test" description="General blood test section"
         name_localization_id="1" display_key="blood_test_key" is_external="N"
-        is_active="Y" sort_order="1" />
+        is_active="Y" sort_order="1" domain="CLINICAL" />
     <test_section id="2" lastupdated="2024-06-11 12:00:00.0"
         name="X-Ray" description="X-Ray imaging section"
         name_localization_id="2" display_key="x_ray_key" is_external="N"
-        is_active="Y" sort_order="2" />
+        is_active="Y" sort_order="2" domain="CLINICAL" />
     <test_section id="3" lastupdated="2024-06-12 12:00:00.0"
         name="Cardiology" description="Cardiology section"
         name_localization_id="3" display_key="cardiology_key" is_external="Y"
-        is_active="Y" sort_order="3" />
+        is_active="Y" sort_order="3" domain="CLINICAL" />
 
     <program id="1" lastupdated="2024-06-10 12:00:00.0"
         code="PROG001" name="Blood Test Program" manually_changed="false"

@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+  <!-- OGC-431 / OGC-1031 r4: Report Print Queue, V1 (patient reports). One issue
+       history for per-order reports: a version per printed content, the printed
+       value of every analysis on it, the archived PDF with its SHA-256, and one
+       print event per print or reprint. -->
+
+  <changeSet id="017-report-version" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists schemaName="clinlims" tableName="report_version"/></not>
+    </preConditions>
+    <createTable schemaName="clinlims" tableName="report_version">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="sample_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="report_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+      <column name="version" type="INTEGER"><constraints nullable="false"/></column>
+      <column name="amended" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+      <column name="amended_count" type="INTEGER" defaultValueNumeric="0"><constraints nullable="false"/></column>
+      <column name="reissue" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+      <column name="change_summary" type="TEXT"/>
+      <column name="released_count" type="INTEGER" defaultValueNumeric="0"><constraints nullable="false"/></column>
+      <column name="total_count" type="INTEGER" defaultValueNumeric="0"><constraints nullable="false"/></column>
+      <column name="issued_by_user_id" type="VARCHAR(255)"/>
+      <column name="issued_at" type="TIMESTAMPTZ"><constraints nullable="false"/></column>
+      <column name="pdf_content" type="BYTEA"/>
+      <column name="sha256_hash" type="VARCHAR(64)"/>
+      <column name="archive_failed" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+      <column name="legacy" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+      <column name="last_updated" type="TIMESTAMPTZ" defaultValueComputed="now()"/>
+    </createTable>
+    <addUniqueConstraint schemaName="clinlims" tableName="report_version" columnNames="sample_id, report_type, version" constraintName="uq_report_version_sample_type_version"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="report_version" baseColumnNames="sample_id" constraintName="fk_report_version_sample" referencedTableSchemaName="clinlims" referencedTableName="sample" referencedColumnNames="id"/>
+    <createIndex schemaName="clinlims" tableName="report_version" indexName="idx_report_version_sample_type">
+      <column name="sample_id"/>
+      <column name="report_type"/>
+    </createIndex>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="report_version"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="017-report-version-item" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists schemaName="clinlims" tableName="report_version_item"/></not>
+    </preConditions>
+    <createTable schemaName="clinlims" tableName="report_version_item">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="report_version_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="analysis_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="test_name" type="TEXT"/>
+      <column name="printed_value" type="TEXT"/>
+      <column name="printed_display" type="TEXT"/>
+      <column name="printed_flag" type="VARCHAR(8)"/>
+      <column name="printed_unit" type="TEXT"/>
+      <column name="last_updated" type="TIMESTAMPTZ" defaultValueComputed="now()"/>
+    </createTable>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="report_version_item" baseColumnNames="report_version_id" constraintName="fk_report_version_item_version" referencedTableSchemaName="clinlims" referencedTableName="report_version" referencedColumnNames="id"/>
+    <createIndex schemaName="clinlims" tableName="report_version_item" indexName="idx_report_version_item_version">
+      <column name="report_version_id"/>
+    </createIndex>
+    <createIndex schemaName="clinlims" tableName="report_version_item" indexName="idx_report_version_item_analysis">
+      <column name="analysis_id"/>
+    </createIndex>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="report_version_item"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="017-report-print-event" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists schemaName="clinlims" tableName="report_print_event"/></not>
+    </preConditions>
+    <createTable schemaName="clinlims" tableName="report_print_event">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="report_version_id" type="BIGINT"><constraints nullable="false"/></column>
+      <column name="printed_at" type="TIMESTAMPTZ"><constraints nullable="false"/></column>
+      <column name="printed_by_user_id" type="VARCHAR(255)"/>
+      <column name="reprint" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+      <column name="last_updated" type="TIMESTAMPTZ" defaultValueComputed="now()"/>
+    </createTable>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="report_print_event" baseColumnNames="report_version_id" constraintName="fk_report_print_event_version" referencedTableSchemaName="clinlims" referencedTableName="report_version" referencedColumnNames="id"/>
+    <createIndex schemaName="clinlims" tableName="report_print_event" indexName="idx_report_print_event_version">
+      <column name="report_version_id"/>
+    </createIndex>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="report_print_event"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="017-report-queue-preference" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists schemaName="clinlims" tableName="report_queue_preference"/></not>
+    </preConditions>
+    <createTable schemaName="clinlims" tableName="report_queue_preference">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="system_user_id" type="BIGINT"><constraints nullable="false" unique="true" uniqueConstraintName="uq_report_queue_preference_user"/></column>
+      <column name="time_window" type="VARCHAR(16)" defaultValue="7d"><constraints nullable="false"/></column>
+      <column name="page_size" type="INTEGER" defaultValueNumeric="20"><constraints nullable="false"/></column>
+      <column name="last_updated" type="TIMESTAMPTZ" defaultValueComputed="now()"/>
+    </createTable>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="report_queue_preference"/>
+    </rollback>
+  </changeSet>
+
+  <!-- Every patient report printed before this changelog becomes version 1 of
+       its order, issued before archiving began (no PDF, no printed values), so
+       already printed orders show as Printed and not as a backlog. -->
+  <changeSet id="017-report-queue-legacy-versions" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <tableExists schemaName="clinlims" tableName="document_track"/>
+      <tableExists schemaName="clinlims" tableName="document_type"/>
+      <tableExists schemaName="clinlims" tableName="reference_tables"/>
+    </preConditions>
+    <sql>
+      INSERT INTO clinlims.report_version (sample_id, report_type, version, amended, amended_count, reissue,
+                                           released_count, total_count, issued_by_user_id, issued_at, legacy,
+                                           archive_failed, last_updated)
+      SELECT CAST(dt.row_id AS BIGINT), 'PATIENT', 1, false, 0, false, 0, 0, NULL,
+             MAX(dt.report_generation_time), true, false, now()
+      FROM clinlims.document_track dt
+      JOIN clinlims.document_type dty ON dty.id = dt.document_type_id AND dty.name = 'patientReport'
+      JOIN clinlims.reference_tables rt ON rt.id = dt.table_id AND rt.name = 'SAMPLE'
+      WHERE dt.row_id IS NOT NULL
+        AND dt.report_generation_time IS NOT NULL
+        AND EXISTS (SELECT 1 FROM clinlims.sample s WHERE s.id = CAST(dt.row_id AS BIGINT))
+        AND NOT EXISTS (SELECT 1 FROM clinlims.report_version v
+                        WHERE v.sample_id = CAST(dt.row_id AS BIGINT) AND v.report_type = 'PATIENT')
+      GROUP BY dt.row_id;
+    </sql>
+    <rollback>
+      <sql>DELETE FROM clinlims.report_version WHERE legacy = true AND report_type = 'PATIENT';</sql>
+    </rollback>
+  </changeSet>
+
+  <!-- Go-live cutoff (BR-7): orders released before this date with no issue
+       record are not listed as unprinted; they stay reachable by lab number. -->
+  <changeSet id="017-report-queue-install-date" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'reportPrintQueueInstallDate'</sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq"/>
+      <column name="name" value="reportPrintQueueInstallDate"/>
+      <column name="description" value="When the Report Print Queue was installed. Orders released before it with no print record are not listed as unprinted."/>
+      <column name="value" valueComputed="to_char(now(), 'YYYY-MM-DD HH24:MI:SS')"/>
+      <column name="value_type" value="text"/>
+      <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')"/>
+      <column name="lastupdated" valueDate="now()"/>
+    </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="site_information"><where>name = 'reportPrintQueueInstallDate'</where></delete>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="017-report-queue-module" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'ReportPrintQueue'</sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="system_module">
+      <column name="id" valueSequenceNext="system_module_seq"/>
+      <column name="name" value="ReportPrintQueue"/>
+      <column name="description" value="Open the Report Print Queue and print released reports from it"/>
+      <column name="has_select_flag" value="Y"/>
+      <column name="has_add_flag" value="N"/>
+      <column name="has_update_flag" value="N"/>
+      <column name="has_delete_flag" value="N"/>
+    </insert>
+    <insert schemaName="clinlims" tableName="system_module_url">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/ReportPrintQueue"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'ReportPrintQueue')"/>
+    </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="system_module_url"><where>url_path = '/ReportPrintQueue'</where></delete>
+      <delete schemaName="clinlims" tableName="system_module"><where>name = 'ReportPrintQueue'</where></delete>
+    </rollback>
+  </changeSet>
+
+  <!-- Granted on upgrade to every role that can open Patient Status Report
+       today, plus the Reports and Global Administrator roles. -->
+  <changeSet id="017-report-queue-module-grants" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'ReportPrintQueue'</sqlCheck>
+    </preConditions>
+    <sql>
+      INSERT INTO clinlims.system_role_module (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
+      SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N', r.id, m.id
+      FROM clinlims.system_role r
+      CROSS JOIN clinlims.system_module m
+      WHERE m.name = 'ReportPrintQueue'
+        AND (r.name IN ('Reports', 'Global Administrator')
+             OR EXISTS (SELECT 1 FROM clinlims.system_role_module rm
+                        JOIN clinlims.system_module pm ON pm.id = rm.system_module_id
+                        WHERE pm.name = 'Report:patient' AND rm.system_role_id = r.id AND rm.has_select = 'Y'))
+        AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_module x
+                        WHERE x.system_role_id = r.id AND x.system_module_id = m.id);
+    </sql>
+    <rollback>
+      <sql>
+        DELETE FROM clinlims.system_role_module
+        WHERE system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'ReportPrintQueue');
+      </sql>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="017-report-queue-menu" author="openelisglobal">
+    <comment>Reports menu entry for the Report Print Queue, right after Patient Status Report</comment>
+    <sql>
+      INSERT INTO clinlims.menu (id, parent_id, presentation_order, element_id, action_url, display_key, is_active)
+      SELECT nextval('clinlims.menu_seq'),
+             (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports_routine'),
+             COALESCE((SELECT presentation_order FROM clinlims.menu WHERE element_id = 'menu_reports_status_patient'), 0) + 1,
+             'menu_reports_printqueue', '/ReportPrintQueue', 'sidenav.label.reports.printQueue', true
+      WHERE NOT EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_printqueue')
+        AND EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_routine');
+    </sql>
+    <rollback>
+      <sql>DELETE FROM clinlims.menu WHERE element_id = 'menu_reports_printqueue';</sql>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

@@ -1,11 +1,15 @@
 import React from "react";
-import { render, screen, act, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import EQAParticipantsPage from "../EQAParticipantsPage";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../../utils/Utils";
 
-vi.mock("../../utils/Utils", () => ({
+// Spread the real module: the permission predicate under test must not be
+// mocked, or the gate assertions below pass against a stub.
+vi.mock("../../utils/Utils", async () => ({
+  ...(await vi.importActual("../../utils/Utils")),
   getFromOpenElisServer: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
   putToOpenElisServer: vi.fn(),
@@ -20,6 +24,16 @@ vi.mock("../../common/PageBreadCrumb", () => {
 });
 
 // Replaced inline utils require
+
+const programSelector = () =>
+  screen.getByRole("combobox", {
+    name: messages["eqa.enrollment.selectProgram"],
+  });
+
+const chooseProgram = (name) => {
+  fireEvent.click(programSelector());
+  fireEvent.click(screen.getByRole("option", { name }));
+};
 
 const mockPrograms = [
   { id: 1, name: "Chemistry PT", isActive: true },
@@ -60,10 +74,22 @@ const mockEnrollments = [
   },
 ];
 
-const renderPage = () => {
+const renderPage = ({
+  permissions = ["qa.view.eqa", "qa.eqa.provider"],
+  roles = [],
+} = {}) => {
   return render(
     <IntlProvider locale="en" messages={messages}>
-      <EQAParticipantsPage />
+      <UserSessionDetailsContext.Provider
+        value={{
+          userSessionDetails: { authenticated: true, roles, permissions },
+          errorLoadingSessionDetails: false,
+          isCheckingLogin: () => false,
+          logout: vi.fn(),
+        }}
+      >
+        <EQAParticipantsPage />
+      </UserSessionDetailsContext.Provider>
     </IntlProvider>,
   );
 };
@@ -89,7 +115,7 @@ describe("EQAParticipantsPage", () => {
     renderPage();
     expect(screen.getByText("Participants")).toBeTruthy();
     expect(
-      screen.getByText("Manage organization enrollment in EQA programs"),
+      screen.getByText("Manage organization enrollment in EQA schemes"),
     ).toBeTruthy();
   });
 
@@ -101,23 +127,27 @@ describe("EQAParticipantsPage", () => {
   test("shows prompt when no program is selected", () => {
     renderPage();
     expect(
-      screen.getByText("Select a program to view enrollments"),
+      screen.getByText("Select a scheme to view enrollments"),
     ).toBeTruthy();
   });
 
   test("populates program selector with active programs only", () => {
     renderPage();
-    const programSelector = screen.getByTestId("program-selector");
-    expect(programSelector).toBeTruthy();
-    const options = programSelector.querySelectorAll("option");
-    // default + 2 active programs (Inactive Prog filtered out)
-    expect(options.length).toBe(3);
+    fireEvent.click(programSelector());
+    expect(
+      within(
+        document.getElementById(
+          programSelector().getAttribute("aria-controls"),
+        ),
+      )
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["Chemistry PT", "Hematology PT"]);
   });
 
   test("shows enrollments table when program is selected", () => {
     renderPage();
-    const select = screen.getByTestId("program-selector");
-    fireEvent.change(select, { target: { value: "1" } });
+    chooseProgram("Chemistry PT");
 
     expect(screen.getByText("Hospital A")).toBeTruthy();
     expect(screen.getByText("Clinic B")).toBeTruthy();
@@ -126,16 +156,14 @@ describe("EQAParticipantsPage", () => {
 
   test("renders (This Lab) tag for local organization", () => {
     renderPage();
-    const select = screen.getByTestId("program-selector");
-    fireEvent.change(select, { target: { value: "1" } });
+    chooseProgram("Chemistry PT");
 
     expect(screen.getByText("This Lab")).toBeTruthy();
   });
 
   test("renders correct column headers", () => {
     renderPage();
-    const select = screen.getByTestId("program-selector");
-    fireEvent.change(select, { target: { value: "1" } });
+    chooseProgram("Chemistry PT");
 
     expect(
       screen.getAllByText("Organization Name").length,
@@ -147,10 +175,26 @@ describe("EQAParticipantsPage", () => {
     expect(screen.getByText("Enrollment Date")).toBeTruthy();
   });
 
+  test("hides enrollment controls from a reader without the provider grant", () => {
+    // Provider-lane writes answer 403 for this principal, so the control must
+    // not be offered. Reads stay available.
+    renderPage({ permissions: ["qa.view.eqa"] });
+    chooseProgram("Chemistry PT");
+    expect(screen.queryByTestId("enroll-button")).toBeNull();
+    // Scoped to the table: WithdrawModal keeps its own Withdraw button in the
+    // DOM while closed.
+    const rows = within(screen.getByRole("table"));
+    for (const control of ["suspend", "withdraw", "reactivate"]) {
+      expect(
+        rows.queryAllByRole("button", { name: new RegExp(control, "i") }),
+      ).toHaveLength(0);
+    }
+    expect(screen.getByText("Enrollment Date")).toBeTruthy();
+  });
+
   test("shows Enroll Participant button when program is selected", () => {
     renderPage();
-    const select = screen.getByTestId("program-selector");
-    fireEvent.change(select, { target: { value: "1" } });
+    chooseProgram("Chemistry PT");
 
     expect(screen.getByTestId("enroll-button")).toBeTruthy();
   });
@@ -165,16 +209,14 @@ describe("EQAParticipantsPage", () => {
     });
 
     renderPage();
-    const select = screen.getByTestId("program-selector");
-    fireEvent.change(select, { target: { value: "1" } });
+    chooseProgram("Chemistry PT");
 
     expect(screen.getByTestId("empty-message")).toBeTruthy();
   });
 
   test("renders status tags with correct types", () => {
     renderPage();
-    const select = screen.getByTestId("program-selector");
-    fireEvent.change(select, { target: { value: "1" } });
+    chooseProgram("Chemistry PT");
 
     expect(screen.getAllByText("Active").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Suspended").length).toBeGreaterThanOrEqual(1);
@@ -183,8 +225,7 @@ describe("EQAParticipantsPage", () => {
 
   test("renders status filter dropdown", () => {
     renderPage();
-    const select = screen.getByTestId("program-selector");
-    fireEvent.change(select, { target: { value: "1" } });
+    chooseProgram("Chemistry PT");
 
     expect(screen.getByTestId("enrollment-status-filter")).toBeTruthy();
   });

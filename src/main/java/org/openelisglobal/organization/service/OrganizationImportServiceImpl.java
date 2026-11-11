@@ -24,7 +24,9 @@ import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirGeneralException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.organization.service.OrganizationChangeService.FieldChange;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.organization.valueholder.OrganizationChange;
 import org.openelisglobal.organization.valueholder.OrganizationType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +37,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class OrganizationImportServiceImpl implements OrganizationImportService {
+
+    /**
+     * The source marker on every organization the facility registry supplies
+     * (OGC-1363 FR-H).
+     */
+    public static final String REGISTRY_SOURCE = "REGISTRY";
+    private static final String REGISTRY_ACTOR = "Registry sync";
+
+    @Autowired
+    private OrganizationChangeService organizationChangeService;
 
     @Value("${org.openelisglobal.facilitylist.fhirstore:}")
     private String facilityFhirStore;
@@ -84,7 +96,7 @@ public class OrganizationImportServiceImpl implements OrganizationImportService 
                 responseBundle = client.loadPage().next(responseBundle).execute();
                 responseBundles.add(responseBundle);
             }
-            organizationService.deactivateAllOrganizations();
+            organizationService.deactivateOrganizationsFromSource(REGISTRY_SOURCE);
             importOrgsFromBundle(client, responseBundles);
 
             responseBundles = new ArrayList<>();
@@ -211,7 +223,10 @@ public class OrganizationImportServiceImpl implements OrganizationImportService 
 
     private Organization insertOrUpdateOrganization(Organization organization) {
         Organization dbOrg = organizationService.getOrganizationByFhirId(organization.getFhirUuidAsString());
+        organization.setSource(REGISTRY_SOURCE);
         if (dbOrg != null) {
+            recordRegistryChanges(dbOrg, organization);
+            dbOrg.setSource(REGISTRY_SOURCE);
             dbOrg.setOrganizationName(organization.getOrganizationName());
             dbOrg.setShortName(organization.getShortName());
             dbOrg.setCode(organization.getCode());
@@ -225,8 +240,44 @@ public class OrganizationImportServiceImpl implements OrganizationImportService 
             dbOrg.setIsActive(organization.getIsActive());
         } else {
             dbOrg = organizationService.save(organization);
+            if (dbOrg != null && dbOrg.getId() != null && dbOrg.getId().matches("\\d+")) {
+                organizationChangeService.record(Integer.valueOf(dbOrg.getId()),
+                        OrganizationChange.ACTION_REGISTRY_SYNC, List.of(), null, REGISTRY_ACTOR);
+            }
         }
         return dbOrg;
+    }
+
+    /**
+     * OGC-1363 (FR-K1): what the registry changed on a record it already supplied,
+     * written to the record's history under the "Registry sync" actor.
+     */
+    private void recordRegistryChanges(Organization stored, Organization incoming) {
+        if (stored.getId() == null || !stored.getId().matches("\\d+")) {
+            return;
+        }
+        List<FieldChange> changes = new ArrayList<>();
+        change(changes, "name", stored.getOrganizationName(), incoming.getOrganizationName());
+        change(changes, "shortName", stored.getShortName(), incoming.getShortName());
+        change(changes, "code", stored.getCode(), incoming.getCode());
+        change(changes, "streetAddress", stored.getStreetAddress(), incoming.getStreetAddress());
+        change(changes, "city", stored.getCity(), incoming.getCity());
+        change(changes, "zipCode", stored.getZipCode(), incoming.getZipCode());
+        change(changes, "state", stored.getState(), incoming.getState());
+        change(changes, "internetAddress", stored.getInternetAddress(), incoming.getInternetAddress());
+        change(changes, "active", stored.getIsActive(), incoming.getIsActive());
+        if (!changes.isEmpty()) {
+            organizationChangeService.record(Integer.valueOf(stored.getId()), OrganizationChange.ACTION_REGISTRY_SYNC,
+                    changes, null, REGISTRY_ACTOR);
+        }
+    }
+
+    private static void change(List<FieldChange> changes, String field, String before, String after) {
+        String old = before == null ? "" : before;
+        String now = after == null ? "" : after;
+        if (!old.equals(now)) {
+            changes.add(new FieldChange(field, before, after));
+        }
     }
 
     public class OrganizationObjects {

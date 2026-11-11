@@ -216,6 +216,15 @@ public class OrderLabelRequestDAOImplTest extends BaseWebContextSensitiveTest {
      * sample typing, so it needs no {@code type_of_sample} FK parent; seeding one
      * would add nothing. {@code status_id} is NOT NULL in the legacy schema.
      */
+    @Test
+    public void deleteByParentSampleId_removesOnlyThatOrdersRows() {
+        int removed = orderLabelRequestDAO.deleteByParentSampleId(sampleAId);
+
+        assertEquals("both of sample A's rows (per-order and per-sample) go", 2, removed);
+        assertEquals(0, orderLabelRequestDAO.listByParentSampleId(sampleAId).size());
+        assertEquals("sample B's row is untouched", 1, orderLabelRequestDAO.listByParentSampleId(sampleBId).size());
+    }
+
     private String insertSampleItem(String sampleId) {
         String sampleItemId = String
                 .valueOf(jdbcTemplate.queryForObject("SELECT nextval('sample_item_seq')", Long.class));

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-224 (Panel Management Domain Upgrade v2.2) - panel-scoped mirror of
+    test_terminology_mapping / sample_type_terminology_mapping: the Panel
+    editor's Terminology section persists standard-terminology codes (LOINC /
+    SNOMED / CIEL / OCL / WHONET) with a relationship qualifier. The LOINC
+    mapping is the panel's PRIMARY identifier; panel.loinc stays denormalized
+    to it because FHIR intake routes e-orders by that column
+    (getPanelByLoincCode). Unique on (panel_id, source, code); soft-delete via
+    is_active.
+    -->
+    <changeSet id="OGC-224-panel-terminology-mapping-table" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="panel_terminology_mapping"/>
+            </not>
+        </preConditions>
+        <createTable schemaName="clinlims" tableName="panel_terminology_mapping">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_panel_terminology_mapping"/>
+            </column>
+            <column name="panel_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="relationship" type="VARCHAR(20)"/>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint schemaName="clinlims" tableName="panel_terminology_mapping"
+            columnNames="panel_id, source, code" constraintName="uq_panel_terminology_mapping"/>
+        <addForeignKeyConstraint constraintName="fk_panel_terminology_mapping_panel"
+            baseTableSchemaName="clinlims" baseTableName="panel_terminology_mapping"
+            baseColumnNames="panel_id"
+            referencedTableSchemaName="clinlims" referencedTableName="panel" referencedColumnNames="id"/>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="panel_terminology_mapping"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Backfill one SAME_AS LOINC mapping per panel with a non-empty PANEL.LOINC (deprecate-in-place). -->
+    <changeSet id="OGC-224-panel-loinc-mapping-backfill" author="mozzy">
+        <sql>
+            INSERT INTO clinlims.panel_terminology_mapping
+                (id, panel_id, source, code, relationship, is_active, lastupdated)
+            SELECT gen_random_uuid()::varchar, p.id, 'LOINC', trim(p.loinc), 'SAME_AS', 'Y', now()
+              FROM clinlims.panel p
+             WHERE p.loinc IS NOT NULL AND length(trim(p.loinc)) > 0
+               AND NOT EXISTS (SELECT 1 FROM clinlims.panel_terminology_mapping m
+                                WHERE m.panel_id = p.id AND m.source = 'LOINC' AND m.code = trim(p.loinc))
+        </sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.panel_terminology_mapping WHERE source = 'LOINC'</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

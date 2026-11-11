@@ -47,6 +47,7 @@ public enum Domain {
         case "ENVIRONMENTAL":
             return ENVIRONMENTAL;
         case "A":
+        case "V":
         case "VECTOR":
             return VECTOR;
         case "H":

@@ -1,5 +1,7 @@
 package org.openelisglobal.eqa.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,7 +11,9 @@ import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,10 +25,20 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Deliberately NOT on the qa.view.eqa umbrella. Despite living in the eqa
+ * package, this controller is mapped at /rest and serves the lab-wide alerts
+ * dashboard: both GETs read alertService.getAll() with no EQA filter, so the
+ * payload includes freezer, cold-chain and analyzer alerts. Gating it on an EQA
+ * permission would hide lab-wide alerts from users who have every right to see
+ * them, and would buy nothing: AlertRestController exposes the same
+ * alertService.getAll() at GET /rest/alerts, plus acknowledge and resolve, with
+ * no guard at all. That gap needs its own ticket and its own regression pass.
+ */
 @RestController
 @RequestMapping("/rest")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
-public class EQAAlertRestController {
+@PreAuthorize(EQAGuards.LAB_WIDE_ALERTS)
+public class EQAAlertRestController extends ControllerUtills {
 
     @Autowired
     private AlertService alertService;
@@ -90,36 +104,62 @@ public class EQAAlertRestController {
         return ResponseEntity.ok(summary);
     }
 
-    @PutMapping(value = "/alerts/{id}/acknowledge", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/alerts/dashboard/types", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<String>> getAlertTypes() {
+        return ResponseEntity.ok(Arrays.stream(AlertType.values()).map(Enum::name).collect(Collectors.toList()));
+    }
+
+    // Under /alerts/dashboard so it can't collide with AlertRestController's PUT
+    // /alerts/{id}/acknowledge.
+    @PutMapping(value = "/alerts/dashboard/{id}/acknowledge", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> acknowledgeAlert(@PathVariable Long id,
-            @RequestBody(required = false) Map<String, String> body) {
-
-        Alert target;
-        try {
-            target = alertService.get(id);
-        } catch (Exception e) {
-            target = null;
-        }
-
+            @RequestBody(required = false) Map<String, String> body, HttpServletRequest request) {
+        Alert target = findAlert(id);
         if (target == null) {
             return ResponseEntity.notFound().build();
         }
-
-        if (target.getSeverity() == AlertSeverity.CRITICAL) {
-            if (body == null || body.get("comment") == null || body.get("comment").trim().isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Resolution comment is required for critical alerts"));
-            }
+        String notes = notes(body);
+        if (target.getSeverity() == AlertSeverity.CRITICAL && notes == null) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "A comment is required to acknowledge a critical alert"));
         }
-
-        String comment = body != null ? body.get("comment") : null;
-        if (target.getStatus() == AlertStatus.OPEN) {
-            alertService.acknowledgeAlert(id, null);
+        try {
+            alertService.acknowledgeAlert(id, Integer.valueOf(getSysUserId(request)), notes);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         }
-        if (comment != null && !comment.trim().isEmpty()) {
-            alertService.resolveAlert(id, null, comment);
-        }
+        return ResponseEntity.ok(Map.of("status", AlertStatus.ACKNOWLEDGED.name()));
+    }
 
-        return ResponseEntity.ok(Map.of("status", "acknowledged"));
+    @PutMapping(value = "/alerts/dashboard/{id}/resolve", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> resolveAlert(@PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body, HttpServletRequest request) {
+        Alert target = findAlert(id);
+        if (target == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (target.getStatus() != AlertStatus.ACKNOWLEDGED) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Only an acknowledged alert can be resolved"));
+        }
+        String notes = notes(body);
+        if (notes == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "A resolution comment is required"));
+        }
+        alertService.resolveAlert(id, Integer.valueOf(getSysUserId(request)), notes);
+        return ResponseEntity.ok(Map.of("status", AlertStatus.RESOLVED.name()));
+    }
+
+    private Alert findAlert(Long id) {
+        try {
+            return alertService.get(id);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String notes(Map<String, String> body) {
+        String notes = body == null ? null : body.get("notes");
+        return notes == null || notes.isBlank() ? null : notes.trim();
     }
 }

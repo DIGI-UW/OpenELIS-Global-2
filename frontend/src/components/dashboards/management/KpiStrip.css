@@ -1,0 +1,25 @@
+.mgmt-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.mgmt-sparkline {
+  display: block;
+  inline-size: 100%;
+  block-size: 2rem;
+  margin-top: 0.5rem;
+  overflow: visible;
+}
+
+.mgmt-sparkline polyline {
+  fill: none;
+  stroke: var(--cds-interactive, #0f62fe);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.mgmt-sparkline circle {
+  fill: var(--cds-interactive, #0f62fe);
+}

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 follow-up - existing alert rules resolve to their test's PRIMARY
+    component, matching how calculated and reflex rules were migrated in 076.
+
+    077 left them unscoped to avoid narrowing what an existing rule fires on.
+    That reasoning was about breadth and missed the more important point: a
+    trigger is authored against a particular measurement, and it does not
+    transfer. A SPECIFIC_VALUE of "Detected" belongs to the coded PCR Result
+    and can never match a Ct number; an ABNORMAL or CRITICAL rule is read
+    against reference ranges that are themselves per component. A rule left
+    watching every component of a multi-component test is therefore not a
+    broader rule, it is one evaluating results its condition was never written
+    for. Pinning it to the primary is where an unqualified test-level rule
+    belongs, and is what the test-level rule already meant on every
+    single-component test.
+
+    Only unscoped rows are touched, so a rule already naming a component keeps
+    it and re-running changes nothing.
+    -->
+
+    <changeSet id="alert-scope-002-primary-component-backfill" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists schemaName="clinlims" tableName="test_alert_rule" columnName="component_id"/>
+                <tableExists schemaName="clinlims" tableName="test_result_component"/>
+            </and>
+        </preConditions>
+        <comment>Existing alert rules resolve to their test's primary component</comment>
+        <sql>
+            UPDATE clinlims.test_alert_rule r
+            SET component_id = c.id
+            FROM clinlims.test_result_component c
+            WHERE r.component_id IS NULL
+              AND c.test_id = r.test_id
+              AND c.is_primary = TRUE
+              AND c.is_active = 'Y';
+        </sql>
+        <rollback>
+            <sql>
+                UPDATE clinlims.test_alert_rule r
+                SET component_id = NULL
+                FROM clinlims.test_result_component c
+                WHERE r.component_id = c.id
+                  AND c.is_primary = TRUE;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.service;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
@@ -24,20 +25,31 @@ public class StorageLocationServiceSearchTest {
     @Mock
     private StorageSearchService storageSearchService;
 
+    @Mock
+    private StorageRoomService storageRoomService;
+
+    @Mock
+    private StorageDeviceService storageDeviceService;
+
+    @Mock
+    private StorageShelfService storageShelfService;
+
+    @Mock
+    private StorageRackService storageRackService;
+
+    @Mock
+    private StorageBoxService storageBoxService;
+
     @InjectMocks
     private StorageLocationServiceImpl storageLocationService;
 
     @Before
     public void setUp() {
-        // Use reflection to inject mock
-        try {
-            java.lang.reflect.Field searchServiceField = StorageLocationServiceImpl.class
-                    .getDeclaredField("storageSearchService");
-            searchServiceField.setAccessible(true);
-            searchServiceField.set(storageLocationService, storageSearchService);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to inject mock", e);
-        }
+        // Stub subtree-expansion DAO calls to return empty lists so tests focus on
+        // directly-matched results without NullPointerExceptions.
+        when(storageShelfService.findByParentDeviceId(any())).thenReturn(new ArrayList<>());
+        when(storageRackService.findByParentShelfId(any())).thenReturn(new ArrayList<>());
+        when(storageBoxService.findByParentRackId(any())).thenReturn(new ArrayList<>());
     }
 
     @Test
@@ -184,5 +196,52 @@ public class StorageLocationServiceSearchTest {
         assertTrue("Hierarchical path should contain room name", hierarchicalPath.contains("Main Laboratory"));
         assertTrue("Hierarchical path should contain device name", hierarchicalPath.contains("Main Freezer"));
         assertTrue("Hierarchical path should contain shelf label", hierarchicalPath.contains("Shelf-A"));
+    }
+
+    @Test
+    public void testSearchLocations_Box_IncludesAllParentIdsAndHierarchyType() {
+        // getBoxesForAPI puts the physical format in "type"; unmoved, the picker
+        // rejects the row.
+        List<Map<String, Object>> boxes = new ArrayList<>();
+        Map<String, Object> box = new HashMap<>();
+        box.put("id", 40);
+        box.put("label", "Box Alpha");
+        box.put("code", "BX-001");
+        box.put("type", "96-well");
+        box.put("locationType", "box");
+        box.put("parentRackId", 30);
+        box.put("rackLabel", "Rack R1");
+        box.put("parentShelfId", 20);
+        box.put("shelfLabel", "Shelf-A");
+        box.put("parentDeviceId", 10);
+        box.put("deviceName", "Main Freezer");
+        box.put("parentRoomId", 1);
+        box.put("roomName", "Main Laboratory");
+        box.put("hierarchicalPath", "Main Laboratory > Main Freezer > Shelf-A > Rack R1 > Box Alpha");
+        boxes.add(box);
+
+        when(storageSearchService.searchRooms("Box")).thenReturn(new ArrayList<>());
+        when(storageSearchService.searchDevices("Box")).thenReturn(new ArrayList<>());
+        when(storageSearchService.searchShelves("Box")).thenReturn(new ArrayList<>());
+        when(storageSearchService.searchRacks("Box")).thenReturn(new ArrayList<>());
+        when(storageSearchService.searchBoxes("Box")).thenReturn(boxes);
+
+        List<Map<String, Object>> results = storageLocationService.searchLocations("Box");
+
+        assertNotNull("Results should not be null", results);
+
+        Map<String, Object> boxResult = results.stream().filter(r -> "box".equals(r.get("type"))).findFirst()
+                .orElse(null);
+
+        assertNotNull("Box result should exist", boxResult);
+        assertEquals("Should have correct ID", 40, boxResult.get("id"));
+        assertEquals("type should be the hierarchy level, not the physical format", "box", boxResult.get("type"));
+        assertEquals("Physical format should be preserved as boxType", "96-well", boxResult.get("boxType"));
+        assertEquals("Should have parentRackId", 30, boxResult.get("parentRackId"));
+        assertEquals("Should have parentShelfId", 20, boxResult.get("parentShelfId"));
+        assertEquals("Should have parentDeviceId", 10, boxResult.get("parentDeviceId"));
+        assertEquals("Should have parentRoomId", 1, boxResult.get("parentRoomId"));
+        assertEquals("SearchField splits the path on the same separator every other level uses",
+                "Main Laboratory › Main Freezer › Shelf-A › Rack R1 › Box Alpha", boxResult.get("hierarchicalPath"));
     }
 }

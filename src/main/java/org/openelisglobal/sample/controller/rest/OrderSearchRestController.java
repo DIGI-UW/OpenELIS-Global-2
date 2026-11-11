@@ -13,12 +13,19 @@
  */
 package org.openelisglobal.sample.controller.rest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
+import org.hibernate.proxy.HibernateProxy;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;
@@ -29,17 +36,27 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.rest.provider.bean.PatientInfoBean;
+import org.openelisglobal.common.rest.util.DashboardPaging;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
+import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.RequesterService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.dataexchange.fhir.FhirUtil;
+import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
+import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
+import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.panelitem.service.PanelItemService;
+import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientService;
@@ -58,20 +75,44 @@ import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.qachecklist.service.SampleQaChecklistService;
+import org.openelisglobal.qc.dao.SampleItemQcProfileDAO;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
+import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.valueholder.Referral;
+import org.openelisglobal.referral.valueholder.ReferralSubcontract;
+import org.openelisglobal.sample.override.service.SampleOrderOverrideService;
+import org.openelisglobal.sample.override.valueholder.OverrideType;
+import org.openelisglobal.sample.service.OrderProgressService;
+import org.openelisglobal.sample.service.SampleComplianceStandardService;
+import org.openelisglobal.sample.service.SampleLabUnitScopeService;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.OrderProgressStatus;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.dto.TestSelectionDTO;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.vector.service.VectorPoolService;
+import org.openelisglobal.vector.service.VectorSamplingSiteService;
+import org.openelisglobal.vector.valueholder.VectorPool;
+import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -91,6 +132,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/order")
 public class OrderSearchRestController extends BaseRestController {
 
+    @Lazy
+    @Autowired
+    private FhirTransformService fhirTransformService;
     @Autowired
     private SampleService sampleService;
 
@@ -99,6 +143,9 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private SampleHumanService sampleHumanService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     @Autowired
     private PatientService patientService;
@@ -122,6 +169,9 @@ public class OrderSearchRestController extends BaseRestController {
     private AnalysisService analysisService;
 
     @Autowired
+    private VectorPoolService vectorPoolService;
+
+    @Autowired
     private ObservationHistoryService observationHistoryService;
 
     @Autowired
@@ -137,7 +187,7 @@ public class OrderSearchRestController extends BaseRestController {
     private OrganizationService organizationService;
 
     @Autowired
-    private FhirUtil fhirUtil;
+    private QuestionnaireStorageService questionnaireStorageService;
 
     @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
@@ -148,175 +198,179 @@ public class OrderSearchRestController extends BaseRestController {
     @Autowired
     private SampleQaChecklistService sampleQaChecklistService;
 
+    @Autowired
+    private OrderProgressService orderProgressService;
+
+    @Autowired
+    private SampleItemQcProfileDAO sampleItemQcProfileDAO;
+
+    @Autowired
+    private SampleComplianceStandardService sampleComplianceStandardService;
+
+    /** Dashboard filter value for orders whose every test is referred out. */
+    private static final String REFERRED_OUT_FILTER = "referred_out";
+    /** Dashboard filter value for orders with at least one referred test. */
+    private static final String HAS_REFERRED_FILTER = "has_referred";
+
+    @Autowired
+    private ReferralService referralService;
+    @Autowired
+    private IStatusService statusService;
+
+    @Autowired
+    private PanelItemService panelItemService;
+
+    @Autowired
+    private PanelService panelService;
+
+    @Autowired
+    private TestSectionService testSectionService;
+
+    @Autowired
+    private VectorSamplingSiteService vectorSamplingSiteService;
+
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
+    /**
+     * Configuration property name (site_information or
+     * SystemConfiguration.properties) that opts a deployment out of scoping the
+     * orders dashboard by the user's lab units. The dashboard is scoped like the
+     * home dashboard unless the property is explicitly "false".
+     */
+    private static final String RESTRICT_RECENT_ORDERS_PROPERTY = "restrictRecentOrdersByTestSection";
+
+    @Autowired
+    private SampleLabUnitScopeService sampleLabUnitScopeService;
+
+    @Autowired
+    private TestMethodService testMethodService;
+
+    @Autowired
+    @Lazy
+    private SampleEQAService sampleEQAService;
+
+    @Autowired
+    @Lazy
+    private SampleOrderOverrideService sampleOrderOverrideService;
+
+    @Autowired(required = false)
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
     private String ADDRESS_PART_DEPT_ID;
 
     /**
-     * Get orders for the dashboard (DSH-1 to DSH-9).
+     * Ids of the samples the last dashboard search matched, newest first, in pages
+     * of paging.results.pageSize. The rows of a page are built when the page is
+     * asked for.
+     */
+    private final DashboardPaging<String> dashboardPaging = new DashboardPaging<>("orderDashboard");
+
+    /**
+     * The dashboard's cancelled filter; cancelled orders are hidden from every
+     * other one.
+     */
+    private static final String CANCELLED_FILTER = "cancelled";
+
+    /**
+     * The three step flags a row shows, the order's progress status, and the
+     * dashboard status they add up to.
+     */
+    private static final class StepState {
+        final boolean collect;
+        final boolean label;
+        final boolean qa;
+        final OrderProgressStatus progress;
+        final boolean complete;
+        final boolean fullyReferred;
+
+        StepState(boolean collect, boolean label, boolean qa, OrderProgressStatus progress, boolean complete,
+                boolean fullyReferred) {
+            this.collect = collect;
+            this.label = label;
+            this.qa = qa;
+            this.progress = progress;
+            this.complete = complete;
+            this.fullyReferred = fullyReferred;
+        }
+
+        String status() {
+            if (progress == OrderProgressStatus.CANCELLED) {
+                return CANCELLED_FILTER;
+            }
+            if (fullyReferred && progress.isAtLeast(OrderProgressStatus.SAMPLES_PREPARED)) {
+                return REFERRED_OUT_FILTER;
+            }
+            if (complete) {
+                return "completed";
+            }
+            return label && collect ? "pending_qa" : "in_progress";
+        }
+    }
+
+    /**
+     * One page of the orders dashboard (DSH-1 to DSH-9).
      *
      * <p>
-     * Returns paginated list of orders with filtering support.
+     * A request without {@code page} runs the search: every sample, newest first,
+     * is matched against the filters and the matching ids are cached in the session
+     * in pages of paging.results.pageSize; the first page comes back with a
+     * {@code paging} announcement ({@code currentPage}, {@code totalPages}). A
+     * request with {@code page} re-slices that cache, so paging never re-runs the
+     * search. The status filters need each sample's step state and are therefore
+     * the costly ones; the others read the sample and one bulk lookup of workflow
+     * types.
      *
-     * @param page            page number (1-based)
-     * @param pageSize        items per page (25, 50, or 100)
-     * @param search          search query for patient name, lab number, etc.
-     * @param status          filter by order status
-     * @param priority        filter by priority
-     * @param includeExternal include external/EMR orders
-     * @return Dashboard data with orders list and counts
+     * <p>
+     * When test-section scoping is in effect, a user still always sees the orders
+     * they created themselves, even if the analyses on them belong to another
+     * section.
+     *
+     * @param page         the page of the cached list to return; absent for a new
+     *                     search
+     * @param search       search query for patient name or lab number
+     * @param status       filter by order status
+     * @param priority     filter by priority
+     * @param workflowType clinical, environmental or vector
+     * @return the page's orders, the page announcement and the total matched
+     * @see #resolveAllowedSectionIds(String) for when the list is narrowed to the
+     *      user's lab units (on by default)
      */
     @GetMapping(value = "/dashboard", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> getDashboard(@RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "100") int pageSize, @RequestParam(required = false) String search,
-            @RequestParam(required = false) String status, @RequestParam(required = false) String priority,
+    public ResponseEntity<Map<String, Object>> getDashboard(@RequestParam(required = false) Integer page,
+            @RequestParam(required = false) String search, @RequestParam(required = false) String status,
+            @RequestParam(required = false) String priority,
             @RequestParam(defaultValue = "false") boolean includeExternal,
-            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String workflowType, HttpServletRequest request) {
 
         try {
-            Map<String, Object> response = new HashMap<>();
-            List<Map<String, Object>> ordersList = new ArrayList<>();
-
-            // Get recent samples - getPageOfSamples expects 1-based startingRecNo
-            int startingRecNo = ((page - 1) * pageSize) + 1;
-            List<Sample> samples = sampleService.getPageOfSamples(startingRecNo);
-
-            // Apply filters
-            for (Sample sample : samples) {
-                // Filter by search query (lab number or patient name)
-                if (search != null && !search.isEmpty()) {
-                    String searchLower = search.toLowerCase();
-                    boolean matchesLabNumber = sample.getAccessionNumber() != null
-                            && sample.getAccessionNumber().toLowerCase().contains(searchLower);
-                    Patient patient = sampleHumanService.getPatientForSample(sample);
-                    boolean matchesPatient = false;
-                    if (patient != null) {
-                        String patientName = (patientService.getFirstName(patient) + " "
-                                + patientService.getLastName(patient)).toLowerCase();
-                        matchesPatient = patientName.contains(searchLower);
-                    }
-                    if (!matchesLabNumber && !matchesPatient) {
-                        continue; // Skip this sample
-                    }
-                }
-
-                // Filter by priority
-                String samplePriority = sample.getPriority() != null ? sample.getPriority().name().toLowerCase()
-                        : "routine";
-                if (priority != null && !priority.isEmpty() && !"all".equals(priority)) {
-                    if (!samplePriority.equals(priority.toLowerCase())) {
-                        continue; // Skip this sample
-                    }
-                }
-
-                // Filter by date range (using entered date)
-                java.sql.Date sampleDate = sample.getEnteredDate();
-                if (startDate != null && !startDate.isEmpty()) {
-                    try {
-                        java.sql.Date filterStartDate = java.sql.Date.valueOf(startDate);
-                        if (sampleDate == null || sampleDate.before(filterStartDate)) {
-                            continue; // Skip this sample
-                        }
-                    } catch (IllegalArgumentException e) {
-                        // Invalid date format, skip filter
-                    }
-                }
-                if (endDate != null && !endDate.isEmpty()) {
-                    try {
-                        java.sql.Date filterEndDate = java.sql.Date.valueOf(endDate);
-                        if (sampleDate == null || sampleDate.after(filterEndDate)) {
-                            continue; // Skip this sample
-                        }
-                    } catch (IllegalArgumentException e) {
-                        // Invalid date format, skip filter
-                    }
-                }
-
-                // Calculate step progress for status filtering
-                List<SampleItem> sampleItemsForProgress = sampleItemService.getSampleItemsBySampleId(sample.getId());
-
-                // Collect is complete if all sample items with tests have collection dates
-                boolean collectComplete = false;
-                if (!sampleItemsForProgress.isEmpty()) {
-                    List<SampleItem> itemsWithTests = sampleItemsForProgress.stream()
-                            .filter(si -> !analysisService.getAnalysesBySampleItem(si).isEmpty())
-                            .collect(java.util.stream.Collectors.toList());
-                    if (!itemsWithTests.isEmpty()) {
-                        collectComplete = itemsWithTests.stream().allMatch(si -> si.getCollectionDate() != null);
-                    }
-                }
-
-                // Label is complete if all sample items have storage assignments OR storage is
-                // skipped
-                boolean labelComplete = false;
-                if (Boolean.TRUE.equals(sample.getStorageSkipped())) {
-                    labelComplete = true;
-                } else if (!sampleItemsForProgress.isEmpty()) {
-                    labelComplete = sampleItemsForProgress.stream().allMatch(si -> {
-                        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(si.getId());
-                        return assignment != null && assignment.getLocationId() != null;
-                    });
-                }
-
-                // QA is complete if all checklist items are verified
-                boolean qaComplete = sampleQaChecklistService.areAllItemsVerified(Integer.parseInt(sample.getId()));
-
-                // Determine order status
-                String orderStatus;
-                if (qaComplete) {
-                    orderStatus = "completed";
-                } else if (labelComplete) {
-                    orderStatus = "pending_qa";
-                } else {
-                    orderStatus = "in_progress";
-                }
-
-                // Filter by status
-                if (status != null && !status.isEmpty() && !"all".equals(status)) {
-                    if (!orderStatus.equals(status)) {
-                        continue; // Skip this sample
-                    }
-                }
-
-                Map<String, Object> orderData = new HashMap<>();
-                orderData.put("id", sample.getId());
-                orderData.put("labNumber", sample.getAccessionNumber());
-                orderData.put("lastUpdated", sample.getLastupdated() != null ? sample.getLastupdated().toString() : "");
-                orderData.put("priority", samplePriority);
-                orderData.put("isExternal", false);
-                orderData.put("returnedFromQA", false);
-
-                // Get patient name (reuse patient if already fetched for search filter)
-                Patient orderPatient = sampleHumanService.getPatientForSample(sample);
-                if (orderPatient != null) {
-                    String patientName = (patientService.getFirstName(orderPatient) + " "
-                            + patientService.getLastName(orderPatient)).trim();
-                    orderData.put("patientName", patientName);
-                } else {
-                    orderData.put("patientName", "---");
-                }
-
-                // Facility (simplified - could get from organization)
-                orderData.put("facilityName", "---");
-
-                // Step progress - reuse values calculated for status filtering
-                Map<String, Boolean> stepProgress = new HashMap<>();
-                stepProgress.put("enter", isEnterComplete(sample));
-                stepProgress.put("collect", collectComplete);
-                stepProgress.put("label", labelComplete);
-                stepProgress.put("qa", qaComplete);
-                orderData.put("stepProgress", stepProgress);
-                orderData.put("status", orderStatus);
-                orderData.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
-
-                ordersList.add(orderData);
+            HttpSession session = request.getSession();
+            Map<String, String> workflowBySample = workflowTypesBySample();
+            List<String> pageIds;
+            int pageNumber;
+            if (page != null) {
+                pageNumber = Math.max(page, 1);
+                pageIds = dashboardPaging.page(session, pageNumber);
+            } else {
+                pageNumber = 1;
+                pageIds = dashboardPaging.cache(session, matchingSampleIds(getSysUserId(request), search, status,
+                        priority, startDate, endDate, workflowType, workflowBySample));
             }
 
+            List<Map<String, Object>> ordersList = new ArrayList<>();
+            for (String sampleId : pageIds) {
+                Sample sample = sampleService.get(sampleId);
+                if (sample != null) {
+                    ordersList.add(orderRow(sample, workflowBySample.get(sample.getId())));
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
             response.put("orders", ordersList);
-            response.put("totalCount", ordersList.size()); // Simplified, should be total count
+            response.put("paging", dashboardPaging.pagingBean(session, pageNumber));
+            response.put("totalCount", dashboardPaging.totalItems(session));
             response.put("externalCount", 0); // Placeholder for external orders count
-            response.put("page", page);
-            response.put("pageSize", pageSize);
+            response.put("page", pageNumber);
 
             return ResponseEntity.ok(response);
 
@@ -324,6 +378,266 @@ public class OrderSearchRestController extends BaseRestController {
             LogEvent.logError(this.getClass().getName(), "getDashboard", "Error fetching dashboard: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    /** Every sample, newest first, that the dashboard filters let through. */
+    private List<String> matchingSampleIds(String currentSysUserId, String search, String status, String priority,
+            String startDate, String endDate, String workflowType, Map<String, String> workflowBySample) {
+        Set<String> allowedSectionIds = resolveAllowedSectionIds(currentSysUserId);
+        java.sql.Date filterStart = parseFilterDate(startDate);
+        java.sql.Date filterEnd = parseFilterDate(endDate);
+        String searchLower = search == null ? "" : search.trim().toLowerCase();
+        boolean statusAsked = status != null && !status.isEmpty() && !"all".equals(status);
+
+        List<String> ids = new ArrayList<>();
+        for (Sample sample : sampleService.getSamplesNewestFirst(1, Integer.MAX_VALUE)) {
+            if (!matchesWorkflow(workflowType, workflowBySample.get(sample.getId()))) {
+                continue;
+            }
+            if (priority != null && !priority.isEmpty() && !"all".equals(priority)
+                    && !priorityOf(sample).equals(priority.toLowerCase())) {
+                continue;
+            }
+            java.sql.Date sampleDate = sample.getEnteredDate();
+            if (filterStart != null && (sampleDate == null || sampleDate.before(filterStart))) {
+                continue;
+            }
+            if (filterEnd != null && (sampleDate == null || sampleDate.after(filterEnd))) {
+                continue;
+            }
+            boolean createdByCurrentUser = currentSysUserId != null && currentSysUserId.equals(sample.getSysUserId());
+            if (!allowedSectionIds.isEmpty() && !createdByCurrentUser
+                    && !sampleLabUnitScopeService.belongsToSections(sample, allowedSectionIds)) {
+                continue;
+            }
+            if (!searchLower.isEmpty() && !matchesSearch(sample, searchLower)) {
+                continue;
+            }
+            boolean cancelled = OrderProgressStatus
+                    .fromStored(sample.getOrderProgressStatus()) == OrderProgressStatus.CANCELLED;
+            if (statusAsked) {
+                if (CANCELLED_FILTER.equals(status)) {
+                    if (!cancelled) {
+                        continue;
+                    }
+                } else if (cancelled) {
+                    continue;
+                } else {
+                    List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+                    if (HAS_REFERRED_FILTER.equals(status)) {
+                        if (!hasReferral(sampleItems)) {
+                            continue;
+                        }
+                    } else if (!stepState(sample, sampleItems, workflowBySample.get(sample.getId())).status()
+                            .equals(status)) {
+                        continue;
+                    }
+                }
+            } else if (cancelled) {
+                continue;
+            }
+            ids.add(sample.getId());
+        }
+        return ids;
+    }
+
+    /**
+     * Clinical orders may store "clinical" explicitly (new) or nothing (legacy
+     * pre-split); the other workflows must match their stored type.
+     */
+    private boolean matchesWorkflow(String workflowType, String sampleWorkflowType) {
+        if (workflowType == null || workflowType.isEmpty()) {
+            return true;
+        }
+        if ("clinical".equalsIgnoreCase(workflowType)) {
+            return sampleWorkflowType == null || "clinical".equalsIgnoreCase(sampleWorkflowType);
+        }
+        return workflowType.equalsIgnoreCase(sampleWorkflowType);
+    }
+
+    private boolean matchesSearch(Sample sample, String searchLower) {
+        if (sample.getAccessionNumber() != null && sample.getAccessionNumber().toLowerCase().contains(searchLower)) {
+            return true;
+        }
+        Patient patient = sampleHumanService.getPatientForSample(sample);
+        if (patient == null) {
+            return false;
+        }
+        String patientName = (patientService.getFirstName(patient) + " " + patientService.getLastName(patient))
+                .toLowerCase();
+        return patientName.contains(searchLower);
+    }
+
+    /** An unparseable date leaves that bound off, as the filter always has. */
+    private java.sql.Date parseFilterDate(String value) {
+        if (value == null || value.isEmpty()) {
+            return null;
+        }
+        try {
+            return java.sql.Date.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private String priorityOf(Sample sample) {
+        return sample.getPriority() != null ? sample.getPriority().name().toLowerCase() : "routine";
+    }
+
+    /**
+     * Stored workflow type by sample id, read in one pass instead of once per
+     * sample.
+     */
+    private Map<String, String> workflowTypesBySample() {
+        Map<String, String> bySample = new HashMap<>();
+        for (ObservationHistory observation : observationHistoryService
+                .getObservationHistoriesByType(ObservationType.ENV_WORKFLOW_TYPE)) {
+            if (observation.getSampleId() != null && observation.getValue() != null) {
+                bySample.put(observation.getSampleId(), observation.getValue());
+            }
+        }
+        return bySample;
+    }
+
+    private StepState stepState(Sample sample, List<SampleItem> sampleItems, String sampleWorkflowType) {
+        // Collect is complete if all sample items with tests have collection dates
+        boolean collectComplete = false;
+        if (!sampleItems.isEmpty()) {
+            List<SampleItem> itemsWithTests = sampleItems.stream()
+                    .filter(si -> !analysisService.getAnalysesBySampleItem(si).isEmpty())
+                    .collect(java.util.stream.Collectors.toList());
+            if (!itemsWithTests.isEmpty()) {
+                collectComplete = itemsWithTests.stream().allMatch(si -> si.getCollectionDate() != null);
+            }
+        }
+
+        // Label is complete if all sample items have storage assignments OR storage is
+        // skipped
+        boolean labelComplete = false;
+        if (Boolean.TRUE.equals(sample.getStorageSkipped())) {
+            labelComplete = true;
+        } else if (!sampleItems.isEmpty()) {
+            labelComplete = sampleItems.stream().allMatch(si -> {
+                SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(si.getId());
+                return assignment != null && assignment.getLocationId() != null;
+            });
+        }
+
+        // QA is complete if the QA step has been saved (checklist record exists)
+        boolean qaComplete = sampleQaChecklistService.findBySampleId(Integer.parseInt(sample.getId())) != null;
+        String workflowType = GenericValidator.isBlankOrNull(sampleWorkflowType) ? "clinical" : sampleWorkflowType;
+        OrderProgressStatus progress = orderProgressService.statusOf(sample, collectComplete && labelComplete,
+                qaComplete);
+        if (OrderProgressStatus.fromStored(sample.getOrderProgressStatus()) != null
+                && "clinical".equalsIgnoreCase(workflowType)) {
+            boolean prepared = progress.isAtLeast(OrderProgressStatus.SAMPLES_PREPARED);
+            collectComplete = prepared;
+            labelComplete = prepared;
+            qaComplete = progress == OrderProgressStatus.READY_FOR_TESTING;
+        }
+        boolean fullyReferred = orderProgressService.isFullyReferred(sample.getId());
+        return new StepState(collectComplete, labelComplete, qaComplete, progress,
+                orderProgressService.isComplete(progress, workflowType, fullyReferred), fullyReferred);
+    }
+
+    /**
+     * How much of the order is referred out, for the dashboard row: the referred
+     * and total test counts and the receiving laboratories.
+     */
+    Map<String, Object> referralSummary(List<SampleItem> sampleItems) {
+        int total = 0;
+        int referred = 0;
+        java.util.Set<String> laboratories = new java.util.LinkedHashSet<>();
+        for (SampleItem sampleItem : sampleItems) {
+            for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
+                if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                    continue;
+                }
+                total++;
+                Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
+                if (!orderProgressService.isOpenReferral(referral)) {
+                    continue;
+                }
+                referred++;
+                if (referral.getOrganization() != null) {
+                    laboratories.add(referral.getOrganization().getOrganizationName());
+                }
+            }
+        }
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("referredTests", referred);
+        summary.put("totalTests", total);
+        summary.put("referredTo", String.join(", ", laboratories));
+        return summary;
+    }
+
+    /** One dashboard row, built only for the samples on the page shown. */
+    private Map<String, Object> orderRow(Sample sample, String sampleWorkflowType) {
+        List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+        StepState steps = stepState(sample, sampleItems, sampleWorkflowType);
+
+        Map<String, Object> orderData = new HashMap<>();
+        orderData.put("id", sample.getId());
+        orderData.put("labNumber", sample.getAccessionNumber());
+        orderData.put("lastUpdated", sample.getLastupdated() != null ? sample.getLastupdated().toString() : "");
+        orderData.put("priority", priorityOf(sample));
+        orderData.put("isExternal", false);
+        orderData.put("returnedFromQA", false);
+
+        boolean isEnvOrVector = "environmental".equalsIgnoreCase(sampleWorkflowType)
+                || "vector".equalsIgnoreCase(sampleWorkflowType);
+        if (isEnvOrVector) {
+            // Environmental orders use VS_COLLECTION_SITE_NAME (VectorSection shared
+            // component stores site as vecCollectionSiteName). Vector orders do the same.
+            // Fall back to ENV_SAMPLING_SITE_NAME for older records.
+            String siteName = observationHistoryService.getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME,
+                    sample.getId());
+            if (siteName == null) {
+                siteName = observationHistoryService.getRawValueForSample(ObservationType.ENV_SAMPLING_SITE_NAME,
+                        sample.getId());
+            }
+            orderData.put("samplingSiteName", siteName != null ? siteName : "---");
+            orderData.put("patientName", null);
+        } else {
+            // Clinical orders show patient name
+            Patient orderPatient = sampleHumanService.getPatientForSample(sample);
+            if (orderPatient != null) {
+                String patientName = (patientService.getFirstName(orderPatient) + " "
+                        + patientService.getLastName(orderPatient)).trim();
+                orderData.put("patientName", patientName);
+            } else {
+                orderData.put("patientName", "---");
+            }
+        }
+
+        // Facility: referring organisation (all workflow types)
+        String facilityName = "";
+        RequesterService requesterService = new RequesterService(sample.getId());
+        Organization referringOrg = requesterService.getOrganization();
+        if (referringOrg == null)
+            referringOrg = requesterService.getOrganizationDepartment();
+        if (referringOrg != null)
+            facilityName = referringOrg.getOrganizationName();
+        orderData.put("facilityName", facilityName.isEmpty() ? "---" : facilityName);
+
+        boolean finished = steps.complete && steps.progress != OrderProgressStatus.CANCELLED;
+        Map<String, Boolean> stepProgress = new HashMap<>();
+        stepProgress.put("enter", isEnterComplete(sample));
+        stepProgress.put("collect", steps.collect || finished);
+        stepProgress.put("label", steps.label || finished);
+        stepProgress.put("qa", steps.qa || finished);
+        orderData.put("stepProgress", stepProgress);
+        orderData.put("status", steps.status());
+        orderData.put("referralSummary", referralSummary(sampleItems));
+        putProgress(orderData, sample,
+                GenericValidator.isBlankOrNull(sampleWorkflowType) ? "clinical" : sampleWorkflowType, steps.progress,
+                steps.complete, steps.fullyReferred);
+        orderData.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
+
+        if (sampleWorkflowType != null) {
+            orderData.put("workflowType", sampleWorkflowType);
+        }
+        return orderData;
     }
 
     /**
@@ -339,8 +653,43 @@ public class OrderSearchRestController extends BaseRestController {
      * @param labNumber the lab/accession number to search for (required)
      * @return Order data with 200 OK, or 404 if not found
      */
+
+    /**
+     * The panel an analysis was ordered through, as recorded on the analysis. A
+     * test that is also a member of some panel but was ordered on its own has no
+     * panel, and is reloaded as a standalone test.
+     */
+    private String panelIdOf(Analysis analysis) {
+        Object panel = analysis.getPanel();
+        if (panel == null) {
+            return null;
+        }
+        if (panel instanceof HibernateProxy proxy) {
+            Object id = proxy.getHibernateLazyInitializer().getIdentifier();
+            return id == null ? null : id.toString();
+        }
+        return ((Panel) panel).getId();
+    }
+
+    private String panelNameFor(String panelId, String testId) {
+        try {
+            for (PanelItem panelItem : panelItemService.getPanelItemByTestId(testId)) {
+                if (panelItem.getPanel() != null && panelId.equals(panelItem.getPanel().getId())) {
+                    return panelItem.getPanel().getLocalizedName();
+                }
+            }
+            String name = panelService.getNameForPanelId(panelId);
+            return name == null ? "" : name;
+        } catch (Exception e) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "panelNameFor",
+                    "Panel name lookup failed for panel " + panelId);
+            return "";
+        }
+    }
+
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> searchOrder(@RequestParam(required = false) String labNumber) {
+    public ResponseEntity<Map<String, Object>> searchOrder(@RequestParam(required = false) String labNumber,
+            HttpServletRequest request) {
 
         if (labNumber == null || labNumber.trim().isEmpty()) {
             return ResponseEntity.badRequest().build();
@@ -350,7 +699,7 @@ public class OrderSearchRestController extends BaseRestController {
             // Find the sample by accession number
             Sample sample = sampleService.getSampleByAccessionNumber(labNumber.trim());
 
-            if (sample == null) {
+            if (sample == null || !sampleLabUnitScopeService.isVisible(getSysUserId(request), sample)) {
                 return ResponseEntity.notFound().build();
             }
 
@@ -380,19 +729,83 @@ public class OrderSearchRestController extends BaseRestController {
             List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
             List<Map<String, Object>> samplesData = new ArrayList<>();
 
+            // Map sample_item.id -> index in samplesData so we can resolve
+            // SampleItemQcProfile.parentSampleItemId back to the frontend's array index.
+            Map<Integer, Integer> sampleItemIdToIndex = new HashMap<>();
+            for (int i = 0; i < sampleItems.size(); i++) {
+                String itemId = sampleItems.get(i).getId();
+                if (itemId != null) {
+                    sampleItemIdToIndex.put(Integer.valueOf(itemId), i);
+                }
+            }
+
+            // Vector orders: analyses are anchored to vector_pool_id (not sampitem_id)
+            // after fan-out. Build a per-organism index so each sample_item picks up
+            // only its OWN pool's analyses; unioning across all pools on the sample
+            // would bleed (e.g.) Mosquito tests onto Flea organism rows.
+            // Also build a memberId→poolId map and a poolId→size map so the
+            // frontend can group rows by stable pool identifier (not sampleTypeId,
+            // which would merge two pools of the same animal into one).
+            Map<String, List<Analysis>> analysesByMemberId = new HashMap<>();
+            Map<String, String> poolIdByMemberId = new HashMap<>();
+            Map<String, Integer> poolSizeById = new HashMap<>();
+            if ("V".equals(sample.getDomain())) {
+                for (VectorPool pool : vectorPoolService.getBySampleId(sample.getId())) {
+                    String poolId = String.valueOf(pool.getId());
+                    List<Analysis> poolAnalyses = analysisService.getAnalysesByVectorPoolId(poolId);
+                    List<SampleItem> members = vectorPoolService.getMembersByPoolId(pool.getId());
+                    poolSizeById.put(poolId, members.size());
+                    // Always store an entry per member (even an empty list) so the
+                    // per-item fallback `getAnalysesBySampleItem(sampleItem)` query
+                    // is skipped for pools that legitimately have no analyses yet.
+                    for (SampleItem member : members) {
+                        poolIdByMemberId.put(member.getId(), poolId);
+                        analysesByMemberId.put(member.getId(), poolAnalyses);
+                    }
+                }
+            }
+
             for (SampleItem sampleItem : sampleItems) {
                 Map<String, Object> sampleItemData = new HashMap<>();
                 sampleItemData.put("id", sampleItem.getId());
                 sampleItemData.put("sampleItemId", sampleItem.getId()); // For frontend to use in updates
                 sampleItemData.put("sortOrder", sampleItem.getSortOrder());
                 sampleItemData.put("sampleTypeId", sampleItem.getTypeOfSampleId());
+                // Vector pool fan-out parents (sample_item rows with quantity=N) are
+                // hard-deleted by VectorPoolFanOutServiceImpl and never reach this
+                // response. The voided flag is still exposed for any non-vector
+                // workflow that may soft-delete a sample_item; `sampleItemService
+                // .getSampleItemsBySampleId(...)` already filters voided=false, so
+                // this defaults to false in the current code path.
+                sampleItemData.put("voided", sampleItem.isVoided());
+                if (sampleItem.getVoidReason() != null) {
+                    sampleItemData.put("voidReason", sampleItem.getVoidReason());
+                }
+                // S-09 (OGC-580): expose the per-specimen rejected flag so the workflow can
+                // surface a rejected/resampled specimen (read-only "Rejected" in the QA
+                // intake-acceptance table, with its replacement-order link) while keeping it
+                // out of the Collect / Label & Store action lists — visible, not silently
+                // dropped.
+                sampleItemData.put("sampleRejected", sampleItem.isRejected());
+                if (sampleItem.getRejectReasonId() != null) {
+                    sampleItemData.put("rejectionReason", sampleItem.getRejectReasonId());
+                }
+
+                // Vector pool membership: expose the stable pool id + size so the
+                // frontend can group organisms by pool. Two pools of the same
+                // sampleTypeId must remain distinct rows.
+                String memberPoolId = poolIdByMemberId.get(sampleItem.getId());
+                if (memberPoolId != null) {
+                    sampleItemData.put("vectorPoolId", memberPoolId);
+                    sampleItemData.put("vectorPoolMemberCount", poolSizeById.getOrDefault(memberPoolId, 0));
+                }
 
                 // Get sample type name
                 if (sampleItem.getTypeOfSampleId() != null) {
                     var typeOfSample = typeOfSampleService.get(sampleItem.getTypeOfSampleId());
                     if (typeOfSample != null) {
                         sampleItemData.put("name", typeOfSample.getLocalizedName());
-                        sampleItemData.put("sampleTypeName", typeOfSample.getDescription());
+                        sampleItemData.put("sampleTypeName", typeOfSample.getLocalizedName());
                     }
                 }
 
@@ -409,6 +822,7 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleItemData.put("quantityUnit",
                         sampleItem.getUnitOfMeasure() != null ? sampleItem.getUnitOfMeasure().getId() : "");
                 sampleItemData.put("collectorId", sampleItem.getCollector() != null ? sampleItem.getCollector() : "");
+                sampleItemData.put("labPerformedSampling", sampleItem.isLabPerformedSampling());
                 sampleItemData.put("collectionConditions",
                         sampleItem.getCollectionConditions() != null ? sampleItem.getCollectionConditions() : "");
                 sampleItemData.put("collectionMethod",
@@ -417,6 +831,7 @@ public class OrderSearchRestController extends BaseRestController {
                         sampleItem.getSampleTemperature() != null ? sampleItem.getSampleTemperature() : "");
                 sampleItemData.put("specimenOrigin",
                         sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
+                putReceiptAndArrival(sampleItemData, sampleItem);
 
                 String receivedDateDisplay = "";
                 String receivedTimeDisplay = "";
@@ -440,42 +855,129 @@ public class OrderSearchRestController extends BaseRestController {
                         sampleItem.getSampleTemperature() != null ? sampleItem.getSampleTemperature() : "");
                 sampleXML.put("specimenOrigin",
                         sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
+                sampleXML.put("container", sampleItem.getContainer() != null ? sampleItem.getContainer() : "");
+                sampleXML.put("cultureSetNumber", sampleItem.getCultureSetNumber());
+                sampleXML.put("bodySite", sampleItem.getBodySite() != null ? sampleItem.getBodySite() : "");
+                sampleXML.put("collectionLocationId", sampleItem.getCollectionLocationId());
+                sampleXML.put("locationDetails",
+                        sampleItem.getLocationDetails() != null ? sampleItem.getLocationDetails() : "");
+                sampleXML.put("gpsLatitude", sampleItem.getGpsLatitude() != null ? sampleItem.getGpsLatitude() : "");
+                sampleXML.put("gpsLongitude", sampleItem.getGpsLongitude() != null ? sampleItem.getGpsLongitude() : "");
                 sampleItemData.put("sampleXML", sampleXML);
 
-                // Get tests from analysis records for this sample item
-                List<Analysis> analyses = analysisService.getAnalysesBySampleItem(sampleItem);
-                List<Map<String, Object>> testsData = new ArrayList<>();
+                // Get tests from analysis records for this sample item. For vector
+                // organism children (which have NO direct analysis link), use the
+                // pre-built per-member index FIRST so each member skips the
+                // empty-result getAnalysesBySampleItem query (N+1 across a large
+                // pool). Fall back to the item-anchored query only when no pool
+                // membership is found, which covers non-vector samples and
+                // post-deconvolution item-anchored analyses.
+                List<Analysis> analyses;
+                List<Analysis> memberAnalyses = analysesByMemberId.get(sampleItem.getId());
+                if (memberAnalyses != null) {
+                    analyses = memberAnalyses;
+                } else {
+                    analyses = analysisService.getAnalysesBySampleItem(sampleItem);
+                }
+                List<TestSelectionDTO> testsData = new ArrayList<>();
                 List<Map<String, Object>> panelsData = new ArrayList<>();
 
+                Map<String, List<String>> panelTestIdsMap = new LinkedHashMap<>();
+                Map<String, String> panelNameMap = new HashMap<>();
                 for (Analysis analysis : analyses) {
-                    if (analysis.getTest() != null) {
-                        Map<String, Object> testData = new HashMap<>();
-                        testData.put("id", analysis.getTest().getId());
-                        testData.put("name", analysis.getTest().getLocalizedName());
-                        testData.put("description", analysis.getTest().getDescription());
-                        testsData.add(testData);
+                    if (analysis.getTest() == null
+                            || statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                        continue;
                     }
-                    // Try to get panel - may be null if test wasn't added via panel
-                    try {
-                        if (analysis.getPanel() != null) {
-                            // Check if panel already added
-                            boolean panelExists = panelsData.stream()
-                                    .anyMatch(p -> p.get("id").equals(analysis.getPanel().getId()));
-                            if (!panelExists) {
-                                Map<String, Object> panelData = new HashMap<>();
-                                panelData.put("id", analysis.getPanel().getId());
-                                panelData.put("name", analysis.getPanel().getLocalizedName());
-                                panelsData.add(panelData);
-                            }
-                        }
-                    } catch (Exception e) {
-                        // Panel retrieval failed - log at debug level only
+                    testsData.add(buildSelectedTestData(analysis.getTest()));
+
+                    String panelId = panelIdOf(analysis);
+                    if (GenericValidator.isBlankOrNull(panelId)) {
+                        continue;
                     }
+                    panelTestIdsMap.computeIfAbsent(panelId, k -> new ArrayList<>()).add(analysis.getTest().getId());
+                    if (!panelNameMap.containsKey(panelId)) {
+                        panelNameMap.put(panelId, panelNameFor(panelId, analysis.getTest().getId()));
+                    }
+                }
+                for (Map.Entry<String, List<String>> entry : panelTestIdsMap.entrySet()) {
+                    Map<String, Object> panelData = new HashMap<>();
+                    panelData.put("id", entry.getKey());
+                    panelData.put("name", panelNameMap.getOrDefault(entry.getKey(), ""));
+                    panelData.put("testIds", String.join(",", entry.getValue()));
+                    panelsData.add(panelData);
                 }
 
                 sampleItemData.put("tests", testsData);
                 sampleItemData.put("panels", panelsData);
                 sampleItemData.put("index", sampleItem.getSortOrder());
+
+                // Attach QC metadata if this sample item has a QC profile
+                try {
+                    String currentItemId = sampleItem.getId();
+                    if (currentItemId != null) {
+                        sampleItemQcProfileDAO.findBySampleItemId(Integer.valueOf(currentItemId)).ifPresent(profile -> {
+                            Map<String, Object> qcMetadata = new HashMap<>();
+                            qcMetadata.put("qcType", profile.getQcType());
+                            Integer parentItemId = profile.getParentSampleItemId();
+                            Integer parentIndex = parentItemId != null ? sampleItemIdToIndex.get(parentItemId) : null;
+                            qcMetadata.put("parentSampleIndex", parentIndex);
+                            qcMetadata.put("expectedValue",
+                                    profile.getExpectedValue() != null ? profile.getExpectedValue().toPlainString()
+                                            : null);
+                            sampleItemData.put("qcMetadata", qcMetadata);
+                        });
+                    }
+                } catch (Exception e) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "searchOrder",
+                            "Failed to load QC profile for sample item " + sampleItem.getId() + ": " + e.getMessage());
+                }
+
+                // S-14 / OGC-624: surface referral + subcontract metadata per sample so
+                // Step 3 Refer Out can render current status and dispatch existing referrals.
+                // Per-analysis Referrals are deduplicated by referralId, since the FR-01 UI
+                // is per-sample, not per-test.
+                List<Map<String, Object>> referralItemsData = new ArrayList<>();
+                java.util.Set<String> seenReferralIds = new java.util.HashSet<>();
+                for (Analysis analysis : analyses) {
+                    Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
+                    if (referral == null || referral.getId() == null || !seenReferralIds.add(referral.getId())) {
+                        continue;
+                    }
+                    Map<String, Object> referralData = new HashMap<>();
+                    referralData.put("referralId", referral.getId());
+                    if (referral.getOrganization() != null) {
+                        referralData.put("referredInstituteId", referral.getOrganization().getId());
+                        referralData.put("referredInstituteName", referral.getOrganization().getOrganizationName());
+                    }
+                    referralData.put("referralReasonId", referral.getReferralReasonId());
+                    referralData.put("referrer", referral.getRequesterName());
+                    referralData.put("referredSendDate",
+                            referral.getSentDate() != null
+                                    ? DateUtil.convertTimestampToStringDate(referral.getSentDate())
+                                    : "");
+                    referralData.put("referralStatus",
+                            referral.getStatus() != null ? referral.getStatus().name() : null);
+                    ReferralSubcontract subcontract = referral.getSubcontract();
+                    if (subcontract != null) {
+                        referralData.put("subcontractId", subcontract.getId());
+                        referralData.put("agreementReference", subcontract.getAgreementReference());
+                        referralData.put("handoffDatetime",
+                                subcontract.getHandoffDatetimeForDisplay() != null
+                                        ? subcontract.getHandoffDatetimeForDisplay()
+                                        : "");
+                        referralData.put("expectedReturnDate",
+                                subcontract.getExpectedReturnDateForDisplay() != null
+                                        ? subcontract.getExpectedReturnDateForDisplay()
+                                        : "");
+                        referralData.put("cocContactName", subcontract.getCocContactName());
+                        referralData.put("cocContactPhone", subcontract.getCocContactPhone());
+                        referralData.put("cocContactEmail", subcontract.getCocContactEmail());
+                        referralData.put("subcontractNotes", subcontract.getSubcontractNotes());
+                    }
+                    referralItemsData.add(referralData);
+                }
+                sampleItemData.put("referralItems", referralItemsData);
 
                 // Get storage assignment for this sample item
                 SampleStorageAssignment storageAssignment = sampleStorageAssignmentDAO
@@ -502,45 +1004,59 @@ public class OrderSearchRestController extends BaseRestController {
             response.put("sampleOrderItems", sampleOrderItems);
 
             // Step progress - determine based on actual data
+            boolean isVectorOrder = "V".equals(sample.getDomain());
             Map<String, Boolean> stepProgress = new HashMap<>();
             stepProgress.put("enter", true); // If sample exists, enter is complete
 
-            // Collect is complete if:
-            // 1. There are sample items with tests (analyses)
-            // 2. ALL sample items that have tests also have collection dates set
-            boolean collectComplete = false;
-            if (!sampleItems.isEmpty()) {
-                // Get all sample items that have tests assigned (via Analysis)
-                List<SampleItem> sampleItemsWithTests = sampleItems.stream()
-                        .filter(si -> !analysisService.getAnalysesBySampleItem(si).isEmpty())
-                        .collect(java.util.stream.Collectors.toList());
-
-                if (!sampleItemsWithTests.isEmpty()) {
-                    // All sample items with tests must have collection date set
-                    collectComplete = sampleItemsWithTests.stream().allMatch(si -> si.getCollectionDate() != null);
+            // Vector workflow has no collect step — samples are created at order entry.
+            // For clinical workflow, collect is complete when sample items with tests
+            // all have collection dates set.
+            if (isVectorOrder) {
+                stepProgress.put("collect", true);
+            } else {
+                boolean collectComplete = false;
+                if (!sampleItems.isEmpty()) {
+                    List<SampleItem> sampleItemsWithTests = sampleItems.stream()
+                            .filter(si -> !analysisService.getAnalysesBySampleItem(si).isEmpty())
+                            .collect(java.util.stream.Collectors.toList());
+                    if (!sampleItemsWithTests.isEmpty()) {
+                        collectComplete = sampleItemsWithTests.stream().allMatch(si -> si.getCollectionDate() != null);
+                    }
                 }
+                stepProgress.put("collect", collectComplete);
             }
-            stepProgress.put("collect", collectComplete);
 
-            // Label is complete if all sample items have storage assignments OR storage is
-            // skipped
-            boolean labelComplete = false;
-            if (Boolean.TRUE.equals(sample.getStorageSkipped())) {
+            // Vector workflow has no storage requirement — label step is always complete.
+            // For clinical workflow, label is complete when all sample items have storage
+            // assignments or storage is explicitly skipped.
+            boolean labelComplete;
+            if (isVectorOrder) {
+                labelComplete = true;
+            } else if (Boolean.TRUE.equals(sample.getStorageSkipped())) {
                 labelComplete = true;
             } else if (!sampleItems.isEmpty()) {
                 labelComplete = sampleItems.stream().allMatch(si -> {
                     SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(si.getId());
                     return assignment != null && assignment.getLocationId() != null;
                 });
+            } else {
+                labelComplete = false;
             }
             stepProgress.put("label", labelComplete);
 
-            // QA is complete if all checklist items are verified
-            boolean qaComplete = sampleQaChecklistService.areAllItemsVerified(Integer.parseInt(sample.getId()));
+            // QA is complete if the QA step has been saved (checklist record exists),
+            // regardless of whether all items are checked (checklist is advisory)
+            boolean qaComplete = sampleQaChecklistService.findBySampleId(Integer.parseInt(sample.getId())) != null;
             stepProgress.put("qa", qaComplete);
-            response.put("stepProgress", stepProgress);
 
-            // Include storageSkipped flag
+            String workflowType = workflowTypeOf(sample);
+            OrderProgressStatus progressStatus = orderProgressService.statusOf(sample,
+                    stepProgress.get("collect") && labelComplete, qaComplete);
+            applyStoredProgress(sample, workflowType, progressStatus, stepProgress);
+            response.put("stepProgress", stepProgress);
+            response.put("workflowType", workflowType);
+            putProgress(response, sample, workflowType, progressStatus);
+
             response.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
 
             return ResponseEntity.ok(response);
@@ -549,6 +1065,126 @@ public class OrderSearchRestController extends BaseRestController {
             LogEvent.logError(this.getClass().getName(), "searchOrder", "Error searching for order: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    /**
+     * The stored workflow type of an order; a clinical order saved before the types
+     * were recorded has none.
+     */
+    private String workflowTypeOf(Sample sample) {
+        String stored = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                sample.getId());
+        return GenericValidator.isBlankOrNull(stored) ? "clinical" : stored;
+    }
+
+    /**
+     * A clinical order with a stored progress status reports its steps from that
+     * status (OGC-1266 FR-F5): Prepare Samples is done once the order is Samples
+     * prepared, and Sample check once it is Ready for testing. Orders without one,
+     * and the environmental and vector lanes, keep the flags derived from their
+     * data.
+     */
+    private void applyStoredProgress(Sample sample, String workflowType, OrderProgressStatus status,
+            Map<String, Boolean> stepProgress) {
+        if (OrderProgressStatus.fromStored(sample.getOrderProgressStatus()) == null
+                || !"clinical".equalsIgnoreCase(workflowType)) {
+            return;
+        }
+        boolean prepared = status.isAtLeast(OrderProgressStatus.SAMPLES_PREPARED);
+        stepProgress.put("collect", prepared);
+        stepProgress.put("label", prepared);
+        stepProgress.put("qa", status == OrderProgressStatus.READY_FOR_TESTING);
+    }
+
+    private void putProgress(Map<String, Object> target, Sample sample, String workflowType,
+            OrderProgressStatus status) {
+        boolean fullyReferred = orderProgressService.isFullyReferred(sample.getId());
+        putProgress(target, sample, workflowType, status,
+                orderProgressService.isComplete(status, workflowType, fullyReferred), fullyReferred);
+    }
+
+    private void putProgress(Map<String, Object> target, Sample sample, String workflowType, OrderProgressStatus status,
+            boolean complete, boolean fullyReferred) {
+        target.put("progressStatus", status.name());
+        target.put("complete", complete);
+        target.put("fullyReferred", fullyReferred);
+        target.put("sampleCheckEnabled", orderProgressService.sampleCheckEnabled(workflowType));
+        Map<String, Object> progress = new HashMap<>();
+        progress.put("enteredAt", timestampText(sample.getOrderEnteredAt()));
+        progress.put("preparedAt", timestampText(sample.getOrderPreparedAt()));
+        progress.put("readyAt", timestampText(sample.getOrderReadyAt()));
+        progress.put("releaseNote", sample.getOrderReleaseNote());
+        progress.put("cancelledAt", timestampText(sample.getOrderCancelledAt()));
+        progress.put("cancelReason", sample.getOrderCancelReason());
+        target.put("progress", progress);
+    }
+
+    private static String timestampText(java.sql.Timestamp value) {
+        return value == null ? null : value.toString();
+    }
+
+    /**
+     * Cancels an order that has not finished order entry (FR-A4): its tests are
+     * cancelled and the order is marked Cancelled with the reason, who and when.
+     * Nothing is deleted. A complete or already cancelled order is refused.
+     */
+    @PostMapping(value = "/cancel", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> cancelOrder(@RequestBody Map<String, String> body,
+            HttpServletRequest request) {
+        String labNumber = body == null ? null : body.get("labNumber");
+        if (GenericValidator.isBlankOrNull(labNumber)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "order.cancel.labNumberRequired"));
+        }
+        Sample sample = sampleService.getSampleByAccessionNumber(labNumber.trim());
+        if (sample == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "order.notFound"));
+        }
+        try {
+            Sample cancelled = orderProgressService.cancel(sample.getId(), body.get("reason"), getSysUserId(request));
+            republishToFhir(cancelled);
+            Map<String, Object> response = new HashMap<>();
+            response.put("labNumber", cancelled.getAccessionNumber());
+            putProgress(response, cancelled, workflowTypeOf(cancelled),
+                    OrderProgressStatus.fromStored(cancelled.getOrderProgressStatus()));
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Sends the cancelled order to the FHIR store again, so its Task reads
+     * cancelled and its ServiceRequests revoked instead of the order as it was
+     * entered. The cancellation itself has committed; a failed publish is logged
+     * and does not undo it.
+     */
+    private void republishToFhir(Sample cancelled) {
+        try {
+            fhirTransformService.transformPersistObjectsUnderSamples(List.of(cancelled.getId()));
+        } catch (FhirLocalPersistingException | RuntimeException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "republishToFhir",
+                    "could not republish cancelled order " + cancelled.getAccessionNumber() + ": " + e.getMessage());
+        }
+    }
+
+    boolean hasReferral(List<SampleItem> sampleItems) {
+        for (SampleItem sampleItem : sampleItems) {
+            for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
+                if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                    continue;
+                }
+                if (orderProgressService.isOpenReferral(referralService.getReferralByAnalysisId(analysis.getId()))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    TestSelectionDTO buildSelectedTestData(org.openelisglobal.test.valueholder.Test test) {
+        return new TestSelectionDTO(test, testMethodService.getLinkedMethodDtos(test.getId()));
     }
 
     /**
@@ -631,10 +1267,13 @@ public class OrderSearchRestController extends BaseRestController {
 
         String format1 = "dd/MM/yyyy";
         String format2 = "MM/dd/yyyy";
-        patientInfo.setBirthDateForDisplay(
-                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE).equals("fr-FR")
-                        ? DateUtil.formatStringDate(patient.getBirthDateForDisplay(), format1)
-                        : DateUtil.formatStringDate(patient.getBirthDateForDisplay(), format2));
+        String rawBirthDate = patient.getBirthDateForDisplay();
+        if (rawBirthDate != null && !rawBirthDate.isBlank()) {
+            patientInfo.setBirthDateForDisplay(
+                    ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE).equals("fr-FR")
+                            ? DateUtil.formatStringDate(rawBirthDate, format1)
+                            : DateUtil.formatStringDate(rawBirthDate, format2));
+        }
 
         patientInfo.setCommune(commune);
         patientInfo.setAddressDepartment(dept);
@@ -701,6 +1340,31 @@ public class OrderSearchRestController extends BaseRestController {
     }
 
     /**
+     * The EQA and no-patient decisions travel with the order, so a later step
+     * opened on it skips the patient block and the consent gate (OGC-1483).
+     */
+    private void putEqaAndNoPatient(Map<String, Object> sampleOrderItems, String sampleId) {
+        if (sampleId == null) {
+            return;
+        }
+        Long id = Long.valueOf(sampleId);
+        sampleEQAService.findBySampleId(id).ifPresent(eqa -> {
+            sampleOrderItems.put("isEQASample", Boolean.TRUE.equals(eqa.getIsEqaSample()));
+            sampleOrderItems.put("eqaProgramId",
+                    eqa.getEqaEnrollmentId() == null ? "" : String.valueOf(eqa.getEqaEnrollmentId()));
+            sampleOrderItems.put("eqaCycleId", eqa.getCycleId() == null ? "" : String.valueOf(eqa.getCycleId()));
+            sampleOrderItems.put("eqaProviderSampleId",
+                    eqa.getEqaProviderSampleId() == null ? "" : eqa.getEqaProviderSampleId());
+        });
+        sampleOrderOverrideService.findBySampleIdAndType(id, OverrideType.NO_PATIENT).ifPresent(override -> {
+            sampleOrderItems.put("noPatientOverride", true);
+            sampleOrderItems.put("noPatientReasonCode",
+                    override.getReasonCode() == null ? "" : override.getReasonCode().name());
+            sampleOrderItems.put("noPatientReason", override.getReason() == null ? "" : override.getReason());
+        });
+    }
+
+    /**
      * Build sampleOrderItems with all order-level data including: - Lab number and
      * dates - Provider/Requester info from SampleHuman (provider) and
      * SampleRequester (organization) - Referring site (organization) info - Program
@@ -710,12 +1374,17 @@ public class OrderSearchRestController extends BaseRestController {
         Map<String, Object> sampleOrderItems = new HashMap<>();
 
         // Basic sample info
+        sampleOrderItems.put("requiredBy",
+                sample.getRequiredBy() != null
+                        ? new java.text.SimpleDateFormat("yyyy-MM-dd").format(sample.getRequiredBy())
+                        : "");
         sampleOrderItems.put("labNo", sample.getAccessionNumber());
         sampleOrderItems.put("collectionDate", sample.getCollectionDateForDisplay());
         sampleOrderItems.put("receivedDateForDisplay", sample.getReceivedDateForDisplay());
         sampleOrderItems.put("receivedTime", sample.getReceivedTimeForDisplay());
 
         String sampleId = sample.getId();
+        putEqaAndNoPatient(sampleOrderItems, sampleId);
 
         // Provider - get from SampleHuman.providerId via
         // sampleHumanService.getProviderForSample()
@@ -753,11 +1422,26 @@ public class OrderSearchRestController extends BaseRestController {
             sampleOrderItems.put("referringSiteId", referringSite.getId());
             sampleOrderItems.put("referringSiteName", referringSite.getOrganizationName());
             sampleOrderItems.put("referringSiteCode", referringSite.getShortName());
+            sampleOrderItems.put("referringSitePhone", referringSite.getPhone());
+            sampleOrderItems.put("referringSiteFax", referringSite.getFax());
+            sampleOrderItems.put("referringSiteEmail", referringSite.getEmail());
         }
 
         if (department != null) {
             sampleOrderItems.put("referringSiteDepartmentId", department.getId());
             sampleOrderItems.put("referringSiteDepartmentName", department.getOrganizationName());
+        }
+
+        // Env/Vector Requestor contact — independent of Provider above.
+        Person requestorPerson = requesterService.getRequestorPerson();
+        if (requestorPerson != null) {
+            sampleOrderItems.put("requestorPersonId", requestorPerson.getId());
+            sampleOrderItems.put("requestorFirstName", requestorPerson.getFirstName());
+            sampleOrderItems.put("requestorLastName", requestorPerson.getLastName());
+            sampleOrderItems.put("requestorPhone", requestorPerson.getWorkPhone());
+            sampleOrderItems.put("requestorFax", requestorPerson.getFax());
+            sampleOrderItems.put("requestorEmail", requestorPerson.getEmail());
+            sampleOrderItems.put("requestorDepartment", requestorPerson.getDepartment());
         }
 
         // Program - Try multiple approaches to find program info
@@ -773,15 +1457,14 @@ public class OrderSearchRestController extends BaseRestController {
                 ProgramSample programSample = programSampleService.getProgrammeSampleBySample(Integer.valueOf(sampleId),
                         programName);
                 if (programSample != null && programSample.getProgram() != null) {
-                    String programId = programSample.getProgram().getId();
-                    sampleOrderItems.put("programId", programId);
+                    addProgramSelection(sampleOrderItems, programSample.getProgram());
 
                     // Load questionnaire response if available
                     if (programSample.getQuestionnaireResponseUuid() != null) {
                         try {
-                            QuestionnaireResponse qr = fhirUtil.getLocalFhirClient().read()
-                                    .resource(QuestionnaireResponse.class)
-                                    .withId(programSample.getQuestionnaireResponseUuid().toString()).execute();
+                            QuestionnaireResponse qr = questionnaireStorageService
+                                    .getQuestionnaireResponse(programSample.getQuestionnaireResponseUuid())
+                                    .orElse(null);
                             if (qr != null) {
                                 sampleOrderItems.put("additionalQuestions", qr);
                             }
@@ -795,7 +1478,7 @@ public class OrderSearchRestController extends BaseRestController {
                     List<Program> allPrograms = programService.getAll();
                     for (Program p : allPrograms) {
                         if (p.getProgramName() != null && p.getProgramName().equals(programName)) {
-                            sampleOrderItems.put("programId", p.getId());
+                            addProgramSelection(sampleOrderItems, p);
                             break;
                         }
                     }
@@ -813,15 +1496,13 @@ public class OrderSearchRestController extends BaseRestController {
                 if (programSamples != null && !programSamples.isEmpty()) {
                     ProgramSample ps = programSamples.get(0);
                     if (ps.getProgram() != null) {
-                        sampleOrderItems.put("programId", ps.getProgram().getId());
-                        sampleOrderItems.put("program", ps.getProgram().getProgramName());
+                        addProgramSelection(sampleOrderItems, ps.getProgram());
 
                         // Load questionnaire response if available
                         if (ps.getQuestionnaireResponseUuid() != null) {
                             try {
-                                QuestionnaireResponse qr = fhirUtil.getLocalFhirClient().read()
-                                        .resource(QuestionnaireResponse.class)
-                                        .withId(ps.getQuestionnaireResponseUuid().toString()).execute();
+                                QuestionnaireResponse qr = questionnaireStorageService
+                                        .getQuestionnaireResponse(ps.getQuestionnaireResponseUuid()).orElse(null);
                                 if (qr != null) {
                                     sampleOrderItems.put("additionalQuestions", qr);
                                 }
@@ -900,6 +1581,12 @@ public class OrderSearchRestController extends BaseRestController {
         }
 
         return sampleOrderItems;
+    }
+
+    private void addProgramSelection(Map<String, Object> sampleOrderItems, Program program) {
+        sampleOrderItems.put("programId", program.getId());
+        sampleOrderItems.put("program", program.getProgramName());
+        sampleOrderItems.put("programCode", program.getCode());
     }
 
     /**
@@ -1001,18 +1688,25 @@ public class OrderSearchRestController extends BaseRestController {
         if (samplingSiteName != null) {
             envFields.put("samplingSiteName", samplingSiteName);
         }
-        String siteType = observationHistoryService.getRawValueForSample(ObservationType.ENV_SITE_TYPE, sampleId);
-        if (siteType != null) {
-            envFields.put("siteType", siteType);
-        }
-        String siteSubtype = observationHistoryService.getRawValueForSample(ObservationType.ENV_SITE_SUBTYPE, sampleId);
-        if (siteSubtype != null) {
-            envFields.put("siteSubtype", siteSubtype);
-        }
-        String envZone = observationHistoryService.getRawValueForSample(ObservationType.ENV_ENVIRONMENTAL_ZONE,
-                sampleId);
-        if (envZone != null) {
-            envFields.put("environmentalZone", envZone);
+        // siteType, siteSubtype, environmentalZone are resolved live from the site
+        // record rather than read from stale observations.
+        if (samplingSiteId != null) {
+            try {
+                VectorSamplingSite site = vectorSamplingSiteService.get(Integer.valueOf(samplingSiteId.trim()));
+                if (site != null) {
+                    if (!GenericValidator.isBlankOrNull(site.getType())) {
+                        envFields.put("siteType", site.getType());
+                    }
+                    if (!GenericValidator.isBlankOrNull(site.getSubtype())) {
+                        envFields.put("siteSubtype", site.getSubtype());
+                    }
+                    if (!GenericValidator.isBlankOrNull(site.getEnvironmentalZone())) {
+                        envFields.put("environmentalZone", site.getEnvironmentalZone());
+                    }
+                }
+            } catch (NumberFormatException ignored) {
+                // non-numeric id stored — skip live lookup
+            }
         }
         String regulatoryRef = observationHistoryService.getRawValueForSample(ObservationType.ENV_REGULATORY_REFERENCE,
                 sampleId);
@@ -1023,6 +1717,44 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleId);
         if (collectionMethod != null) {
             envFields.put("collectionMethod", collectionMethod);
+        }
+        String waterTemp = observationHistoryService.getRawValueForSample(ObservationType.ENV_WATER_TEMP, sampleId);
+        if (waterTemp != null) {
+            envFields.put("waterTemp", waterTemp);
+        }
+        String ambientTemp = observationHistoryService.getRawValueForSample(ObservationType.ENV_AMBIENT_TEMP, sampleId);
+        if (ambientTemp != null) {
+            envFields.put("ambientTemp", ambientTemp);
+        }
+        String weather = observationHistoryService.getRawValueForSample(ObservationType.ENV_WEATHER, sampleId);
+        if (weather != null) {
+            envFields.put("weather", weather);
+        }
+        String preservationMethod = observationHistoryService
+                .getRawValueForSample(ObservationType.ENV_PRESERVATION_METHOD, sampleId);
+        if (preservationMethod != null) {
+            envFields.put("preservationMethod", preservationMethod);
+        }
+        String fieldNotes = observationHistoryService.getRawValueForSample(ObservationType.ENV_FIELD_NOTES, sampleId);
+        if (fieldNotes != null) {
+            envFields.put("fieldNotes", fieldNotes);
+        }
+        List<SampleComplianceStandard> scsLinks = sampleComplianceStandardService.getAllForSample(sampleId);
+        if (!scsLinks.isEmpty()) {
+            List<String> ids = scsLinks.stream().map(l -> l.getComplianceStandard().getId())
+                    .collect(Collectors.toList());
+            try {
+                envFields.put("complianceStandards", JSON_MAPPER.writeValueAsString(ids));
+            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+                LogEvent.logWarn(this.getClass().getName(), "getEnvironmentalFields",
+                        "Could not serialize compliance standard IDs for sample " + sampleId);
+            }
+        } else {
+            String complianceStandards = observationHistoryService
+                    .getRawValueForSample(ObservationType.ENV_COMPLIANCE_STANDARDS, sampleId);
+            if (complianceStandards != null) {
+                envFields.put("complianceStandards", complianceStandards);
+            }
         }
         String contactPerson = observationHistoryService.getRawValueForSample(ObservationType.ENV_CONTACT_PERSON,
                 sampleId);
@@ -1050,6 +1782,115 @@ public class OrderSearchRestController extends BaseRestController {
             envFields.put("gpsCaptureMethod", sample.getGpsCaptureMethod());
         }
 
+        // Vector surveillance fields
+        String vecCollectionSiteId = observationHistoryService
+                .getRawValueForSample(ObservationType.VS_COLLECTION_SITE_ID, sampleId);
+        if (vecCollectionSiteId != null) {
+            envFields.put("vecCollectionSiteId", vecCollectionSiteId);
+            try {
+                VectorSamplingSite vecSite = vectorSamplingSiteService.get(Integer.valueOf(vecCollectionSiteId.trim()));
+                if (vecSite != null) {
+                    if (!GenericValidator.isBlankOrNull(vecSite.getType()))
+                        envFields.put("vecCollectionSiteType", vecSite.getType());
+                    if (!GenericValidator.isBlankOrNull(vecSite.getSubtype()))
+                        envFields.put("vecCollectionSiteSubtype", vecSite.getSubtype());
+                    if (!GenericValidator.isBlankOrNull(vecSite.getEnvironmentalZone()))
+                        envFields.put("vecCollectionSiteZone", vecSite.getEnvironmentalZone());
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        String vecCollectionSiteName = observationHistoryService
+                .getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME, sampleId);
+        if (vecCollectionSiteName != null)
+            envFields.put("vecCollectionSiteName", vecCollectionSiteName);
+        String vecGpsLatitude = observationHistoryService.getRawValueForSample(ObservationType.VS_GPS_LATITUDE,
+                sampleId);
+        if (vecGpsLatitude != null)
+            envFields.put("vecGpsLatitude", vecGpsLatitude);
+        String vecGpsLongitude = observationHistoryService.getRawValueForSample(ObservationType.VS_GPS_LONGITUDE,
+                sampleId);
+        if (vecGpsLongitude != null)
+            envFields.put("vecGpsLongitude", vecGpsLongitude);
+        String vecLifecycleStage = observationHistoryService.getRawValueForSample(ObservationType.VS_LIFECYCLE_STAGE,
+                sampleId);
+        if (vecLifecycleStage != null)
+            envFields.put("vecLifecycleStage", vecLifecycleStage);
+        String vecTrapTypeId = observationHistoryService.getRawValueForSample(ObservationType.VS_TRAP_TYPE_ID,
+                sampleId);
+        if (vecTrapTypeId != null)
+            envFields.put("vecTrapTypeId", vecTrapTypeId);
+        String vecTrapCount = observationHistoryService.getRawValueForSample(ObservationType.VS_TRAP_COUNT, sampleId);
+        if (vecTrapCount != null)
+            envFields.put("vecTrapCount", vecTrapCount);
+        String vecTrapNights = observationHistoryService.getRawValueForSample(ObservationType.VS_TRAP_NIGHTS, sampleId);
+        if (vecTrapNights != null)
+            envFields.put("vecTrapNights", vecTrapNights);
+        String vecTimeOfDay = observationHistoryService.getRawValueForSample(ObservationType.VS_TIME_OF_DAY, sampleId);
+        if (vecTimeOfDay != null)
+            envFields.put("vecTimeOfDay", vecTimeOfDay);
+        String vecRestingContext = observationHistoryService.getRawValueForSample(ObservationType.VS_RESTING_CONTEXT,
+                sampleId);
+        if (vecRestingContext != null)
+            envFields.put("vecRestingContext", vecRestingContext);
+        String vecHumanBitingCatch = observationHistoryService
+                .getRawValueForSample(ObservationType.VS_HUMAN_BITING_CATCH, sampleId);
+        if (vecHumanBitingCatch != null)
+            envFields.put("vecHumanBitingCatch", vecHumanBitingCatch);
+        String vecCollectionNotes = observationHistoryService.getRawValueForSample(ObservationType.VS_COLLECTION_NOTES,
+                sampleId);
+        if (vecCollectionNotes != null)
+            envFields.put("vecCollectionNotes", vecCollectionNotes);
+
         return envFields;
+    }
+
+    /**
+     * The test section IDs the orders dashboard is narrowed to, or an empty set
+     * meaning the whole lab.
+     *
+     * <p>
+     * The dashboard reads with the same lab-unit scope as the home dashboard and
+     * the order lookups ({@link SampleLabUnitScopeService}). A site can switch the
+     * dashboard back to the whole lab by setting the
+     * {@value #RESTRICT_RECENT_ORDERS_PROPERTY} configuration property to
+     * {@code false}. Global administrators, {@code AllLabUnits} users and users
+     * whose section comes from the login lab-unit constraint read the whole lab;
+     * assigned sections are expanded to their child sections.
+     */
+    private Set<String> resolveAllowedSectionIds(String sysUserId) {
+        if (recentOrderSectionScopingDisabled()) {
+            return Collections.emptySet();
+        }
+        return sampleLabUnitScopeService.restrictedSectionIds(sysUserId);
+    }
+
+    private boolean recentOrderSectionScopingDisabled() {
+        return "false".equalsIgnoreCase(
+                ConfigurationProperties.getInstance().getPropertyValue(RESTRICT_RECENT_ORDERS_PROPERTY));
+    }
+
+    /**
+     * Who received the sample and the condition it arrived in, with display names
+     * (OGC-1424). Empty strings where nothing was recorded.
+     */
+    void putReceiptAndArrival(Map<String, Object> sampleItemData, SampleItem sampleItem) {
+        sampleItemData.put("receivedById", sampleItem.getReceivedById() == null ? "" : sampleItem.getReceivedById());
+        sampleItemData.put("receivedByName", userName(sampleItem.getReceivedById()));
+        sampleItemData.put("arrivalCondition",
+                sampleItem.getArrivalCondition() == null ? "" : sampleItem.getArrivalCondition());
+        sampleItemData.put("arrivalTemperature", sampleItem.getArrivalTemperature() == null ? ""
+                : sampleItem.getArrivalTemperature().stripTrailingZeros().toPlainString());
+        sampleItemData.put("arrivalRecordedByName", userName(sampleItem.getArrivalRecordedById()));
+        sampleItemData.put("arrivalRecordedAt",
+                sampleItem.getArrivalRecordedAt() == null ? "" : sampleItem.getArrivalRecordedAt().toString());
+    }
+
+    private String userName(String systemUserId) {
+        if (GenericValidator.isBlankOrNull(systemUserId)) {
+            return "";
+        }
+        SystemUser user = systemUserService.getUserById(systemUserId);
+        return user == null ? "" : user.getNameForDisplay().trim();
     }
 }

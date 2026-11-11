@@ -24,6 +24,8 @@ import org.openelisglobal.referral.valueholder.ReferralStatus;
 
 public interface ReferralDAO extends BaseDAO<Referral, String> {
 
+    List<Referral> getWorkspaceReferrals(List<String> sampleItemIds);
+
     // public boolean insertData(Referral referral) throws LIMSRuntimeException;
 
     public Referral getReferralById(String referralId) throws LIMSRuntimeException;
@@ -68,10 +70,11 @@ public interface ReferralDAO extends BaseDAO<Referral, String> {
      * Get all referrals for a specific sample item. Used to group referrals by
      * sample item for shipment operations.
      *
-     * @param sampleItemId - the PK of a SampleItem
+     * @param sampleItemId - the PK of a SampleItem (a String, as on the entity —
+     *                     binding a number here throws before the query even runs)
      * @return list of referrals for this sample item
      */
-    public List<Referral> getReferralsBySampleItemId(Integer sampleItemId);
+    public List<Referral> getReferralsBySampleItemId(String sampleItemId);
 
     /**
      * Get all unassigned referrals grouped by sample item. Returns distinct sample

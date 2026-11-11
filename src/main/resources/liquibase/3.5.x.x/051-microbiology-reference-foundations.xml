@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-782 M1 — microbiology catalog/reference foundations.
+    Product intent: mark culture-capable tests with a workflow and provide
+    backend reference/config tables for organism, antibiotic, panel, breakpoint,
+    and culture setup lookups. No case workflow tables are introduced here.
+    -->
+
+    <changeSet id="OGC-782-test-culture-workflow-type-column" author="OGC">
+        <addColumn schemaName="clinlims" tableName="test">
+            <column name="culture_workflow_type" type="VARCHAR(40)"/>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.test
+            ADD CONSTRAINT test_culture_workflow_type_chk
+            CHECK (culture_workflow_type IS NULL
+                OR culture_workflow_type IN ('BACTERIOLOGY', 'MYCOBACTERIOLOGY_TB', 'MYCOLOGY'))
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.test DROP CONSTRAINT test_culture_workflow_type_chk</sql>
+            <dropColumn schemaName="clinlims" tableName="test" columnName="culture_workflow_type"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-782-micro-organism-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_organism">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_organism"/>
+            </column>
+            <column name="display_name" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_micro_organism_display_name"/>
+            </column>
+            <column name="short_name" type="VARCHAR(100)"/>
+            <column name="whonet_code" type="VARCHAR(50)"/>
+            <column name="ocl_code" type="VARCHAR(100)"/>
+            <column name="organism_group" type="VARCHAR(100)"/>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_organism"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-782-micro-antibiotic-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_antibiotic">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_antibiotic"/>
+            </column>
+            <column name="display_name" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_micro_antibiotic_display_name"/>
+            </column>
+            <column name="whonet_code" type="VARCHAR(50)">
+                <constraints unique="true" uniqueConstraintName="uq_micro_antibiotic_whonet_code"/>
+            </column>
+            <column name="antibiotic_class" type="VARCHAR(255)"/>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_antibiotic"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-782-micro-ast-panel-tables" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_ast_panel">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_ast_panel"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="workflow_type" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="organism_group" type="VARCHAR(100)"/>
+            <column name="specimen_type_id" type="numeric(10)"/>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_ast_panel_specimen_type"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_panel" baseColumnNames="specimen_type_id"
+            referencedTableSchemaName="clinlims" referencedTableName="type_of_sample" referencedColumnNames="id"/>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_panel
+            ADD CONSTRAINT micro_ast_panel_workflow_type_chk
+            CHECK (workflow_type IN ('BACTERIOLOGY', 'MYCOBACTERIOLOGY_TB', 'MYCOLOGY'))
+        </sql>
+
+        <createTable schemaName="clinlims" tableName="micro_ast_panel_antibiotic">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_ast_panel_antibiotic"/>
+            </column>
+            <column name="panel_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="antibiotic_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_order" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_ast_panel_abx_panel"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_panel_antibiotic" baseColumnNames="panel_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_ast_panel" referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_ast_panel_abx_antibiotic"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_panel_antibiotic" baseColumnNames="antibiotic_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_antibiotic" referencedColumnNames="id"/>
+        <addUniqueConstraint
+            constraintName="uq_micro_ast_panel_antibiotic"
+            schemaName="clinlims" tableName="micro_ast_panel_antibiotic"
+            columnNames="panel_id, antibiotic_id"/>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_ast_panel_antibiotic"/>
+            <dropTable schemaName="clinlims" tableName="micro_ast_panel"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-782-micro-breakpoint-tables" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_breakpoint_standard">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_breakpoint_standard"/>
+            </column>
+            <column name="authority" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="effective_date" type="DATE"/>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint
+            constraintName="uq_micro_breakpoint_standard"
+            schemaName="clinlims" tableName="micro_breakpoint_standard"
+            columnNames="authority, version"/>
+        <sql>
+            ALTER TABLE clinlims.micro_breakpoint_standard
+            ADD CONSTRAINT micro_breakpoint_standard_authority_chk
+            CHECK (authority IN ('CLSI', 'EUCAST'))
+        </sql>
+
+        <createTable schemaName="clinlims" tableName="micro_breakpoint_rule">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_breakpoint_rule"/>
+            </column>
+            <column name="standard_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="organism_id" type="VARCHAR(36)"/>
+            <column name="organism_group" type="VARCHAR(100)"/>
+            <column name="antibiotic_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="method" type="VARCHAR(50)"/>
+            <column name="specimen_type_id" type="numeric(10)"/>
+            <column name="breakpoint_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="susceptible_value" type="numeric(12,4)"/>
+            <column name="intermediate_lower_value" type="numeric(12,4)"/>
+            <column name="intermediate_upper_value" type="numeric(12,4)"/>
+            <column name="resistant_value" type="numeric(12,4)"/>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_breakpoint_rule_standard"
+            baseTableSchemaName="clinlims" baseTableName="micro_breakpoint_rule" baseColumnNames="standard_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_breakpoint_standard" referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_breakpoint_rule_organism"
+            baseTableSchemaName="clinlims" baseTableName="micro_breakpoint_rule" baseColumnNames="organism_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_organism" referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_breakpoint_rule_antibiotic"
+            baseTableSchemaName="clinlims" baseTableName="micro_breakpoint_rule" baseColumnNames="antibiotic_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_antibiotic" referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_breakpoint_rule_specimen_type"
+            baseTableSchemaName="clinlims" baseTableName="micro_breakpoint_rule" baseColumnNames="specimen_type_id"
+            referencedTableSchemaName="clinlims" referencedTableName="type_of_sample" referencedColumnNames="id"/>
+        <sql>
+            ALTER TABLE clinlims.micro_breakpoint_rule
+            ADD CONSTRAINT micro_breakpoint_rule_type_chk
+            CHECK (breakpoint_type IN ('MIC', 'ZONE'))
+        </sql>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_breakpoint_rule"/>
+            <dropTable schemaName="clinlims" tableName="micro_breakpoint_standard"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-782-micro-culture-setup-table" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_culture_setup">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_culture_setup"/>
+            </column>
+            <column name="method_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="workflow_type" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="media_defaults" type="TEXT"/>
+            <column name="incubation_defaults" type="TEXT"/>
+            <column name="atmosphere_defaults" type="TEXT"/>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_culture_setup_method"
+            baseTableSchemaName="clinlims" baseTableName="micro_culture_setup" baseColumnNames="method_id"
+            referencedTableSchemaName="clinlims" referencedTableName="method" referencedColumnNames="id"/>
+        <addUniqueConstraint
+            constraintName="uq_micro_culture_setup_method_workflow"
+            schemaName="clinlims" tableName="micro_culture_setup"
+            columnNames="method_id, workflow_type"/>
+        <sql>
+            ALTER TABLE clinlims.micro_culture_setup
+            ADD CONSTRAINT micro_culture_setup_workflow_type_chk
+            CHECK (workflow_type IN ('BACTERIOLOGY', 'MYCOBACTERIOLOGY_TB', 'MYCOLOGY'))
+        </sql>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_culture_setup"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    OGC-527 / X-01 — configurable Notification Trigger system.
+
+    Adds a generic event-keyed trigger table. Each row controls whether a named
+    event (e.g. REFERRAL_OUT) fires notifications, which channels they go out
+    on, and which recipient roles they target. Channels and recipients are
+    independent multi-selects stored in side tables; the runtime takes the
+    cross-product at fire time.
+
+    Seeds one row: REFERRAL_OUT, enabled=false (defaults OFF per spec). Admin
+    activates and selects channels/recipients via the new admin screen.
+
+    Also seeds a REFERRAL_OUT payload template (subject + message body using
+    variables [referralId], [labName], [sampleAccessionNumber], [testName],
+    [patientFirstName], [patientLastName]). template_external_id stays null;
+    operators populate it for any provider that needs a pre-approved template
+    handle (e.g. Twilio ContentSid).
+  -->
+
+  <changeSet id="3.5.0.0-create-notification-trigger-config-seq" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <sequenceExists sequenceName="notification_trigger_config_seq" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createSequence sequenceName="notification_trigger_config_seq" schemaName="clinlims"
+                    startValue="1" incrementBy="1"/>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-create-notification-trigger-config-table" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="notification_trigger_config" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createTable tableName="notification_trigger_config" schemaName="clinlims">
+      <column name="id" type="INTEGER">
+        <constraints primaryKey="true" nullable="false" primaryKeyName="notification_trigger_config_pk"/>
+      </column>
+      <column name="event_code" type="VARCHAR(64)">
+        <constraints nullable="false" unique="true" uniqueConstraintName="uq_notification_trigger_config_event_code"/>
+      </column>
+      <column name="enabled" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+      <column name="payload_template_id" type="INTEGER">
+        <constraints nullable="true"
+                     foreignKeyName="fk_notification_trigger_config_payload_template"
+                     referencedTableName="notification_payload_template"
+                     referencedTableSchemaName="clinlims"
+                     referencedColumnNames="id"/>
+      </column>
+      <column name="last_updated" type="TIMESTAMP">
+        <constraints nullable="true"/>
+      </column>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-create-notification-trigger-channel-table" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="notification_trigger_channel" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createTable tableName="notification_trigger_channel" schemaName="clinlims">
+      <column name="trigger_config_id" type="INTEGER">
+        <constraints nullable="false"
+                     foreignKeyName="fk_notification_trigger_channel_config"
+                     referencedTableName="notification_trigger_config"
+                     referencedTableSchemaName="clinlims"
+                     referencedColumnNames="id"/>
+      </column>
+      <column name="channel" type="VARCHAR(32)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+    <addPrimaryKey tableName="notification_trigger_channel" schemaName="clinlims"
+                   columnNames="trigger_config_id, channel"
+                   constraintName="notification_trigger_channel_pk"/>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-create-notification-trigger-recipient-table" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="notification_trigger_recipient" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createTable tableName="notification_trigger_recipient" schemaName="clinlims">
+      <column name="trigger_config_id" type="INTEGER">
+        <constraints nullable="false"
+                     foreignKeyName="fk_notification_trigger_recipient_config"
+                     referencedTableName="notification_trigger_config"
+                     referencedTableSchemaName="clinlims"
+                     referencedColumnNames="id"/>
+      </column>
+      <column name="recipient_type" type="VARCHAR(32)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+    <addPrimaryKey tableName="notification_trigger_recipient" schemaName="clinlims"
+                   columnNames="trigger_config_id, recipient_type"
+                   constraintName="notification_trigger_recipient_pk"/>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-seed-referral-out-payload-template" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.notification_payload_template WHERE type = 'REFERRAL_OUT'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="notification_payload_template" schemaName="clinlims">
+      <column name="id" valueComputed="nextval('clinlims.notification_payload_template_seq')"/>
+      <column name="type" value="REFERRAL_OUT"/>
+      <column name="subject_template" value="Sample referred out: [sampleAccessionNumber]"/>
+      <column name="message_template" value="Sample [sampleAccessionNumber] for patient [patientFirstName] [patientLastName] has been referred to [labName] for test [testName]. Referral id: [referralId]."/>
+      <column name="last_updated" valueComputed="now()"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-seed-referral-out-trigger-config" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.notification_trigger_config WHERE event_code = 'REFERRAL_OUT'
+      </sqlCheck>
+    </preConditions>
+    <insert tableName="notification_trigger_config" schemaName="clinlims">
+      <column name="id" valueComputed="nextval('clinlims.notification_trigger_config_seq')"/>
+      <column name="event_code" value="REFERRAL_OUT"/>
+      <column name="enabled" valueBoolean="false"/>
+      <column name="payload_template_id" valueComputed="(SELECT id FROM clinlims.notification_payload_template WHERE type = 'REFERRAL_OUT')"/>
+      <column name="last_updated" valueComputed="now()"/>
+    </insert>
+  </changeSet>
+
+
+</databaseChangeLog>

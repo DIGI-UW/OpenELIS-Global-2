@@ -15,12 +15,12 @@ const QuestionnaireResponse = ({ questionnaireResponse }) => {
             {item.answer &&
               item.answer.map((answer, index) => {
                 return (
-                  <>
+                  <React.Fragment key={index}>
                     {renderAnswer(answer)}{" "}
                     {item.answer.length > 1 && index < item.answer.length - 1
                       ? " ,"
                       : ""}
-                  </>
+                  </React.Fragment>
                 );
               })}
           </div>

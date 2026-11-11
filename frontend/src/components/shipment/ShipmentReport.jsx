@@ -22,17 +22,24 @@ import { DocumentPdf, Download } from "@carbon/icons-react";
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import { applyPlugin } from "jspdf-autotable";
 import ExcelJS from "exceljs";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import SearchableSelect from "../common/SearchableSelect";
 import { NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServer } from "../utils/Utils";
 import ShipmentNavigation from "./ShipmentNavigation";
 import "./ShipmentDashboard.css";
+import { labNow } from "../utils/labClock";
+import useSiteDateFormat from "../common/useSiteDateFormat";
+
+// jspdf-autotable v5 no longer patches jsPDF on a bare import; restore doc.autoTable.
+applyPlugin(jsPDF);
 
 const ShipmentReport = () => {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const { addNotification } = useContext(NotificationContext);
 
   const [boxes, setBoxes] = useState([]);
@@ -238,7 +245,7 @@ const ShipmentReport = () => {
       doc.text(
         intl.formatMessage({ id: "shipment.manifest.generated" }) +
           " " +
-          new Date().toLocaleString(),
+          labNow().toLocaleString(),
         14,
         30,
       );
@@ -405,29 +412,30 @@ const ShipmentReport = () => {
           />
         </Column>
         <Column lg={3} md={4} sm={4}>
-          <Dropdown
+          <SearchableSelect
             id="report-facility-filter"
-            titleText={intl.formatMessage({
+            labelText={intl.formatMessage({
               id: "shipment.filter.referenceLab",
             })}
-            label={intl.formatMessage({ id: "label.select" })}
-            items={facilities}
-            itemToString={(item) => (item ? item.text : "")}
-            selectedItem={facilities.find((f) => f.id === filterFacility)}
-            onChange={({ selectedItem }) =>
-              setFilterFacility(selectedItem?.id || "")
-            }
+            placeholder={intl.formatMessage({ id: "label.all" })}
+            options={facilities
+              .filter((facility) => facility.id !== "")
+              .map((facility) => ({ id: facility.id, value: facility.text }))}
+            value={filterFacility}
+            onChange={setFilterFacility}
           />
         </Column>
         <Column lg={3} md={4} sm={4}>
           <DatePicker
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
             datePickerType="single"
             onChange={([date]) => setFilterDateFrom(date)}
             value={filterDateFrom}
           >
             <DatePickerInput
               id="report-date-from"
-              placeholder="mm/dd/yyyy"
+              placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({ id: "shipment.filter.dateFrom" })}
               size="md"
             />
@@ -435,13 +443,15 @@ const ShipmentReport = () => {
         </Column>
         <Column lg={3} md={4} sm={4}>
           <DatePicker
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
             datePickerType="single"
             onChange={([date]) => setFilterDateTo(date)}
             value={filterDateTo}
           >
             <DatePickerInput
               id="report-date-to"
-              placeholder="mm/dd/yyyy"
+              placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({ id: "shipment.filter.dateTo" })}
               size="md"
             />

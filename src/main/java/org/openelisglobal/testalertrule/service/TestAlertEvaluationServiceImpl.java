@@ -1,9 +1,24 @@
 package org.openelisglobal.testalertrule.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import org.apache.commons.text.StringEscapeUtils;
+import org.openelisglobal.alert.service.AlertService;
+import org.openelisglobal.alert.valueholder.AlertSeverity;
+import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.RuleResultScope;
+import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.service.sender.AsyncNotificationDispatcher;
 import org.openelisglobal.notification.valueholder.EmailNotification;
+import org.openelisglobal.notification.valueholder.NotificationRecipientType;
 import org.openelisglobal.notification.valueholder.RemoteNotification;
 import org.openelisglobal.notification.valueholder.SMSNotification;
 import org.openelisglobal.notifications.service.HeaderNotificationService;
@@ -11,6 +26,10 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultlimit.service.ResultLimitService;
+import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.resultvalidation.event.ResultsValidatedEvent;
+import org.openelisglobal.resultvalidation.util.ValidationSignals;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -18,13 +37,26 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testalertrule.valueholder.TestAlertRule;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Service
 public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationService {
 
+    private static final ObjectMapper CONTEXT_MAPPER = new ObjectMapper();
+
     @Autowired
     private TestAlertRuleService alertRuleService;
+
+    @Autowired
+    private RuleResultScope ruleResultScope;
+
+    @Autowired
+    private AlertService alertService;
+
+    @Autowired
+    private ResultLimitService resultLimitService;
 
     @Autowired
     private ResultService resultService;
@@ -38,9 +70,9 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
     @Autowired
     private SampleHumanService sampleHumanService;
 
-    // Sends SMS/Email off the request thread so the result-entry response isn't
-    // blocked on SMTP / SMS-gateway calls (same async behavior as the default
-    // test-notification flow).
+    @Autowired
+    private AnalysisService analysisService;
+
     @Autowired
     private AsyncNotificationDispatcher asyncNotificationDispatcher;
 
@@ -54,24 +86,77 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         if (test == null) {
             return;
         }
-        List<TestAlertRule> rules = alertRuleService.getByTestId(test.getId());
-        if (rules == null || rules.isEmpty()) {
-            return;
-        }
+        // the number drives the rules; the critical alert shows what the
+        // technologist wrote
         String value = result.getValue();
-        for (TestAlertRule rule : rules) {
-            if (!Boolean.TRUE.equals(rule.getEnabled()) || !matches(rule, result, value)) {
-                continue;
-            }
-            String testName = test.getLocalizedName() != null ? test.getLocalizedName() : test.getName();
-            String subject = "Test alert: " + testName;
-            String message = "[ALERT: " + rule.getName() + "] " + testName + (value != null ? " result " + value : "");
-            dispatchHeader(rule, message, sysUserId);
-            dispatchExternal(rule, subject, message, result);
+        String writtenValue = result.getEnteredValue();
+        boolean critical = isCriticalValue(result, value);
+        if (critical) {
+            recordCriticalResultAlert(result, test, writtenValue);
+        }
+        for (TestAlertRule rule : matchingRules(result, test, critical)) {
+            dispatchHeader(rule, message(rule, test, result), sysUserId);
         }
     }
 
-    private boolean matches(TestAlertRule rule, Result result, String value) {
+    @Override
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void dispatchFinalized(ResultsValidatedEvent event) {
+        for (Long analysisId : event.analysisIds()) {
+            try {
+                Analysis analysis = analysisService.get(String.valueOf(analysisId));
+                Test test = analysis == null ? null : analysis.getTest();
+                if (test == null) {
+                    continue;
+                }
+                for (Result result : resultService.getResultsByAnalysis(analysis)) {
+                    boolean critical = isCriticalValue(result, result.getValue());
+                    for (TestAlertRule rule : matchingRules(result, test, critical)) {
+                        dispatchExternal(rule, MessageUtil.getMessage("notification.testAlert.subject", testName(test)),
+                                message(rule, test, result), result);
+                    }
+                }
+            } catch (RuntimeException e) {
+                LogEvent.logError(e);
+            }
+        }
+    }
+
+    private List<TestAlertRule> matchingRules(Result result, Test test, boolean critical) {
+        List<TestAlertRule> matching = new ArrayList<>();
+        List<TestAlertRule> rules = alertRuleService.getByTestId(test.getId());
+        if (rules == null || rules.isEmpty()) {
+            return matching;
+        }
+        for (TestAlertRule rule : rules) {
+            if (!Boolean.TRUE.equals(rule.getEnabled())) {
+                continue;
+            }
+            // The rule names a measurement, not a test: a rule about the numeric
+            // Ct Value must not be handed the coded PCR Result recorded beside
+            // it, nor the same component's result from another specimen.
+            if (!ruleResultScope.matches(result, rule.getComponentId(), rule.getSampleTypeId())) {
+                continue;
+            }
+            if (!matches(rule, result, result.getValue(), critical)) {
+                continue;
+            }
+            matching.add(rule);
+        }
+        return matching;
+    }
+
+    private String testName(Test test) {
+        return test.getLocalizedName() != null ? test.getLocalizedName() : test.getName();
+    }
+
+    private String message(TestAlertRule rule, Test test, Result result) {
+        return MessageUtil.getMessage("notification.testAlert.message", new String[] { rule.getName(), testName(test),
+                StringEscapeUtils.unescapeHtml4(resultService.formatResultForDisplay(result, true)) });
+    }
+
+    private boolean matches(TestAlertRule rule, Result result, String value, boolean critical) {
         String trigger = rule.getTriggerType();
         if (trigger == null) {
             return false;
@@ -80,13 +165,117 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         case "ALL":
             return true;
         case "SPECIFIC_VALUE":
-            return rule.getTriggerValue() != null && rule.getTriggerValue().equals(value);
+            return valueMatches(rule.getTriggerValue(), value, result.getResultType());
         case "ABNORMAL":
-            return resultService.isAbnormalDictionaryResult(result);
+            return resultService.isAbnormalDictionaryResult(result) || isAbnormalNumericValue(result, value);
+        case "CRITICAL":
+            return critical;
         default:
-            // CRITICAL needs critical-range evaluation; COMPLIANCE_BREACH needs the
-            // S-01 compliance module (OGC-528). Neither fires until those land.
+            // COMPLIANCE_BREACH needs the S-01 compliance module (OGC-528) and
+            // doesn't fire until that lands.
             return false;
+        }
+    }
+
+    /**
+     * Whether the recorded value is the value the rule names.
+     *
+     * <p>
+     * Numeric equality ignores equivalent trailing zeros ("200" and "200.00").
+     * Historical results may contain reporting padding; a rule is about the
+     * clinical number rather than its text representation.
+     *
+     * <p>
+     * The rule's value may itself be written in scientific notation, the way the
+     * result it names is shown on screen, so it is normalized before it is read as
+     * a number. The result's side arrives already normalized.
+     */
+    private boolean valueMatches(String triggerValue, String value, String resultType) {
+        if (triggerValue == null || value == null) {
+            return false;
+        }
+        if (triggerValue.equals(value)) {
+            return true;
+        }
+        if (!"N".equals(resultType)) {
+            return false;
+        }
+        try {
+            return Double.compare(Double.parseDouble(StringUtil.normalizeScientificNotation(triggerValue.trim())),
+                    Double.parseDouble(value.trim())) == 0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    /**
+     * A numeric value outside the reference range of the patient-conditional result
+     * limit, judged by the same flag Results Entry and Validation show, so an
+     * ABNORMAL rule fires on exactly the results those screens mark abnormal. A
+     * critical value is abnormal too; a value outside the valid range is an entry
+     * error rather than a finding, and a result with no matching range has no basis
+     * to be called abnormal.
+     */
+    private boolean isAbnormalNumericValue(Result result, String value) {
+        if (value == null || value.isBlank() || !"N".equals(result.getResultType())) {
+            return false;
+        }
+        try {
+            Analysis analysis = result.getAnalysis();
+            Patient patient = sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample());
+            ResultLimit limit = resultLimitService.getResultLimitForResult(analysis, result, patient);
+            String flag = ValidationSignals.resultFlag(limit, result.getResultType(), value);
+            return ValidationSignals.FLAG_ABNORMAL.equals(flag) || ValidationSignals.FLAG_CRITICAL.equals(flag);
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            return false;
+        }
+    }
+
+    /**
+     * OGC-1022 (R3) — a numeric value outside the authored critical bounds of the
+     * patient-conditional result limit. POSITIVE_INFINITY is the "not authored"
+     * sentinel for both bounds, so tests without critical bounds never fire.
+     */
+    private boolean isCriticalValue(Result result, String value) {
+        if (value == null || value.isBlank() || !"N".equals(result.getResultType())) {
+            return false;
+        }
+        try {
+            double numeric = Double.parseDouble(value);
+            Analysis analysis = result.getAnalysis();
+            Patient patient = sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample());
+            ResultLimit limit = resultLimitService.getResultLimitForResult(analysis, result, patient);
+            return ValidationSignals.isCritical(limit, numeric);
+        } catch (NumberFormatException e) {
+            return false;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            return false;
+        }
+    }
+
+    /**
+     * Posts the critical value to the Alerts dashboard (FR-A4/L: acknowledgment is
+     * a follow-up there and never gates Save). AlertService dedupes an already-open
+     * alert for the same analysis into a duplicate-count bump. Failure to record
+     * the alert must never fail the save that triggered it.
+     */
+    private void recordCriticalResultAlert(Result result, Test test, String value) {
+        try {
+            Analysis analysis = result.getAnalysis();
+            String accession = analysis.getSampleItem().getSample().getAccessionNumber();
+            String testName = testName(test);
+            String message = testName + " result " + value + " is a critical value (order " + accession + ")";
+            Map<String, String> context = new LinkedHashMap<>();
+            context.put("accessionNumber", accession);
+            context.put("testName", testName);
+            context.put("value", value);
+            context.put("analysisId", analysis.getId());
+            alertService.createAlert(AlertType.CRITICAL_RESULT, "ANALYSIS", Long.valueOf(analysis.getId()),
+                    AlertSeverity.CRITICAL, message, CONTEXT_MAPPER.writeValueAsString(context));
+        } catch (JsonProcessingException | RuntimeException e) {
+            LogEvent.logError(e);
         }
     }
 
@@ -110,23 +299,25 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
     private void dispatchExternal(TestAlertRule rule, String subject, String message, Result result) {
         if (Boolean.TRUE.equals(rule.getNotifySms())) {
             if (notBlank(rule.getNotifyCustomPhone())) {
-                sendSms(rule.getNotifyCustomPhone(), subject, message);
+                sendSms(rule, result, rule.getNotifyCustomPhone(), subject, message,
+                        NotificationRecipientType.TYPED_ADDRESS);
             }
             if (Boolean.TRUE.equals(rule.getNotifyPatient())) {
                 String phone = patientContact(result, true);
                 if (notBlank(phone)) {
-                    sendSms(phone, subject, message);
+                    sendSms(rule, result, phone, subject, message, NotificationRecipientType.PATIENT);
                 }
             }
         }
         if (Boolean.TRUE.equals(rule.getNotifyEmail())) {
             if (notBlank(rule.getNotifyCustomEmail())) {
-                sendEmail(rule.getNotifyCustomEmail(), subject, message);
+                sendEmail(rule, result, rule.getNotifyCustomEmail(), subject, message,
+                        NotificationRecipientType.TYPED_ADDRESS);
             }
             if (Boolean.TRUE.equals(rule.getNotifyPatient())) {
                 String email = patientContact(result, false);
                 if (notBlank(email)) {
-                    sendEmail(email, subject, message);
+                    sendEmail(rule, result, email, subject, message, NotificationRecipientType.PATIENT);
                 }
             }
         }
@@ -134,24 +325,35 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         // follow-up; custom + patient channels are wired here.
     }
 
-    private void sendSms(String phone, String subject, String message) {
+    private void sendSms(TestAlertRule rule, Result result, String phone, String subject, String message,
+            NotificationRecipientType recipientType) {
         SMSNotification sms = new SMSNotification();
         sms.setReceiverPhoneNumber(phone);
         sms.setPayload(new AlertNotificationPayload(subject, message));
-        dispatch(sms);
+        dispatch(rule, result, sms, recipientType);
     }
 
-    private void sendEmail(String email, String subject, String message) {
+    private void sendEmail(TestAlertRule rule, Result result, String email, String subject, String message,
+            NotificationRecipientType recipientType) {
         EmailNotification mail = new EmailNotification();
         mail.setRecipientEmailAddress(email);
         mail.setPayload(new AlertNotificationPayload(subject, message));
-        dispatch(mail);
+        dispatch(rule, result, mail, recipientType);
     }
 
-    private void dispatch(RemoteNotification notification) {
-        // Fire-and-forget on a separate thread; the notification already carries
-        // a fully-resolved string payload, so no Hibernate session is needed.
-        asyncNotificationDispatcher.dispatch(notification);
+    /**
+     * Queued in the delivery outbox under product Alert with the rule's name and
+     * the order's lab number; the delivery worker sends and retries it.
+     */
+    private void dispatch(TestAlertRule rule, Result result, RemoteNotification notification,
+            NotificationRecipientType recipientType) {
+        String accession = null;
+        try {
+            accession = result.getAnalysis().getSampleItem().getSample().getAccessionNumber();
+        } catch (RuntimeException e) {
+            // an alert without an order reference is still queued
+        }
+        asyncNotificationDispatcher.dispatch(notification, rule.getName(), accession, recipientType, null);
     }
 
     private String patientContact(Result result, boolean phone) {

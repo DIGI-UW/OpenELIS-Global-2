@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 follow-up - alert, calculated-result and reflex rules address a
+    result, and a result belongs to a test AND a specimen AND a component. The
+    rules only ever named the test, so every rule of a multi-component test
+    evaluated against every component of it: a rule authored for a numeric Ct
+    Value also fired on the coded PCR Result beside it.
+
+    Scope is expressed the way result_limits already expresses it (OGC-1145):
+    NULL means unscoped. A NULL sample_type_id applies to every specimen the
+    test runs on, and a NULL component_id to every component. That is exactly
+    what these rules do today, so every existing row keeps its behaviour with
+    no backfill needed for the specimen axis.
+
+    The component axis is backfilled to the test's PRIMARY component for
+    calculated and reflex rules, which is where an unqualified test-level rule
+    belongs once components exist: a single-component test resolves to its only
+    component, and a multi-component test stops depending on whichever
+    component's result happened to be written last. Alert rules are backfilled
+    the same way, in 079.
+    -->
+
+    <changeSet id="rule-scope-001-calculation-operation" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="calculation_operation"/>
+                <tableExists schemaName="clinlims" tableName="test_result_component"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="calculation_operation" columnName="component_id"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Scope a calculation operand to a component and a specimen</comment>
+        <addColumn schemaName="clinlims" tableName="calculation_operation">
+            <column name="component_id" type="VARCHAR(36)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sample_type_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="calculation_operation"
+            baseColumnNames="component_id" constraintName="fk_calculation_operation_component"
+            referencedTableSchemaName="clinlims" referencedTableName="test_result_component"
+            referencedColumnNames="id" onDelete="SET NULL"/>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="calculation_operation"
+            baseColumnNames="sample_type_id" constraintName="fk_calculation_operation_sample_type"
+            referencedTableSchemaName="clinlims" referencedTableName="type_of_sample"
+            referencedColumnNames="id" onDelete="SET NULL"/>
+    </changeSet>
+
+    <!--
+    An operand names its test in `value` (the operand type says so), so the
+    primary component is looked up through that. Operands that are not test
+    results - integers, operators, brackets - have no component and are left
+    alone. Re-running finds nothing to update: only NULL component_id rows are
+    touched.
+    -->
+    <changeSet id="rule-scope-002-calculation-operation-backfill" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="calculation_operation" columnName="component_id"/>
+        </preConditions>
+        <comment>Existing calculation operands resolve to their test's primary component</comment>
+        <sql>
+            UPDATE clinlims.calculation_operation op
+            SET component_id = c.id
+            FROM clinlims.test_result_component c
+            WHERE op.component_id IS NULL
+              AND op.type = 'TEST_RESULT'
+              AND op.value ~ '^[0-9]+$'
+              AND c.test_id = CAST(op.value AS NUMERIC)
+              AND c.is_primary = TRUE
+              AND c.is_active = 'Y';
+        </sql>
+        <rollback>
+            <sql>UPDATE clinlims.calculation_operation SET component_id = NULL WHERE type = 'TEST_RESULT';</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="rule-scope-003-reflex-rule-condition" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="reflex_rule_condition"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="reflex_rule_condition" columnName="component_id"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Scope a reflex condition to a component</comment>
+        <addColumn schemaName="clinlims" tableName="reflex_rule_condition">
+            <column name="component_id" type="VARCHAR(36)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="reflex_rule_condition"
+            baseColumnNames="component_id" constraintName="fk_reflex_condition_component"
+            referencedTableSchemaName="clinlims" referencedTableName="test_result_component"
+            referencedColumnNames="id" onDelete="SET NULL"/>
+    </changeSet>
+
+    <!--
+    test_reflex is the row the executor actually reads, so the condition's
+    scope has to reach it or the rule is component-aware only on paper. The
+    specimen lands here too: the condition has always carried a sample_id, but
+    it was validated at save and then dropped, so a rule authored for one
+    specimen fired for every specimen.
+    -->
+    <changeSet id="rule-scope-004-test-reflex" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="test_reflex"/>
+                <tableExists schemaName="clinlims" tableName="test_result_component"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="test_reflex" columnName="component_id"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Carry component and specimen scope onto the executed reflex row</comment>
+        <addColumn schemaName="clinlims" tableName="test_reflex">
+            <column name="component_id" type="VARCHAR(36)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sample_type_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_reflex"
+            baseColumnNames="component_id" constraintName="fk_test_reflex_component"
+            referencedTableSchemaName="clinlims" referencedTableName="test_result_component"
+            referencedColumnNames="id" onDelete="SET NULL"/>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="test_reflex"
+            baseColumnNames="sample_type_id" constraintName="fk_test_reflex_sample_type"
+            referencedTableSchemaName="clinlims" referencedTableName="type_of_sample"
+            referencedColumnNames="id" onDelete="SET NULL"/>
+    </changeSet>
+
+    <changeSet id="rule-scope-005-reflex-backfill" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists schemaName="clinlims" tableName="reflex_rule_condition" columnName="component_id"/>
+                <columnExists schemaName="clinlims" tableName="test_reflex" columnName="component_id"/>
+            </and>
+        </preConditions>
+        <comment>Existing reflex rules resolve to their test's primary component</comment>
+        <sql>
+            UPDATE clinlims.reflex_rule_condition cond
+            SET component_id = c.id
+            FROM clinlims.test_result_component c
+            WHERE cond.component_id IS NULL
+              AND cond.test_id ~ '^[0-9]+$'
+              AND c.test_id = CAST(cond.test_id AS NUMERIC)
+              AND c.is_primary = TRUE
+              AND c.is_active = 'Y';
+
+            UPDATE clinlims.test_reflex tr
+            SET component_id = c.id
+            FROM clinlims.test_result_component c
+            WHERE tr.component_id IS NULL
+              AND tr.test_id IS NOT NULL
+              AND c.test_id = tr.test_id
+              AND c.is_primary = TRUE
+              AND c.is_active = 'Y';
+        </sql>
+        <rollback>
+            <sql>
+                UPDATE clinlims.reflex_rule_condition SET component_id = NULL;
+                UPDATE clinlims.test_reflex SET component_id = NULL;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

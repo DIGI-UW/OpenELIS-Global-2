@@ -1,6 +1,8 @@
 package org.openelisglobal.organization.service;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.organization.valueholder.Organization;
 
@@ -66,5 +68,29 @@ public interface OrganizationService extends BaseObjectService<Organization, Str
      */
     List<Organization> searchOrganizationsWithTypes(String filter);
 
-    String generateSiteCode();
+    /**
+     * Inserts without the duplicate-name refusal; the Locations menu reports a
+     * duplicate name as a warning the admin can accept (OGC-1363 FR-C4).
+     */
+    String insertUnchecked(Organization organization);
+
+    /** Updates without the duplicate-name refusal (OGC-1363 FR-C4). */
+    Organization updateUnchecked(Organization organization);
+
+    List<Organization> getAllWithTypes();
+
+    List<Organization> getChildrenWithTypes(String parentId);
+
+    List<Organization> getByTypeIdWithTypes(String typeId);
+
+    Map<String, Long> countActiveChildren(Collection<String> parentIds);
+
+    List<Organization> searchAreas(String text, int limit);
+
+    /**
+     * Deactivates the organizations the given source supplied (the facility
+     * registry sync, before it re-applies the registry's current list), leaving
+     * local records alone (OGC-1363 FR-H4).
+     */
+    void deactivateOrganizationsFromSource(String source);
 }

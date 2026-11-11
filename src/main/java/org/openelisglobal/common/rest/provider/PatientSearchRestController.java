@@ -14,6 +14,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.*;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.provider.query.PatientNamePrefixMatch;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
 import org.openelisglobal.common.provider.query.PatientSearchResultsForm;
 import org.openelisglobal.common.provider.query.workerObjects.PatientSearchLocalAndExternalWorker;
@@ -76,7 +77,8 @@ public class PatientSearchRestController extends BaseRestController {
             @RequestParam(required = false) String nationalID, @RequestParam(required = false) String guid,
             @RequestParam(required = false) String labNumber, @RequestParam(required = false) String dateOfBirth,
             @RequestParam(required = false) String gender,
-            @RequestParam(required = false) String suppressExternalSearch)
+            @RequestParam(required = false) String suppressExternalSearch,
+            @RequestParam(required = false) String nameMatch)
             throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
         PatientSearchResultsPaging paging = new PatientSearchResultsPaging();
         PatientSearchResultsForm form = new PatientSearchResultsForm();
@@ -110,11 +112,14 @@ public class PatientSearchRestController extends BaseRestController {
                 String crSearchParam = request.getParameter("crSearch");
                 if (crSearchParam != null && crSearchParam.contains("true")) {
                     List<PatientSearchResults> fhirResults = searchPatientInClientRegistry(lastName, firstName,
-                            STNumber, subjectNumber, nationalID, null, guid, dateOfBirth, gender);
+                            STNumber, subjectNumber, nationalID, guid, dateOfBirth, gender);
                     LogEvent.logWarn("PatientSearchRestController", "getPatientResults()",
                             "final results have been added");
                     results = fhirResults;
                 }
+            }
+            if (PatientNamePrefixMatch.PREFIX.equals(nameMatch)) {
+                results = PatientNamePrefixMatch.keepPrefixMatches(results, lastName, firstName);
             }
             paging.setDatabaseResults(request, form, results);
         } else {
@@ -169,7 +174,7 @@ public class PatientSearchRestController extends BaseRestController {
     }
 
     private List<PatientSearchResults> searchPatientInClientRegistry(String lastName, String firstName, String STNumber,
-            String subjectNumber, String nationalID, String patientID, String guid, String dateOfBirth, String gender) {
+            String subjectNumber, String nationalID, String guid, String dateOfBirth, String gender) {
         LogEvent.logWarn("PatientSearchRestController", "searchPatientInClientRegistry()",
                 "searchPatientInClientRegistry method has been reached");
         if (isClientRegistryConfigInvalid()) {
@@ -182,7 +187,7 @@ public class PatientSearchRestController extends BaseRestController {
                 "ClientRegistry connected successfully");
 
         IQuery<IBaseBundle> query = buildPatientSearchQuery(clientRegistry, lastName, firstName, STNumber,
-                subjectNumber, nationalID, patientID, guid, dateOfBirth, gender);
+                subjectNumber, nationalID, guid, dateOfBirth, gender);
 
         Bundle bundle = query.returnBundle(Bundle.class).execute();
         List<org.hl7.fhir.r4.model.Patient> externalPatients = new ArrayList<>();
@@ -282,8 +287,7 @@ public class PatientSearchRestController extends BaseRestController {
     }
 
     public IQuery<IBaseBundle> buildPatientSearchQuery(IGenericClient clientRegistry, String lastName, String firstName,
-            String STNumber, String subjectNumber, String nationalID, String patientID, String guid, String dateOfBirth,
-            String gender) {
+            String STNumber, String subjectNumber, String nationalID, String guid, String dateOfBirth, String gender) {
         IQuery<IBaseBundle> query = clientRegistry.search().forResource(org.hl7.fhir.r4.model.Patient.class);
         if (!GenericValidator.isBlankOrNull(lastName)) {
             query = query.where(org.hl7.fhir.r4.model.Patient.FAMILY.matches().value(lastName));
@@ -295,22 +299,18 @@ public class PatientSearchRestController extends BaseRestController {
             LogEvent.logWarn("PatientSearchRestController", "buildPatientSearchQuery()", "first name added to query");
         }
 
-        // Map for identifier-based queries (STNumber, SubjectNumber, NationalId,
-        // PatientID, GUID)
+        // Map for identifier-based queries (STNumber, SubjectNumber, NationalId, GUID)
         Map<String, String> identifierMappings = new HashMap<>();
 
         // Add non-null identifiers to the map
         if (STNumber != null) {
-            identifierMappings.put("stnumber", STNumber);
+            identifierMappings.put("stNumber", STNumber);
         }
         if (subjectNumber != null) {
-            identifierMappings.put("subjectnumber", subjectNumber);
+            identifierMappings.put("subjectNumber", subjectNumber);
         }
         if (nationalID != null) {
-            identifierMappings.put("nationalid", nationalID);
-        }
-        if (patientID != null) {
-            identifierMappings.put("patientid", patientID);
+            identifierMappings.put("nationalId", nationalID);
         }
         if (guid != null) {
             identifierMappings.put("guid", guid);
@@ -321,7 +321,7 @@ public class PatientSearchRestController extends BaseRestController {
             String value = entry.getValue();
             if (!GenericValidator.isBlankOrNull(value)) {
                 query = query.where(org.hl7.fhir.r4.model.Patient.IDENTIFIER.exactly()
-                        .systemAndCode("http://openelis-global.org/pat_" + entry.getKey(), value));
+                        .systemAndCode(fhirConfig.getOeFhirSystem() + "/pat_" + entry.getKey(), value));
                 LogEvent.logInfo("PatientSearchRestController", "buildPatientSearchQuery()",
                         "Added identifier (" + entry.getKey() + ") to query.");
             }

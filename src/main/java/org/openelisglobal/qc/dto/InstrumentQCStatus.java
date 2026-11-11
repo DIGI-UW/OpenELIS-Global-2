@@ -11,7 +11,7 @@ public class InstrumentQCStatus {
     private String instrumentName;
     private String instrumentType;
     private String instrumentLocation;
-    private String complianceColor; // GREEN, YELLOW, RED
+    private String complianceColor; // GREEN, YELLOW, RED, NOT_CONFIGURED
     private int unresolvedRejections;
     private int unresolvedWarnings;
     private List<String> triggeredRules;

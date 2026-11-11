@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-ast-attempts" author="OGC">
+        <addColumn schemaName="clinlims" tableName="micro_ast_run">
+            <column name="attempt_type" type="VARCHAR(20)" defaultValue="ORIGINAL">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_run_id" type="VARCHAR(36)"/>
+            <column name="attempt_reason" type="TEXT"/>
+            <column name="method" type="VARCHAR(20)"/>
+            <column name="reportable" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_micro_ast_run_source"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_run" baseColumnNames="source_run_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_ast_run" referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="micro_ast_run" indexName="idx_micro_ast_run_source">
+            <column name="source_run_id"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_run
+            ADD CONSTRAINT micro_ast_run_attempt_type_chk
+            CHECK (attempt_type IN ('ORIGINAL', 'REPEAT', 'RETEST'));
+            ALTER TABLE clinlims.micro_ast_run
+            ADD CONSTRAINT micro_ast_run_method_chk
+            CHECK (method IS NULL OR method IN ('MIC', 'ZONE'));
+            ALTER TABLE clinlims.micro_ast_run
+            ADD CONSTRAINT micro_ast_run_attempt_source_chk
+            CHECK (
+                (attempt_type = 'ORIGINAL' AND source_run_id IS NULL)
+                OR
+                (attempt_type IN ('REPEAT', 'RETEST') AND source_run_id IS NOT NULL
+                    AND length(trim(attempt_reason)) &gt; 0)
+            );
+
+            UPDATE clinlims.micro_ast_run target
+            SET reportable = true
+            WHERE target.status = 'REVIEWED'
+              AND 1 = (
+                SELECT count(*)
+                FROM clinlims.micro_ast_run sibling
+                WHERE sibling.isolate_id = target.isolate_id
+                  AND sibling.status = 'REVIEWED'
+              );
+
+            CREATE UNIQUE INDEX uq_micro_ast_run_reportable
+            ON clinlims.micro_ast_run (isolate_id)
+            WHERE reportable = true AND status = 'REVIEWED';
+        </sql>
+
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="micro_ast_run"
+                indexName="uq_micro_ast_run_reportable"/>
+            <sql>
+                ALTER TABLE clinlims.micro_ast_run DROP CONSTRAINT micro_ast_run_attempt_source_chk;
+                ALTER TABLE clinlims.micro_ast_run DROP CONSTRAINT micro_ast_run_method_chk;
+                ALTER TABLE clinlims.micro_ast_run DROP CONSTRAINT micro_ast_run_attempt_type_chk;
+            </sql>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_ast_run"
+                constraintName="fk_micro_ast_run_source"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="reportable"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="method"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="attempt_reason"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="source_run_id"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="attempt_type"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

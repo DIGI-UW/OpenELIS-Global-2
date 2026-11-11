@@ -16,10 +16,13 @@ package org.openelisglobal.common.services;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringTokenizer;
+import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.dom4j.Document;
@@ -35,6 +38,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.observationhistorytype.valueholder.ObservationHistoryType;
+import org.openelisglobal.orderentry.service.SampleReceiptAndArrival;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
@@ -59,6 +63,7 @@ public class SampleAddService {
     private final List<SampleTestCollection> sampleItemsTests = new ArrayList<>();
     private final String receivedDate;
     private final Map<String, Panel> panelIdPanelMap = new HashMap<>();
+    private final Set<UUID> claimedClientKeys = new HashSet<>();
     private boolean xmlProcessed = false;
     private int sampleItemIdIndex = 0;
     private static final boolean USE_RECEIVE_DATE_FOR_COLLECTION_DATE = !FormFields.getInstance()
@@ -97,6 +102,17 @@ public class SampleAddService {
 
         try {
             Document sampleDom = DocumentHelper.parseText(xml);
+
+            String orderRequiredBy = sampleDom.getRootElement().attributeValue("requiredBy");
+            if (!GenericValidator.isBlankOrNull(orderRequiredBy)) {
+                try {
+                    sample.setRequiredBy(
+                            DateUtil.convertStringDateToTimestampWithPatternNoLocale(orderRequiredBy, "yyyy-MM-dd"));
+                } catch (Exception e) {
+                    LogEvent.logError("SampleAddService", "createSampleTestCollection",
+                            "Failed to parse requiredBy=" + orderRequiredBy + ": " + e.getMessage());
+                }
+            }
 
             for (@SuppressWarnings("rawtypes")
             Iterator i = sampleDom.getRootElement().elementIterator("sample"); i.hasNext();) {
@@ -143,7 +159,11 @@ public class SampleAddService {
                 SampleItem item = new SampleItem();
                 item.setSysUserId(currentUserId);
                 item.setSample(sample);
-                item.setTypeOfSample(typeOfSampleService.getTypeOfSampleById(sampleItem.attributeValue("sampleID")));
+                String typeOfSampleId = sampleItem.attributeValue("typeId");
+                if (GenericValidator.isBlankOrNull(typeOfSampleId)) {
+                    typeOfSampleId = sampleItem.attributeValue("sampleID");
+                }
+                item.setTypeOfSample(typeOfSampleService.getTypeOfSampleById(typeOfSampleId));
                 item.setSortOrder(Integer.toString(sampleItemIdIndex));
                 if (rejected) {
                     item.setStatusId(
@@ -156,6 +176,17 @@ public class SampleAddService {
                 item.setCollectionMethod(sampleItem.attributeValue("collectionMethod"));
                 item.setSampleTemperature(sampleItem.attributeValue("sampleTemperature"));
                 item.setSpecimenOrigin(sampleItem.attributeValue("specimenOrigin"));
+                String setNumber = sampleItem.attributeValue("cultureSetNumber");
+                item.setCultureSetNumber(GenericValidator.isBlankOrNull(setNumber) ? null : Integer.valueOf(setNumber));
+                item.setBodySite(sampleItem.attributeValue("bodySite"));
+                item.setContainer(sampleItem.attributeValue("container"));
+                item.setLocationDetails(sampleItem.attributeValue("locationDetails"));
+                item.setGpsLatitude(sampleItem.attributeValue("gpsLatitude"));
+                item.setGpsLongitude(sampleItem.attributeValue("gpsLongitude"));
+                item.setLabPerformedSampling(Boolean.parseBoolean(sampleItem.attributeValue("labPerformedSampling")));
+                // Vector collection site stamped at intake (order-level site → per-item
+                // location) so the surveillance dashboard groups by site immediately.
+                item.setCollectionLocationId(sampleItem.attributeValue("collectionLocationId"));
 
                 String receivedDateStr = sampleItem.attributeValue("receivedDate");
                 String receivedTimeStr = sampleItem.attributeValue("receivedTime");
@@ -174,6 +205,9 @@ public class SampleAddService {
                                 "Failed to parse receivedDateTime=" + receivedDateTime + ": " + e.getMessage());
                     }
                 }
+                SampleReceiptAndArrival.apply(item, sampleItem.attributeValue("receivedById"),
+                        sampleItem.attributeValue("arrivalCondition"), sampleItem.attributeValue("arrivalTemperature"),
+                        currentUserId, new Timestamp(System.currentTimeMillis()));
 
                 String quantityStr = sampleItem.attributeValue("quantity");
                 if (quantityStr != null && !quantityStr.trim().isEmpty()) {
@@ -181,6 +215,7 @@ public class SampleAddService {
                 }
 
                 item.setExternalId(sample.getAccessionNumber() + "-" + sampleItemIdIndex);
+                item.setFhirUuid(claimClientKey(sampleItem.attributeValue("clientKey")));
 
                 String uomId = sampleItem.attributeValue("uom");
                 if (uomId != null && !uomId.trim().isEmpty()) {
@@ -201,6 +236,7 @@ public class SampleAddService {
                 String storageLocationId = sampleItem.attributeValue("storageLocationId");
                 String storageLocationType = sampleItem.attributeValue("storageLocationType");
                 String storagePositionCoordinate = sampleItem.attributeValue("storagePositionCoordinate");
+                String storageNotes = sampleItem.attributeValue("storageNotes");
 
                 String gpsLatitude = sampleItem.attributeValue("gpsLatitude");
                 String gpsLongitude = sampleItem.attributeValue("gpsLongitude");
@@ -218,6 +254,23 @@ public class SampleAddService {
                         storageLocationId, storageLocationType, storagePositionCoordinate, gpsLatitude, gpsLongitude,
                         gpsAccuracy, gpsCaptureMethod, numOrderLabels, numSpecimenLabels);
                 stc.existingSampleItemId = existingSampleItemId;
+                String requestId = sampleItem.attributeValue("sampleTypeRequestId");
+                stc.sampleTypeRequestId = GenericValidator.isBlankOrNull(requestId) ? null : Integer.valueOf(requestId);
+                if (stc.sampleTypeRequestId != null && stc.sampleTypeRequestId < 1) {
+                    throw new IllegalArgumentException("Requested specimen identity must be positive");
+                }
+                for (String field : List.of("cultureSetNumber", "container", "bodySite", "date", "time",
+                        "collectionLocationId")) {
+                    if (sampleItem.attributeValue(field) != null)
+                        stc.suppliedCollectionFields.add(field);
+                }
+                stc.storageNotes = storageNotes;
+                stc.panelIds = splitIds(panelIDs);
+
+                stc.qcType = sampleItem.attributeValue("qcType");
+                stc.qcParentSampleIndex = sampleItem.attributeValue("qcParentSampleIndex");
+                stc.qcExpectedValue = sampleItem.attributeValue("qcExpectedValue");
+
                 sampleItemsTests.add(stc);
             }
         } catch (DocumentException e) {
@@ -227,21 +280,55 @@ public class SampleAddService {
         return sampleItemsTests;
     }
 
-    public Panel getPanelForTest(Test test) throws IllegalThreadStateException {
+    /**
+     * The panel a test was ordered through on this sample: one of the panels
+     * selected on the same sample that has the test as a member. A test ordered on
+     * its own, or whose panel was selected only on another sample, has no panel.
+     */
+    public Panel getPanelForTest(SampleTestCollection sampleTestCollection, Test test)
+            throws IllegalThreadStateException {
         if (!xmlProcessed) {
             throw new IllegalThreadStateException("createSampleTestCollection must be called first");
         }
-
-        List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(test.getId());
-
-        for (PanelItem panelItem : panelItems) {
-            Panel panel = panelIdPanelMap.get(panelItem.getPanel().getId());
-            if (panel != null) {
-                return panel;
+        if (sampleTestCollection == null || sampleTestCollection.panelIds.isEmpty()) {
+            return null;
+        }
+        for (PanelItem panelItem : panelItemService.getPanelItemByTestId(test.getId())) {
+            if (panelItem.getPanel() == null) {
+                continue;
+            }
+            String panelId = panelItem.getPanel().getId();
+            if (sampleTestCollection.panelIds.contains(panelId)) {
+                Panel panel = panelIdPanelMap.get(panelId);
+                return panel != null ? panel : panelItem.getPanel();
             }
         }
-
         return null;
+    }
+
+    private UUID claimClientKey(String clientKey) {
+        if (GenericValidator.isBlankOrNull(clientKey)) {
+            return null;
+        }
+        try {
+            UUID key = UUID.fromString(clientKey.trim());
+            return claimedClientKeys.add(key) ? key : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private List<String> splitIds(String ids) {
+        List<String> result = new ArrayList<>();
+        if (ids == null) {
+            return result;
+        }
+        for (String id : ids.split(",")) {
+            if (!GenericValidator.isBlankOrNull(id) && !result.contains(id.trim())) {
+                result.add(id.trim());
+            }
+        }
+        return result;
     }
 
     public void setInitialSampleItemOrderValue(int initialValue) {
@@ -263,13 +350,8 @@ public class SampleAddService {
     }
 
     private void augmentPanelIdToPanelMap(String panelIDs) {
-        if (panelIDs != null) {
-            String[] ids = panelIDs.split(",");
-            for (String id : ids) {
-                if (!GenericValidator.isBlankOrNull(id)) {
-                    panelIdPanelMap.put(id, panelService.getPanelById(id));
-                }
-            }
+        for (String id : splitIds(panelIDs)) {
+            panelIdPanelMap.put(id, panelService.getPanelById(id));
         }
     }
 
@@ -343,6 +425,7 @@ public class SampleAddService {
         public String storageLocationId;
         public String storageLocationType;
         public String storagePositionCoordinate;
+        public String storageNotes;
 
         public String gpsLatitude;
         public String gpsLongitude;
@@ -353,6 +436,17 @@ public class SampleAddService {
 
         // Existing sample item ID - for updates, identifies which sample_item to update
         public String existingSampleItemId;
+        public Integer sampleTypeRequestId;
+        public java.util.Set<String> suppliedCollectionFields = new java.util.HashSet<>();
+
+        // Panels selected on this sample; a test is attributed only to one of these
+        public List<String> panelIds = new ArrayList<>();
+
+        // QC metadata (OGC-554) - parsed from sample XML for SampleItemQcProfile
+        // creation
+        public String qcType;
+        public String qcParentSampleIndex;
+        public String qcExpectedValue;
 
         public SampleTestCollection(SampleItem item, List<Test> tests, String collectionDate,
                 List<ObservationHistory> initialConditionList, Map<String, String> testIdToUserSectionMap,

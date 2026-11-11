@@ -20,7 +20,8 @@ public class NoteBookSampleDAOImpl extends BaseDAOImpl<NoteBookSample, Integer> 
     public List<NoteBookSample> getNotebookSamplesBySampleItemId(Integer sampleItemId) {
         Session session = entityManager.unwrap(Session.class);
         String hql = "FROM NoteBookSample nbs WHERE nbs.sampleItem.id = :sampleItemId";
-        return session.createQuery(hql, NoteBookSample.class).setParameter("sampleItemId", sampleItemId)
+        return session.createQuery(hql, NoteBookSample.class)
+                .setParameter("sampleItemId", sampleItemId == null ? null : String.valueOf(sampleItemId))
                 .getResultList();
     }
 

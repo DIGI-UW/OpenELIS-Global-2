@@ -1,0 +1,96 @@
+# Analyzer Bridge and analyzer mock for the published-image stack.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.analyzers.yml up -d
+#
+# The Bridge and mock images are built from the tools/openelis-analyzer-bridge
+# and tools/analyzer-mock-server submodule commits, tested in E2E and published
+# with the application images under the same tags.
+# The mock needs no Docker socket: it sends to the shared ASTM listener,
+# identifying the configured instrument through its message sender ID.
+
+services:
+  openelis-analyzer-bridge:
+    container_name: openelis-analyzer-bridge
+    image: itechuw/openelis-global-2-analyzer-bridge:develop
+    platform: linux/amd64
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    volumes:
+      - type: volume
+        source: key_trust-store-volume
+        target: /etc/openelis-global
+        read_only: true
+        volume:
+          nocopy: true
+      - analyzer-imports:/data/analyzer-imports
+      # FILE state store, delivery outbox, and the Bridge's own key pair and
+      # pairing record; the outbox holds results OpenELIS has not accepted yet,
+      # so all of it must survive container recreation.
+      - bridge-state:/data/openelis-analyzer-bridge
+    environment:
+      - TZ=${TZ:-UTC}
+      - SERVER_SSL_KEY_STORE_PASSWORD=${SSL_KEYSTORE_PASSWORD:-kspass}
+      # OpenELIS pairs with this code on startup. Without one, the Bridge logs a
+      # generated code for a Global Admin to enter on the Analyzers page.
+      - BRIDGE_PAIRING_CODE=${ANALYZER_BRIDGE_PAIRING_CODE:-}
+      - BRIDGE_FILE_ENABLED=true
+      - BRIDGE_FILE_STATE_STORE_PATH=/data/openelis-analyzer-bridge/state.db
+      - BRIDGE_OUTBOX_DB_PATH=/data/openelis-analyzer-bridge/outbox.db
+      - LOGGING_LEVEL_ORG_ITECH=INFO
+      # The OpenELIS base URL: results go to {uri}/analyzer/fhir and the
+      # Bridge's forwarding health reads {uri}/health.
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/api/OpenELIS-Global
+      # OpenELIS's HTTPS certificate is in the stack's trust store, so the
+      # Bridge also verifies OpenELIS after that certificate is regenerated.
+      - BRIDGE_TRUSTSTORE_PATH=/etc/openelis-global/truststore
+      - BRIDGE_TRUSTSTORE_PASSWORD=${SSL_TRUSTSTORE_PASSWORD:-tspass}
+      - BRIDGE_TRUSTSTORE_TYPE=PKCS12
+      - ORG_ITECH_AHB_MLLP_ENABLED=true
+      - ORG_ITECH_AHB_MLLP_PORT=2575
+    networks:
+      default:
+        aliases:
+          - bridge.openelis.org
+    restart: unless-stopped
+
+  astm-simulator:
+    container_name: openelis-astm-simulator
+    image: itechuw/openelis-global-2-analyzer-mock:develop
+    platform: linux/amd64
+    volumes:
+      - analyzer-imports:/data/analyzer-imports
+      # Profile-backed templates resolve exact Bridge profile revisions.
+      - ./tools/openelis-analyzer-bridge/src/main/resources/analyzer-profiles:/data/bridge-profiles:ro
+    ports:
+      - "127.0.0.1:${ASTM_SIMULATOR_HTTP_PORT:-8085}:8080"
+    environment:
+      - RESPONSE_DELAY_MS=0
+      - ANALYZER_BRIDGE_PROFILES_DIR=/data/bridge-profiles
+    command: python -u server.py --port 9600 --simulate-api-port 8080
+    networks:
+      - default
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  oe.openelis.org:
+    environment:
+      - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
+      - ANALYZER_BRIDGE_PAIRING_CODE=${ANALYZER_BRIDGE_PAIRING_CODE:-}
+    volumes:
+      # The deployer seeds this persistent directory once; Catalog Import can write to it.
+      - ./configuration/backend:/var/lib/openelis-global/configuration/backend
+
+volumes:
+  analyzer-imports:
+  bridge-state:

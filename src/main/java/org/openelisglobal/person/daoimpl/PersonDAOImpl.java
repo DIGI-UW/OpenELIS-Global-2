@@ -151,4 +151,110 @@ public class PersonDAOImpl extends BaseDAOImpl<Person, String> implements Person
         }
         return null;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Person> getPagesOfSearchedRequestorContacts(int startingRecNo, String searchValue, long requesterTypeId)
+            throws LIMSRuntimeException {
+        List<Person> list = new Vector<>();
+        try {
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
+
+            // sample_requester.requester_id and person.id are both NUMERIC at the DB
+            // level, but map to different Java/HQL types (long vs. the
+            // LIMSStringNumberUserType-backed String) — an HQL cast() between them
+            // trips a Postgres "operator does not exist" error. Resolve the id set in
+            // a native query first, then filter Person by that plain string/numeric
+            // literal set via normal HQL, avoiding any cross-type HQL comparison.
+            String requesterIdSql = "select requester_id from clinlims.sample_requester where requester_type_id = :requesterTypeId";
+            @SuppressWarnings("unchecked")
+            List<Object> requesterIds = entityManager.unwrap(Session.class).createNativeQuery(requesterIdSql)
+                    .setParameter("requesterTypeId", requesterTypeId).list();
+            if (requesterIds.isEmpty()) {
+                return list;
+            }
+            List<String> requesterIdStrings = requesterIds.stream().map(String::valueOf)
+                    .collect(java.util.stream.Collectors.toList());
+
+            String hql = "from Person p where p.id in (:requesterIds) "
+                    + "and (lower(p.firstName) like concat('%', lower(:searchValue), '%') or "
+                    + "lower(p.lastName) like concat('%', lower(:searchValue), '%') or "
+                    + "lower(concat(p.firstName, ' ', p.lastName)) like concat('%', lower(:searchValue), '%')) "
+                    + "order by p.lastName";
+            Query<Person> query = entityManager.unwrap(Session.class).createQuery(hql, Person.class);
+            query.setParameter("requesterIds", requesterIdStrings);
+            query.setParameter("searchValue", searchValue);
+            query.setFirstResult(startingRecNo - 1);
+            query.setMaxResults(endingRecNo - 1);
+
+            list = query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in PersonDAOImpl getPagesOfSearchedRequestorContacts()", e);
+        }
+
+        return list;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getTotalSearchedRequestorContactCount(String searchValue, long requesterTypeId)
+            throws LIMSRuntimeException {
+        try {
+            String requesterIdSql = "select requester_id from clinlims.sample_requester where requester_type_id = :requesterTypeId";
+            @SuppressWarnings("unchecked")
+            List<Object> requesterIds = entityManager.unwrap(Session.class).createNativeQuery(requesterIdSql)
+                    .setParameter("requesterTypeId", requesterTypeId).list();
+            if (requesterIds.isEmpty()) {
+                return 0;
+            }
+            List<String> requesterIdStrings = requesterIds.stream().map(String::valueOf)
+                    .collect(java.util.stream.Collectors.toList());
+
+            String hql = "select count(p) from Person p where p.id in (:requesterIds) "
+                    + "and (lower(p.firstName) like concat('%', lower(:searchValue), '%') or "
+                    + "lower(p.lastName) like concat('%', lower(:searchValue), '%') or "
+                    + "lower(concat(p.firstName, ' ', p.lastName)) like concat('%', lower(:searchValue), '%'))";
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+            query.setParameter("requesterIds", requesterIdStrings);
+            query.setParameter("searchValue", searchValue);
+            return query.uniqueResult().intValue();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in PersonDAOImpl getTotalSearchedRequestorContactCount()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Person getRequestorContactByName(String firstName, String lastName, long requesterTypeId)
+            throws LIMSRuntimeException {
+        try {
+            String requesterIdSql = "select requester_id from clinlims.sample_requester where requester_type_id = :requesterTypeId";
+            @SuppressWarnings("unchecked")
+            List<Object> requesterIds = entityManager.unwrap(Session.class).createNativeQuery(requesterIdSql)
+                    .setParameter("requesterTypeId", requesterTypeId).list();
+            if (requesterIds.isEmpty()) {
+                return null;
+            }
+            List<String> requesterIdStrings = requesterIds.stream().map(String::valueOf)
+                    .collect(java.util.stream.Collectors.toList());
+
+            String hql = "from Person p where p.id in (:requesterIds) "
+                    + "and lower(p.firstName) = lower(:firstName) and lower(p.lastName) = lower(:lastName)";
+            Query<Person> query = entityManager.unwrap(Session.class).createQuery(hql, Person.class);
+            query.setParameter("requesterIds", requesterIdStrings);
+            query.setParameter("firstName", firstName);
+            query.setParameter("lastName", lastName);
+            query.setMaxResults(1);
+
+            List<Person> results = query.list();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in PersonDAOImpl getRequestorContactByName()", e);
+        }
+    }
 }

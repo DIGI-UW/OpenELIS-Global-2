@@ -1,3 +1,4 @@
+import NotebookAttachmentPreview from "./NotebookAttachmentPreview";
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -7,12 +8,9 @@ import {
   TextArea,
   Select,
   SelectItem,
-  MultiSelect,
-  FileUploader,
   FilterableMultiSelect,
   Grid,
   Column,
-  InlineLoading,
   Section,
   Heading,
   Tile,
@@ -22,9 +20,6 @@ import {
   FileUploaderItem,
   Loading,
   Tag,
-  Tabs,
-  TabList,
-  Tab,
   Accordion,
   AccordionItem,
   ContentSwitcher,
@@ -39,13 +34,7 @@ import {
   TableRow,
   Pagination,
 } from "@carbon/react";
-import {
-  Launch,
-  Subtract,
-  ArrowLeft,
-  ArrowRight,
-  Checkmark,
-} from "@carbon/react/icons";
+import { Checkmark } from "@carbon/react/icons";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -58,14 +47,19 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   postToOpenElisServer,
-  hasRole,
   toBase64,
 } from "../utils/Utils";
 import { Add } from "@carbon/icons-react";
 import AddSample from "../addOrder/AddSample";
 import { sampleObject } from "../addOrder/Index";
+import {
+  missingTestsTitle,
+  samplesMissingTests,
+  samplesWithTests,
+} from "../addOrder/orderSamples";
+import useSampleTypeNames from "../addOrder/useSampleTypeNames";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
-import { SearchResults } from "../resultPage/SearchResultForm";
+import UnifiedResults from "../resultPage/unified/UnifiedResults";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import LocationPickerInline from "../storage/LocationPicker/LocationPickerInline";
 import {
@@ -78,9 +72,11 @@ import GenericSampleOrderEdit from "../genericSample/GenericSampleOrderEdit";
 import GenericSampleOrderImport from "../genericSample/GenericSampleOrderImport";
 
 const NoteBookInstanceEntryForm = () => {
+  const sampleTypeNames = useSampleTypeNames();
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "notebook.label.dashboard", link: "/NoteBookDashboard" },
+    { label: "notebook.label.instanceEntry", link: "" },
   ];
 
   const MODES = Object.freeze({
@@ -143,8 +139,6 @@ const NoteBookInstanceEntryForm = () => {
   const [resultsModalOpen, setResultsModalOpen] = useState(false);
   const [resultsModalAccession, setResultsModalAccession] = useState("");
   const [resultsModalData, setResultsModalData] = useState({ testResult: [] });
-  const [searchBy, setSearchBy] = useState({ type: "oder", doRange: false });
-  const [param, setParam] = useState("&accessionNumber=");
   const [projectTags, setProjectTags] = useState([]); // Template tags (for display only)
   const [projectFiles, setProjectFiles] = useState([]); // Template files (for display only)
   const [showSampleCreationForm, setShowSampleCreationForm] = useState(false); // Toggle sample creation form
@@ -203,10 +197,8 @@ const NoteBookInstanceEntryForm = () => {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.success" }),
       });
-      // Reload data to get comments with proper id and author from backend
-      getFromOpenElisServer("/rest/notebook/view/" + body.id, loadInitialData);
-      // Reload audit trail after save
-      loadAuditTrail(body.id);
+      // The saved notebook, its comments and audit trail load on the new page.
+      window.location.href = "/NoteBookInstanceEditForm/" + body.id;
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -214,7 +206,6 @@ const NoteBookInstanceEntryForm = () => {
         message: intl.formatMessage({ id: "error.save.msg" }),
       });
     }
-    window.location.href = "/NoteBookInstanceEditForm/" + body.id;
   };
 
   // Check if a sample is already added (by sampleItemId)
@@ -283,6 +274,10 @@ const NoteBookInstanceEntryForm = () => {
         "/rest/notebook/samples?accession=" + accession,
         setSampleList,
       );
+      getFromOpenElisServer(
+        "/rest/SampleEdit?accessionNumber=" + accession,
+        loadOrderValues,
+      );
     } else {
       showAlertMessage(
         <FormattedMessage id="server.error.msg" />,
@@ -302,13 +297,12 @@ const NoteBookInstanceEntryForm = () => {
 
   const getSamplesXmlValues = () => {
     let sampleXmlString = "";
-    let referralItems = [];
     if (samples.length > 0) {
-      if (samples[0].tests.length > 0) {
+      if (samplesWithTests(samples).length > 0) {
         sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
         sampleXmlString += "<samples>";
-        let tests = null;
         samples.map((sampleItem) => {
+          let tests = null;
           if (sampleItem.tests.length > 0) {
             tests = Object.keys(sampleItem.tests)
               .map(function (i) {
@@ -322,38 +316,6 @@ const NoteBookInstanceEntryForm = () => {
             const storagePositionCoordinate =
               storageLocation?.positionCoordinate || "";
             sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''  storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' />`;
-          }
-          if (sampleItem.referralItems.length > 0) {
-            const referredInstitutes = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].institute;
-              })
-              .join(",");
-
-            const sentDates = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].sentDate;
-              })
-              .join(",");
-
-            const referralReasonIds = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].reasonForReferral;
-              })
-              .join(",");
-
-            const referrers = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].referrer;
-              })
-              .join(",");
-            referralItems.push({
-              referrer: referrers,
-              referredInstituteId: referredInstitutes,
-              referredTestId: tests,
-              referredSendDate: sentDates,
-              referralReasonId: referralReasonIds,
-            });
           }
         });
         sampleXmlString += "</samples>";
@@ -750,16 +712,12 @@ const NoteBookInstanceEntryForm = () => {
                 hour12: false,
               });
             }
-            return { ...item, id: index + 1, time: formattedTime };
+            return { ...item, id: String(index + 1), time: formattedTime };
           });
           setAuditTrailItems(updatedAuditTrailItems);
         } else {
           setAuditTrailItems([]);
         }
-        setAuditTrailLoading(false);
-      },
-      () => {
-        setAuditTrailItems([]);
         setAuditTrailLoading(false);
       },
     );
@@ -786,7 +744,6 @@ const NoteBookInstanceEntryForm = () => {
       return;
     }
 
-    setParam("&accessionNumber=" + accession);
     setResultsModalAccession(accession);
     setResultsModalData({ testResult: [] });
     setResultsModalOpen(true);
@@ -808,14 +765,7 @@ const NoteBookInstanceEntryForm = () => {
       "&selectedSampleStatus=" +
       "&selectedAnalysisStatus=";
     getFromOpenElisServer(searchEndPoint, (data) => {
-      if (data && data.testResult) {
-        // Add IDs to results for SearchResults component
-        var i = 0;
-        data.testResult.forEach((item) => (item.id = "" + i++));
-        setResultsModalData(data);
-      } else {
-        setResultsModalData({ testResult: [] });
-      }
+      setResultsModalData(data && data.testResult ? data : { testResult: [] });
     });
   };
 
@@ -932,27 +882,15 @@ const NoteBookInstanceEntryForm = () => {
     getFromOpenElisServer(
       `/rest/storage/sample-items/${encodeURIComponent(sampleItemId)}`,
       (response) => {
-        if (response) {
-          const locationPath =
-            response.hierarchicalPath || response.location || "";
-          setSampleLocations((prev) => ({
-            ...prev,
-            [sampleItemId]: {
-              locationPath,
-              sampleItemId: sampleItemId,
-              sampleItemExternalId: response.sampleItemExternalId || null,
-              sampleAccessionNumber: response.sampleAccessionNumber || "",
-            },
-          }));
-        }
-      },
-      (error) => {
-        // SampleItem may not have location assigned yet
-        console.debug("No location found for SampleItem:", sampleItemId);
-        // Store empty location to prevent repeated calls
+        const location = response || {};
         setSampleLocations((prev) => ({
           ...prev,
-          [sampleItemId]: { locationPath: "", sampleItemId: sampleItemId },
+          [sampleItemId]: {
+            locationPath: location.hierarchicalPath || location.location || "",
+            sampleItemId: sampleItemId,
+            sampleItemExternalId: location.sampleItemExternalId || null,
+            sampleAccessionNumber: location.sampleAccessionNumber || "",
+          },
         }));
       },
     );
@@ -1690,6 +1628,10 @@ const NoteBookInstanceEntryForm = () => {
                       id="accession"
                       name="accession"
                       value={accession}
+                      labelText={intl.formatMessage({
+                        id: "notebook.search.byAccession",
+                      })}
+                      hideLabel
                       placeholder={intl.formatMessage({
                         id: "notebook.search.byAccession",
                       })}
@@ -1697,13 +1639,7 @@ const NoteBookInstanceEntryForm = () => {
                     />
                   </Column>
                   <Column lg={8} md={8} sm={4}>
-                    <Button
-                      size="md"
-                      onClick={handleAccesionSearch}
-                      labelText={intl.formatMessage({
-                        id: "label.button.search",
-                      })}
-                    >
+                    <Button size="md" onClick={handleAccesionSearch}>
                       <FormattedMessage id="label.button.search" />
                     </Button>
                   </Column>
@@ -1715,22 +1651,46 @@ const NoteBookInstanceEntryForm = () => {
                     {orderFormValues?.sampleOrderItems.labNo === accession &&
                       accession != "" && (
                         <Accordion>
-                          <AccordionItem title="Add Sample">
+                          <AccordionItem
+                            title={intl.formatMessage({
+                              id: "sample.add.action",
+                            })}
+                          >
                             <Grid className="gridBoundary">
                               <Column lg={16} md={8} sm={4}>
                                 <AddSample
                                   error={elementError}
                                   setSamples={setSamples}
                                   samples={samples}
+                                  allowReferral={false}
                                 />
                               </Column>
                               <Column lg={16} md={8} sm={4}>
+                                {samplesMissingTests(samples).map(
+                                  (sampleNumber) => (
+                                    <InlineNotification
+                                      key={sampleNumber}
+                                      kind="error"
+                                      lowContrast
+                                      hideCloseButton
+                                      title={missingTestsTitle(
+                                        intl,
+                                        samples,
+                                        sampleNumber,
+                                        sampleTypeNames,
+                                      )}
+                                    />
+                                  ),
+                                )}
                                 <Button
                                   data-cy="submit-order"
                                   kind="primary"
                                   className="forwardButton"
                                   onClick={handleSubmitOrderForm}
-                                  disabled={isSubmittingSample}
+                                  disabled={
+                                    isSubmittingSample ||
+                                    samplesMissingTests(samples).length > 0
+                                  }
                                 >
                                   <FormattedMessage id="label.button.submit" />
                                 </Button>
@@ -2070,23 +2030,7 @@ const NoteBookInstanceEntryForm = () => {
                         <Column key={index} lg={8} md={8} sm={12}>
                           <Tile style={{ marginBottom: "1rem" }}>
                             <p>{file.fileName}</p>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                var win = window.open();
-                                win.document.write(
-                                  '<iframe src="' +
-                                    "data:" +
-                                    file.fileType +
-                                    ";base64," +
-                                    file.fileData +
-                                    '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-                                );
-                              }}
-                            >
-                              <Launch />{" "}
-                              <FormattedMessage id="pathology.label.view" />
-                            </Button>
+                            <NotebookAttachmentPreview size="sm" file={file} />
                           </Tile>
                         </Column>
                       ))}
@@ -2130,23 +2074,7 @@ const NoteBookInstanceEntryForm = () => {
                       <Column key={index} lg={8} md={8} sm={12}>
                         <Tile style={{ marginBottom: "1rem" }}>
                           <p>{file.fileName}</p>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              var win = window.open();
-                              win.document.write(
-                                '<iframe src="' +
-                                  "data:" +
-                                  file.fileType +
-                                  ";base64," +
-                                  file.fileData +
-                                  '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-                              );
-                            }}
-                          >
-                            <Launch />{" "}
-                            <FormattedMessage id="pathology.label.view" />
-                          </Button>
+                          <NotebookAttachmentPreview size="sm" file={file} />
                           <Button
                             kind="danger--tertiary"
                             size="sm"
@@ -2638,12 +2566,10 @@ const NoteBookInstanceEntryForm = () => {
       >
         {resultsModalData.testResult &&
         resultsModalData.testResult.length > 0 ? (
-          <SearchResults
-            results={resultsModalData}
-            setResultForm={setResultsModalData}
-            extraParams={param}
-            searchBy={searchBy}
-            refreshOnSubmit={false}
+          <UnifiedResults
+            key={resultsModalAccession}
+            accessionNumber={resultsModalAccession.split("-")[0]}
+            embedded
           />
         ) : (
           <InlineNotification
@@ -2675,7 +2601,7 @@ const NoteBookInstanceEntryForm = () => {
                 }}
                 disabled={isViewMode}
               >
-                <SelectItem />
+                <SelectItem value="" text="" />
                 {statuses.map((status, index) => {
                   return (
                     <SelectItem

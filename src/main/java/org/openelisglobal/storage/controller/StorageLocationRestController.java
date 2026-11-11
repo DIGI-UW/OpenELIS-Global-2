@@ -12,6 +12,7 @@ import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.form.*;
@@ -22,7 +23,9 @@ import org.openelisglobal.storage.form.response.StorageRoomResponse;
 import org.openelisglobal.storage.form.response.StorageShelfResponse;
 import org.openelisglobal.storage.service.DeletionValidationResult;
 import org.openelisglobal.storage.service.StorageDashboardService;
+import org.openelisglobal.storage.service.StorageDeviceService;
 import org.openelisglobal.storage.service.StorageLocationService;
+import org.openelisglobal.storage.service.StorageRoomService;
 import org.openelisglobal.storage.service.StorageSearchService;
 import org.openelisglobal.storage.valueholder.*;
 import org.openelisglobal.userrole.service.UserRoleService;
@@ -53,10 +56,13 @@ public class StorageLocationRestController extends BaseRestController {
     private StorageSearchService storageSearchService;
 
     @Autowired
-    private StorageRoomDAO storageRoomDAO;
+    private IStatusService statusService;
 
     @Autowired
-    private StorageDeviceDAO storageDeviceDAO;
+    private StorageRoomService storageRoomService;
+
+    @Autowired
+    private StorageDeviceService storageDeviceService;
 
     @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
@@ -1392,7 +1398,7 @@ public class StorageLocationRestController extends BaseRestController {
         int suffix = 1;
 
         // Check for uniqueness and append suffix if needed
-        while (storageRoomDAO.findByCode(code) != null) {
+        while (storageRoomService.findByCode(code) != null) {
             String suffixStr = String.valueOf(suffix);
             int maxBaseLength = 50 - suffixStr.length() - 1; // -1 for hyphen
             if (maxBaseLength < 1) {
@@ -1433,7 +1439,7 @@ public class StorageLocationRestController extends BaseRestController {
         int suffix = 1;
 
         // Check for uniqueness within the room and append suffix if needed
-        while (storageDeviceDAO.findByParentRoomIdAndCode(roomId, code) != null) {
+        while (storageDeviceService.findByParentRoomIdAndCode(roomId, code) != null) {
             String suffixStr = String.valueOf(suffix);
             int maxBaseLength = 50 - suffixStr.length() - 1; // -1 for hyphen
             if (maxBaseLength < 1) {
@@ -1627,7 +1633,7 @@ public class StorageLocationRestController extends BaseRestController {
         response.setActive(box.getActive());
 
         Map<String, Map<String, String>> occupiedCoordinatesMap = sampleStorageAssignmentDAO
-                .getOccupiedCoordinatesWithSampleInfo(box.getId());
+                .getOccupiedCoordinatesWithOccupantInfo(box.getId());
         response.setOccupied(!occupiedCoordinatesMap.isEmpty());
         response.setOccupiedCoordinates(occupiedCoordinatesMap);
         response.setFhirUuid(box.getFhirUuidAsString());
@@ -1717,6 +1723,9 @@ public class StorageLocationRestController extends BaseRestController {
     public ResponseEntity<List<Map<String, Object>>> searchSampleItems(@RequestParam(required = false) String q) {
         try {
             List<Map<String, Object>> results = storageSearchService.searchSamples(q);
+            // Same translation the listing applies: without it a disposed hit
+            // carries its raw status id and the client draws an Active tag.
+            results.forEach(result -> SampleStatusResponse.normalize(result, statusService));
             return ResponseEntity.ok(results);
         } catch (Exception e) {
             logger.error("Error searching sample items with query: " + q, e);
@@ -1796,15 +1805,22 @@ public class StorageLocationRestController extends BaseRestController {
         }
     }
 
-    // ========== Dashboard Endpoints ==========
+    @GetMapping("/boxes/search")
+    public ResponseEntity<List<Map<String, Object>>> searchBoxes(@RequestParam(required = false) String q) {
+        try {
+            List<Map<String, Object>> response = storageSearchService.searchBoxes(q);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error searching boxes", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
     /**
-     * Get location counts by type for active locations only (FR-057, FR-057a). GET
-     * /rest/storage/dashboard/location-counts Returns counts for Room, Device,
-     * Shelf, and Rack levels (Position excluded). Only counts active
-     * (non-decommissioned) locations.
+     * Count the active locations of each type (FR-057, FR-057a); inactive ones are
+     * not counted.
      * 
-     * @return JSON map with keys: "rooms", "devices", "shelves", "racks" and
+     * @return JSON map with keys: "rooms", "devices", "shelves", "racks", "boxes"
      *         integer count values
      */
     @GetMapping("/dashboard/location-counts")
@@ -1820,6 +1836,7 @@ public class StorageLocationRestController extends BaseRestController {
             emptyCounts.put("devices", 0);
             emptyCounts.put("shelves", 0);
             emptyCounts.put("racks", 0);
+            emptyCounts.put("boxes", 0);
             return ResponseEntity.ok(emptyCounts);
         }
     }

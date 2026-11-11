@@ -1,0 +1,11 @@
+regulationNumber,standardName,groupName,parameterCode,displayName,thresholdType,minValue,maxValue,targetValue,valueDescriptive,units,methodReference,detectionLimit,isMandatory,sortOrder,notes,testName
+"PP 22/2021","PP No. 22/2021 - Water Quality","Physical Parameters","PH","pH","RANGE",6.0,9.0,,,"pH","SNI 06-6989.11-2004",,true,1,,"pH"
+"PP 22/2021","PP No. 22/2021 - Water Quality","Physical Parameters","TDS","Total Dissolved Solids","MAXIMUM",,1000,,,"mg/L",,,true,2,,"Total Dissolved Solids"
+"PP 22/2021","PP No. 22/2021 - Water Quality","Physical Parameters","ODOR","Odor","DESCRIPTIVE",,,,"No objectionable odor",,,,true,3,"Manual analyst review required.","Odor"
+"PP 22/2021","PP No. 22/2021 - Water Quality","Chemical Parameters","DO","Dissolved Oxygen","MINIMUM",6.0,,,,"mg/L",,,true,1,,"Dissolved Oxygen"
+"PP 22/2021","PP No. 22/2021 - Water Quality","Chemical Parameters","BOD","Biological Oxygen Demand (5-day, 20°C)","MAXIMUM",,2.0,,,"mg/L","SNI 6989.72:2009",,true,2,,"Biological Oxygen Demand"
+"PP 22/2021","PP No. 22/2021 - Water Quality","Chemical Parameters","BOD","BOD advisory zone","BORDERLINE",1.5,2.0,,,"mg/L",,,false,3,"Triggers review flag without marking non-compliant.","Biological Oxygen Demand"
+"PP 22/2021","PP No. 22/2021 - Water Quality","Heavy Metals","PB","Lead (Pb)","MAXIMUM",,0.03,,,"mg/L",,0.001,true,1,,"Lead"
+"PP 22/2021","PP No. 22/2021 - Water Quality","Heavy Metals","HG","Mercury (Hg)","MAXIMUM",,0.001,,,"mg/L",,,true,2,,"Mercury"
+"PP 22/2021","PP No. 22/2021 - Water Quality","Microbiology","TOTAL_COLIFORM","Total Coliform","MAXIMUM",,1000,,,"MPN/100mL",,,true,1,,"Total Coliform"
+"PP 22/2021","PP No. 22/2021 - Water Quality","Microbiology","E_COLI_PRESENCE","E. coli presence","SELECT_MAP",,,,,,,,true,2,"Mappings live in *-threshold-value-maps.csv","E. coli Presence"

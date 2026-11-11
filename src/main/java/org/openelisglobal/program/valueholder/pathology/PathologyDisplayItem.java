@@ -1,13 +1,17 @@
 package org.openelisglobal.program.valueholder.pathology;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import java.util.Date;
+import java.time.LocalDate;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 
 public class PathologyDisplayItem {
 
+    /**
+     * The day the examination was asked for, held without a zone so that rendering
+     * it cannot move it onto a neighbouring day.
+     */
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    private Date requestDate;
+    private LocalDate requestDate;
 
     private PathologyStatus status;
     private String lastName;
@@ -20,11 +24,11 @@ public class PathologyDisplayItem {
 
     private String patientPK;
 
-    public Date getRequestDate() {
+    public LocalDate getRequestDate() {
         return requestDate;
     }
 
-    public void setRequestDate(Date requestDate) {
+    public void setRequestDate(LocalDate requestDate) {
         this.requestDate = requestDate;
     }
 

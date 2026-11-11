@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.barcode.form.LabelsSectionForm;
 import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
@@ -20,6 +21,7 @@ import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
+import org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO;
 import org.openelisglobal.validation.annotations.ValidDate;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -32,6 +34,12 @@ public class SamplePatientEntryForm extends BaseForm {
     }
 
     private Boolean rememberSiteAndRequester;
+
+    /**
+     * Set on a successful save: tests on the order whose reference range will not
+     * be applied because the patient's sex or birth date is missing.
+     */
+    private List<String> rangeNotAppliedTests = new ArrayList<>();
 
     @ValidDate(relative = DateRelation.TODAY, groups = { SamplePatientEntry.class, SamplePatientEntryBatch.class })
     private String currentDate = "";
@@ -118,9 +126,28 @@ public class SamplePatientEntryForm extends BaseForm {
      * {@link JsonIgnoreProperties} even when the frontend omits it.
      */
     private OrderLabelPersistRequest labelPersistRequest;
+    private String cancelReason;
+
+    @Valid
+
+    /**
+     * Specimens requested at order entry, saved with the order in one transaction
+     * so an order can never exist without them. Null means the request did not
+     * speak for the specimens at all, which leaves them as they are; an empty list
+     * means none are requested any more.
+     */
+    private List<SampleTypeRequestDTO> requestedSampleTypes;
 
     public SamplePatientEntryForm() {
         setFormName("samplePatientEntryForm");
+    }
+
+    public List<SampleTypeRequestDTO> getRequestedSampleTypes() {
+        return requestedSampleTypes;
+    }
+
+    public void setRequestedSampleTypes(List<SampleTypeRequestDTO> requestedSampleTypes) {
+        this.requestedSampleTypes = requestedSampleTypes;
     }
 
     public String getCurrentDate() {
@@ -353,5 +380,21 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setLabelPersistRequest(OrderLabelPersistRequest labelPersistRequest) {
         this.labelPersistRequest = labelPersistRequest;
+    }
+
+    public List<String> getRangeNotAppliedTests() {
+        return rangeNotAppliedTests;
+    }
+
+    public void setRangeNotAppliedTests(List<String> rangeNotAppliedTests) {
+        this.rangeNotAppliedTests = rangeNotAppliedTests == null ? new ArrayList<>() : rangeNotAppliedTests;
+    }
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public void setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
     }
 }

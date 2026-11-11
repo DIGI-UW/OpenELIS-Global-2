@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add REQUIRED_BY_DEADLINE to alert_type check constraint -->
+    <changeSet id="OGC-625-2026-06-02-1" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="alert"/>
+        </preConditions>
+        <sql>
+            ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+            ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+            CHECK (alert_type IN (
+                'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+                'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED',
+                'REQUIRED_BY_DEADLINE'
+            ));
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    LHU report-level amendment metadata on sample.
+    Three nullable columns track the amendment chain per order:
+      amends_lhu_number  — the prior certificate/lab number this order amends (interim: accession number)
+      amendment_number   — sequential counter; NULL = never amended, 1 = first amendment, etc.
+      amendment_reason   — free-text reason captured at reissue time
+    Existing orders are unaffected (all NULL). See tasks.md Phase 1 T-101.
+  -->
+
+  <changeSet id="3.5.0.0-sample-add-amends-lhu-number" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists schemaName="clinlims" tableName="sample" columnName="amends_lhu_number"/>
+      </not>
+    </preConditions>
+    <addColumn schemaName="clinlims" tableName="sample">
+      <column name="amends_lhu_number" type="TEXT"/>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-sample-add-amendment-number" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists schemaName="clinlims" tableName="sample" columnName="amendment_number"/>
+      </not>
+    </preConditions>
+    <addColumn schemaName="clinlims" tableName="sample">
+      <column name="amendment_number" type="INTEGER"/>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-sample-add-amendment-reason" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists schemaName="clinlims" tableName="sample" columnName="amendment_reason"/>
+      </not>
+    </preConditions>
+    <addColumn schemaName="clinlims" tableName="sample">
+      <column name="amendment_reason" type="TEXT"/>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

@@ -10,11 +10,11 @@ public class StringListConverter implements AttributeConverter<List<String>, Str
 
     @Override
     public String convertToDatabaseColumn(List<String> stringList) {
-        return stringList != null ? String.join(SPLIT_CHAR, stringList) : "";
+        return stringList == null || stringList.isEmpty() ? null : String.join(SPLIT_CHAR, stringList);
     }
 
     @Override
     public List<String> convertToEntityAttribute(String string) {
-        return string != null ? Arrays.asList(string.split(SPLIT_CHAR)) : Collections.emptyList();
+        return string == null || string.isBlank() ? Collections.emptyList() : Arrays.asList(string.split(SPLIT_CHAR));
     }
 }

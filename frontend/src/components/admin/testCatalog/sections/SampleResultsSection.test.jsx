@@ -11,7 +11,7 @@
 // ========== MOCKS (before imports) ==========
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
-  putToOpenElisServer: vi.fn(),
+  putToOpenElisServerFullResponse: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
 }));
 
@@ -27,14 +27,14 @@ vi.mock("../../../layout/Layout", async () => {
 
 // ========== IMPORTS ==========
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import SampleResultsSection from "./SampleResultsSection";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import messages from "../../../../languages/en.json";
 
@@ -49,7 +49,7 @@ const SAMPLE_RESULTS = {
       // Select-list type so the options + interpretations editors render (they are
       // progressively disclosed by type — options show for D/M/C, FR-30).
       resultType: "D",
-      significantDigits: 0,
+      reportingDecimalPlaces: 0,
       defaultResult: "",
       allowMultipleReadings: false,
       options: [{ id: "O1", value: "Male", sortOrder: 1, normal: true }],
@@ -102,7 +102,8 @@ const renderSection = () =>
 
 const saveButton = () =>
   screen.getByRole("button", { name: messages["label.button.save"] });
-const savedPayload = () => JSON.parse(putToOpenElisServer.mock.calls[0][1]);
+const savedPayload = () =>
+  JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -117,13 +118,74 @@ beforeEach(() => {
       cb(clone(SAMPLE_RESULTS));
     }
   });
-  putToOpenElisServer.mockImplementation((url, body, cb) => cb(200));
+  putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+    cb({ ok: true, status: 200, json: () => Promise.resolve({}) }),
+  );
   postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
     cb({ components: [] }),
   );
 });
 
 describe("SampleResultsSection", () => {
+  it("keeps the received log association through a code rename and clears it when disabled", async () => {
+    let persisted = clone(TWO_COMPONENTS);
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      cb(
+        url === "/rest/test-list" || url === "/rest/uom"
+          ? []
+          : clone(persisted),
+      );
+    });
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) => {
+      persisted = JSON.parse(body);
+      cb({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+    renderSection();
+    await screen.findByDisplayValue("Systolic");
+    const enabled = screen.getAllByLabelText("Show log10 on reports")[0];
+    fireEvent.click(enabled);
+    fireEvent.change(screen.getByLabelText("Received log10 result field"), {
+      target: { value: "DIA" },
+    });
+    fireEvent.change(screen.getByDisplayValue("DIA"), {
+      target: { value: "RECEIVED_LOG" },
+    });
+    expect(screen.getByLabelText("Received log10 result field")).toHaveValue(
+      "RECEIVED_LOG",
+    );
+    fireEvent.click(saveButton());
+    expect(savedPayload().components[0].log10SourceComponentCode).toBe(
+      "RECEIVED_LOG",
+    );
+    putToOpenElisServerFullResponse.mockClear();
+    await screen.findByDisplayValue("RECEIVED_LOG");
+    fireEvent.click(screen.getAllByLabelText("Show log10 on reports")[0]);
+    fireEvent.click(saveButton());
+    expect(savedPayload().components[0].log10SourceComponentCode).toBeNull();
+    expect(savedPayload().components[0].displayLog10).toBe(false);
+  });
+
+  it("saves the explicit report logarithm setting on the selected component only", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      cb(
+        url === "/rest/test-list" || url === "/rest/uom"
+          ? []
+          : clone(TWO_COMPONENTS),
+      );
+    });
+    renderSection();
+    await screen.findByDisplayValue("Systolic");
+    const options = screen.getAllByLabelText("Show log10 on reports");
+    expect(options[0]).not.toBeChecked();
+    expect(options[1]).not.toBeChecked();
+    fireEvent.click(options[0]);
+    fireEvent.click(saveButton());
+    expect(savedPayload().components.map((c) => c.displayLog10)).toEqual([
+      true,
+      false,
+    ]);
+  });
+
   it("renders loaded components with their options and interpretations", async () => {
     const { container } = renderSection();
     expect(await screen.findByDisplayValue("SYS")).toBeInTheDocument();
@@ -156,14 +218,178 @@ describe("SampleResultsSection", () => {
     ).toBeInTheDocument();
   });
 
+  // OGC-1148 FR-C1/C2 — detection limits on quantitative components.
+  it("offers LOD and LOQ on numeric components and sends them as numbers", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        cb(clone(TWO_COMPONENTS));
+      }
+    });
+    renderSection();
+    await screen.findByDisplayValue("Systolic");
+
+    fireEvent.change(
+      screen.getByLabelText("LOD", { selector: "#comp-lod-0" }),
+      {
+        target: { value: "0.1" },
+      },
+    );
+    fireEvent.change(
+      screen.getByLabelText("LOQ", { selector: "#comp-loq-0" }),
+      {
+        target: { value: "0.3" },
+      },
+    );
+    fireEvent.click(saveButton());
+
+    expect(putToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
+    const [first, second] = savedPayload().components;
+    expect(first).toMatchObject({ lod: 0.1, loq: 0.3 });
+    expect(second).toMatchObject({ lod: null, loq: null });
+  });
+
+  it("blocks Save when LOD is above LOQ and says why", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        cb(clone(TWO_COMPONENTS));
+      }
+    });
+    renderSection();
+    await screen.findByDisplayValue("Systolic");
+
+    fireEvent.change(
+      screen.getByLabelText("LOD", { selector: "#comp-lod-0" }),
+      {
+        target: { value: "0.5" },
+      },
+    );
+    fireEvent.change(
+      screen.getByLabelText("LOQ", { selector: "#comp-loq-0" }),
+      {
+        target: { value: "0.2" },
+      },
+    );
+    expect(
+      screen.getAllByText(messages["error.testCatalog.sampleResults.lodGtLoq"])
+        .length,
+    ).toBeGreaterThan(0);
+    fireEvent.click(saveButton());
+    expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
+  });
+
+  it("marks an option qualifiable and sends it", async () => {
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.click(document.getElementById("opt-qualifiable-0-0"));
+    fireEvent.click(saveButton());
+
+    expect(savedPayload().components[0].options[0].qualifiable).toBe(true);
+  });
+
+  it("keeps one Normal option per select list", async () => {
+    const twoOptions = clone(SAMPLE_RESULTS);
+    twoOptions.components[0].options.push({
+      id: "O2",
+      value: "Female",
+      sortOrder: 2,
+      normal: false,
+    });
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(url.startsWith("/rest/test-catalog/tests/") ? clone(twoOptions) : []),
+    );
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.click(document.getElementById("opt-normal-0-1"));
+    fireEvent.click(saveButton());
+
+    const options = savedPayload().components[0].options;
+    expect(options.map((o) => o.normal)).toEqual([false, true]);
+  });
+
+  it("refuses to save a select list that offers the same option twice", async () => {
+    const repeated = clone(SAMPLE_RESULTS);
+    repeated.components[0].options.push({
+      id: "O2",
+      value: "Male",
+      sortOrder: 2,
+      normal: false,
+    });
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(url.startsWith("/rest/test-catalog/tests/") ? clone(repeated) : []),
+    );
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    expect(screen.getByTestId("duplicate-options-0")).toHaveTextContent(
+      "Systolic lists Male more than once",
+    );
+    fireEvent.click(saveButton());
+    expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
+  });
+
+  it("accepts two options that share a label but store different values", async () => {
+    const sameLabel = clone(SAMPLE_RESULTS);
+    sameLabel.components[0].options = [
+      { id: "O1", value: "1103", valueName: "Negatif", sortOrder: 1 },
+      { id: "O2", value: "1200", valueName: "Negatif", sortOrder: 2 },
+    ];
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(url.startsWith("/rest/test-catalog/tests/") ? clone(sameLabel) : []),
+    );
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    expect(screen.queryByTestId("duplicate-options-0")).not.toBeInTheDocument();
+    fireEvent.click(saveButton());
+    expect(putToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears a stored default that is not one of the options", async () => {
+    const stale = clone(SAMPLE_RESULTS);
+    stale.components[0].defaultResult = "legacy free text";
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(url.startsWith("/rest/test-catalog/tests/") ? clone(stale) : []),
+    );
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.click(saveButton());
+
+    expect(savedPayload().components[0].defaultResult).toBe("");
+  });
+
+  it("picks a select list's default result from its options", async () => {
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+    const defaultSelect = screen.getByLabelText(
+      messages["label.testCatalog.sampleResults.defaultResult"],
+    );
+    expect(
+      within(defaultSelect).getByRole("option", {
+        name: messages["label.testCatalog.sampleResults.defaultResult.none"],
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(defaultSelect, { target: { value: "Male" } });
+    fireEvent.click(saveButton());
+
+    expect(savedPayload().components[0].defaultResult).toBe("Male");
+  });
+
   it("saves the full component tree to the section endpoint, coercing numeric fields", async () => {
     renderSection();
     await screen.findByDisplayValue("SYS");
 
     fireEvent.click(saveButton());
 
-    expect(putToOpenElisServer).toHaveBeenCalledTimes(1);
-    expect(putToOpenElisServer.mock.calls[0][0]).toBe(
+    expect(putToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
+    expect(putToOpenElisServerFullResponse.mock.calls[0][0]).toBe(
       "/rest/test-catalog/tests/7/sample-results",
     );
     const payload = savedPayload();
@@ -258,6 +484,59 @@ describe("SampleResultsSection", () => {
     fireEvent.click(container.querySelector("#comp-primary-1"));
     expect(container.querySelector("#comp-code-1").value).toBe("PRIMARY");
     expect(container.querySelector("#comp-code-1")).toBeDisabled();
+  });
+
+  it("shows each component's Required setting and saves a change to it (OGC-1608)", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        const loaded = clone(TWO_COMPONENTS);
+        loaded.components[0].isPrimary = true;
+        loaded.components[0].isRequired = true;
+        loaded.components[1].isRequired = false;
+        cb(loaded);
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByDisplayValue("Systolic");
+
+    expect(container.querySelector("#comp-required-0")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(container.querySelector("#comp-required-1")).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    fireEvent.click(container.querySelector("#comp-required-1"));
+    fireEvent.click(saveButton());
+
+    const components = savedPayload().components;
+    expect(components[0].isRequired).toBe(true);
+    expect(components[1].isRequired).toBe(true);
+  });
+
+  it("makes a new test's first component required and a later one optional (OGC-1608)", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      cb(
+        url === "/rest/test-list" || url === "/rest/uom"
+          ? []
+          : { testId: "7", components: [] },
+      );
+    });
+    const { container } = renderSection();
+    fireEvent.click(await screen.findByTestId("add-component"));
+    fireEvent.click(screen.getByTestId("add-component"));
+
+    expect(container.querySelector("#comp-required-0")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(container.querySelector("#comp-required-1")).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
   });
 
   it("shows result types as primary cards with the legacy types behind a disclosure (FR-28)", async () => {
@@ -535,13 +814,458 @@ describe("SampleResultsSection", () => {
     expect(savedPayload().components[0].uomId).toBe("42");
   });
 
-  it("copies sample-results configuration from another test", async () => {
+  it("shows only the empty state — no bare column-header band — when a component has no interpretations (OGC-1153)", async () => {
+    const noInterpretations = {
+      testId: "7",
+      components: [
+        {
+          id: "C1",
+          code: "GLU",
+          label: "Glucose",
+          displayOrder: 1,
+          // Numeric so the select-list options table is not disclosed and the
+          // interpretations table is the only table this component can render.
+          resultType: "N",
+          options: [],
+          interpretations: [],
+        },
+      ],
+    };
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        cb(clone(noInterpretations));
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByDisplayValue("GLU");
+
+    expect(
+      screen.getByText(
+        messages["label.testCatalog.sampleResults.interpretations.empty"],
+      ),
+    ).toBeInTheDocument();
+    // Column headings with nothing beneath them read as broken layout.
+    expect(
+      screen.queryByText(
+        messages["label.testCatalog.sampleResults.interp.valueMatch"],
+      ),
+    ).not.toBeInTheDocument();
+    expect(container.querySelectorAll("table")).toHaveLength(0);
+    // Suppressing the table must not take the add affordance with it.
+    expect(
+      screen.getByRole("button", {
+        name: messages["label.testCatalog.sampleResults.addInterpretation"],
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows only the empty state for a select-list component with no options (OGC-1153)", async () => {
+    const noOptions = {
+      testId: "7",
+      components: [
+        {
+          id: "C1",
+          code: "ABO",
+          label: "Blood group",
+          displayOrder: 1,
+          // Dictionary type discloses the options table; no options and no
+          // interpretations means neither table should render.
+          resultType: "D",
+          options: [],
+          interpretations: [],
+        },
+      ],
+    };
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        cb(clone(noOptions));
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByDisplayValue("ABO");
+
+    expect(
+      screen.getByText(
+        messages["label.testCatalog.sampleResults.options.empty"],
+      ),
+    ).toBeInTheDocument();
+    // The orphan four-column heading band this ticket reported must be gone.
+    expect(
+      screen.queryByText(
+        messages["label.testCatalog.sampleResults.option.value"],
+      ),
+    ).not.toBeInTheDocument();
+    expect(container.querySelectorAll("table")).toHaveLength(0);
+    // Suppressing the table must not take the add affordance with it.
+    expect(
+      container.querySelector('[data-testid="add-custom-option-0"]'),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the interpretations table and no empty state once an interpretation exists (OGC-1153)", async () => {
+    const { container } = renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    expect(
+      screen.getByText(
+        messages["label.testCatalog.sampleResults.interp.valueMatch"],
+      ),
+    ).toBeInTheDocument();
+    expect(container.querySelector("#int-match-0-0")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        messages["label.testCatalog.sampleResults.interpretations.empty"],
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  describe("Copy configuration from test (OGC-1234: replace, staged until Save)", () => {
+    const SOURCE = {
+      testId: "9",
+      components: [
+        {
+          id: "S1",
+          code: "PRIMARY",
+          label: "Innolia",
+          displayOrder: 0,
+          resultType: "D",
+          isPrimary: true,
+          options: [
+            { id: "SO1", value: "824", valueName: "HIV1", sortOrder: 1 },
+            { id: "SO2", value: "825", valueName: "HIV2", sortOrder: 2 },
+          ],
+          interpretations: [
+            {
+              id: "SI1",
+              valueMatch: "824",
+              text: "HIV-1 positive",
+              severity: "CRITICAL",
+              displayOrder: 1,
+            },
+          ],
+        },
+      ],
+    };
+    const addNotification = vi.fn();
+
+    const mockServer = (sourceResponse) =>
+      getFromOpenElisServer.mockImplementation((url, cb) => {
+        if (url === "/rest/test-list") {
+          cb([
+            { id: "9", value: "Other Test" },
+            { id: "7", value: "This Test" },
+          ]);
+        } else if (url === "/rest/uom") {
+          cb([]);
+        } else if (url === "/rest/test-catalog/tests/9/sample-results") {
+          cb(sourceResponse === undefined ? undefined : clone(sourceResponse));
+        } else {
+          cb(clone(SAMPLE_RESULTS));
+        }
+      });
+
+    const renderWithNotifications = async () => {
+      const { NotificationContext } = await import("../../../layout/Layout");
+      const utils = render(
+        <IntlProvider locale="en" messages={messages}>
+          <NotificationContext.Provider
+            value={{ addNotification, setNotificationVisible: () => {} }}
+          >
+            <SampleResultsSection testId="7" />
+          </NotificationContext.Provider>
+        </IntlProvider>,
+      );
+      await screen.findByDisplayValue("SYS");
+      return utils;
+    };
+
+    const pickSourceAndClickCopy = async (container) => {
+      fireEvent.change(container.querySelector("#copy-from-test"), {
+        target: { value: "Other" },
+      });
+      fireEvent.click(await screen.findByText("Other Test"));
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: messages["label.testCatalog.sampleResults.copyFromButton"],
+        }),
+      );
+    };
+
+    const confirmButton = () =>
+      screen.getByRole("button", {
+        name: new RegExp(
+          messages["label.testCatalog.sampleResults.copyConfirm.confirm"],
+        ),
+      });
+
+    beforeEach(() => addNotification.mockClear());
+
+    it("asks for confirmation first and changes nothing until confirmed", async () => {
+      mockServer(SOURCE);
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+
+      expect(
+        screen.getByText(
+          messages["label.testCatalog.sampleResults.copyConfirm.title"],
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/will be replaced with those of Other Test/),
+      ).toBeInTheDocument();
+      expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+        "/rest/test-catalog/tests/9/sample-results",
+        expect.anything(),
+      );
+      expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+      expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
+    });
+
+    it("cancelling the confirmation keeps this test's configuration", async () => {
+      mockServer(SOURCE);
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+
+      const dialog = screen.getByRole("dialog", { hidden: false });
+      fireEvent.click(
+        Array.from(dialog.querySelectorAll("button")).find(
+          (b) => b.textContent === messages["label.button.cancel"],
+        ),
+      );
+
+      expect(container.querySelector("#opt-value-0-0").value).toBe("Male");
+      expect(screen.queryByTestId("copy-staged-warning")).toBeNull();
+      expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+        "/rest/test-catalog/tests/9/sample-results",
+        expect.anything(),
+      );
+    });
+
+    it("confirming stages the source's configuration without writing, and Save replaces this test's with it", async () => {
+      mockServer(SOURCE);
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+      fireEvent.click(confirmButton());
+
+      expect(
+        await screen.findByTestId("copy-staged-warning"),
+      ).toHaveTextContent(
+        "Configuration copied from Other Test, not saved yet",
+      );
+      expect(screen.getByDisplayValue("Innolia")).toBeInTheDocument();
+      expect(screen.queryByDisplayValue("Systolic")).toBeNull();
+      expect(screen.getAllByText("HIV1").length).toBeGreaterThan(0);
+      expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+      expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
+
+      fireEvent.click(saveButton());
+
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
+      expect(putToOpenElisServerFullResponse.mock.calls[0][0]).toBe(
+        "/rest/test-catalog/tests/7/sample-results",
+      );
+      const payload = savedPayload();
+      expect(payload.components).toHaveLength(1);
+      const [staged] = payload.components;
+      expect(staged.id).toBeUndefined();
+      expect(staged.code).toBe("PRIMARY");
+      expect(staged.label).toBe("Innolia");
+      expect(staged.options.map((o) => o.value)).toEqual(["824", "825"]);
+      expect(staged.options.every((o) => o.id === undefined)).toBe(true);
+      expect(staged.interpretations).toHaveLength(1);
+      expect(staged.interpretations[0].id).toBeUndefined();
+      expect(staged.interpretations[0].text).toBe("HIV-1 positive");
+      expect(JSON.stringify(payload)).not.toContain("Male");
+    });
+
+    it("the same source test can be picked and staged again after a copy is staged", async () => {
+      mockServer(SOURCE);
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+      fireEvent.click(confirmButton());
+      await screen.findByTestId("copy-staged-warning");
+      expect(container.querySelector("#copy-from-test")).toHaveValue("");
+
+      await pickSourceAndClickCopy(container);
+
+      expect(
+        screen.getByText(/will be replaced with those of Other Test/),
+      ).toBeInTheDocument();
+    });
+
+    it("an option value this test already has keeps its id, so the save updates it instead of leaving an inactive twin", async () => {
+      mockServer({
+        testId: "9",
+        components: [
+          {
+            id: "S9",
+            code: "SYS",
+            label: "Systolic source",
+            displayOrder: 1,
+            resultType: "D",
+            options: [
+              { id: "SO9", value: "Male", sortOrder: 1 },
+              { id: "SO10", value: "Female", sortOrder: 2 },
+            ],
+            interpretations: [],
+          },
+        ],
+      });
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+      fireEvent.click(confirmButton());
+      await screen.findByTestId("copy-staged-warning");
+      fireEvent.click(saveButton());
+
+      const [staged] = savedPayload().components;
+      expect(staged.id).toBeUndefined();
+      expect(staged.options).toEqual([
+        expect.objectContaining({ id: "O1", value: "Male" }),
+        expect.not.objectContaining({ id: expect.anything() }),
+      ]);
+      expect(staged.options[1].value).toBe("Female");
+    });
+
+    it("discarding the staged copy reloads this test's own configuration", async () => {
+      mockServer(SOURCE);
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+      fireEvent.click(confirmButton());
+      await screen.findByTestId("copy-staged-warning");
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: messages["label.testCatalog.sampleResults.copyDiscard"],
+        }),
+      );
+
+      expect(await screen.findByDisplayValue("Systolic")).toBeInTheDocument();
+      expect(screen.queryByTestId("copy-staged-warning")).toBeNull();
+      expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
+    });
+
+    it("a source with no result configuration stages nothing and says so", async () => {
+      mockServer({ testId: "9", components: [] });
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+      fireEvent.click(confirmButton());
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "info",
+          message: "Other Test has no result configuration to copy.",
+        }),
+      );
+      expect(screen.getByDisplayValue("Systolic")).toBeInTheDocument();
+      expect(screen.queryByTestId("copy-staged-warning")).toBeNull();
+    });
+
+    it("a source that fails to load stages nothing and reports an error, never success", async () => {
+      mockServer(undefined);
+      const { container } = await renderWithNotifications();
+      await pickSourceAndClickCopy(container);
+      fireEvent.click(confirmButton());
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: "The configuration of Other Test could not be loaded.",
+        }),
+      );
+      expect(addNotification).not.toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "success" }),
+      );
+      expect(screen.getByDisplayValue("Systolic")).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Scroll-jump regression: adding the SECOND component used to flip the list
+   * wrappers from Fragment/PlainPanel to Accordion/AccordionItem — React
+   * cannot reconcile across element types, so the whole section remounted
+   * (fresh DOM nodes), dropping focus and resetting the page scroll to the
+   * top. The wrapper types are now stable for any component count, so the
+   * first component's DOM nodes must survive the add untouched.
+   */
+  it("adding the second component does not remount the first (no scroll jump)", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        cb({
+          testId: "7",
+          components: [
+            {
+              id: "c1",
+              code: "PRIMARY",
+              label: "Primary",
+              isPrimary: true,
+              resultType: "N",
+              displayOrder: 1,
+              showOnReport: true,
+              options: [],
+              interpretations: [],
+            },
+          ],
+        });
+      }
+    });
+    renderSection();
+    const firstLabelBefore = await screen.findByDisplayValue("Primary");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["label.testCatalog.sampleResults.addComponent"],
+      }),
+    );
+
+    // same DOM node — the section did not remount
+    expect(screen.getByDisplayValue("Primary")).toBe(firstLabelBefore);
+    // the new component rendered below, usable immediately
+    expect(document.getElementById("comp-label-1")).not.toBeNull();
+    // first component's data untouched
+    expect(screen.getByDisplayValue("Primary")).toBeInTheDocument();
+  });
+
+  it("adding a third component behaves the same as the second", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        cb(clone(TWO_COMPONENTS));
+      }
+    });
+    renderSection();
+    const firstLabelBefore = await screen.findByDisplayValue("Systolic");
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["label.testCatalog.sampleResults.addComponent"],
+      }),
+    );
+    expect(screen.getByDisplayValue("Systolic")).toBe(firstLabelBefore);
+    expect(screen.getByDisplayValue("Diastolic")).toBeInTheDocument();
+    expect(document.getElementById("comp-label-2")).not.toBeNull();
+  });
+});
+
+describe("SampleResultsSection copy picker filter (OGC-1238)", () => {
+  it("narrows the source tests to those matching what was typed", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url === "/rest/test-list") {
         cb([
-          { id: "9", value: "Other Test" },
           { id: "7", value: "This Test" },
+          { id: "99", value: "Other Test" },
+          { id: "11", value: "QA Sibling (Serum)" },
+          { id: "12", value: "Glucose (Plasma)" },
         ]);
+      } else if (url === "/rest/uom") {
+        cb([]);
+      } else if (url.startsWith("/rest/test-catalog/dictionary")) {
+        cb([]);
       } else {
         cb(clone(SAMPLE_RESULTS));
       }
@@ -549,20 +1273,224 @@ describe("SampleResultsSection", () => {
     const { container } = renderSection();
     await screen.findByDisplayValue("SYS");
 
-    // "Start from another test" is a typeahead ComboBox.
     fireEvent.change(container.querySelector("#copy-from-test"), {
-      target: { value: "Other" },
+      target: { value: "qa sib" },
     });
-    fireEvent.click(await screen.findByText("Other Test"));
+
+    await screen.findByText("QA Sibling (Serum)");
+    const options = Array.from(
+      container.querySelectorAll(".cds--list-box__menu-item"),
+    ).map((o) => o.textContent);
+    expect(options).toEqual(["QA Sibling (Serum)"]);
+  });
+});
+
+describe("SampleResultsSection typed options and refusals (OGC-1458)", () => {
+  const renderWithNotifications = async (addNotification) => {
+    const { NotificationContext } = await import("../../../layout/Layout");
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider
+          value={{ addNotification, setNotificationVisible: () => {} }}
+        >
+          <SampleResultsSection testId="7" />
+        </NotificationContext.Provider>
+      </IntlProvider>,
+    );
+  };
+
+  it("marks a typed option as free text, so a typed number is never a dictionary id", async () => {
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
     fireEvent.click(
       screen.getByRole("button", {
-        name: messages["label.testCatalog.sampleResults.copyFromButton"],
+        name: messages["label.testCatalog.sampleResults.addCustomOption"],
       }),
     );
+    fireEvent.click(saveButton());
 
-    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
-    expect(postToOpenElisServerJsonResponse.mock.calls[0][0]).toBe(
-      "/rest/test-catalog/tests/7/sample-results/copy-from/9",
+    const options = savedPayload().components[0].options;
+    expect(options[options.length - 1].freeText).toBe(true);
+    expect(options[0].freeText).toBeUndefined();
+  });
+
+  /** OGC-1463: a save refused as stale says so; Refresh loads the stored copy. */
+  it("sends the loaded version and shows a stale save with Refresh", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/sample-results")) {
+        cb({ ...clone(SAMPLE_RESULTS), version: "v1" });
+      } else if (url.startsWith("/rest/test-catalog/dictionary")) {
+        cb([{ id: "500", name: "Positive" }]);
+      } else {
+        cb([]);
+      }
+    });
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        ok: false,
+        status: 409,
+        json: () => Promise.resolve({ conflict: "stale", version: "v2" }),
+      }),
+    );
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+    const loads = () =>
+      getFromOpenElisServer.mock.calls.filter(([url]) =>
+        url.endsWith("/sample-results"),
+      ).length;
+
+    fireEvent.click(saveButton());
+
+    expect(
+      await screen.findByTestId("sample-results-stale-save"),
+    ).toHaveTextContent(messages["error.staleSave.section"]);
+    expect(savedPayload().version).toBe("v1");
+    expect(saveButton()).toBeDisabled();
+    const before = loads();
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["label.results.refresh"] }),
+    );
+    expect(loads()).toBe(before + 1);
+    expect(screen.queryByTestId("sample-results-stale-save")).toBeNull();
+  });
+
+  it("explains that an active test keeps at least one component", async () => {
+    const addNotification = vi.fn();
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        json: () =>
+          Promise.resolve({ refusal: "components.activeNeedsComponent" }),
+      }),
+    );
+    await renderWithNotifications(addNotification);
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.click(saveButton());
+
+    await vi.waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message:
+            messages["error.testCatalog.sampleResults.activeNeedsComponent"],
+        }),
+      ),
     );
   });
+
+  it("shows the stored components again after that refusal", async () => {
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        json: () =>
+          Promise.resolve({ refusal: "components.activeNeedsComponent" }),
+      }),
+    );
+    await renderWithNotifications(vi.fn());
+    await screen.findByDisplayValue("SYS");
+    const loads = () =>
+      getFromOpenElisServer.mock.calls.filter(([url]) =>
+        url.endsWith("/sample-results"),
+      ).length;
+    const before = loads();
+
+    fireEvent.click(saveButton());
+
+    await vi.waitFor(() => expect(loads()).toBe(before + 1));
+  });
+
+  it("stops its loads when it unmounts, so no update lands on a gone screen", async () => {
+    const { unmount } = render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleResultsSection testId="7" />
+      </IntlProvider>,
+    );
+    await screen.findByDisplayValue("SYS");
+    const signals = getFromOpenElisServer.mock.calls
+      .map((call) => call[2])
+      .filter(Boolean);
+    expect(signals.length).toBeGreaterThanOrEqual(3);
+
+    unmount();
+
+    expect(signals.every((signal) => signal.aborted)).toBe(true);
+  });
+
+  it("names the component whose result type the server refused", async () => {
+    const addNotification = vi.fn();
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        json: () =>
+          Promise.resolve({
+            refusal: "resultType.unknown",
+            refusedComponent: "Systolic",
+          }),
+      }),
+    );
+    await renderWithNotifications(addNotification);
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.click(saveButton());
+
+    await vi.waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: expect.stringContaining("Systolic"),
+        }),
+      ),
+    );
+  });
+
+  it("stops each text field at its column width (OGC-1467)", async () => {
+    await renderWithNotifications(vi.fn());
+    await screen.findByDisplayValue("SYS");
+
+    expect(document.getElementById("comp-label-0")).toHaveAttribute(
+      "maxLength",
+      "255",
+    );
+  });
+
+  it.each([
+    ["value.tooLong", "longer than"],
+    ["unit.unknown", "unit of measure"],
+    ["logDisplay.numericRequired", "requires a numeric or alpha result"],
+    ["logDisplay.sourceInvalid", "requires another visible numeric result"],
+    ["decimalPlaces.invalid", "whole number from 0 to 10"],
+  ])(
+    "explains the %s refusal on the named component (OGC-1467)",
+    async (refusal, wording) => {
+      const addNotification = vi.fn();
+      putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+        cb({
+          ok: false,
+          status: 422,
+          json: () =>
+            Promise.resolve({ refusal, refusedComponent: "Systolic" }),
+        }),
+      );
+      await renderWithNotifications(addNotification);
+      await screen.findByDisplayValue("SYS");
+
+      fireEvent.click(saveButton());
+
+      await vi.waitFor(() =>
+        expect(addNotification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            kind: "error",
+            message: expect.stringMatching(
+              new RegExp(`Systolic[\\s\\S]*${wording}`, "i"),
+            ),
+          }),
+        ),
+      );
+    },
+  );
 });

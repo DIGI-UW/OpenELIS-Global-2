@@ -16,4 +16,13 @@ public interface TypeOfSamplePanelService extends BaseObjectService<TypeOfSample
     List<TypeOfSamplePanel> getTypeOfSamplePanelsForPanel(String panelId);
 
     List<TypeOfSamplePanel> getTypeOfSamplePanelsForSampleType(String sampleType);
+
+    /**
+     * OGC-224 — reconcile SAMPLETYPE_PANEL to the panel's DERIVED sample-type set
+     * (distinct sample types of its member tests). The junction is live on the
+     * order-entry hot path (per-sample-type panel lists, e-order panel→sample-type
+     * resolution), so every membership write must keep it in sync; historically
+     * only the legacy PanelCreate/Modify-Test flows wrote it, and only partially.
+     */
+    void syncPanelSampleTypes(String panelId, String sysUserId);
 }

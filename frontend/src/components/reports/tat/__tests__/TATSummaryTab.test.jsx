@@ -45,6 +45,14 @@ const mockSummaryData = {
       percentile90: 6.25,
       max: 36.08,
     },
+    {
+      dimensionValue: "Microbiology",
+      count: 88,
+      mean: 12.5,
+      median: 10.1,
+      percentile90: 22.0,
+      max: 61.0,
+    },
   ],
 };
 
@@ -202,5 +210,22 @@ describe("TATSummaryTab", () => {
     expect(
       screen.getByText("Click a row to view individual results"),
     ).toBeInTheDocument();
+  });
+
+  test("renders the sparse labeled list instead of the table for <3 categories", () => {
+    const sparse = {
+      ...mockSummaryData,
+      breakdown: mockSummaryData.breakdown.slice(0, 2),
+    };
+    renderWithIntl(
+      <TATSummaryTab data={sparse} loading={false} filters={defaultFilters} />,
+    );
+    expect(screen.getByText("2 lab units this period")).toBeInTheDocument();
+    expect(screen.getByText("Hematology")).toBeInTheDocument();
+    expect(screen.getByText("Chemistry")).toBeInTheDocument();
+    // the full table (and its click hint) is not rendered when sparse
+    expect(
+      screen.queryByText("Click a row to view individual results"),
+    ).not.toBeInTheDocument();
   });
 });

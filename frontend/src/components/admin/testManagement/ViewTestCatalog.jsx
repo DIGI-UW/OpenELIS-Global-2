@@ -22,8 +22,6 @@ import {
   TableHeader,
   TableBody,
   TableCell,
-  Section,
-  Heading,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -52,9 +50,14 @@ const TestCatalog = () => {
     getFromOpenElisServer(`/rest/TestCatalog`, handleCatalog);
   }, []);
 
+  // A failed catalog fetch used to leave `data` undefined, so selecting a
+  // section (notably "All") crashed the page on data.map. Coerce both lists so
+  // the page degrades to "no tests" instead of unmounting.
   const handleCatalog = (res) => {
-    setTestSectionList(res.testSectionList);
-    setData(res.testCatalogList);
+    setTestSectionList(
+      Array.isArray(res?.testSectionList) ? res.testSectionList : [],
+    );
+    setData(Array.isArray(res?.testCatalogList) ? res.testCatalogList : []);
   };
 
   const handleToggle = () => {
@@ -158,9 +161,9 @@ const TestCatalog = () => {
       description: <FormattedMessage id="description.uom" />,
     },
     {
-      id: "significantDigits",
-      field: intl.formatMessage({ id: "field.significantDigits" }),
-      description: <FormattedMessage id="description.significantDigits" />,
+      id: "reportingDecimalPlaces",
+      field: intl.formatMessage({ id: "field.reportingDecimalPlaces" }),
+      description: <FormattedMessage id="description.reportingDecimalPlaces" />,
     },
     {
       id: "selectValues",
@@ -253,9 +256,9 @@ const TestCatalog = () => {
         value: item.uom,
       },
       item.resultType == "N" && {
-        id: `${item.id}-significantDigits`,
-        field: intl.formatMessage({ id: "field.significantDigits" }),
-        value: item.significantDigits,
+        id: `${item.id}-reportingDecimalPlaces`,
+        field: intl.formatMessage({ id: "field.reportingDecimalPlaces" }),
+        value: item.reportingDecimalPlaces,
       },
       item.loinc && {
         id: `${item.id}-loinc`,

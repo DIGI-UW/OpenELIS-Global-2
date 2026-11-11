@@ -21,6 +21,12 @@ public interface TestResultService extends BaseObjectService<TestResult, String>
 
     TestResult getTestResultsByTestAndDictonaryResult(String testId, String result);
 
+    /**
+     * The option row for a dictionary result id on one result component, falling
+     * back to the test-wide lookup when the component is blank or owns no such row.
+     */
+    TestResult getTestResultsByTestAndDictonaryResult(String testId, String result, String componentId);
+
     List<TestResult> getTestResultsByTestAndResultGroup(TestAnalyte testAnalyte);
 
     List<TestResult> getAllSortedTestResults();

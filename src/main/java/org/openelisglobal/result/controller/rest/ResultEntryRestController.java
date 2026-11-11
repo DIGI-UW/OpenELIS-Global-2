@@ -4,10 +4,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.analysis.service.AnalysisService;
@@ -15,6 +18,7 @@ import org.openelisglobal.analysis.service.AnalysisServiceImpl;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.audittrail.dao.HistoryDAO;
 import org.openelisglobal.audittrail.valueholder.History;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
@@ -25,17 +29,31 @@ import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.common.util.validator.CustomDateValidator;
+import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.eqa.service.EQACycleSubmissionService;
+import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.referral.action.beanitems.ReferralItem;
+import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultUtil;
+import org.openelisglobal.result.action.util.ResultsLoadUtility;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.result.controller.LogbookResultsBaseController;
 import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.form.SingleResultEntryForm;
+import org.openelisglobal.result.service.AnalysisTimelineService;
 import org.openelisglobal.result.service.LogbookResultsPersistService;
+import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.service.ResultEntryPresenceService;
+import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
+import org.openelisglobal.resultrun.form.WaitingRun;
+import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -43,8 +61,15 @@ import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testalertrule.service.TestAlertEvaluationService;
+import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
+import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
+import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
+import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -52,12 +77,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.Errors;
+import org.springframework.validation.ObjectError;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 /**
@@ -88,6 +115,11 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     @Autowired
     private AnalysisService analysisService;
     @Autowired
+    private ResultRunService resultRunService;
+
+    @Autowired(required = false)
+    private org.openelisglobal.notifications.service.HeaderNotificationService headerNotificationService;
+    @Autowired
     private TestSectionService testSectionService;
     @Autowired
     private UserService userService;
@@ -105,10 +137,34 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     private HistoryDAO historyDAO;
     @Autowired(required = false)
     private TestAlertEvaluationService testAlertEvaluationService;
+    @Autowired
+    private AnalysisTimelineService analysisTimelineService;
+    @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
+    @Autowired
+    private TestResultComponentService testResultComponentService;
+    @Autowired
+    private TestResultInterpretationService interpretationService;
+    @Autowired
+    private TestReagentLinkService testReagentLinkService;
+    @Autowired
+    private org.openelisglobal.result.service.ResultService resultService;
+    @Autowired
+    private org.openelisglobal.inventory.service.InventoryItemService inventoryItemService;
+    @Autowired
+    private SampleEQAService sampleEQAService;
+    @Autowired
+    private EQACycleSubmissionService cycleSubmissionService;
 
     /**
      * Lab Units the user may enter results for, each carrying its domain so the
      * page can derive {@code currentDomain} (FR-M1).
+     *
+     * <p>
+     * OGC-189 (M2): a <em>viewer</em> control, so it lists {@code isActive OR
+     * hasContent}. A lab unit deactivated while analyses are still in flight stays
+     * here until they are finished — filtering it out would strand that work on a
+     * worklist nobody can reach.
      */
     @GetMapping(value = "lab-units", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -118,7 +174,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         if (resultsRole == null) {
             return Collections.emptyList();
         }
-        List<IdValuePair> sections = userService.getUserTestSections(getSysUserId(request), resultsRole.getId());
+        List<IdValuePair> sections = userService.getUserViewerTestSections(getSysUserId(request), resultsRole.getId());
         List<Map<String, String>> labUnits = new ArrayList<>();
         for (IdValuePair pair : sections) {
             Map<String, String> unit = new HashMap<>();
@@ -131,6 +187,108 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             labUnits.add(unit);
         }
         return labUnits;
+    }
+
+    /**
+     * OGC-1022 (R3, FR-H1/H2) — this analysis's own event timeline, newest first,
+     * paginated 25/50/100. Creation, status transitions, result value changes,
+     * bound notes, retest revisions and reflex children — never patient trends or
+     * Westgard statistics (D7).
+     */
+    @GetMapping(value = "analysis/{analysisId}/history", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @PreAuthorize("hasAnyRole('RESULTS', 'VALIDATION')")
+    public ResponseEntity<Map<String, Object>> getAnalysisHistory(@PathVariable String analysisId,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "25") int pageSize,
+            @RequestParam(required = false) String componentId) {
+        Analysis analysis;
+        try {
+            analysis = analysisService.get(analysisId);
+        } catch (RuntimeException e) {
+            analysis = null;
+        }
+        if (analysis == null) {
+            return ResponseEntity.notFound().build();
+        }
+        int boundedPageSize = pageSize == 50 || pageSize == 100 ? pageSize : 25;
+        int boundedPage = Math.max(1, page);
+
+        List<AnalysisTimelineService.AnalysisTimelineEvent> all = analysisTimelineService.getTimeline(analysis);
+        // OGC-811 — component-aware presentation: a component row sees its own
+        // events plus every analysis-level event (componentId null: creation,
+        // status, referral, NCE, legacy records). No componentId param = the
+        // unchanged analysis-level contract.
+        if (!GenericValidator.isBlankOrNull(componentId)) {
+            all = all.stream()
+                    .filter(event -> event.getComponentId() == null || componentId.equals(event.getComponentId()))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+        int from = Math.min(all.size(), (boundedPage - 1) * boundedPageSize);
+        int to = Math.min(all.size(), from + boundedPageSize);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("events", all.subList(from, to));
+        body.put("total", all.size());
+        body.put("page", boundedPage);
+        body.put("pageSize", boundedPageSize);
+        return ResponseEntity.ok(body);
+    }
+
+    /**
+     * OGC-1026 (R7, FR-G1) — the interpretation rule buckets configured on a test's
+     * components (Test Catalog Editor, OGC-949 M7), readable by the Results role.
+     * The catalog editor's own endpoint is ADMIN-only, which would silently hide
+     * the buckets from bench techs.
+     */
+    @GetMapping(value = "test/{testId}/interpretations", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @PreAuthorize("hasRole('RESULTS')")
+    public ResponseEntity<List<Map<String, Object>>> getTestInterpretations(@PathVariable String testId) {
+        List<Map<String, Object>> buckets = new ArrayList<>();
+        for (TestResultComponent component : testResultComponentService.getActiveComponentsByTestId(testId)) {
+            for (TestResultInterpretation interpretation : interpretationService
+                    .getActiveByComponentId(component.getId())) {
+                Map<String, Object> bucket = new HashMap<>();
+                bucket.put("componentId", component.getId());
+                bucket.put("id", interpretation.getId());
+                bucket.put("valueMatch", interpretation.getValueMatch());
+                bucket.put("text", interpretation.getInterpretationText());
+                bucket.put("severity", interpretation.getSeverity());
+                bucket.put("color", interpretation.getColor());
+                bucket.put("displayOrder", interpretation.getDisplayOrder());
+                buckets.add(bucket);
+            }
+        }
+        return ResponseEntity.ok(buckets);
+    }
+
+    /**
+     * OGC-1024 (R5) — the reagents linked to a test (Test Catalog Editor), readable
+     * by the Results role so the bench Reagents &amp; QC section can surface lots
+     * and record consumption. The catalog's own endpoint is ADMIN-only.
+     */
+    @GetMapping(value = "test/{testId}/reagents", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @PreAuthorize("hasRole('RESULTS')")
+    public ResponseEntity<List<Map<String, Object>>> getTestReagentLinks(@PathVariable String testId) {
+        List<Map<String, Object>> reagents = new ArrayList<>();
+        for (TestReagentLink link : testReagentLinkService.getByTestId(testId)) {
+            Map<String, Object> reagent = new HashMap<>();
+            reagent.put("reagentId", link.getReagentId());
+            reagent.put("usageType", link.getUsageType());
+            reagent.put("quantityPerTest", link.getQuantityPerTest());
+            reagent.put("quantityUnit", link.getQuantityUnit());
+            if (link.getReagentId() != null) {
+                org.openelisglobal.inventory.valueholder.InventoryItem item = inventoryItemService
+                        .get(link.getReagentId());
+                if (item != null) {
+                    reagent.put("name", item.getName());
+                    reagent.put("units", item.getUnits());
+                }
+            }
+            reagents.add(reagent);
+        }
+        return ResponseEntity.ok(reagents);
     }
 
     /**
@@ -164,7 +322,27 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return staleResponse;
         }
 
+        Optional<WaitingRun> waiting = resultRunService.waitingFor(analysis);
+        if (waiting.isPresent()) {
+            body.put("error", MessageUtil.getMessage("run.refusal.waiting", new String[] { waiting.get().label() }));
+            body.put("waitingRun", waiting.get());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+        }
+
+        // A test carrying a live referral is not referred again, and the bench has to
+        // be told rather than have the refer-out quietly dropped from the save.
+        if (item.isRefer() && ResultUtil.hasOpenReferral(analysis)) {
+            body.put("error", MessageUtil.getMessage("referral.error.alreadyReferred"));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        }
+        String referralDateError = referralDatesError(item);
+        if (referralDateError != null) {
+            body.put("error", referralDateError);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        }
+
         item.setModified(true);
+        reuseExistingResultForComponent(item, analysis);
 
         boolean useTechnicianName = ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.resultTechnicianName, "true");
@@ -178,16 +356,37 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
 
         Errors errors = dataSet.validateModifiedItems();
         if (errors.hasErrors()) {
-            body.put("error", errors.getAllErrors().stream().map(e -> MessageUtil.getMessage(e.getCode()))
-                    .collect(Collectors.joining("; ")));
+            body.put("error", joinErrorMessages(errors));
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        }
+
+        if (isAnswered(item) && capturesAnalyst(analysis)) {
+            if (GenericValidator.isBlankOrNull(item.getEqaAnalystId())) {
+                body.put("error", MessageUtil.getMessage("eqa.result.analystRequired"));
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
+            }
+            if (cycleSubmissionService.participantRowTaken(analysis)) {
+                body.put("error", MessageUtil.getMessage("eqa.result.providerSampleCodeRequired"));
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
+            }
+        }
+
+        List<ResultEntryAlert> alerts = acknowledgementService.alertsForItems(Collections.singletonList(item));
+        List<ResultEntryAlert> owed = alerts.stream().filter(alert -> !alert.isAcknowledged())
+                .collect(Collectors.toList());
+        if (!owed.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(acknowledgementService.refusalBody(owed));
         }
 
         ResultUtil.createResultsFromItems(dataSet, supportReferrals, alwaysValidate, useTechnicianName, statusRuleSet,
                 request);
         ResultUtil.createAnalysisOnlyUpdates(dataSet, request);
+        ResultUtil.holdOpenWhileRequiredComponentsBlank(dataSet);
 
-        List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
+        List<IResultUpdate> updaters = new ArrayList<>(ResultUpdateRegister.getRegisteredUpdaters());
+        updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
+                ResultEntryAcknowledgement.SOURCE_RESULTS_ENTRY, getSysUserId(request)));
         try {
             List<Analysis> reflexAnalyses = logbookPersistService.persistDataSet(dataSet, updaters,
                     getSysUserId(request));
@@ -195,6 +394,16 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                     .map(e -> analysisService.getOrderAccessionNumber(e)).collect(Collectors.toList()));
             body.put("calculated", reflexAnalyses.stream().filter(e -> e.getResultCalculated())
                     .map(e -> analysisService.getOrderAccessionNumber(e)).collect(Collectors.toList()));
+            recordEqaAnalyst(item, getSysUserId(request));
+
+            // A generated test outlives the page that generated it, so saying so
+            // has to outlive it too: the logbook page has always recorded these
+            // through the notification system, and a toast that disappears on
+            // navigation is not a record. Same service the alerts use.
+            notifyGenerated(getSysUserId(request), reflexAnalyses.stream().filter(e -> !e.getResultCalculated()),
+                    "notification.reflex.created");
+            notifyGenerated(getSysUserId(request), reflexAnalyses.stream().filter(e -> e.getResultCalculated()),
+                    "notification.calculated.created");
 
             try {
                 fhirTransformService.transformPersistResultsEntryFhirObjects(dataSet);
@@ -203,9 +412,18 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             }
             if (testAlertEvaluationService != null) {
                 String currentUser = getSysUserId(request);
-                dataSet.getNewResults().forEach(rs -> {
+                // corrections matter as much as first entries — a modified value
+                // can cross a critical bound (OGC-1022 R3)
+                Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).forEach(rs -> {
                     try {
                         testAlertEvaluationService.evaluateAndDispatch(rs.result, currentUser);
+                    } catch (RuntimeException ex) {
+                        LogEvent.logError(ex);
+                    }
+                });
+                dataSet.getCalculatedResults().forEach(calculated -> {
+                    try {
+                        testAlertEvaluationService.evaluateAndDispatch(calculated, currentUser);
                     } catch (RuntimeException ex) {
                         LogEvent.logError(ex);
                     }
@@ -232,7 +450,110 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         if (persisted != null && persisted.getLastupdated() != null) {
             body.put("analysisLastupdated", String.valueOf(persisted.getLastupdated().getTime()));
         }
+        // The save is what moved the analysis on, so the row that caused it should
+        // not have to be told by a page reload: without this the Status column and
+        // the filter counts above it go on describing the worklist as it was, and
+        // the "Not started" filter keeps offering rows that have just been
+        // resulted (OGC-1179).
+        if (persisted != null) {
+            body.put("analysisStatusId", analysisService.getStatusId(persisted));
+            Map<String, String> componentStatusIds = componentStatusIds(persisted);
+            if (!componentStatusIds.isEmpty()) {
+                body.put("componentStatusIds", componentStatusIds);
+            }
+        }
+        // The persisted result's id — the client's row must adopt it, or a row
+        // saved from the blank placeholder state keeps a null resultId and every
+        // subsequent save INSERTS another result (duplicate component rows).
+        //
+        // Its value is echoed in both forms for the same reason the loader sends
+        // both: the row displays what is reported and edits what is stored, and a
+        // row that stayed on screen after saving would otherwise keep editing the
+        // value it held before.
+        Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).map(rs -> rs.result)
+                .filter(r -> r != null && r.getId() != null).findFirst().ifPresent(r -> {
+                    body.put("resultId", r.getId());
+                    body.put("rawResultValue", StringUtil.blankIfNull(r.getEnteredValue()));
+                    body.put("resultValue", resultService.formatResultForDisplay(r, false));
+                });
         return ResponseEntity.ok(body);
+    }
+
+    /**
+     * Each part's status after a save, keyed by component id, for a test with more
+     * than one part; empty otherwise. Every part's row on Results Entry shows its
+     * own status and a save can move the test from one status to another, so the
+     * page is told every part's status, not only the saved part's. A result whose
+     * test_result row names no component belongs to the primary.
+     */
+    private Map<String, String> componentStatusIds(Analysis analysis) {
+        Map<String, String> statuses = new HashMap<>();
+        Test test = analysisService.getTest(analysis);
+        List<TestResultComponent> components = test == null ? List.of()
+                : testResultComponentService.getActiveComponentsByTestId(test.getId());
+        if (components.size() < 2) {
+            return statuses;
+        }
+        String primaryId = components.stream().filter(TestResultComponent::getIsPrimary).map(TestResultComponent::getId)
+                .findFirst().orElse(components.get(0).getId());
+        Map<String, Result> resultByComponent = new HashMap<>();
+        for (Result result : resultService.getResultsByAnalysis(analysis)) {
+            if (result.getParentResult() != null) {
+                continue;
+            }
+            String componentId = result.getTestResult() == null ? null : result.getTestResult().getComponentId();
+            resultByComponent.putIfAbsent(GenericValidator.isBlankOrNull(componentId) ? primaryId : componentId,
+                    result);
+        }
+        String analysisStatusId = analysisService.getStatusId(analysis);
+        for (TestResultComponent component : components) {
+            statuses.put(component.getId(),
+                    ResultsLoadUtility.componentStatusId(analysisStatusId, resultByComponent.get(component.getId())));
+        }
+        return statuses;
+    }
+
+    /**
+     * Idempotency guard for the per-analysis save: a payload with a BLANK resultId
+     * means "new result" to the legacy save service — but if this analysis already
+     * has a persisted result for the row's component (the client's row state was
+     * stale, e.g. saved from a placeholder row that never learned its persisted
+     * id), inserting again duplicates the component. Bind the item to the existing
+     * result so the save UPDATES it. Multiselect rows legitimately hold several
+     * results per component and manage their own lifecycle — they are left alone.
+     */
+    private void reuseExistingResultForComponent(TestResultItem item, Analysis analysis) {
+        if (!GenericValidator.isBlankOrNull(item.getResultId())
+                || org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType
+                        .isMultiSelectVariant(item.getResultType())) {
+            return;
+        }
+        String itemComponentId = item.getTestResultComponentId();
+        String primaryComponentId = null;
+        if (itemComponentId != null && analysis.getTest() != null) {
+            // ensureSinglePrimary guarantees exactly one active component
+            // carries the flag (TestResultComponentServiceImpl)
+            primaryComponentId = testResultComponentService.getActiveComponentsByTestId(analysis.getTest().getId())
+                    .stream().filter(c -> Boolean.TRUE.equals(c.getIsPrimary())).map(TestResultComponent::getId)
+                    .findFirst().orElse(null);
+        }
+        org.openelisglobal.result.valueholder.Result latestMatch = null;
+        for (org.openelisglobal.result.valueholder.Result existing : resultService.getResultsByAnalysis(analysis)) {
+            String existingComponentId = existing.getTestResult() != null ? existing.getTestResult().getComponentId()
+                    : null;
+            boolean matches = java.util.Objects.equals(existingComponentId, itemComponentId)
+                    // legacy results carry no component id; the loader buckets
+                    // them onto the PRIMARY component's row
+                    || (existingComponentId == null && itemComponentId != null
+                            && itemComponentId.equals(primaryComponentId));
+            if (matches && (latestMatch == null
+                    || Long.parseLong(existing.getId()) > Long.parseLong(latestMatch.getId()))) {
+                latestMatch = existing;
+            }
+        }
+        if (latestMatch != null) {
+            item.setResultId(latestMatch.getId());
+        }
     }
 
     /**
@@ -240,6 +561,51 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
      * open in Edit (null/blank = none) and the {@code visibleAnalysisIds} on their
      * screen. Returns analysisId → display name of the OTHER user editing it.
      */
+    /** Records generated tests under the header bell. */
+    private void notifyGenerated(String currentUser, Stream<Analysis> analyses, String messageKey) {
+        if (headerNotificationService == null) {
+            return;
+        }
+        List<String> accessions = analyses.map(e -> analysisService.getOrderAccessionNumber(e))
+                .collect(Collectors.toList());
+        if (accessions.isEmpty()) {
+            return;
+        }
+        try {
+            headerNotificationService.notifyUser(currentUser,
+                    MessageUtil.getMessage(messageKey) + " " + String.join(", ", accessions));
+        } catch (RuntimeException ex) {
+            // Recording the notification must never fail the save it describes.
+            LogEvent.logError(ex);
+        }
+    }
+
+    private static boolean isAnswered(TestResultItem item) {
+        return !GenericValidator.isBlankOrNull(item.getResultValue())
+                || !GenericValidator.isBlankOrNull(item.getMultiSelectResultValues());
+    }
+
+    private boolean capturesAnalyst(Analysis analysis) {
+        if (analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+            return false;
+        }
+        return sampleEQAService.findPerAnalystSchemeId(Long.valueOf(analysis.getSampleItem().getSample().getId()))
+                .isPresent();
+    }
+
+    // Logged, not thrown: the clinical result is already saved.
+    private void recordEqaAnalyst(TestResultItem item, String sysUserId) {
+        if (GenericValidator.isBlankOrNull(item.getEqaAnalystId())) {
+            return;
+        }
+        try {
+            cycleSubmissionService.assignAnalyst(analysisService.get(item.getAnalysisId()),
+                    Long.valueOf(item.getEqaAnalystId()), sysUserId);
+        } catch (RuntimeException e) {
+            LogEvent.logError("recording the EQA analyst for analysis " + item.getAnalysisId(), e);
+        }
+    }
+
     @PostMapping(value = "presence", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     @PreAuthorize("hasRole('RESULTS')")
@@ -270,6 +636,58 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         public void setVisibleAnalysisIds(List<String> visibleAnalysisIds) {
             this.visibleAnalysisIds = visibleAnalysisIds;
         }
+    }
+
+    /**
+     * The validation errors as one line for the bench, each resolved with its
+     * arguments so the accession and the refused value are named rather than left
+     * as "{0}" (OGC-1408). The per-accession header ends with a colon and
+     * introduces the errors after it, so those follow it with a space; errors are
+     * otherwise separated with a semicolon.
+     */
+    private static String joinErrorMessages(Errors errors) {
+        StringBuilder joined = new StringBuilder();
+        for (ObjectError error : errors.getAllErrors()) {
+            String text = MessageUtil.getMessage(error.getCode(), error.getArguments()).trim();
+            if (joined.length() > 0) {
+                joined.append(joined.charAt(joined.length() - 1) == ':' ? " " : "; ");
+            }
+            joined.append(text);
+        }
+        return joined.toString();
+    }
+
+    /**
+     * Why the referral dates on a save cannot be stored, or null when they can: the
+     * send date of a new referral and the reference laboratory's report date.
+     */
+    private static String referralDatesError(TestResultItem item) {
+        ReferralItem referral = item.getReferralItem();
+        if (referral == null) {
+            return null;
+        }
+        String error = item.isRefer() ? typedDateError(referral.getReferredSendDate()) : null;
+        return error != null ? error : typedDateError(referral.getReferredReportDate());
+    }
+
+    /**
+     * Why a typed date cannot be saved, or null when it can. It is read in the
+     * lab's date format and the save path parses it leniently, so a day and month
+     * in the wrong order would otherwise become a date months away.
+     */
+    private static String typedDateError(String typed) {
+        if (GenericValidator.isBlankOrNull(typed)) {
+            return null;
+        }
+        CustomDateValidator validator = CustomDateValidator.getInstance();
+        Date date = validator.getDate(typed.trim());
+        if (date == null) {
+            return MessageUtil.getMessage("errors.date", new String[] { typed });
+        }
+        if (IActionConstants.INVALID_TO_LARGE.equals(validator.validateDate(date, DateRelation.PAST))) {
+            return MessageUtil.getMessage("error.date.inFuture");
+        }
+        return null;
     }
 
     private ResponseEntity<Map<String, Object>> rejectIfStale(TestResultItem item, Analysis analysis,

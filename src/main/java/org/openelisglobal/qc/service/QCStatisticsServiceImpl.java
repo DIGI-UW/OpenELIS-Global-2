@@ -1,13 +1,12 @@
 package org.openelisglobal.qc.service;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.dao.QCStatisticsDAO;
+import org.openelisglobal.qc.service.calculator.SampleStatistics;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCStatistics;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class QCStatisticsServiceImpl extends AuditableBaseObjectServiceImpl<QCStatistics, String>
         implements QCStatisticsService {
 
-    private static final MathContext MATH_CONTEXT = new MathContext(15, RoundingMode.HALF_UP);
     private static final int SCALE = 5;
 
     @Autowired
@@ -52,12 +50,12 @@ public class QCStatisticsServiceImpl extends AuditableBaseObjectServiceImpl<QCSt
         }
 
         // Use only the first N results for initial runs
-        List<QCResult> initialResults = results.subList(0, requiredRuns);
+        SampleStatistics stats = SampleStatistics.of(results.subList(0, requiredRuns), SCALE);
 
         QCStatistics statistics = new QCStatistics();
         statistics.setControlLotId(controlLotId);
-        statistics.setMean(calculateMean(initialResults));
-        statistics.setStandardDeviation(calculateStandardDeviation(initialResults));
+        statistics.setMean(stats.mean());
+        statistics.setStandardDeviation(stats.standardDeviation());
         statistics.setNumValues(requiredRuns);
         statistics.setCalculationMethod("INITIAL_RUNS");
         statistics.setCalculationDate(new Timestamp(System.currentTimeMillis()));
@@ -78,13 +76,14 @@ public class QCStatisticsServiceImpl extends AuditableBaseObjectServiceImpl<QCSt
                     String.format("Insufficient data: %d results found, %d required", results.size(), windowSize));
         }
 
-        // Use the most recent N results for rolling window
-        List<QCResult> recentResults = results.subList(Math.max(0, results.size() - windowSize), results.size());
+        // Use the most recent N results for rolling window. findByControlLot orders
+        // by run date DESC, so the newest runs are at the head of the list.
+        SampleStatistics stats = SampleStatistics.of(results.subList(0, windowSize), SCALE);
 
         QCStatistics statistics = new QCStatistics();
         statistics.setControlLotId(controlLotId);
-        statistics.setMean(calculateMean(recentResults));
-        statistics.setStandardDeviation(calculateStandardDeviation(recentResults));
+        statistics.setMean(stats.mean());
+        statistics.setStandardDeviation(stats.standardDeviation());
         statistics.setNumValues(windowSize);
         statistics.setCalculationMethod("ROLLING");
         statistics.setCalculationDate(new Timestamp(System.currentTimeMillis()));
@@ -102,39 +101,12 @@ public class QCStatisticsServiceImpl extends AuditableBaseObjectServiceImpl<QCSt
 
     @Override
     public BigDecimal calculateMean(List<QCResult> results) throws IllegalArgumentException {
-        if (results == null || results.isEmpty()) {
-            throw new IllegalArgumentException("Cannot calculate mean: results list is empty");
-        }
-
-        BigDecimal sum = BigDecimal.ZERO;
-        for (QCResult result : results) {
-            sum = sum.add(result.getResultValue());
-        }
-
-        return sum.divide(new BigDecimal(results.size()), SCALE, RoundingMode.HALF_UP);
+        return SampleStatistics.mean(results, SCALE);
     }
 
     @Override
     public BigDecimal calculateStandardDeviation(List<QCResult> results) throws IllegalArgumentException {
-        if (results == null || results.size() < 2) {
-            throw new IllegalArgumentException("Cannot calculate standard deviation: need at least 2 values");
-        }
-
-        BigDecimal mean = calculateMean(results);
-
-        // Calculate sum of squared differences: sum((x - mean)^2)
-        BigDecimal sumSquaredDiff = BigDecimal.ZERO;
-        for (QCResult result : results) {
-            BigDecimal diff = result.getResultValue().subtract(mean);
-            BigDecimal squaredDiff = diff.multiply(diff, MATH_CONTEXT);
-            sumSquaredDiff = sumSquaredDiff.add(squaredDiff);
-        }
-
-        // Sample standard deviation: sqrt(sum / (n-1))
-        BigDecimal variance = sumSquaredDiff.divide(new BigDecimal(results.size() - 1), MATH_CONTEXT);
-
-        // Calculate square root using Newton's method
-        return sqrt(variance, SCALE);
+        return SampleStatistics.of(results, SCALE).standardDeviation();
     }
 
     @Override
@@ -157,33 +129,5 @@ public class QCStatisticsServiceImpl extends AuditableBaseObjectServiceImpl<QCSt
             latest.setValidityEnd(new Timestamp(System.currentTimeMillis()));
             statisticsDAO.update(latest);
         }
-    }
-
-    /**
-     * Calculate square root using Newton's method (Babylonian method). BigDecimal
-     * does not have a built-in sqrt, so we implement it.
-     *
-     * @param value The value to find square root of
-     * @param scale The decimal scale
-     * @return Square root
-     */
-    private BigDecimal sqrt(BigDecimal value, int scale) {
-        if (value.compareTo(BigDecimal.ZERO) == 0) {
-            return BigDecimal.ZERO;
-        }
-
-        BigDecimal two = new BigDecimal(2);
-        BigDecimal x = value.divide(two, scale, RoundingMode.HALF_UP);
-        BigDecimal lastX = BigDecimal.ZERO;
-
-        // Newton's method: x_new = (x + value/x) / 2
-        while (!x.equals(lastX)) {
-            lastX = x;
-            x = value.divide(x, scale, RoundingMode.HALF_UP);
-            x = x.add(lastX);
-            x = x.divide(two, scale, RoundingMode.HALF_UP);
-        }
-
-        return x;
     }
 }

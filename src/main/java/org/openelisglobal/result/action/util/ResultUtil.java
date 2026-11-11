@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang.StringUtils;
@@ -40,6 +41,7 @@ import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.beanAdapters.ResultSaveBeanAdapter;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
@@ -59,26 +61,38 @@ import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
+import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.service.ReferralSetService;
+import org.openelisglobal.referral.service.ReferralTypeService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
 import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.result.service.ResultInventoryService;
+import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.service.ResultSignatureService;
+import org.openelisglobal.result.valueholder.QcEvaluation;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultInventory;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.resultvalidation.util.ResultsValidationUtility;
+import org.openelisglobal.resultvalidation.util.ValidationSignals;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.userrole.service.UserRoleService;
+import org.openelisglobal.validationpolicy.service.ValidationPolicyService;
+import org.openelisglobal.validationpolicy.valueholder.ReviewTrigger;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -101,7 +115,58 @@ public class ResultUtil {
     private static String RESULT_EDIT_ROLE_ID;
     private static String REFERRAL_CONFORMATION_ID;
 
+    /**
+     * The "Confirmation" referral type id, resolved on first use. The field was
+     * never assigned in this class, so every referral built here reached the insert
+     * with a null referral_type_id and died on its NOT NULL constraint (OGC-1023) —
+     * the legacy JSP controller only ever populated its own copy.
+     */
+    private static String confirmationReferralTypeId() {
+        if (REFERRAL_CONFORMATION_ID == null) {
+            org.openelisglobal.referral.valueholder.ReferralType referralType = SpringContext
+                    .getBean(ReferralTypeService.class).getReferralTypeByName("Confirmation");
+            if (referralType != null) {
+                REFERRAL_CONFORMATION_ID = referralType.getId();
+            }
+        }
+        return REFERRAL_CONFORMATION_ID;
+    }
+
     private static final String RESULT_SUBJECT = "Result Note";
+
+    /** OGC-1021 (R2, FR-J1) — subject records the auto-set context axis. */
+    private static final String RESULT_MODIFICATION_SUBJECT = "Result Note (Modification)";
+
+    /** OGC-1026 (R7, FR-G1) — interpretation notes are filterable by subject. */
+    private static final String INTERPRETATION_SUBJECT = "Interpretation";
+
+    /**
+     * Visibility axis of the dual-axis note (FR-J1): "E" = send with result
+     * (external), anything else = internal — the legacy default.
+     */
+    private static NoteType noteTypeForVisibility(TestResultItem item) {
+        return "E".equals(item.getNoteVisibility()) ? NoteType.EXTERNAL : NoteType.INTERNAL;
+    }
+
+    /**
+     * Context axis of the dual-axis note (FR-J1): auto-set by the client's
+     * edit-state machine. Entry keeps the legacy subject byte-for-byte.
+     */
+    private static String noteSubjectForContext(TestResultItem item) {
+        return "MODIFICATION".equals(item.getNoteContext()) ? RESULT_MODIFICATION_SUBJECT : RESULT_SUBJECT;
+    }
+
+    /**
+     * OGC-811 — a note authored from a component row belongs to that component;
+     * items without a component (single-component tests, legacy pages) keep the
+     * historic analysis-level scope (null).
+     */
+    private static Note scopedToComponent(Note note, TestResultItem item) {
+        if (note != null && !GenericValidator.isBlankOrNull(item.getTestResultComponentId())) {
+            note.setTestResultComponentId(item.getTestResultComponentId());
+        }
+        return note;
+    }
 
     public static String getStringValueOfResult(Result result) {
         if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())) {
@@ -230,6 +295,10 @@ public class ResultUtil {
         if (analysis == null) {
             analysis = analysisService.get(analysisId);
             actionDataSet.getModifiedAnalysis().add(analysis);
+            if (SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)
+                    .equals(analysis.getStatusId())) {
+                actionDataSet.getFinalizedBeforeSave().add(analysisId);
+            }
         }
         return analysis;
     }
@@ -278,46 +347,77 @@ public class ResultUtil {
         for (TestResultItem testResultItem : actionDataSet.getModifiedItems()) {
 
             Analysis analysis = resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
-            analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate));
-            analysis.setSysUserId(ControllerUtills.getSysUserId(request));
+            analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate, analysis));
+            analysis.setSysUserId(actionDataSet.getCurrentUserId());
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
             }
+            // OGC-1021 (R2, FR-B1/B2): the instrument instance is its own field.
+            // null = the client did not send it (legacy pages) — never clears;
+            // blank = an explicit "no instrument" chosen in the unified panel.
+            if (testResultItem.getAnalyzerId() != null) {
+                analysis.setAnalyzerId(GenericValidator.isBlankOrNull(testResultItem.getAnalyzerId()) ? null
+                        : testResultItem.getAnalyzerId());
+            }
 
-            actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.INTERNAL,
-                    testResultItem.getNote(), RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+            actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
+                    noteTypeForVisibility(testResultItem), testResultItem.getNote(),
+                    noteSubjectForContext(testResultItem), actionDataSet.getCurrentUserId()), testResultItem));
+
+            // OGC-1021 (R2, FR-D5): a dilution changes the reported value, so the
+            // factor and the raw measured value are preserved as an internal
+            // provenance note (reuse-first — no new schema).
+            if (!GenericValidator.isBlankOrNull(testResultItem.getDilutionFactor())) {
+                actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis, NoteType.INTERNAL,
+                        MessageUtil.getMessage("note.dilution.applied",
+                                new String[] { testResultItem.getDilutionFactor(),
+                                        GenericValidator.isBlankOrNull(testResultItem.getMeasuredValue()) ? "?"
+                                                : testResultItem.getMeasuredValue(),
+                                        testResultItem.getResultValue() }),
+                        RESULT_SUBJECT, actionDataSet.getCurrentUserId()), testResultItem));
+            }
 
             // OGC-745: persist unconditional-acceptance justification as a
             // distinct note type so supervisor audit review can filter on it.
             if (ResultUtil.isForcedToAcceptance(testResultItem)
                     && !GenericValidator.isBlankOrNull(testResultItem.getForceTechApprovalNote())) {
-                actionDataSet.addToNoteList(noteService.createSavableNote(analysis,
+                actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
                         NoteType.UNCONDITIONAL_ACCEPTANCE_REASON, testResultItem.getForceTechApprovalNote(),
-                        RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+                        RESULT_SUBJECT, actionDataSet.getCurrentUserId()), testResultItem));
+            }
+
+            // OGC-1026 (R7, FR-G1): the clinical interpretation goes with the
+            // result to the report — an EXTERNAL note under its own subject
+            if (!GenericValidator.isBlankOrNull(testResultItem.getInterpretation())) {
+                actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis, NoteType.EXTERNAL,
+                        testResultItem.getInterpretation().trim(), INTERPRETATION_SUBJECT,
+                        actionDataSet.getCurrentUserId()), testResultItem));
             }
 
             if (testResultItem.isShadowRejected()) {
                 testResultItem.setResultValue("");
                 testResultItem.setShadowResultValue("");
                 String rejectedReasonId = testResultItem.getRejectReasonId();
-                for (IdValuePair rejectReason : DisplayListService.getInstance().getList(ListType.REJECTION_REASONS)) {
+                for (IdValuePair rejectReason : SpringContext.getBean(DisplayListService.class)
+                        .getList(ListType.REJECTION_REASONS)) {
                     if (rejectedReasonId.equals(rejectReason.getId())) {
-                        actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.REJECTION_REASON,
-                                rejectReason.getValue(), RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+                        actionDataSet.addToNoteList(scopedToComponent(
+                                noteService.createSavableNote(analysis, NoteType.REJECTION_REASON,
+                                        rejectReason.getValue(), RESULT_SUBJECT, actionDataSet.getCurrentUserId()),
+                                testResultItem));
                         break;
                     }
                 }
             }
 
             ResultSaveBean bean = ResultSaveBeanAdapter.fromTestResultItem(testResultItem);
-            ResultSaveService resultSaveService = new ResultSaveService(analysis,
-                    ControllerUtills.getSysUserId(request));
+            ResultSaveService resultSaveService = new ResultSaveService(analysis, actionDataSet.getCurrentUserId());
             // deletable Results will be written to, not read
             List<Result> results = resultSaveService.createResultsFromTestResultItem(bean,
                     actionDataSet.getDeletableResults());
 
             boolean correctedSinceReport = resultSaveService.isUpdatedResult()
-                    && analysisService.patientReportHasBeenDone(analysis);
+                    && analysisService.releasedResultHasBeenReported(analysis);
             if (correctedFlagComputedIds.add(analysis.getId())) {
                 analysis.setCorrectedSincePatientReport(correctedSinceReport);
             } else if (correctedSinceReport) {
@@ -327,11 +427,11 @@ public class ResultUtil {
             if (analysisService.hasBeenCorrectedSinceLastPatientReport(analysis)) {
                 Note note = noteService.createSavableNote(analysis, NoteType.EXTERNAL,
                         MessageUtil.getMessage("note.corrected.result"), RESULT_SUBJECT,
-                        ControllerUtills.getSysUserId(request));
+                        actionDataSet.getCurrentUserId());
                 if (!noteService.duplicateNoteExists(note)) {
-                    actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.EXTERNAL,
-                            MessageUtil.getMessage("note.corrected.result"), RESULT_SUBJECT,
-                            ControllerUtills.getSysUserId(request)));
+                    actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
+                            NoteType.EXTERNAL, MessageUtil.getMessage("note.corrected.result"), RESULT_SUBJECT,
+                            actionDataSet.getCurrentUserId()), testResultItem));
                 }
             }
 
@@ -352,19 +452,107 @@ public class ResultUtil {
         }
     }
 
+    /**
+     * OGC-1608: a save that would release a test while one of its required
+     * components still has no result leaves it awaiting validation instead, so the
+     * test is not complete and the patient report stays partial until that
+     * component is resulted. The values this save writes count as well as the
+     * stored ones.
+     */
+    public static void holdOpenWhileRequiredComponentsBlank(ResultsUpdateDataSet actionDataSet) {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        RuleResultScope scope = SpringContext.getBean(RuleResultScope.class);
+        ResultService resultService = SpringContext.getBean(ResultService.class);
+        TestResultComponentService componentService = SpringContext.getBean(TestResultComponentService.class);
+        for (Analysis analysis : actionDataSet.getModifiedAnalysis()) {
+            if (!statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
+                continue;
+            }
+            String testId = analysisService.getTest(analysis).getId();
+            Set<String> componentsWithResult = new HashSet<>();
+            for (Result stored : resultService.getResultsByAnalysis(analysis)) {
+                if (stored.getParentResult() == null && !GenericValidator.isBlankOrNull(stored.getValue())) {
+                    componentsWithResult.add(scope.componentIdOf(stored));
+                }
+            }
+            for (TestResultItem item : actionDataSet.getModifiedItems()) {
+                if (!analysis.getId().equals(item.getAnalysisId())) {
+                    continue;
+                }
+                String componentId = GenericValidator.isBlankOrNull(item.getTestResultComponentId())
+                        ? scope.primaryComponentId(testId)
+                        : item.getTestResultComponentId();
+                if (noResults(item.getShadowResultValue(), item.getMultiSelectResultValues(), item.getResultType())) {
+                    componentsWithResult.remove(componentId);
+                } else {
+                    componentsWithResult.add(componentId);
+                }
+            }
+            if (!componentService.getRequiredComponentsWithoutResult(testId, componentsWithResult).isEmpty()) {
+                analysis.setStatusId(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+            }
+        }
+    }
+
+    /**
+     * A test already carrying a live referral must not be referred again: the
+     * second referral would come with its own subcontract row and its own FHIR
+     * Task, and nothing downstream could tell which of the two the reference lab is
+     * working on. Results Entry hides the action once a test is referred; this is
+     * the same rule for anything that reaches a save directly.
+     */
+    public static boolean hasOpenReferral(Analysis analysis) {
+        return analysis != null && analysis.getId() != null
+                && SpringContext.getBean(ReferralService.class).hasOpenReferral(analysis.getId());
+    }
+
+    /**
+     * Whoever raised a referral: the referrer named on the form, else the
+     * technician credited with the result, else the person saving.
+     *
+     * <p>
+     * All three rungs are needed. The Results Entry writers used to set the
+     * technician and then overwrite it with the form's referrer, which no client
+     * sends, so nothing was recorded at all; the unified Results page shows a
+     * technician but never asks for one; and Order Entry sends neither.
+     */
+    public static String requesterNameFor(String referrer, String technician, String actorUserId) {
+        if (!GenericValidator.isBlankOrNull(referrer)) {
+            return referrer;
+        }
+        if (!GenericValidator.isBlankOrNull(technician)) {
+            return technician;
+        }
+        if (GenericValidator.isBlankOrNull(actorUserId)) {
+            return null;
+        }
+        SystemUser user = SpringContext.getBean(SystemUserService.class).getUserById(actorUserId);
+        return user == null ? null : user.getNameForDisplay();
+    }
+
     public static void handleReferrals(TestResultItem testResultItem, ReferralItem referralItem, List<Result> results,
             Analysis analysis, ResultsUpdateDataSet actionDataSet, HttpServletRequest request) {
+        if (hasOpenReferral(analysis)) {
+            LogEvent.logWarn(ResultUtil.class.getSimpleName(), "handleReferrals",
+                    "refused a second referral on analysis " + analysis.getId()
+                            + ": one is still open. Cancel it before referring the test again.");
+            return;
+        }
         // List<Referral> referrals = new ArrayList<>();
         Referral referral = new Referral();
         referral.setFhirUuid(UUID.randomUUID());
-        referral.setStatus(ReferralStatus.SENT);
+        // Born DRAFT with its subcontract row, exactly as the Order Entry Refer Out
+        // does: REQUESTED is reached only by a dispatch, and every lifecycle
+        // transition reads the subcontract row (OGC-1188).
+        referral.setStatus(ReferralStatus.DRAFT);
+        referral.setSubcontract(SpringContext.getBean(ReferralSetService.class).buildSubcontractFromItem(referralItem,
+                actionDataSet.getCurrentUserId()));
         referral.setSysUserId(actionDataSet.getCurrentUserId());
-        referral.setReferralTypeId(REFERRAL_CONFORMATION_ID);
-        referral.setRequesterName(testResultItem.getTechnician());
-
+        referral.setReferralTypeId(confirmationReferralTypeId());
         referral.setRequestDate(new Timestamp(new Date().getTime()));
         referral.setSentDate(DateUtil.convertStringDateToTruncatedTimestamp(referralItem.getReferredSendDate()));
-        referral.setRequesterName(referralItem.getReferrer());
+        referral.setRequesterName(requesterNameFor(referralItem.getReferrer(), testResultItem.getTechnician(),
+                actionDataSet.getCurrentUserId()));
         referral.setOrganization(organizationService.get(referralItem.getReferredInstituteId()));
         referral.setAnalysis(analysis);
 
@@ -401,8 +589,8 @@ public class ResultUtil {
             originalResultNote = originalResultNote + testResultItem.getResultValue();
         }
 
-        actionDataSet.addToNoteList(noteService.createSavableNote(analysis, NoteType.INTERNAL, originalResultNote,
-                RESULT_SUBJECT, ControllerUtills.getSysUserId(request)));
+        actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis, NoteType.INTERNAL,
+                originalResultNote, RESULT_SUBJECT, ControllerUtills.getSysUserId(request)), testResultItem));
     }
 
     public static boolean analysisShouldBeUpdated(TestResultItem testResultItem, Result result,
@@ -485,6 +673,35 @@ public class ResultUtil {
     }
 
     public static String getStatusForTestResult(TestResultItem testResult, boolean alwaysValidate) {
+        return getStatusForTestResult(testResult, alwaysValidate,
+                GenericValidator.isBlankOrNull(testResult.getAnalysisId()) ? null
+                        : analysisService.get(testResult.getAnalysisId()));
+    }
+
+    /**
+     * The analysis status a saved result earns. A result is finalized without a
+     * validator only when it would sit in the Validation queue's Clear lane
+     * (OGC-1226 FR-7, one predicate for the lane and for automation): the lab has
+     * not asked to validate everything, the test's limit does not insist on it, and
+     * {@link ValidationSignals#isClearAtEntry} says clear. Everything else waits
+     * for a validator.
+     *
+     * <p>
+     * With useMultiLevelValidation on, the validation policy (OGC-1364) replaces
+     * "validate all results": All results waits for review, Only results that need
+     * review applies the clearance rule, and No review releases a valid result at
+     * entry unless the test's limit or blocked self-validation insists on review.
+     */
+    public static String getStatusForTestResult(TestResultItem testResult, boolean alwaysValidate, Analysis analysis) {
+        Optional<ReviewTrigger> policy = SpringContext.getBean(ValidationPolicyService.class).entryReviewTrigger();
+        boolean releaseWithoutReview = policy.isPresent() && policy.get() == ReviewTrigger.NONE;
+        if (policy.isPresent()) {
+            alwaysValidate = policy.get() == ReviewTrigger.ALL;
+        }
+        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.BLOCK_SELF_VALIDATION, "true")) {
+            alwaysValidate = true;
+            releaseWithoutReview = false;
+        }
         if (testResult.isShadowRejected() && ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.VALIDATE_REJECTED_TESTS, "true")) {
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected);
@@ -496,19 +713,58 @@ public class ResultUtil {
                 testResult.getResultType())) {
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted);
         } else {
-            if (!GenericValidator.isBlankOrNull(testResult.getResultLimitId())) {
-                ResultLimit resultLimit = resultLimitService.get(testResult.getResultLimitId());
-                if (resultLimit.isAlwaysValidate()) {
-                    return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
-                }
-                if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(testResult.getResultType())
-                        && !testResult.getResultValue().equals(resultLimit.getDictionaryNormalId())) {
-                    return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
-                }
+            ResultLimit resultLimit = GenericValidator.isBlankOrNull(testResult.getResultLimitId()) ? null
+                    : resultLimitService.get(testResult.getResultLimitId());
+            if (resultLimit != null && resultLimit.isAlwaysValidate()) {
+                return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
             }
-
+            if (releaseWithoutReview) {
+                return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
+            }
+            if (rangeNotApplied(testResult, analysis) || !clearAtEntry(testResult, analysis, resultLimit)) {
+                return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
+            }
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
         }
+    }
+
+    /**
+     * The patient's missing sex or birth date kept a range that depends on it from
+     * applying. Decided here from the stored patient, not from the page's range, so
+     * such a result always waits for a validator.
+     */
+    private static boolean rangeNotApplied(TestResultItem testResult, Analysis analysis) {
+        if (analysis == null || analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+            return false;
+        }
+        Patient patient = SpringContext.getBean(SampleService.class).getPatient(analysis.getSampleItem().getSample());
+        String componentId = GenericValidator.isBlankOrNull(testResult.getTestResultComponentId()) ? null
+                : testResult.getTestResultComponentId();
+        return resultLimitService.selectResultLimitForResult(analysis, null, patient, componentId).isRangeNotApplied();
+    }
+
+    /**
+     * Gathers what the clearance rule needs at entry time: the limit's range
+     * verdict, the quality-control verdict already recorded on the result being
+     * re-saved (a first save has none yet), an open non-conformity on the sample
+     * item, whether this save follows an earlier one (the revision is bumped after
+     * the status is chosen, so a revision of at least 1 here means a modification)
+     * and the item's nonconforming flag.
+     */
+    private static boolean clearAtEntry(TestResultItem testResult, Analysis analysis, ResultLimit resultLimit) {
+        String qcStatus = ValidationSignals.QC_UNKNOWN;
+        if (!GenericValidator.isBlankOrNull(testResult.getResultId())) {
+            Result existing = SpringContext.getBean(ResultService.class).get(testResult.getResultId());
+            if (existing != null && existing.getQcEvaluation() == QcEvaluation.FAIL) {
+                qcStatus = ValidationSignals.QC_FAIL;
+            }
+        }
+        boolean nceOpen = analysis != null
+                && SpringContext.getBean(ResultsValidationUtility.class).hasOpenNonConformity(analysis);
+        boolean modified = analysis != null && !GenericValidator.isBlankOrNull(analysis.getRevision())
+                && !"0".equals(analysis.getRevision().trim());
+        return ValidationSignals.isClearAtEntry(resultLimit, testResult.getResultType(), testResult.getResultValue(),
+                qcStatus, nceOpen, modified, testResult.isNonconforming());
     }
 
     public static boolean noResults(String value, String multiSelectValue, String type) {

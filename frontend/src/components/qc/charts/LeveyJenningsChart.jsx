@@ -22,24 +22,46 @@ import "./LeveyJenningsChart.css";
 const LeveyJenningsChart = ({ data, statistics, height, showLegend }) => {
   const intl = useIntl();
 
-  // Transform data for Carbon Charts — plot z-scores on Y-axis
-  // All points go into the Normal group for a continuous line.
-  // Violation points are duplicated into the Violation group so red dots
-  // render on top, keeping the line unbroken.
+  // Transform data for Carbon Charts — plot z-scores on Y-axis.
+  // Levey-Jennings convention (Shewhart / CLSI C24): one evenly-spaced slot per
+  // run, ordered chronologically — NOT a real-time axis. Westgard rules read
+  // consecutive runs, so bunching same-day runs by wall-clock time is wrong and
+  // occludes points recorded close together.
+  // All points go into the Normal group for a continuous line; violations are
+  // duplicated into the Violation group so red dots render on top.
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
 
-    const filtered = data.filter((point) => point.zScore != null);
     const normalLabel = intl.formatMessage({ id: "qc.chart.legend.normal" });
     const violationLabel = intl.formatMessage({
       id: "qc.chart.legend.violation",
     });
 
+    // Carbon's "labels" scale builds its domain from unique mapsTo values in
+    // data order, so points must be pre-sorted by time.
+    const sorted = data
+      .filter((point) => point.zScore != null)
+      .map((point) => ({
+        point,
+        date: new Date(point.runDateTime || point.date),
+      }))
+      .sort((a, b) => a.date - b.date);
+
     const points = [];
 
-    filtered.forEach((point) => {
+    sorted.forEach(({ point, date }, index) => {
+      // Slot key = 1-based run number. It MUST be a unique per-run value:
+      // Carbon's "labels" scale de-dupes its domain, so a timestamp string
+      // would collapse runs recorded in the same second (batch imports / seeded
+      // data) onto one slot — the exact clustering this change fixes. The run
+      // number also becomes the axis label (Carbon renders the key verbatim for
+      // a labels scale — ticks.formatter is ignored), matching the printed
+      // Inspector report; the full date/time stays in the tooltip.
+      const key = String(index + 1);
+
       const mapped = {
-        date: new Date(point.runDateTime || point.date),
+        key,
+        date,
         value: point.zScore,
         rawValue: point.resultValue || point.value,
         zScore: point.zScore,
@@ -50,7 +72,8 @@ const LeveyJenningsChart = ({ data, statistics, height, showLegend }) => {
       // Every point in Normal group for continuous line
       points.push({ ...mapped, group: normalLabel });
 
-      // Violation points also in Violation group for red dot overlay
+      // Violation points also in Violation group for red dot overlay. Shared
+      // key => same slot, so the red dot lands on top of the blue point.
       if (point.violated) {
         points.push({ ...mapped, group: violationLabel });
       }
@@ -96,9 +119,9 @@ const LeveyJenningsChart = ({ data, statistics, height, showLegend }) => {
       height: height || "400px",
       axes: {
         bottom: {
-          title: intl.formatMessage({ id: "qc.chart.axis.date" }),
-          mapsTo: "date",
-          scaleType: "time",
+          title: intl.formatMessage({ id: "qc.chart.axis.run" }),
+          mapsTo: "key",
+          scaleType: "labels",
         },
         left: {
           title: intl.formatMessage({ id: "qc.chart.axis.value" }),
@@ -190,7 +213,9 @@ const LeveyJenningsChart = ({ data, statistics, height, showLegend }) => {
           enabled: true,
         },
       },
-      curve: "curveMonotoneX",
+      // L-J charts use straight segments between runs; a smoothed curve would
+      // imply interpolated values that never existed.
+      curve: "curveLinear",
       data: {
         loading: false,
       },

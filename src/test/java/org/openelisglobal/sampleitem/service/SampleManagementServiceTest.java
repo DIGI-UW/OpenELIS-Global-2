@@ -28,11 +28,53 @@ public class SampleManagementServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private SampleManagementService sampleManagementService;
+    @Autowired
+    private javax.sql.DataSource testDataSource;
+    @Autowired
+    private org.openelisglobal.common.services.IStatusService testStatusService;
 
     @Before
     public void init() throws Exception {
         // Load test data for sample items
         executeDataSetWithStateManagement("testdata/sampleitem.xml");
+    }
+
+    /**
+     * OGC-1023 (R4, FR-E3) — a canceled analysis must not block re-ordering the
+     * same test on the item (the NCE Retest disposition cancels then re-orders); an
+     * active analysis still deduplicates.
+     */
+    @Test
+    public void addTests_reordersAfterCancel_butSkipsWhenActive() throws Exception {
+        executeDataSetWithStateManagement("testdata/result.xml");
+        org.springframework.jdbc.core.JdbcTemplate jdbc = new org.springframework.jdbc.core.JdbcTemplate(
+                testDataSource);
+        jdbc.update("INSERT INTO clinlims.status_of_sample (id, name, code, status_type, is_active, display_key,"
+                + " description, lastupdated) VALUES (9101, 'Not Tested', 4, 'ANALYSIS', 'Y', 's.9101', 'nt', NOW())");
+        jdbc.update("INSERT INTO clinlims.status_of_sample (id, name, code, status_type, is_active, display_key,"
+                + " description, lastupdated) VALUES (9102, 'Test Canceled', 5, 'ANALYSIS', 'Y', 's.9102', 'c',"
+                + " NOW())");
+        testStatusService.refreshCache();
+        jdbc.update("UPDATE clinlims.sample_item SET quantity = 10 WHERE id = 601");
+        // result.xml inserts analyses with explicit ids; realign the sequence so
+        // the new retest analysis doesn't collide
+        jdbc.execute("SELECT setval('clinlims.analysis_seq', (SELECT COALESCE(MAX(id)::bigint, 1) FROM"
+                + " clinlims.analysis))");
+
+        // analysis 1 = test 1 on sample item 601; while it is ACTIVE the add is
+        // deduplicated
+        jdbc.update("UPDATE clinlims.analysis SET status_id = 9101 WHERE id = 1");
+        org.openelisglobal.sampleitem.form.AddTestsForm form = new org.openelisglobal.sampleitem.form.AddTestsForm();
+        form.setSampleItemIds(java.util.List.of("601"));
+        form.setTestIds(java.util.List.of("1"));
+        org.openelisglobal.sampleitem.dto.AddTestsResponse skipped = sampleManagementService.addTestsToSamples(form,
+                "1");
+        assertEquals(0, skipped.getSuccessCount());
+
+        // once canceled, the same test can be ordered again (retest)
+        jdbc.update("UPDATE clinlims.analysis SET status_id = 9102 WHERE id = 1");
+        org.openelisglobal.sampleitem.dto.AddTestsResponse added = sampleManagementService.addTestsToSamples(form, "1");
+        assertEquals(1, added.getSuccessCount());
     }
 
     @Test
