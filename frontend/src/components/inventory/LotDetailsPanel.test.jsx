@@ -112,6 +112,71 @@ describe("LotDetailsPanel — movement history (OGC-657)", () => {
   });
 });
 
+describe("LotDetailsPanel in the reader language", () => {
+  const baseLot = {
+    id: 7002,
+    lotNumber: "LOT-2025-002",
+    inventoryItem: { name: "Test Reagent A", itemType: "REAGENT", units: "mL" },
+    qcStatus: "PASSED",
+    initialQuantity: 10,
+    currentQuantity: 9,
+    receiptDate: "2026-01-01",
+    expirationDate: "2026-12-31",
+  };
+
+  const french = {
+    ...messages,
+    "button.close": "Fermer",
+    "lot.details.loading": "Chargement du lot...",
+    "lot.details.tabs": "Onglets du lot",
+    "transaction.type.RECEIPT": "Réception",
+    "transaction.type.QC_TEST": "Contrôle qualité",
+  };
+
+  const renderInFrench = () =>
+    render(
+      <IntlProvider locale="fr" messages={french}>
+        <LotDetailsPanel open lot={baseLot} onClose={vi.fn()} />
+      </IntlProvider>,
+    );
+
+  it("names each transaction type, the close button and the tab list from the message bundle", async () => {
+    TransactionAPI.getByLot.mockResolvedValue([
+      {
+        id: 1,
+        transactionType: "RECEIPT",
+        quantityChange: 10,
+        transactionDate: "2026-01-01T09:00:00",
+        performedByUser: "admin",
+      },
+      {
+        id: 2,
+        transactionType: "QC_TEST",
+        quantityChange: -1,
+        transactionDate: "2026-01-02T09:00:00",
+        performedByUser: "admin",
+      },
+    ]);
+    renderInFrench();
+
+    expect(await screen.findByText("Réception")).toBeInTheDocument();
+    expect(screen.getByText("Contrôle qualité")).toBeInTheDocument();
+    expect(screen.queryByText("RECEIPT")).not.toBeInTheDocument();
+    expect(screen.queryByText("QC_TEST")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fermer" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("tablist", { name: "Onglets du lot" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names the loading indicator from the message bundle", () => {
+    TransactionAPI.getByLot.mockReturnValue(new Promise(() => {}));
+    renderInFrench();
+
+    expect(screen.getByTitle("Chargement du lot...")).toBeInTheDocument();
+  });
+});
+
 describe("LotDetailsPanel — barcode visibility", () => {
   const baseLot = {
     id: 7001,

@@ -17,13 +17,16 @@ const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
   const isMounted = useIsMounted();
 
   const adjustmentReasons = [
-    { id: "INVENTORY_COUNT", text: "Physical Inventory Count" },
-    { id: "DAMAGED", text: "Damaged Items" },
-    { id: "FOUND", text: "Items Found" },
-    { id: "ERROR_CORRECTION", text: "Data Entry Error Correction" },
-    { id: "EXPIRED_DISPOSAL", text: "Expired Item Disposal" },
-    { id: "OTHER", text: "Other" },
-  ];
+    "INVENTORY_COUNT",
+    "DAMAGED",
+    "FOUND",
+    "ERROR_CORRECTION",
+    "EXPIRED_DISPOSAL",
+    "OTHER",
+  ].map((id) => ({
+    id,
+    text: intl.formatMessage({ id: `adjustment.reason.${id}` }),
+  }));
 
   const [formData, setFormData] = useState({
     newQuantity: lot?.currentQuantity || 0,

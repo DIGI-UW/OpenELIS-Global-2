@@ -79,6 +79,16 @@ describe("InventoryLotsPage", () => {
     expect(screen.getByText("Not assigned")).toBeInTheDocument();
   });
 
+  it("shows the lot status as a label, not the server code", async () => {
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb([{ ...assignedLot, status: "IN_USE" }]),
+    );
+    renderPage();
+
+    expect(await screen.findByText("In Use")).toBeInTheDocument();
+    expect(screen.queryByText("IN_USE")).not.toBeInTheDocument();
+  });
+
   it("shows the barcode so a scanned label can be matched to a row", async () => {
     Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
       cb([assignedLot]),

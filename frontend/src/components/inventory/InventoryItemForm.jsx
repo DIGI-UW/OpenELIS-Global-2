@@ -409,7 +409,9 @@ const InventoryItemForm = ({
             onChange={(e) => handleChange("units", e.target.value)}
             required
             maxLength={50}
-            placeholder="e.g., mL, tests, kits"
+            placeholder={intl.formatMessage({
+              id: "catalog.item.units.placeholder",
+            })}
           />
         </div>
 
@@ -501,7 +503,9 @@ const InventoryItemForm = ({
           labelText={<FormattedMessage id="catalog.item.storageRequirements" />}
           value={formData.storageRequirements}
           onChange={(e) => handleChange("storageRequirements", e.target.value)}
-          placeholder="e.g., Store at 2-8°C, protect from light"
+          placeholder={intl.formatMessage({
+            id: "catalog.item.storageRequirements.placeholder",
+          })}
         />
 
         <TextInput
@@ -509,7 +513,9 @@ const InventoryItemForm = ({
           labelText={<FormattedMessage id="catalog.item.compatibleAnalyzers" />}
           value={formData.compatibleAnalyzers}
           onChange={(e) => handleChange("compatibleAnalyzers", e.target.value)}
-          placeholder="e.g., GeneXpert, Cobas"
+          placeholder={intl.formatMessage({
+            id: "catalog.item.compatibleAnalyzers.placeholder",
+          })}
         />
 
         <NumberInput

@@ -563,3 +563,64 @@ describe("LotEntryModal — quantity on an edited lot", () => {
     expect(screen.queryByLabelText("Initial Quantity")).not.toBeInTheDocument();
   });
 });
+
+describe("LotEntryModal status choices in the reader language", () => {
+  it("lists QC and lot statuses from the message bundle and still sends the status codes", async () => {
+    InventoryLotAPI.update.mockResolvedValue({});
+    const french = {
+      ...messages,
+      "lot.qcStatus.PENDING": "En attente",
+      "lot.qcStatus.PASSED": "Conforme",
+      "lot.qcStatus.FAILED": "Non conforme",
+      "lot.qcStatus.QUARANTINED": "En quarantaine",
+      "lot.status.ACTIVE": "Actif",
+      "lot.status.IN_USE": "Entamé",
+      "lot.status.QUARANTINED": "Isolé",
+    };
+    render(
+      <IntlProvider locale="fr" messages={french}>
+        <LotEntryModal
+          open
+          onClose={vi.fn()}
+          onSave={vi.fn()}
+          lot={{
+            id: 21,
+            inventoryItem: { id: "MALARIA_RDT" },
+            lotNumber: "LOT-21",
+            currentQuantity: 4,
+            status: "ACTIVE",
+            qcStatus: "PASSED",
+          }}
+        />
+      </IntlProvider>,
+    );
+    const optionTexts = () =>
+      screen.getAllByRole("option").map((option) => option.textContent);
+
+    fireEvent.click(
+      screen.getByRole("combobox", { name: messages["lot.qcStatus"] }),
+    );
+    expect(optionTexts()).toEqual([
+      "En attente",
+      "Conforme",
+      "Non conforme",
+      "En quarantaine",
+    ]);
+    fireEvent.click(screen.getByRole("option", { name: "Non conforme" }));
+
+    fireEvent.click(
+      screen.getByRole("combobox", { name: messages["lot.status"] }),
+    );
+    expect(optionTexts()).toEqual(["Actif", "Entamé", "Isolé"]);
+    fireEvent.click(screen.getByRole("option", { name: "Entamé" }));
+
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() =>
+      expect(InventoryLotAPI.update).toHaveBeenCalledWith(
+        21,
+        expect.objectContaining({ qcStatus: "FAILED", status: "IN_USE" }),
+      ),
+    );
+  });
+});

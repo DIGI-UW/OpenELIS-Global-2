@@ -250,6 +250,36 @@ describe("InventoryItemForm — item type is a tag now", () => {
     expect(InventoryItemAPI.create).not.toHaveBeenCalled();
   });
 
+  it("shows the example placeholders from the message bundle", async () => {
+    const french = {
+      ...messages,
+      "catalog.item.units.placeholder": "p. ex. mL, tests, kits",
+      "catalog.item.storageRequirements.placeholder":
+        "p. ex. conserver entre 2 et 8 °C, à l’abri de la lumière",
+      "catalog.item.compatibleAnalyzers.placeholder": "p. ex. GeneXpert, Cobas",
+    };
+    render(
+      <IntlProvider locale="fr" messages={french}>
+        <NotificationContext.Provider value={notificationContext}>
+          <InventoryItemForm open onClose={vi.fn()} onSave={vi.fn()} />
+        </NotificationContext.Provider>
+      </IntlProvider>,
+    );
+
+    expect(await screen.findByLabelText(/units/i)).toHaveAttribute(
+      "placeholder",
+      "p. ex. mL, tests, kits",
+    );
+    expect(screen.getByLabelText(/storage requirements/i)).toHaveAttribute(
+      "placeholder",
+      "p. ex. conserver entre 2 et 8 °C, à l’abri de la lumière",
+    );
+    expect(screen.getByLabelText(/compatible analyzers/i)).toHaveAttribute(
+      "placeholder",
+      "p. ex. GeneXpert, Cobas",
+    );
+  });
+
   it("says this defines a kind of item, not a delivery of one", async () => {
     await renderForm();
 
