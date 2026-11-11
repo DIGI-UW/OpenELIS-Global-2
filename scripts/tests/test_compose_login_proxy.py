@@ -65,6 +65,10 @@ class ComposeLoginProxyTest(unittest.TestCase):
                 bridge_networks = services["openelis-analyzer-bridge"]["networks"]
                 shared = set(proxy_networks) & set(bridge_networks)
                 self.assertTrue(shared, "Nginx must have a network route to the Bridge upstream")
+                if files[-1].endswith(("docker-compose.worktree.yml", "docker-compose.ci-parity-isolated.yml")):
+                    for network in proxy_networks.values():
+                        self.assertFalse((network or {}).get("ipv4_address"),
+                                         "Isolated networks must use Docker-assigned proxy addresses")
                 aliases = [alias for network in shared for alias in
                            (bridge_networks[network] or {}).get("aliases", [])]
                 self.assertIn("bridge.openelis.org", aliases)
