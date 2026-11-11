@@ -350,6 +350,7 @@ function ExternalConnectionAddModify() {
                           id="basic-auth-username"
                           type="text"
                           labelText=""
+                          maxLength={255}
                           value={username}
                           onChange={handleFieldChange(setUsername)}
                         />
@@ -399,6 +400,7 @@ function ExternalConnectionAddModify() {
                         id: "externalconnections.uri.placeholder",
                       })}
                       required={true}
+                      maxLength={255}
                       value={uri}
                       onChange={handleFieldChange(setUri)}
                     />

@@ -72,6 +72,45 @@ public class ExternalConnectionRestControllerTest extends BaseWebContextSensitiv
                 .contains("\"message\":\"Email, SMS and WhatsApp are set up on the Notifications > Channels page.\""));
     }
 
+    @Test
+    public void anAddressLongerThanTheColumnIsRefusedWithTheReason() throws Exception {
+        MvcResult result = save("{\"externalConnection\":{\"programmedConnection\":\"INFO_HIGHWAY\","
+                + "\"activeAuthenticationType\":\"NONE\",\"uri\":\"https://example.org/" + "a".repeat(260) + "\"}}");
+
+        assertEquals(400, result.getResponse().getStatus());
+        assertTrue(result.getResponse().getContentAsString(),
+                result.getResponse().getContentAsString().contains("at most 255 characters"));
+    }
+
+    @Test
+    public void aUsernameLongerThanTheColumnIsRefusedWithTheReason() throws Exception {
+        MvcResult result = save("{\"externalConnection\":{\"programmedConnection\":\"INFO_HIGHWAY\","
+                + "\"activeAuthenticationType\":\"BASIC\",\"uri\":\"https://example.org/fhir\"},"
+                + "\"basicAuthenticationData\":{\"username\":\"" + "u".repeat(256) + "\",\"password\":\"pw\"}}");
+
+        assertEquals(400, result.getResponse().getStatus());
+        assertTrue(result.getResponse().getContentAsString(),
+                result.getResponse().getContentAsString().contains("username can have at most 255"));
+    }
+
+    @Test
+    public void aPasswordTooLongToStoreEncryptedIsRefusedWithTheReason() throws Exception {
+        MvcResult result = save("{\"externalConnection\":{\"programmedConnection\":\"INFO_HIGHWAY\","
+                + "\"activeAuthenticationType\":\"BASIC\",\"uri\":\"https://example.org/fhir\"},"
+                + "\"basicAuthenticationData\":{\"username\":\"lab\",\"password\":\"" + "p".repeat(256) + "\"}}");
+
+        assertEquals(400, result.getResponse().getStatus());
+        assertTrue(result.getResponse().getContentAsString(),
+                result.getResponse().getContentAsString().contains("password is too long"));
+    }
+
+    private MvcResult save(String json) throws Exception {
+        return super.mockMvc
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/rest/ExternalConnection").contentType(MediaType.APPLICATION_JSON_VALUE).content(json))
+                .andReturn();
+    }
+
     @SuppressWarnings("unchecked")
     @Test
     public void showExternalConnection_shouldReturnExternalConnectionGivenId() throws Exception {

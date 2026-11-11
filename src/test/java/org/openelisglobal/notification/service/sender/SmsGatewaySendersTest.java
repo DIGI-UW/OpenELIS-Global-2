@@ -139,14 +139,35 @@ public class SmsGatewaySendersTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void smppPasswordTooLongForSmppNeverShowsThePassword() throws Exception {
-        smsc = new FakeSmsc("smpp-user", "smpp-pw");
-        configureSmpp("smpp://127.0.0.1:" + smsc.port, "smpp-user", "secret-longer-than-8");
+    public void smppPasswordTooLongForSmppIsRefusedBeforeConnecting() {
+        configureSmpp("smpp://127.0.0.1:" + freePort(), "smpp-user", "secret-longer-than-8");
 
         DeliveryException e = expectFailure(() -> smppSender.send(sms("+256700000012", "Hello")));
 
-        assertEquals(Code.AUTHENTICATION, e.getCode());
+        assertEquals("checked before any connection, so the SMPP library never logs it", Code.AUTHENTICATION,
+                e.getCode());
         assertFalse(e.getMessage(), e.getMessage().contains("secret-longer-than-8"));
+    }
+
+    @Test
+    public void smppUsernameTooLongForSmppIsRefusedBeforeConnecting() {
+        configureSmpp("smpp://127.0.0.1:" + freePort(), "a-system-id-over-15", "smpp-pw");
+
+        DeliveryException e = expectFailure(() -> smppSender.send(sms("+256700000013", "Hello")));
+
+        assertEquals(Code.AUTHENTICATION, e.getCode());
+    }
+
+    @Test
+    public void smppRefusalCodeIsExplainedInPlainWords() throws Exception {
+        smsc = new FakeSmsc("smpp-user", "smpp-pw");
+        smsc.refuseSubmitWith = SMPPConstant.STAT_ESME_RINVDSTADR;
+        configureSmpp("smpp://127.0.0.1:" + smsc.port, "smpp-user", "smpp-pw");
+
+        DeliveryException e = expectFailure(() -> smppSender.send(sms("+256700000014", "Hello")));
+
+        assertEquals(Code.REJECTED, e.getCode());
+        assertTrue(e.getMessage(), e.getMessage().contains("invalid destination number"));
     }
 
     @Test
@@ -295,6 +316,7 @@ public class SmsGatewaySendersTest extends BaseWebContextSensitiveTest {
         final int port;
         final AtomicReference<String> boundAs = new AtomicReference<>();
         final List<SubmitSm> received = new CopyOnWriteArrayList<>();
+        volatile int refuseSubmitWith;
         private final SMPPServerSessionListener listener;
         private final Thread acceptor;
 
@@ -326,6 +348,9 @@ public class SmsGatewaySendersTest extends BaseWebContextSensitiveTest {
 
         @Override
         public MessageId onAcceptSubmitSm(SubmitSm submitSm, SMPPServerSession source) throws ProcessRequestException {
+            if (refuseSubmitWith != 0) {
+                throw new ProcessRequestException("refused", refuseSubmitWith);
+            }
             received.add(submitSm);
             try {
                 return new MessageId("1");

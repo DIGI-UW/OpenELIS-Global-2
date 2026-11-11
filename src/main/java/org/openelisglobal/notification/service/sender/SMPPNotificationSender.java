@@ -45,6 +45,8 @@ import org.springframework.stereotype.Component;
 public class SMPPNotificationSender {
 
     static final int DEFAULT_SMPP_PORT = 2775;
+    static final int MAX_SYSTEM_ID_LENGTH = 15;
+    static final int MAX_PASSWORD_LENGTH = 8;
 
     @Value("${org.openelisglobal.smsc.serviceType:CMT}")
     private String serviceType;
@@ -58,13 +60,16 @@ public class SMPPNotificationSender {
         ConfigurationProperties properties = ConfigurationProperties.getInstance();
         URI smsc = smscAddress(properties.getPropertyValue(Property.PATIENT_RESULTS_SMPP_SMS_ADDRESS));
         int port = smsc.getPort() == -1 ? DEFAULT_SMPP_PORT : smsc.getPort();
+        String username = properties.getPropertyValue(Property.PATIENT_RESULTS_SMPP_SMS_USERNAME);
+        String password = properties.getPropertyValue(Property.PATIENT_RESULTS_SMPP_SMS_PASSWORD);
+        if (tooLong(username, MAX_SYSTEM_ID_LENGTH) || tooLong(password, MAX_PASSWORD_LENGTH)) {
+            throw new DeliveryException(Code.AUTHENTICATION,
+                    MessageUtil.getMessage("delivery.error.smppCredentialsTooLong"));
+        }
         SMPPSession session = new SMPPSession();
         try {
-            String systemId = session.connectAndBind(smsc.getHost(), port,
-                    new BindParameter(BindType.BIND_TX,
-                            properties.getPropertyValue(Property.PATIENT_RESULTS_SMPP_SMS_USERNAME),
-                            properties.getPropertyValue(Property.PATIENT_RESULTS_SMPP_SMS_PASSWORD),
-                            bindParamSystemType, TypeOfNumber.UNKNOWN, NumberingPlanIndicator.UNKNOWN, null));
+            String systemId = session.connectAndBind(smsc.getHost(), port, new BindParameter(BindType.BIND_TX, username,
+                    password, bindParamSystemType, TypeOfNumber.UNKNOWN, NumberingPlanIndicator.UNKNOWN, null));
             LogEvent.logDebug(this.getClass().getSimpleName(), "send",
                     "Connected with SMPP with system id {" + systemId + "}");
         } catch (IOException e) {
@@ -80,9 +85,8 @@ public class SMPPNotificationSender {
                     notification.getMessage().getBytes(StandardCharsets.UTF_8));
             LogEvent.logDebug(this.getClass().getSimpleName(), "send", "sms messageId: " + messageId);
         } catch (NegativeResponseException e) {
-            throw new DeliveryException(Code.REJECTED,
-                    MessageUtil.getMessage("delivery.error.gatewayRefused", new Object[] { "SMPP", e.getMessage() }),
-                    e);
+            throw new DeliveryException(Code.REJECTED, MessageUtil.getMessage("delivery.error.gatewayRefused",
+                    new Object[] { "SMPP", refusalReason(e.getCommandStatus(), e.getMessage()) }), e);
         } catch (PDUException | ResponseTimeoutException | InvalidResponseException | IOException
                 | IllegalArgumentException e) {
             throw new DeliveryException(Code.OTHER,
@@ -90,6 +94,20 @@ public class SMPPNotificationSender {
         } finally {
             session.unbindAndClose();
         }
+    }
+
+    private static boolean tooLong(String value, int max) {
+        return value != null && value.getBytes(StandardCharsets.US_ASCII).length > max;
+    }
+
+    static String refusalReason(int commandStatus, String fallback) {
+        String status = String.format("0x%08X", commandStatus);
+        String key = "delivery.smpp.status." + commandStatus;
+        String words = MessageUtil.getMessage(key);
+        if (words == null || words.isBlank() || words.equals(key)) {
+            return fallback == null ? status : fallback;
+        }
+        return words + " (" + status + ")";
     }
 
     static URI smscAddress(String address) {
