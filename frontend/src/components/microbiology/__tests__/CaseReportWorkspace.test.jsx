@@ -110,6 +110,21 @@ it("allows partial release by a results technician without final-release rights"
     screen.queryByRole("button", { name: t("finalRelease") }),
   ).not.toBeInTheDocument();
 });
+it("says the server did not answer when a release gets a gateway error", async () => {
+  const service = show({ canWrite: true, canValidate: false });
+  service.releaseReport.mockRejectedValue(
+    Object.assign(new Error("request failed"), { response: { status: 502 } }),
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("partialRelease") }),
+  );
+  expect(
+    await screen.findByText(
+      "The server did not answer, and the change may not be saved. Check the connection, then reload the case before you try again.",
+    ),
+  ).toBeVisible();
+  expect(screen.queryByText(t("saveError"))).not.toBeInTheDocument();
+});
 it("offers no release or selection controls for direct-link readers", async () => {
   show({ canWrite: false, canValidate: false });
   await screen.findByText("Microbiology unit");

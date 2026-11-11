@@ -194,6 +194,32 @@ it("keeps a failed pick open and shows the error inside the active dialog", asyn
   ).toBeEnabled();
 });
 
+it("says the server did not answer when a pick gets no response", async () => {
+  const service = api([]);
+  service.pickIsolate.mockRejectedValue(
+    Object.assign(new Error("request failed"), { response: { status: 0 } }),
+  );
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Pick isolate" }));
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText("Source culture row"), {
+    target: { value: "r1" },
+  });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  expect(
+    await within(dialog).findByText(
+      "The server did not answer, and the change may not be saved. Check the connection, then reload the case before you try again.",
+    ),
+  ).toBeVisible();
+  expect(
+    within(dialog).queryByText(
+      messages["microbiology.isolateWorkspace.saveError"],
+    ),
+  ).not.toBeInTheDocument();
+});
+
 it("requires a reason and valid confidence before submitting a versioned reidentification", async () => {
   const service = api([
     {

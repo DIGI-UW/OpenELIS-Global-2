@@ -20,6 +20,7 @@ import {
 } from "@carbon/react";
 import { returnFocus } from "./returnFocus";
 import { useOnline } from "./OfflineNotice";
+import { serverUnreachable } from "../utils/requestOutcome";
 
 export function MicrobiologyReportBlock({ report }) {
   const intl = useIntl(),
@@ -203,8 +204,8 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       setState(next);
       setVersionId(next.versions[next.versions.length - 1].id);
       onChanged?.();
-    } catch {
-      setError(true);
+    } catch (failure) {
+      setError(serverUnreachable(failure.response) ? "unreachable" : true);
     } finally {
       setBusy(false);
       returnFocus(trigger);
@@ -252,7 +253,13 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       {error && (
         <InlineNotification
           kind="error"
-          title={t("saveError")}
+          title={
+            error === "unreachable"
+              ? intl.formatMessage({
+                  id: "microbiology.case.serverUnreachable",
+                })
+              : t("saveError")
+          }
           hideCloseButton
         />
       )}

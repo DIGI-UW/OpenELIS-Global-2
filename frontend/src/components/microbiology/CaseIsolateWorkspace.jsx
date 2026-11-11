@@ -36,9 +36,11 @@ import ReferralStatusTag from "../order/steps/referOut/referralStatusTag";
 import OrderReferOutForm from "../order/steps/referOut/OrderReferOutForm";
 import { MODAL_FIRST_FIELD, useReturnFocus } from "./returnFocus";
 import OfflineNotice, { useOnline } from "./OfflineNotice";
+import { serverUnreachable } from "../utils/requestOutcome";
 
 const labels = {
   referred: "label.results.history.event.REFERRAL",
+  unreachable: "microbiology.case.serverUnreachable",
 
   title: "microbiology.case.isolates",
   gramStain: "microbiology.isolate.gramStain",
@@ -405,7 +407,13 @@ export default function CaseIsolateWorkspace({
       }
     } catch (failure) {
       if (!mounted.current) return;
-      setError(failure.response?.status === 409 ? "conflict" : "saveError");
+      setError(
+        failure.response?.status === 409
+          ? "conflict"
+          : serverUnreachable(failure.response)
+            ? "unreachable"
+            : "saveError",
+      );
     } finally {
       if (mounted.current) setSaving(false);
     }

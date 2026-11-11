@@ -10862,6 +10862,7 @@
   "microbiology.case.preliminaryOrganism": "Preliminary organism",
   "microbiology.case.recordActivity": "Record activity",
   "microbiology.case.sampleItem": "Sample item",
+  "microbiology.case.serverUnreachable": "The server did not answer, and the change may not be saved. Check the connection, then reload the case before you try again.",
   "microbiology.case.setup": "Inoculation",
   "microbiology.case.setup.hint": "Record the initial setup, media, or incubation step for this culture case.",
   "microbiology.case.significance": "Significance",

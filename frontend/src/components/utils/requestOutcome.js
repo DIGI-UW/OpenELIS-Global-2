@@ -20,3 +20,7 @@ export const serverMessage = (res) =>
   res && typeof res === "object" && res.status !== 0
     ? res.message || res.error || ""
     : "";
+
+/** No answer: a fetch that failed (0), or the proxy in front of a stopped server. */
+export const serverUnreachable = (res) =>
+  [0, 502, 503, 504].includes(res?.status);
