@@ -52,10 +52,32 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private Timestamp collectionDate;
     private String statusId;
     private String collector;
+    private String collectionConditions;
+    private String collectionMethod;
+    private String sampleTemperature;
+    private String specimenOrigin;
+    private String container;
+    private Integer cultureSetNumber;
+    private String bodySite;
+    private String locationDetails;
+    private String gpsLatitude;
+    private String gpsLongitude;
+    private Timestamp receivedDate;
     private boolean rejected = false;
     private String rejectReasonId;
     private boolean voided = false;
+    private boolean labPerformedSampling = false;
     private String voidReason;
+    private String receivedById;
+    private String arrivalCondition;
+    private BigDecimal arrivalTemperature;
+    private String arrivalRecordedById;
+    private Timestamp arrivalRecordedAt;
+    private transient boolean arrivalTemperatureRejected;
+    private transient boolean receivedByDefaulted;
+
+    private String collectionLocationId;
+    private String collectionNotes;
 
     // ========== Aliquoting Support Fields (Feature 001-sample-management)
     // ==========
@@ -234,6 +256,78 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
         this.collector = collector;
     }
 
+    public String getCollectionConditions() {
+        return collectionConditions;
+    }
+
+    public void setCollectionConditions(String collectionConditions) {
+        this.collectionConditions = collectionConditions;
+    }
+
+    public String getCollectionMethod() {
+        return collectionMethod;
+    }
+
+    public void setCollectionMethod(String collectionMethod) {
+        this.collectionMethod = collectionMethod;
+    }
+
+    public String getSampleTemperature() {
+        return sampleTemperature;
+    }
+
+    public void setSampleTemperature(String sampleTemperature) {
+        this.sampleTemperature = sampleTemperature;
+    }
+
+    public String getSpecimenOrigin() {
+        return specimenOrigin;
+    }
+
+    public void setSpecimenOrigin(String specimenOrigin) {
+        this.specimenOrigin = specimenOrigin;
+    }
+
+    public String getContainer() {
+        return container;
+    }
+
+    public void setContainer(String container) {
+        this.container = container;
+    }
+
+    public String getLocationDetails() {
+        return locationDetails;
+    }
+
+    public void setLocationDetails(String locationDetails) {
+        this.locationDetails = locationDetails;
+    }
+
+    public String getGpsLatitude() {
+        return gpsLatitude;
+    }
+
+    public void setGpsLatitude(String gpsLatitude) {
+        this.gpsLatitude = gpsLatitude;
+    }
+
+    public String getGpsLongitude() {
+        return gpsLongitude;
+    }
+
+    public void setGpsLongitude(String gpsLongitude) {
+        this.gpsLongitude = gpsLongitude;
+    }
+
+    public Timestamp getReceivedDate() {
+        return receivedDate;
+    }
+
+    public void setReceivedDate(Timestamp receivedDate) {
+        this.receivedDate = receivedDate;
+    }
+
     @Override
     public String getTableId() {
         return SampleItemServiceImpl.getSampleItemTableReferenceId();
@@ -291,6 +385,102 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     public void setVoidReason(String voidReason) {
         this.voidReason = voidReason;
+    }
+
+    public boolean isLabPerformedSampling() {
+        return labPerformedSampling;
+    }
+
+    public void setLabPerformedSampling(boolean labPerformedSampling) {
+        this.labPerformedSampling = labPerformedSampling;
+    }
+
+    /** The system user who received the sample at the laboratory (OGC-1424). */
+    public String getReceivedById() {
+        return receivedById;
+    }
+
+    public void setReceivedById(String receivedById) {
+        this.receivedById = receivedById;
+    }
+
+    /**
+     * The condition the sample arrived in, an {@code ArrivalCondition} name, or
+     * null when not recorded (OGC-1424).
+     */
+    public String getArrivalCondition() {
+        return arrivalCondition;
+    }
+
+    public void setArrivalCondition(String arrivalCondition) {
+        this.arrivalCondition = arrivalCondition;
+    }
+
+    /** The measured temperature on arrival in degrees C, optional. */
+    public BigDecimal getArrivalTemperature() {
+        return arrivalTemperature;
+    }
+
+    public void setArrivalTemperature(BigDecimal arrivalTemperature) {
+        this.arrivalTemperature = arrivalTemperature;
+    }
+
+    public String getArrivalRecordedById() {
+        return arrivalRecordedById;
+    }
+
+    public void setArrivalRecordedById(String arrivalRecordedById) {
+        this.arrivalRecordedById = arrivalRecordedById;
+    }
+
+    /**
+     * Set when a step save sent a measured temperature that could not be stored
+     * (not a number, or outside -100 to 60 °C), so the save keeps the stored value
+     * instead of clearing it. Not persisted.
+     */
+    /**
+     * Set when the receiver was not chosen but defaulted to the saving user, so an
+     * update only keeps it when the receipt itself is recorded in that save. Not
+     * persisted.
+     */
+    public boolean isReceivedByDefaulted() {
+        return receivedByDefaulted;
+    }
+
+    public void setReceivedByDefaulted(boolean receivedByDefaulted) {
+        this.receivedByDefaulted = receivedByDefaulted;
+    }
+
+    public boolean isArrivalTemperatureRejected() {
+        return arrivalTemperatureRejected;
+    }
+
+    public void setArrivalTemperatureRejected(boolean arrivalTemperatureRejected) {
+        this.arrivalTemperatureRejected = arrivalTemperatureRejected;
+    }
+
+    public Timestamp getArrivalRecordedAt() {
+        return arrivalRecordedAt;
+    }
+
+    public void setArrivalRecordedAt(Timestamp arrivalRecordedAt) {
+        this.arrivalRecordedAt = arrivalRecordedAt;
+    }
+
+    public String getCollectionLocationId() {
+        return collectionLocationId;
+    }
+
+    public void setCollectionLocationId(String collectionLocationId) {
+        this.collectionLocationId = collectionLocationId;
+    }
+
+    public String getCollectionNotes() {
+        return collectionNotes;
+    }
+
+    public void setCollectionNotes(String collectionNotes) {
+        this.collectionNotes = collectionNotes;
     }
 
     // ========== Aliquoting Getters/Setters (Feature 001-sample-management)
@@ -451,4 +641,23 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
         }
         return level;
     }
+
+    public Integer getCultureSetNumber() {
+        return cultureSetNumber;
+    }
+
+    public void setCultureSetNumber(Integer value) {
+        if (value != null && value < 1)
+            throw new IllegalArgumentException("Set number must be positive");
+        cultureSetNumber = value;
+    }
+
+    public String getBodySite() {
+        return bodySite;
+    }
+
+    public void setBodySite(String value) {
+        bodySite = value;
+    }
+
 }

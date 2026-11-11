@@ -2,8 +2,10 @@ package org.openelisglobal.coldstorage;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -13,6 +15,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
+import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class FreezerServiceTest extends BaseWebContextSensitiveTest {
@@ -23,6 +26,8 @@ public class FreezerServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setup() throws Exception {
         executeDataSetWithStateManagement("testdata/freezer.xml");
+        // The fixture seeds storage_device ids 1-3 without advancing the sequence.
+        resyncSequence("clinlims.storage_device_seq", "clinlims.storage_device");
     }
 
     @Test
@@ -111,6 +116,113 @@ public class FreezerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void createFreezer_shouldAllowReusingNameFromADeletedFreezer() {
+        // Regression test for issue #3904: findByName only checks deleted=false, but
+        // freezer.name previously had an unconditional unique index/constraint, so a
+        // soft-deleted name could never be reused - the app thought it was free, but
+        // the DB rejected the insert with a raw, uncaught constraint violation
+        // (surfaced to users as a generic "internal storage error").
+        Freezer first = new Freezer();
+        first.setName("pcr");
+        first.setProtocol(Freezer.Protocol.TCP);
+        first.setHost("192.168.1.201");
+        first.setPort(502);
+        first.setSlaveId(11);
+        first.setTemperatureRegister(0);
+        first.setTemperatureScale(BigDecimal.ONE);
+        first.setTemperatureOffset(BigDecimal.ZERO);
+
+        Freezer createdFirst = freezerService.createFreezer(first, 1L, "1");
+        freezerService.deleteFreezer(createdFirst.getId());
+
+        Freezer second = new Freezer();
+        second.setName("pcr");
+        second.setProtocol(Freezer.Protocol.TCP);
+        second.setHost("192.168.1.202");
+        second.setPort(502);
+        second.setSlaveId(12);
+        second.setTemperatureRegister(0);
+        second.setTemperatureScale(BigDecimal.ONE);
+        second.setTemperatureOffset(BigDecimal.ZERO);
+
+        Freezer createdSecond = freezerService.createFreezer(second, 1L, "1");
+
+        assertNotNull("Freezer reusing a deleted freezer's name should be created", createdSecond.getId());
+        assertNotEquals("The reused-name freezer should be a distinct row from the deleted one", createdFirst.getId(),
+                createdSecond.getId());
+    }
+
+    @Test
+    public void createFreezer_shouldAcceptANameLongerThanTheDeviceCodeLimit() {
+        // Keep the derived code inside the validator's 10-character limit (issue
+        // #3904).
+        Freezer freezer = new Freezer();
+        freezer.setName("Vaccine Fridge 01");
+        freezer.setProtocol(Freezer.Protocol.TCP);
+        freezer.setHost("192.168.1.205");
+        freezer.setPort(502);
+        freezer.setSlaveId(15);
+        freezer.setTemperatureRegister(0);
+        freezer.setTemperatureScale(BigDecimal.ONE);
+        freezer.setTemperatureOffset(BigDecimal.ZERO);
+        StorageDevice deviceRequest = new StorageDevice();
+        deviceRequest.setType("freezer");
+        freezer.setStorageDevice(deviceRequest);
+
+        Freezer created = freezerService.createFreezer(freezer, 1L, "1");
+
+        assertNotNull("Freezer with a long name should be created", created.getStorageDevice());
+        assertTrue("Derived device code must fit the code-length limit",
+                created.getStorageDevice().getCode().length() <= 10);
+    }
+
+    @Test
+    public void createFreezer_shouldNotReuseADeletedDevicesStorageDeviceCode() {
+        // Regression test for issue #3904: deleteFreezer only flips freezer.deleted, so
+        // the storage_device row it auto-created survives. Recreating the freezer under
+        // the same name derived the same code again and collided with
+        // uk_device_code_in_room (parent_room_id, code). The name is deliberately long
+        // enough to fill the 10-character code budget, so the suffixed retry has to
+        // stay
+        // inside it rather than being rejected by the code-length validator.
+        Freezer first = new Freezer();
+        first.setName("Freezer001");
+        first.setProtocol(Freezer.Protocol.TCP);
+        first.setHost("192.168.1.203");
+        first.setPort(502);
+        first.setSlaveId(13);
+        first.setTemperatureRegister(0);
+        first.setTemperatureScale(BigDecimal.ONE);
+        first.setTemperatureOffset(BigDecimal.ZERO);
+        StorageDevice firstDeviceRequest = new StorageDevice();
+        firstDeviceRequest.setType("freezer");
+        first.setStorageDevice(firstDeviceRequest);
+
+        Freezer createdFirst = freezerService.createFreezer(first, 1L, "1");
+        String firstCode = createdFirst.getStorageDevice().getCode();
+        freezerService.deleteFreezer(createdFirst.getId());
+
+        Freezer second = new Freezer();
+        second.setName("Freezer001");
+        second.setProtocol(Freezer.Protocol.TCP);
+        second.setHost("192.168.1.204");
+        second.setPort(502);
+        second.setSlaveId(14);
+        second.setTemperatureRegister(0);
+        second.setTemperatureScale(BigDecimal.ONE);
+        second.setTemperatureOffset(BigDecimal.ZERO);
+        StorageDevice secondDeviceRequest = new StorageDevice();
+        secondDeviceRequest.setType("freezer");
+        second.setStorageDevice(secondDeviceRequest);
+
+        Freezer createdSecond = freezerService.createFreezer(second, 1L, "1");
+
+        assertNotNull("Recreated freezer should have an auto-created storage device", createdSecond.getStorageDevice());
+        assertNotEquals("Recreated device must not reuse the deleted device's code in the same room", firstCode,
+                createdSecond.getStorageDevice().getCode());
+    }
+
+    @Test
     public void createFreezer_shouldCreateNewFreezer() {
         Freezer newFreezer = new Freezer();
         newFreezer.setName("New Test Freezer");
@@ -188,17 +300,49 @@ public class FreezerServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void deleteFreezer_shouldSoftDeleteFreezer() {
+    public void deleteFreezer_shouldMarkDeletedAndExcludeFromListings() {
         Long freezerId = 100L;
         Freezer freezer = freezerService.findById(freezerId).orElse(null);
         assertNotNull("Freezer should exist before deletion", freezer);
-        assertTrue("Freezer should be active before deletion", freezer.getActive());
+        assertFalse("Freezer should not be deleted initially", Boolean.TRUE.equals(freezer.getDeleted()));
 
         freezerService.deleteFreezer(freezerId);
 
         Freezer deletedFreezer = freezerService.findById(freezerId).orElse(null);
-        assertNotNull("Freezer should still exist (soft delete)", deletedFreezer);
-        assertFalse("Freezer should be inactive after deletion", deletedFreezer.getActive());
+        assertNotNull("Freezer row should still exist after soft delete", deletedFreezer);
+        assertTrue("Freezer should be flagged deleted", deletedFreezer.getDeleted());
+
+        assertTrue("Deleted freezer should not appear in getAllFreezers",
+                freezerService.getAllFreezers("").stream().noneMatch(f -> freezerId.equals(f.getId())));
+        assertTrue("Deleted freezer should not appear in the active list",
+                freezerService.getActiveFreezers().stream().noneMatch(f -> freezerId.equals(f.getId())));
+    }
+
+    @Test
+    public void getAllFreezersForReporting_shouldStillIncludeDeletedFreezers() {
+        // A device list cleanup must not remove a device's reading history from the
+        // daily-log/excursion/audit-trail reports an inspector pulls.
+        Long freezerId = 100L;
+        freezerService.deleteFreezer(freezerId);
+
+        assertTrue("Deleted freezer must remain visible to the reporting paths",
+                freezerService.getAllFreezersForReporting().stream().anyMatch(f -> freezerId.equals(f.getId())));
+        assertTrue("Deleted freezer must stay out of the settings/dashboard list",
+                freezerService.getAllFreezers("").stream().noneMatch(f -> freezerId.equals(f.getId())));
+    }
+
+    @Test
+    public void setDeviceStatus_shouldRejectReactivatingDeletedFreezer() {
+        Long freezerId = 100L;
+        freezerService.deleteFreezer(freezerId);
+
+        try {
+            freezerService.setDeviceStatus(freezerId, true);
+            fail("Toggling status on a deleted freezer should throw");
+        } catch (IllegalArgumentException expected) {
+            // expected: a deleted freezer cannot be re-activated via the enable/disable
+            // toggle, closing the resurrection path from issue #3743.
+        }
     }
 
     @Test

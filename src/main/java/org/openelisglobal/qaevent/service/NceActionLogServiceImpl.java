@@ -3,6 +3,7 @@ package org.openelisglobal.qaevent.service;
 import java.util.List;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.qaevent.bean.CapaRegisterItem;
 import org.openelisglobal.qaevent.dao.NceActionLogDAO;
 import org.openelisglobal.qaevent.valueholder.NceActionLog;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class NceActionLogServiceImpl extends AuditableBaseObjectServiceImpl<NceActionLog, String>
+public class NceActionLogServiceImpl extends AuditableBaseObjectServiceImpl<NceActionLog, Integer>
         implements NceActionLogService {
 
     @Autowired
@@ -18,12 +19,19 @@ public class NceActionLogServiceImpl extends AuditableBaseObjectServiceImpl<NceA
 
     public NceActionLogServiceImpl() {
         super(NceActionLog.class);
+        this.auditTrailLog = true;
     }
 
     @Override
     @Transactional
-    public List<NceActionLog> getNceActionLogByNceId(String nceId) throws LIMSRuntimeException {
+    public List<NceActionLog> getNceActionLogByNceId(Integer nceId) throws LIMSRuntimeException {
         return getBaseObjectDAO().getNceActionLogByNceId(nceId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CapaRegisterItem> getCapaRegister(int max) throws LIMSRuntimeException {
+        return getBaseObjectDAO().getCapaRegister(max);
     }
 
     @Override

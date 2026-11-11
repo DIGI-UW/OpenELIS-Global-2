@@ -1,5 +1,6 @@
 package org.openelisglobal.qaevent.service;
 
+import java.util.Collection;
 import java.util.List;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.qaevent.dao.NceSpecimenDAO;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class NceSpecimenServiceImpl extends AuditableBaseObjectServiceImpl<NceSpecimen, String>
+public class NceSpecimenServiceImpl extends AuditableBaseObjectServiceImpl<NceSpecimen, Integer>
         implements NceSpecimenService {
 
     @Autowired
@@ -17,11 +18,12 @@ public class NceSpecimenServiceImpl extends AuditableBaseObjectServiceImpl<NceSp
 
     public NceSpecimenServiceImpl() {
         super(NceSpecimen.class);
+        this.auditTrailLog = true;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<NceSpecimen> getSpecimenByNceId(String nceId) {
+    public List<NceSpecimen> getSpecimenByNceId(Integer nceId) {
         return baseObjectDAO.getSpecimenByNceId(nceId);
     }
 
@@ -32,7 +34,19 @@ public class NceSpecimenServiceImpl extends AuditableBaseObjectServiceImpl<NceSp
 
     @Override
     @Transactional(readOnly = true)
-    public List<NceSpecimen> getSpecimenBySampleItemId(String sampleId) {
+    public List<NceSpecimen> getSpecimenBySampleItemId(Integer sampleId) {
         return baseObjectDAO.getSpecimenBySampleId(sampleId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByNceIdAndSampleItemId(Integer nceId, Integer sampleItemId) {
+        return baseObjectDAO.existsByNceIdAndSampleItemId(nceId, sampleItemId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Integer> findAnalysisIdsWithOpenQcHold(Collection<Integer> analysisIds) {
+        return baseObjectDAO.findAnalysisIdsWithOpenQcHold(analysisIds);
     }
 }

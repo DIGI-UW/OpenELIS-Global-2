@@ -19,4 +19,16 @@
   <include relativeToChangelogFile="true" file="011-create-analyzer-pending-code.xml"/>
   <include relativeToChangelogFile="true" file="012-add-organization-type-hierarchy-level.xml"/>
   <!-- 013 moved to 3.4.14.x for 014-hjra-file-stream-alignment isolation -->
+  <include relativeToChangelogFile="true" file="014-sample-collection-workflow-menus.xml"/>
+  <include relativeToChangelogFile="true" file="015-add-sample-collection-uoms.xml"/>
+  <include relativeToChangelogFile="true" file="016-add-collection-conditions-column.xml"/>
+  <include relativeToChangelogFile="true" file="017-add-received-date-to-sample-item.xml"/>
+  <include relativeToChangelogFile="true" file="018-uom-type-mapping-table.xml"/>
+  <include relativeToChangelogFile="true" file="019-add-organization-type-allow-free-text.xml"/>
+  <include relativeToChangelogFile="true" file="020-vector-surveillance-schema.xml"/>
+  <include relativeToChangelogFile="true" file="021-vector-sample-domain.xml"/>
+  <include relativeToChangelogFile="true" file="022-vector-observation-types.xml"/>
+  <include relativeToChangelogFile="true" file="023-vector-dictionary-entries.xml"/>
+  <include relativeToChangelogFile="true" file="024-vector-sampling-sites.xml"/>
+  <include relativeToChangelogFile="true" file="025-split-workflow-menus.xml"/>
 </databaseChangeLog>

@@ -6,9 +6,10 @@ import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.event.SamplePatientUpdateDataCreatedEvent;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 @SuppressWarnings("unused")
@@ -17,8 +18,20 @@ public class SamplePatientUpdateDataCreatedEventListener {
     @Autowired
     private OdooIntegrationService odooIntegrationService;
 
+    /**
+     * Fire only AFTER the publishing transaction commits successfully.
+     *
+     * <p>
+     * The event is now published inside {@code SamplePatientEntryServiceImpl
+     * .persistData()}'s {@code @Transactional} boundary so the synchronous
+     * storage-assignment listener can fail the order save. With a plain
+     * {@code @EventListener} the {@code @Async} dispatch happened immediately on
+     * publish — which would race the rollback and create an orphan Odoo invoice for
+     * an order that never persisted. {@code AFTER_COMMIT} ties dispatch to a
+     * successful commit; on rollback this listener simply doesn't fire.
+     */
     @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleSamplePatientUpdateDataCreatedEvent(SamplePatientUpdateDataCreatedEvent event) {
         try {
             SamplePatientUpdateData updateData = event.getUpdateData();

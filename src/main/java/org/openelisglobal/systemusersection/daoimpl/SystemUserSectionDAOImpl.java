@@ -85,7 +85,7 @@ public class SystemUserSectionDAOImpl extends BaseDAOImpl<SystemUserSection, Str
             String sql = "from SystemUserSection s where s.systemUser.id = :param";
             Query<SystemUserSection> query = entityManager.unwrap(Session.class).createQuery(sql,
                     SystemUserSection.class);
-            query.setParameter("param", systemUserId);
+            query.setParameter("param", String.valueOf(systemUserId));
             list = query.list();
         } catch (RuntimeException e) {
             // bugzilla 2154

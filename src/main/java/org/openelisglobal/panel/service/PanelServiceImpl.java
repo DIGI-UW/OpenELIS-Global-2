@@ -19,6 +19,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
 
     PanelServiceImpl() {
         super(Panel.class);
+        this.auditTrailLog = true;
     }
 
     @Override
@@ -103,9 +104,6 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         if (getBaseObjectDAO().duplicatePanelExists(panel)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + panel.getPanelName());
         }
-        if (getBaseObjectDAO().duplicatePanelDescriptionExists(panel)) {
-            throw new LIMSDuplicateRecordException("Duplicate record exists for panel description");
-        }
         baseObjectDAO.clearIDMaps();
         return super.insert(panel);
     }
@@ -115,9 +113,6 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         if (getBaseObjectDAO().duplicatePanelExists(panel)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + panel.getPanelName());
         }
-        if (getBaseObjectDAO().duplicatePanelDescriptionExists(panel)) {
-            throw new LIMSDuplicateRecordException("Duplicate record exists for panel description");
-        }
         baseObjectDAO.clearIDMaps();
         return super.save(panel);
     }
@@ -126,9 +121,6 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     public Panel update(Panel panel) {
         if (getBaseObjectDAO().duplicatePanelExists(panel)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + panel.getPanelName());
-        }
-        if (getBaseObjectDAO().duplicatePanelDescriptionExists(panel)) {
-            throw new LIMSDuplicateRecordException("Duplicate record exists for panel description");
         }
         baseObjectDAO.clearIDMaps();
         return super.update(panel);

@@ -1,18 +1,12 @@
 // This handles all pages of the admin
 import LabNumberManagementPage from "./LabNumberManagementPage";
 import MenuConfigPage from "./MenuConfigPage";
-import BarcodeConfigPage from "./BarcodeConfigPage";
-import ProgramEntryPage from "./ProgramEntryPage";
-import ProviderManagementPage from "./ProviderManagementPage";
-import OrganizationManagementPage from "./OrganizationManagementPage";
 import UserManagementPage from "./UserManagementPage";
 import ReflexTestsConfigPage from "./ReflexTestsConfigPage";
-import DictionaryMenuPage from "./DictionaryMenu";
 import GeneralConfigurationsPage from "./GeneralConfigurationsPage";
 import NotifyUserPage from "./NotifyUserPage";
 import ResultReportingConfigurationPage from "./ResultReportingConfiguration";
 import BatchTestReassignmentandCancelationPage from "./BatchTestReassignmentandCancelation";
-import TestManagementPage from "./TestManagementPage";
 
 class AdminPage {
   constructor() {
@@ -28,7 +22,6 @@ class AdminPage {
       resultReportingConfig: "[data-cy='resultReportingConfiguration']",
       batchTest: "[data-cy='batchTestReassignment']",
       span: "span",
-      testManagement: "[data-cy='testManagementConfigMenu']",
     };
   }
 
@@ -36,30 +29,20 @@ class AdminPage {
     cy.visit("/MasterListsPage");
   }
 
-  goToProviderManagementPage() {
-    cy.get(this.selectors.providerManagement)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-    cy.url().should("include", "/providerMenu");
-    cy.contains("Provider Management").should("be.visible");
-    return new ProviderManagementPage();
-  }
-
-  goToOrganizationManagement() {
-    // Ensure we're on Admin tile view (not a nested route); app uses /MasterListsPage or /admin
+  ensureAdminShell() {
     cy.location("pathname").then((pathname) => {
-      if (!/^\/(MasterListsPage|admin)(\/|$|#)/.test(pathname)) {
+      if (!/^\/(MasterListsPage|admin)(\/|$)/.test(pathname)) {
         cy.visit("/MasterListsPage");
       }
     });
-    cy.get(this.selectors.organizationManagement)
+  }
+
+  openMenuConfiguration() {
+    this.ensureAdminShell();
+    cy.contains("span", "Menu Configuration", { timeout: 20000 })
       .scrollIntoView()
       .should("exist")
       .click({ force: true });
-    cy.url().should("include", "/organizationManagement");
-    cy.contains("Organization Management").should("be.visible");
-    return new OrganizationManagementPage();
   }
 
   goToLabNumberManagementPage() {
@@ -73,10 +56,7 @@ class AdminPage {
   }
 
   goToGlobalMenuConfigPage() {
-    cy.contains(this.selectors.span, "Menu Configuration")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.openMenuConfiguration();
     cy.get(this.selectors.globalMenuManagement)
       .scrollIntoView()
       .should("exist")
@@ -88,10 +68,7 @@ class AdminPage {
   }
 
   goToNonConformConfigPage() {
-    cy.contains("span", "Menu Configuration")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.openMenuConfiguration();
     cy.get("[data-cy='nonConformMenuMgmnt']")
       .scrollIntoView()
       .should("exist")
@@ -101,10 +78,7 @@ class AdminPage {
   }
 
   goToPatientConfigPage() {
-    cy.contains("span", "Menu Configuration")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.openMenuConfiguration();
     cy.get("[data-cy='patientMenuMgmnt']")
       .scrollIntoView()
       .should("exist")
@@ -114,10 +88,7 @@ class AdminPage {
   }
 
   goToStudyConfigPage() {
-    cy.contains("span", "Menu Configuration")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.openMenuConfiguration();
     cy.get("[data-cy='studyMenuMgmnt']")
       .scrollIntoView()
       .should("exist")
@@ -127,40 +98,13 @@ class AdminPage {
   }
 
   goToBillingConfigPage() {
-    cy.contains("span", "Menu Configuration")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
+    this.openMenuConfiguration();
     cy.get("[data-cy='billingMenuMgmnt']")
       .scrollIntoView()
       .should("exist")
       .click({ force: true });
 
     return new MenuConfigPage();
-  }
-
-  goToBarcodeConfigPage() {
-    cy.get(this.selectors.barcodeConfig)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-    return new BarcodeConfigPage();
-  }
-
-  goToProgramEntry() {
-    cy.get(this.selectors.programEntry)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-    return new ProgramEntryPage();
-  }
-
-  goToDictionaryMenuPage() {
-    cy.get("[data-cy='dictMenu']")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-    return new DictionaryMenuPage();
   }
 
   goToUserManagementPage() {
@@ -334,14 +278,6 @@ class AdminPage {
       .should("exist")
       .click({ force: true });
     return new BatchTestReassignmentandCancelationPage();
-  }
-
-  goToTestManagementPage() {
-    cy.get(this.selectors.testManagement)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-    return new TestManagementPage();
   }
 }
 

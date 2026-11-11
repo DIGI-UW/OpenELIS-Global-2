@@ -14,8 +14,8 @@ const renderWithIntl = (component) => {
 };
 
 describe("AlertAcknowledgeModal", () => {
-  const mockOnClose = jest.fn();
-  const mockOnSubmit = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnSubmit = vi.fn();
 
   const warningAlert = {
     id: 1,
@@ -34,7 +34,7 @@ describe("AlertAcknowledgeModal", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("renders modal when open", () => {
@@ -71,8 +71,22 @@ describe("AlertAcknowledgeModal", () => {
       />,
     );
     expect(
-      screen.getByText("Resolution comment is required for critical alerts"),
+      screen.getByText("A comment is required to acknowledge a critical alert"),
     ).toBeTruthy();
+  });
+
+  test("an acknowledged alert opens to resolve and always needs a comment", () => {
+    renderWithIntl(
+      <AlertAcknowledgeModal
+        open={true}
+        alert={{ ...warningAlert, status: "ACKNOWLEDGED" }}
+        onClose={mockOnClose}
+        onSubmit={mockOnSubmit}
+      />,
+    );
+    expect(screen.getByText("Resolve Alert")).toBeTruthy();
+    expect(screen.getByText("A resolution comment is required")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Resolve" })).toBeDisabled();
   });
 
   test("does not show required message for non-critical alerts", () => {
@@ -85,7 +99,9 @@ describe("AlertAcknowledgeModal", () => {
       />,
     );
     expect(
-      screen.queryByText("Resolution comment is required for critical alerts"),
+      screen.queryByText(
+        "A comment is required to acknowledge a critical alert",
+      ),
     ).toBeNull();
   });
 

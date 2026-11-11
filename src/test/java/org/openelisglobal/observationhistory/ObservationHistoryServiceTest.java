@@ -36,6 +36,8 @@ public class ObservationHistoryServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/observation-history.xml");
+        // Refresh this service's local cache after loading the observations.
+        observationHistoryService.refreshTypeIdCache();
     }
 
     public void testDataInDataBase() {

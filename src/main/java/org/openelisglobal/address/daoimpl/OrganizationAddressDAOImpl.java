@@ -42,7 +42,7 @@ public class OrganizationAddressDAOImpl extends BaseDAOImpl<OrganizationAddress,
         try {
             Query<OrganizationAddress> query = entityManager.unwrap(Session.class).createQuery(sql,
                     OrganizationAddress.class);
-            query.setParameter("organizationId", Integer.parseInt(organizationId));
+            query.setParameter("organizationId", organizationId);
             List<OrganizationAddress> addressPartList = query.list();
             return addressPartList;
         } catch (HibernateException e) {

@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="123-analyzer-mapping-tables" author="oe">
+        <comment>
+            Each analyzer owns its mapping to the local catalog as append-only
+            revisions: the pinned profile revision, and one row per profile test
+            and per declared answer, flagged DEFAULT or OVERRIDE. A test row
+            targets a test or a component of one. An unresolved row says why.
+        </comment>
+
+        <createSequence schemaName="clinlims" sequenceName="analyzer_mapping_seq"
+            startValue="1" incrementBy="1"/>
+        <createSequence schemaName="clinlims" sequenceName="analyzer_mapping_confirmation_seq"
+            startValue="1" incrementBy="1"/>
+
+        <createTable schemaName="clinlims" tableName="analyzer_mapping">
+            <column name="id" type="numeric(10)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_analyzer_mapping"/>
+            </column>
+            <column name="analyzer_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revision_number" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="profile_id" type="VARCHAR(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="profile_revision" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="profile_fingerprint" type="VARCHAR(71)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mapping_fingerprint" type="VARCHAR(71)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="supersedes_mapping_id" type="numeric(10)"/>
+            <column name="created_by" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint schemaName="clinlims" tableName="analyzer_mapping"
+            columnNames="analyzer_id, revision_number" constraintName="uq_analyzer_mapping_revision"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_mapping_analyzer"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_mapping"
+            baseColumnNames="analyzer_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_mapping_supersedes"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_mapping"
+            baseColumnNames="supersedes_mapping_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_mapping" referencedColumnNames="id"/>
+
+        <createTable schemaName="clinlims" tableName="analyzer_mapping_test">
+            <column name="mapping_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_row_key" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mapping_state" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="origin" type="VARCHAR(10)" defaultValue="DEFAULT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_id" type="numeric(10)"/>
+            <column name="component_id" type="VARCHAR(36)"/>
+            <column name="unresolved_reason" type="VARCHAR(12)"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addPrimaryKey schemaName="clinlims" tableName="analyzer_mapping_test"
+            columnNames="mapping_id, source_row_key" constraintName="pk_analyzer_mapping_test"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_mapping_test_mapping"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_mapping_test"
+            baseColumnNames="mapping_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_mapping" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_mapping_test_test"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_mapping_test"
+            baseColumnNames="test_id" referencedTableSchemaName="clinlims"
+            referencedTableName="test" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_mapping_test_component"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_mapping_test"
+            baseColumnNames="component_id" referencedTableSchemaName="clinlims"
+            referencedTableName="test_result_component" referencedColumnNames="id"/>
+
+        <createTable schemaName="clinlims" tableName="analyzer_mapping_result">
+            <column name="mapping_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_row_key" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="raw_value" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="mapping_state" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="origin" type="VARCHAR(10)" defaultValue="DEFAULT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_result_id" type="numeric(10)"/>
+            <column name="unresolved_reason" type="VARCHAR(12)"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addPrimaryKey schemaName="clinlims" tableName="analyzer_mapping_result"
+            columnNames="mapping_id, source_row_key, raw_value" constraintName="pk_analyzer_mapping_result"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_mapping_result_mapping"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_mapping_result"
+            baseColumnNames="mapping_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_mapping" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_mapping_result_test"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_mapping_result"
+            baseColumnNames="mapping_id, source_row_key" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_mapping_test"
+            referencedColumnNames="mapping_id, source_row_key"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_mapping_result_option"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_mapping_result"
+            baseColumnNames="test_result_id" referencedTableSchemaName="clinlims"
+            referencedTableName="test_result" referencedColumnNames="id"/>
+
+        <createTable schemaName="clinlims" tableName="analyzer_mapping_confirmation">
+            <column name="id" type="numeric(10)">
+                <constraints primaryKey="true" nullable="false"
+                    primaryKeyName="pk_analyzer_mapping_confirmation"/>
+            </column>
+            <column name="mapping_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="profile_id" type="VARCHAR(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="profile_revision" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="profile_revision_fingerprint" type="VARCHAR(71)"/>
+            <column name="mapping_fingerprint" type="VARCHAR(71)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="recognition_fingerprint" type="VARCHAR(71)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="confirmed_rows_json" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="excluded_rows_json" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="confirmed_by" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="confirmed_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="audit_event_id" type="numeric(10)"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint schemaName="clinlims" tableName="analyzer_mapping_confirmation"
+            columnNames="mapping_id" constraintName="uq_analyzer_mapping_confirmation_mapping"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_mapping_confirmation_mapping"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_mapping_confirmation"
+            baseColumnNames="mapping_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_mapping" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_mapping_confirmation_audit_event"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_mapping_confirmation"
+            baseColumnNames="audit_event_id" referencedTableSchemaName="clinlims"
+            referencedTableName="history" referencedColumnNames="id"/>
+
+        <sql>
+            ALTER TABLE clinlims.analyzer_mapping
+            ADD CONSTRAINT chk_analyzer_mapping_revision_number CHECK (revision_number &gt;= 1);
+            ALTER TABLE clinlims.analyzer_mapping
+            ADD CONSTRAINT chk_analyzer_mapping_profile_revision CHECK (profile_revision &gt;= 1);
+            ALTER TABLE clinlims.analyzer_mapping
+            ADD CONSTRAINT chk_analyzer_mapping_fingerprints
+            CHECK (profile_fingerprint ~ '^sha256:[0-9a-f]{64}$'
+                AND mapping_fingerprint ~ '^sha256:[0-9a-f]{64}$');
+            ALTER TABLE clinlims.analyzer_mapping_test
+            ADD CONSTRAINT chk_analyzer_mapping_test_state
+            CHECK (mapping_state IN ('BOUND', 'EXCLUDED', 'UNRESOLVED'));
+            ALTER TABLE clinlims.analyzer_mapping_test
+            ADD CONSTRAINT chk_analyzer_mapping_test_origin CHECK (origin IN ('DEFAULT', 'OVERRIDE'));
+            ALTER TABLE clinlims.analyzer_mapping_test
+            ADD CONSTRAINT chk_analyzer_mapping_test_reason
+            CHECK (unresolved_reason IS NULL OR unresolved_reason IN ('NO_MATCH', 'AMBIGUOUS', 'INCOMPATIBLE'));
+            ALTER TABLE clinlims.analyzer_mapping_result
+            ADD CONSTRAINT chk_analyzer_mapping_result_state
+            CHECK (mapping_state IN ('BOUND', 'EXCLUDED', 'UNRESOLVED'));
+            ALTER TABLE clinlims.analyzer_mapping_result
+            ADD CONSTRAINT chk_analyzer_mapping_result_origin CHECK (origin IN ('DEFAULT', 'OVERRIDE'));
+            ALTER TABLE clinlims.analyzer_mapping_result
+            ADD CONSTRAINT chk_analyzer_mapping_result_reason
+            CHECK (unresolved_reason IS NULL OR unresolved_reason IN ('NO_MATCH', 'AMBIGUOUS', 'INCOMPATIBLE'));
+            ALTER TABLE clinlims.analyzer_mapping_confirmation
+            ADD CONSTRAINT chk_analyzer_mapping_confirmation_fingerprints
+            CHECK (mapping_fingerprint ~ '^sha256:[0-9a-f]{64}$'
+                AND recognition_fingerprint ~ '^sha256:[0-9a-f]{64}$'
+                AND (profile_revision_fingerprint IS NULL OR profile_revision_fingerprint ~ '^sha256:[0-9a-f]{64}$'));
+        </sql>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="analyzer_mapping_confirmation"/>
+            <dropTable schemaName="clinlims" tableName="analyzer_mapping_result"/>
+            <dropTable schemaName="clinlims" tableName="analyzer_mapping_test"/>
+            <dropTable schemaName="clinlims" tableName="analyzer_mapping"/>
+            <dropSequence schemaName="clinlims" sequenceName="analyzer_mapping_confirmation_seq"/>
+            <dropSequence schemaName="clinlims" sequenceName="analyzer_mapping_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="123-analyzer-mapping-reference" author="oe">
+        <addColumn schemaName="clinlims" tableName="analyzer">
+            <column name="mapping_id" type="numeric(10)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_analyzer_mapping_in_force"
+            baseTableSchemaName="clinlims" baseTableName="analyzer"
+            baseColumnNames="mapping_id" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_mapping" referencedColumnNames="id"
+            deferrable="true" initiallyDeferred="true"/>
+        <createIndex schemaName="clinlims" tableName="analyzer" indexName="idx_analyzer_mapping">
+            <column name="mapping_id"/>
+        </createIndex>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="analyzer"
+                constraintName="fk_analyzer_mapping_in_force"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer" columnName="mapping_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="123-analyzer-mapping-audit-references" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE LOWER(name) IN ('analyzer_mapping', 'analyzer_mapping_confirmation')
+            </sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="analyzer_mapping"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="analyzer_mapping_confirmation"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>LOWER(name) IN ('analyzer_mapping', 'analyzer_mapping_confirmation')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

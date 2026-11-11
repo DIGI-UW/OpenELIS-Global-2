@@ -13,10 +13,14 @@
  */
 package org.openelisglobal.analyzerresults.action.beanitems;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.List;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacement;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.result.form.AnalyzerResultsForm;
@@ -29,14 +33,27 @@ public class AnalyzerResultItem implements Serializable {
     private String id;
     private String analyzerId;
     private String analysisId;
+    // OGC-1417: the reviewer who retyped the value has acknowledged it as
+    // critical, or confirmed it although it lies outside the valid range
+    private boolean criticalAcknowledged = false;
+    private boolean invalidResultConfirmed = false;
     private String units;
     private String testName;
 
     // TODO move all accession number to the same format so they can be validated
     // properly
     // @ValidAccessionNumber(groups = { AnalyzerResultsForm.AnalyzerResuts.class })
-    @Pattern(regexp = "^[0-9a-zA-Z -:]*$", groups = { AnalyzerResultsForm.AnalyzerResuts.class })
+    @Pattern(regexp = "^[0-9a-zA-Z_ -:]*$", groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String accessionNumber;
+    private String instrumentSpecimenId;
+    private String chosenAnalysisId;
+    private String redirectAccession;
+    private String instrumentPatientId;
+    private String instrumentPatientName;
+    private String redirectReason;
+    private AnalyzerResultPlacement placement;
+    private String deliveryReceiptId;
+    private Long runId;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String result;
@@ -62,8 +79,23 @@ public class AnalyzerResultItem implements Serializable {
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String testId;
 
+    // OGC-1129 — the resolved result component (test_result_component.id); null =
+    // PRIMARY. Carried from the staged AnalyzerResults row through to accept.
+    private String componentId;
+    private String componentLabel;
+
+    // OGC-1145 FR-8 — the sample type the reviewer chose for a specimen-ambiguous
+    // row (test runs on several sample types, message carried no specimen).
+    @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
+    private String typeOfSampleId;
+
+    // Display-only: the candidate sample types offered by the review page's
+    // chooser when the row is specimen-ambiguous; never bound from the request.
+    private List<IdValuePair> sampleTypeOptions;
+
     @ValidDate(groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String completeDate;
+    private Timestamp completedAt;
 
     private boolean isPositive = false;
     private String duplicateAnalyzerResultId;
@@ -91,14 +123,32 @@ public class AnalyzerResultItem implements Serializable {
     private String selectionTwoText = "";
     private String selectionTwoValue = "";
     private boolean nonconforming = false;
-    private String significantDigits = "";
+    private String reportingDecimalPlaces = "";
+    private String importIssueReason;
+    private String sourceProfileId;
+    private Integer sourceProfileRevision;
+    private String sourceProtocol;
+    private String sourceTransport;
+    private String rawTestCode;
+    private String rawResultValue;
 
-    public String getSignificantDigits() {
-        return significantDigits;
+    private String instrumentNote;
+    private String instrumentFlags;
+    /**
+     * The warnings the instrument raised about the sample, read from the staged
+     * row.
+     */
+    private String instrumentSampleFlags;
+    private String assayName;
+    private String assayVersion;
+    private String instrumentOperator;
+
+    public String getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(String significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(String reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     private List<Dictionary> dictionaryResultList;
@@ -152,6 +202,106 @@ public class AnalyzerResultItem implements Serializable {
 
     public String getAccessionNumber() {
         return accessionNumber;
+    }
+
+    /** The specimen ID the instrument reported: an accession or a tube ID. */
+    public String getInstrumentSpecimenId() {
+        return instrumentSpecimenId;
+    }
+
+    public void setInstrumentSpecimenId(String instrumentSpecimenId) {
+        this.instrumentSpecimenId = instrumentSpecimenId;
+    }
+
+    /**
+     * Where this result would land and why; computed by the server, never read from
+     * a request.
+     */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    public AnalyzerResultPlacement getPlacement() {
+        return placement;
+    }
+
+    public void setPlacement(AnalyzerResultPlacement placement) {
+        this.placement = placement;
+    }
+
+    /** The accepted delivery this result arrived in; its bundle is viewable. */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    public String getDeliveryReceiptId() {
+        return deliveryReceiptId;
+    }
+
+    public void setDeliveryReceiptId(String deliveryReceiptId) {
+        this.deliveryReceiptId = deliveryReceiptId;
+    }
+
+    /**
+     * OGC-1200: the run the value arrived in, restored from the staged row; never
+     * read from a request.
+     */
+    @JsonIgnore
+    public Long getRunId() {
+        return runId;
+    }
+
+    @JsonIgnore
+    public void setRunId(Long runId) {
+        this.runId = runId;
+    }
+
+    /**
+     * The patient the instrument reported, restored from the staged row; never read
+     * from a request.
+     */
+    @JsonIgnore
+    public String getInstrumentPatientId() {
+        return instrumentPatientId;
+    }
+
+    @JsonIgnore
+    public void setInstrumentPatientId(String instrumentPatientId) {
+        this.instrumentPatientId = instrumentPatientId;
+    }
+
+    @JsonIgnore
+    public String getInstrumentPatientName() {
+        return instrumentPatientName;
+    }
+
+    @JsonIgnore
+    public void setInstrumentPatientName(String instrumentPatientName) {
+        this.instrumentPatientName = instrumentPatientName;
+    }
+
+    /** An existing order the reviewer placed this grouping's results on instead. */
+    public String getRedirectAccession() {
+        return redirectAccession;
+    }
+
+    public void setRedirectAccession(String redirectAccession) {
+        this.redirectAccession = redirectAccession;
+    }
+
+    /**
+     * Why the reviewer overrode the instrument's specimen ID; required with a
+     * redirect.
+     */
+    public String getRedirectReason() {
+        return redirectReason;
+    }
+
+    public void setRedirectReason(String redirectReason) {
+        this.redirectReason = redirectReason;
+    }
+
+    /** The analysis the reviewer chose when several matched. */
+    public String getChosenAnalysisId() {
+        return chosenAnalysisId;
+    }
+
+    public void setChosenAnalysisId(String chosenAnalysisId) {
+        this.chosenAnalysisId = chosenAnalysisId;
     }
 
     public void setResult(String result) {
@@ -226,12 +376,54 @@ public class AnalyzerResultItem implements Serializable {
         return testId;
     }
 
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public String getComponentLabel() {
+        return componentLabel;
+    }
+
+    public void setComponentLabel(String componentLabel) {
+        this.componentLabel = componentLabel;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public String getTypeOfSampleId() {
+        return typeOfSampleId;
+    }
+
+    public void setTypeOfSampleId(String typeOfSampleId) {
+        this.typeOfSampleId = typeOfSampleId;
+    }
+
+    public List<IdValuePair> getSampleTypeOptions() {
+        return sampleTypeOptions;
+    }
+
+    public void setSampleTypeOptions(List<IdValuePair> sampleTypeOptions) {
+        this.sampleTypeOptions = sampleTypeOptions;
+    }
+
     public void setCompleteDate(String completeDate) {
         this.completeDate = completeDate;
     }
 
     public String getCompleteDate() {
         return completeDate;
+    }
+
+    @JsonIgnore
+    public Timestamp getCompletedAt() {
+        return completedAt;
+    }
+
+    @JsonIgnore
+    public void setCompletedAt(Timestamp completedAt) {
+        this.completedAt = completedAt;
     }
 
     public void setPositive(boolean isPositive) {
@@ -298,6 +490,22 @@ public class AnalyzerResultItem implements Serializable {
         return readOnly;
     }
 
+    public boolean isCriticalAcknowledged() {
+        return criticalAcknowledged;
+    }
+
+    public void setCriticalAcknowledged(boolean criticalAcknowledged) {
+        this.criticalAcknowledged = criticalAcknowledged;
+    }
+
+    public boolean isInvalidResultConfirmed() {
+        return invalidResultConfirmed;
+    }
+
+    public void setInvalidResultConfirmed(boolean invalidResultConfirmed) {
+        this.invalidResultConfirmed = invalidResultConfirmed;
+    }
+
     public void setTestResultType(String testResultType) {
         this.testResultType = testResultType;
     }
@@ -310,6 +518,7 @@ public class AnalyzerResultItem implements Serializable {
         this.dictionaryResultList = dictionaryResultList;
     }
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     public List<Dictionary> getDictionaryResultList() {
         return dictionaryResultList;
     }
@@ -392,5 +601,109 @@ public class AnalyzerResultItem implements Serializable {
 
     public void setNonconforming(boolean nonconforming) {
         this.nonconforming = nonconforming;
+    }
+
+    public String getImportIssueReason() {
+        return importIssueReason;
+    }
+
+    public void setImportIssueReason(String importIssueReason) {
+        this.importIssueReason = importIssueReason;
+    }
+
+    public String getSourceProfileId() {
+        return sourceProfileId;
+    }
+
+    public void setSourceProfileId(String sourceProfileId) {
+        this.sourceProfileId = sourceProfileId;
+    }
+
+    public Integer getSourceProfileRevision() {
+        return sourceProfileRevision;
+    }
+
+    public void setSourceProfileRevision(Integer sourceProfileRevision) {
+        this.sourceProfileRevision = sourceProfileRevision;
+    }
+
+    public String getSourceProtocol() {
+        return sourceProtocol;
+    }
+
+    public void setSourceProtocol(String sourceProtocol) {
+        this.sourceProtocol = sourceProtocol;
+    }
+
+    public String getSourceTransport() {
+        return sourceTransport;
+    }
+
+    public void setSourceTransport(String sourceTransport) {
+        this.sourceTransport = sourceTransport;
+    }
+
+    public String getRawTestCode() {
+        return rawTestCode;
+    }
+
+    public void setRawTestCode(String rawTestCode) {
+        this.rawTestCode = rawTestCode;
+    }
+
+    public String getRawResultValue() {
+        return rawResultValue;
+    }
+
+    public void setRawResultValue(String rawResultValue) {
+        this.rawResultValue = rawResultValue;
+    }
+
+    public String getInstrumentFlags() {
+        return instrumentFlags;
+    }
+
+    public void setInstrumentFlags(String instrumentFlags) {
+        this.instrumentFlags = instrumentFlags;
+    }
+
+    public String getInstrumentSampleFlags() {
+        return instrumentSampleFlags;
+    }
+
+    public void setInstrumentSampleFlags(String instrumentSampleFlags) {
+        this.instrumentSampleFlags = instrumentSampleFlags;
+    }
+
+    public String getAssayName() {
+        return assayName;
+    }
+
+    public void setAssayName(String assayName) {
+        this.assayName = assayName;
+    }
+
+    public String getAssayVersion() {
+        return assayVersion;
+    }
+
+    public void setAssayVersion(String assayVersion) {
+        this.assayVersion = assayVersion;
+    }
+
+    public String getInstrumentOperator() {
+        return instrumentOperator;
+    }
+
+    public void setInstrumentOperator(String instrumentOperator) {
+        this.instrumentOperator = instrumentOperator;
+    }
+
+    public String getInstrumentNote() {
+        return instrumentNote;
+    }
+
+    public void setInstrumentNote(String instrumentNote) {
+        this.instrumentNote = instrumentNote;
     }
 }

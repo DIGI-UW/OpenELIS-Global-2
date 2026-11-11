@@ -1,26 +1,56 @@
 import * as Yup from "yup";
-import CreatePatientValidationSchema from "./CreatePatientValidationShema";
+import { createPatientValidationSchema } from "./CreatePatientValidationShema";
 
-const OrderEntryValidationSchema = Yup.object().shape({
-  sampleXML: Yup.string().required("Sample is required"),
-  patientProperties: CreatePatientValidationSchema,
-  sampleOrderItems: Yup.object()
+// domain is optional; E/V and EQA orders have no patient to validate.
+export const createOrderEntryValidationSchema = (
+  configurationProperties = {},
+  domain,
+) => {
+  const isNonClinical = domain === "E" || domain === "V";
+  const requesterRequired =
+    configurationProperties.REQUESTER_REQUIRED === "true";
+  // A blind PT sample has no referring site and no requester — demanding the
+  // clinical ceremony on an EQA order blocks a save that is otherwise complete.
+  const requiredUnlessEQA = (message) =>
+    Yup.string().when("isEQASample", {
+      is: true,
+      otherwise: (schema) => schema.required(message),
+    });
+  const providerFirstNameSchema = requesterRequired
+    ? requiredUnlessEQA("Requester First Name is required")
+    : Yup.string();
+  const providerLastNameSchema = requesterRequired
+    ? requiredUnlessEQA("Requester Last Name is required")
+    : Yup.string();
+
+  const sampleOrderItemsSchema = Yup.object()
     .shape({
       labNo: Yup.string().required("Sample Lab Number is required"),
       referringSiteName: Yup.string(),
       referringSiteId: Yup.string(),
-      providerLastName: Yup.string().required(
-        "Requester Last Name is required",
-      ),
-      providerFirstName: Yup.string().required(
-        "Requester First Name is required",
-      ),
+      providerLastName: providerLastNameSchema,
+      providerFirstName: providerFirstNameSchema,
       providerEmail: Yup.string().email("Invalid Email"),
     })
     .test("referringSiteName", "Referring Site is required", function (value) {
-      const { referringSiteName, referringSiteId } = value || {};
-      return !!referringSiteName || !!referringSiteId;
-    }),
-});
+      const { referringSiteName, referringSiteId, isEQASample } = value || {};
+      return !!isEQASample || !!referringSiteName || !!referringSiteId;
+    });
 
-export default OrderEntryValidationSchema;
+  const shape = {
+    sampleXML: Yup.string().required("Sample is required"),
+    sampleOrderItems: sampleOrderItemsSchema,
+  };
+
+  if (!isNonClinical) {
+    shape.patientProperties = Yup.object().when(
+      "sampleOrderItems.isEQASample",
+      {
+        is: true,
+        otherwise: createPatientValidationSchema(configurationProperties),
+      },
+    );
+  }
+
+  return Yup.object().shape(shape);
+};

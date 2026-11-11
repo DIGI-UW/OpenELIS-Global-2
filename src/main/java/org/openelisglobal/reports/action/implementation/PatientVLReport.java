@@ -1,11 +1,9 @@
 package org.openelisglobal.reports.action.implementation;
 
-import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -57,12 +55,12 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
     }
 
     @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        if (!initialized) {
-            throw new IllegalStateException("initializeReport not called first");
-        }
-
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
+    protected byte[] renderReport() {
+        return StudyVlResultsPdf.render(reportItems,
+                new StudyVlResultsPdf.Settings(Objects.toString(reportParameters.get("studyName"), ""),
+                        new StudyVlResultsPdf.Images(reportImage("VL_LaboRef.jpg"), reportImage("EXAMEN_VL.jpg"),
+                                reportImage("RESULTATS.jpg"), reportImage("INTERPRETATIONS.jpg"),
+                                reportImage("RefVal.jpg"))));
     }
 
     @Override
@@ -81,9 +79,9 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
                 .getTimeOfLastNamedReport(reportSample, ReportTrackingService.ReportType.PATIENT, requestedReport);
         Boolean mayBeDuplicate = lastReport != null;
 
-        Date maxCompleationDate = null;
+        Timestamp maxCompleationDate = null;
         long maxCompleationTime = 0L;
-        Date maxReleasedDate = null;
+        Timestamp maxReleasedDate = null;
         long maxReleasedTime = 0L;
         // String invalidValue =
         // MessageUtil.getMessage("report.test.status.inProgress");
@@ -148,10 +146,10 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
             }
         }
         if (maxCompleationDate != null) {
-            data.setCompleationdate(DateUtil.convertSqlDateToStringDate(maxCompleationDate));
+            data.setCompleationdate(DateUtil.convertTimestampToStringDate(maxCompleationDate));
         }
         if (maxReleasedDate != null) {
-            data.setReleasedate(DateUtil.convertSqlDateToStringDate(maxReleasedDate));
+            data.setReleasedate(DateUtil.convertTimestampToStringDate(maxReleasedDate));
         }
 
         data.setDuplicateReport(mayBeDuplicate);
@@ -187,7 +185,7 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
         data.setReceptiondate(DateUtil.convertTimestampToStringDateAndTime(reportSample.getReceivedTimestamp()));
         Timestamp collectionDate = reportSample.getCollectionDate();
 
-        if (collectionDate != null) {
+        if (collectionDate != null && reportPatient.getBirthDate() != null) {
             long collectionTime = collectionDate.getTime() - reportPatient.getBirthDate().getTime();
 
             if (collectionTime < THREE_YEARS) {

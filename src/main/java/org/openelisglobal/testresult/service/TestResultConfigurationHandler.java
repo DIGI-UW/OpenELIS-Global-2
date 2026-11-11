@@ -2,18 +2,24 @@ package org.openelisglobal.testresult.service;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.util.CsvParsingUtil;
+import org.openelisglobal.configuration.service.CatalogReferenceResolver;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresult.valueholder.TestResultSignificance;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,13 +29,13 @@ import org.springframework.transaction.annotation.Transactional;
  * defining test results (possible values/options for tests).
  *
  * Expected CSV format:
- * testName,resultType,resultValue,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags
+ * testName,resultType,resultValue,sortOrder,isQuantifiable,isActive,isNormal,reportingDecimalPlaces,flags,componentCode
  * HIV Rapid Test,D,Positive,1,N,Y,N,, HIV Rapid Test,D,Negative,2,N,Y,Y,, HIV
  * Rapid Test,D,Inconclusive,3,N,Y,N,, Hemoglobin,N,,1,Y,Y,N,2,
  * Glucose,N,,1,Y,Y,N,0,
  *
  * Result Types: - D = Dictionary (coded value from dictionary entry) - N =
- * Numeric (numeric result with optional significant digits) - A = Alpha
+ * Numeric (numeric result with optional reporting decimal places) - A = Alpha
  * (alphanumeric text) - R = Remark (free-form text) - T = Titer (titer ranges
  * like 1:10, 1:20) - M = Multiselect (multiple dictionary values) - C =
  * Cascading multiselect
@@ -39,9 +45,11 @@ import org.springframework.transaction.annotation.Transactional;
  * for others - For Dictionary types, resultValue should match an existing
  * dictionary entry - sortOrder is optional (auto-assigned if not provided) -
  * isQuantifiable defaults to "N" if not specified - isActive defaults to "Y" if
- * not specified - isNormal defaults to "N" if not specified - significantDigits
- * is optional, used for numeric types - flags is optional (e.g., "H" for high,
- * "L" for low) - Existing test results with matching test and value will be
+ * not specified - isNormal defaults to "N" if not specified -
+ * reportingDecimalPlaces is optional, used for numeric types - flags is
+ * optional (e.g., "H" for high, "L" for low) - componentCode is optional and
+ * names the result component the option belongs to (blank: the primary result)
+ * - Existing test results with matching test, value and component will be
  * updated
  */
 @Component
@@ -55,6 +63,20 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
 
     @Autowired
     private DictionaryService dictionaryService;
+
+    // The config loader writes tests/test_results in the legacy shape; these bridge
+    // that to the new editor's model so loaded tests appear correctly under Sample
+    // &
+    // Results (components), Ranges (result_limits repointed to the PRIMARY
+    // component) and Terminology (LOINC mapping).
+    @Autowired
+    private TestResultComponentService testResultComponentService;
+
+    @Autowired
+    private TestTerminologyMappingService terminologyMappingService;
+
+    @Autowired
+    private CatalogReferenceResolver resolver;
 
     @Override
     public String getDomainName() {
@@ -74,7 +96,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
     @Override
     @Transactional
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
 
         // Read and validate header
         String headerLine = reader.readLine();
@@ -94,14 +116,28 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         int isQuantifiableIndex = findColumnIndex(headers, "isQuantifiable");
         int isActiveIndex = findColumnIndex(headers, "isActive");
         int isNormalIndex = findColumnIndex(headers, "isNormal");
-        int significantDigitsIndex = findColumnIndex(headers, "significantDigits");
+        int reportingDecimalPlacesIndex = -1;
+        for (String name : new String[] { "reportingDecimalPlaces", "decimalPlaces", "significantDigits" }) {
+            int index = findColumnIndex(headers, name);
+            if (index >= 0) {
+                if (reportingDecimalPlacesIndex >= 0) {
+                    throw new IllegalArgumentException("Use only one reporting decimal places column");
+                }
+                reportingDecimalPlacesIndex = index;
+            }
+        }
         int flagsIndex = findColumnIndex(headers, "flags");
+        int significanceIndex = findColumnIndex(headers, "significance");
+        int componentCodeIndex = findColumnIndex(headers, "componentCode");
 
         String line;
         int lineNumber = 1;
         int skippedRows = 0;
         int dataRows = 0;
         int totalResultsCreated = 0;
+        // Tests whose legacy results were loaded — bridged to the new editor model
+        // once, after all rows for the file are in.
+        Set<String> touchedTestIds = new LinkedHashSet<>();
 
         while ((line = reader.readLine()) != null) {
             lineNumber++;
@@ -115,7 +151,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 String[] values = parseCsvLine(line);
                 int resultsCreated = processCsvLine(values, testNameIndex, resultTypeIndex, resultValueIndex,
                         dictionaryCategoryIndex, sortOrderIndex, isQuantifiableIndex, isActiveIndex, isNormalIndex,
-                        significantDigitsIndex, flagsIndex, lineNumber, fileName);
+                        reportingDecimalPlacesIndex, flagsIndex, significanceIndex, componentCodeIndex, lineNumber,
+                        fileName, touchedTestIds);
                 if (resultsCreated > 0) {
                     totalResultsCreated += resultsCreated;
                 } else {
@@ -125,6 +162,22 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 skippedRows++;
                 LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
                         "Error processing line " + lineNumber + " in file " + fileName + ": " + e.getMessage());
+            }
+        }
+
+        // Bridge every loaded test to the new editor model: create/refresh its
+        // PRIMARY result component (Sample & Results) + repoint its options and
+        // ranges onto that component, and sync its LOINC into a terminology mapping.
+        for (String testId : touchedTestIds) {
+            try {
+                testResultComponentService.syncPrimaryComponentFromLegacy(testId, "1");
+                Test test = testService.getTestById(testId);
+                if (test != null && test.getLoinc() != null && !test.getLoinc().trim().isEmpty()) {
+                    terminologyMappingService.syncLegacyLoinc(testId, test.getLoinc(), "1");
+                }
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
+                        "Failed to bridge test " + testId + " to the new editor model: " + e.getMessage());
             }
         }
 
@@ -207,7 +260,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
      */
     private int processCsvLine(String[] values, int testNameIndex, int resultTypeIndex, int resultValueIndex,
             int dictionaryCategoryIndex, int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex,
-            int isNormalIndex, int significantDigitsIndex, int flagsIndex, int lineNumber, String fileName) {
+            int isNormalIndex, int reportingDecimalPlacesIndex, int flagsIndex, int significanceIndex,
+            int componentCodeIndex, int lineNumber, String fileName, Set<String> touchedTestIds) {
 
         String testName = getValueOrEmpty(values, testNameIndex);
         String resultType = getValueOrEmpty(values, resultTypeIndex);
@@ -255,20 +309,21 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 return 0;
             }
 
-            // Find dictionary entry, optionally by category
             Dictionary dictionary = null;
             if (!dictionaryCategory.isEmpty()) {
-                // Look up by entry name and category
-                dictionary = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription(resultValue,
-                        dictionaryCategory);
+                dictionary = dictionaryService.getDictionaryEntryByNameAndCategoryName(resultValue, dictionaryCategory);
                 if (dictionary == null) {
                     LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                             "Dictionary entry '" + resultValue + "' not found in category '" + dictionaryCategory
-                                    + "'. Trying fallback lookup by entry name only.");
+                                    + "' (by name). Trying legacy description match.");
+                    dictionary = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription(resultValue,
+                            dictionaryCategory);
                 }
             }
             if (dictionary == null) {
-                // Fall back to lookup by entry name only
+                // Last-resort fallback: name-only. Note this fails silently if duplicate
+                // dict_entry rows exist (getMatch returns empty on >1 match); see
+                // BaseObjectServiceImpl.getMatch.
                 dictionary = dictionaryService.getDictionaryByDictEntry(resultValue);
             }
             if (dictionary == null) {
@@ -286,23 +341,41 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             resultValue = dictionary.getId();
         }
 
+        // A named component takes the answer; without one it belongs to the primary
+        // result.
+        String componentCode = getValueOrEmpty(values, componentCodeIndex);
+
         // Apply the result configuration to all matching tests
         int resultsCreated = 0;
         for (Test test : tests) {
-            // Check if test result already exists
-            TestResult existingResult = findExistingTestResult(test.getId(), resultType, resultValue);
+            String componentId = null;
+            if (!componentCode.isEmpty()) {
+                TestResultComponent component = resolver.resolveComponent(test.getId(), componentCode,
+                        fileName + " line " + lineNumber);
+                if (component == null) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "processCsvLine",
+                            "CONFIGURATION ERROR: component '" + componentCode + "' not found for test '" + testName
+                                    + "' in line " + lineNumber + " of " + fileName
+                                    + ". Load it in the 'result-components' domain first. Skipping.");
+                    continue;
+                }
+                componentId = component.getId();
+            }
+            TestResult existingResult = findExistingTestResult(test.getId(), resultType, resultValue, componentId);
 
             if (existingResult != null) {
                 updateTestResult(existingResult, values, sortOrderIndex, isQuantifiableIndex, isActiveIndex,
-                        isNormalIndex, significantDigitsIndex, flagsIndex);
+                        isNormalIndex, reportingDecimalPlacesIndex, flagsIndex, significanceIndex);
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                         "Updated existing test result for test: " + test.getDescription());
             } else {
-                createTestResult(test, resultType, resultValue, values, sortOrderIndex, isQuantifiableIndex,
-                        isActiveIndex, isNormalIndex, significantDigitsIndex, flagsIndex);
+                createTestResult(test, resultType, resultValue, componentId, values, sortOrderIndex,
+                        isQuantifiableIndex, isActiveIndex, isNormalIndex, reportingDecimalPlacesIndex, flagsIndex,
+                        significanceIndex);
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                         "Created new test result for test: " + test.getDescription());
             }
+            touchedTestIds.add(test.getId());
             resultsCreated++;
         }
 
@@ -315,6 +388,27 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         }
 
         return resultsCreated;
+    }
+
+    /**
+     * Normalizes a catalog significance cell: blank -&gt; null; a recognized value
+     * (case-insensitive) -&gt; its canonical upper form; anything else is rejected
+     * with a clear error and stored as null. Positivity indices match the exact
+     * canonical name, so an unrecognized value (e.g. a typo or a localized
+     * "POSITIF") could never be counted and must not be silently persisted.
+     */
+    private String normalizeSignificance(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        String normalized = raw.toUpperCase();
+        if (TestResultSignificance.isRecognized(normalized)) {
+            return normalized;
+        }
+        LogEvent.logError(this.getClass().getSimpleName(), "normalizeSignificance",
+                "CONFIGURATION ERROR: unrecognized test_result significance '" + raw
+                        + "'. Expected one of POSITIVE, NEGATIVE, INDETERMINATE. Storing null (unclassified).");
+        return null;
     }
 
     private String getValueOrEmpty(String[] values, int index) {
@@ -331,9 +425,15 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
     }
 
     /**
-     * Find all tests matching the given name. This handles both exact matches and
+     * Find all tests matching the given name: the test with that description, as
+     * the tests file names it, then a test displayed under that name, then
      * augmented test names (e.g., "Glucose" matches "Glucose(Serum)",
      * "Glucose(Plasma)", etc.).
+     *
+     * <p>
+     * Description comes first because display names repeat: a legacy
+     * {@code Hémoglobine(Whole Blood)} is shown in English as "Hemoglobin", and the
+     * display-name lookup returns an arbitrary one of the tests sharing it.
      *
      * @param testName the base test name from the CSV
      * @return list of matching tests (may be empty)
@@ -341,22 +441,13 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
     private List<Test> findTestsByName(String testName) {
         List<Test> matchingTests = new ArrayList<>();
 
-        // First try exact match by localized name
-        Test test = testService.getTestByLocalizedName(testName);
-        if (test != null) {
-            matchingTests.add(test);
-            return matchingTests;
+        Test test = testService.getTestByDescription(testName);
+        if (test == null) {
+            test = testService.getTestByNormalizedDescription(testName);
         }
-
-        // Try exact match by description
-        test = testService.getTestByDescription(testName);
-        if (test != null) {
-            matchingTests.add(test);
-            return matchingTests;
+        if (test == null) {
+            test = testService.getTestByLocalizedName(testName);
         }
-
-        // Try exact match by name
-        test = testService.getTestByName(testName);
         if (test != null) {
             matchingTests.add(test);
             return matchingTests;
@@ -378,12 +469,20 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         return matchingTests;
     }
 
-    private TestResult findExistingTestResult(String testId, String resultType, String resultValue) {
+    /**
+     * The answer this row updates: same type and value on the same component, where
+     * no component means the primary result.
+     */
+    private TestResult findExistingTestResult(String testId, String resultType, String resultValue,
+            String componentId) {
         List<TestResult> existingResults = testResultService.getActiveTestResultsByTest(testId);
+        String primaryId = componentId == null ? primaryComponentId(testId) : null;
 
         for (TestResult result : existingResults) {
+            boolean sameComponent = componentId != null ? componentId.equals(result.getComponentId())
+                    : result.getComponentId() == null || result.getComponentId().equals(primaryId);
             // Match by type and value
-            if (resultType.equals(result.getTestResultType())) {
+            if (sameComponent && resultType.equals(result.getTestResultType())) {
                 // For dictionary types and titer, match by value
                 // D, M, C store dictionary IDs; T stores titer values like "1:10"
                 if ("D".equals(resultType) || "M".equals(resultType) || "C".equals(resultType)
@@ -401,8 +500,14 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         return null;
     }
 
+    private String primaryComponentId(String testId) {
+        return testResultComponentService.getActiveComponentsByTestId(testId).stream()
+                .filter(TestResultComponent::getIsPrimary).map(TestResultComponent::getId).findFirst().orElse(null);
+    }
+
     private TestResult updateTestResult(TestResult testResult, String[] values, int sortOrderIndex,
-            int isQuantifiableIndex, int isActiveIndex, int isNormalIndex, int significantDigitsIndex, int flagsIndex) {
+            int isQuantifiableIndex, int isActiveIndex, int isNormalIndex, int reportingDecimalPlacesIndex,
+            int flagsIndex, int significanceIndex) {
 
         // Update sort order
         String sortOrder = getValueOrEmpty(values, sortOrderIndex);
@@ -429,10 +534,11 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setIsNormal("Y".equalsIgnoreCase(isNormal) || "true".equalsIgnoreCase(isNormal));
         }
 
-        // Update significant digits
-        String significantDigits = getValueOrEmpty(values, significantDigitsIndex);
-        if (!significantDigits.isEmpty()) {
-            testResult.setSignificantDigits(significantDigits);
+        // Blank import cells preserve laboratory-authored reporting policy.
+        String reportingDecimalPlaces = getValueOrEmpty(values, reportingDecimalPlacesIndex);
+        if (!reportingDecimalPlaces.isEmpty()) {
+            Integer places = org.openelisglobal.result.util.ReportingDecimalPlaces.parse(reportingDecimalPlaces);
+            testResult.setReportingDecimalPlaces(places == null ? null : places.toString());
         }
 
         // Update flags
@@ -441,19 +547,26 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setFlags(flags);
         }
 
-        testResult.setSysUserId("1");
+        // Significance (surveillance classification POSITIVE/NEGATIVE/INDETERMINATE).
+        // A missing column (legacy catalog) leaves the prior value untouched; a
+        // present-but-blank cell explicitly clears it to null.
+        if (significanceIndex != -1) {
+            testResult.setSignificance(normalizeSignificance(getValueOrEmpty(values, significanceIndex)));
+        }
+
         testResultService.update(testResult);
         return testResult;
     }
 
-    private TestResult createTestResult(Test test, String resultType, String resultValue, String[] values,
-            int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex, int isNormalIndex,
-            int significantDigitsIndex, int flagsIndex) {
+    private TestResult createTestResult(Test test, String resultType, String resultValue, String componentId,
+            String[] values, int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex, int isNormalIndex,
+            int reportingDecimalPlacesIndex, int flagsIndex, int significanceIndex) {
 
         TestResult testResult = new TestResult();
         testResult.setTest(test);
         testResult.setTestResultType(resultType);
         testResult.setValue(resultValue);
+        testResult.setComponentId(componentId);
 
         // Set sort order
         String sortOrder = getValueOrEmpty(values, sortOrderIndex);
@@ -490,10 +603,11 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setIsNormal(false);
         }
 
-        // Set significant digits
-        String significantDigits = getValueOrEmpty(values, significantDigitsIndex);
-        if (!significantDigits.isEmpty()) {
-            testResult.setSignificantDigits(significantDigits);
+        // Set reporting decimal places
+        String reportingDecimalPlaces = getValueOrEmpty(values, reportingDecimalPlacesIndex);
+        if (reportingDecimalPlacesIndex >= 0) {
+            Integer places = org.openelisglobal.result.util.ReportingDecimalPlaces.parse(reportingDecimalPlaces);
+            testResult.setReportingDecimalPlaces(places == null ? null : places.toString());
         }
 
         // Set flags
@@ -502,7 +616,12 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setFlags(flags);
         }
 
-        testResult.setSysUserId("1");
+        // Significance (surveillance classification POSITIVE/NEGATIVE/INDETERMINATE).
+        // Consistent with the update path: a present-but-blank cell sets null.
+        if (significanceIndex != -1) {
+            testResult.setSignificance(normalizeSignificance(getValueOrEmpty(values, significanceIndex)));
+        }
+
         String testResultId = testResultService.insert(testResult);
         testResult.setId(testResultId);
 

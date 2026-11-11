@@ -1,9 +1,19 @@
 package org.openelisglobal.provider.controller.rest;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.provider.service.ProviderDisplayName;
 import org.openelisglobal.provider.service.ProviderService;
+import org.openelisglobal.provider.service.ProviderTitleService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -26,6 +36,9 @@ public class ProviderRestController {
     private ProviderService providerService;
     @Autowired
     private PersonService personService;
+
+    @Autowired
+    private ProviderTitleService providerTitleService;
 
     @GetMapping(value = "/Provider/raw/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -53,6 +66,97 @@ public class ProviderRestController {
             return ResponseEntity.ok(updatedProvider);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing request.");
+        }
+    }
+
+    static final int MAX_SEARCH_PAGE_SIZE = 200;
+
+    /**
+     * Providers matching a name or a phone number, one page of {@code pageSize}
+     * rows (1 to {@value #MAX_SEARCH_PAGE_SIZE}). The unfiltered list pages at
+     * {@code page.defaultPageSize}, which the response then reports as its page
+     * size, so its start rows line up with what the DAO returns.
+     */
+    @GetMapping(value = "/provider/search", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> searchProviders(@RequestParam(required = false) String search,
+            @RequestParam(required = false) String phone, @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+
+        try {
+            List<Provider> providers;
+            int totalCount;
+            page = Math.max(page, 1);
+            boolean byPhone = !GenericValidator.isBlankOrNull(phone);
+            boolean byName = !byPhone && !GenericValidator.isBlankOrNull(search);
+            pageSize = byPhone || byName ? Math.min(Math.max(pageSize, 1), MAX_SEARCH_PAGE_SIZE)
+                    : Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+            int startRecNo = ((page - 1) * pageSize) + 1;
+
+            if (byPhone) {
+                providers = providerService.getPagesOfSearchedProvidersByPhone(startRecNo, pageSize, phone);
+                totalCount = providerService.getTotalSearchedProviderCountByPhone(phone);
+            } else if (byName) {
+                providers = providerService.getPagesOfSearchedProviders(startRecNo, pageSize, search);
+                totalCount = providerService.getTotalSearchedProviderCount(search);
+            } else {
+                providers = providerService.getPageOfProviders(startRecNo);
+                totalCount = (int) providerService.getCount();
+            }
+
+            // DAOs fetch pageSize+1 rows for "has next page" detection — trim to requested
+            // size
+            if (providers.size() > pageSize) {
+                providers = providers.subList(0, pageSize);
+            }
+
+            List<Map<String, Object>> results = new ArrayList<>();
+            for (Provider provider : providers) {
+                Map<String, Object> providerData = new HashMap<>();
+                providerData.put("id", provider.getId());
+
+                if (provider.getPerson() != null) {
+                    personService.getData(provider.getPerson());
+                    providerData.put("personId", provider.getPerson().getId());
+                    providerData.put("firstName", provider.getPerson().getFirstName());
+                    providerData.put("lastName", provider.getPerson().getLastName());
+
+                    String titleCode = provider.getPerson().getTitleCode();
+                    Dictionary title = providerTitleService.getByCode(titleCode);
+                    String abbreviation = title == null ? titleCode : title.getLocalAbbreviation();
+                    providerData.put("titleCode", titleCode);
+                    providerData.put("titleAbbreviation", abbreviation);
+                    providerData.put("name", ProviderDisplayName.titledFamilyFirst(abbreviation,
+                            provider.getPerson().getFirstName(), provider.getPerson().getLastName()));
+                    providerData.put("displayName", ProviderDisplayName.titled(abbreviation,
+                            provider.getPerson().getFirstName(), provider.getPerson().getLastName()));
+
+                    String providerPhone = provider.getPerson().getPrimaryPhone();
+                    if (GenericValidator.isBlankOrNull(providerPhone)) {
+                        providerPhone = provider.getPerson().getWorkPhone();
+                    }
+                    providerData.put("phone", providerPhone);
+                    providerData.put("fax", provider.getPerson().getFax());
+                    providerData.put("email", provider.getPerson().getEmail());
+                }
+
+                providerData.put("externalId", provider.getExternalId());
+                providerData.put("isActive", Boolean.TRUE.equals(provider.getActive()));
+
+                results.add(providerData);
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("providers", results);
+            response.put("totalCount", totalCount);
+            response.put("page", page);
+            response.put("pageSize", pageSize);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "searchProviders",
+                    "Error searching providers: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
         }
     }
 }

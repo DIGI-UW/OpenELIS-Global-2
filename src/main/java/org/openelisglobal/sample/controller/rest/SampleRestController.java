@@ -91,8 +91,8 @@ public class SampleRestController extends BaseRestController {
     private List<SampleSearchForm> convertToForm(Sample sample) {
         List<SampleSearchForm> forms = new ArrayList<SampleSearchForm>();
 
-        Set<Integer> statusList = new HashSet<>();
-        statusList.add(Integer.parseInt(statusService.getStatusID(AnalysisStatus.NotStarted)));
+        Set<String> statusList = new HashSet<>();
+        statusList.add(statusService.getStatusID(AnalysisStatus.NotStarted));
 
         List<Analysis> analyses = analysisService.getAnalysesBySampleIdAndStatusId(sample.getId(), statusList);
 

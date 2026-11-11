@@ -1,0 +1,155 @@
+import React, { useState, useEffect, useRef } from "react";
+import { useIntl } from "react-intl";
+import { HeaderGlobalAction, HeaderPanel } from "@carbon/react";
+import { Close, Help } from "@carbon/icons-react";
+import { getFromOpenElisServer } from "../utils/Utils";
+
+function webUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  try {
+    const url = new URL(value, window.location.origin);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
+const HelpMenu = ({ helpOpen, handlePanelToggle, enabled = true }) => {
+  const intl = useIntl();
+  const [helpUrls, setHelpUrls] = useState({
+    manual: "",
+    tutorials: "",
+    "release-notes": "",
+  });
+  const [error, setError] = useState(null);
+  const panelRef = useRef(null);
+  const buttonRef = useRef(null);
+
+  // Fetch help URLs on mount
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    let isMounted = true;
+
+    getFromOpenElisServer("/rest/properties", (properties) => {
+      if (!isMounted) return;
+
+      // The API helper calls the callback with `undefined` when the response is
+      // not JSON (e.g., auth redirect HTML). Treat that as "no configured help
+      // URLs" rather than crashing the entire app.
+      if (!properties || typeof properties !== "object") {
+        setHelpUrls({ manual: "", tutorials: "", "release-notes": "" });
+        setError(new Error("Help URL configuration unavailable"));
+        return;
+      }
+
+      setHelpUrls({
+        manual: webUrl(properties["org.openelisglobal.help.manual.url"]),
+        tutorials: webUrl(properties["org.openelisglobal.help.tutorials.url"]),
+        "release-notes": webUrl(
+          properties["org.openelisglobal.help.release-notes.url"],
+        ),
+      });
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [enabled]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const target = event.target;
+      if (!helpOpen) return;
+
+      const isClickInsidePanel = panelRef.current?.contains(target);
+      const isClickOnHelpButton = buttonRef.current?.contains(target);
+
+      const globalActionClicked =
+        document.getElementById("search-Icon")?.contains(target) ||
+        document.getElementById("notification-Icon")?.contains(target) ||
+        document.getElementById("user-Icon")?.contains(target);
+
+      if (!isClickInsidePanel && !isClickOnHelpButton && !globalActionClicked) {
+        handlePanelToggle("");
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [helpOpen, handlePanelToggle]);
+
+  // Opens the help URL in a new window and then closes the help panel
+  const openHelp = (type) => {
+    const url = helpUrls[type];
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+      handlePanelToggle("");
+    }
+  };
+
+  return (
+    <>
+      <HeaderGlobalAction
+        ref={buttonRef}
+        id="user-Help"
+        aria-label={intl.formatMessage({ id: "header.icon.help" })}
+        onClick={() => {
+          handlePanelToggle(helpOpen ? "" : "help");
+        }}
+        isActive={helpOpen}
+      >
+        {!helpOpen ? <Help size={20} /> : <Close size={20} />}
+      </HeaderGlobalAction>
+      <HeaderPanel
+        ref={panelRef}
+        aria-label="Help Panel"
+        expanded={helpOpen}
+        style={{ background: "#295785", color: "white" }}
+      >
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {["manual", "tutorials", "release-notes"].map((type) => (
+            <li key={type}>
+              <button
+                style={{
+                  width: "100%",
+                  padding: "1rem 1.5rem",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  color: "white",
+                }}
+                disabled={!helpUrls[type]}
+                onClick={() => openHelp(type)}
+                onMouseEnter={(e) =>
+                  (e.target.style.background = "rgba(255,255,255,0.15)")
+                }
+                onMouseLeave={(e) =>
+                  (e.target.style.background = "transparent")
+                }
+              >
+                <Help size={16} />
+                {type === "manual"
+                  ? intl.formatMessage({ id: "banner.menu.help.usermanual" })
+                  : type === "tutorials"
+                    ? intl.formatMessage({ id: "banner.menu.help.about" })
+                    : intl.formatMessage({ id: "banner.menu.help.contact" })}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </HeaderPanel>
+    </>
+  );
+};
+
+export default HelpMenu;

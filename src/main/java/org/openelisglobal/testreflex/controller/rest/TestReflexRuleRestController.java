@@ -2,7 +2,6 @@ package org.openelisglobal.testreflex.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.util.LabelValuePair;
@@ -12,19 +11,26 @@ import org.openelisglobal.testreflex.action.bean.ReflexRuleOptions;
 import org.openelisglobal.testreflex.action.bean.ReflexRuleOptionsDisplayItem;
 import org.openelisglobal.testreflex.service.TestReflexService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
 @RequestMapping(value = "/rest/")
 public class TestReflexRuleRestController {
+
+    private static final Logger logger = LoggerFactory.getLogger(TestReflexRuleRestController.class);
 
     @Autowired
     TestReflexService reflexService;
@@ -40,21 +46,36 @@ public class TestReflexRuleRestController {
     }
 
     @PostMapping(value = "deactivate-reflexrule/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public void deactivateReflexRule(@PathVariable String id) {
-        try {
-            reflexService.deactivateReflexRule(id);
-        } catch (Exception e) {
-        }
-
+    public ResponseEntity<Void> deactivateReflexRule(@PathVariable String id) {
+        return setReflexRuleActive(id, false);
     }
 
+    @PostMapping(value = "activate-reflexrule/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> activateReflexRule(@PathVariable String id) {
+        return setReflexRuleActive(id, true);
+    }
+
+    private ResponseEntity<Void> setReflexRuleActive(String id, boolean active) {
+        try {
+            boolean updated = active ? reflexService.activateReflexRule(id) : reflexService.deactivateReflexRule(id);
+            return updated ? ResponseEntity.ok().build() : ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (RuntimeException e) {
+            logger.error("Failed to set Active={} on reflex rule {}", active, id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * All reflex rules, or just one when {@code id} is supplied — the Test Editor's
+     * Reflex &amp; Calc section links straight to a single rule, and opening it
+     * should show that rule rather than the whole collection.
+     */
     @GetMapping(value = "reflexrules", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public List<ReflexRule> getReflexRules(HttpServletRequest request) {
-        List<ReflexRule> rules = reflexService.getAllReflexRules().stream().collect(Collectors.toList());
-        rules.forEach(rule -> rule.setToggled(false));
-        return !rules.isEmpty() ? rules : Collections.<ReflexRule>emptyList();
+    public List<ReflexRule> getReflexRules(HttpServletRequest request, @RequestParam(required = false) String id) {
+        return reflexService.getAllReflexRules().stream()
+                .filter(rule -> id == null || id.isBlank() || id.equals(String.valueOf(rule.getId())))
+                .collect(Collectors.toList());
     }
 
     @GetMapping(value = "reflexrule-options", produces = MediaType.APPLICATION_JSON_VALUE)

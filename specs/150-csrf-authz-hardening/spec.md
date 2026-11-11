@@ -1,5 +1,15 @@
 # Feature Specification: CSRF & REST Authorization Hardening
 
+> **Status:** PARTIALLY SUPERSEDED — F2 landed elsewhere; F3 still outstanding.
+> **Last reconciled:** 2026-04-20 **Reality notes:** F2 (REST interceptor
+> bypass) was addressed by PR #3329 ("security: REST @PreAuthorize
+> remediation"). Frontend CSRF token wiring was touched in commit `3c27b8ac2`.
+> The comprehensive deny-by-default REST authorization + server-side CSRF
+> enforcement scope described here did not ship as a single feature. Remaining
+> work (F3 / CSRF globally enabled for `/rest/**`) is still outstanding. Spec
+> retained as the design-of-record for the unfinished F3 scope; no
+> plan.md/tasks.md drafted.
+
 **Feature Branch**: `150-csrf-authz-hardening` **Created**: 2026-02-09
 **Status**: Draft **Input**: User description: "Implement CSRF protection and
 deny-by-default REST authorization to fix the two remaining HIGH/MEDIUM findings

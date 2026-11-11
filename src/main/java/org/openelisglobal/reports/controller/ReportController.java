@@ -1,6 +1,5 @@
 package org.openelisglobal.reports.controller;
 
-import com.itextpdf.text.DocumentException;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,11 +23,15 @@ import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IReportTrackingService;
 import org.openelisglobal.common.services.ReportTrackingService.ReportType;
+import org.openelisglobal.reportqueue.service.ReportQueueService;
+import org.openelisglobal.reportqueue.service.ReportQueueService.NothingReleasedException;
 import org.openelisglobal.reports.action.implementation.IReportCreator;
 import org.openelisglobal.reports.action.implementation.IReportParameterSetter;
+import org.openelisglobal.reports.action.implementation.PatientCILNSPClinical_vreduit;
 import org.openelisglobal.reports.action.implementation.ReportImplementationFactory;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openpdf.text.DocumentException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
@@ -48,9 +51,9 @@ public class ReportController extends BaseController {
     private static final String[] ALLOWED_FIELDS = new String[] { "report", "reportType", "type", "accessionDirect",
             "highAccessionDirect", "patientNumberDirect", "patientUpperNumberDirect", "lowerDateRange",
             "upperDateRange", "locationCode", "projectCode", "datePeriod", "lowerMonth", "lowerYear", "upperMonth",
-            "upperYear", "selectList.selection", "experimentId", "reportName", "selPatient", "analysisIds",
-            "referringSiteId", "referringSiteDepartmentId", "onlyResults", "dateType", "labSections", "priority",
-            "receptionTime", "vlStudyType" };
+            "upperYear", "selectList.selection", "reportName", "selPatient", "analysisIds", "referringSiteId",
+            "referringSiteDepartmentId", "onlyResults", "dateType", "labSections", "priority", "receptionTime",
+            "vlStudyType" };
 
     @Autowired
     private ServletContext context;
@@ -105,6 +108,12 @@ public class ReportController extends BaseController {
     private void printReport(HttpServletRequest request, HttpServletResponse response, ReportForm form) {
         IReportCreator reportCreator = ReportImplementationFactory.getReportCreator(request.getParameter("report"));
 
+        if (reportCreator != null && "patient".equals(request.getParameter("type"))
+                && PatientCILNSPClinical_vreduit.REPORT_NAME.equals(request.getParameter("report"))
+                && printThroughQueue(request, response, form, reportCreator)) {
+            return;
+        }
+
         if (reportCreator != null) {
             reportCreator.setSystemUserId(getSysUserId(request));
             reportCreator.setRequestedReport(request.getParameter("report"));
@@ -141,6 +150,44 @@ public class ReportController extends BaseController {
         if ("patient".equals(request.getParameter("type"))) {
             trackReports(reportCreator, request.getParameter("report"), ReportType.PATIENT);
         }
+    }
+
+    /**
+     * The patient report prints through the Report Print Queue pipeline (OGC-431
+     * FR-6.8): the form only selects the orders, then each order is rendered,
+     * versioned and archived on its own and the PDFs are joined. Returns false when
+     * the form selects no order, or when none of them has a released result yet, so
+     * the plain path prints what it always printed: its message, or the preliminary
+     * report that is not worth archiving.
+     */
+    private boolean printThroughQueue(HttpServletRequest request, HttpServletResponse response, ReportForm form,
+            IReportCreator reportCreator) {
+        reportCreator.setSystemUserId(getSysUserId(request));
+        reportCreator.setRequestedReport(request.getParameter("report"));
+        reportCreator.initializeReport(form);
+        List<String> orders = reportCreator.getReportedOrders();
+        if (orders == null || orders.isEmpty()) {
+            return false;
+        }
+        byte[] bytes;
+        try {
+            bytes = SpringContext.getBean(ReportQueueService.class).printPatientReports(orders, getSysUserId(request));
+        } catch (NothingReleasedException e) {
+            LogEvent.logInfo(getClass().getSimpleName(), "printThroughQueue",
+                    "nothing released on " + e.getMessage() + ", printing the preliminary report");
+            return false;
+        }
+        try {
+            response.setContentType("application/pdf");
+            response.setContentLength(bytes.length);
+            ServletOutputStream servletOutputStream = response.getOutputStream();
+            servletOutputStream.write(bytes, 0, bytes.length);
+            servletOutputStream.flush();
+            servletOutputStream.close();
+        } catch (IOException e) {
+            LogEvent.logError(e);
+        }
+        return true;
     }
 
     private void trackReports(IReportCreator reportCreator, String reportName, ReportType type) {

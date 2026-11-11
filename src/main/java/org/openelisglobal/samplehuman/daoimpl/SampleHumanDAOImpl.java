@@ -16,7 +16,6 @@
 package org.openelisglobal.samplehuman.daoimpl;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.hibernate.HibernateException;
@@ -85,7 +84,7 @@ public class SampleHumanDAOImpl extends BaseDAOImpl<SampleHuman, String> impleme
         try {
             String sql = "from SampleHuman sh where samp_id = :param";
             Query<SampleHuman> query = entityManager.unwrap(Session.class).createQuery(sql, SampleHuman.class);
-            query.setParameter("param", Integer.parseInt(sampleHuman.getSampleId()));
+            query.setParameter("param", sampleHuman.getSampleId());
             List<SampleHuman> list = query.list();
             SampleHuman sh = null;
             if (list.size() > 0) {
@@ -106,7 +105,7 @@ public class SampleHumanDAOImpl extends BaseDAOImpl<SampleHuman, String> impleme
             String sql = "select patient from Patient as patient, SampleHuman as sampleHuman where"
                     + " sampleHuman.patientId = patient.id and sampleHuman.sampleId = :sId";
             Query<Patient> query = entityManager.unwrap(Session.class).createQuery(sql, Patient.class);
-            query.setParameter("sId", Integer.parseInt(sample.getId()));
+            query.setParameter("sId", sample.getId());
             patient = query.uniqueResult();
         } catch (HibernateException e) {
             LogEvent.logError(e);
@@ -123,7 +122,7 @@ public class SampleHumanDAOImpl extends BaseDAOImpl<SampleHuman, String> impleme
             String sql = "select provider from Provider as provider, SampleHuman as sampleHuman where"
                     + " sampleHuman.providerId = provider.id and sampleHuman.sampleId = :sId";
             Query<Provider> query = entityManager.unwrap(Session.class).createQuery(sql, Provider.class);
-            query.setParameter("sId", Integer.parseInt(sample.getId()));
+            query.setParameter("sId", sample.getId());
             Provider provider = query.uniqueResult();
 
             return provider;
@@ -145,7 +144,7 @@ public class SampleHumanDAOImpl extends BaseDAOImpl<SampleHuman, String> impleme
                     + " sampleHuman.sampleId = sample.id and sampleHuman.patientId = :patientId order by"
                     + " sample.id";
             Query<Sample> query = entityManager.unwrap(Session.class).createQuery(sql, Sample.class);
-            query.setParameter("patientId", Integer.parseInt(patientID));
+            query.setParameter("patientId", patientID);
             samples = query.list();
         } catch (HibernateException e) {
             LogEvent.logError(e);
@@ -155,35 +154,29 @@ public class SampleHumanDAOImpl extends BaseDAOImpl<SampleHuman, String> impleme
         return samples;
     }
 
+    // Scalar ID projections — see SampleHumanDAO for the why.
     @Override
-    public List<Patient> getAllPatientsWithSampleEntered() {
-        List<Patient> patients = new ArrayList<>();
+    public List<String> getAllPatientIdsWithSampleEntered() {
         try {
-            String sql = "select distinct patient from Patient as patient, SampleHuman as sampleHuman where"
-                    + " sampleHuman.patientId = patient.id";
-            Query<Patient> query = entityManager.unwrap(Session.class).createQuery(sql, Patient.class);
-            patients = query.getResultList();
+            String hql = "select distinct patient.id from Patient as patient, SampleHuman as sampleHuman"
+                    + " where sampleHuman.patientId = patient.id";
+            return entityManager.unwrap(Session.class).createQuery(hql, String.class).getResultList();
         } catch (HibernateException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in SampleHuman getAllPatientsWithSampleEntered()", e);
+            throw new LIMSRuntimeException("Error in SampleHuman getAllPatientIdsWithSampleEntered()", e);
         }
-
-        return patients;
     }
 
     @Override
-    public List<Patient> getAllPatientsWithSampleEnteredMissingFhirUuid() {
-        List<Patient> patients = new ArrayList<>();
+    public List<String> getAllPatientIdsWithSampleEnteredMissingFhirUuid() {
         try {
-            String sql = "select distinct patient from Patient as patient, SampleHuman as sampleHuman where"
-                    + " sampleHuman.patientId = patient.id AND patient.fhirUuid is null";
-            Query<Patient> query = entityManager.unwrap(Session.class).createQuery(sql, Patient.class);
-            patients = query.getResultList();
+            String hql = "select distinct patient.id from Patient as patient, SampleHuman as sampleHuman"
+                    + " where sampleHuman.patientId = patient.id AND patient.fhirUuid is null";
+            return entityManager.unwrap(Session.class).createQuery(hql, String.class).getResultList();
         } catch (HibernateException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in SampleHuman getAllPatientsWithSampleEntered()", e);
+            throw new LIMSRuntimeException("Error in SampleHuman getAllPatientIdsWithSampleEnteredMissingFhirUuid()",
+                    e);
         }
-
-        return patients;
     }
 }

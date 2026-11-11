@@ -53,7 +53,6 @@ public class PatientUtil {
         UNKNOWN_PERSON = personService.getPersonByLastName("UNKNOWN_");
         if (UNKNOWN_PERSON == null) {
             UNKNOWN_PERSON = new Person();
-            UNKNOWN_PERSON.setSysUserId("1");
             UNKNOWN_PERSON.setLastName("UNKNOWN_");
             personService.insert(UNKNOWN_PERSON);
         }
@@ -63,7 +62,6 @@ public class PatientUtil {
 
         if (UNKNOWN_PROVIDER == null) {
             UNKNOWN_PROVIDER = new Provider();
-            UNKNOWN_PROVIDER.setSysUserId("1");
             UNKNOWN_PROVIDER.setPerson(UNKNOWN_PERSON);
             providerService.insert(UNKNOWN_PROVIDER);
         }
@@ -73,7 +71,6 @@ public class PatientUtil {
 
         if (UNKNOWN_PATIENT == null) {
             UNKNOWN_PATIENT = new Patient();
-            UNKNOWN_PATIENT.setSysUserId("1");
             UNKNOWN_PATIENT.setPerson(UNKNOWN_PERSON);
             patientService.insert(UNKNOWN_PATIENT);
         }
@@ -172,8 +169,20 @@ public class PatientUtil {
 
     public static void copyFormBeanToValueHolders(PatientManagementInfo patientInfo, Patient patient)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+        // GPS fields are String on PatientManagementInfo and BigDecimal on
+        // Person — PropertyUtils.copyProperties throws on the type mismatch.
+        // Skip them in the bulk copy, then apply explicit String→BigDecimal.
+        String gpsLatitudeRaw = patientInfo.getGpsLatitude();
+        String gpsLongitudeRaw = patientInfo.getGpsLongitude();
+        patientInfo.setGpsLatitude(null);
+        patientInfo.setGpsLongitude(null);
+
         PropertyUtils.copyProperties(patient, patientInfo);
         PropertyUtils.copyProperties(patient.getPerson(), patientInfo);
+
+        patientInfo.setGpsLatitude(gpsLatitudeRaw);
+        patientInfo.setGpsLongitude(gpsLongitudeRaw);
+        PatientGpsCoordinates.applyToPerson(gpsLatitudeRaw, gpsLongitudeRaw, patient.getPerson());
     }
 
     public static void setSystemUserID(PatientManagementInfo patientInfo, Patient patient, HttpServletRequest request) {

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.5.0-029-dedupe-barcode-label-info" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <indexExists indexName="uk_barcode_label_info_code" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>
+      Concurrent print requests inserted multiple barcode_label_info rows for the same code
+      (Label.linkBarcodeLabelInfo had no unique constraint and the lookup-then-insert dance is
+      racy). Collapse duplicates into the lowest id, summing num_printed so the print cap stays
+      defensible, before adding the unique constraint.
+    </comment>
+    <sql splitStatements="true" stripComments="true">
+      UPDATE clinlims.barcode_label_info kept
+      SET numprinted = totals.total_printed,
+          lastupdated = NOW()
+      FROM (
+          SELECT code, SUM(numprinted) AS total_printed, MIN(id) AS keeper_id
+          FROM clinlims.barcode_label_info
+          GROUP BY code
+          HAVING COUNT(*) > 1
+      ) totals
+      WHERE kept.id = totals.keeper_id;
+
+      DELETE FROM clinlims.barcode_label_info dup
+      USING (
+          SELECT code, MIN(id) AS keeper_id
+          FROM clinlims.barcode_label_info
+          GROUP BY code
+          HAVING COUNT(*) > 1
+      ) totals
+      WHERE dup.code = totals.code AND dup.id &lt;&gt; totals.keeper_id;
+    </sql>
+    <rollback>
+      <comment>Dedup is destructive (collapsed rows can't be split back); rollback is a no-op.</comment>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="3.5.0-029-add-barcode-label-info-code-uk" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <indexExists indexName="uk_barcode_label_info_code" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>
+      The code column is the natural key — one printed barcode value should map 1:1 to a row.
+      Enforcing uniqueness lets concurrent print requests fall through to UPDATE instead of
+      silently spawning duplicate rows that confuse num_printed cap checks.
+    </comment>
+    <addUniqueConstraint tableName="barcode_label_info" schemaName="clinlims"
+                         columnNames="code"
+                         constraintName="uk_barcode_label_info_code"/>
+  </changeSet>
+
+</databaseChangeLog>

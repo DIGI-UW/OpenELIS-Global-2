@@ -20,17 +20,19 @@ import "./commands";
 // Controlled by FAIL_FAST_ENABLED env variable (set via E2E_FAIL_FAST=true)
 import "cypress-fail-fast";
 
-// Storage test support (globally available for all storage tests)
-import "./load-storage-fixtures";
-import "./storage-setup";
-
-// Patient Merge test support (008-patient-merge feature)
-import "./patient-merge-setup";
-
 // Capture browser console logs and forward to terminal
 // This is especially important for Electron browser
 // Note: Electron console logs are automatically shown when ELECTRON_ENABLE_LOGGING=1
 // This handler captures console messages and logs them via Cypress commands when available
+// The app registers a service worker, which the Playwright config blocks
+// because of the self-signed certificate. Under Cypress its late
+// service-worker.js fetch crashed the proxy after every spec had passed
+// ("Cannot read properties of null (reading 'family')"), failing the run, so
+// the browser is told it has no service worker support.
+Cypress.on("window:before:load", (win) => {
+  delete Object.getPrototypeOf(win.navigator).serviceWorker;
+});
+
 Cypress.on("window:before:load", (win) => {
   // Store original console methods
   const originalLog = win.console.log;
@@ -97,13 +99,14 @@ Cypress.on("window:before:load", (win) => {
   };
 });
 
-// Capture uncaught exceptions and log them
-// Note: We can't use cy.task() here, but Electron will show console errors automatically
+// Let uncaught exceptions fail the test with the real error message.
+// Returning true (default) causes Cypress to fail immediately with the
+// actual JS error instead of a vague timeout like "button not found".
 Cypress.on("uncaught:exception", (err, runnable) => {
-  // Electron console will show this automatically with ELECTRON_ENABLE_LOGGING=1
-  // Return false to prevent Cypress from failing the test
-  // This allows us to see the error but continue
-  return false;
+  // Log for visibility in CI output
+  console.error("[uncaught:exception]", err.message);
+  // Return true (or omit return) to let Cypress fail the test
+  return true;
 });
 
 // Fail-fast: Stop test run on first failure using official Cypress.stop() API

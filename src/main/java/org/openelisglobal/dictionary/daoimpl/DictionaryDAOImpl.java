@@ -18,6 +18,7 @@ package org.openelisglobal.dictionary.daoimpl;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -169,22 +170,42 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
     // is unique
     @Override
     public boolean duplicateDictionaryExists(Dictionary dictionary) throws LIMSRuntimeException {
-        try {
-            String sql = null;
-            if (dictionary.getDictionaryCategory() != null) {
-                sql = "from Dictionary t where ((trim(lower(t.dictEntry)) = :param and"
-                        + " trim(lower(t.dictionaryCategory.categoryName)) = :param2 and t.id != :param3)"
-                        + " or (trim(lower(t.localAbbreviation)) = :param4 and"
-                        + " trim(lower(t.dictionaryCategory.categoryName)) = :param2 and t.id != :param3))" + " ";
+        return !findDuplicates(dictionary).isEmpty();
+    }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Dictionary> findDuplicates(Dictionary dictionary) throws LIMSRuntimeException {
+        try {
+            // local_abbrev is nullable in the schema (e.g. legacy 2012 seed
+            // categories like marital status). Build the abbreviation clause
+            // only when the dictionary actually has one so we don't NPE on
+            // null.toLowerCase().
+            String abbrev = dictionary.getLocalAbbreviation();
+            String trimmedAbbrev = abbrev == null ? null : abbrev.toLowerCase().trim();
+            boolean hasAbbrev = trimmedAbbrev != null && !trimmedAbbrev.isEmpty();
+
+            String sql;
+            if (dictionary.getDictionaryCategory() != null) {
+                sql = "from Dictionary t where (trim(lower(t.dictEntry)) = :param"
+                        + " and trim(lower(t.dictionaryCategory.categoryName)) = :param2 and t.id != :param3)";
+                if (hasAbbrev) {
+                    sql += " or (trim(lower(t.localAbbreviation)) = :param4"
+                            + " and trim(lower(t.dictionaryCategory.categoryName)) = :param2 and t.id != :param3)";
+                }
             } else {
-                sql = "from Dictionary t where ((trim(lower(t.dictEntry)) = :param and t.dictionaryCategory"
-                        + " is null and t.id != :param3) or (trim(lower(t.localAbbreviation)) = :param4 and"
-                        + " t.dictionaryCategory is null and t.id != :param3)) ";
+                sql = "from Dictionary t where (trim(lower(t.dictEntry)) = :param"
+                        + " and t.dictionaryCategory is null and t.id != :param3)";
+                if (hasAbbrev) {
+                    sql += " or (trim(lower(t.localAbbreviation)) = :param4"
+                            + " and t.dictionaryCategory is null and t.id != :param3)";
+                }
             }
             Query<Dictionary> query = entityManager.unwrap(Session.class).createQuery(sql, Dictionary.class);
             query.setParameter("param", dictionary.getDictEntry().toLowerCase().trim());
-            query.setParameter("param4", dictionary.getLocalAbbreviation().toLowerCase().trim());
+            if (hasAbbrev) {
+                query.setParameter("param4", trimmedAbbrev);
+            }
             if (dictionary.getDictionaryCategory() != null) {
                 query.setParameter("param2", dictionary.getDictionaryCategory().getCategoryName().toLowerCase().trim());
             }
@@ -194,13 +215,13 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
             if (!StringUtil.isNullorNill(dictionary.getId())) {
                 dictId = dictionary.getId();
             }
-            query.setParameter("param3", Integer.parseInt(dictId));
+            query.setParameter("param3", dictId);
 
-            return !query.list().isEmpty();
+            return query.list();
         } catch (RuntimeException e) {
             // bugzilla 2154
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in duplicateDictionaryExists()", e);
+            throw new LIMSRuntimeException("Error in findDuplicates()", e);
         }
     }
 
@@ -233,9 +254,20 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
         }
     }
 
+    /**
+     * The id column is numeric, so a non-numeric id can never match a row.
+     * Malformed callers pass raw result text here (e.g. a legacy free-text
+     * select-list option); that is treated as not-found instead of letting the id
+     * parse blow up the whole request.
+     */
     @Override
     @Transactional(readOnly = true)
     public Dictionary getDictionaryById(String dictionaryId) throws LIMSRuntimeException {
+        if (dictionaryId == null || !StringUtils.isNumeric(dictionaryId.trim())) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "getDictionaryById",
+                    "non-numeric dictionary id ignored: " + dictionaryId);
+            return null;
+        }
         try {
             return entityManager.unwrap(Session.class).get(Dictionary.class, dictionaryId);
         } catch (RuntimeException e) {
@@ -251,7 +283,7 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
         String sql = "from Dictionary d where d.id = :id";
         try {
             Query<Dictionary> query = entityManager.unwrap(Session.class).createQuery(sql, Dictionary.class);
-            query.setParameter("id", Integer.parseInt(dictionaryId));
+            query.setParameter("id", dictionaryId);
             return query.uniqueResult();
 
         } catch (HibernateException e) {

@@ -1,18 +1,24 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback } from "react";
 import { OverflowMenu, OverflowMenuItem } from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { useIntl } from "react-intl";
 import "./SampleActionsOverflowMenu.css";
 
 /**
  * Overflow menu for sample row actions
- * Displays three menu items: Manage Location, Dispose, View Audit (disabled)
+ * Displays three menu items: Manage Location, Dispose, View Audit
  *
  * Props:
  * - sample: object - Sample data { id, sampleId, type, status }
  * - onManageLocation: function - Callback when Manage Location clicked
  * - onDispose: function - Callback when Dispose clicked
+ * - onViewAudit: function - OGC-649: Callback when View Audit clicked
  */
-const SampleActionsOverflowMenu = ({ sample, onManageLocation, onDispose }) => {
+const SampleActionsOverflowMenu = ({
+  sample,
+  onManageLocation,
+  onDispose,
+  onViewAudit,
+}) => {
   const intl = useIntl();
 
   // Use useCallback to ensure stable function references
@@ -50,13 +56,28 @@ const SampleActionsOverflowMenu = ({ sample, onManageLocation, onDispose }) => {
     [sample, onDispose],
   );
 
+  const handleViewAudit = useCallback(
+    (event) => {
+      if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+      }
+      if (onViewAudit) {
+        onViewAudit(sample);
+      }
+    },
+    [sample, onViewAudit],
+  );
+
   return (
     <div className="sample-actions-overflow-menu">
       <OverflowMenu
-        ariaLabel={intl.formatMessage({
+        flipped
+        aria-label={intl.formatMessage({
           id: "storage.sample.actions",
           defaultMessage: "Sample actions",
         })}
+        menuOptionsClass="sample-actions-overflow-menu__options"
         data-testid="sample-actions-overflow-menu"
       >
         <OverflowMenuItem
@@ -80,7 +101,8 @@ const SampleActionsOverflowMenu = ({ sample, onManageLocation, onDispose }) => {
             id: "storage.view.audit",
             defaultMessage: "View Audit",
           })}
-          disabled
+          onClick={handleViewAudit}
+          disabled={!onViewAudit}
           data-testid="view-audit-menu-item"
         />
       </OverflowMenu>

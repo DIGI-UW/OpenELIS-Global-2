@@ -151,4 +151,7 @@ public interface TestReflexDAO extends BaseDAO<TestReflex, String> {
      * @throws LIMSRuntimeException
      */
     List<TestReflex> getTestReflexsByTestAnalyteId(String testAnalyteId) throws LIMSRuntimeException;
+
+    /** All reflex rules whose source (trigger) test is {@code testId}. */
+    List<TestReflex> getTestReflexsByTestId(String testId) throws LIMSRuntimeException;
 }

@@ -43,7 +43,7 @@ public class ReportExternalExportDAOImpl extends BaseDAOImpl<ReportExternalExpor
         try {
             Query<ReportExternalExport> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ReportExternalExport.class);
-            query.setParameter("typeId", Integer.parseInt(reportQueueTypeId));
+            query.setParameter("typeId", reportQueueTypeId);
             List<ReportExternalExport> reports = query.list();
 
             return reports;
@@ -60,7 +60,7 @@ public class ReportExternalExportDAOImpl extends BaseDAOImpl<ReportExternalExpor
         try {
             Query<ReportExternalExport> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ReportExternalExport.class);
-            query.setParameter("typeId", Integer.parseInt(reportQueueTypeId));
+            query.setParameter("typeId", reportQueueTypeId);
             List<ReportExternalExport> reports = query.list();
 
             return reports;
@@ -80,7 +80,7 @@ public class ReportExternalExportDAOImpl extends BaseDAOImpl<ReportExternalExpor
         try {
             Query<ReportExternalExport> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ReportExternalExport.class);
-            query.setParameter("typeId", Integer.parseInt(reportQueueTypeId));
+            query.setParameter("typeId", reportQueueTypeId);
             ReportExternalExport report = query.setMaxResults(1).uniqueResult();
 
             return report;
@@ -99,7 +99,7 @@ public class ReportExternalExportDAOImpl extends BaseDAOImpl<ReportExternalExpor
         try {
             Query<ReportExternalExport> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ReportExternalExport.class);
-            query.setParameter("typeId", Integer.parseInt(reportQueueTypeId));
+            query.setParameter("typeId", reportQueueTypeId);
             ReportExternalExport report = query.setMaxResults(1).uniqueResult();
 
             return report;
@@ -190,7 +190,7 @@ public class ReportExternalExportDAOImpl extends BaseDAOImpl<ReportExternalExpor
                     ReportExternalExport.class);
             query.setParameter("eventDate", report.getEventDate());
             query.setParameter("nextDay", new Timestamp(report.getEventDate().getTime() + DAY_IN_MILLSEC));
-            query.setParameter("typeId", Integer.parseInt(report.getTypeId()));
+            query.setParameter("typeId", report.getTypeId());
             ReportExternalExport foundReport = query.setMaxResults(1).uniqueResult();
             return foundReport == null ? report : foundReport;
 

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    OGC-651 (LO-03-01 Specimen details): add three freetext columns to
+    sample_item to capture additional specimen metadata that the existing
+    schema doesn't model.
+
+    - collection_method:   how the sample was drawn (venipuncture, capillary,
+                           tubing, epicranial, etc.). Genuinely missing.
+    - sample_temperature:  sample state at collection / transit (room temp,
+                           iced, refrigerated, frozen, ambient). Functionally
+                           overlaps with the legacy collection_conditions
+                           hybrid column ("fasting, room temp, iced") but per
+                           Constitution Principle X we add a clean dedicated
+                           column rather than extend the legacy one.
+    - specimen_origin:     referent-laboratory name when sample is received
+                           from an external lab. Genuinely missing.
+
+    All three nullable; backwards-compatible.
+  -->
+
+  <changeSet id="3.5.0-020-add-collection-method" author="claude-uat">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample_item" columnName="collection_method" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="sample_item" schemaName="clinlims">
+      <column name="collection_method" type="VARCHAR(255)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-020-add-sample-temperature" author="claude-uat">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample_item" columnName="sample_temperature" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="sample_item" schemaName="clinlims">
+      <column name="sample_temperature" type="VARCHAR(50)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-020-add-specimen-origin" author="claude-uat">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample_item" columnName="specimen_origin" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="sample_item" schemaName="clinlims">
+      <column name="specimen_origin" type="VARCHAR(255)">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

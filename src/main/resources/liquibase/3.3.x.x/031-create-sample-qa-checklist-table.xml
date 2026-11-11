@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <!-- QA Checklist Dictionary Category -->
+    <changeSet id="create-qa-checklist-dictionary-category" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.dictionary_category WHERE name = 'QAChecklistItem'</sqlCheck>
+        </preConditions>
+        <comment>Create dictionary category for QA Checklist items.
+            Dictionary entries should be added via CSV configuration file at:
+            volume/configuration/backend/dictionaries/qa-checklist-items.csv</comment>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="QA Checklist items for order verification in Step 4"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="QACheck"/>
+            <column name="name" value="QAChecklistItem"/>
+        </insert>
+    </changeSet>
+
+    <!-- Sample QA Checklist Table - Tracks QA verification status for orders -->
+    <changeSet id="create-sample-qa-checklist-table" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="sample_qa_checklist"/>
+            </not>
+        </preConditions>
+        <createTable tableName="sample_qa_checklist">
+            <column name="id" type="numeric(10,0)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="numeric(10,0)">
+                <constraints nullable="false" unique="true"
+                    foreignKeyName="fk_qa_checklist_sample"
+                    references="sample(id)"
+                    deleteCascade="true"/>
+            </column>
+            <!-- Store verified items as JSON for flexibility -->
+            <column name="verified_items" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="all_required_verified" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="verified_by_user_id" type="numeric(10,0)">
+                <constraints nullable="true"
+                    foreignKeyName="fk_qa_checklist_user"
+                    references="system_user(id)"/>
+            </column>
+            <column name="verified_date" type="TIMESTAMP"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <createSequence sequenceName="sample_qa_checklist_seq" startValue="1" incrementBy="1"/>
+        <createIndex tableName="sample_qa_checklist" indexName="idx_qa_checklist_sample_id">
+            <column name="sample_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="sample_qa_checklist" indexName="idx_qa_checklist_sample_id"/>
+            <dropSequence sequenceName="sample_qa_checklist_seq"/>
+            <dropTable tableName="sample_qa_checklist"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,460 @@
+# Feature Specification: Westgard QC Rules Dashboard
+
+> **Analyzer-boundary amendment (2026-08-24):** This specification governs
+> OpenELIS operational Quality Control: control lots, QC results, statistics,
+> Westgard evaluation, violations, alerts, and their user workflows. Its older
+> per-analyzer editable identification-rule design is superseded by the
+> [analyzer specification](../analyzers/spec.md).
+> Control-result recognition is immutable behavior of the pinned Bridge profile
+> revision. OpenELIS does not own an editable recognition rule or send a
+> classifier to Bridge.
+
+**Feature Branch**: `003-westgard-qc` **Created**: 2026-04-13 **Status**:
+Operational-QC foundation implemented; analyzer-identification path superseded
+**Jira**:
+[OGC-41 — Westgard Rules Dashboard for Analyzers](https://uwdigi.atlassian.net/browse/OGC-41)
+**Labels**: Madagascar, Indonesia
+
+## Source Documents
+
+- **Design requirements**:
+  [westgard-rules.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/quality/westgard-rules.md)
+  — FR1-FR13, NFR1-NFR6
+- **Dashboard mockup (Figma)**:
+  [kit-mango-37758223.figma.site](https://kit-mango-37758223.figma.site)
+- **Dashboard gallery**:
+  [westgard-dashboard.jsx](https://github.com/DIGI-UW/openelis-work/blob/main/designs/quality/westgard-dashboard.jsx)
+- **Manual QC spec**:
+  [analyzer-manual-qc.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/quality/analyzer-manual-qc.md)
+  (separate feature, not in v1 scope)
+- **Historical implementation**: PR
+  [#3390](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3390), Bridge PR
+  [#33](https://github.com/DIGI-UW/openelis-analyzer-bridge/pull/33)
+
+## Analyzer Architecture Boundary
+
+The canonical
+[analyzer specification](../analyzers/spec.md)
+supersedes the analyzer-classification ownership originally proposed here.
+This specification remains authoritative for OpenELIS operational QC: control
+lots, QC results, statistics, Westgard configuration and evaluation,
+violations, alerts, and their lab-facing workflows.
+
+Control-result recognition is analyzer-type behavior. Bridge reads and applies
+the explicit recognition definition from the configured analyzer's pinned,
+published profile revision. OpenELIS does not copy that definition into an
+analyzer connection, offer a second per-analyzer recognition editor, or push a
+classifier to Bridge. The superseded `AnalyzerQcRule` path is not part of the
+target system. Operational-QC completeness and outcomes never gate analyzer
+verification or activation.
+
+## Executive Summary
+
+Laboratory instruments produce quality control (QC) measurements alongside
+patient samples to verify that the analytical system is performing correctly.
+This feature provides automated Westgard rule evaluation, a real-time compliance
+dashboard, Levey-Jennings control charts, and configurable alerting — replacing
+a fully manual, paper-based QC process.
+
+Bridge identifies control results from the pinned analyzer-type profile before
+results reach OpenELIS. OpenELIS persists those QC measurements with statistical
+context, evaluates 8 standard Westgard rules asynchronously, and surfaces
+compliance status through a color-coded dashboard with drill-down charts and
+violation tracking.
+
+---
+
+## User Scenarios & Testing _(mandatory)_
+
+### User Story 1 — Lab Technician Monitors Instrument Compliance (Priority: P1)
+
+A lab technician starts their shift and opens the QC dashboard to check whether
+all instruments are in compliance. They see a summary showing how many
+instruments are compliant (green), have warnings (yellow), or are out of
+compliance (red). They click on a yellow instrument card to see which Westgard
+rule triggered the warning, review the Levey-Jennings chart to understand the
+trend, and decide whether to re-run the control.
+
+**Why this priority**: This is the primary daily workflow for QC monitoring.
+Without it, technicians have no digital visibility into instrument compliance.
+
+**Independent Test**: Navigate to the QC dashboard, verify summary tiles show
+counts, verify instrument cards display status, click a card and verify the
+detail page shows violations and a chart.
+
+**Acceptance Scenarios**:
+
+1. **Given** QC results have been ingested for 3 instruments, **When** the
+   technician opens the QC dashboard, **Then** summary tiles show the correct
+   count of compliant/warning/out-of-compliance instruments.
+2. **Given** an instrument has a 1-2s warning violation, **When** the technician
+   clicks the instrument card, **Then** the detail page shows the violation with
+   the rule code, severity, z-score, and the affected result.
+3. **Given** the dashboard is open, **When** 5 minutes elapse, **Then** the
+   dashboard auto-refreshes with updated data.
+
+---
+
+### User Story 2 — QC Officer Sets Up a New Control Lot (Priority: P1)
+
+When a new lot of QC control material arrives, the QC officer creates a control
+lot in the system, selecting the test and instrument it applies to, the
+manufacturer's lot number, expiry date, and the statistical calculation method
+(initial runs, rolling window, or manufacturer-provided values). For
+manufacturer-provided values, the mean and SD are entered immediately and the
+lot activates. For initial-runs or rolling methods, the lot enters an
+"establishment" phase where it collects enough data points before activating.
+
+**Why this priority**: Without control lots, no QC results can be evaluated.
+This is a prerequisite for all Westgard rule evaluation.
+
+**Independent Test**: Navigate to the control lot setup page, fill out the form,
+save, verify the lot appears in the list with the correct status (ESTABLISHMENT
+for initial/rolling, ACTIVE for manufacturer-fixed).
+
+**Acceptance Scenarios**:
+
+1. **Given** the QC officer selects "Manufacturer Fixed" as the calculation
+   method, **When** they enter mean and SD and save, **Then** the lot is created
+   with ACTIVE status and statistics are immediately available.
+2. **Given** the QC officer selects "Initial Runs" with N=20, **When** they save
+   without entering manufacturer values, **Then** the lot is created with
+   ESTABLISHMENT status and a message indicates how many runs are needed.
+3. **Given** an ESTABLISHMENT lot has accumulated 20 QC results, **When** the
+   officer activates the lot, **Then** statistics are calculated from the
+   initial runs and the lot transitions to ACTIVE.
+
+---
+
+### User Story 3 — Automatic Control Recognition (Priority: P1)
+
+When the analyzer bridge processes analyzer traffic, it uses only the exact
+pinned profile revision's explicit control-result recognition behavior to
+distinguish control results from patient results. Control results are tagged
+before they reach OpenELIS. OpenELIS routes tagged results to the QC pipeline,
+computes z-scores, and triggers Westgard rule evaluation.
+
+**Why this priority**: This is the data intake path. Without automatic QC
+identification, no results flow into the Westgard evaluation engine.
+
+**Independent Test**: Send a representative control result through a configured
+analyzer profile. Verify Bridge recognizes it from that pinned profile, OpenELIS
+creates a QC result, and an active matching lot triggers Westgard evaluation.
+
+**Acceptance Scenarios**:
+
+1. **Given** a published profile defines a matching control-result condition,
+   **When** Bridge processes a matching message or file row, **Then** the result
+   is identified as a QC control sample.
+2. **Given** a published profile explicitly affirms that the interface
+   transports no control results, **When** Bridge processes traffic, **Then** it
+   does not infer a control through a hidden or hard-coded fallback.
+3. **Given** a QC-tagged result arrives and the control lot is ACTIVE, **When**
+   the result is persisted, **Then** a z-score is computed and Westgard rules
+   are evaluated without blocking the result ingestion pipeline.
+4. **Given** a profile's recognition definition is missing or invalid, **When**
+   an administrator attempts to publish or select it, **Then** the profile is
+   rejected rather than executed with fallback behavior.
+
+---
+
+### User Story 4 — Lab Manager Reviews Levey-Jennings Chart (Priority: P2)
+
+The lab manager opens the control chart for a specific instrument/test
+combination to review QC performance over time. The Levey-Jennings chart shows
+each QC result plotted chronologically, with reference lines for the mean and
+plus/minus 1, 2, 3 standard deviations. Points that violated Westgard rules are
+highlighted with tooltip details.
+
+**Why this priority**: The L-J chart is the standard clinical laboratory
+visualization for QC trending. It's essential for ISO 15189 compliance but can
+function as a read-only view after the core pipeline (Stories 1-3) works.
+
+**Independent Test**: Navigate to a control lot's chart page, verify the chart
+renders with data points, reference lines, and violation markers.
+
+**Acceptance Scenarios**:
+
+1. **Given** a control lot has 30 QC results, **When** the manager opens the
+   chart, **Then** all 30 points are plotted with mean and SD reference lines.
+2. **Given** a result with z=3.5 triggered the 1-3s rule, **When** the chart
+   renders, **Then** that point is visually highlighted as a violation.
+
+---
+
+### User Story 5 — Lab Supervisor Configures Westgard Rules (Priority: P2)
+
+The lab supervisor opens the rule configuration panel and enables or disables
+specific Westgard rules for each test-instrument combination. They can set
+whether each rule is a "warning" (informational) or "rejection" (requires
+action), and whether corrective action is required. A default multi-rule preset
+is available to apply in one click.
+
+**Why this priority**: Configuration is needed for customization but the system
+ships with sensible defaults. Most labs can use the preset without manual
+configuration.
+
+**Independent Test**: Navigate to the rule config panel, verify it shows
+test-instrument pairs with enabled rules, toggle a rule, verify the change
+persists.
+
+**Acceptance Scenarios**:
+
+1. **Given** a new test-instrument pair, **When** the supervisor creates a
+   control lot, **Then** all 8 Westgard rules are auto-enabled with default
+   severity settings.
+2. **Given** the supervisor disables a specific rule, **When** the next QC
+   result is evaluated, **Then** that rule is skipped.
+
+---
+
+### User Story 6 — Lab Supervisor Receives Violation Alerts (Priority: P2)
+
+When a Westgard rule is violated, the system creates an in-app alert. Rejection-
+severity violations fire immediately. Warning-severity violations are batched in
+15-minute windows to prevent alert fatigue. The supervisor sees alerts on the
+dashboard's Alerts tab and can acknowledge them.
+
+**Why this priority**: Alerts close the feedback loop — without them, violations
+exist in the system but nobody is notified.
+
+**Independent Test**: Trigger a rejection-severity violation, verify an alert
+appears in the Alerts tab within seconds, verify the acknowledge action works.
+
+**Acceptance Scenarios**:
+
+1. **Given** a QC result triggers a rejection-severity rule, **When** the
+   evaluation completes, **Then** an alert appears immediately for active users.
+2. **Given** two warning-severity violations occur within the same 15-minute
+   batch window for the same instrument/test, **When** the window closes,
+   **Then** a single consolidated alert is sent (not one alert per violation).
+3. **Given** the supervisor acknowledges a violation, **When** they refresh the
+   dashboard, **Then** the violation shows as resolved.
+
+---
+
+### User Story 7 — Supervisor Opens Linked Operational QC (Priority: P3)
+
+A laboratory supervisor reviewing an analyzer follows its Quality Control link
+into the canonical OpenELIS QC workflow. The destination retains the analyzer
+context and provides a clear return path. The supervisor can inspect control
+lots, Westgard configuration, results, violations, and alerts without changing
+the analyzer's profile recognition or activation state.
+
+**Why this priority**: Analyzer context makes the QC workflow easier to reach,
+while preserving a clear boundary between connection readiness and laboratory
+quality decisions.
+
+**Independent Test**: Follow Quality Control from an analyzer, verify the QC
+workflow is filtered to that analyzer, change an operational-QC setting, return
+to the analyzer, and verify its activation and verification state is unchanged.
+
+**Acceptance Scenarios**:
+
+1. **Given** a supervisor follows Quality Control from an analyzer, **When** the
+   QC workflow opens, **Then** the analyzer context and return path are visible.
+2. **Given** the supervisor changes a control lot or Westgard configuration,
+   **When** they return to analyzer setup, **Then** the analyzer's verification
+   and activation blockers have not changed.
+
+---
+
+### Edge Cases
+
+- What happens when a QC result arrives but no matching control lot exists? The
+  result is stored but not routed to QC processing. An error record is created
+  for review.
+- What happens when a lot is still in ESTABLISHMENT phase? Results are stored
+  and contribute to statistics accumulation, but Westgard rules are NOT
+  evaluated (no z-score baseline available yet).
+- What happens when a published profile explicitly declares no transmitted
+  controls? Bridge classifies no result as a control and does not guess. A
+  missing or invalid recognition declaration is a profile-contract error, not
+  an implicit patient-result default.
+- What happens if rule evaluation fails (e.g., database timeout)? The QC result
+  is already saved. The evaluation failure is logged but does not block the
+  analyzer ingestion pipeline.
+- What happens when a control lot expires? The lot transitions to EXPIRED
+  status. New QC results cannot be linked to it. A new lot must be created.
+
+## Requirements _(mandatory)_
+
+### Functional Requirements
+
+**QC Identification**
+
+- **FR-001**: Bridge MUST identify control results before they reach OpenELIS by
+  evaluating only the explicit control-result recognition definition in the
+  analyzer's pinned, published profile revision.
+- **FR-002**: Profile recognition MUST support field-value equality,
+  field-value containment, specimen-ID prefix, and configured specimen-ID
+  pattern matching, plus an explicit affirmed mode for interfaces that
+  transport no control results.
+- **FR-003**: A missing or invalid recognition definition MUST prevent profile
+  publication or selection. Published revisions are immutable; recognition is
+  changed by publishing a new analyzer-type revision, never by editing one
+  analyzer connection or by applying a hidden fallback.
+- **FR-004**: Identified QC observations MUST be clearly marked in the data
+  pipeline so they are routed to QC processing rather than patient result
+  acceptance.
+
+**QC Result Processing**
+
+- **FR-005**: The system MUST route identified QC observations to the QC result
+  processing pipeline automatically.
+- **FR-006**: Each QC result MUST be associated with a control lot, test, and
+  instrument.
+- **FR-007**: A z-score MUST be computed for each QC result using the lot's
+  current mean and standard deviation.
+- **FR-008**: Z-score computation MUST be skipped when the lot is in its
+  establishment phase (insufficient baseline data).
+
+**Control Lot Management**
+
+- **FR-009**: The system MUST support three statistical calculation methods:
+  initial establishment (first N runs), rolling window, and manufacturer-
+  provided fixed values.
+- **FR-010**: Control lots MUST transition through a defined lifecycle:
+  ESTABLISHMENT (collecting data) to ACTIVE (evaluating rules) to
+  EXPIRED/ARCHIVED (retired).
+- **FR-011**: Lots using manufacturer-provided values MUST activate immediately
+  upon creation.
+
+**Westgard Rule Evaluation**
+
+- **FR-012**: The system MUST evaluate 8 standard Westgard rules: 1-2s
+  (warning), 1-3s (rejection), 2-2s (rejection), R-4s (rejection), 3-1s
+  (warning), 4-1s (rejection), 7-t (warning), 10-x (rejection).
+- **FR-013**: Rule evaluation MUST run without blocking the analyzer result
+  ingestion pipeline.
+- **FR-014**: Each Westgard rule MUST be independently configurable
+  (enable/disable, severity, requires-corrective-action flag) per
+  test-instrument combination. The `requires_corrective_action` flag is
+  persisted in v1 but enforcement of corrective-action workflows begins in M2
+  (see v2+ roadmap).
+- **FR-015**: The system MUST provide a default rule preset applied
+  automatically when a control lot is created.
+
+**Dashboard & Visualization**
+
+- **FR-016**: The QC dashboard MUST display summary tiles showing counts of
+  compliant, warning, and out-of-compliance instruments using color coding.
+- **FR-017**: Each instrument MUST be represented as a clickable card showing
+  compliance status, triggered rules, and last QC timestamp.
+- **FR-018**: Levey-Jennings charts MUST plot QC results chronologically with
+  reference lines for mean and standard deviation boundaries.
+- **FR-019**: Points on charts that triggered rule violations MUST be visually
+  distinguished from normal points.
+- **FR-020**: The dashboard MUST auto-refresh at a regular interval.
+
+**Alerts**
+
+- **FR-021**: Rejection-severity violations MUST generate immediate in-app
+  alerts.
+- **FR-022**: Warning-severity violations MUST be batched to prevent alert
+  fatigue.
+- **FR-023**: Users MUST be able to acknowledge violations from the alerts view.
+
+**Navigation**
+
+- **FR-024**: The QC dashboard, control-lot setup, Westgard configuration, and
+  instrument detail views MUST provide linkable breadcrumb navigation and
+  preserve analyzer context where applicable.
+
+### Constitution Compliance Requirements (OpenELIS Global)
+
+- **CR-001**: UI components MUST use Carbon Design System (@carbon/react)
+- **CR-002**: All UI strings MUST be internationalized via React Intl
+- **CR-003**: Backend MUST follow 5-layer architecture (Valueholder, DAO,
+  Service, Controller, Form)
+- **CR-004**: Database schema changes MUST use Liquibase changesets.
+  Operational-QC configuration comes from OpenELIS application data;
+  control-result recognition comes from published Bridge profile revisions,
+  not Liquibase seed data.
+- **CR-005**: QC data flowing between systems MUST use FHIR R4 conventions
+- **CR-007**: Role-based access control with audit trail (user tracking and
+  timestamps on all QC entities)
+- **CR-008**: Tests MUST cover unit, integration, and E2E levels
+
+### Key Entities
+
+- **QC Control Lot**: A specific lot of QC control material, scoped to a
+  test-instrument pair. Tracks lifecycle status (establishment, active, expired)
+  and statistical calculation method. Anchor for all QC measurements.
+- **QC Result**: A single QC measurement with value, computed z-score,
+  timestamp, and evaluation status (pending, accepted, rejected).
+- **QC Statistics**: Cached mean and standard deviation for a control lot,
+  recalculated per the lot's chosen method.
+- **Westgard Rule Configuration**: Per test-instrument toggle for each of the 8
+  Westgard rules, with severity and corrective-action flags.
+- **QC Rule Violation**: An immutable audit record created when a rule triggers,
+  linking the triggering result and any related historical results.
+- **QC Alert**: Notification record per user per violation, with read/unread
+  tracking and batching for warnings.
+- **Control-result recognition**: Immutable analyzer-type profile behavior
+  owned and evaluated by Bridge. It determines which incoming results are
+  controls before OpenELIS operational QC receives them; it is not an
+  OpenELIS QC entity or per-analyzer setting.
+
+## Success Criteria _(mandatory)_
+
+### Measurable Outcomes
+
+- **SC-001**: Lab technicians can assess instrument compliance status within 10
+  seconds of opening the QC dashboard.
+- **SC-002**: QC results from analyzer files are automatically identified and
+  evaluated without manual data entry (for instruments with configured rules).
+- **SC-003**: Westgard rule violations appear as alerts within 1 minute of the
+  QC result being ingested.
+- **SC-004**: Levey-Jennings charts render correctly with reference lines and
+  violation markers for control lots with 5+ data points.
+- **SC-005**: Control lot form submission completes in under 2 minutes per lot.
+  MANUFACTURER_FIXED lots activate on save; INITIAL_RUNS and ROLLING lots remain
+  in ESTABLISHMENT until the lab has accumulated enough real QC results (no
+  fixed calendar-time target — establishment is data-driven).
+- **SC-006**: All QC data is auditable — no QC result or violation can be
+  deleted, only resolved or archived.
+- **SC-007**: The QC evaluation pipeline does not degrade analyzer result
+  ingestion performance.
+
+## Assumptions & Constraints
+
+- The analyzer bridge is always in the communication path between analyzers and
+  OpenELIS. QC identification happens on the bridge side.
+- Control-result recognition is defined and executed by the pinned Bridge
+  profile revision. OpenELIS neither sends classifier rules nor stores a
+  mutable per-analyzer copy or authoritative profile snapshot.
+- v1 delivers in-app alerts only. Email and real-time push notifications are
+  deferred to v2.
+- v1 does not include corrective action workflows (recalibration, maintenance
+  tracking, task assignment). Violations can be acknowledged/resolved but
+  without typed corrective action categories.
+- Manual (bench) QC results are recorded from the reagents and QC section of
+  the Results page. The dedicated manual QC page (`/qa/qc/manual-qc`) is still a
+  placeholder.
+- QC data can be exported as CSV or PDF from the QC dashboard.
+- v1 does not include trend analysis or advanced chart interactions (zoom,
+  pan).
+- The system targets CLIA/CAP QC requirements and ISO 15189 audit trail
+  standards.
+
+## Implementation Status
+
+The operational QC foundation is implemented: control lots, QC results,
+statistics, Westgard rules, violations, alerts and the dashboard, plus manual QC
+entry and export. Control-result recognition belongs to the Bridge
+profile, not to OpenELIS. Current tests and human review determine acceptance.
+
+## v2+ Roadmap (deferred from design spec)
+
+| Feature                                  | Design ref                         | Priority |
+| ---------------------------------------- | ---------------------------------- | -------- |
+| Corrective action workflow               | FR7 (westgard-rules.md)            | High     |
+| Dedicated manual QC page                 | analyzer-manual-qc.md              | High     |
+| Email/push alerts                        | FR11.2, FR11.7 (westgard-rules.md) | Medium   |
+| Trend analysis                           | FR10 (westgard-rules.md)           | Medium   |
+| Chart zoom/pan                           | FR9.6, FR9.8 (westgard-rules.md)   | Low      |
+| Manual rule re-evaluation / preview mode | FR5 (westgard-rules.md)            | Low      |
+| Per-user notification preferences        | FR11.3 (westgard-rules.md)         | Low      |
+| Granular QC roles (Results/Biologist)    | FR13.2-13.4 (westgard-rules.md)    | Low      |
+| Multiple control levels per lot          | FR1.2 (westgard-rules.md)          | Medium   |

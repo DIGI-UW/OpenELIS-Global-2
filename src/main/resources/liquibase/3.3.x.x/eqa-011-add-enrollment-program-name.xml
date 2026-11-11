@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="eqa-011-01-add-program-name-column" author="mozzy11">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="eqa_lab_program_enrollment" columnName="program_name" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Add program_name column to self-enrollment table for free-text program names</comment>
+    <addColumn tableName="eqa_lab_program_enrollment" schemaName="clinlims">
+      <column name="program_name" type="VARCHAR(255)"/>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="eqa-011-02-drop-eqa-program-fk" author="mozzy11">
+    <preConditions onFail="MARK_RAN">
+      <foreignKeyConstraintExists foreignKeyName="fk_lab_enroll_eqa_program" schemaName="clinlims"/>
+    </preConditions>
+    <comment>Drop FK to eqa_program — My Programmes are independent of EQA Programmes</comment>
+    <dropForeignKeyConstraint baseTableName="eqa_lab_program_enrollment" baseTableSchemaName="clinlims" constraintName="fk_lab_enroll_eqa_program"/>
+  </changeSet>
+
+  <changeSet id="eqa-011-03-drop-eqa-program-id-column" author="mozzy11">
+    <preConditions onFail="MARK_RAN">
+      <columnExists tableName="eqa_lab_program_enrollment" columnName="eqa_program_id" schemaName="clinlims"/>
+    </preConditions>
+    <comment>Remove eqa_program_id column — no association between My Programmes and EQA Programmes</comment>
+    <dropColumn tableName="eqa_lab_program_enrollment" schemaName="clinlims" columnName="eqa_program_id"/>
+  </changeSet>
+
+  <changeSet id="eqa-011-04-add-enrollment-id-to-sample-eqa" author="mozzy11">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="sample_eqa" columnName="eqa_enrollment_id" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Add eqa_enrollment_id column to sample_eqa to link orders to My Programmes</comment>
+    <addColumn tableName="sample_eqa" schemaName="clinlims">
+      <column name="eqa_enrollment_id" type="numeric(10,0)"/>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="eqa-011-05-add-provider-to-eqa-program" author="mozzy11">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="eqa_program" columnName="provider" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Add free-text provider column to eqa_program table</comment>
+    <addColumn tableName="eqa_program" schemaName="clinlims">
+      <column name="provider" type="VARCHAR(255)"/>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

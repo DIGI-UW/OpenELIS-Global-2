@@ -1,0 +1,345 @@
+package org.openelisglobal.sampletyperequest.controller;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.sql.Timestamp;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampletyperequest.controller.rest.SampleTypeRequestRestController;
+import org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO;
+import org.openelisglobal.sampletyperequest.service.SampleTypeRequestService;
+import org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.testmethod.service.TestMethodService;
+import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.test.util.ReflectionTestUtils;
+
+/**
+ * Unit tests for SampleTypeRequestRestController. Uses MockitoJUnitRunner with
+ * manual dependency injection — no Spring context required.
+ */
+@RunWith(MockitoJUnitRunner.class)
+public class SampleTypeRequestRestControllerTest {
+
+    @Mock
+    private SampleTypeRequestService sampleTypeRequestService;
+
+    @Mock
+    private TestService testService;
+
+    @Mock
+    private TestMethodService testMethodService;
+
+    @Mock
+    private PanelService panelService;
+
+    private SampleTypeRequestRestController controller;
+
+    @Before
+    public void setUp() {
+        controller = new SampleTypeRequestRestController();
+        ReflectionTestUtils.setField(controller, "sampleTypeRequestService", sampleTypeRequestService);
+        ReflectionTestUtils.setField(controller, "testService", testService);
+        ReflectionTestUtils.setField(controller, "testMethodService", testMethodService);
+        ReflectionTestUtils.setField(controller, "panelService", panelService);
+    }
+
+    // ─── helpers ──────────────────────────────────────────────────────────────
+
+    private SampleTypeRequest buildRequest(Integer id, String sampleId, SampleTypeRequest.Status status) {
+        Sample sample = new Sample();
+        sample.setId(sampleId);
+
+        TypeOfSample typeOfSample = new TypeOfSample();
+        typeOfSample.setId("1");
+
+        SampleTypeRequest req = new SampleTypeRequest();
+        req.setId(id);
+        req.setSample(sample);
+        req.setTypeOfSample(typeOfSample);
+        req.setSortOrder(0);
+        req.setRequestedQuantity(1.0);
+        req.setStatus(status);
+        req.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+        return req;
+    }
+
+    // ─── getRequestsBySample ──────────────────────────────────────────────────
+
+    @Test
+    public void getRequestsBySample_returnsDtoList() {
+        SampleTypeRequest req = buildRequest(10, "123", SampleTypeRequest.Status.REQUESTED);
+        when(sampleTypeRequestService.getRequestsBySampleId("123")).thenReturn(Arrays.asList(req));
+
+        ResponseEntity<List<SampleTypeRequestDTO>> response = controller.getRequestsBySample("123");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        List<SampleTypeRequestDTO> body = response.getBody();
+        assertNotNull(body);
+        assertEquals(1, body.size());
+        assertEquals("10", body.get(0).getId());
+        assertEquals("123", body.get(0).getSampleId());
+        assertEquals("REQUESTED", body.get(0).getStatus());
+    }
+
+    @Test
+    public void getRequestsBySample_emptyList_returnsOk() {
+        when(sampleTypeRequestService.getRequestsBySampleId("999")).thenReturn(Collections.emptyList());
+
+        ResponseEntity<List<SampleTypeRequestDTO>> response = controller.getRequestsBySample("999");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(0, response.getBody().size());
+    }
+
+    // ─── getPendingRequests ───────────────────────────────────────────────────
+
+    @Test
+    public void getPendingRequests_returnsOnlyPendingDtos() {
+        SampleTypeRequest pending = buildRequest(11, "123", SampleTypeRequest.Status.REQUESTED);
+        when(sampleTypeRequestService.getPendingRequestsBySampleId("123")).thenReturn(Arrays.asList(pending));
+
+        ResponseEntity<List<SampleTypeRequestDTO>> response = controller.getPendingRequests("123");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        List<SampleTypeRequestDTO> body = response.getBody();
+        assertNotNull(body);
+        assertEquals(1, body.size());
+        assertEquals("REQUESTED", body.get(0).getStatus());
+    }
+
+    @Test
+    public void getPendingRequests_noResults_returnsEmptyList() {
+        when(sampleTypeRequestService.getPendingRequestsBySampleId("123")).thenReturn(Collections.emptyList());
+
+        ResponseEntity<List<SampleTypeRequestDTO>> response = controller.getPendingRequests("123");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(0, response.getBody().size());
+    }
+
+    @Test
+    public void getPendingRequests_includesMethodsNeededToRestoreSelection() {
+        SampleTypeRequest pending = buildRequest(11, "123", SampleTypeRequest.Status.REQUESTED);
+        pending.setRequestedTests("42");
+        org.openelisglobal.test.valueholder.Test cultureTest = org.mockito.Mockito
+                .mock(org.openelisglobal.test.valueholder.Test.class);
+        when(cultureTest.getId()).thenReturn("42");
+        when(cultureTest.getLocalizedName()).thenReturn("Blood culture");
+        when(cultureTest.getDescription()).thenReturn("Blood culture");
+        TestMethodDto method = new TestMethodDto();
+        method.methodId = "7";
+        method.methodName = "Blood Culture Standard";
+        method.isDefault = true;
+        when(sampleTypeRequestService.getPendingRequestsBySampleId("123")).thenReturn(List.of(pending));
+        when(testService.getTestById("42")).thenReturn(cultureTest);
+        when(testMethodService.getLinkedMethodDtos("42")).thenReturn(List.of(method));
+
+        SampleTypeRequestDTO dto = controller.getPendingRequests("123").getBody().get(0);
+
+        assertSame(method, dto.getRequestedTestDetails().get(0).getMethods().get(0));
+    }
+
+    @Test
+    public void getPendingRequests_fallsBackToAlignedIdsAndNamesWhenCatalogDetailsAreIncomplete() {
+        SampleTypeRequest pending = buildRequest(11, "123", SampleTypeRequest.Status.REQUESTED);
+        pending.setRequestedTests("42,missing-test");
+        org.openelisglobal.test.valueholder.Test cultureTest = org.mockito.Mockito
+                .mock(org.openelisglobal.test.valueholder.Test.class);
+        when(cultureTest.getId()).thenReturn("42");
+        when(cultureTest.getLocalizedName()).thenReturn("Blood culture");
+        when(cultureTest.getDescription()).thenReturn("Blood culture");
+        when(sampleTypeRequestService.getPendingRequestsBySampleId("123")).thenReturn(List.of(pending));
+        when(testService.getTestById("42")).thenReturn(cultureTest);
+        when(testService.getTestById("missing-test")).thenReturn(null);
+        when(testMethodService.getLinkedMethodDtos("42")).thenReturn(List.of());
+
+        SampleTypeRequestDTO dto = controller.getPendingRequests("123").getBody().get(0);
+
+        assertEquals("Blood culture,missing-test", dto.getRequestedTestNames());
+        assertEquals(List.of(), dto.getRequestedTestDetails());
+    }
+
+    // ─── fulfillRequest ───────────────────────────────────────────────────────
+
+    @Test
+    public void fulfillRequest_validCall_returns200WithDto() {
+        SampleTypeRequest fulfilled = buildRequest(20, "5", SampleTypeRequest.Status.COLLECTED);
+        doNothing().when(sampleTypeRequestService).fulfillRequest(20, "SI-1");
+        when(sampleTypeRequestService.get(20)).thenReturn(fulfilled);
+
+        ResponseEntity<?> response = controller.fulfillRequest(20, "SI-1");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        SampleTypeRequestDTO body = (SampleTypeRequestDTO) response.getBody();
+        assertNotNull(body);
+        assertEquals("COLLECTED", body.getStatus());
+        verify(sampleTypeRequestService).fulfillRequest(20, "SI-1");
+    }
+
+    @Test
+    public void fulfillRequest_illegalArgument_returns400() {
+        doThrow(new IllegalArgumentException("Request not found: 999")).when(sampleTypeRequestService)
+                .fulfillRequest(999, "SI-1");
+
+        ResponseEntity<?> response = controller.fulfillRequest(999, "SI-1");
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Request not found: 999", response.getBody());
+    }
+
+    @Test
+    public void fulfillRequest_illegalState_returns409() {
+        doThrow(new IllegalStateException("Request is not in REQUESTED state")).when(sampleTypeRequestService)
+                .fulfillRequest(20, "SI-1");
+
+        ResponseEntity<?> response = controller.fulfillRequest(20, "SI-1");
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("Request is not in REQUESTED state", response.getBody());
+    }
+
+    @Test
+    public void fulfillRequest_unexpectedException_returns500() {
+        doThrow(new RuntimeException("DB error")).when(sampleTypeRequestService).fulfillRequest(20, "SI-1");
+
+        ResponseEntity<?> response = controller.fulfillRequest(20, "SI-1");
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+    }
+
+    // ─── cancelRequest ────────────────────────────────────────────────────────
+
+    @Test
+    public void cancelRequest_validCall_returns200WithDto() {
+        SampleTypeRequest cancelled = buildRequest(30, "5", SampleTypeRequest.Status.CANCELLED);
+        doNothing().when(sampleTypeRequestService).cancelRequest(30);
+        when(sampleTypeRequestService.get(30)).thenReturn(cancelled);
+
+        ResponseEntity<?> response = controller.cancelRequest(30);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        SampleTypeRequestDTO body = (SampleTypeRequestDTO) response.getBody();
+        assertNotNull(body);
+        assertEquals("CANCELLED", body.getStatus());
+        verify(sampleTypeRequestService).cancelRequest(30);
+    }
+
+    @Test
+    public void cancelRequest_illegalArgument_returns400() {
+        doThrow(new IllegalArgumentException("Request not found: 999")).when(sampleTypeRequestService)
+                .cancelRequest(999);
+
+        ResponseEntity<?> response = controller.cancelRequest(999);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Request not found: 999", response.getBody());
+    }
+
+    @Test
+    public void cancelRequest_illegalState_returns409() {
+        doThrow(new IllegalStateException("Only REQUESTED status can be cancelled")).when(sampleTypeRequestService)
+                .cancelRequest(30);
+
+        ResponseEntity<?> response = controller.cancelRequest(30);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("Only REQUESTED status can be cancelled", response.getBody());
+    }
+
+    @Test
+    public void cancelRequest_unexpectedException_returns500() {
+        doThrow(new RuntimeException("DB error")).when(sampleTypeRequestService).cancelRequest(30);
+
+        ResponseEntity<?> response = controller.cancelRequest(30);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+    }
+
+    // ─── convertToDTO — test/panel name resolution ────────────────────────────
+
+    @org.junit.Test
+    public void getRequestsBySample_resolvesTestNames() {
+        // Use Mockito.mock to avoid SpringContext lookup triggered by
+        // getLocalizedName()
+        org.openelisglobal.test.valueholder.Test mockTest = org.mockito.Mockito
+                .mock(org.openelisglobal.test.valueholder.Test.class);
+        when(mockTest.getLocalizedName()).thenReturn("Blood Glucose");
+
+        Sample sample = new Sample();
+        sample.setId("5");
+        TypeOfSample typeOfSample = new TypeOfSample();
+        typeOfSample.setId("1");
+
+        SampleTypeRequest req = new SampleTypeRequest();
+        req.setId(41);
+        req.setSample(sample);
+        req.setTypeOfSample(typeOfSample);
+        req.setSortOrder(0);
+        req.setStatus(SampleTypeRequest.Status.REQUESTED);
+        req.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+        req.setRequestedTests("7,8");
+
+        when(sampleTypeRequestService.getRequestsBySampleId("5")).thenReturn(Arrays.asList(req));
+        when(testService.getTestById("7")).thenReturn(mockTest);
+        when(testService.getTestById("8")).thenReturn(null);
+
+        ResponseEntity<List<SampleTypeRequestDTO>> response = controller.getRequestsBySample("5");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        SampleTypeRequestDTO dto = response.getBody().get(0);
+        assertEquals("Blood Glucose,8", dto.getRequestedTestNames());
+        assertEquals(List.of(), dto.getRequestedTestDetails());
+    }
+
+    @org.junit.Test
+    public void getRequestsBySample_resolvesPanelNames() {
+        // Use Mockito.mock to avoid SpringContext lookup triggered by
+        // getLocalizedName()
+        Panel panel = org.mockito.Mockito.mock(Panel.class);
+        when(panel.getLocalizedName()).thenReturn(null);
+        when(panel.getPanelName()).thenReturn("Hepatitis Panel");
+
+        Sample sample = new Sample();
+        sample.setId("5");
+        TypeOfSample typeOfSample = new TypeOfSample();
+        typeOfSample.setId("1");
+
+        SampleTypeRequest req = new SampleTypeRequest();
+        req.setId(42);
+        req.setSample(sample);
+        req.setTypeOfSample(typeOfSample);
+        req.setSortOrder(0);
+        req.setStatus(SampleTypeRequest.Status.REQUESTED);
+        req.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+        req.setRequestedPanels("3");
+
+        when(sampleTypeRequestService.getRequestsBySampleId("5")).thenReturn(Arrays.asList(req));
+        when(panelService.getPanelById("3")).thenReturn(panel);
+
+        ResponseEntity<List<SampleTypeRequestDTO>> response = controller.getRequestsBySample("5");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        SampleTypeRequestDTO dto = response.getBody().get(0);
+        assertEquals("Hepatitis Panel", dto.getRequestedPanelNames());
+    }
+}

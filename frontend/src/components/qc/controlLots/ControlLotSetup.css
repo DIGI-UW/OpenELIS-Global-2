@@ -1,0 +1,64 @@
+/**
+ * ControlLotSetup Component Styles
+ * Uses Carbon Design System tokens
+ */
+
+.control-lot-setup {
+  padding: 1rem;
+}
+
+.control-lot-setup-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.control-lot-setup-header {
+  margin-bottom: 1.5rem;
+}
+
+.control-lot-setup-statistics {
+  margin-top: 1rem;
+  padding: 1rem;
+}
+
+.control-lot-setup-statistics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.control-lot-setup-statistics-header h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+  margin: 0;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.stat-value {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--cds-text-primary, #161616);
+}
+
+.control-lot-setup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}

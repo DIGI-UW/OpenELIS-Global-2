@@ -1,11 +1,9 @@
 package org.openelisglobal.dictionary.service;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import java.util.List;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -31,9 +29,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void delete_shouldDeleteDictionary() {
         Dictionary dictionaryToDelete = dictionaryService.get("1");
-        dictionaryToDelete.setSysUserId("admin");
-
-        assertNotNull(dictionaryToDelete);
+        dictionaryToDelete.setSysUserId("1");
 
         dictionaryService.delete(dictionaryToDelete);
         assertEquals("N", dictionaryService.get("1").getIsActive());
@@ -42,7 +38,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getDictionaryEntriesByCategoryId_shouldReturnaListOfDictionaryEntriesByCategoryId() {
         List<Dictionary> dictionaries = dictionaryService.getDictionaryEntriesByCategoryId("1");
-        Assert.assertNotEquals(0, dictionaries.size());
+        assertEquals(4, dictionaries.size());
 
         assertEquals("Dictionary Entry 1", dictionaries.get(0).getDictEntry());
         assertEquals("Y", dictionaries.get(0).getIsActive());
@@ -55,7 +51,6 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
 
         Dictionary dictionary = dictionaryService.getDictionaryByLocalAbbrev(dictionaryToGetByLocalAbbrev);
 
-        assertNotNull(dictionary);
         assertEquals("Dictionary Entry 1", dictionary.getDictEntry());
         assertEquals("Y", dictionary.getIsActive());
         assertEquals("DE1", dictionary.getLocalAbbreviation());
@@ -65,7 +60,6 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     public void getDictionaryByDictEntry_shouldReturnDictionaryWhenGivenDictEntry() {
         Dictionary dictionary = dictionaryService.getDictionaryByDictEntry("Dictionary Entry 2");
 
-        assertNotNull(dictionary);
         assertEquals("Y", dictionary.getIsActive());
         assertEquals("DE2", dictionary.getLocalAbbreviation());
         assertEquals("2", dictionary.getId());
@@ -75,18 +69,28 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     public void getDictionaryById_shouldReturnDictionaryWhenGivenDictionaryId() {
         Dictionary dictionary = dictionaryService.getDictionaryById("2");
 
-        assertNotNull(dictionary);
         assertEquals("Dictionary Entry 2", dictionary.getDictEntry());
         assertEquals("DE2", dictionary.getLocalAbbreviation());
         assertEquals("2", dictionary.getId());
         assertEquals("Y", dictionary.getIsActive());
     }
 
+    /**
+     * Regression for the 500 on /rest/test-display-beans-map: legacy TEST_RESULT
+     * rows can carry raw text where a dictionary id belongs, and the lookup used to
+     * propagate the id-parse failure as LIMSRuntimeException, taking down every
+     * page that resolves result values. Non-numeric ids must read as not-found.
+     */
+    @Test
+    public void getDictionaryById_shouldReturnNullForNonNumericId() {
+        assertNull(dictionaryService.getDictionaryById("HIV1"));
+        assertNull(dictionaryService.getDictionaryById("  "));
+    }
+
     @Test
     public void getDictionaryEntrysByNameAndCategoryDescription_shouldGetDictionaryEntrysByNameAndCategoryDescription() {
         Dictionary dictionary = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription("Dictionary Entry 1",
                 "Category Description 1");
-        assertNotNull(dictionary);
 
         assertEquals("Dictionary Entry 1", dictionary.getDictEntry());
         assertEquals("Y", dictionary.getIsActive());
@@ -97,7 +101,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     public void getDictionaryEntrysByCategoryNameLocalizedSort_shouldGetDictionaryEntrysByCategoryNameLocalizedSort() {
         List<Dictionary> dictionaries = dictionaryService
                 .getDictionaryEntrysByCategoryNameLocalizedSort("Category Name 1");
-        Assert.assertNotEquals(0, dictionaries.size());
+        assertEquals(4, dictionaries.size());
 
         assertEquals("Dictionary Entry 1", dictionaries.get(0).getDictEntry());
         assertEquals("Y", dictionaries.get(0).getIsActive());
@@ -108,7 +112,6 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     public void getDataForId_shouldReturnDictionaryDataForTheProvidedDictionaryId() {
         Dictionary dictionary = dictionaryService.getDataForId("1");
 
-        assertNotNull(dictionary);
         assertEquals("Dictionary Entry 1", dictionary.getDictEntry());
         assertEquals("Y", dictionary.getIsActive());
         assertEquals("DE1", dictionary.getLocalAbbreviation());
@@ -120,7 +123,6 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
 
         dictionaryService.getData(dictionaryToGet);
 
-        assertNotNull(dictionaryToGet);
         assertEquals("Dictionary Entry 1", dictionaryToGet.getDictEntry());
         assertEquals("Y", dictionaryToGet.getIsActive());
         assertEquals("DE1", dictionaryToGet.getLocalAbbreviation());
@@ -130,7 +132,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     public void getPagesOfSearchedDictionaries_shouldGetPagesOfSearchedDictionaries() {
         List<Dictionary> dictionaries = dictionaryService.getPagesOfSearchedDictionaries(1, "Dictionary Entry 1");
 
-        Assert.assertNotEquals(0, dictionaries.size());
+        assertEquals(1, dictionaries.size());
 
         assertEquals("Dictionary Entry 1", dictionaries.get(0).getDictEntry());
         assertEquals("Y", dictionaries.get(0).getIsActive());
@@ -141,9 +143,9 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     public void update_shouldUpdateDictionary() {
         Dictionary dictionaryToUpdate = dictionaryService.get("1");
         dictionaryToUpdate.setDictEntry("INFLUENZA VIRUS A RNA DETECTEDetest");
+        dictionaryToUpdate.setSysUserId("1");
 
-        Dictionary updatedDictionary = dictionaryService.update(dictionaryToUpdate);
-        assertNotNull(updatedDictionary);
+        dictionaryService.update(dictionaryToUpdate);
 
         assertEquals("Y", dictionaryService.get("1").getIsActive());
         assertEquals("INFLUENZA VIRUS A RNA DETECTEDetest", dictionaryService.get("1").getDictEntry());
@@ -153,6 +155,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     public void update_shouldUpdateDictionaryWhenDictionaryFrozenCheckIsRequired() {
         Dictionary dictionaryToUpdate = dictionaryService.get("1");
         dictionaryToUpdate.setDictEntry("INFLUENZA VIRUS A RNA DETECTEDetest");
+        dictionaryToUpdate.setSysUserId("1");
 
         dictionaryService.update(dictionaryToUpdate, true);
 
@@ -164,6 +167,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     public void update_shouldUpdateDictionaryWhenDictionaryFrozenCheckIsNotRequired() {
         Dictionary dictionaryToUpdate = dictionaryService.get("1");
         dictionaryToUpdate.setDictEntry("INFLUENZA VIRUS A RNA DETECTEDetest");
+        dictionaryToUpdate.setSysUserId("1");
 
         dictionaryService.update(dictionaryToUpdate, false);
 
@@ -187,16 +191,15 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
 
         Dictionary dictionary = dictionaryService.get("1");
         dictionary.setLoincCode("LA9663-1");
+        dictionary.setSysUserId("1");
         dictionaryService.update(dictionary);
         Dictionary updated = dictionaryService.get("1");
-        assertNotNull(updated);
         assertEquals("LA9663-1", updated.getLoincCode());
     }
 
     @Test
     public void getDictionary_shouldReturnNullLoincCodeWhenNotExists() {
         Dictionary dictionary = dictionaryService.get("6");
-        assertNotNull(dictionary);
         assertNull(dictionary.getLoincCode());
     }
 
@@ -204,6 +207,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     public void update_shouldPersistLoincCode() {
         Dictionary dictionary = dictionaryService.get("1");
         dictionary.setLoincCode("LA12345-6");
+        dictionary.setSysUserId("1");
 
         dictionaryService.update(dictionary);
 
@@ -236,6 +240,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
         dictionary.setDictEntry("Dictionary Entry 4");
         dictionary.setIsActive("Y");
         dictionary.setLocalAbbreviation("DE4");
+        dictionary.setSysUserId("1");
         return dictionary;
     }
 }

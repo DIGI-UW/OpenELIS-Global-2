@@ -20,6 +20,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
+import java.util.Set;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
@@ -75,11 +76,370 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     @Convert(converter = StringToIntegerConverter.class)
     private String testId;
 
+    // OGC-1129 — the result component this staged value belongs to
+    // (test_result_component.id). Null = the test's PRIMARY component.
+    @Column(name = "component_id", length = 36)
+    private String componentId;
+
     @Column(name = "test_result_type", length = 1)
     private String resultType = "N";
 
     @Column(name = "complete_date")
     private Timestamp completeDate;
+
+    // OGC-1145 FR-8: staged row held because its test runs on several sample
+    // types and the message carried no specimen; the review page's chooser
+    // resolves it.
+    public static final String IMPORT_ISSUE_AWAITING_SPECIMEN = "awaiting_specimen";
+    public static final String IMPORT_ISSUE_AWAITING_PLACEMENT = "awaiting_placement";
+    public static final String IMPORT_ISSUE_UNKNOWN_TEST = "unknown_analyzer_test";
+    public static final String IMPORT_ISSUE_TEST_MAPPING_NOT_READY = "test_mapping_not_ready";
+    /** Setup samples supply mapping evidence and never become clinical results. */
+    public static final String IMPORT_ISSUE_SETUP_CAPTURE = "setup_capture";
+    public static final String IMPORT_ISSUE_UNKNOWN_RESULT_VALUE = "unknown_analyzer_result_value";
+    public static final String IMPORT_ISSUE_RESULT_MAPPING_NOT_READY = "result_mapping_not_ready";
+    public static final String IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING = "conflicting_answer_mapping";
+    public static final String IMPORT_ISSUE_INVALID_RESULT_MAPPING = "invalid_result_mapping";
+    /** The run produced no value (ERROR, NO RESULT); never a patient result. */
+    public static final String IMPORT_ISSUE_RUN_FAILED = "run_failed";
+    /** A control that reports an answer, for a test and level with no QC target. */
+    public static final String IMPORT_ISSUE_QC_LOT_MISSING = "qc_lot_missing";
+    public static final String IMPORT_ISSUE_QC_VALUE_UNSUPPORTED = "qc_value_unsupported";
+    public static final String IMPORT_ISSUE_QC_TARGET_MISSING = "qc_target_missing";
+    /**
+     * Historical hold reason, retained only so existing rows can recover locally.
+     */
+    public static final String IMPORT_ISSUE_OTHER_REVISION = "arrived_under_other_revision";
+    /** For an assay the analyzer's setup says this instrument does not run. */
+    public static final String IMPORT_ISSUE_ASSAY_NOT_ENABLED = "assay_not_enabled";
+    /**
+     * Historical row-reading hold; new deliveries do not produce this reason.
+     */
+    public static final String IMPORT_ISSUE_READING_CHANGED = "reading_changed";
+    /**
+     * Historical type-reading hold; new deliveries do not produce this reason.
+     */
+    public static final String IMPORT_ISSUE_TYPE_READING_CHANGED = "type_reading_changed";
+    /** Mapping evidence; setup captures are retained but never recovered. */
+    public static final Set<String> MAPPING_IMPORT_ISSUES = Set.of(IMPORT_ISSUE_UNKNOWN_TEST,
+            IMPORT_ISSUE_TEST_MAPPING_NOT_READY, IMPORT_ISSUE_SETUP_CAPTURE, IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
+            IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING,
+            IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING, IMPORT_ISSUE_QC_TARGET_MISSING, IMPORT_ISSUE_QC_LOT_MISSING,
+            IMPORT_ISSUE_QC_VALUE_UNSUPPORTED, IMPORT_ISSUE_OTHER_REVISION, IMPORT_ISSUE_ASSAY_NOT_ENABLED,
+            IMPORT_ISSUE_READING_CHANGED, IMPORT_ISSUE_TYPE_READING_CHANGED);
+
+    @Column(name = "import_issue_reason", length = 200)
+    private String importIssueReason;
+
+    @Column(name = "instrument_specimen_id", length = 255)
+    private String instrumentSpecimenId;
+
+    @Column(name = "instrument_patient_id", length = 255)
+    private String instrumentPatientId;
+
+    @Column(name = "instrument_patient_name", length = 255)
+    private String instrumentPatientName;
+
+    @Column(name = "instrument_note", columnDefinition = "TEXT")
+    private String instrumentNote;
+
+    /** The instrument's flags as sent, never interpreted. */
+    @Column(name = "instrument_flags", length = 255)
+    private String instrumentFlags;
+
+    /**
+     * The warnings the instrument raised about this result's sample, by the names
+     * it sent, the same on every result of the sample.
+     */
+    @Column(name = "instrument_sample_flags", length = 1024)
+    private String instrumentSampleFlags;
+
+    @Column(name = "assay_name", length = 255)
+    private String assayName;
+
+    @Column(name = "assay_version", length = 64)
+    private String assayVersion;
+
+    @Column(name = "instrument_operator", length = 255)
+    private String instrumentOperator;
+
+    @Column(name = "source_message_id", length = 255)
+    private String sourceMessageId;
+
+    @Column(name = "source_connection_id", length = 255)
+    private String sourceConnectionId;
+
+    /** OGC-1200: the run of the message this value arrived in. */
+    @Column(name = "run_id")
+    private Long runId;
+
+    @Column(name = "source_profile_id", length = 128)
+    private String sourceProfileId;
+
+    @Column(name = "source_profile_revision")
+    private Integer sourceProfileRevision;
+
+    @Column(name = "source_protocol", length = 20)
+    private String sourceProtocol;
+
+    @Column(name = "source_transport", length = 20)
+    private String sourceTransport;
+
+    @Column(name = "raw_test_code", length = 255)
+    private String rawTestCode;
+
+    /** Empty for a test's main record. */
+    @Column(name = "raw_sub_identity", length = 255, nullable = false)
+    private String rawSubIdentity = "";
+
+    @Column(name = "raw_result_value", columnDefinition = "TEXT")
+    private String rawResultValue;
+
+    @Column(name = "result_classification", length = 12)
+    private String resultClassification;
+
+    @Column(name = "recognition_mode", length = 12)
+    private String recognitionMode;
+
+    @Column(name = "recognition_outcome", length = 20)
+    private String recognitionOutcome;
+
+    @Column(name = "recognition_fingerprint", length = 71)
+    private String recognitionFingerprint;
+
+    @Column(name = "source_payload", columnDefinition = "TEXT")
+    private String sourcePayload;
+
+    /**
+     * Historical parsing snapshot retained for audit only. Import and recovery do
+     * not read it.
+     */
+    @Column(name = "arrival_reading", columnDefinition = "TEXT")
+    private String arrivalReading;
+
+    // Rehydrated from the retained normalized observation during recovery.
+    @jakarta.persistence.Transient
+    private String controlLevel;
+
+    public String getImportIssueReason() {
+        return importIssueReason;
+    }
+
+    public void setImportIssueReason(String importIssueReason) {
+        this.importIssueReason = importIssueReason;
+    }
+
+    /** The specimen ID as the instrument reported it: an accession or a tube ID. */
+    public String getInstrumentSpecimenId() {
+        return instrumentSpecimenId;
+    }
+
+    public void setInstrumentSpecimenId(String instrumentSpecimenId) {
+        this.instrumentSpecimenId = instrumentSpecimenId;
+    }
+
+    /**
+     * The patient ID the instrument reported, as reported. Not an OpenELIS patient.
+     */
+    public String getInstrumentPatientId() {
+        return instrumentPatientId;
+    }
+
+    public void setInstrumentPatientId(String instrumentPatientId) {
+        this.instrumentPatientId = instrumentPatientId;
+    }
+
+    public String getInstrumentPatientName() {
+        return instrumentPatientName;
+    }
+
+    public void setInstrumentPatientName(String instrumentPatientName) {
+        this.instrumentPatientName = instrumentPatientName;
+    }
+
+    public String getInstrumentFlags() {
+        return instrumentFlags;
+    }
+
+    public void setInstrumentFlags(String instrumentFlags) {
+        this.instrumentFlags = instrumentFlags;
+    }
+
+    public String getInstrumentSampleFlags() {
+        return instrumentSampleFlags;
+    }
+
+    public void setInstrumentSampleFlags(String instrumentSampleFlags) {
+        this.instrumentSampleFlags = instrumentSampleFlags;
+    }
+
+    public String getAssayName() {
+        return assayName;
+    }
+
+    public void setAssayName(String assayName) {
+        this.assayName = assayName;
+    }
+
+    public String getAssayVersion() {
+        return assayVersion;
+    }
+
+    public void setAssayVersion(String assayVersion) {
+        this.assayVersion = assayVersion;
+    }
+
+    public String getInstrumentOperator() {
+        return instrumentOperator;
+    }
+
+    public void setInstrumentOperator(String instrumentOperator) {
+        this.instrumentOperator = instrumentOperator;
+    }
+
+    public String getInstrumentNote() {
+        return instrumentNote;
+    }
+
+    public void setInstrumentNote(String instrumentNote) {
+        this.instrumentNote = instrumentNote;
+    }
+
+    public Long getRunId() {
+        return runId;
+    }
+
+    public void setRunId(Long runId) {
+        this.runId = runId;
+    }
+
+    public String getSourceMessageId() {
+        return sourceMessageId;
+    }
+
+    public void setSourceMessageId(String sourceMessageId) {
+        this.sourceMessageId = sourceMessageId;
+    }
+
+    public String getSourceConnectionId() {
+        return sourceConnectionId;
+    }
+
+    public void setSourceConnectionId(String sourceConnectionId) {
+        this.sourceConnectionId = sourceConnectionId;
+    }
+
+    public String getSourceProfileId() {
+        return sourceProfileId;
+    }
+
+    public void setSourceProfileId(String sourceProfileId) {
+        this.sourceProfileId = sourceProfileId;
+    }
+
+    public Integer getSourceProfileRevision() {
+        return sourceProfileRevision;
+    }
+
+    public void setSourceProfileRevision(Integer sourceProfileRevision) {
+        this.sourceProfileRevision = sourceProfileRevision;
+    }
+
+    public String getSourceProtocol() {
+        return sourceProtocol;
+    }
+
+    public void setSourceProtocol(String sourceProtocol) {
+        this.sourceProtocol = sourceProtocol;
+    }
+
+    public String getSourceTransport() {
+        return sourceTransport;
+    }
+
+    public void setSourceTransport(String sourceTransport) {
+        this.sourceTransport = sourceTransport;
+    }
+
+    public String getRawTestCode() {
+        return rawTestCode;
+    }
+
+    public void setRawTestCode(String rawTestCode) {
+        this.rawTestCode = rawTestCode;
+    }
+
+    public String getRawSubIdentity() {
+        return rawSubIdentity;
+    }
+
+    public void setRawSubIdentity(String rawSubIdentity) {
+        this.rawSubIdentity = rawSubIdentity == null ? "" : rawSubIdentity;
+    }
+
+    public String getRawResultValue() {
+        return rawResultValue;
+    }
+
+    public void setRawResultValue(String rawResultValue) {
+        this.rawResultValue = rawResultValue;
+    }
+
+    public String getResultClassification() {
+        return resultClassification;
+    }
+
+    public void setResultClassification(String resultClassification) {
+        this.resultClassification = resultClassification;
+    }
+
+    public String getRecognitionMode() {
+        return recognitionMode;
+    }
+
+    public void setRecognitionMode(String recognitionMode) {
+        this.recognitionMode = recognitionMode;
+    }
+
+    public String getRecognitionOutcome() {
+        return recognitionOutcome;
+    }
+
+    public void setRecognitionOutcome(String recognitionOutcome) {
+        this.recognitionOutcome = recognitionOutcome;
+    }
+
+    public String getRecognitionFingerprint() {
+        return recognitionFingerprint;
+    }
+
+    public void setRecognitionFingerprint(String recognitionFingerprint) {
+        this.recognitionFingerprint = recognitionFingerprint;
+    }
+
+    public String getSourcePayload() {
+        return sourcePayload;
+    }
+
+    public void setSourcePayload(String sourcePayload) {
+        this.sourcePayload = sourcePayload;
+    }
+
+    public String getArrivalReading() {
+        return arrivalReading;
+    }
+
+    public void setArrivalReading(String arrivalReading) {
+        this.arrivalReading = arrivalReading;
+    }
+
+    public String getControlLevel() {
+        return controlLevel;
+    }
+
+    public void setControlLevel(String controlLevel) {
+        this.controlLevel = controlLevel;
+    }
 
     public Object clone() throws CloneNotSupportedException {
         return super.clone();
@@ -175,6 +535,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public String getTestId() {
         return testId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public String getComponentId() {
+        return componentId;
     }
 
     public void setResultType(String resultType) {

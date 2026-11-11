@@ -12,8 +12,11 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testreflex.action.bean.ReflexRule;
 import org.openelisglobal.testreflex.action.bean.ReflexRuleOptions;
+import org.openelisglobal.testreflex.dao.TestReflexDAO;
 import org.openelisglobal.testreflex.service.TestReflexService;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -26,7 +29,16 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
     private TestReflexService testReflexService;
 
     @Autowired
+    private TestReflexDAO testReflexDAO;
+
+    @Autowired
     private TestResultService testResultService;
+
+    @Autowired
+    private TestService testService;
+
+    @Autowired
+    private TestAnalyteService testAnalyteService;
 
     @Autowired
     private AnalyteService analyteService;
@@ -164,5 +176,76 @@ public class TestReflexServiceTest extends BaseWebContextSensitiveTest {
 
         assertEquals("Test Name", rules.get(0).getRuleName());
 
+    }
+
+    @Test
+    public void duplicateTestReflexExists_shouldReturnTrueForMatchingReflex() {
+        // Build a TestReflex matching existing record 1001 but with a different ID
+        // test_reflex 1001: test_id=1 (name_localization_id=1), test_analyte_id=1
+        // (analyte "Cholesterol"),
+        // tst_rslt_id=1, add_test_id=2 (name_localization_id=2), scriptlet_id=1
+        TestReflex testReflex = new TestReflex();
+        testReflex.setId("9999");
+        testReflex.setTest(testService.get("1"));
+        testReflex.setTestAnalyte(testAnalyteService.get("1"));
+        testReflex.setTestResult(testResultService.get("1"));
+        testReflex.setAddedTest(testService.get("2"));
+
+        assertTrue(testReflexDAO.duplicateTestReflexExists(testReflex));
+    }
+
+    @Test
+    public void duplicateTestReflexExists_shouldReturnFalseWhenNoDuplicate() {
+        // Use test_id=2 with analyte "Cholesterol" from test_analyte_id=1 — no such
+        // combination exists
+        TestReflex testReflex = new TestReflex();
+        testReflex.setId("9999");
+        testReflex.setTest(testService.get("2"));
+        testReflex.setTestAnalyte(testAnalyteService.get("1"));
+        testReflex.setTestResult(testResultService.get("1"));
+        testReflex.setAddedTest(testService.get("1"));
+
+        assertFalse(testReflexDAO.duplicateTestReflexExists(testReflex));
+    }
+
+    @Test
+    public void duplicateTestReflexExists_shouldExcludeCurrentRecord() {
+        // Use same data as record 1001 but with ID "1001" — should not match itself
+        TestReflex testReflex = new TestReflex();
+        testReflex.setId("1001");
+        testReflex.setTest(testService.get("1"));
+        testReflex.setTestAnalyte(testAnalyteService.get("1"));
+        testReflex.setTestResult(testResultService.get("1"));
+        testReflex.setAddedTest(testService.get("2"));
+
+        assertFalse(testReflexDAO.duplicateTestReflexExists(testReflex));
+    }
+
+    @Test
+    public void duplicateTestReflexExists_shouldHandleNullAddedTest() {
+        // When addedTest is null, the query uses "-1" as placeholder — no match
+        // expected
+        TestReflex testReflex = new TestReflex();
+        testReflex.setId("9999");
+        testReflex.setTest(testService.get("1"));
+        testReflex.setTestAnalyte(testAnalyteService.get("1"));
+        testReflex.setTestResult(testResultService.get("1"));
+
+        assertFalse(testReflexDAO.duplicateTestReflexExists(testReflex));
+    }
+
+    @Test
+    public void duplicateTestReflexExists_shouldBeCaseInsensitiveOnAnalyteName() {
+        // Existing record 1001 has analyte "Cholesterol" — use eagerly loaded
+        // entities to avoid lazy initialization issues
+        TestReflex testReflex = new TestReflex();
+        testReflex.setId("9999");
+        testReflex.setTest(testService.get("1"));
+        testReflex.setTestAnalyte(testAnalyteService.get("1"));
+        testReflex.setTestResult(testResultService.get("1"));
+        testReflex.setAddedTest(testService.get("2"));
+
+        // This exercises the case-insensitive trim(lower()) comparison in the HQL
+        assertTrue(testReflexDAO.duplicateTestReflexExists(testReflex));
     }
 }

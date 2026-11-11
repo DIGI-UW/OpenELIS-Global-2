@@ -1,0 +1,271 @@
+package org.openelisglobal.microbiology.service;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
+import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
+import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
+import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class MicroIsolateServiceImpl implements MicroIsolateService {
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicrobiologyCaseAccessService access;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstPanelAssignmentService panelAssignments;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstRunDAO runDAO;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstReportChoiceService reportChoices;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroOrganismDAO organismDAO;
+    private final MicroCaseDAO caseDAO;
+    private final MicroIsolateDAO isolateDAO;
+    private final MicroCaseActivityDAO activityDAO;
+    private final MicroCaseAmendmentDAO amendmentDAO;
+    private final MicroIdentificationHistoryService identificationHistoryService;
+
+    public MicroIsolateServiceImpl(MicroCaseDAO caseDAO, MicroIsolateDAO isolateDAO, MicroCaseActivityDAO activityDAO,
+            MicroCaseAmendmentDAO amendmentDAO, MicroIdentificationHistoryService identificationHistoryService) {
+        this.caseDAO = caseDAO;
+        this.isolateDAO = isolateDAO;
+        this.activityDAO = activityDAO;
+        this.amendmentDAO = amendmentDAO;
+        this.identificationHistoryService = identificationHistoryService;
+    }
+
+    @Override
+    @Transactional
+    public MicroIsolate createIsolate(String caseId, String isolateLabel, String gramStain, String colonyMorphology,
+            MicroIsolateSignificance significance, String performedBy) {
+        MicroCaseServiceImpl.requireText(caseId, "caseId");
+        MicroCaseServiceImpl.requireText(isolateLabel, "isolateLabel");
+        MicroCaseServiceImpl.requireText(gramStain, "gramStain");
+        MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
+        MicroCaseMutationGuard.requireMutable(microCase);
+
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setCaseId(caseId);
+        isolate.setAmendmentId(activeAmendmentId(microCase));
+        isolate.setIsolateLabel(isolateLabel);
+        isolate.setOrganismId(null);
+        isolate.setPreliminaryOrganismText(null);
+        isolate.setGramStain(gramStain.trim());
+        isolate.setColonyMorphology(trimToNull(colonyMorphology));
+        isolate.setSignificance((significance == null ? MicroIsolateSignificance.UNKNOWN : significance).name());
+        isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.PRELIMINARY.name());
+        isolate.setCreatedAt(MicroCaseServiceImpl.now());
+        isolateDAO.insert(isolate);
+        recordActivity(caseId, MicroCaseActivityType.ISOLATE_CREATED, performedBy,
+                "Gram stain for " + isolateLabel + ": " + isolate.getGramStain(),
+                "{\"isolateId\":\"" + isolate.getId() + "\"}");
+        if (MicroCaseStage.RECEIVED.name().equals(microCase.getStage())
+                || MicroCaseStage.SETUP_RECORDED.name().equals(microCase.getStage())
+                || MicroCaseStage.INCUBATING.name().equals(microCase.getStage())
+                || MicroCaseStage.POSITIVE_SIGNAL.name().equals(microCase.getStage())
+                || MicroCaseStage.GROWTH_DETECTED.name().equals(microCase.getStage())) {
+            microCase.setStage(MicroCaseStage.IDENTIFICATION.name());
+            caseDAO.update(microCase);
+        }
+        return isolate;
+    }
+
+    @Override
+    @Transactional
+    public MicroIsolate updateIdentification(String isolateId, String organismId, String preliminaryOrganismText,
+            MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus,
+            String identificationMethod, BigDecimal identificationConfidence, String performedBy) {
+        return updateIdentification(isolateId, organismId, preliminaryOrganismText, significance, identificationStatus,
+                identificationMethod, identificationConfidence, null, performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroIsolate updateIdentification(String isolateId, String organismId, String preliminaryOrganismText,
+            MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus,
+            String identificationMethod, BigDecimal identificationConfidence, String reason, String performedBy) {
+        return updateIdentification(isolateId, organismId, preliminaryOrganismText, significance, identificationStatus,
+                identificationMethod, identificationConfidence, reason, MicroCaseServiceImpl.now(), performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroIsolate updateIdentification(String isolateId, String organismId, String preliminaryOrganismText,
+            MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus,
+            String identificationMethod, BigDecimal identificationConfidence, String reason,
+            java.sql.Timestamp identifiedAt, String performedBy) {
+        MicroCaseServiceImpl.requireText(isolateId, "isolateId");
+        MicroCaseServiceImpl.requireText(organismId, "organismId");
+        MicroCaseServiceImpl.requireText(identificationMethod, "identificationMethod");
+        requireConfidence(identificationConfidence);
+        if (identificationStatus != MicroIsolateIdentificationStatus.CONFIRMED
+                && identificationStatus != MicroIsolateIdentificationStatus.PRELIMINARY) {
+            throw new IllegalArgumentException("identificationStatus must be PRELIMINARY or CONFIRMED");
+        }
+        MicroIsolate isolate = isolateDAO.get(isolateId)
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        if (isolate.getCancelledAt() != null) {
+            throw new MicroAmendmentConflictException("ISOLATE_CANCELLED");
+        }
+        MicroCase microCase = caseDAO.getForUpdate(isolate.getCaseId());
+        if (microCase == null)
+            throw new IllegalArgumentException("Case not found");
+        boolean reidentification = isolate.getOrganismId() != null
+                || (isolate.getPreliminaryOrganismText() != null && !isolate.getPreliminaryOrganismText().isBlank());
+        if (reidentification) {
+            MicroCaseServiceImpl.requireText(reason, "REIDENTIFICATION_REASON_REQUIRED");
+            if (!access.hasLabUnitRole(performedBy, microCase.getLabUnitId(),
+                    org.openelisglobal.common.constants.Constants.ROLE_VALIDATION))
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Case lab unit Validation rights required");
+        }
+        MicroCaseMutationGuard.requireMutable(microCase);
+        MicroIsolate previous = identificationSnapshot(isolate);
+        if (identifiedAt == null || identifiedAt.after(MicroCaseServiceImpl.now()))
+            throw new IllegalArgumentException("MICROBIOLOGY_ISOLATE_IDENTIFICATION_TIME");
+        isolate.setIdentifiedAt(identifiedAt);
+        isolate.setMismatchAcknowledgedBy(null);
+        isolate.setMismatchAcknowledgedAt(null);
+        isolate.setOrganismId(optionalId(organismId));
+        isolate.setPreliminaryOrganismText(preliminaryOrganismText);
+        isolate.setIdentificationMethod(identificationMethod.trim());
+        isolate.setIdentificationConfidence(identificationConfidence);
+        isolate.setSignificance((significance == null ? MicroIsolateSignificance.UNKNOWN : significance).name());
+        isolate.setIdentificationStatus(identificationStatus.name());
+        MicroIsolateIdentificationEvent event = identificationHistoryService.recordChange(previous, isolate, reason,
+                performedBy);
+        MicroIsolate updated = isolateDAO.update(isolate);
+        if (previous.getOrganismId() != null && !previous.getOrganismId().equals(updated.getOrganismId()))
+            retireSusceptibility(updated, performedBy);
+        panelAssignments.assignDefault(updated, performedBy);
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.ISOLATE_UPDATED, performedBy,
+                identificationActivityNote(isolate, previous, reason),
+                "{\"isolateId\":\"" + isolate.getId() + "\",\"identificationEventId\":\"" + event.getId() + "\"}");
+        return updated;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroIsolate> getIsolatesForCase(String caseId) {
+        return isolateDAO.getByCaseId(caseId);
+    }
+
+    private MicroIsolate identificationSnapshot(MicroIsolate isolate) {
+        MicroIsolate snapshot = new MicroIsolate();
+        snapshot.setId(isolate.getId());
+        snapshot.setCaseId(isolate.getCaseId());
+        snapshot.setIsolateLabel(isolate.getIsolateLabel());
+        snapshot.setOrganismId(isolate.getOrganismId());
+        snapshot.setPreliminaryOrganismText(isolate.getPreliminaryOrganismText());
+        snapshot.setGramStain(isolate.getGramStain());
+        snapshot.setColonyMorphology(isolate.getColonyMorphology());
+        snapshot.setIdentificationMethod(isolate.getIdentificationMethod());
+        snapshot.setIdentificationConfidence(isolate.getIdentificationConfidence());
+        snapshot.setIdentifiedAt(isolate.getIdentifiedAt());
+        snapshot.setMismatchAcknowledgedBy(isolate.getMismatchAcknowledgedBy());
+        snapshot.setMismatchAcknowledgedAt(isolate.getMismatchAcknowledgedAt());
+        snapshot.setSignificance(isolate.getSignificance());
+        snapshot.setIdentificationStatus(isolate.getIdentificationStatus());
+        return snapshot;
+    }
+
+    private String identificationActivityNote(MicroIsolate updated, MicroIsolate previous, String reason) {
+        String note = previous.getOrganismId() != null && previous.getOrganismId().equals(updated.getOrganismId())
+                ? "Isolate " + updated.getIsolateLabel() + " identification confirmed as "
+                        + identificationLabel(updated)
+                : "Isolate " + updated.getIsolateLabel() + " identification changed from "
+                        + identificationLabel(previous) + " to " + identificationLabel(updated);
+        return reason == null || reason.trim().isEmpty() ? note : note + ": " + reason.trim();
+    }
+
+    private String identificationLabel(MicroIsolate isolate) {
+        String id = isolate.getOrganismId() == null ? "" : isolate.getOrganismId().trim();
+        var organism = id.isEmpty() ? java.util.Optional.<MicroOrganism>empty() : organismDAO.get(id);
+        if (organism.isPresent()) {
+            return organism.get().getDisplayName();
+        }
+        if (isolate.getPreliminaryOrganismText() != null && !isolate.getPreliminaryOrganismText().trim().isEmpty()) {
+            return isolate.getPreliminaryOrganismText().trim();
+        }
+        return id.isEmpty() ? "unidentified" : id;
+    }
+
+    private void retireSusceptibility(MicroIsolate isolate, String performedBy) {
+        List<String> markedRunIds = new ArrayList<>();
+        for (MicroAstRun run : runDAO.getByIsolateId(isolate.getId())) {
+            if (List.of("CANCELLED", "INVALIDATED", "RERUN_REQUIRED").contains(run.getStatus()))
+                continue;
+            run.setStatus(MicroAstRunStatus.RERUN_REQUIRED.name());
+            run.setReportable(false);
+            runDAO.update(run);
+            markedRunIds.add(run.getId());
+        }
+        int cleared = reportChoices.clear(isolate.getId());
+        if (!markedRunIds.isEmpty() || cleared > 0) {
+            String note = "AST results for isolate " + isolate.getIsolateLabel()
+                    + " need repeating after re-identification";
+            String json = "{\"isolateId\":\"" + isolate.getId() + "\",\"astRunIds\":["
+                    + String.join(",", markedRunIds.stream().map(id -> "\"" + id + "\"").toList())
+                    + "],\"clearedReportChoices\":" + cleared + "}";
+            recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_RUN_INVALIDATED, performedBy, note, json);
+        }
+    }
+
+    private String optionalId(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    private String activeAmendmentId(MicroCase microCase) {
+        if (!MicroCaseStage.AMENDED.name().equals(microCase.getStage())
+                || !MicroCaseFinalReleaseState.AMENDMENT_IN_PROGRESS.name().equals(microCase.getFinalReleaseState())) {
+            return null;
+        }
+        MicroCaseAmendment amendment = amendmentDAO.getOpenByCaseId(microCase.getId());
+        if (amendment == null) {
+            throw new MicroAmendmentConflictException("AMENDMENT_NOT_OPEN");
+        }
+        return amendment.getId();
+    }
+
+    private String trimToNull(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    private void requireConfidence(BigDecimal confidence) {
+        if (confidence != null
+                && (confidence.compareTo(BigDecimal.ZERO) < 0 || confidence.compareTo(new BigDecimal("100")) > 0)) {
+            throw new IllegalArgumentException("identificationConfidence must be between 0 and 100");
+        }
+    }
+
+    private void recordActivity(String caseId, MicroCaseActivityType activityType, String performedBy, String note,
+            String structuredData) {
+        MicroCaseActivity activity = new MicroCaseActivity();
+        activity.setCaseId(caseId);
+        activity.setActivityType(activityType.name());
+        activity.setOccurredAt(MicroCaseServiceImpl.now());
+        activity.setPerformedBy(performedBy);
+        activity.setNote(note);
+        activity.setStructuredData(structuredData);
+        activityDAO.insert(activity);
+    }
+}

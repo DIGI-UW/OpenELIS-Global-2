@@ -102,6 +102,13 @@ public abstract class ConfigurationProperties {
         restrictFreeTextProviderEntry("restrictFreeTextProviderEntry", "text"), // If true then a user cannot enter new
         // providers during sample entry and must choose
         // from list provided
+        restrictFreeTextRequestorEntry("restrictFreeTextRequestorEntry", "text"), // if true then a user
+        // cannot enter new Environmental/Vector Requestor contacts during
+        // sample entry and must choose from the existing requestor_contact
+        // list provided
+        restrictFreeTextSampSiteEntry("restrictFreeTextSampSiteEntry", "text"), // if true then a user
+        // cannot enter new Vector/Environmental Sampling Sites during sample
+        // entry and must choose from the existing sampling site list provided
         autoFillTechNameBox("autoFillTechNameBox", "text"), // If true a box will be provided to auto-fill technicians
                                                             // name for
         // all results on page
@@ -118,6 +125,7 @@ public abstract class ConfigurationProperties {
                                                               // failed to
         // reach their destination
         TRACK_PATIENT_PAYMENT("trackPayment", "text"), // If true then patient payment status can be entered
+        SHOW_FAX_FIELDS("showFaxFields", "text"), // If true order entry shows fax fields for facilities and providers
         ACCESSION_NUMBER_VALIDATE("validateAccessionNumber", "text"), // If true then validate the accession number
         ALERT_FOR_INVALID_RESULTS("alertWhenInvalidResult", "text"), // If true then technician will get an alert for
                                                                      // results
@@ -129,6 +137,7 @@ public abstract class ConfigurationProperties {
                                                                             // page
         // only if user has correct permissions
         USE_PAGE_NUMBERS_ON_REPORTS("reportPageNumbers", "text"), // If true page numbers will be used on reports
+        REPORT_PAPER_SIZE("reportPaperSize", "text"), // A4 or Letter, the paper printed reports are laid out on
         QA_SORT_EVENT_LIST("sortQaEvents", "text"), // If true QA events will be sorted by name
         ALWAYS_VALIDATE_RESULTS("validate all results", "text"), // If true all results will be validated, otherwise
                                                                  // just those
@@ -154,9 +163,17 @@ public abstract class ConfigurationProperties {
                                                                                      // notes will
         // be on patient report
         PHONE_FORMAT("phone format", "text"), // Format of phone number
+        PHONE_FORMAT_LABEL("phone format label", "text"), // User-facing local phone format hint
+        PHONE_INTERNATIONAL_VALIDATION("phone international validation", "text"), // NONE or E164
+        PHONE_INTERNATIONAL_FORMAT_LABEL("phone international format label", "text"), // User-facing international hint
         VALIDATE_PHONE_FORMAT("validate phone format", "text"), // If true then entered phone numbers will be validated
                                                                 // against
         // format
+        PATIENT_ALIAS_ENABLED("patient alias enabled", "text"), // True if the patient alias field is shown on the
+                                                                // patient form
+        PATIENT_ALIAS_LABEL("patient alias label", "text"), // Optional patient alias label override
+        PATIENT_ID_DOCUMENTS_LABEL("patient ID documents label", "text"), // Optional patient ID documents label
+                                                                          // override
         ALLOW_DUPLICATE_SUBJECT_NUMBERS("Allow duplicate subject number", "text"), // If true then duplicate subject
                                                                                    // numbers are
         // allowed
@@ -178,7 +195,8 @@ public abstract class ConfigurationProperties {
         BANNER_TEXT("bannerHeading", "localization"), // Text on Banner
         CLOCK_24("24 hour clock", "text"), // True for 24 hour clock, false for 12 hour clock
         PATIENT_NATIONALITY("supportPatientNationality", "text"), // True if patient nationality should be collected
-                                                                  // with
+        DEFAULT_NATIONALITY("default nationality", "text"), // Default nationality value for new patients
+                                                            // with
         // patient information
         PATIENT_ID_REQUIRED("Patient ID required", "text"), // True if patient id is required for new patient
         PATIENT_SUBJECT_NUMBER_REQUIRED("Subject number required", "text"), // True if patient subject number is
@@ -186,6 +204,8 @@ public abstract class ConfigurationProperties {
         // new patient
         PATIENT_NATIONAL_ID_REQUIRED("National ID required", "text"), // True if patient national id is required for new
                                                                       // patient
+        PATIENT_SEX_REQUIRED("Patient sex required", "text"), // True if patient sex is required for new patient
+        PATIENT_AGE_REQUIRED("Patient age required", "text"), // True if patient age/DOB is required for new patient
         QA_SAMPLE_ID_REQUIRED("sample id required", "text"), // True if sample id required from referring lab
 
         MAX_ORDER_LABEL_PRINTED("numMaxOrderLabels", "text"), // Max order labels that can be printed
@@ -194,6 +214,10 @@ public abstract class ConfigurationProperties {
         MAX_SLIDE_LABEL_PRINTED("numMaxSlideLabels", "text"), // Max slides that can be printed
         MAX_BLOCK_LABEL_PRINTED("numMaxBlockLabels", "text"), // Max block labels that can be printed
         MAX_FREEZER_LABEL_PRINTED("numMaxFreezerLabels", "text"), // Max freezer labels that can be printed
+        // Per-quantity safety bound, applied even when override=true.
+        MAX_REQUEST_LABEL_QUANTITY("numMaxRequestLabelQuantity", "text"),
+        // Total copies in one PDF, including all sets/specimens.
+        MAX_REQUEST_LABEL_TOTAL("numMaxRequestLabelTotal", "text"),
         DEFAULT_ORDER_LABEL_PRINTED("numDefaultOrderLabels", "text"), // Max order labels that can be printed
         DEFAULT_SPECIMEN_LABEL_PRINTED("numDefaultSpecimenLabels", "text"), // Max specimen labels that can be printed
         DEFAULT_ALIQUOT_LABEL_PRINTED("numDefaultAliquotLabels", "text"), // Max aliquots that can be printed
@@ -278,8 +302,64 @@ public abstract class ConfigurationProperties {
         GPS_ENABLED("gpsCoordinatesEnabled", "text"), // if true, GPS coordinate fields are displayed in order entry
         GPS_ACCURACY_METERS("gpsRequiredAccuracyMeters", "text"), // maximum acceptable GPS accuracy in meters
         GPS_TIMEOUT_SECONDS("gpsTimeoutSeconds", "text"), // timeout in seconds for GPS location requests
+        // OGC-650 (LO-01-01): if true, simple lat/long inputs render on patient
+        // registration form.
+        // Distinct from GPS_ENABLED above (which is sample-level transit/cold-chain
+        // capture).
+        PATIENT_GPS_CAPTURE_ENABLED("patientGpsCaptureEnabled", "text"),
         USE_NEW_ADDRESS_HIERARCHY("useNewAddressHierarchy", "text"), // if true, use new configurable address hierarchy
-        EQA_ENABLED("eqaEnabled", "text"); // if true, EQA checkbox appears on order entry to mark sample as EQA
+        EQA_ENABLED("eqaEnabled", "text"), // if true, EQA checkbox appears on order entry to mark sample as EQA
+        ORDER_ENTRY_WORKFLOW_TYPE("orderEntryWorkflowType", "text"), // Controls order entry workflow: "Clinical",
+                                                                     // "Environmental", or "Both"
+        ELECTRONIC_SIGNATURE_ENABLED("electronicSignatureEnabled", "text"), // 21 CFR Part 11 e-signatures
+        ESIG_SESSION_TIMEOUT_MINUTES("esigSessionTimeoutMinutes", "text"), // signing session inactivity timeout
+
+        // S-09 (OGC-580) Sample Acceptance Checklist — per-domain enforcement
+        // (MANDATORY/OPTIONAL/OFF, default OPTIONAL)
+        // The shortened dbNames below predate the widening of site_information.name
+        // and are kept for compatibility with rows already seeded under them.
+        SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_CLINICAL("sampleAcceptCheck.clinical", "text"),
+        SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_ENVIRONMENTAL("sampleAcceptCheck.environmental", "text"),
+        SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_VECTOR("sampleAcceptCheck.vector", "text"),
+
+        // When true the UI layers translation files mounted at /translation over
+        // its bundled ones, so a deployment can reword any string without a
+        // source change or a frontend rebuild.
+        OVERRIDE_DEFAULT_TRANSLATION("overrideDefaultTranslation", "text"),
+        REQUESTER_REQUIRED("requesterRequired", "text"),
+        CONSENT_REQUIRED_FOR_COLLECTION("consentRequiredForCollection", "text"),
+        // OGC-1029 (Validation v4 V3, FR-B4): gates "Release all clear" — the only
+        // bulk release; per-row release in the review panel is always available.
+        ALLOW_BULK_RELEASE_CLEAR("allowBulkReleaseClear", "text"),
+        // OGC-1030 (Validation v4 V4, FR-D3): "Send for retest" must carry a note.
+        RETEST_NOTE_REQUIRED("retestNoteRequired", "text"),
+        // OGC-1147: does an open QC failure block release, or only warn
+        QC_FAIL_BLOCKS_VALIDATION("qcFailBlocksValidation", "text"),
+        BLOCK_SELF_VALIDATION("blockSelfValidation", "text"),
+        // OGC-1364: when true the validation policy decides which results wait
+        // for review instead of ALWAYS_VALIDATE_RESULTS.
+        USE_MULTI_LEVEL_VALIDATION("useMultiLevelValidation", "text"),
+
+        // FR-2.3: per-deployment switches for the optional pathology bench
+        // stages. The mandatory stages (ACCESSIONED, GROSSING, READY_PATHOLOGIST,
+        // COMPLETED) have no switch. A missing row means enabled.
+        PATHOLOGY_STAGE_DECALCIFICATION_ENABLED("pathology.stage.DECALCIFICATION.enabled", "text"),
+        PATHOLOGY_STAGE_PROCESSING_ENABLED("pathology.stage.PROCESSING.enabled", "text"),
+        PATHOLOGY_STAGE_EMBEDDING_ENABLED("pathology.stage.EMBEDDING.enabled", "text"),
+        PATHOLOGY_STAGE_MICROTOMY_ENABLED("pathology.stage.MICROTOMY.enabled", "text"),
+        PATHOLOGY_STAGE_STAINING_ENABLED("pathology.stage.STAINING.enabled", "text"),
+        PATHOLOGY_STAGE_COVERSLIPPING_ENABLED("pathology.stage.COVERSLIPPING.enabled", "text"),
+        PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED("pathology.stage.UNDER_REVIEW.enabled", "text"),
+
+        // Whether a slide label must be scanned against its block before sectioning.
+        PATHOLOGY_SCAN_VERIFICATION_REQUIRED("pathology.microtomy.scanVerificationRequired", "boolean"),
+
+        // FR-9.3: how a deployment names and barcodes the cassettes, blocks and
+        // slides cut from a case. A missing row means the scheme below.
+        PATHOLOGY_IDENTIFIER_PART_SCHEME("pathology.identifier.partScheme", "text"),
+        PATHOLOGY_IDENTIFIER_BLOCK_FORMAT("pathology.identifier.blockFormat", "text"),
+        PATHOLOGY_IDENTIFIER_SLIDE_FORMAT("pathology.identifier.slideFormat", "text"),
+        PATHOLOGY_IDENTIFIER_SEPARATOR("pathology.identifier.separator", "text");
 
         // visible on
         // the ui

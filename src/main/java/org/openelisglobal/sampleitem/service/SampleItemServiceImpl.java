@@ -4,9 +4,12 @@ import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.qc.dao.SampleItemQcProfileDAO;
+import org.openelisglobal.qc.valueholder.SampleItemQcProfile;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -23,6 +26,9 @@ public class SampleItemServiceImpl extends AuditableBaseObjectServiceImpl<Sample
 
     @Autowired
     protected SampleItemDAO baseObjectDAO;
+
+    @Autowired
+    private SampleItemQcProfileDAO qcProfileDAO;
 
     @Autowired
     private ReferenceTablesService refTableService;
@@ -67,7 +73,7 @@ public class SampleItemServiceImpl extends AuditableBaseObjectServiceImpl<Sample
 
     @Override
     @Transactional(readOnly = true)
-    public List<SampleItem> getSampleItemsBySampleIdAndStatus(String id, Set<Integer> enteredStatusSampleList) {
+    public List<SampleItem> getSampleItemsBySampleIdAndStatus(String id, Set<String> enteredStatusSampleList) {
         return baseObjectDAO.getSampleItemsBySampleIdAndStatus(id, enteredStatusSampleList);
     }
 
@@ -125,5 +131,11 @@ public class SampleItemServiceImpl extends AuditableBaseObjectServiceImpl<Sample
             List<List<String>> analysisGroups) {
         getBaseObjectDAO().insertAliquots(lastSampleItem, sampleItemsToInsert, analysisGroups);
         return true;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<SampleItemQcProfile> getQcProfile(String sampleItemId) {
+        return qcProfileDAO.findBySampleItemId(Integer.valueOf(sampleItemId));
     }
 }

@@ -37,7 +37,6 @@ import org.openelisglobal.common.services.QAService.QAObservationType;
 import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
-import org.openelisglobal.common.services.TestIdentityService;
 import org.openelisglobal.common.tools.StopWatch;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
@@ -53,6 +52,7 @@ import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.observationhistorytype.valueholder.ObservationHistoryType;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
+import org.openelisglobal.result.action.util.StoredDictionaryResult;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.action.util.ResultValidationItem;
@@ -112,7 +112,7 @@ public class ResultsValidationRetroCIUtility {
     private static String CD4_COUNT_SORT_NUMBER;
 
     private ResultsLoadUtility resultsLoadUtility = SpringContext.getBean(ResultsLoadUtility.class);
-    private static List<Integer> notValidStatus = new ArrayList<>();
+    private static List<String> notValidStatus = new ArrayList<>();
     private Map<String, String> testIdToUnits = new HashMap<>();
     private Map<String, Boolean> accessionToValidMap;
     private String totalTestName = "";
@@ -121,10 +121,8 @@ public class ResultsValidationRetroCIUtility {
 
     @PostConstruct
     private void initializeGlobalVariables() {
-        notValidStatus.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
-        notValidStatus.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+        notValidStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
+        notValidStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
         Analyte analyte = new Analyte();
         analyte.setAnalyteName("Conclusion");
         analyte = analyteService.getAnalyteByName(analyte, false);
@@ -146,7 +144,7 @@ public class ResultsValidationRetroCIUtility {
     }
 
     public List<AnalysisItem> getResultValidationList(String testSectionName, String testName,
-            List<Integer> statusList) {
+            List<String> statusList) {
         accessionToValidMap = new HashMap<>();
         sw = new StopWatch();
         sw.disable(true);
@@ -345,7 +343,7 @@ public class ResultsValidationRetroCIUtility {
 
     @SuppressWarnings("unchecked")
     public List<ResultValidationItem> getUnValidatedTestResultItemsInTestSection(String sectionId,
-            List<Integer> statusList) {
+            List<String> statusList) {
 
         List<Analysis> analysisList = analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList,
                 false);
@@ -354,7 +352,7 @@ public class ResultsValidationRetroCIUtility {
     }
 
     @SuppressWarnings("unchecked")
-    public List<ResultValidationItem> getUnValidatedTestResultItemsByTest(String testName, List<Integer> statusList) {
+    public List<ResultValidationItem> getUnValidatedTestResultItemsByTest(String testName, List<String> statusList) {
 
         List<Analysis> analysisList = analysisService.getAllAnalysisByTestAndStatus(getTestId(testName), statusList);
 
@@ -489,7 +487,8 @@ public class ResultsValidationRetroCIUtility {
         testItem.setTestId(test.getId());
         testItem.setAnalysisMethod(analysis.getAnalysisType());
         testItem.setResult(result);
-        testItem.setDictionaryResults(getAnyDictonaryValues(testResults));
+        testItem.setDictionaryResults(
+                StoredDictionaryResult.withStoredValue(getAnyDictonaryValues(testResults), result, dictionaryService));
         testItem.setResultType(getTestResultType(testResults));
         testItem.setTestSortNumber(test.getSortOrder());
         testItem.setReflexGroup(analysis.getTriggeredReflex());
@@ -587,7 +586,7 @@ public class ResultsValidationRetroCIUtility {
     }
 
     public List<AnalysisItem> testResultListToELISAAnalysisList(List<ResultValidationItem> testResultList,
-            List<Integer> statusList) {
+            List<String> statusList) {
         List<AnalysisItem> analysisItemList = new ArrayList<>();
         AnalysisItem analysisResultItem = new AnalysisItem();
         String currentAccessionNumber = "";
@@ -839,23 +838,24 @@ public class ResultsValidationRetroCIUtility {
         analysisResultItem.setTestId(testResultItem.getTestId());
         analysisResultItem.setTestSortNumber(sortOrder);
         analysisResultItem.setDictionaryResults(testResultItem.getDictionaryResults());
-        analysisResultItem.setDisplayResultAsLog(
-                TestIdentityService.getInstance().isTestNumericViralLoad(testResultItem.getTestId()));
         if (result != null) {
             if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(testResultItem.getResultType())
                     && !(testResultItem.getAnalysis() == null)) {
                 Analysis analysis = testResultItem.getAnalysis();
                 analysisResultItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
             } else {
-                analysisResultItem.setResult(getFormattedResult(testResultItem));
+                analysisResultItem.setResult("N".equals(result.getResultType()) ? result.getEnteredValue()
+                        : getFormattedResult(testResultItem));
+                analysisResultItem.setDisplayResult(getFormattedResult(testResultItem));
             }
 
             if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(testResultItem.getResultType())) {
                 if (result.getMinNormal() == null || result.getMaxNormal() == null) {
-                    analysisResultItem.setSignificantDigits(result.getSignificantDigits());
+                    analysisResultItem.setReportingDecimalPlaces(result.getReportingDecimalPlaces());
                 } else {
-                    analysisResultItem.setSignificantDigits(
-                            result.getMinNormal().equals(result.getMaxNormal()) ? -1 : result.getSignificantDigits());
+                    analysisResultItem
+                            .setReportingDecimalPlaces(result.getMinNormal().equals(result.getMaxNormal()) ? -1
+                                    : result.getReportingDecimalPlaces());
                 }
             }
         }
@@ -875,14 +875,8 @@ public class ResultsValidationRetroCIUtility {
     }
 
     private String getFormattedResult(ResultValidationItem testResultItem) {
-        String result = testResultItem.getResult().getValue();
-        if (TestIdentityService.getInstance().isTestNumericViralLoad(testResultItem.getTestId())
-                && !GenericValidator.isBlankOrNull(result)) {
-            return result.split("\\(")[0].trim();
-        } else {
-            ResultService resultResultService = SpringContext.getBean(ResultService.class);
-            return resultResultService.getResultValue(testResultItem.getResult(), false);
-        }
+        ResultService resultService = SpringContext.getBean(ResultService.class);
+        return resultService.formatResultForDisplay(testResultItem.getResult(), false);
     }
 
     public String getUnitsByTestId(String testId) {

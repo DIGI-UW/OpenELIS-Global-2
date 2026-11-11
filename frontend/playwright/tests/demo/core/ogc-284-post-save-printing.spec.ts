@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
 
 test.describe("OGC-284 post-save printing", () => {
   test("Print Barcode page loads reprint flow entry point", async ({

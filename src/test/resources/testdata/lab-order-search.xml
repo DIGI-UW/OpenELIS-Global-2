@@ -1,0 +1,144 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- localization entries -->
+    <localization id="9001" description="Mercury Test" />
+    <localization id="9002" description="Surface Water" />
+    <localization id="9003" description="Ground Water" />
+    <localization id="9004" description="Drinking Water" />
+    <localization id="9005" description="Lead Test" />
+    <localization id="9006" description="Serum" />
+    <localization id="9007" description="Arsenic Test" />
+    <!-- localized value deliberately differs from the type_of_sample description
+        to exercise localized-name matching in createMapsForTests -->
+    <localization id="9008" description="Rain Water" />
+    <localization id="9009" description="River Water" />
+
+    <!-- localization values (new generic system) -->
+    <localization_value id="9001" localization_id="9001"
+        locale="en" value="Mercury" />
+    <localization_value id="9002" localization_id="9002"
+        locale="en" value="Surface Water" />
+    <localization_value id="9003" localization_id="9003"
+        locale="en" value="Ground Water" />
+    <localization_value id="9004" localization_id="9004"
+        locale="en" value="Drinking Water" />
+    <localization_value id="9005" localization_id="9005"
+        locale="en" value="Lead Test" />
+    <localization_value id="9006" localization_id="9006"
+        locale="en" value="Serum" />
+    <localization_value id="9007" localization_id="9007"
+        locale="en" value="Arsenic" />
+    <localization_value id="9008" localization_id="9008"
+        locale="en" value="Precipitation Water" />
+    <localization_value id="9009" localization_id="9009"
+        locale="en" value="River Water" />
+
+    <!-- method -->
+    <method id="9001" name="spectroscopy"
+        description="spectroscopy method" name_localization_id="9001"
+        reporting_description="" is_active="Y" active_begin="2012-11-01"
+        lastUpdated="2023-10-01 12:00:00" />
+
+    <!-- test section -->
+    <test_section id="9001" name="Water"
+        description="Water Testing Section" is_external="N"
+        domain="ENVIRONMENTAL" lastupdated="2025-03-20 12:00:00.0"
+        sort_order="2147483647" is_active="Y" name_localization_id="9001"
+        display_key="TestKey9001" />
+
+    <!-- 1 test with LOINC 5685-3 mapped to 3 sample types -->
+    <test id="9001" method_id="9001" description="Mercury in water"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2027-12-31 12:00:00" lastupdated="2023-11-01 12:00:00"
+        sort_order="5" loinc="5685-3" name="Mercury" guid="merc-001"
+        name_localization_id="9001" test_section_id="9001" orderable="true" />
+
+    <!-- 1 test with LOINC 7439-92 mapped to 1 sample type -->
+    <test id="9002" method_id="9001" description="Lead in serum"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2027-12-31 12:00:00" lastupdated="2023-11-01 12:00:00"
+        sort_order="6" loinc="7439-92" name="Lead" guid="lead-001"
+        name_localization_id="9005" test_section_id="9001" orderable="true" />
+
+    <!-- 1 test with LOINC 7440-38 mapped to 2 sample types, one of which has
+        a localized name that differs from its description (OGC merge regression:
+        createMapsForTests must also match on localized name) -->
+    <test id="9003" method_id="9001" description="Arsenic in water"
+        is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2027-12-31 12:00:00" lastupdated="2023-11-01 12:00:00"
+        sort_order="7" loinc="7440-38" name="Arsenic" guid="arse-001"
+        name_localization_id="9007" test_section_id="9001" orderable="true" />
+
+    <!-- Sample types: SW, GW, DW for mercury test (unique abbrevs to avoid
+        collision) -->
+    <type_of_sample id="9001" description="Surface Water"
+        domain="E" lastupdated="2023-11-01 12:00:00" local_abbrev="SW9"
+        is_active="true" sort_order="100" name_localization_id="9002" />
+    <type_of_sample id="9002" description="Ground Water"
+        domain="E" lastupdated="2023-11-01 12:00:00" local_abbrev="GW9"
+        is_active="true" sort_order="101" name_localization_id="9003" />
+    <type_of_sample id="9003" description="Drinking Water"
+        domain="E" lastupdated="2023-11-01 12:00:00" local_abbrev="DW9"
+        is_active="true" sort_order="102" name_localization_id="9004" />
+    <!-- Single sample type for lead test -->
+    <type_of_sample id="9004" description="Serum" domain="H"
+        lastupdated="2023-11-01 12:00:00" local_abbrev="SR9" is_active="true"
+        sort_order="103" name_localization_id="9006" />
+    <!-- Two sample types for arsenic test; 9005 localizes to "Precipitation
+        Water" while its description stays "Rain Water" -->
+    <type_of_sample id="9005" description="Rain Water"
+        domain="E" lastupdated="2023-11-01 12:00:00" local_abbrev="RW9"
+        is_active="true" sort_order="104" name_localization_id="9008" />
+    <type_of_sample id="9006" description="River Water"
+        domain="E" lastupdated="2023-11-01 12:00:00" local_abbrev="RV9"
+        is_active="true" sort_order="105" name_localization_id="9009" />
+
+    <!-- sampletype_test mappings: 3 sample types for test 9001 -->
+    <sampletype_test id="9001" sample_type_id="9001"
+        test_id="9001" />
+    <sampletype_test id="9002" sample_type_id="9002"
+        test_id="9001" />
+    <sampletype_test id="9003" sample_type_id="9003"
+        test_id="9001" />
+    <!-- 1 sample type for test 9002 -->
+    <sampletype_test id="9004" sample_type_id="9004"
+        test_id="9002" />
+    <!-- 2 sample types for test 9003 -->
+    <sampletype_test id="9005" sample_type_id="9005"
+        test_id="9003" />
+    <sampletype_test id="9006" sample_type_id="9006"
+        test_id="9003" />
+
+    <!-- person for the patient -->
+    <person id="9001" last_name="Water" first_name="Test"
+        lastUpdated="2023-11-01 12:00:00" />
+
+    <!-- patient -->
+    <patient id="9001" person_id="9001" gender="M"
+        lastupdated="2023-01-01 00:00:00" />
+
+    <!-- EXTERNAL_ORDER "Entered" status referenced by the electronic_orders
+        below. Seeded here (id 21, matching the base dump) because sibling fixtures
+        truncate status_of_sample and don't reseed the EXTERNAL_ORDER rows. -->
+    <status_of_sample id="21" name="Entered"
+        status_type="EXTERNAL_ORDER" code="1"
+        description="The electronic order has been entered into OE"
+        display_key="status.sample.entered" is_active="Y"
+        lastupdated="2013-04-10 16:00:05.19233" />
+
+    <!-- electronic orders (status_id 21 = EXTERNAL_ORDER Entered, seeded above) -->
+    <electronic_order id="9001"
+        external_id="ORD-MULTI-SAMPLE" patient_id="9001" status_id="21"
+        order_timestamp="2024-06-01 12:00:00" data=""
+        lastupdated="2024-06-01 00:00:00" type="FHIR" />
+
+    <electronic_order id="9002"
+        external_id="ORD-SINGLE-SAMPLE" patient_id="9001" status_id="21"
+        order_timestamp="2024-06-01 12:00:00" data=""
+        lastupdated="2024-06-01 00:00:00" type="FHIR" />
+
+    <electronic_order id="9003"
+        external_id="ORD-LOCALIZED-SAMPLE" patient_id="9001" status_id="21"
+        order_timestamp="2024-06-01 12:00:00" data=""
+        lastupdated="2024-06-01 00:00:00" type="FHIR" />
+</dataset>

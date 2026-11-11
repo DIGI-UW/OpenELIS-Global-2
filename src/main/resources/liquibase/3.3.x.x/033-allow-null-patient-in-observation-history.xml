@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-356: Allow null patient_id in observation_history for environmental samples -->
+    <!-- Environmental samples are location-based, not patient-based, so they don't have a patient -->
+    <changeSet author="reagan-meant" id="20260402-001">
+        <comment>Allow null patient_id in observation_history for environmental workflow samples</comment>
+        <dropNotNullConstraint
+            tableName="observation_history"
+            columnName="patient_id"
+            schemaName="clinlims"
+            columnDataType="numeric(10,0)"/>
+    </changeSet>
+
+</databaseChangeLog>

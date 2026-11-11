@@ -28,7 +28,17 @@ class MenuConfigPage {
 
   navigateToMainMenu() {
     cy.wait(5000);
-    cy.get(this.selectors.menuButton).click();
+    cy.get("body").then(($body) => {
+      if ($body.find("[data-testid='admin-back-to-main-nav']").length > 0) {
+        cy.get("[data-testid='admin-back-to-main-nav']").click();
+        cy.location("pathname").should("eq", "/Dashboard");
+      }
+    });
+    cy.get("body").then(($body) => {
+      if ($body.find(".cds--side-nav--expanded").length === 0) {
+        cy.get(this.selectors.menuButton).click();
+      }
+    });
   }
 
   turnOffToggleSwitch() {
@@ -50,7 +60,7 @@ class MenuConfigPage {
   }
 
   uncheckNonConform() {
-    cy.contains("span", this.selectors.nonConformCheck)
+    cy.contains(".cds--checkbox-label-text", this.selectors.nonConformCheck)
       .scrollIntoView()
       .should("exist")
       .click({ force: true });
@@ -71,7 +81,7 @@ class MenuConfigPage {
   }
 
   uncheckPatientMenu() {
-    cy.contains("span", this.selectors.patientCheck)
+    cy.contains(".cds--checkbox-label-text", this.selectors.patientCheck)
       .scrollIntoView()
       .should("exist")
       .click({ force: true });
@@ -104,7 +114,7 @@ class MenuConfigPage {
   }
 
   uncheckBillingMenu() {
-    cy.contains("span", this.selectors.billingMenuCheck)
+    cy.contains(".cds--checkbox-label-text", this.selectors.billingMenuCheck)
       .scrollIntoView()
       .should("exist")
       .click({ force: true });

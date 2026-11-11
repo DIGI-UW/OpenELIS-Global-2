@@ -1,29 +1,48 @@
 package org.openelisglobal.program.service;
 
 import jakarta.transaction.Transactional;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
-import org.hl7.fhir.r4.model.Questionnaire;
-import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
-import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.program.util.DictionaryEntryNames;
+import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.LabelVerificationView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.RequestDisplayBean;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.StageEventView;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologyDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.program.valueholder.pathology.PathologySlide;
+import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -37,9 +56,13 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
     @Autowired
     private DictionaryService dictionaryService;
     @Autowired
-    private FhirUtil fhirUtil;
+    private QuestionnaireStorageService questionnaireStorageService;
     @Autowired
     private OrganizationService organizationService;
+    @Autowired
+    private SampleItemService sampleItemService;
+    @Autowired
+    private SystemUserService systemUserService;
 
     @Override
     @Transactional
@@ -47,7 +70,7 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         PathologySample pathologySample = pathologySampleService.get(pathologySampleId);
         PathologyDisplayItem displayItem = new PathologyDisplayItem();
         displayItem.setStatus(pathologySample.getStatus());
-        displayItem.setRequestDate(pathologySample.getSample().getEnteredDate());
+        displayItem.setRequestDate(localDate(pathologySample.getSample().getEnteredDate()));
         if (pathologySample.getPathologist() != null) {
             displayItem.setAssignedPathologist(pathologySample.getPathologist().getDisplayName());
         }
@@ -55,8 +78,10 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
             displayItem.setAssignedTechnician(pathologySample.getTechnician().getDisplayName());
         }
         Patient patient = sampleService.getPatient(pathologySample.getSample());
-        displayItem.setFirstName(patient.getPerson().getFirstName());
-        displayItem.setLastName(patient.getPerson().getLastName());
+        if (patient != null && patient.getPerson() != null) {
+            displayItem.setFirstName(patient.getPerson().getFirstName());
+            displayItem.setLastName(patient.getPerson().getLastName());
+        }
         displayItem.setLabNumber(pathologySample.getSample().getAccessionNumber());
         displayItem.setPathologySampleId(pathologySample.getId());
         return displayItem;
@@ -68,7 +93,9 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         PathologySample pathologySample = pathologySampleService.get(pathologySampleId);
         PathologyCaseViewDisplayItem displayItem = new PathologyCaseViewDisplayItem();
         displayItem.setStatus(pathologySample.getStatus());
-        displayItem.setRequestDate(pathologySample.getSample().getEnteredDate());
+        displayItem.setRequestDate(localDate(pathologySample.getSample().getEnteredDate()));
+        displayItem.setReceivedDate(localDate(pathologySample.getSample().getReceivedDate()));
+        displayItem.setSpecimenTypes(specimenTypes(pathologySample.getSample().getId()));
         if (pathologySample.getPathologist() != null) {
             displayItem.setAssignedPathologist(pathologySample.getPathologist().getDisplayName());
             displayItem.setAssignedPathologistId(pathologySample.getPathologist().getId());
@@ -91,14 +118,27 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         displayItem.setLabNumber(pathologySample.getSample().getAccessionNumber());
         displayItem.setPathologySampleId(pathologySample.getId());
         displayItem.setPatientPK(patient.getId());
-        displayItem.setProgramQuestionnaire(fhirUtil.getLocalFhirClient().read().resource(Questionnaire.class)
-                .withId(pathologySample.getProgram().getQuestionnaireUUID().toString()).execute());
-        displayItem.setProgramQuestionnaireResponse(
-                fhirUtil.getLocalFhirClient().read().resource(QuestionnaireResponse.class)
-                        .withId(pathologySample.getQuestionnaireResponseUuid().toString()).execute());
+        displayItem.setProgramQuestionnaire(questionnaireStorageService
+                .getQuestionnaire(pathologySample.getProgram().getQuestionnaireUUID()).orElse(null));
+        displayItem.setProgramQuestionnaireResponse(questionnaireStorageService
+                .getQuestionnaireResponse(pathologySample.getQuestionnaireResponseUuid()).orElse(null));
 
         displayItem.setGrossExam(pathologySample.getGrossExam());
         displayItem.setMicroscopyExam(pathologySample.getMicroscopyExam());
+        displayItem.setDecalcificationRequired(pathologySample.isDecalcificationRequired());
+        displayItem.setTissueTypeNames(dictionaryNames(
+                pathologySample.getBlocks().stream().map(PathologyBlock::getTissueTypeId), dictionaryService));
+        displayItem.setStainNames(dictionaryNames(pathologySample.getSlides().stream().map(PathologySlide::getStainId),
+                dictionaryService));
+        displayItem.setLabelVerifications(labelVerifications(pathologySample.getSlides(), systemUserService));
+        List<PathologyStageEvent> stageEvents = pathologySampleService.getStageEvents(pathologySampleId);
+        displayItem.setStageEvents(stageEvents.stream().map(StageEventView::of).collect(Collectors.toList()));
+        displayItem.setRunReference(runReference(stageEvents));
+        displayItem.setRunReferenceEditable(pathologySampleService.isRunReferenceRecordable(pathologySample));
+        displayItem.setNextStage(pathologySampleService.nextStage(pathologySample).map(Enum::name).orElse(null));
+        displayItem
+                .setPreviousStage(pathologySampleService.previousStage(pathologySample).map(Enum::name).orElse(null));
+        displayItem.setReleasable(pathologySampleService.isReleasable(pathologySample));
 
         displayItem.setConclusions(
                 pathologySample.getConclusions().stream().filter(e -> e.getType() == ConclusionType.DICTIONARY)
@@ -109,10 +149,6 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         if (conclusion.isPresent())
             displayItem.setConclusionText(conclusion.get().getValue());
 
-        displayItem.setConclusions(
-                pathologySample.getConclusions().stream().filter(e -> e.getType() == ConclusionType.DICTIONARY)
-                        .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
-                        .collect(Collectors.toList()));
         displayItem.setTechniques(
                 pathologySample.getTechniques().stream().filter(e -> e.getType() == TechniqueType.DICTIONARY)
                         .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
@@ -131,10 +167,89 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
                 displayItem.setDepartment(org.getOrganizationName());
             }
         }
-        displayItem.setRequester(sampleItem.getProviderLastName() + " " + sampleItem.getProviderFirstName());
+        displayItem.setRequester(requesterName(sampleItem.getProviderLastName(), sampleItem.getProviderFirstName()));
         displayItem.setAge(DateUtil.getCurrentAgeForDate(patient.getBirthDate(), DateUtil.getNowAsTimestamp()));
         displayItem.setSex(patient.getGender());
         return displayItem;
+    }
+
+    /**
+     * The calendar day a stored instant falls on, resolved once here in the
+     * server's own zone because the JSON layer formats dates in UTC.
+     */
+    private static LocalDate localDate(java.util.Date date) {
+        // Not date.toInstant(): java.sql.Date, which the driver may hand back for a
+        // date column, throws from it.
+        return date == null ? null : Instant.ofEpochMilli(date.getTime()).atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    /**
+     * The run written on the case's latest Processing entry; a case that never
+     * entered Processing with an entry recorded has none.
+     */
+    private static String runReference(List<PathologyStageEvent> stageEvents) {
+        return stageEvents.stream().filter(event -> event.getStage() == PathologyStatus.PROCESSING)
+                .reduce((earlier, later) -> later).map(PathologyStageEvent::getRunReference).orElse(null);
+    }
+
+    /**
+     * Names every dictionary entry the rows hold, the tissue a cassette holds or
+     * the stain on a slide, retired entries included, which the category list a
+     * picker is filled from leaves out. An id that names no entry stands for
+     * itself.
+     */
+    static Map<String, String> dictionaryNames(Stream<String> dictionaryIds, DictionaryService dictionaryService) {
+        Map<String, String> names = new LinkedHashMap<>();
+        dictionaryIds.filter(StringUtils::isNotBlank).distinct()
+                .forEach(id -> names.put(id, DictionaryEntryNames.localizedNameOf(dictionaryService, id).orElse(id)));
+        return names;
+    }
+
+    @Override
+    @Transactional
+    public LabelVerificationView labelVerificationOf(PathologySlide slide) {
+        if (slide == null) {
+            return null;
+        }
+        return LabelVerificationView.of(slide,
+                slide.getLabelVerifiedBy() == null ? null : systemUserService.get(slide.getLabelVerifiedBy()));
+    }
+
+    /**
+     * Who checked each slide's label and when, by slide id, for the slides whose
+     * label was checked. Each verifier is looked up once, however many slides they
+     * checked.
+     */
+    static Map<Integer, LabelVerificationView> labelVerifications(List<PathologySlide> slides,
+            SystemUserService systemUserService) {
+        Map<Integer, LabelVerificationView> verifications = new LinkedHashMap<>();
+        Map<String, SystemUser> verifiers = new HashMap<>();
+        for (PathologySlide slide : slides) {
+            if (slide.getId() == null || slide.getLabelVerifiedAt() == null) {
+                continue;
+            }
+            SystemUser verifier = slide.getLabelVerifiedBy() == null ? null
+                    : verifiers.computeIfAbsent(slide.getLabelVerifiedBy(), systemUserService::get);
+            verifications.put(slide.getId(), LabelVerificationView.of(slide, verifier));
+        }
+        return verifications;
+    }
+
+    /**
+     * The case's specimen types, one entry per sample item in the order the items
+     * were taken, so repeated types are repeated entries (FR-1).
+     */
+    private List<String> specimenTypes(String sampleId) {
+        return sampleItemService.getSampleItemsBySampleId(sampleId).stream().map(SampleItem::getTypeOfSample)
+                .filter(Objects::nonNull).map(TypeOfSample::getLocalizedName).collect(Collectors.toList());
+    }
+
+    /**
+     * A case ordered without a requester has no name to show, rather than the two
+     * words "null null" that joining the parts unconditionally produced.
+     */
+    private static String requesterName(String lastName, String firstName) {
+        return StringUtils.trimToNull(StringUtils.trimToEmpty(lastName) + " " + StringUtils.trimToEmpty(firstName));
     }
 
     @Override

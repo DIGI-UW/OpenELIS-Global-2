@@ -10,12 +10,11 @@ import org.junit.Test;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentLabUnit;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentTestMap;
 import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
-import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramEnrollment;
 
 /**
  * ORM validation test for EQA Enrollment entities (DM-007 through DM-010).
- * Validates all 4 new entities can be instantiated and have correct defaults.
+ * Validates all entities can be instantiated and have correct defaults.
  * Constitution V.4: Must execute in less than 5 seconds, NO database connection
  * required.
  */
@@ -58,19 +57,15 @@ public class EQAEnrollmentHibernateMappingTest {
 
     @Test
     public void testEQALabProgramEnrollmentFieldsCanBeSet() {
-        EQAProgram program = new EQAProgram();
-        program.setName("WHO EQA Program");
-
         EQALabProgramEnrollment enrollment = new EQALabProgramEnrollment();
-        enrollment.setEqaProgram(program);
+        enrollment.setProgramName("WHO EQA Program");
         enrollment.setProvider("WHO");
         enrollment.setDescription("Test description");
         enrollment.setIsActive(true);
         enrollment.setCreatedDate(new Date());
         enrollment.setSysUserId("1");
 
-        assertEquals(program, enrollment.getEqaProgram());
-        assertEquals("WHO EQA Program", enrollment.getEqaProgram().getName());
+        assertEquals("WHO EQA Program", enrollment.getProgramName());
         assertEquals("WHO", enrollment.getProvider());
         assertEquals("Test description", enrollment.getDescription());
         assertTrue(enrollment.getIsActive());
@@ -125,11 +120,8 @@ public class EQAEnrollmentHibernateMappingTest {
 
     @Test
     public void testEQALabProgramEnrollmentChildCollections() {
-        EQAProgram program = new EQAProgram();
-        program.setName("Test");
-
         EQALabProgramEnrollment enrollment = new EQALabProgramEnrollment();
-        enrollment.setEqaProgram(program);
+        enrollment.setProgramName("Test");
         enrollment.setProvider("Provider");
         enrollment.setSysUserId("1");
 

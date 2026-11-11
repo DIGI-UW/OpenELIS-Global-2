@@ -1,0 +1,72 @@
+@use "@carbon/styles/scss/spacing";
+
+.labels-section__table {
+  margin-bottom: spacing.$spacing-05;
+}
+
+.labels-section__cell {
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-02;
+  align-items: flex-start;
+}
+
+.labels-section__locked {
+  display: flex;
+  align-items: center;
+  gap: spacing.$spacing-02;
+}
+
+.labels-section__locked-value {
+  font-weight: 600;
+}
+
+.labels-section__lock-trigger {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.labels-section__lock-icon {
+  color: var(--cds-icon-secondary);
+}
+
+.labels-section__source-tag {
+  max-width: 100%;
+}
+
+.labels-section__total {
+  font-weight: 600;
+  margin-top: spacing.$spacing-03;
+}
+
+// Print actions (OGC-1422): a printer icon beside each column name, one per
+// row, and Print all next to the running total.
+.labels-section__col-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.labels-section__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.labels-section__pending {
+  margin-left: 0.5rem;
+}
+
+.prepare-labels-section__error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}

@@ -1,0 +1,1148 @@
+import {
+  Button,
+  Checkbox,
+  FormGroup,
+  InlineLoading,
+  InlineNotification,
+  Layer,
+  Loading,
+  Search,
+  Select,
+  SelectItem,
+  Tag,
+  TextInput,
+  Tile,
+} from "@carbon/react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { FormattedMessage, useIntl } from "react-intl";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import OrderReferralRequest from "../addOrder/OrderReferralRequest";
+import CustomCheckBox from "../common/CustomCheckBox";
+import CustomDatePicker from "../common/CustomDatePicker";
+import { NotificationKinds } from "../common/CustomNotification";
+import CustomSelect from "../common/CustomSelect";
+import SearchableSelect from "../common/SearchableSelect";
+import CustomTextInput from "../common/CustomTextInput";
+import CustomTimePicker from "../common/CustomTimePicker";
+import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import LocationPickerInline from "../storage/LocationPicker/LocationPickerInline";
+import { LEVEL_ORDER } from "../storage/LocationPicker/useLocationPicker";
+import { getFromOpenElisServer } from "../utils/Utils";
+import GpsCoordinatesCapture from "./GpsCoordinatesCapture";
+import LabelsSection from "../barcodeWorkflow/LabelsSection";
+
+/** The entries whose name contains the search term, ignoring case. */
+const matchingByName = (entries, term) => {
+  const query = (term || "").toLowerCase();
+  return (entries || []).filter((entry) =>
+    (entry?.name || "").toLowerCase().includes(query),
+  );
+};
+
+const SampleType = (props) => {
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { configurationProperties } = useContext(ConfigurationContext);
+
+  const intl = useIntl();
+
+  const componentMounted = useRef(false);
+  const sampleTypesRef = useRef(null);
+  const sampleTypeTestsFetchRef = useRef(0);
+
+  const {
+    index,
+    rejectSampleReasons,
+    sample,
+    domain,
+    allowReferral = true,
+  } = props;
+
+  const [sampleTypes, setSampleTypes] = useState([]);
+  const [selectedSampleType, setSelectedSampleType] = useState({
+    id: sample?.sampleTypeId || null,
+    name: "",
+    element_index: 0,
+  });
+  const [sampleTypeTests, setSampleTypeTests] = useState(
+    sampleTypeTestsStructure,
+  );
+  const [selectedTests, setSelectedTests] = useState(sample?.tests || []);
+  const [testsLoadState, setTestsLoadState] = useState("idle");
+  const [testsRetry, setTestsRetry] = useState(0);
+  const [referralListsFailed, setReferralListsFailed] = useState(false);
+  const [requestTestReferral, setRequestTestReferral] = useState(
+    sample?.requestReferralEnabled === true,
+  );
+  const [referralReasons, setReferralReasons] = useState([]);
+  const [referralOrganizations, setReferralOrganizations] = useState([]);
+  const [testSearchTerm, setTestSearchTerm] = useState("");
+  const [referralRequests, setReferralRequests] = useState(
+    sample?.referralItems || [],
+  );
+  const { setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+  const [selectedPanels, setSelectedPanels] = useState(sample?.panels || []);
+  const [panelSearchTerm, setPanelSearchTerm] = useState("");
+  const [uomList, setUomList] = useState([]);
+  const [sampleXml, setSampleXml] = useState(
+    sample?.sampleXML != null
+      ? sample.sampleXML
+      : {
+          collectionDate:
+            configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
+              ? configurationProperties.currentDateAsText
+              : "",
+          collector: "",
+          quantity: "",
+          uom: "",
+          rejected: false,
+          rejectionReason: "",
+          collectionTime:
+            configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
+              ? configurationProperties.currentTimeAsText
+              : "",
+          numOrderLabels: 1,
+          numSpecimenLabels: 1,
+        },
+  );
+  const [loading, setLoading] = useState(true);
+
+  const defaultSelect = { id: "", value: "Choose Rejection Reason" };
+
+  function handleCollectionDate(date) {
+    setSampleXml({
+      ...sampleXml,
+      collectionDate: date,
+    });
+  }
+
+  function handleReasons(value) {
+    setSampleXml({
+      ...sampleXml,
+      rejectionReason: value,
+    });
+    props.sampleTypeObject({
+      rejectionReason: value,
+      sampleObjectIndex: index,
+    });
+  }
+
+  function handleCollectionTime(time) {
+    setSampleXml({
+      ...sampleXml,
+      collectionTime: time,
+    });
+  }
+
+  function handleCollector(value) {
+    setSampleXml({
+      ...sampleXml,
+      collector: value,
+    });
+  }
+
+  function handleCollectionMethod(value) {
+    const updated = { ...sampleXml, collectionMethod: value };
+    setSampleXml(updated);
+    props.sampleTypeObject({
+      sampleXML: updated,
+      sampleObjectIndex: index,
+    });
+  }
+
+  function handleSampleTemperature(value) {
+    const updated = { ...sampleXml, sampleTemperature: value };
+    setSampleXml(updated);
+    props.sampleTypeObject({
+      sampleXML: updated,
+      sampleObjectIndex: index,
+    });
+  }
+
+  function handleSpecimenOrigin(value) {
+    const updated = { ...sampleXml, specimenOrigin: value };
+    setSampleXml(updated);
+    props.sampleTypeObject({
+      sampleXML: updated,
+      sampleObjectIndex: index,
+    });
+  }
+
+  const handleGpsCoordinatesChange = useCallback(
+    (gpsData) => {
+      const updatedSampleXml = {
+        ...sampleXml,
+        gpsLatitude: gpsData.gpsLatitude,
+        gpsLongitude: gpsData.gpsLongitude,
+        gpsAccuracy: gpsData.gpsAccuracy,
+        gpsCaptureMethod: gpsData.gpsCaptureMethod,
+      };
+      setSampleXml(updatedSampleXml);
+      props.sampleTypeObject({
+        sampleXML: updatedSampleXml,
+        sampleObjectIndex: index,
+      });
+    },
+    [sampleXml, props.sampleTypeObject, index],
+  );
+
+  function handleStorageLocationChange(location, positionCoordinate) {
+    // Derive the deepest assignable level so OrderContext.buildSampleXML can
+    // populate flat storageLocationId / storageLocationType attributes on the
+    // sample XML element. The backend (SampleStorageAssignmentListener) reads
+    // those flat attributes — without them the assignment is silently skipped.
+    let deepestId = null;
+    let deepestType = null;
+    LEVEL_ORDER.forEach((level) => {
+      if (location?.[level]?.id) {
+        deepestId = String(location[level].id);
+        deepestType = level;
+      }
+    });
+    setSampleXml({
+      ...sampleXml,
+      storageLocation: {
+        ...location,
+        id: deepestId,
+        type: deepestType,
+        positionCoordinate: positionCoordinate || "",
+      },
+      storagePositionId: location?.position?.id || null,
+    });
+  }
+
+  function handleQuantity(value) {
+    setSampleXml({
+      ...sampleXml,
+      quantity: value.target.value,
+    });
+  }
+
+  function handleUom(value) {
+    setSampleXml({
+      ...sampleXml,
+      uom: value,
+    });
+  }
+
+  const handleLabelsSectionChange = (labelsModel) => {
+    const nextOrderLabels = labelsModel?.orderRow?.quantities?.order ?? 0;
+    const nextSpecimenLabels =
+      labelsModel?.sampleRows?.[0]?.quantities?.specimen ?? 0;
+    setSampleXml((currentSampleXml) => ({
+      ...currentSampleXml,
+      numOrderLabels: nextOrderLabels,
+      numSpecimenLabels: nextSpecimenLabels,
+    }));
+  };
+
+  useEffect(() => {
+    updateSampleXml(sampleXml, index);
+  }, [sampleXml]);
+
+  const handleReferralRequest = () => {
+    setRequestTestReferral(!requestTestReferral);
+    if (selectedTests.length > 0) {
+      const defaultReferralRequest = [];
+      selectedTests.map((test) => {
+        defaultReferralRequest.push({
+          reasonForReferral: referralReasons[0]?.id ?? "",
+          referrer:
+            userSessionDetails.firstName + " " + userSessionDetails.lastName,
+          institute: referralOrganizations[0]?.id ?? "",
+          sentDate: "",
+          testId: test.id,
+        });
+      });
+      setReferralRequests(defaultReferralRequest);
+    }
+  };
+
+  const handleTestSearchChange = (event) => {
+    setTestSearchTerm(event.target.value);
+  };
+
+  const searchBoxTests = useMemo(
+    () => matchingByName(sampleTypeTests?.tests, testSearchTerm),
+    [sampleTypeTests, testSearchTerm],
+  );
+
+  const handleRemoveSelectedTest = (test) => {
+    removedTestFromSelectedTests(test);
+  };
+
+  const handleFilterSelectTest = (test) => {
+    setTestSearchTerm("");
+    addTestToSelectedTests(test);
+  };
+
+  const handleTestCheckbox = (e, test) => {
+    if (e.currentTarget.checked) {
+      addTestToSelectedTests(test);
+    } else {
+      removedTestFromSelectedTests(test);
+    }
+  };
+
+  function findTestById(testId) {
+    return (sampleTypeTests?.tests || []).find((test) => test.id === testId);
+  }
+
+  function findTestIndex(testId) {
+    return (sampleTypeTests?.tests || []).findIndex(
+      (test) => test.id === testId,
+    );
+  }
+
+  const panelIsSelected = (panelId) => {
+    for (let i in selectedPanels) {
+      if (selectedPanels[i].id === panelId) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const testIsSelected = (testId) => {
+    for (let i in selectedTests) {
+      if (selectedTests[i].id === testId) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const triggerPanelCheckBoxChange = (isChecked, testIds) => {
+    if (!testIds) return;
+    const testIdsList = testIds.split(",").map((id) => id.trim());
+    testIdsList.map((testId) => {
+      let testIndex = findTestIndex(testId);
+      let test = findTestById(testId);
+      if (testIndex !== -1) {
+        if (isChecked) {
+          if (!testIsSelected(test.id)) {
+            setSelectedTests((prevState) => {
+              return [...prevState, { ...test }];
+            });
+          }
+        } else {
+          removedTestFromSelectedTests(test);
+        }
+      }
+    });
+  };
+
+  const removedTestFromSelectedTests = (test) => {
+    setSelectedTests((currentTests) =>
+      currentTests.filter((selectedTest) => selectedTest.id !== test.id),
+    );
+  };
+
+  function removeReferralRequest(test) {
+    let index = 0;
+    for (let x in referralRequests) {
+      if (referralRequests[x].testId === test.id) {
+        const newReferralRequests = referralRequests;
+        newReferralRequests.splice(index, 1);
+        setReferralRequests([...newReferralRequests]);
+        break;
+      }
+      index++;
+    }
+  }
+
+  const handleFetchSampleTypeTests = (e, index) => {
+    setSelectedTests([]);
+    setSelectedPanels([]);
+    setReferralRequests([]);
+    setTestSearchTerm("");
+    setPanelSearchTerm("");
+    const { value } = e.target;
+    if (value === "") {
+      sampleTypeTestsFetchRef.current += 1;
+      setSampleTypeTests(sampleTypeTestsStructure);
+      setTestsLoadState("idle");
+    }
+    const selectedSampleTypeOption =
+      sampleTypesRef.current.options[sampleTypesRef.current.selectedIndex].text;
+    setSelectedSampleType({
+      ...selectedSampleType,
+      id: value,
+      name: selectedSampleTypeOption,
+      element_index: index,
+    });
+    props.sampleTypeObject({ sampleTypeId: value, sampleObjectIndex: index });
+  };
+
+  const updateSampleXml = (sampleXML, index) => {
+    props.sampleTypeObject({ sampleXML: sampleXML, sampleObjectIndex: index });
+  };
+
+  const fetchSamplesTypes = (res) => {
+    if (componentMounted.current) {
+      setSampleTypes(res);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (props.sample.referralItems?.length > 0 && referralReasons.length > 0) {
+      setRequestTestReferral(props.sample.requestReferralEnabled);
+      setReferralRequests(props.sample.referralItems);
+    }
+  }, [referralReasons]);
+
+  useEffect(() => {
+    props.sampleTypeObject({
+      requestReferralEnabled: requestTestReferral,
+      sampleObjectIndex: index,
+    });
+    if (!requestTestReferral) {
+      setReferralRequests([]);
+    }
+  }, [requestTestReferral]);
+
+  useEffect(() => {
+    props.sampleTypeObject({
+      referralItems: referralRequests,
+      sampleObjectIndex: index,
+    });
+  }, [referralRequests]);
+
+  const displayReferralReasonsOptions = (res) => {
+    if (componentMounted.current) {
+      setReferralReasons(Array.isArray(res) ? res : []);
+      if (!Array.isArray(res)) {
+        setReferralListsFailed(true);
+      }
+    }
+  };
+  const displayReferralOrgOptions = (res) => {
+    if (componentMounted.current) {
+      setReferralOrganizations(Array.isArray(res) ? res : []);
+      if (!Array.isArray(res)) {
+        setReferralListsFailed(true);
+      }
+    }
+  };
+
+  function handleRejection(checked) {
+    if (checked) {
+      addNotification({
+        kind: NotificationKinds.warning,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "reject.order.sample.notification" }),
+      });
+      setNotificationVisible(true);
+    }
+    setSampleXml({
+      ...sampleXml,
+      rejected: checked,
+    });
+  }
+
+  const removedPanelFromSelectedPanels = (panel) => {
+    let index = 0;
+    for (let i in selectedPanels) {
+      if (selectedPanels[i].id === panel.id) {
+        triggerPanelCheckBoxChange(false, selectedPanels[i].testIds);
+        const newPanels = selectedPanels;
+        newPanels.splice(index, 1);
+        setSelectedPanels([...newPanels]);
+        break;
+      }
+      index++;
+    }
+  };
+
+  const selectedSampleTypeName =
+    selectedSampleType.name ||
+    sampleTypes?.find(
+      (sampleType) => String(sampleType.id) === String(selectedSampleType.id),
+    )?.value ||
+    "";
+
+  const handlePanelSearchChange = (event) => {
+    setPanelSearchTerm(event.target.value);
+  };
+
+  const searchBoxPanels = useMemo(
+    () => matchingByName(sampleTypeTests?.panels, panelSearchTerm),
+    [sampleTypeTests, panelSearchTerm],
+  );
+
+  const handleFilterSelectPanel = (panel) => {
+    setPanelSearchTerm("");
+    addPanelToSelectedPanels(panel);
+  };
+
+  const handlePanelCheckbox = (panel) => {
+    if (!panelIsSelected(panel.id)) {
+      addPanelToSelectedPanels(panel);
+    } else {
+      removedPanelFromSelectedPanels(panel);
+    }
+  };
+
+  const handleRemoveSelectedPanel = (panel) => {
+    removedPanelFromSelectedPanels(panel);
+  };
+
+  function addTestToSelectedTests(test) {
+    if (!testIsSelected(test.id)) {
+      setSelectedTests([...selectedTests, { ...test }]);
+    }
+  }
+
+  const addPanelToSelectedPanels = (panel) => {
+    setSelectedPanels([
+      ...selectedPanels,
+      { id: panel.id, name: panel.name, testIds: panel.testIds },
+    ]);
+  };
+
+  useEffect(() => {
+    componentMounted.current = true;
+    if (selectedSampleType.id !== "" && selectedSampleType.id != null) {
+      const fetchId = ++sampleTypeTestsFetchRef.current;
+      setTestsLoadState("loading");
+      getFromOpenElisServer(
+        `/rest/sample-type-tests?sampleType=${selectedSampleType.id}`,
+        (res) => {
+          if (
+            componentMounted.current &&
+            fetchId === sampleTypeTestsFetchRef.current
+          ) {
+            if (res && Array.isArray(res.tests)) {
+              setSampleTypeTests(res);
+              setTestsLoadState("loaded");
+            } else {
+              setSampleTypeTests(sampleTypeTestsStructure);
+              setTestsLoadState("failed");
+            }
+          }
+        },
+      );
+    }
+    return () => {
+      componentMounted.current = false;
+    };
+  }, [selectedSampleType.id, testsRetry]);
+
+  useEffect(() => {
+    getFromOpenElisServer("/rest/uom", fetchUomList);
+  }, []);
+
+  const fetchUomList = (res) => {
+    if (componentMounted.current) {
+      setUomList(Array.isArray(res) ? res : []);
+    }
+  };
+
+  useEffect(() => {
+    props.sampleTypeObject({
+      sampleRejected: Boolean(sampleXml.rejected),
+      sampleObjectIndex: index,
+    });
+  }, [sampleXml.rejected]);
+
+  useEffect(() => {
+    props.sampleTypeObject({
+      selectedTests: selectedTests,
+      sampleObjectIndex: index,
+    });
+  }, [selectedTests]);
+
+  useEffect(() => {
+    props.sampleTypeObject({
+      selectedPanels: selectedPanels,
+      sampleObjectIndex: index,
+    });
+    for (let i in selectedPanels) {
+      triggerPanelCheckBoxChange(true, selectedPanels[i].testIds);
+    }
+  }, [selectedPanels, sampleTypeTests]);
+
+  const loadReferralLists = () => {
+    getFromOpenElisServer(
+      "/rest/displayList/REFERRAL_REASONS",
+      displayReferralReasonsOptions,
+    );
+    getFromOpenElisServer(
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
+      displayReferralOrgOptions,
+    );
+  };
+
+  const retryReferralLists = () => {
+    setReferralListsFailed(false);
+    loadReferralLists();
+  };
+
+  useEffect(() => {
+    componentMounted.current = true;
+    loadReferralLists();
+    const sampleTypesEndpoint =
+      domain === "E"
+        ? "/rest/environmental-sample-types"
+        : domain === "V"
+          ? "/rest/vector-sample-types"
+          : "/rest/user-sample-types";
+    getFromOpenElisServer(sampleTypesEndpoint, fetchSamplesTypes);
+    return () => {
+      componentMounted.current = false;
+    };
+  }, []);
+
+  const domainFetchRef = useRef(0);
+  useEffect(() => {
+    const fetchId = ++domainFetchRef.current;
+    const sampleTypesEndpoint =
+      domain === "E"
+        ? "/rest/environmental-sample-types"
+        : domain === "V"
+          ? "/rest/vector-sample-types"
+          : "/rest/user-sample-types";
+    setLoading(true);
+    getFromOpenElisServer(sampleTypesEndpoint, (res) => {
+      if (componentMounted.current && fetchId === domainFetchRef.current) {
+        setSampleTypes(res);
+        setLoading(false);
+      }
+    });
+  }, [domain]);
+
+  return (
+    <>
+      {loading && <Loading />}
+      <div className="sampleBody">
+        <Select
+          className="selectSampleType"
+          id={"sampleId_" + index}
+          ref={sampleTypesRef}
+          value={
+            props.sample.sampleTypeId === "" ? "" : props.sample.sampleTypeId
+          }
+          name="sampleId"
+          labelText=""
+          onChange={(e) => {
+            handleFetchSampleTypeTests(e, index);
+          }}
+          required
+        >
+          <SelectItem
+            text={intl.formatMessage({ id: "sample.select.type" })}
+            value=""
+          />
+          {sampleTypes?.map((sampleType, i) => (
+            <SelectItem text={sampleType.value} value={sampleType.id} key={i} />
+          ))}
+        </Select>
+
+        <CustomCheckBox
+          id={"reject_" + index}
+          checked={Boolean(sampleXml.rejected)}
+          onChange={(value) => handleRejection(value)}
+          label={intl.formatMessage({ id: "sample.reject.label" })}
+        />
+        {sampleXml.rejected && (
+          <CustomSelect
+            id={"rejectedReasonId_" + index}
+            labelText={intl.formatMessage({ id: "sample.reject.reason.label" })}
+            aria-required="true"
+            options={rejectSampleReasons}
+            disabled={!sampleXml.rejected}
+            value={sampleXml.rejectionReason}
+            invalid={!sampleXml.rejectionReason}
+            invalidText={intl.formatMessage({
+              id: "sample.reject.reasonRequired",
+            })}
+            onChange={(e) => handleReasons(e)}
+          />
+        )}
+        <div className="inlineDiv" style={{ display: "flex", gap: "1rem" }}>
+          <TextInput
+            value={sampleXml.quantity}
+            name="quantity"
+            labelText={intl.formatMessage({
+              id: "sample.quantity.label",
+            })}
+            id="quantity"
+            type="number"
+            min="0"
+            onChange={(value) => handleQuantity(value)}
+            placeholder={intl.formatMessage({
+              id: "sample.quantity.label",
+            })}
+          />
+
+          <SearchableSelect
+            id={"uomId_" + index}
+            labelText={intl.formatMessage({ id: "sample.uom.label" })}
+            placeholder={intl.formatMessage({ id: "sample.uom.search" })}
+            options={uomList}
+            value={sampleXml.uom}
+            onChange={(value) => handleUom(value)}
+          />
+        </div>
+        <div className="inlineDiv">
+          <CustomDatePicker
+            id={"collectionDate_" + index}
+            autofillDate={
+              configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
+            }
+            onChange={(date) => handleCollectionDate(date)}
+            value={sampleXml.collectionDate}
+            labelText={intl.formatMessage({ id: "sample.collection.date" })}
+            className="inputText"
+            disallowFutureDate={true}
+          />
+
+          <CustomTimePicker
+            id={"collectionTime_" + index}
+            autofillTime={
+              configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
+            }
+            onChange={(time) => handleCollectionTime(time)}
+            value={sampleXml.collectionTime}
+            className="inputText"
+            labelText={intl.formatMessage({ id: "sample.collection.time" })}
+          />
+        </div>
+        <div className="inlineDiv">
+          <CustomTextInput
+            id={"collector_" + index}
+            onChange={(value) => handleCollector(value)}
+            defaultValue={""}
+            value={sampleXml.collector}
+            labelText={intl.formatMessage({ id: "collector.label" })}
+            className="inputText"
+          />
+        </div>
+
+        {/* OGC-651 (LO-03-01): specimen detail freetext fields. Casey's
+            UAT validation note named these three as missing on
+            /SamplePatientEntry. Persisted to sample_item via
+            SampleAddService XML attribute parsing. */}
+        <div className="inlineDiv">
+          <CustomTextInput
+            id={"collectionMethod_" + index}
+            onChange={(value) => handleCollectionMethod(value)}
+            defaultValue={""}
+            value={sampleXml.collectionMethod || ""}
+            labelText={intl.formatMessage({
+              id: "sample.collection.method",
+              defaultMessage: "Collection Method",
+            })}
+            placeholder={intl.formatMessage({
+              id: "sample.collection.method.placeholder",
+              defaultMessage: "e.g., venipuncture, capillary, tubing",
+            })}
+            className="inputText"
+          />
+        </div>
+        <div className="inlineDiv">
+          <CustomTextInput
+            id={"sampleTemperature_" + index}
+            onChange={(value) => handleSampleTemperature(value)}
+            defaultValue={""}
+            value={sampleXml.sampleTemperature || ""}
+            labelText={intl.formatMessage({
+              id: "sample.temperature",
+              defaultMessage: "Sample Temperature",
+            })}
+            placeholder={intl.formatMessage({
+              id: "sample.temperature.placeholder",
+              defaultMessage: "e.g., room temp, iced, refrigerated",
+            })}
+            className="inputText"
+          />
+        </div>
+        <div className="inlineDiv">
+          <CustomTextInput
+            id={"specimenOrigin_" + index}
+            onChange={(value) => handleSpecimenOrigin(value)}
+            defaultValue={""}
+            value={sampleXml.specimenOrigin || ""}
+            labelText={intl.formatMessage({
+              id: "sample.specimen.origin",
+              defaultMessage: "Specimen Origin (referent lab)",
+            })}
+            placeholder={intl.formatMessage({
+              id: "sample.specimen.origin.placeholder",
+              defaultMessage: "Referring laboratory name",
+            })}
+            className="inputText"
+          />
+        </div>
+
+        {configurationProperties.GPS_ENABLED === "true" && (
+          <div className="gpsDiv">
+            <GpsCoordinatesCapture
+              index={index}
+              sampleXml={sampleXml}
+              onChange={handleGpsCoordinatesChange}
+              disabled={sampleXml.rejected}
+            />
+          </div>
+        )}
+
+        {/* Storage location — inline variant (part of the larger
+            sample-type form). SampleItems are created after Sample
+            save, so this selection is a preference persisted into
+            sampleXml.storageLocation and applied to the first
+            SampleItem once it exists. */}
+        <div className="inlineDiv">
+          <LocationPickerInline
+            initialSelection={
+              sampleXml?.storageLocation
+                ? (() => {
+                    const sel = {};
+                    LEVEL_ORDER.forEach((lvl) => {
+                      if (sampleXml.storageLocation[lvl])
+                        sel[lvl] = sampleXml.storageLocation[lvl];
+                    });
+                    return sel;
+                  })()
+                : null
+            }
+            initialPosition={
+              sampleXml?.storageLocation?.positionCoordinate || null
+            }
+            onChange={(state) => {
+              // Adapt new picker shape → legacy sampleXml.storageLocation:
+              // flat object with keys room/device/shelf/rack/box + a
+              // positionCoordinate string.
+              const location = {};
+              LEVEL_ORDER.forEach((lvl) => {
+                if (state.selection[lvl]) location[lvl] = state.selection[lvl];
+              });
+              let positionCoordinate = "";
+              if (state.position) {
+                if (state.position.mode === "text") {
+                  positionCoordinate = (state.position.value || "").trim();
+                } else if (state.position.mode === "grid") {
+                  const row = (state.position.row || "").toString().trim();
+                  const col = (state.position.column || "").toString().trim();
+                  positionCoordinate = row + col;
+                }
+              }
+              handleStorageLocationChange(location, positionCoordinate);
+            }}
+          />
+        </div>
+        <div className="inlineDiv">
+          <div className="cds--col">
+            <h4>
+              <FormattedMessage id="barcode.labels.section.title" />
+            </h4>
+            <LabelsSection
+              orderQuantity={sampleXml?.numOrderLabels ?? 1}
+              specimenQuantities={[sampleXml?.numSpecimenLabels ?? 1]}
+              onChange={handleLabelsSectionChange}
+              orderLabelText={intl.formatMessage({
+                id: "barcode.labels.order.row",
+              })}
+              specimenLabelFormatter={() =>
+                intl.formatMessage(
+                  { id: "barcode.labels.sample.row" },
+                  { sampleNumber: index + 1 },
+                )
+              }
+              runningTotalLabel={intl.formatMessage({
+                id: "barcode.labels.running.total",
+              })}
+            />
+          </div>
+        </div>
+        <div className="testPanels">
+          <div className="cds--col">
+            <h4>
+              <FormattedMessage id="sample.label.orderpanel" />
+            </h4>
+            <div
+              className={"searchTestText"}
+              style={{ marginBottom: "1.188rem" }}
+            >
+              {selectedPanels && selectedPanels.length ? (
+                <>
+                  {selectedPanels.map((panel, panel_index) => (
+                    <Tag
+                      filter
+                      key={`panelTags_` + panel_index}
+                      onClose={() => handleRemoveSelectedPanel(panel)}
+                      style={{ marginRight: "0.5rem" }}
+                      type={"green"}
+                    >
+                      {panel.name}
+                    </Tag>
+                  ))}
+                </>
+              ) : (
+                <></>
+              )}
+            </div>
+            <FormGroup
+              legendText={
+                <FormattedMessage id="sample.search.panel.legend.text" />
+              }
+            >
+              <Search
+                size="lg"
+                id={`panels_search_` + index}
+                labelText={
+                  <FormattedMessage id="label.search.availablepanel" />
+                }
+                placeholder={intl.formatMessage({
+                  id: "choose.availablepanel",
+                })}
+                onChange={handlePanelSearchChange}
+                value={(() => {
+                  if (panelSearchTerm) {
+                    return panelSearchTerm;
+                  }
+                  return "";
+                })()}
+              />
+              <div>
+                {(() => {
+                  if (!panelSearchTerm) return null;
+                  if (searchBoxPanels && searchBoxPanels.length) {
+                    return (
+                      <ul className={"searchTestsList"}>
+                        {searchBoxPanels.map((panel, panel_index) => (
+                          <li
+                            role="menuitem"
+                            className={"singleTest"}
+                            key={`panelFilter_` + panel_index}
+                            onClick={() => handleFilterSelectPanel(panel)}
+                          >
+                            {panel.name}
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  }
+                  return (
+                    <>
+                      <Layer>
+                        <Tile className={"emptyFilterTests"}>
+                          <span>
+                            <FormattedMessage id="sample.panel.search.error.msg" />{" "}
+                            <strong>&quot;{panelSearchTerm}&quot;</strong>{" "}
+                          </span>
+                        </Tile>
+                      </Layer>
+                    </>
+                  );
+                })()}
+              </div>
+            </FormGroup>
+            {sampleTypeTests.panels != null &&
+              sampleTypeTests.panels.map((panel) => {
+                return panel.name === "" ? (
+                  ""
+                ) : (
+                  <Checkbox
+                    onChange={() => handlePanelCheckbox(panel)}
+                    labelText={panel.name}
+                    id={`panel_` + index + "_" + panel.id}
+                    key={index + panel.id}
+                    checked={
+                      selectedPanels.filter((item) => item.id === panel.id)
+                        .length > 0
+                    }
+                  />
+                );
+              })}
+          </div>
+        </div>
+
+        <div className="cds--col">
+          {selectedTests && !selectedTests.length ? "" : <h4>Order Tests</h4>}
+          <div
+            className={"searchTestText"}
+            style={{ marginBottom: "1.188rem" }}
+          >
+            {selectedTests && selectedTests.length ? (
+              <>
+                {selectedTests.map((test, index) => (
+                  <Tag
+                    filter
+                    key={`testTags_` + index}
+                    onClose={() => handleRemoveSelectedTest(test)}
+                    style={{ marginRight: "0.5rem" }}
+                    type={"red"}
+                  >
+                    {test.name}
+                  </Tag>
+                ))}
+              </>
+            ) : (
+              <></>
+            )}
+          </div>
+          <FormGroup
+            legendText={intl.formatMessage({
+              id: "legend.search.availabletests",
+            })}
+          >
+            <Search
+              size="lg"
+              id={`tests_search_` + index}
+              labelText={
+                <FormattedMessage id="label.search.available.targetest" />
+              }
+              placeholder={intl.formatMessage({
+                id: "holder.choose.availabletest",
+              })}
+              onChange={handleTestSearchChange}
+              value={(() => {
+                if (testSearchTerm) {
+                  return testSearchTerm;
+                }
+                return "";
+              })()}
+            />
+            <div>
+              {(() => {
+                if (!testSearchTerm) return null;
+                if (testsLoadState === "loading") {
+                  return (
+                    <InlineLoading
+                      description={intl.formatMessage({
+                        id: "sample.tests.loading",
+                      })}
+                    />
+                  );
+                }
+                if (searchBoxTests && searchBoxTests.length) {
+                  return (
+                    <ul className={"searchTestsList"}>
+                      {searchBoxTests.map((test, test_index) => (
+                        <li
+                          role="menuitem"
+                          className={"singleTest"}
+                          key={`filterTest_` + test_index}
+                          onClick={() => handleFilterSelectTest(test)}
+                        >
+                          {test.name}
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                }
+                return (
+                  <>
+                    <Layer>
+                      <Tile className={"emptyFilterTests"}>
+                        <span>
+                          <FormattedMessage id="title.notestfoundmatching" />
+                          <strong> &quot;{testSearchTerm}&quot;</strong>{" "}
+                        </span>
+                      </Tile>
+                    </Layer>
+                  </>
+                );
+              })()}
+            </div>
+          </FormGroup>
+          {testsLoadState === "loading" && !testSearchTerm && (
+            <InlineLoading
+              description={intl.formatMessage({ id: "sample.tests.loading" })}
+            />
+          )}
+          {testsLoadState === "failed" && (
+            <div data-testid={"sample-tests-load-failed-" + index}>
+              <InlineNotification
+                kind="error"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage(
+                  { id: "sample.tests.loadFailed" },
+                  { sampleType: selectedSampleTypeName },
+                )}
+                subtitle={intl.formatMessage({
+                  id: "sample.tests.loadFailed.hint",
+                })}
+              />
+              <Button
+                kind="tertiary"
+                size="sm"
+                onClick={() => setTestsRetry((attempt) => attempt + 1)}
+              >
+                <FormattedMessage id="common.retry" />
+              </Button>
+            </div>
+          )}
+          {sampleTypeTests.tests != null &&
+            sampleTypeTests.tests.map((test) => {
+              return test.name === "" ? (
+                ""
+              ) : (
+                <Checkbox
+                  onChange={(e) => handleTestCheckbox(e, test)}
+                  labelText={test.name}
+                  id={`test_` + index + "_" + test.id}
+                  key={`test_checkBox_` + index + test.id}
+                  checked={
+                    selectedTests.filter((item) => item.id === test.id).length >
+                    0
+                  }
+                />
+              );
+            })}
+        </div>
+
+        {allowReferral && (
+          <div className="requestTestReferral">
+            <Checkbox
+              id={`useReferral_` + index}
+              labelText={intl.formatMessage({
+                id: "label.refertest.referencelab",
+              })}
+              checked={requestTestReferral}
+              disabled={referralListsFailed && !requestTestReferral}
+              onChange={handleReferralRequest}
+            />
+            {referralListsFailed && (
+              <div data-testid={"sample-referral-lists-failed-" + index}>
+                <InlineNotification
+                  kind="warning"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage({
+                    id: "sample.referral.listsFailed",
+                  })}
+                />
+                <Button kind="tertiary" size="sm" onClick={retryReferralLists}>
+                  <FormattedMessage id="common.retry" />
+                </Button>
+              </div>
+            )}
+            {requestTestReferral === true && (
+              <OrderReferralRequest
+                index={index}
+                selectedTests={selectedTests}
+                referralReasons={referralReasons}
+                referralOrganizations={referralOrganizations}
+                referralRequests={referralRequests}
+                setReferralRequests={setReferralRequests}
+              />
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+export default SampleType;

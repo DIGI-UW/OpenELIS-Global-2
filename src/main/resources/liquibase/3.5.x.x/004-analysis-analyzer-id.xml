@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        OGC-530: Analyzer metadata not flowing through FHIR Observation.device
+
+        1. Adds analyzer_id column to analysis table so accepted analyzer results
+           preserve their source instrument.
+        2. Adds fhir_uuid to the analyzer table with backfill, NOT NULL, and
+           UNIQUE so each analyzer gets a stable FHIR Device resource identity.
+    -->
+
+    <!-- Step 1: Add the analysis.analyzer_id column -->
+    <changeSet author="pmanko" id="3.5.0-003-add-analysis-analyzer-id-column">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="analysis" columnName="analyzer_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="analysis" schemaName="clinlims">
+            <column name="analyzer_id" type="numeric(10)"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Step 2: Add the FK constraint separately so partial migrations are safe -->
+    <changeSet author="pmanko" id="3.5.0-003-add-analysis-analyzer-id-fk">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="fk_analysis_analyzer" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="analysis"
+            baseColumnNames="analyzer_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"
+            constraintName="fk_analysis_analyzer"/>
+    </changeSet>
+
+    <!-- Step 3: Add the analyzer.fhir_uuid column -->
+    <changeSet author="pmanko" id="3.5.0-003-add-analyzer-fhir-uuid">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="analyzer" columnName="fhir_uuid" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="analyzer" schemaName="clinlims">
+            <column name="fhir_uuid" type="uuid"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Step 4: Backfill existing analyzers with stable UUIDs, then enforce constraints -->
+    <changeSet author="pmanko" id="3.5.0-003-backfill-analyzer-fhir-uuid">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="analyzer" columnName="fhir_uuid" schemaName="clinlims"/>
+            <not>
+                <sqlCheck expectedResult="0">
+                    SELECT count(*) FROM clinlims.analyzer WHERE fhir_uuid IS NULL
+                </sqlCheck>
+            </not>
+        </preConditions>
+        <sql schemaName="clinlims">
+            UPDATE clinlims.analyzer SET fhir_uuid = gen_random_uuid() WHERE fhir_uuid IS NULL;
+        </sql>
+        <addNotNullConstraint
+            tableName="analyzer"
+            columnName="fhir_uuid"
+            schemaName="clinlims"
+            columnDataType="uuid"/>
+        <addUniqueConstraint
+            tableName="analyzer"
+            columnNames="fhir_uuid"
+            schemaName="clinlims"
+            constraintName="uq_analyzer_fhir_uuid"/>
+        <rollback>
+            <dropUniqueConstraint
+                tableName="analyzer"
+                schemaName="clinlims"
+                constraintName="uq_analyzer_fhir_uuid"/>
+            <dropNotNullConstraint
+                tableName="analyzer"
+                columnName="fhir_uuid"
+                schemaName="clinlims"
+                columnDataType="uuid"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

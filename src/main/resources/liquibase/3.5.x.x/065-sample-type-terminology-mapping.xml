@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Sample Type Management terminology mappings — a sample-type-scoped mirror
+    of test_terminology_mapping (see 043-acknowledgment-terminology.xml). Lets
+    the Sample Type editor persist standard-terminology codes (LOINC / SNOMED /
+    CIEL / OCL / WHONET) with a relationship qualifier.
+    Unique on (sample_type_id, source, code); soft-delete via is_active.
+    -->
+
+    <changeSet id="sample-type-terminology-mapping-table" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="sample_type_terminology_mapping"/>
+            </not>
+        </preConditions>
+        <createTable schemaName="clinlims" tableName="sample_type_terminology_mapping">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_sample_type_terminology_mapping"/>
+            </column>
+            <column name="sample_type_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="relationship" type="VARCHAR(20)"/>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint schemaName="clinlims" tableName="sample_type_terminology_mapping"
+            columnNames="sample_type_id, source, code" constraintName="uq_sample_type_terminology_mapping"/>
+        <addForeignKeyConstraint constraintName="fk_sample_type_terminology_mapping_type_of_sample"
+            baseTableSchemaName="clinlims" baseTableName="sample_type_terminology_mapping"
+            baseColumnNames="sample_type_id"
+            referencedTableSchemaName="clinlims" referencedTableName="type_of_sample" referencedColumnNames="id"/>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="sample_type_terminology_mapping"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

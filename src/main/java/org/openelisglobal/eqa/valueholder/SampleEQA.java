@@ -30,28 +30,17 @@ public class SampleEQA extends BaseObject<Long> {
     @Column(name = "id")
     private Long id;
 
-    // Store sampleId directly instead of @OneToOne to avoid cross-mapping issues
-    // between JPA annotations and HBM XML mapping (Sample uses
-    // LIMSStringNumberUserType)
     @Column(name = "sample_id", nullable = false, unique = true)
     private Long sampleId;
 
     @Column(name = "is_eqa_sample", nullable = false)
     private Boolean isEqaSample = false;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "eqa_program_id")
-    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
-    private EQAProgram eqaProgram;
-
-    @Column(name = "eqa_provider_organization_id")
-    private Long eqaProviderOrganizationId;
+    @Column(name = "eqa_enrollment_id")
+    private Long eqaEnrollmentId;
 
     @Column(name = "eqa_provider_sample_id", length = 100)
     private String eqaProviderSampleId;
-
-    @Column(name = "eqa_participant_id", length = 100)
-    private String eqaParticipantId;
 
     @Column(name = "eqa_deadline")
     private Timestamp eqaDeadline;
@@ -64,6 +53,16 @@ public class SampleEQA extends BaseObject<Long> {
     @JoinColumn(name = "eqa_distribution_id")
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private EQADistribution eqaDistribution;
+
+    /**
+     * V2 cycle/round routing. Optional — orders without a cycle surface in the
+     * "Uncycled EQA orders" bucket rather than vanishing.
+     */
+    @Column(name = "cycle_id")
+    private Long cycleId;
+
+    @Column(name = "round_id")
+    private Long roundId;
 
     @Column(name = "sys_user_id", nullable = false)
     private String sysUserId;

@@ -2,6 +2,7 @@ package org.openelisglobal.workplan.controller.rest;
 
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -14,6 +15,8 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.eqa.service.SampleEQAService;
+import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.patient.service.PatientService;
@@ -21,6 +24,7 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,40 +36,42 @@ public class WorkplanRestController extends BaseRestController {
     @Autowired
     protected TestService testService;
 
-    protected static List<Integer> statusList;
+    @Autowired
+    protected SampleEQAService sampleEQAService;
+
+    protected static List<String> statusList;
     protected static boolean useReceptionTime = FormFields.getInstance().useField(Field.SampleEntryUseReceptionHour);
     protected static List<String> nfsTestIdList;
 
+    protected static List<Analysis> withoutReferredOut(List<Analysis> analyses) {
+        return WorklistAnalyses.withoutReferredOut(analyses);
+    }
+
     @PostConstruct
     private void initialize() {
-        if (statusList == null) {
-            statusList = new ArrayList<>();
-            statusList.add(Integer
-                    .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
-            statusList.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
-            statusList.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
-            statusList.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
-        }
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        List<String> statuses = new ArrayList<>();
+        statuses.add(statusService.getStatusID(AnalysisStatus.NotStarted));
+        statuses.add(statusService.getStatusID(AnalysisStatus.BiologistRejected));
+        statuses.add(statusService.getStatusID(AnalysisStatus.TechnicalRejected));
+        statuses.add(statusService.getStatusID(AnalysisStatus.NonConforming_depricated));
+        statusList = Collections.unmodifiableList(statuses);
 
-        if (nfsTestIdList == null) {
-            nfsTestIdList = new ArrayList<>();
-            nfsTestIdList.add(getTestId("GB"));
-            nfsTestIdList.add(getTestId("Neut %"));
-            nfsTestIdList.add(getTestId("Lymph %"));
-            nfsTestIdList.add(getTestId("Mono %"));
-            nfsTestIdList.add(getTestId("Eo %"));
-            nfsTestIdList.add(getTestId("Baso %"));
-            nfsTestIdList.add(getTestId("GR"));
-            nfsTestIdList.add(getTestId("Hb"));
-            nfsTestIdList.add(getTestId("HCT"));
-            nfsTestIdList.add(getTestId("VGM"));
-            nfsTestIdList.add(getTestId("TCMH"));
-            nfsTestIdList.add(getTestId("CCMH"));
-            nfsTestIdList.add(getTestId("PLQ"));
-        }
+        List<String> nfsTests = new ArrayList<>();
+        nfsTests.add(getTestId("GB"));
+        nfsTests.add(getTestId("Neut %"));
+        nfsTests.add(getTestId("Lymph %"));
+        nfsTests.add(getTestId("Mono %"));
+        nfsTests.add(getTestId("Eo %"));
+        nfsTests.add(getTestId("Baso %"));
+        nfsTests.add(getTestId("GR"));
+        nfsTests.add(getTestId("Hb"));
+        nfsTests.add(getTestId("HCT"));
+        nfsTests.add(getTestId("VGM"));
+        nfsTests.add(getTestId("TCMH"));
+        nfsTests.add(getTestId("CCMH"));
+        nfsTests.add(getTestId("PLQ"));
+        nfsTestIdList = Collections.unmodifiableList(nfsTests);
     }
 
     protected List<IdValuePair> adjustNFSTests(List<IdValuePair> allTestsList) {
@@ -121,6 +127,26 @@ public class WorkplanRestController extends BaseRestController {
 
         } else {
             return "";
+        }
+    }
+
+    /**
+     * Flag a workplan row that belongs to an EQA order, so the bench sees the same
+     * badge here that result entry shows. Every workplan variant builds its rows by
+     * hand, and none of them carried the flag, so the badge component was fed
+     * nothing on every one of them.
+     */
+    protected void markEqaSample(TestResultItem testResultItem, Sample sample) {
+        if (sample == null || sample.getId() == null) {
+            return;
+        }
+        SampleEQA sampleEQA = sampleEQAService.findBySampleId(Long.valueOf(sample.getId())).orElse(null);
+        if (sampleEQA == null || !Boolean.TRUE.equals(sampleEQA.getIsEqaSample())) {
+            return;
+        }
+        testResultItem.setEqaSample(true);
+        if (sampleEQA.getEqaPriority() != null) {
+            testResultItem.setEqaPriority(sampleEQA.getEqaPriority().name());
         }
     }
 

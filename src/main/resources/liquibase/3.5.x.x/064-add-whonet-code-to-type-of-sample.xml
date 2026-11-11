@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Sample Type Management: persist WHONET specimen code on TypeOfSample -->
+    <changeSet id="add-whonet-code-to-type-of-sample" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="type_of_sample" columnName="whonet_code"/>
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="type_of_sample">
+            <column name="whonet_code" type="VARCHAR(5)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="type_of_sample" columnName="whonet_code"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

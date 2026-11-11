@@ -1,8 +1,10 @@
 package org.openelisglobal.sampleitem.service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.qc.valueholder.SampleItemQcProfile;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
@@ -19,7 +21,7 @@ public interface SampleItemService extends BaseObjectService<SampleItem, String>
 
     List<SampleItem> getSampleItemsBySampleId(String id);
 
-    List<SampleItem> getSampleItemsBySampleIdAndStatus(String id, Set<Integer> includedStatusList);
+    List<SampleItem> getSampleItemsBySampleIdAndStatus(String id, Set<String> includedStatusList);
 
     void getDataBySample(SampleItem sampleItem);
 
@@ -29,4 +31,6 @@ public interface SampleItemService extends BaseObjectService<SampleItem, String>
 
     boolean insertAliquots(SampleItem lastSampleItem, List<SampleItem> sampleItemsToInsert,
             List<List<String>> analysisGroups);
+
+    Optional<SampleItemQcProfile> getQcProfile(String sampleItemId);
 }

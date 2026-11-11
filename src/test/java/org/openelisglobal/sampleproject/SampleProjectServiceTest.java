@@ -2,7 +2,6 @@ package org.openelisglobal.sampleproject;
 
 import static org.junit.Assert.*;
 
-import jakarta.persistence.PersistenceException;
 import java.sql.Date;
 import java.util.List;
 import org.junit.Before;
@@ -62,15 +61,9 @@ public class SampleProjectServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getSampleProjectBySampleId_shouldThrowForNullInput() {
-
-        try {
-            sampleProjectService.getSampleProjectBySampleId(null);
-            fail("Expected exception not thrown");
-        } catch (Exception e) {
-
-            assertTrue(e instanceof PersistenceException || e instanceof IllegalArgumentException);
-        }
+    public void getSampleProjectBySampleId_shouldReturnNullForNullInput() {
+        SampleProject result = sampleProjectService.getSampleProjectBySampleId(null);
+        assertNull(result);
     }
 
     @Test

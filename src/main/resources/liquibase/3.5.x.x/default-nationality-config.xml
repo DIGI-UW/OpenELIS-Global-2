@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="mozzy11" id="add-default-nationality-config">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'default nationality'</sqlCheck>
+        </preConditions>
+        <comment>Add default nationality configuration for patient entry</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="default nationality" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Default nationality pre-selected for new patients (must match a value from the nationality list)" />
+            <column name="value" value="" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'patientEntryConfig')" />
+            <column name="value_type" value="freeText" />
+            <column name="instruction_key" value="instructions.default.nationality" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.defaultNationality" />
+        </insert>
+    </changeSet>
+</databaseChangeLog>

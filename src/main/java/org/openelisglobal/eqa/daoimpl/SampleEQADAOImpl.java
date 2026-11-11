@@ -58,7 +58,7 @@ public class SampleEQADAOImpl extends BaseDAOImpl<SampleEQA, Long> implements Sa
     @Transactional(readOnly = true)
     public List<SampleEQA> findByProgramId(Long programId) {
         try {
-            String hql = "FROM SampleEQA s WHERE s.eqaProgram.id = :programId ORDER BY s.eqaDeadline ASC";
+            String hql = "FROM SampleEQA s WHERE s.eqaEnrollmentId = :programId ORDER BY s.eqaDeadline ASC";
             Query<SampleEQA> query = entityManager.unwrap(Session.class).createQuery(hql, SampleEQA.class);
             query.setParameter("programId", programId);
             return query.list();

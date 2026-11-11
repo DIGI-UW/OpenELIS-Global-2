@@ -20,17 +20,23 @@ public class ResultSaveBean {
 
     private boolean hasQualifiedResult;
     private String resultType;
+    private java.math.BigDecimal expandedUncertainty;
+    private java.math.BigDecimal coverageFactor;
     private String multiSelectResultValues;
     private String testId;
+    // Result component this value belongs to (multi-component tests post one
+    // bean per component); null for single-component tests.
+    private String testResultComponentId;
     private String qualifiedResultId;
     private String qualifiedResultValue;
     private String qualifiedDictionaryId;
     private String resultId;
     private String resultValue;
+    private String rawResultValue;
     private String reportable;
     private Double lowerNormalRange;
     private Double upperNormalRange;
-    private int significantDigits = 0;
+    private int reportingDecimalPlaces = -1;
 
     public boolean isHasQualifiedResult() {
         return hasQualifiedResult;
@@ -62,6 +68,14 @@ public class ResultSaveBean {
 
     public void setTestId(String testId) {
         this.testId = testId;
+    }
+
+    public String getTestResultComponentId() {
+        return testResultComponentId;
+    }
+
+    public void setTestResultComponentId(String testResultComponentId) {
+        this.testResultComponentId = testResultComponentId;
     }
 
     public String getQualifiedResultId() {
@@ -104,6 +118,19 @@ public class ResultSaveBean {
         this.resultValue = resultValue;
     }
 
+    /**
+     * The unrounded value the client holds for this result, when it sends one: the
+     * stored measurement for a row posted back as served, or what was typed on a
+     * page that edits from the measurement (OGC-1569).
+     */
+    public String getRawResultValue() {
+        return rawResultValue;
+    }
+
+    public void setRawResultValue(String rawResultValue) {
+        this.rawResultValue = rawResultValue;
+    }
+
     public String getReportable() {
         return reportable;
     }
@@ -128,11 +155,27 @@ public class ResultSaveBean {
         this.upperNormalRange = upperNormalRange;
     }
 
-    public int getSignificantDigits() {
-        return significantDigits;
+    public int getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(int significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(int reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
+    }
+
+    public java.math.BigDecimal getExpandedUncertainty() {
+        return expandedUncertainty;
+    }
+
+    public void setExpandedUncertainty(java.math.BigDecimal expandedUncertainty) {
+        this.expandedUncertainty = expandedUncertainty;
+    }
+
+    public java.math.BigDecimal getCoverageFactor() {
+        return coverageFactor;
+    }
+
+    public void setCoverageFactor(java.math.BigDecimal coverageFactor) {
+        this.coverageFactor = coverageFactor;
     }
 }

@@ -5,12 +5,20 @@
 
 ---
 
+## Development and CI entrypoints
+
+Follow [the setup guide](docs/dev_setup.md): `scripts/dev-stack up` builds the
+current source WAR into the published development images (`--build` builds the
+images too); `scripts/run-ci-checks.sh` runs the complete committed candidate
+locally in parallel with GitHub after every push. A targeted green suite is not
+full CI parity. Published-image deployment is a separate mode.
+
 ## Documentation Hierarchy
 
 When working on this project, follow this documentation order:
 
 1. **[constitution.md](.specify/memory/constitution.md)** - AUTHORITATIVE
-   governance (v1.7.0, 8 core principles)
+   governance (v1.12.0, 10 core principles)
 2. **[AGENTS.md](AGENTS.md)** - Comprehensive agent onboarding (works for ALL AI
    tools)
 3. **[quickstart.md](specs/001-sample-storage/quickstart.md)** - Step-by-step
@@ -58,13 +66,6 @@ mvn clean install -DskipTests
 - `-Dmaven.test.skip=true`: Skips test compilation AND execution (including
   Failsafe)
 
-**Exception — CI shared-build root project:** The E2E `shared-build` step in
-both `e2e-playwright.yml` and `e2e-fork-pr.yml` intentionally omits
-`-Dmaven.test.skip=true` on the root project build because the `test-jar`
-artifact must be produced for plugin compilation (GenericASTM, GenericFile,
-GenericHL7 depend on it). The `dataexport` and `plugins` sub-builds still use
-both flags.
-
 ### Pre-Commit Formatting (MANDATORY)
 
 **MUST run BEFORE EVERY commit:**
@@ -76,6 +77,22 @@ mvn spotless:apply
 # Frontend formatting
 cd frontend && npm run format && cd ..
 ```
+
+**Spotless cache caveat:** spotless tracks "already-clean" files in
+`target/spotless-*` and skips re-checking them in subsequent runs. If your IDE
+(or any other tool) auto-reformats a file _after_ spotless cached it as clean,
+local `mvn spotless:apply` / `spotless:check` will silently skip it — but CI
+runs cold (no cache) and **will** flag the violation. Symptom: PR fails on the
+backend `check formatting` step, but local spotless says the tree is clean. Fix:
+clear the cache before re-running.
+
+```bash
+rm -rf target/spotless-* && mvn spotless:apply
+```
+
+(`mvn clean` doesn't always clear the per-formatter caches; `rm -rf` is the
+reliable form. Particularly common on `pom.xml` after IntelliJ auto-formats on
+save.)
 
 ### Constitution Compliance (MANDATORY)
 
@@ -95,6 +112,8 @@ Key principles to verify:
 - [ ] @Transactional in services ONLY (NOT controllers)
 - [ ] Services compile all data within transaction (prevent
       LazyInitializationException)
+- [ ] Test Quality Invariants V.6 (Inversion Test, no assert-on-mock-return,
+      auth ordering tests)
 
 ### TDD Workflow (MANDATORY for SpecKit)
 
@@ -103,6 +122,15 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 1. **Red:** Write failing test first
 2. **Green:** Write minimal code to make test pass
 3. **Refactor:** Improve code quality while keeping tests green
+
+### Git Worktrees (MANDATORY)
+
+> Durable feature worktrees go in `.worktrees/<short-name>`. Disposable CI
+> checkouts are created and removed by `scripts/run-ci-checks.sh`; do not use
+> those for feature edits. Every durable new worktree needs
+> `scripts/setup-workspace.sh` run inside it (`git worktree add` does not
+> initialize the submodules, several of which are build inputs). Full rules and
+> the reasoning: see [AGENTS.md](AGENTS.md) § "Git Worktrees".
 
 ### Post-Compaction Context Recovery (MANDATORY)
 
@@ -168,11 +196,18 @@ report:** `.specify/guides/playwright-e2e-quality-report.md`
 
 ## Active Technologies
 
+- Java 21 LTS (Temurin); JavaScript / React 17 + Spring Framework 6.2
+  (Traditional MVC, **not** Spring Boot), Jakarta EE 9 (`jakarta.*`),
+  Hibernate/JPA, `@carbon/react`, React Intl (spec/ogc-949-unified-test-catalog)
+- PostgreSQL 14+ via JPA/Hibernate; schema changes via Liquibase 4.8
+  (`src/main/resources/liquibase/3.5.x.x/`, latest changeset
+  `039-test-method-links.xml`) (spec/ogc-949-unified-test-catalog)
+
 - Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript) (005-eqa-module)
 - PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
   (005-eqa-module)
 
-**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0
+**Last Updated:** 2026-04-06 **Constitution Version:** 1.12.0
 
 ## Recent Changes
 

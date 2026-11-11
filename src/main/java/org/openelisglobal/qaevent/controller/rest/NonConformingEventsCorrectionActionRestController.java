@@ -78,9 +78,16 @@ public class NonConformingEventsCorrectionActionRestController extends BaseRestC
     }
 
     @PostMapping(value = "/NCECorrectiveAction")
-    public ResponseEntity<?> updateNCECorretiveActionForm(@RequestBody NonConformingEventForm form) {
+    public ResponseEntity<?> updateNCECorretiveActionForm(@RequestBody NonConformingEventForm form,
+            HttpServletRequest request) {
 
-        boolean updated = nonConformingEventWorker.updateCorrectiveAction(form);
+        form.setCurrentUserId(getSysUserId(request));
+        // Only an "effective = Yes" verdict resolves/closes the NCE. A "No" verdict
+        // (or no answer) goes through updateCorrectiveAction, which records the
+        // verdict when present without closing, so an "ineffective" review is never
+        // discarded.
+        boolean updated = "Yes".equalsIgnoreCase(form.getEffective()) ? nonConformingEventWorker.resolveNCEvent(form)
+                : nonConformingEventWorker.updateCorrectiveAction(form);
 
         if (updated) {
             return ResponseEntity.ok().body(Map.of("success", true));

@@ -1,6 +1,7 @@
 package org.openelisglobal.testresultsview;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -31,7 +32,7 @@ public class ClientResultsViewInfoServiceTest extends BaseWebContextSensitiveTes
         executeDataSetWithStateManagement("testdata/client-results-view.xml");
 
         propertyValues = new HashMap<>();
-        propertyValues.put("result", 1001);
+        propertyValues.put("result.id", "1001");
         orderProperties = new ArrayList<>();
         orderProperties.add("password");
     }
@@ -59,6 +60,19 @@ public class ClientResultsViewInfoServiceTest extends BaseWebContextSensitiveTes
         assertNotNull(clientResultsViewInfoList);
         assertEquals(3, clientResultsViewInfoList.size());
         assertEquals(Integer.valueOf("7004"), clientResultsViewInfoList.get(1).getId());
+    }
+
+    @Test
+    public void getAllMatching_shouldMatchResultIdAsString() {
+        // Result.getId() returns String; the property map value must also be String
+        // so Hibernate's criteria builder compares compatible types.
+        Map<String, Object> filter = new HashMap<>();
+        filter.put("result.id", "1001");
+
+        clientResultsViewInfoList = clientResultsViewInfoService.getAllMatching(filter);
+        assertNotNull(clientResultsViewInfoList);
+        assertFalse("String result.id should match rows with that result", clientResultsViewInfoList.isEmpty());
+        assertEquals(3, clientResultsViewInfoList.size());
     }
 
     @Test

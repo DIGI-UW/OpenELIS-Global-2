@@ -139,24 +139,21 @@ public abstract class PatientProgramReport extends Report implements IReportCrea
 
     protected ReportForm form;
 
-    protected static Set<Integer> analysisStatusIds;
+    protected static Set<String> analysisStatusIds;
 
     static {
         analysisStatusIds = new HashSet<>();
-        analysisStatusIds.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
-        analysisStatusIds.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
-        analysisStatusIds.add(Integer.parseInt(
-                SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
-        analysisStatusIds.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
-        analysisStatusIds.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
-        analysisStatusIds.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
-        analysisStatusIds.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+        analysisStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
+        analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
+        analysisStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated));
+        analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
+        analysisStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
+        analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
+        analysisStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
     }
 
     protected abstract String getReportName();
@@ -205,6 +202,16 @@ public abstract class PatientProgramReport extends Report implements IReportCrea
         findContactInfo();
         findPatientInfo();
         createReportItems();
+        // OGC-686: the case-view family extends Report directly and never passes
+        // through PatientReport, so it records its own tests. Its report covers the
+        // whole sample, hence every analysis on it; the recorder filters to claimable
+        // statuses.
+        if (analyses != null) {
+            for (Analysis analysis : analyses) {
+                recordAccreditationCandidate(analysis, analysisService.getTest(analysis));
+            }
+        }
+        addAccreditationParameters();
     }
 
     protected void createReportItems() {
@@ -493,7 +500,7 @@ public abstract class PatientProgramReport extends Report implements IReportCrea
                     }
                 } else {
                     ResultService resultResultService = SpringContext.getBean(ResultService.class);
-                    reportResult = resultResultService.getResultValue(result, true);
+                    reportResult = resultResultService.formatResultForDisplay(result, true);
                 }
             } else {
                 // If multiple results it can be a quantified result, multiple

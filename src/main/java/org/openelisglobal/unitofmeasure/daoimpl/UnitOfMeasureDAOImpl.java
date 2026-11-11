@@ -43,7 +43,7 @@ public class UnitOfMeasureDAOImpl extends BaseDAOImpl<UnitOfMeasure, String> imp
         String sql = "from UnitOfMeasure uom where id = :id";
         try {
             Query<UnitOfMeasure> query = entityManager.unwrap(Session.class).createQuery(sql, UnitOfMeasure.class);
-            query.setParameter("id", Integer.parseInt(uomId));
+            query.setParameter("id", uomId);
             UnitOfMeasure uom = query.uniqueResult();
             return uom;
         } catch (HibernateException e) {
@@ -70,7 +70,7 @@ public class UnitOfMeasureDAOImpl extends BaseDAOImpl<UnitOfMeasure, String> imp
             if (!StringUtil.isNullorNill(unitOfMeasure.getId())) {
                 unitOfMeasureId = unitOfMeasure.getId();
             }
-            query.setParameter("param2", Integer.parseInt(unitOfMeasureId));
+            query.setParameter("param2", unitOfMeasureId);
 
             list = query.list();
             return !list.isEmpty();

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Westgard Rule Configuration Table -->
+    <changeSet id="qc-004-create-westgard-rule-config" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="westgard_rule_config"/>
+            </not>
+        </preConditions>
+        <comment>Create Westgard rule configuration table for managing QC rule enablement per test-instrument</comment>
+        <createTable tableName="westgard_rule_config">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="test_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="instrument_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rule_code" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enabled" type="BOOLEAN" defaultValue="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="severity" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="requires_corrective_action" type="BOOLEAN" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+            baseTableName="westgard_rule_config"
+            baseColumnNames="test_id"
+            constraintName="fk_westgard_rule_test"
+            referencedTableName="test"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="westgard_rule_config"
+            baseColumnNames="sys_user_id"
+            constraintName="fk_westgard_rule_user"
+            referencedTableName="system_user"
+            referencedColumnNames="id"/>
+        <addUniqueConstraint
+            tableName="westgard_rule_config"
+            columnNames="test_id,instrument_id,rule_code"
+            constraintName="uk_westgard_rule_test_instrument_rule"/>
+        <createIndex tableName="westgard_rule_config" indexName="idx_westgard_rule_instrument">
+            <column name="instrument_id"/>
+        </createIndex>
+        <createIndex tableName="westgard_rule_config" indexName="idx_westgard_rule_enabled">
+            <column name="enabled"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="westgard_rule_config"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Insert default Westgard rules (all 8 standard rules) -->
+    <changeSet id="qc-005-insert-default-westgard-rules" author="openelisglobal">
+        <comment>Insert default Westgard rule definitions for reference</comment>
+        <!-- Note: Actual rule configurations are created per test-instrument combination -->
+        <!-- This changeset can be used to seed default rules if needed -->
+        <rollback>
+            <!-- No rollback needed for reference data -->
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

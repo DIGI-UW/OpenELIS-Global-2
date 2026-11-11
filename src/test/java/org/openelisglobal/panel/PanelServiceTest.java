@@ -46,6 +46,7 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
         Panel newPanel = new Panel();
         newPanel.setPanelName("New Panel Name");
         newPanel.setDescription("A test panel from dataset.");
+        newPanel.setSysUserId("1");
 
         if (panelService.getPanelByName(newPanel.getPanelName()) == null) {
             String panelId = panelService.insert(newPanel);

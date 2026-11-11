@@ -122,21 +122,16 @@ public class SampleSearchPopulateProvider extends BaseQueryProvider {
     }
 
     private boolean testNotFinialized(String testId, String sampleId) {
-        List<Integer> statusList = new ArrayList<>();
-        statusList.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
-        statusList.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
-        statusList.add(Integer.parseInt(
-                SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
-        statusList.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
-        statusList.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
-        statusList.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
-        List<Analysis> analysises = analysisService.getAnalysesBySampleIdTestIdAndStatusId(
-                Arrays.asList(Integer.parseInt(sampleId)), Arrays.asList(Integer.parseInt(testId)), statusList);
+        List<String> statusList = new ArrayList<>();
+        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
+        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
+        statusList
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated));
+        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
+        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
+        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
+        List<Analysis> analysises = analysisService.getAnalysesBySampleIdTestIdAndStatusId(Arrays.asList(sampleId),
+                Arrays.asList(testId), statusList);
         for (Analysis analysis : analysises) {
             if (analysis.getTest().getId().equals(testId)) {
                 return true;
@@ -146,19 +141,14 @@ public class SampleSearchPopulateProvider extends BaseQueryProvider {
     }
 
     private boolean testWithLoincNotFinialized(String loinc, String sampleId) {
-        Set<Integer> statusList = new HashSet<>();
-        statusList.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
-        statusList.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
-        statusList.add(Integer.parseInt(
-                SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
-        statusList.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
-        statusList.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
-        statusList.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+        Set<String> statusList = new HashSet<>();
+        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
+        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
+        statusList
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated));
+        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
+        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
+        statusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
 
         List<Analysis> analysises = analysisService.getAnalysesBySampleIdAndStatusId(sampleId, statusList);
         for (Analysis analysis : analysises) {

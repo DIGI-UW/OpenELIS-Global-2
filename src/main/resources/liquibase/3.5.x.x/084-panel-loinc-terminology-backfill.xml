@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Legacy panel LOINC values into terminology mappings.
+
+      panel.loinc predates panel_terminology_mapping. The Panel Editor reads the
+      mapping store, so every panel configured before it has a LOINC the editor
+      cannot see — and saving in the editor would write its empty set back over a
+      code the lab routes electronic orders by.
+
+      The editor is new, so on any real deployment the only LOINC a panel has is
+      the legacy one and the mapping store is empty for it. This carries that code
+      across as SAME_AS, once.
+
+      Writes SAME_AS directly. The equivalent test-side backfill
+      (OGC-939-loinc-mapping-backfill) wrote EQUIVALENT and needed a second
+      changeset (OGC-957) to correct it; no reason to repeat that.
+
+      Keeping the two stores in step from here on is the service layer's job, not
+      another migration's: saving a LOINC / SAME_AS mapping in the editor updates
+      panel.loinc, and a code entered on the legacy pages updates the mapping.
+    -->
+    <changeSet id="OGC-panel-loinc-terminology-backfill" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="panel_terminology_mapping"/>
+        </preConditions>
+        <comment>Backfill legacy panel.loinc values as LOINC / SAME_AS terminology mappings so the new Panel Editor shows codes configured before it existed.</comment>
+        <sql>
+            INSERT INTO clinlims.panel_terminology_mapping
+                (id, panel_id, source, code, relationship, is_active, lastupdated)
+            SELECT gen_random_uuid()::varchar, p.id, 'LOINC', trim(p.loinc), 'SAME_AS', 'Y', now()
+              FROM clinlims.panel p
+             WHERE p.loinc IS NOT NULL
+               AND length(trim(p.loinc)) > 0
+               AND NOT EXISTS (SELECT 1
+                                 FROM clinlims.panel_terminology_mapping m
+                                WHERE m.panel_id = p.id
+                                  AND m.source = 'LOINC'
+                                  AND m.code = trim(p.loinc))
+        </sql>
+        <rollback>
+            <!--
+              Only the rows this changeset creates: a LOINC / SAME_AS mapping whose
+              code still matches its panel's legacy column.
+            -->
+            <sql>
+                DELETE FROM clinlims.panel_terminology_mapping m
+                 WHERE m.source = 'LOINC'
+                   AND m.relationship = 'SAME_AS'
+                   AND EXISTS (SELECT 1 FROM clinlims.panel p
+                                WHERE p.id = m.panel_id AND trim(p.loinc) = m.code)
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

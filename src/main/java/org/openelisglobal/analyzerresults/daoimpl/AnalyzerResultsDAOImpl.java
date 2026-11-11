@@ -16,7 +16,9 @@
 package org.openelisglobal.analyzerresults.daoimpl;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
@@ -45,12 +47,26 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
 
             List<AnalyzerResults> list = new ArrayList<>();
 
+            // OGC-1129: a multiplex test stages one row per component, all sharing the
+            // same testName. Include component_id so distinct components of one test are
+            // not treated as duplicates of each other (null = PRIMARY, today's behavior).
+            // The records of one run share a completion time, so two records held on the
+            // same target are told apart by their sub-identity. Two tubes of one order
+            // are told apart by the tube the instrument named; a row staged before tube
+            // ids were kept counts as its accession.
             String sql = "from AnalyzerResults a where a.analyzerId = :analyzerId and "
-                    + "a.accessionNumber = :assessionNumber and " + "a.testName = :testName";
+                    + "a.accessionNumber = :assessionNumber and a.testName = :testName and "
+                    + "((:componentId is null and a.componentId is null) or a.componentId = :componentId) and "
+                    + "a.rawSubIdentity = :rawSubIdentity and "
+                    + "coalesce(a.instrumentSpecimenId, a.accessionNumber) = :specimenId";
             Query<AnalyzerResults> query = entityManager.unwrap(Session.class).createQuery(sql, AnalyzerResults.class);
-            query.setParameter("analyzerId", Integer.parseInt(result.getAnalyzerId()));
+            query.setParameter("analyzerId", result.getAnalyzerId());
             query.setParameter("assessionNumber", result.getAccessionNumber());
+            query.setParameter("specimenId", result.getInstrumentSpecimenId() != null ? result.getInstrumentSpecimenId()
+                    : result.getAccessionNumber());
             query.setParameter("testName", result.getTestName());
+            query.setParameter("componentId", result.getComponentId());
+            query.setParameter("rawSubIdentity", result.getRawSubIdentity());
 
             list = query.list();
 
@@ -72,5 +88,38 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
             throw new LIMSRuntimeException("Error in AnalyzerResults readAnalyzerResults()", e);
         }
         return data;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerResults> findHeldMappingResultsByAnalyzer(String analyzerId) {
+        return entityManager.unwrap(Session.class).createQuery(
+                "FROM AnalyzerResults a WHERE a.analyzerId = :analyzerId AND a.isReadOnly = true AND a.importIssueReason IN (:reasons)",
+                AnalyzerResults.class).setParameter("analyzerId", analyzerId)
+                .setParameterList("reasons", AnalyzerResults.MAPPING_IMPORT_ISSUES).list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> countHeldResultsByAnalyzerIds(List<String> analyzerIds) {
+        if (analyzerIds == null || analyzerIds.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            String hql = "SELECT a.analyzerId, COUNT(a.id) FROM AnalyzerResults a "
+                    + "WHERE a.analyzerId IN (:analyzerIds) AND a.importIssueReason IS NOT NULL "
+                    + "AND a.importIssueReason <> :setupCapture " + "GROUP BY a.analyzerId";
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
+            query.setParameterList("analyzerIds", analyzerIds);
+            query.setParameter("setupCapture", AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE);
+            Map<String, Long> counts = new LinkedHashMap<>();
+            for (Object[] row : query.list()) {
+                counts.put((String) row[0], ((Number) row[1]).longValue());
+            }
+            return counts;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error counting held analyzer results", e);
+        }
     }
 }

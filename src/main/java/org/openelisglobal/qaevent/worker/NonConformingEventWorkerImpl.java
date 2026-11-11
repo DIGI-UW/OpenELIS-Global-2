@@ -17,6 +17,7 @@ import org.openelisglobal.qaevent.form.NonConformingEventForm;
 import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceActionLogService;
 import org.openelisglobal.qaevent.service.NceCategoryService;
+import org.openelisglobal.qaevent.service.NceHistoryService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.qaevent.service.NceTypeService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
@@ -41,54 +42,129 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
     @Autowired
     private SampleItemService sampleItemService;
     @Autowired
+    private NceActionLogService nceActionLogService;
+    @Autowired
     private NceCategoryService nceCategoryService;
     @Autowired
     private NceTypeService nceTypeService;
     @Autowired
-    private NceActionLogService nceActionLogService;
+    private NceHistoryService nceHistoryService;
 
     @Override
     public NcEvent create(String labOrderId, List<String> specimens, String sysUserId, String nceNumber) {
+        return create(labOrderId, specimens, sysUserId, nceNumber, null);
+    }
+
+    public NcEvent create(String labOrderId, List<String> specimens, String sysUserId, String nceNumber,
+            String analysisId) {
         NcEvent event = new NcEvent();
         event.setSysUserId(sysUserId);
         event.setNceNumber(nceNumber);
         event.setLabOrderNumber(labOrderId);
+        event.setReportDate(new java.sql.Date(System.currentTimeMillis()));
         event = ncEventService.save(event);
-        for (String specimenId : specimens) {
-            NceSpecimen specimen = new NceSpecimen();
-            specimen.setNceId(Integer.parseInt(event.getId()));
-            specimen.setSampleItemId(Integer.parseInt(specimenId));
-            specimen.setSysUserId(sysUserId);
-            nceSpecimenService.save(specimen);
+        // Parse analysisId safely once
+        Integer parsedAnalysisId = null;
+        if (analysisId != null && !analysisId.trim().isEmpty()) {
+            try {
+                parsedAnalysisId = Integer.valueOf(analysisId.trim());
+            } catch (NumberFormatException e) {
+                // Invalid analysisId - log and skip linking analysis
+                LogEvent.logWarn(this.getClass().getSimpleName(), "create", "Invalid analysisId: " + analysisId);
+            }
         }
+
+        for (String specimenId : specimens) {
+            Integer nceId = event.getId();
+            Integer sampleItemId;
+            try {
+                sampleItemId = Integer.valueOf(specimenId.trim());
+            } catch (NumberFormatException e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "create", "Invalid specimenId: " + specimenId);
+                continue;
+            }
+
+            // Check if this specimen is already linked to this NCE
+            if (!nceSpecimenService.existsByNceIdAndSampleItemId(nceId, sampleItemId)) {
+                NceSpecimen specimen = new NceSpecimen();
+                specimen.setNceId(nceId);
+                specimen.setSampleItemId(sampleItemId);
+                if (parsedAnalysisId != null) {
+                    specimen.setAnalysisId(parsedAnalysisId);
+                }
+                specimen.setSysUserId(sysUserId);
+                nceSpecimenService.save(specimen);
+            }
+        }
+
+        // Log history for creation
+        Integer userId = null;
+        if (sysUserId != null) {
+            try {
+                userId = Integer.valueOf(sysUserId.trim());
+            } catch (NumberFormatException e) {
+                // Invalid sysUserId - leave userId as null
+            }
+        }
+        nceHistoryService.logActivity(event.getId(), "CREATED", "NCE created with number: " + nceNumber, null, null,
+                userId);
+
         return event;
     }
 
     @Override
     public boolean update(NonConformingEventForm form) {
-        NcEvent ncEvent = ncEventService.get(form.getId());
+        NcEvent ncEvent = ncEventService.get(Integer.valueOf(form.getId()));
         if (ncEvent != null) {
             ncEvent.setSysUserId(form.getCurrentUserId());
-            // date from input field come in this pattern
-            Date dateOfEvent = getDate(form.getDateOfEvent(), "dd/MM/yyyy");
-            Date reportDate = getDate(form.getReportDate(), "dd/MM/yyyy");
+            // date from input field - try multiple formats
+            Date dateOfEvent = parseDate(form.getDateOfEvent());
+            Date reportDate = parseDate(form.getReportDate());
+            // Frontend doesn't always send a reportDate; default to today so
+            // we never persist null and break the read paths that format it.
+            if (reportDate == null) {
+                reportDate = new java.sql.Date(System.currentTimeMillis());
+            }
 
-            ncEvent.setStatus("Pending");
+            // Seed "Pending" only on the initial report; preserve an existing workflow
+            // status (Under Investigation / CAPA / Completed) across later detail edits
+            // so editing an NCE never silently reopens it.
+            if (ncEvent.getStatus() == null || ncEvent.getStatus().isEmpty()) {
+                ncEvent.setStatus("Pending");
+            }
             ncEvent.setReportDate(reportDate);
             ncEvent.setDateOfEvent(dateOfEvent);
             ncEvent.setName(form.getName());
             ncEvent.setNameOfReporter(form.getReporterName());
             ncEvent.setPrescriberName(form.getPrescriberName());
             ncEvent.setSite(form.getSite());
+            ncEvent.setTitle(form.getTitle());
             ncEvent.setDescription(form.getDescription());
+            ncEvent.setImmediateAction(form.getImmediateAction());
             ncEvent.setSuspectedCauses(form.getSuspectedCauses());
             ncEvent.setProposedAction(form.getProposedAction());
             ncEvent.setReportingUnitId(form.getReportingUnit());
+
+            // Save NCE enhancement fields
+            if (form.getSeverity() != null && !form.getSeverity().isEmpty()) {
+                ncEvent.setSeverity(form.getSeverity());
+            }
+            if (form.getNceCategoryId() != null && !form.getNceCategoryId().isEmpty()) {
+                ncEvent.setNceCategoryId(Integer.valueOf(form.getNceCategoryId()));
+            }
+            if (form.getNceTypeId() != null && !form.getNceTypeId().isEmpty()) {
+                ncEvent.setNceTypeId(Integer.valueOf(form.getNceTypeId()));
+            }
 
             if (ncEvent.getNameOfReporter() == null || "".equalsIgnoreCase(ncEvent.getNameOfReporter())) {
                 ncEvent.setNameOfReporter(form.getName());
             }
             ncEventService.update(ncEvent);
+
+            // Log history for update
+            Integer userId = parseIntegerSafely(form.getCurrentUserId());
+            nceHistoryService.logActivity(ncEvent.getId(), "UPDATED", "NCE details updated", null, null, userId);
+
             return true;
         }
         return false;
@@ -96,7 +172,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
 
     @Override
     public boolean updateFollowUp(NonConformingEventForm form) {
-        NcEvent ncEvent = ncEventService.get(form.getId());
+        NcEvent ncEvent = ncEventService.get(Integer.valueOf(form.getId()));
         if (ncEvent != null) {
             ncEvent.setStatus("CAPA");
             ncEvent.setLaboratoryComponent(form.getLaboratoryComponent());
@@ -111,6 +187,12 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             ncEvent.setComments(form.getComments());
             ncEvent.setSysUserId(form.getCurrentUserId());
             ncEventService.update(ncEvent);
+
+            // Log history for follow-up (status changed to CAPA)
+            Integer userId = parseIntegerSafely(form.getCurrentUserId());
+            nceHistoryService.logActivity(ncEvent.getId(), "STATUS_CHANGED", "Status changed to CAPA for follow-up",
+                    null, "CAPA", userId);
+
             return true;
         }
         return false;
@@ -135,11 +217,32 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
         return null;
     }
 
+    /**
+     * Parse date string trying multiple formats (MM/dd/yyyy and dd/MM/yyyy).
+     */
+    private Date parseDate(String value) {
+        if (value == null || value.isEmpty()) {
+            return null;
+        }
+        // Try US format first (MM/dd/yyyy) - used by frontend
+        Date result = getDate(value, "MM/dd/yyyy");
+        if (result != null) {
+            return result;
+        }
+        // Try European format (dd/MM/yyyy)
+        result = getDate(value, "dd/MM/yyyy");
+        if (result != null) {
+            return result;
+        }
+        // Try ISO format (yyyy-MM-dd)
+        return getDate(value, "yyyy-MM-dd");
+    }
+
     @Override
     public void initFormForFollowUp(String nceNumber, NonConformingEventForm form)
             throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        form.setNceCategories(nceCategoryService.getAllNceCategories());
-        form.setNceTypes(nceTypeService.getAllNceTypes());
+        form.setNceCategories(nceCategoryService.getActiveCategoriesAsIdValuePairs());
+        form.setNceTypes(nceTypeService.getActiveTypesAsIdValuePairs());
         form.setLabComponentList(
                 DisplayListService.getInstance().getList(DisplayListService.ListType.LABORATORY_COMPONENT));
         form.setSeverityConsequencesList(
@@ -154,17 +257,20 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
         form.setNceNumber(System.currentTimeMillis() + "");
         NcEvent event = ncEventService.getMatch("nceNumber", nceNumber).get();
         if (event != null) {
-            form.setReportDate(DateUtil.formatDateAsText(event.getReportDate()));
-            form.setDateOfEvent(DateUtil.formatDateAsText(event.getDateOfEvent()));
+            form.setReportDate(event.getReportDate() != null ? DateUtil.formatDateAsText(event.getReportDate()) : "");
+            form.setDateOfEvent(
+                    event.getDateOfEvent() != null ? DateUtil.formatDateAsText(event.getDateOfEvent()) : "");
             form.setName(event.getName());
             form.setReporterName(event.getNameOfReporter());
             form.setPrescriberName(event.getPrescriberName());
             form.setSite(event.getSite());
+            form.setTitle(event.getTitle());
             form.setDescription(event.getDescription());
+            form.setImmediateAction(event.getImmediateAction());
             form.setSuspectedCauses(event.getSuspectedCauses());
             form.setProposedAction(event.getProposedAction());
             form.setNceNumber(event.getNceNumber());
-            form.setId(event.getId());
+            form.setId(String.valueOf(event.getId()));
             form.setLabOrderNumber(event.getLabOrderNumber());
             form.setReportingUnit(event.getReportingUnitId());
 
@@ -215,7 +321,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
                 al.setDateCompleted(getDate(actionLog.element("dateCompleted").getText(), "dd/MM/yyyy"));
                 al.setPersonResponsible(actionLog.element("personResponsible").getText());
                 if (actionLog.element("id") != null) {
-                    al.setId(actionLog.element("id").getText());
+                    al.setId(Integer.valueOf(actionLog.element("id").getText()));
                 }
                 nceActionLogList.add(al);
             }
@@ -259,10 +365,19 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
     private void setActionLogs(NonConformingEventForm form, NcEvent ncEvent) {
         if (form.getActionLog() != null) {
             List<NceActionLog> actionLogs = form.getActionLog();
+            // The React corrective-action form sends the completion date only at
+            // the top level (bound to nc_event.date_completed); it never sets the
+            // per-row action-log date, so nce_action_log.date_completed was lost.
+            // Mirror the NCE completion date onto each log whose own date is unset,
+            // parsed exactly as the callers parse it so the two stay consistent.
+            Date completed = getDate(form.getDateCompleted(), "dd/MM/yyyy");
             if (actionLogs != null) {
                 for (NceActionLog actionLog : actionLogs) {
-                    actionLog.setNcEventId(Integer.parseInt(ncEvent.getId()));
+                    actionLog.setNcEventId(ncEvent.getId());
                     actionLog.setSysUserId(form.getCurrentUserId());
+                    if (actionLog.getDateCompleted() == null && completed != null) {
+                        actionLog.setDateCompleted(completed);
+                    }
                     nceActionLogService.save(actionLog);
                 }
             }
@@ -271,14 +386,49 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
 
     @Override
     public boolean updateCorrectiveAction(NonConformingEventForm form) {
-        NcEvent ncEvent = ncEventService.get(form.getId());
+        NcEvent ncEvent = ncEventService.get(Integer.valueOf(form.getId()));
         if (ncEvent != null) {
             ncEvent.setDiscussionDate(form.getDiscussionDate());
             ncEvent.setDateCompleted(getDate(form.getDateCompleted(), "dd/MM/yyyy")); // Convert the string to a Date
                                                                                       // object
             setActionLogs(form, ncEvent);
+
+            // Record the effectiveness verdict when the review was answered. Only a
+            // "Yes" verdict resolves the NCE (routed to resolveNCEvent by the controller);
+            // a "No" verdict lands here and is persisted without closing, so the
+            // ineffective outcome is not discarded.
+            String effective = form.getEffective();
+            boolean reviewed = effective != null && !effective.isEmpty();
+            if (reviewed) {
+                ncEvent.setEffective(effective);
+            }
+
+            // Saving a corrective action advances the NCE into "CAPA" so the list badge
+            // and status filter distinguish it from NCEs without any. Guarded: never
+            // override a resolved ("Completed") NCE, and don't re-log when already "CAPA".
+            String status = ncEvent.getStatus();
+            boolean advancedToCapa = !"Completed".equals(status) && !"CAPA".equals(status);
+            if (advancedToCapa) {
+                ncEvent.setStatus("CAPA");
+            }
+
             ncEvent.setSysUserId(form.getCurrentUserId());
             ncEventService.update(ncEvent);
+
+            // Log history for corrective action update
+            Integer userId = parseIntegerSafely(form.getCurrentUserId());
+            nceHistoryService.logActivity(ncEvent.getId(), "CORRECTIVE_ACTION", "Corrective action updated", null, null,
+                    userId);
+            if (advancedToCapa) {
+                nceHistoryService.logActivity(ncEvent.getId(), "STATUS_CHANGED", "Status changed to CAPA", null, "CAPA",
+                        userId);
+            }
+            if (reviewed) {
+                nceHistoryService.logActivity(ncEvent.getId(), "EFFECTIVENESS_REVIEW",
+                        "Effectiveness review: " + ("Yes".equalsIgnoreCase(effective) ? "effective" : "not effective"),
+                        null, null, userId);
+            }
+
             return true;
         }
         return false;
@@ -286,8 +436,12 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
 
     @Override
     public boolean resolveNCEvent(NonConformingEventForm form) {
-        NcEvent ncEvent = ncEventService.get(form.getId());
+        NcEvent ncEvent = ncEventService.get(Integer.valueOf(form.getId()));
         if (ncEvent != null) {
+            // Captured before the transition to "Completed": tells us whether the
+            // corrective action is being recorded fresh in this same submit (prior
+            // status not yet "CAPA") vs. already logged when it entered CAPA.
+            String priorStatus = ncEvent.getStatus();
             ncEvent.setDiscussionDate(form.getDiscussionDate());
             setActionLogs(form, ncEvent);
             ncEvent.setStatus("Completed");
@@ -297,8 +451,36 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             ncEvent.setDateCompleted(getDate(form.getDateCompleted(), "dd/MM/yyyy"));
             ncEvent.setSysUserId(form.getCurrentUserId());
             ncEventService.update(ncEvent);
+
+            // Log history for resolution
+            Integer userId = parseIntegerSafely(form.getCurrentUserId());
+            // Resolving straight from report/investigation with a corrective action
+            // in the same submit skips updateCorrectiveAction, so log the
+            // CORRECTIVE_ACTION trail here too — otherwise the CAPA-completed metric
+            // (which keys off that history event) under-counts. Skip when already
+            // "CAPA": the event was logged when it entered that stage.
+            boolean recordedCorrectiveAction = form.getActionLog() != null && form.getActionLog().stream()
+                    .anyMatch(a -> a.getCorrectiveAction() != null && !a.getCorrectiveAction().isBlank());
+            if (!"CAPA".equals(priorStatus) && recordedCorrectiveAction) {
+                nceHistoryService.logActivity(ncEvent.getId(), "CORRECTIVE_ACTION",
+                        "Corrective action recorded at resolution", null, null, userId);
+            }
+            nceHistoryService.logActivity(ncEvent.getId(), "RESOLVED", "NCE resolved and marked as Completed", null,
+                    "Completed", userId);
+
             return true;
         }
         return false;
+    }
+
+    private Integer parseIntegerSafely(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

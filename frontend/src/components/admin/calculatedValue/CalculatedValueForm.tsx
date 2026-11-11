@@ -17,8 +17,10 @@ import {
   Section,
   Heading,
   TextArea,
+  Accordion,
+  AccordionItem,
 } from "@carbon/react";
-import AutoComplete from "../../common/AutoComplete.js";
+import AutoComplete from "../../common/AutoComplete";
 import { Add, Subtract, Save } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -29,14 +31,16 @@ import {
 } from "../../formModel/innitialValues/CalculatedValueFormSchema";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
-} from "../../utils/Utils.js";
+  postToOpenElisServerFullResponse,
+  resolveApiErrorMessage,
+} from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import "../ruleBuilderAccordion.css";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -87,6 +91,15 @@ const mathFunction: IdValue = {
   value: null,
 };
 
+/** A component of a test, with what it reports and the values it offers. */
+interface TestComponent {
+  id: string;
+  value: string;
+  resultType?: string;
+  resultList?: IdValue[];
+  primary?: boolean;
+}
+
 const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   const componentMounted = useRef(true);
   const [calculationList, setCalculationList] = useState([
@@ -102,8 +115,18 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   const intl = useIntl();
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/samples", fetchSamples);
-    getFromOpenElisServer("/rest/test-calculations", loadCalculationList);
+    getFromOpenElisServer("/rest/displayList/SAMPLE_TYPE_ACTIVE", fetchSamples);
+    // A link from the Test Editor names one calculation, so fetch just that one
+    // instead of the whole collection.
+    const selectedCalculationId = new URLSearchParams(
+      window.location.search,
+    ).get("id");
+    getFromOpenElisServer(
+      selectedCalculationId
+        ? `/rest/test-calculations?id=${encodeURIComponent(selectedCalculationId)}`
+        : "/rest/test-calculations",
+      loadCalculationList,
+    );
     getFromOpenElisServer("/rest/math-functions", loadMathFunctions);
 
     return () => {
@@ -192,6 +215,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
         id: null,
         order: null,
         type: "TEST_RESULT",
+        componentId: null,
         value: null,
         sampleId: null,
       },
@@ -200,34 +224,6 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
 
   const handleRuleAdd = () => {
     setCalculationList([...calculationList, CalculatedValueObj]);
-  };
-
-  const handleRuleRemove = (index, id) => {
-    if (id) {
-      postToOpenElisServer(
-        "/rest/deactivate-test-calculation/" + id,
-        {},
-        handleDelete,
-      );
-    }
-  };
-
-  const handleDelete = (status) => {
-    setNotificationVisible(true);
-    if (status == "200") {
-      addNotification({
-        kind: NotificationKinds.success,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "delete.success.msg" }),
-      });
-      window.location.reload();
-    } else {
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "delete.error.msg" }),
-      });
-    }
   };
 
   const addOperation = (index: number, type: OperationType) => {
@@ -295,9 +291,12 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     }
     switch (field) {
       case "TEST_RESULT":
-        results[field][index][item_index] = resultList.filter(
-          (result) => result.resultType === "N",
-        );
+        // A test qualifies when any of its components reports a number. Asking
+        // the test itself returns its primary component's type, which hid
+        // every test whose numeric parts sit under a coded primary - COVID-19
+        // PCR reporting an interpretation beside two Ct values.
+        results[field][index][item_index] =
+          resultList.filter(hasNumericComponent);
         break;
       case "FINAL_RESULT":
         results[field][index] = resultList;
@@ -318,8 +317,39 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   function handleTestSelection(id: number, index: number) {
     const list = [...calculationList];
     list[index].testId = id;
+    // A new resulting test invalidates the component chosen under the old one,
+    // and with it the result type and the options that were read off it.
+    list[index].componentId = null;
+    list[index].result = null;
+    list[index].componentPending = true;
     setCalculationList(list);
   }
+
+  /** A test is usable here when any component of it reports a number. */
+  const hasNumericComponent = (test: any) =>
+    Array.isArray(test?.resultTypes) && test.resultTypes.length
+      ? test.resultTypes.includes("N")
+      : test?.resultType === "N";
+
+  /** Only the components that report a number may be chosen as the operand. */
+  const numericComponents = (test: any) =>
+    (test?.components || [])
+      .filter((c: any) => (c.resultType || test?.resultType) === "N")
+      .map((c: any) => ({ id: c.id, value: c.value }));
+
+  /**
+   * Every component of a test, each carrying what it reports and the options it
+   * offers. The operands are restricted to numbers because arithmetic needs
+   * them; the final result is not, and must be able to name a coded component.
+   */
+  const allComponents = (test: any): TestComponent[] =>
+    (test?.components || []).map((c: any) => ({
+      id: c.id,
+      value: c.value,
+      resultType: c.resultType || test?.resultType,
+      resultList: c.resultList || [],
+      primary: c.primary,
+    }));
 
   function handleOperationTestSelection(
     id: number,
@@ -328,13 +358,71 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
   ) {
     const list = [...calculationList];
     list[index].operations[operationIndex].value = id;
+    // Changing the test invalidates the component chosen under the old one.
+    list[index].operations[operationIndex].componentId = null;
     setCalculationList(list);
   }
+
+  /**
+   * The components the final result may be written to, read from the test the
+   * search already returned. Deriving it here means an existing calculation
+   * resolves its component on load too, rather than only after the user re-picks
+   * a test.
+   *
+   * <p>Every component, not just the numeric ones: a calculation may set a coded
+   * interpretation, and restricting this list to numbers - the rule the operands
+   * follow - left those components unselectable.
+   */
+  const destinationComponentsFor = (index: number) => {
+    const tests = sampleTestList["FINAL_RESULT"][index] || [];
+    const calculation = calculationList[index];
+    const test = tests.find(
+      (t: any) => String(t.id) === String(calculation?.testId),
+    );
+    return allComponents(test);
+  };
+
+  /**
+   * The component the final result is bound to, or undefined while the user has
+   * yet to choose one. A test carries components that report different things,
+   * so until one is named there is no result type to render against - only the
+   * component answers that.
+   */
+  const finalComponentFor = (index: number): TestComponent | undefined => {
+    const calculation = calculationList[index];
+    const components = destinationComponentsFor(index);
+    // Only a test that reports more than one thing leaves the question open.
+    // Where there is a single component, resolving it is not a guess.
+    if (calculation?.componentPending && components.length > 1) {
+      return undefined;
+    }
+    return calculation?.componentId
+      ? components.find((c) => String(c.id) === String(calculation.componentId))
+      : components.find((c) => c.primary) || components[0];
+  };
+
+  const operandComponentsFor = (index: number, operationIndex: number) => {
+    const tests =
+      (sampleTestList["TEST_RESULT"][index] &&
+        sampleTestList["TEST_RESULT"][index][operationIndex]) ||
+      [];
+    const operand = calculationList[index]?.operations?.[operationIndex];
+    const test = tests.find(
+      (t: any) => String(t.id) === String(operand?.value),
+    );
+    return numericComponents(test);
+  };
 
   const handleCalculationFieldChange = (e: any, index: number) => {
     const { name, value } = e.target;
     const list = [...calculationList];
     list[index][name] = value;
+    if (name === "componentId") {
+      // The new component reports its own type and offers its own options, so a
+      // value picked from the previous one no longer means anything here.
+      list[index].result = null;
+      list[index].componentPending = false;
+    }
     setCalculationList(list);
   };
 
@@ -349,10 +437,24 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     setCalculationList(list);
   };
 
-  const handleCalculationSubmited = (status, index) => {
+  const refusalMessage = async (
+    response: Response | undefined,
+    fallbackId: string,
+  ): Promise<string> => {
+    const body = await response
+      ?.clone()
+      .json()
+      .catch(() => null);
+    return resolveApiErrorMessage(intl, body, fallbackId);
+  };
+
+  const handleCalculationSubmited = async (
+    response: Response | undefined,
+    index: number,
+  ) => {
     setIsSubmitting(false);
-    setNotificationVisible(true);
-    if (status == "200") {
+    if (response?.status === 200) {
+      setNotificationVisible(true);
       const element = document.getElementById(
         "submit_" + index,
       ) as HTMLInputElement;
@@ -360,25 +462,21 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: "Succesfuly saved",
+        message: intl.formatMessage({ id: "save.success" }),
       });
     } else {
+      const message = await refusalMessage(
+        response,
+        "error.duplicate.calculationname",
+      );
+      setNotificationVisible(true);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: "Duplicate Calculation Name or Error while saving",
+        message,
       });
     }
   };
-
-  function replaceString(
-    string: string,
-    sequenceToReplace: string,
-    replacement: string,
-  ) {
-    const regex = new RegExp(sequenceToReplace, "g");
-    return string.replace(regex, replacement);
-  }
 
   const handleSubmit = (event: any, index: number) => {
     event.preventDefault();
@@ -386,42 +484,50 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       return;
     }
     setIsSubmitting(true);
-    let mathematicalOperation = "";
     calculationList[index]["operations"].forEach(
       (operation, operationIndex) => {
         operation.order = operationIndex;
-        mathematicalOperation = mathematicalOperation + operation.value + " ";
       },
     );
-    // for the function validation , remove text values
-    mathematicalOperation = replaceString(mathematicalOperation, "AGE", "0");
-    mathematicalOperation = replaceString(mathematicalOperation, "WEIGHT", "0");
-    mathematicalOperation = replaceString(
-      mathematicalOperation,
-      "IS_IN_NORMAL_RANGE",
-      ">=0 && 1<=10",
-    );
-    mathematicalOperation = replaceString(
-      mathematicalOperation,
-      "IS_OUTSIDE_NORMAL_RANGE",
-      "<0 || 1>10",
-    );
-
     try {
-      // Code that might throw an error
-      eval(mathematicalOperation);
-      console.log(JSON.stringify(calculationList[index]));
-      postToOpenElisServer(
+      // Same as the reflex builder: the pickers display a default component,
+      // and the calculation has to carry the one it is displaying rather than
+      // save against none.
+      // componentPending only says whether this row is waiting on a choice;
+      // it describes the editor, not the calculation.
+      const currentCalculation = { ...calculationList[index] } as any;
+      delete currentCalculation.componentPending;
+      const calculation = {
+        ...currentCalculation,
+        componentId:
+          calculationList[index].componentId ||
+          finalComponentFor(index)?.id ||
+          null,
+        operations: (calculationList[index].operations || []).map(
+          (operation: any, operationIndex: number) =>
+            operation.type === "TEST_RESULT"
+              ? {
+                  ...operation,
+                  componentId:
+                    operation.componentId ||
+                    operandComponentsFor(index, operationIndex)[0]?.id ||
+                    null,
+                }
+              : operation,
+        ),
+      };
+      postToOpenElisServerFullResponse(
         "/rest/test-calculation",
-        JSON.stringify(calculationList[index]),
-        (status) => handleCalculationSubmited(status, index),
+        JSON.stringify(calculation),
+        (response) => handleCalculationSubmited(response, index),
       );
-    } catch (error) {
+    } catch {
+      setIsSubmitting(false);
       setNotificationVisible(true);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: "Invalid Calculation Logic : " + error.message,
+        message: intl.formatMessage({ id: "error.invalid.calculation.logic" }),
       });
     }
   };
@@ -432,10 +538,10 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     operation: OperationModel,
   ) {
     switch (type) {
-      case "TEST_RESULT":
+      case "TEST_RESULT": {
         return (
           <>
-            <Column lg={5} md={2} sm={1}>
+            <Column lg={4} md={2} sm={1}>
               <Select
                 data-cy="add-sample"
                 id={index + "_" + operationIndex + "_sample"}
@@ -443,7 +549,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 labelText={
                   <FormattedMessage id="rulebuilder.label.selectSample" />
                 }
-                value={operation.sampleId}
+                value={operation.sampleId ?? ""}
                 onChange={(e) => {
                   handleSampleSelected(e, "TEST_RESULT", index, operationIndex);
                   handleOperationFieldChange(
@@ -464,7 +570,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 ))}
               </Select>
             </Column>
-            <Column lg={5} md={2} sm={1}>
+            <Column lg={3} md={2} sm={1}>
               <AutoComplete
                 id={index + "_" + operationIndex + "_testresult"}
                 label={
@@ -482,8 +588,40 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 }
               ></AutoComplete>
             </Column>
+            <Column lg={3} md={2} sm={1}>
+              <Select
+                id={index + "_" + operationIndex + "_component"}
+                name="componentId"
+                labelText={
+                  <FormattedMessage id="testcalculation.label.selectComponent" />
+                }
+                value={
+                  operation.componentId ||
+                  operandComponentsFor(index, operationIndex)[0]?.id ||
+                  ""
+                }
+                disabled={
+                  operandComponentsFor(index, operationIndex).length === 0
+                }
+                onChange={(e) =>
+                  handleOperationFieldChange(e, index, operationIndex)
+                }
+              >
+                <SelectItem text="" value="" />
+                {operandComponentsFor(index, operationIndex).map(
+                  (component: any, c_index: number) => (
+                    <SelectItem
+                      text={component.value}
+                      value={component.id}
+                      key={c_index}
+                    />
+                  ),
+                )}
+              </Select>
+            </Column>
           </>
         );
+      }
       case "MATH_FUNCTION":
         return (
           <>
@@ -494,7 +632,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 labelText={
                   <FormattedMessage id="testcalculation.label.mathFucntion" />
                 }
-                value={operation.value}
+                value={operation.value ?? ""}
                 onChange={(e) => {
                   handleOperationFieldChange(e, index, operationIndex);
                 }}
@@ -521,7 +659,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 labelText={
                   <FormattedMessage id="testcalculation.label.integer" />
                 }
-                value={operation.value}
+                value={operation.value ?? ""}
                 onChange={(e) => {
                   handleOperationFieldChange(e, index, operationIndex);
                 }}
@@ -540,7 +678,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 labelText={
                   <FormattedMessage id="testcalculation.label.patientAttribute" />
                 }
-                value={operation.value}
+                value={operation.value ?? ""}
                 onChange={(e) => {
                   handleOperationFieldChange(e, index, operationIndex);
                 }}
@@ -548,7 +686,6 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
               >
                 <SelectItem text="" value="" />
                 <SelectItem text="Patient Age(Years)" value="AGE" />
-                <SelectItem text="Patient Weight(Kg)" value="WEIGHT" />
               </Select>
             </Column>
             <Column lg={5}> </Column>
@@ -557,12 +694,24 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     }
   }
 
-  function getResultInputByResultType(
-    resultType: string,
+  /**
+   * The control the final result is entered with, chosen by what the selected
+   * component reports and offering that component's own options.
+   *
+   * <p>Reading the type off the test instead named the primary component's, and
+   * reading the options off the test offered every component's merged together,
+   * so two coded components of one test were indistinguishable here. A numeric
+   * component takes no control - the formula produces its value.
+   */
+  function getResultInputForComponent(
+    component: TestComponent | undefined,
     index: number,
     calculation: CalculatedValueFormModel,
   ) {
-    switch (resultType) {
+    if (!component) {
+      return null;
+    }
+    switch (component.resultType) {
       case "D":
         return (
           <div>
@@ -572,7 +721,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
               labelText={
                 <FormattedMessage id="testcalculation.label.selectDictionaryValue" />
               }
-              value={calculation.result}
+              value={calculation.result || ""}
               className="inputSelect"
               onChange={(e) => {
                 handleCalculationFieldChange(e, index);
@@ -580,15 +729,15 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
               required
             >
               <SelectItem text="" value="" />
-              {sampleTestList["FINAL_RESULT"][index]
-                .filter((test) => test.id == calculation.testId)[0]
-                .resultList.map((result, result_index) => (
+              {(component.resultList || []).map(
+                (result: IdValue, result_index: number) => (
                   <SelectItem
                     text={result.value}
                     value={result.id}
                     key={result_index}
                   />
-                ))}
+                ),
+              )}
             </Select>
           </div>
         );
@@ -604,7 +753,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
               labelText={
                 <FormattedMessage id="testcalculation.label.textValue" />
               }
-              value={calculation.result}
+              value={calculation.result || ""}
               onChange={(e) => {
                 handleCalculationFieldChange(e, index);
               }}
@@ -624,8 +773,29 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
 
   const toggleCalculation = (e, index) => {
     const list = [...calculationList];
-    list[index]["toggled"] = e;
+    const calculation = list[index];
+    list[index]["active"] = e;
     setCalculationList(list);
+
+    if (calculation.id != null) {
+      const endpoint = e
+        ? "/rest/activate-test-calculation/" + calculation.id
+        : "/rest/deactivate-test-calculation/" + calculation.id;
+      postToOpenElisServerFullResponse(endpoint, "{}", async (response) => {
+        if (response?.status !== 200) {
+          const message = await refusalMessage(response, "save.error.msg");
+          const revert = [...list];
+          revert[index]["active"] = !e;
+          setCalculationList(revert);
+          setNotificationVisible(true);
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message,
+          });
+        }
+      });
+    }
   };
 
   return (
@@ -659,19 +829,19 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         labelText={
                           <FormattedMessage id="testcalculation.label.name" />
                         }
-                        value={calculation.name}
+                        value={calculation.name ?? ""}
                         onChange={(e) => handleCalculationFieldChange(e, index)}
                       />
                     </div>
                     <div>&nbsp; &nbsp;</div>
                     <div>
                       <Toggle
-                        toggled={calculation.toggled}
+                        toggled={!!calculation.active}
                         aria-label="toggle button"
                         id={index + "_toggle"}
-                        labelText={
-                          <FormattedMessage id="rulebuilder.label.toggleRule" />
-                        }
+                        labelText={intl.formatMessage({
+                          id: "rulebuilder.label.toggleRule",
+                        })}
                         onToggle={(e) => toggleCalculation(e, index)}
                       />
                     </div>
@@ -681,380 +851,394 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         labelText={"Active: " + calculation.active}
                         name="active"
                         id={index + "_active"}
-                        checked={calculation.active}
-                        disabled={calculation.active}
-                        onChange={(e) => {
-                          const list = [...calculationList];
-                          list[index]["active"] = e.target.checked;
-                          setCalculationList(list);
-                        }}
+                        checked={!!calculation.active}
+                        disabled
+                        readOnly
                       />
                     </div>
                   </div>
-                  {calculation.toggled && (
-                    <>
-                      <div
-                        className="inlineDiv"
-                        style={{
-                          display: "flex",
-                          flexDirection:
-                            window.innerWidth < 768 ? "column" : "row",
-                        }}
+                  <div style={{ marginTop: "1rem" }}>
+                    <Accordion className="ruleBuilderAccordion">
+                      <AccordionItem
+                        title={
+                          <FormattedMessage
+                            id="rulebuilder.label.ruleDetails"
+                            defaultMessage="Rule details"
+                          />
+                        }
                       >
-                        <FormattedMessage id="label.button.add" /> &nbsp; &nbsp;
-                        <div>
-                          <Button
-                            style={{
-                              marginTop: window.innerWidth < 768 && "0.5rem",
-                              marginLeft:
-                                window.innerWidth > 500 &&
-                                window.innerWidth < 1800
-                                  ? "0.3rem"
-                                  : "0.5rem",
-                              marginRight:
-                                window.innerWidth < 768 ? "0.3rem" : "0.5rem",
-                            }}
-                            renderIcon={Add}
-                            id={index + "_testresult"}
-                            kind="tertiary"
-                            size="sm"
-                            onClick={() => addOperation(index, "TEST_RESULT")}
-                          >
-                            <FormattedMessage id="testcalculation.label.testResult" />
-                          </Button>
-                        </div>
-                        <div>&nbsp; &nbsp;</div>
-                        <div>
-                          <Button
-                            style={{
-                              marginLeft:
-                                window.innerWidth > 500 &&
-                                window.innerWidth < 1800
-                                  ? "0.3rem"
-                                  : "0.5rem",
-                              marginRight:
-                                window.innerWidth < 768 ? "0.3rem" : "0.5rem",
-                            }}
-                            renderIcon={Add}
-                            id={index + "_mathfunction"}
-                            kind="tertiary"
-                            size="sm"
-                            onClick={() => addOperation(index, "MATH_FUNCTION")}
-                          >
-                            <FormattedMessage id="testcalculation.label.mathFucntion" />
-                          </Button>
-                        </div>
-                        <div>&nbsp; &nbsp;</div>
-                        <div>
-                          <Button
-                            style={{
-                              marginLeft:
-                                window.innerWidth > 500 &&
-                                window.innerWidth < 1800
-                                  ? "0.3rem"
-                                  : "0.5rem",
-                              marginRight:
-                                window.innerWidth < 768 ? "0.3rem" : "0.5rem",
-                            }}
-                            renderIcon={Add}
-                            id={index + "_integer"}
-                            kind="tertiary"
-                            size="sm"
-                            onClick={() => addOperation(index, "INTEGER")}
-                          >
-                            <FormattedMessage id="testcalculation.label.integer" />
-                          </Button>
-                        </div>
-                        <div>&nbsp; &nbsp;</div>
-                        <div>
-                          <Button
-                            style={{
-                              marginLeft:
-                                window.innerWidth > 500 &&
-                                window.innerWidth < 1800
-                                  ? "0.3rem"
-                                  : "0.5rem",
-                              marginRight:
-                                window.innerWidth < 768 ? "0.3rem" : "0.5rem",
-                              width: window.innerWidth < 1200 && "7rem",
-                            }}
-                            renderIcon={Add}
-                            id={index + "_patientattribute"}
-                            kind="tertiary"
-                            size="sm"
-                            onClick={() =>
-                              addOperation(index, "PATIENT_ATTRIBUTE")
-                            }
-                          >
-                            <FormattedMessage id="testcalculation.label.patientAttribute" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="section">
-                        <div className="inlineDiv">
-                          <h5>
-                            <FormattedMessage id="testcalculation.label.calculation" />
-                          </h5>
+                        <div
+                          className="inlineDiv"
+                          style={{
+                            display: "flex",
+                            flexDirection:
+                              window.innerWidth < 768 ? "column" : "row",
+                          }}
+                        >
+                          <FormattedMessage id="label.button.add" /> &nbsp;
+                          &nbsp;
+                          <div>
+                            <Button
+                              style={{
+                                marginTop: window.innerWidth < 768 && "0.5rem",
+                                marginLeft:
+                                  window.innerWidth > 500 &&
+                                  window.innerWidth < 1800
+                                    ? "0.3rem"
+                                    : "0.5rem",
+                                marginRight:
+                                  window.innerWidth < 768 ? "0.3rem" : "0.5rem",
+                              }}
+                              renderIcon={Add}
+                              id={index + "_testresult"}
+                              kind="tertiary"
+                              size="sm"
+                              onClick={() => addOperation(index, "TEST_RESULT")}
+                            >
+                              <FormattedMessage id="testcalculation.label.testResult" />
+                            </Button>
+                          </div>
+                          <div>&nbsp; &nbsp;</div>
+                          <div>
+                            <Button
+                              style={{
+                                marginLeft:
+                                  window.innerWidth > 500 &&
+                                  window.innerWidth < 1800
+                                    ? "0.3rem"
+                                    : "0.5rem",
+                                marginRight:
+                                  window.innerWidth < 768 ? "0.3rem" : "0.5rem",
+                              }}
+                              renderIcon={Add}
+                              id={index + "_mathfunction"}
+                              kind="tertiary"
+                              size="sm"
+                              onClick={() =>
+                                addOperation(index, "MATH_FUNCTION")
+                              }
+                            >
+                              <FormattedMessage id="testcalculation.label.mathFucntion" />
+                            </Button>
+                          </div>
+                          <div>&nbsp; &nbsp;</div>
+                          <div>
+                            <Button
+                              style={{
+                                marginLeft:
+                                  window.innerWidth > 500 &&
+                                  window.innerWidth < 1800
+                                    ? "0.3rem"
+                                    : "0.5rem",
+                                marginRight:
+                                  window.innerWidth < 768 ? "0.3rem" : "0.5rem",
+                              }}
+                              renderIcon={Add}
+                              id={index + "_integer"}
+                              kind="tertiary"
+                              size="sm"
+                              onClick={() => addOperation(index, "INTEGER")}
+                            >
+                              <FormattedMessage id="testcalculation.label.integer" />
+                            </Button>
+                          </div>
+                          <div>&nbsp; &nbsp;</div>
+                          <div>
+                            <Button
+                              style={{
+                                marginLeft:
+                                  window.innerWidth > 500 &&
+                                  window.innerWidth < 1800
+                                    ? "0.3rem"
+                                    : "0.5rem",
+                                marginRight:
+                                  window.innerWidth < 768 ? "0.3rem" : "0.5rem",
+                                width: window.innerWidth < 1200 && "7rem",
+                              }}
+                              renderIcon={Add}
+                              id={index + "_patientattribute"}
+                              kind="tertiary"
+                              size="sm"
+                              onClick={() =>
+                                addOperation(index, "PATIENT_ATTRIBUTE")
+                              }
+                            >
+                              <FormattedMessage id="testcalculation.label.patientAttribute" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="section">
                           <div className="inlineDiv">
-                            &nbsp;{" "}
-                            {calculation.operations.map(
-                              (operation, operationIndex) => (
-                                <div key={index + "_" + operationIndex}>
-                                  {operation.type === "TEST_RESULT" &&
-                                  operation.value
-                                    ? "'"
-                                    : ""}
-                                  {operation.type === "TEST_RESULT"
-                                    ? sampleTestList["TEST_RESULT"][index]
-                                      ? sampleTestList["TEST_RESULT"][index][
-                                          operationIndex
-                                        ]?.filter(
-                                          (test) => test.id == operation.value,
-                                        )[0]?.value + "'"
-                                      : ""
-                                    : operation.value}{" "}
-                                  &nbsp;
-                                </div>
-                              ),
-                            )}{" "}
-                            {<b style={{ color: "red" }}>{" ⟶ "}</b>} &nbsp;{" "}
-                            {calculation.testId ? "'" : ""}
-                            {sampleTestList["FINAL_RESULT"][index]
-                              ? sampleTestList["FINAL_RESULT"][index]?.filter(
-                                  (test) => test.id == calculation.testId,
-                                )[0]?.value + "'"
-                              : ""}
+                            <h5>
+                              <FormattedMessage id="testcalculation.label.calculation" />
+                            </h5>
                           </div>
-                        </div>
-                        <Grid>
-                          <Column lg={16} md={8} sm={4}>
-                            {" "}
-                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                            &nbsp;{" "}
-                          </Column>
-                          <Column lg={16}>
-                            {" "}
-                            &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                            &nbsp;{" "}
-                          </Column>
-                        </Grid>
-                        {calculation.operations.map(
-                          (operation, operation_index) => (
-                            <Grid key={index + "_" + operation_index}>
-                              {getOperationInputByType(
-                                index,
-                                operation_index,
-                                operation.type,
-                                operation,
-                              )}
-                              <Column lg={2}>
-                                {operation.type !== "" && (
-                                  <IconButton
-                                    renderIcon={Subtract}
-                                    id={index + "_removeoperation"}
-                                    kind="danger"
-                                    label=""
-                                    size="sm"
-                                    onClick={() =>
-                                      removeOperation(index, operation_index)
-                                    }
-                                  />
-                                )}
-                              </Column>
-                              <Column lg={4} md={2} sm={1}>
-                                <Select
-                                  id={
-                                    index +
-                                    "_" +
-                                    operation_index +
-                                    "_addoperation"
-                                  }
-                                  name="addoperation"
-                                  labelText={
-                                    <FormattedMessage id="testcalculation.label.insertOperation" />
-                                  }
-                                  value={calculation.sampleId}
-                                  className="inputSelect"
-                                  onChange={(e) => {
-                                    addOperationBySelect(
-                                      e,
-                                      index,
-                                      operation_index,
-                                    );
-                                  }}
-                                >
-                                  <SelectItem text="" value="" />
-                                  <SelectItem
-                                    text="Test Result"
-                                    value="TEST_RESULT"
-                                  />
-                                  <SelectItem
-                                    text="Mathematical Function"
-                                    value="MATH_FUNCTION"
-                                  />
-                                  <SelectItem text="Integer" value="INTEGER" />
-                                  <SelectItem
-                                    text="Patient Attribute"
-                                    value="PATIENT_ATTRIBUTE"
-                                  />
-                                </Select>
-                                {/* )} */}
-                              </Column>
-                              <Column lg={16} md={8} sm={4}>
-                                {" "}
-                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                                &nbsp;{" "}
-                              </Column>
-                              <Column lg={16} md={8} sm={4}>
-                                {" "}
-                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                                &nbsp;{" "}
-                              </Column>
-                            </Grid>
-                          ),
-                        )}
-                      </div>
-                      <div className="section">
-                        <Grid>
-                          <Column lg={16}>
-                            <h6>
-                              <FormattedMessage id="testcalculation.label.finalresult" />
-                            </h6>
-                          </Column>
-                          <Column lg={4}>
-                            <Select
-                              data-cy="calc-sample"
-                              id={index + "_sample"}
-                              name="sampleId"
-                              labelText={
-                                <FormattedMessage id="rulebuilder.label.selectSample" />
-                              }
-                              value={calculation.sampleId}
-                              className="inputSelect"
-                              onChange={(e) => {
-                                handleSampleSelected(
-                                  e,
-                                  "FINAL_RESULT",
-                                  index,
-                                  0,
-                                );
-                                handleCalculationFieldChange(
-                                  e,
-                                  index,
-                                ); /*resetCalculationValue(index, calculation)*/
-                              }}
-                              required
-                            >
-                              <SelectItem text="" value="" />
-                              {sampleList.map((sample, sample_index) => (
-                                <SelectItem
-                                  text={sample.value}
-                                  value={sample.id}
-                                  key={sample_index}
-                                />
-                              ))}
-                            </Select>
-                          </Column>
-                          <Column lg={4}>
-                            <AutoComplete
-                              id={index + "_finalresult"}
-                              class="inputText"
-                              label={
-                                <FormattedMessage id="testcalculation.label.finalresult" />
-                              }
-                              name="testName"
-                              onSelect={(id) => handleTestSelection(id, index)}
-                              value={calculation.testId}
-                              suggestions={
-                                sampleTestList["FINAL_RESULT"][index]
-                                  ? sampleTestList["FINAL_RESULT"][index]
-                                  : []
-                              }
-                            ></AutoComplete>
-                          </Column>
-                          <Column lg={4}>
-                            {sampleTestList["FINAL_RESULT"][index] && (
-                              <>
-                                {getResultInputByResultType(
-                                  sampleTestList["FINAL_RESULT"][index].filter(
+                          <div className="section">
+                            <div className="inlineDiv">
+                              &nbsp;{" "}
+                              {calculation.operations.map(
+                                (operation, operationIndex) => (
+                                  <div key={index + "_" + operationIndex}>
+                                    {operation.type === "TEST_RESULT" &&
+                                    operation.value
+                                      ? "'"
+                                      : ""}
+                                    {operation.type === "TEST_RESULT"
+                                      ? sampleTestList["TEST_RESULT"][index]
+                                        ? sampleTestList["TEST_RESULT"][index][
+                                            operationIndex
+                                          ]?.filter(
+                                            (test) =>
+                                              test.id == operation.value,
+                                          )[0]?.value + "'"
+                                        : ""
+                                      : operation.value}{" "}
+                                    &nbsp;
+                                  </div>
+                                ),
+                              )}{" "}
+                              {<b style={{ color: "red" }}>{" ⟶ "}</b>} &nbsp;{" "}
+                              {calculation.testId ? "'" : ""}
+                              {sampleTestList["FINAL_RESULT"][index]
+                                ? sampleTestList["FINAL_RESULT"][index]?.filter(
                                     (test) => test.id == calculation.testId,
-                                  )[0]?.resultType,
+                                  )[0]?.value + "'"
+                                : ""}
+                            </div>
+                          </div>
+                          <Grid>
+                            <Column lg={16} md={8} sm={4}>
+                              {" "}
+                              &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                              &nbsp;{" "}
+                            </Column>
+                            <Column lg={16}>
+                              {" "}
+                              &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                              &nbsp;{" "}
+                            </Column>
+                          </Grid>
+                          {calculation.operations.map(
+                            (operation, operation_index) => (
+                              <Grid key={index + "_" + operation_index}>
+                                {getOperationInputByType(
                                   index,
-                                  calculation,
+                                  operation_index,
+                                  operation.type,
+                                  operation,
                                 )}
-                              </>
-                            )}
-                          </Column>
-                          <Column lg={4}>
-                            <TextArea
-                              name="note"
-                              id={index + "_note"}
-                              rows={1}
-                              labelText={
-                                <FormattedMessage id="rulebuilder.label.addExternalNote" />
-                              }
-                              value={calculation.note}
-                              onChange={(e) => {
-                                handleCalculationFieldChange(e, index);
-                              }}
-                            />
-                          </Column>
-                        </Grid>
-                      </div>
-                      <Button
-                        renderIcon={Save}
-                        id={"submit_" + index}
-                        type="submit"
-                        kind="primary"
-                        size="sm"
-                        disabled={isSubmitting}
-                      >
-                        <FormattedMessage id="label.button.submit" />
-                      </Button>
-                    </>
-                  )}
+                                <Column lg={2}>
+                                  {operation.type !== "" && (
+                                    <IconButton
+                                      renderIcon={Subtract}
+                                      id={index + "_removeoperation"}
+                                      kind="ghost"
+                                      label={intl.formatMessage({
+                                        id: "label.button.remove",
+                                      })}
+                                      size="sm"
+                                      onClick={() =>
+                                        removeOperation(index, operation_index)
+                                      }
+                                    />
+                                  )}
+                                </Column>
+                                <Column lg={4} md={2} sm={1}>
+                                  <Select
+                                    id={
+                                      index +
+                                      "_" +
+                                      operation_index +
+                                      "_addoperation"
+                                    }
+                                    name="addoperation"
+                                    labelText={
+                                      <FormattedMessage id="testcalculation.label.insertOperation" />
+                                    }
+                                    value={calculation.sampleId ?? ""}
+                                    className="inputSelect"
+                                    onChange={(e) => {
+                                      addOperationBySelect(
+                                        e,
+                                        index,
+                                        operation_index,
+                                      );
+                                    }}
+                                  >
+                                    <SelectItem text="" value="" />
+                                    <SelectItem
+                                      text="Test Result"
+                                      value="TEST_RESULT"
+                                    />
+                                    <SelectItem
+                                      text="Mathematical Function"
+                                      value="MATH_FUNCTION"
+                                    />
+                                    <SelectItem
+                                      text="Integer"
+                                      value="INTEGER"
+                                    />
+                                    <SelectItem
+                                      text="Patient Attribute"
+                                      value="PATIENT_ATTRIBUTE"
+                                    />
+                                  </Select>
+                                  {/* )} */}
+                                </Column>
+                                <Column lg={16} md={8} sm={4}>
+                                  {" "}
+                                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                                  &nbsp;{" "}
+                                </Column>
+                                <Column lg={16} md={8} sm={4}>
+                                  {" "}
+                                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                                  &nbsp;{" "}
+                                </Column>
+                              </Grid>
+                            ),
+                          )}
+                        </div>
+                        <div className="section">
+                          <Grid>
+                            <Column lg={16}>
+                              <h6>
+                                <FormattedMessage id="testcalculation.label.finalresult" />
+                              </h6>
+                            </Column>
+                            <Column lg={3} md={2} sm={4}>
+                              <Select
+                                data-cy="calc-sample"
+                                id={index + "_sample"}
+                                name="sampleId"
+                                labelText={
+                                  <FormattedMessage id="rulebuilder.label.selectSample" />
+                                }
+                                value={calculation.sampleId ?? ""}
+                                className="inputSelect"
+                                onChange={(e) => {
+                                  handleSampleSelected(
+                                    e,
+                                    "FINAL_RESULT",
+                                    index,
+                                    0,
+                                  );
+                                  handleCalculationFieldChange(
+                                    e,
+                                    index,
+                                  ); /*resetCalculationValue(index, calculation)*/
+                                }}
+                                required
+                              >
+                                <SelectItem text="" value="" />
+                                {sampleList.map((sample, sample_index) => (
+                                  <SelectItem
+                                    text={sample.value}
+                                    value={sample.id}
+                                    key={sample_index}
+                                  />
+                                ))}
+                              </Select>
+                            </Column>
+                            <Column lg={4} md={2} sm={4}>
+                              <AutoComplete
+                                id={index + "_finalresult"}
+                                class="inputText"
+                                label={
+                                  <FormattedMessage id="testcalculation.label.finalresult" />
+                                }
+                                name="testName"
+                                onSelect={(id) =>
+                                  handleTestSelection(id, index)
+                                }
+                                value={calculation.testId ?? ""}
+                                suggestions={
+                                  sampleTestList["FINAL_RESULT"][index]
+                                    ? sampleTestList["FINAL_RESULT"][index]
+                                    : []
+                                }
+                              ></AutoComplete>
+                            </Column>
+                            <Column lg={3} md={2} sm={4}>
+                              <Select
+                                id={index + "_finalcomponent"}
+                                name="componentId"
+                                labelText={
+                                  <FormattedMessage id="testcalculation.label.finalComponent" />
+                                }
+                                value={finalComponentFor(index)?.id || ""}
+                                disabled={
+                                  destinationComponentsFor(index).length === 0
+                                }
+                                onChange={(e) =>
+                                  handleCalculationFieldChange(e, index)
+                                }
+                                required
+                              >
+                                {!finalComponentFor(index) && (
+                                  <SelectItem text="" value="" />
+                                )}
+                                {destinationComponentsFor(index).map(
+                                  (component: any, c_index: number) => (
+                                    <SelectItem
+                                      text={component.value}
+                                      value={component.id}
+                                      key={c_index}
+                                    />
+                                  ),
+                                )}
+                              </Select>
+                            </Column>
+                            <Column lg={3} md={1} sm={4}>
+                              {getResultInputForComponent(
+                                finalComponentFor(index),
+                                index,
+                                calculation,
+                              )}
+                            </Column>
+                            <Column lg={3} md={1} sm={4}>
+                              <TextArea
+                                name="note"
+                                id={index + "_note"}
+                                rows={1}
+                                labelText={
+                                  <FormattedMessage id="rulebuilder.label.addExternalNote" />
+                                }
+                                value={calculation.note ?? ""}
+                                onChange={(e) => {
+                                  handleCalculationFieldChange(e, index);
+                                }}
+                              />
+                            </Column>
+                          </Grid>
+                        </div>
+                        <Button
+                          renderIcon={Save}
+                          id={"submit_" + index}
+                          type="submit"
+                          kind="primary"
+                          size="sm"
+                          disabled={isSubmitting}
+                        >
+                          <FormattedMessage id="label.button.submit" />
+                        </Button>
+                      </AccordionItem>
+                    </Accordion>
+                  </div>
                 </div>
               </Stack>
             </Form>
             {calculationList.length - 1 === index && (
-              <IconButton
+              <Button
                 data-cy="calcRule"
                 onClick={handleRuleAdd}
-                label={<FormattedMessage id="rulebuilder.label.addRule" />}
-                size="md"
+                size="lg"
                 kind="tertiary"
-                style={{ marginLeft: "30px" }}
+                renderIcon={Add}
+                style={{ marginLeft: "30px", marginTop: "1rem" }}
               >
-                <Add size={16} />
-                <span>
-                  <FormattedMessage id="rulebuilder.label.rule" />
-                </span>
-              </IconButton>
-            )}
-          </div>
-          <div className="second-division">
-            {calculationList.length !== 1 && (
-              <ModalWrapper
-                modalLabel={
-                  <FormattedMessage id="label.button.confirmDelete" />
-                }
-                handleSubmit={() => handleRuleRemove(index, calculation.id)}
-                primaryButtonText={
-                  <FormattedMessage id="label.button.confirm" />
-                }
-                secondaryButtonText={
-                  <FormattedMessage id="label.button.cancel" />
-                }
-                modalHeading={
-                  <FormattedMessage id="rulebuilder.label.confirmDelete" />
-                }
-                buttonTriggerText={
-                  <FormattedMessage id="rulebuilder.label.removeRule" />
-                }
-                size="md"
-              ></ModalWrapper>
+                <FormattedMessage id="rulebuilder.label.addRule" />
+              </Button>
             )}
           </div>
         </div>

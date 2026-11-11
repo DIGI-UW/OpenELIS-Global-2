@@ -45,6 +45,10 @@
             lazy="false">
             <column name="panel_id" precision="10" scale="0" />
         </many-to-one>
+        <property name="vectorPoolId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="vector_pool_id" precision="10" scale="0" />
+        </property>
         <property name="revision"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="REVISION" precision="22" scale="0" />
@@ -53,13 +57,13 @@
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="STATUS" length="3" />
         </property>
-        <property name="startedDate" type="java.sql.Date">
+        <property name="startedDate" type="java.sql.Timestamp">
             <column name="STARTED_DATE" length="7" />
         </property>
-        <property name="completedDate" type="java.sql.Date">
+        <property name="completedDate" type="java.sql.Timestamp">
             <column name="COMPLETED_DATE" length="7" />
         </property>
-        <property name="releasedDate" type="java.sql.Date">
+        <property name="releasedDate" type="java.sql.Timestamp">
             <column name="RELEASED_DATE" length="7" />
         </property>
         <property name="enteredDate" type="java.sql.Timestamp">
@@ -120,6 +124,9 @@
             fetch="join" lazy="false" cascade="all">
             <column name="result_file_id" not-null="false" unique="true" />
         </many-to-one>
+        <property name="analyzerId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+            column="analyzer_id" precision="10" />
 
     </class>
 

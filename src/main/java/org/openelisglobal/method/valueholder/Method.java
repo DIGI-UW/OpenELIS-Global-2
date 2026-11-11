@@ -42,6 +42,8 @@ public class Method extends EnumValueItemImpl {
 
     private String isActive;
 
+    private String code;
+
     private ValueHolderInterface localization;
 
     public Method() {
@@ -105,6 +107,14 @@ public class Method extends EnumValueItemImpl {
 
     public String getIsActive() {
         return isActive;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public String getCode() {
+        return code;
     }
 
     public void setActiveBeginDateForDisplay(String activeBeginDateForDisplay) {

@@ -4,8 +4,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -13,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.organization.service.OrganizationService;
@@ -95,7 +94,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
                 "Processing address hierarchy values file: " + fileName);
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
 
         // Read header to get level names
         String headerLine = reader.readLine();
@@ -332,7 +331,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
                     orgType = new OrganizationType();
                     orgType.setName(levelName);
                     orgType.setDescription("Address Hierarchy Level " + level);
-                    orgType.setSysUserId("1");
+
                     String typeId = organizationTypeService.insert(orgType);
                     orgType.setId(typeId);
                     LogEvent.logInfo(this.getClass().getSimpleName(), "buildOrCreateLevelTypes",
@@ -343,7 +342,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
                     if (orgType.getDescription() == null
                             || !orgType.getDescription().startsWith("Address Hierarchy Level ")) {
                         orgType.setDescription(expectedDescription);
-                        orgType.setSysUserId("1");
+
                         organizationTypeService.update(orgType);
                         LogEvent.logInfo(this.getClass().getSimpleName(), "buildOrCreateLevelTypes",
                                 "Updated organization type: " + levelName + " with level " + level);
@@ -451,8 +450,6 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
             newOrg.setShortName(name.length() > 15 ? name.substring(0, 15) : name);
             newOrg.setIsActive("Y");
             newOrg.setMlsSentinelLabFlag("N");
-            newOrg.setSysUserId("1");
-
             // Set parent using lightweight reference when possible
             if (parentId != null) {
                 // Parent has been flushed - use getReference for lightweight proxy

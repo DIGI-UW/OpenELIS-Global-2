@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add received_date column to sample_item for per-sample lab receipt tracking -->
+    <changeSet id="20260320-001" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="sample_item" schemaName="clinlims" columnName="received_date"/>
+            </not>
+        </preConditions>
+        <comment>Add received_date column to sample_item table for per-sample receipt tracking</comment>
+        <addColumn tableName="sample_item" schemaName="clinlims">
+            <column name="received_date" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

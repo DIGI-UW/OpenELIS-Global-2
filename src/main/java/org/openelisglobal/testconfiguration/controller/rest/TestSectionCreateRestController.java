@@ -19,6 +19,8 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testconfiguration.form.TestSectionCreateForm;
 import org.openelisglobal.testconfiguration.service.TestSectionCreateService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,9 +32,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasRole('ADMIN')")
 public class TestSectionCreateRestController extends BaseController {
 
-    private static final String[] ALLOWED_FIELDS = new String[] { "testUnitEnglishName", "testUnitFrenchName" };
+    private static final String[] ALLOWED_FIELDS = new String[] { "testUnitEnglishName", "testUnitFrenchName",
+            "domain" };
 
     public static final String NAME_SEPARATOR = "$";
 
@@ -81,13 +85,13 @@ public class TestSectionCreateRestController extends BaseController {
     }
 
     @PostMapping(value = "/TestSectionCreate")
-    public TestSectionCreateForm postTestSectionCreate(HttpServletRequest request,
+    public ResponseEntity<?> postTestSectionCreate(HttpServletRequest request,
             @RequestBody @Valid TestSectionCreateForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         String identifyingName = form.getTestUnitEnglishName();
@@ -95,7 +99,7 @@ public class TestSectionCreateRestController extends BaseController {
 
         Localization localization = createLocalization(form.getTestUnitFrenchName(), identifyingName, userId);
 
-        TestSection testSection = createTestSection(identifyingName, userId);
+        TestSection testSection = createTestSection(identifyingName, form.getDomain(), userId);
 
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, userId);
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, userId);
@@ -114,14 +118,14 @@ public class TestSectionCreateRestController extends BaseController {
         } catch (LIMSRuntimeException e) {
             LogEvent.logDebug(e);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return saveFailure(e);
         }
 
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private Localization createLocalization(String french, String english, String currentUserId) {
@@ -145,15 +149,15 @@ public class TestSectionCreateRestController extends BaseController {
         return roleModule;
     }
 
-    private TestSection createTestSection(String identifyingName, String userId) {
+    private TestSection createTestSection(String identifyingName, String domain, String userId) {
         TestSection testSection = new TestSection();
         testSection.setDescription(identifyingName);
         testSection.setTestSectionName(identifyingName);
         testSection.setIsActive("N");
         String identifyingNameKey = identifyingName.replaceAll(" ", "_");
         testSection.setNameKey("testSection." + identifyingNameKey);
-
         testSection.setSortOrderInt(Integer.MAX_VALUE);
+        testSection.setDomain(domain);
         testSection.setSysUserId(userId);
         return testSection;
     }

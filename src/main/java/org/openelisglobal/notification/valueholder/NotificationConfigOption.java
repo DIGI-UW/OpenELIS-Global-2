@@ -70,7 +70,6 @@ public class NotificationConfigOption extends BaseObject<Integer> {
     @Valid
     @ManyToOne(cascade = { CascadeType.PERSIST, CascadeType.MERGE, CascadeType.DETACH, CascadeType.REFRESH })
     @JoinColumn(name = "payload_template_id", referencedColumnName = "id")
-    @JsonIgnore
     private NotificationPayloadTemplate payloadTemplate;
 
     @Column(name = "active")

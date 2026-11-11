@@ -79,7 +79,7 @@ public class WorkPlanByTestSectionController extends BaseWorkplanController {
 
         // load testSections for drop down
         String resultsRoleId = roleService.getRoleByName(Constants.ROLE_RESULTS).getId();
-        List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
+        List<IdValuePair> testSections = userService.getUserViewerTestSections(getSysUserId(request), resultsRoleId);
         form.setTestSections(testSections);
         form.setTestSectionsByName(DisplayListService.getInstance().getList(ListType.TEST_SECTION_BY_NAME));
 

@@ -24,6 +24,7 @@ public class Note extends BaseObject<String> {
     public static final String INTERNAL = "I";
     public static final String REJECT_REASON = "R";
     public static final String NON_CONFORMITY = "N";
+    public static final String UNCONDITIONAL_ACCEPTANCE_REASON = "U";
 
     private String id;
 
@@ -40,6 +41,13 @@ public class Note extends BaseObject<String> {
     private String subject;
 
     private String text;
+
+    /**
+     * OGC-811 (Results Entry v3) — scopes a note to one result component of a
+     * multi-component test. Null means analysis-level (legacy notes and notes
+     * authored outside a component context), which displays on every component row.
+     */
+    private String testResultComponentId;
 
     public void setId(String id) {
         this.id = id;
@@ -103,6 +111,14 @@ public class Note extends BaseObject<String> {
 
     public void setSystemUserId(String systemUserId) {
         this.systemUserId = systemUserId;
+    }
+
+    public String getTestResultComponentId() {
+        return testResultComponentId;
+    }
+
+    public void setTestResultComponentId(String testResultComponentId) {
+        this.testResultComponentId = testResultComponentId;
     }
 
     public void setReferenceTables(ReferenceTables referenceTables) {

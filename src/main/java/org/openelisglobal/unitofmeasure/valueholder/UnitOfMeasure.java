@@ -25,6 +25,10 @@ public class UnitOfMeasure extends EnumValueItemImpl {
 
     private String description;
 
+    private String code;
+
+    private String ucumCode;
+
     private ValueHolderInterface localization;
 
     public UnitOfMeasure() {
@@ -55,6 +59,22 @@ public class UnitOfMeasure extends EnumValueItemImpl {
 
     public String getDescription() {
         return description;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setUcumCode(String ucumCode) {
+        this.ucumCode = ucumCode;
+    }
+
+    public String getUcumCode() {
+        return ucumCode;
     }
 
     @Override

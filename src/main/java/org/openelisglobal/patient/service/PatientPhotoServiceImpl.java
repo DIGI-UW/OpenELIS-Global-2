@@ -27,6 +27,7 @@ public class PatientPhotoServiceImpl extends AuditableBaseObjectServiceImpl<Pati
 
     public PatientPhotoServiceImpl() {
         super(PatientPhoto.class);
+        this.auditTrailLog = true;
     }
 
     @Override
@@ -36,12 +37,19 @@ public class PatientPhotoServiceImpl extends AuditableBaseObjectServiceImpl<Pati
 
     @Transactional
     @Override
-    public PatientPhoto savePhoto(String patientId, String photoBase64) throws LIMSRuntimeException {
+    public PatientPhoto savePhoto(String patientId, String photoBase64, String sysUserId) throws LIMSRuntimeException {
 
         if (photoBase64 != null && !photoBase64.isEmpty()) {
             String photoType = extractPhotoType(photoBase64);
             String cleanBase64 = cleanBase64Data(photoBase64);
             String thumbnail = createThumbnail(cleanBase64);
+            if (thumbnail == null) {
+                // The payload decoded as base64 but not as an image, so there is no
+                // thumbnail to store and the column is NOT NULL. Say why, instead of
+                // letting it surface as a constraint violation.
+                throw new LIMSRuntimeException(
+                        "The photo could not be read as an image." + " Supported formats are JPEG, PNG, GIF and BMP.");
+            }
 
             PatientPhoto existingPhoto = baseObjectDAO.getByPatientId(patientId);
 
@@ -51,6 +59,7 @@ public class PatientPhotoServiceImpl extends AuditableBaseObjectServiceImpl<Pati
                 patientPhoto.setPhotoData(cleanBase64);
                 patientPhoto.setThumbnailData(thumbnail);
                 patientPhoto.setPhotoType(photoType);
+                patientPhoto.setSysUserId(sysUserId);
                 update(patientPhoto);
             } else {
                 patientPhoto = new PatientPhoto();
@@ -58,6 +67,7 @@ public class PatientPhotoServiceImpl extends AuditableBaseObjectServiceImpl<Pati
                 patientPhoto.setPhotoData(cleanBase64);
                 patientPhoto.setThumbnailData(thumbnail);
                 patientPhoto.setPhotoType(photoType);
+                patientPhoto.setSysUserId(sysUserId);
                 insert(patientPhoto);
             }
 

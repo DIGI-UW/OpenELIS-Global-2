@@ -1,0 +1,1896 @@
+/**
+ * The contents of this file are subject to the Mozilla Public License Version 1.1 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy of the
+ * License at http://www.mozilla.org/MPL/
+ *
+ * <p>Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF
+ * ANY KIND, either express or implied. See the License for the specific language governing rights
+ * and limitations under the License.
+ *
+ * <p>The Original Code is OpenELIS code.
+ *
+ * <p>Copyright (C) The Minnesota Department of Health. All Rights Reserved.
+ */
+package org.openelisglobal.sample.controller.rest;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.apache.commons.validator.GenericValidator;
+import org.hibernate.proxy.HibernateProxy;
+import org.hl7.fhir.r4.model.QuestionnaireResponse;
+import org.openelisglobal.address.service.AddressPartService;
+import org.openelisglobal.address.service.PersonAddressService;
+import org.openelisglobal.address.valueholder.AddressPart;
+import org.openelisglobal.address.valueholder.PersonAddress;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.rest.provider.bean.PatientInfoBean;
+import org.openelisglobal.common.rest.util.DashboardPaging;
+import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.services.DisplayListService.ListType;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.RequesterService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
+import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.eqa.service.SampleEQAService;
+import org.openelisglobal.observationhistory.service.ObservationHistoryService;
+import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
+import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.panelitem.service.PanelItemService;
+import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
+import org.openelisglobal.patient.service.PatientContactService;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.util.PatientUtil;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.patient.valueholder.PatientContact;
+import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
+import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
+import org.openelisglobal.patienttype.service.PatientPatientTypeService;
+import org.openelisglobal.patienttype.valueholder.PatientType;
+import org.openelisglobal.person.service.PersonService;
+import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.program.service.ProgramSampleService;
+import org.openelisglobal.program.service.ProgramService;
+import org.openelisglobal.program.valueholder.Program;
+import org.openelisglobal.program.valueholder.ProgramSample;
+import org.openelisglobal.provider.valueholder.Provider;
+import org.openelisglobal.qachecklist.service.SampleQaChecklistService;
+import org.openelisglobal.qc.dao.SampleItemQcProfileDAO;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
+import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.valueholder.Referral;
+import org.openelisglobal.referral.valueholder.ReferralSubcontract;
+import org.openelisglobal.sample.override.service.SampleOrderOverrideService;
+import org.openelisglobal.sample.override.valueholder.OverrideType;
+import org.openelisglobal.sample.service.OrderProgressService;
+import org.openelisglobal.sample.service.SampleComplianceStandardService;
+import org.openelisglobal.sample.service.SampleLabUnitScopeService;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.OrderProgressStatus;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
+import org.openelisglobal.storage.service.SampleStorageService;
+import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.dto.TestSelectionDTO;
+import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.testmethod.service.TestMethodService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.vector.service.VectorPoolService;
+import org.openelisglobal.vector.service.VectorSamplingSiteService;
+import org.openelisglobal.vector.valueholder.VectorPool;
+import org.openelisglobal.vector.valueholder.VectorSamplingSite;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * REST Controller for Order Search and Dashboard in the decoupled sample
+ * collection workflow.
+ *
+ * <p>
+ * Provides endpoints for: - Barcode scanner bar (NAV-6) to load orders by lab
+ * number - Order dashboard (DSH-1 to DSH-9) to list in-progress orders
+ *
+ * @see Sample
+ * @see SampleService
+ */
+@RestController
+@RequestMapping("/rest/order")
+public class OrderSearchRestController extends BaseRestController {
+
+    @Lazy
+    @Autowired
+    private FhirTransformService fhirTransformService;
+    @Autowired
+    private SampleService sampleService;
+
+    @Autowired
+    private SampleItemService sampleItemService;
+
+    @Autowired
+    private SampleHumanService sampleHumanService;
+
+    @Autowired
+    private SystemUserService systemUserService;
+
+    @Autowired
+    private PatientService patientService;
+
+    @Autowired
+    private TypeOfSampleService typeOfSampleService;
+
+    @Autowired
+    private AddressPartService addressPartService;
+
+    @Autowired
+    private PersonAddressService personAddressService;
+
+    @Autowired
+    private PatientPatientTypeService patientPatientTypeService;
+
+    @Autowired
+    private PatientContactService patientContactService;
+
+    @Autowired
+    private AnalysisService analysisService;
+
+    @Autowired
+    private VectorPoolService vectorPoolService;
+
+    @Autowired
+    private ObservationHistoryService observationHistoryService;
+
+    @Autowired
+    private ProgramSampleService programSampleService;
+
+    @Autowired
+    private ProgramService programService;
+
+    @Autowired
+    private PersonService personService;
+
+    @Autowired
+    private OrganizationService organizationService;
+
+    @Autowired
+    private QuestionnaireStorageService questionnaireStorageService;
+
+    @Autowired
+    private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
+
+    @Autowired
+    private SampleStorageService sampleStorageService;
+
+    @Autowired
+    private SampleQaChecklistService sampleQaChecklistService;
+
+    @Autowired
+    private OrderProgressService orderProgressService;
+
+    @Autowired
+    private SampleItemQcProfileDAO sampleItemQcProfileDAO;
+
+    @Autowired
+    private SampleComplianceStandardService sampleComplianceStandardService;
+
+    /** Dashboard filter value for orders whose every test is referred out. */
+    private static final String REFERRED_OUT_FILTER = "referred_out";
+    /** Dashboard filter value for orders with at least one referred test. */
+    private static final String HAS_REFERRED_FILTER = "has_referred";
+
+    @Autowired
+    private ReferralService referralService;
+    @Autowired
+    private IStatusService statusService;
+
+    @Autowired
+    private PanelItemService panelItemService;
+
+    @Autowired
+    private PanelService panelService;
+
+    @Autowired
+    private TestSectionService testSectionService;
+
+    @Autowired
+    private VectorSamplingSiteService vectorSamplingSiteService;
+
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
+    /**
+     * Configuration property name (site_information or
+     * SystemConfiguration.properties) that opts a deployment out of scoping the
+     * orders dashboard by the user's lab units. The dashboard is scoped like the
+     * home dashboard unless the property is explicitly "false".
+     */
+    private static final String RESTRICT_RECENT_ORDERS_PROPERTY = "restrictRecentOrdersByTestSection";
+
+    @Autowired
+    private SampleLabUnitScopeService sampleLabUnitScopeService;
+
+    @Autowired
+    private TestMethodService testMethodService;
+
+    @Autowired
+    @Lazy
+    private SampleEQAService sampleEQAService;
+
+    @Autowired
+    @Lazy
+    private SampleOrderOverrideService sampleOrderOverrideService;
+
+    @Autowired(required = false)
+    private String ADDRESS_PART_VILLAGE_ID;
+    private String ADDRESS_PART_COMMUNE_ID;
+    private String ADDRESS_PART_DEPT_ID;
+
+    /**
+     * Ids of the samples the last dashboard search matched, newest first, in pages
+     * of paging.results.pageSize. The rows of a page are built when the page is
+     * asked for.
+     */
+    private final DashboardPaging<String> dashboardPaging = new DashboardPaging<>("orderDashboard");
+
+    /**
+     * The dashboard's cancelled filter; cancelled orders are hidden from every
+     * other one.
+     */
+    private static final String CANCELLED_FILTER = "cancelled";
+
+    /**
+     * The three step flags a row shows, the order's progress status, and the
+     * dashboard status they add up to.
+     */
+    private static final class StepState {
+        final boolean collect;
+        final boolean label;
+        final boolean qa;
+        final OrderProgressStatus progress;
+        final boolean complete;
+        final boolean fullyReferred;
+
+        StepState(boolean collect, boolean label, boolean qa, OrderProgressStatus progress, boolean complete,
+                boolean fullyReferred) {
+            this.collect = collect;
+            this.label = label;
+            this.qa = qa;
+            this.progress = progress;
+            this.complete = complete;
+            this.fullyReferred = fullyReferred;
+        }
+
+        String status() {
+            if (progress == OrderProgressStatus.CANCELLED) {
+                return CANCELLED_FILTER;
+            }
+            if (fullyReferred && progress.isAtLeast(OrderProgressStatus.SAMPLES_PREPARED)) {
+                return REFERRED_OUT_FILTER;
+            }
+            if (complete) {
+                return "completed";
+            }
+            return label && collect ? "pending_qa" : "in_progress";
+        }
+    }
+
+    /**
+     * One page of the orders dashboard (DSH-1 to DSH-9).
+     *
+     * <p>
+     * A request without {@code page} runs the search: every sample, newest first,
+     * is matched against the filters and the matching ids are cached in the session
+     * in pages of paging.results.pageSize; the first page comes back with a
+     * {@code paging} announcement ({@code currentPage}, {@code totalPages}). A
+     * request with {@code page} re-slices that cache, so paging never re-runs the
+     * search. The status filters need each sample's step state and are therefore
+     * the costly ones; the others read the sample and one bulk lookup of workflow
+     * types.
+     *
+     * <p>
+     * When test-section scoping is in effect, a user still always sees the orders
+     * they created themselves, even if the analyses on them belong to another
+     * section.
+     *
+     * @param page         the page of the cached list to return; absent for a new
+     *                     search
+     * @param search       search query for patient name or lab number
+     * @param status       filter by order status
+     * @param priority     filter by priority
+     * @param workflowType clinical, environmental or vector
+     * @return the page's orders, the page announcement and the total matched
+     * @see #resolveAllowedSectionIds(String) for when the list is narrowed to the
+     *      user's lab units (on by default)
+     */
+    @GetMapping(value = "/dashboard", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getDashboard(@RequestParam(required = false) Integer page,
+            @RequestParam(required = false) String search, @RequestParam(required = false) String status,
+            @RequestParam(required = false) String priority,
+            @RequestParam(defaultValue = "false") boolean includeExternal,
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String workflowType, HttpServletRequest request) {
+
+        try {
+            HttpSession session = request.getSession();
+            Map<String, String> workflowBySample = workflowTypesBySample();
+            List<String> pageIds;
+            int pageNumber;
+            if (page != null) {
+                pageNumber = Math.max(page, 1);
+                pageIds = dashboardPaging.page(session, pageNumber);
+            } else {
+                pageNumber = 1;
+                pageIds = dashboardPaging.cache(session, matchingSampleIds(getSysUserId(request), search, status,
+                        priority, startDate, endDate, workflowType, workflowBySample));
+            }
+
+            List<Map<String, Object>> ordersList = new ArrayList<>();
+            for (String sampleId : pageIds) {
+                Sample sample = sampleService.get(sampleId);
+                if (sample != null) {
+                    ordersList.add(orderRow(sample, workflowBySample.get(sample.getId())));
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("orders", ordersList);
+            response.put("paging", dashboardPaging.pagingBean(session, pageNumber));
+            response.put("totalCount", dashboardPaging.totalItems(session));
+            response.put("externalCount", 0); // Placeholder for external orders count
+            response.put("page", pageNumber);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "getDashboard", "Error fetching dashboard: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /** Every sample, newest first, that the dashboard filters let through. */
+    private List<String> matchingSampleIds(String currentSysUserId, String search, String status, String priority,
+            String startDate, String endDate, String workflowType, Map<String, String> workflowBySample) {
+        Set<String> allowedSectionIds = resolveAllowedSectionIds(currentSysUserId);
+        java.sql.Date filterStart = parseFilterDate(startDate);
+        java.sql.Date filterEnd = parseFilterDate(endDate);
+        String searchLower = search == null ? "" : search.trim().toLowerCase();
+        boolean statusAsked = status != null && !status.isEmpty() && !"all".equals(status);
+
+        List<String> ids = new ArrayList<>();
+        for (Sample sample : sampleService.getSamplesNewestFirst(1, Integer.MAX_VALUE)) {
+            if (!matchesWorkflow(workflowType, workflowBySample.get(sample.getId()))) {
+                continue;
+            }
+            if (priority != null && !priority.isEmpty() && !"all".equals(priority)
+                    && !priorityOf(sample).equals(priority.toLowerCase())) {
+                continue;
+            }
+            java.sql.Date sampleDate = sample.getEnteredDate();
+            if (filterStart != null && (sampleDate == null || sampleDate.before(filterStart))) {
+                continue;
+            }
+            if (filterEnd != null && (sampleDate == null || sampleDate.after(filterEnd))) {
+                continue;
+            }
+            boolean createdByCurrentUser = currentSysUserId != null && currentSysUserId.equals(sample.getSysUserId());
+            if (!allowedSectionIds.isEmpty() && !createdByCurrentUser
+                    && !sampleLabUnitScopeService.belongsToSections(sample, allowedSectionIds)) {
+                continue;
+            }
+            if (!searchLower.isEmpty() && !matchesSearch(sample, searchLower)) {
+                continue;
+            }
+            boolean cancelled = OrderProgressStatus
+                    .fromStored(sample.getOrderProgressStatus()) == OrderProgressStatus.CANCELLED;
+            if (statusAsked) {
+                if (CANCELLED_FILTER.equals(status)) {
+                    if (!cancelled) {
+                        continue;
+                    }
+                } else if (cancelled) {
+                    continue;
+                } else {
+                    List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+                    if (HAS_REFERRED_FILTER.equals(status)) {
+                        if (!hasReferral(sampleItems)) {
+                            continue;
+                        }
+                    } else if (!stepState(sample, sampleItems, workflowBySample.get(sample.getId())).status()
+                            .equals(status)) {
+                        continue;
+                    }
+                }
+            } else if (cancelled) {
+                continue;
+            }
+            ids.add(sample.getId());
+        }
+        return ids;
+    }
+
+    /**
+     * Clinical orders may store "clinical" explicitly (new) or nothing (legacy
+     * pre-split); the other workflows must match their stored type.
+     */
+    private boolean matchesWorkflow(String workflowType, String sampleWorkflowType) {
+        if (workflowType == null || workflowType.isEmpty()) {
+            return true;
+        }
+        if ("clinical".equalsIgnoreCase(workflowType)) {
+            return sampleWorkflowType == null || "clinical".equalsIgnoreCase(sampleWorkflowType);
+        }
+        return workflowType.equalsIgnoreCase(sampleWorkflowType);
+    }
+
+    private boolean matchesSearch(Sample sample, String searchLower) {
+        if (sample.getAccessionNumber() != null && sample.getAccessionNumber().toLowerCase().contains(searchLower)) {
+            return true;
+        }
+        Patient patient = sampleHumanService.getPatientForSample(sample);
+        if (patient == null) {
+            return false;
+        }
+        String patientName = (patientService.getFirstName(patient) + " " + patientService.getLastName(patient))
+                .toLowerCase();
+        return patientName.contains(searchLower);
+    }
+
+    /** An unparseable date leaves that bound off, as the filter always has. */
+    private java.sql.Date parseFilterDate(String value) {
+        if (value == null || value.isEmpty()) {
+            return null;
+        }
+        try {
+            return java.sql.Date.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private String priorityOf(Sample sample) {
+        return sample.getPriority() != null ? sample.getPriority().name().toLowerCase() : "routine";
+    }
+
+    /**
+     * Stored workflow type by sample id, read in one pass instead of once per
+     * sample.
+     */
+    private Map<String, String> workflowTypesBySample() {
+        Map<String, String> bySample = new HashMap<>();
+        for (ObservationHistory observation : observationHistoryService
+                .getObservationHistoriesByType(ObservationType.ENV_WORKFLOW_TYPE)) {
+            if (observation.getSampleId() != null && observation.getValue() != null) {
+                bySample.put(observation.getSampleId(), observation.getValue());
+            }
+        }
+        return bySample;
+    }
+
+    private StepState stepState(Sample sample, List<SampleItem> sampleItems, String sampleWorkflowType) {
+        // Collect is complete if all sample items with tests have collection dates
+        boolean collectComplete = false;
+        if (!sampleItems.isEmpty()) {
+            List<SampleItem> itemsWithTests = sampleItems.stream()
+                    .filter(si -> !analysisService.getAnalysesBySampleItem(si).isEmpty())
+                    .collect(java.util.stream.Collectors.toList());
+            if (!itemsWithTests.isEmpty()) {
+                collectComplete = itemsWithTests.stream().allMatch(si -> si.getCollectionDate() != null);
+            }
+        }
+
+        // Label is complete if all sample items have storage assignments OR storage is
+        // skipped
+        boolean labelComplete = false;
+        if (Boolean.TRUE.equals(sample.getStorageSkipped())) {
+            labelComplete = true;
+        } else if (!sampleItems.isEmpty()) {
+            labelComplete = sampleItems.stream().allMatch(si -> {
+                SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(si.getId());
+                return assignment != null && assignment.getLocationId() != null;
+            });
+        }
+
+        // QA is complete if the QA step has been saved (checklist record exists)
+        boolean qaComplete = sampleQaChecklistService.findBySampleId(Integer.parseInt(sample.getId())) != null;
+        String workflowType = GenericValidator.isBlankOrNull(sampleWorkflowType) ? "clinical" : sampleWorkflowType;
+        OrderProgressStatus progress = orderProgressService.statusOf(sample, collectComplete && labelComplete,
+                qaComplete);
+        if (OrderProgressStatus.fromStored(sample.getOrderProgressStatus()) != null
+                && "clinical".equalsIgnoreCase(workflowType)) {
+            boolean prepared = progress.isAtLeast(OrderProgressStatus.SAMPLES_PREPARED);
+            collectComplete = prepared;
+            labelComplete = prepared;
+            qaComplete = progress == OrderProgressStatus.READY_FOR_TESTING;
+        }
+        boolean fullyReferred = orderProgressService.isFullyReferred(sample.getId());
+        return new StepState(collectComplete, labelComplete, qaComplete, progress,
+                orderProgressService.isComplete(progress, workflowType, fullyReferred), fullyReferred);
+    }
+
+    /**
+     * How much of the order is referred out, for the dashboard row: the referred
+     * and total test counts and the receiving laboratories.
+     */
+    Map<String, Object> referralSummary(List<SampleItem> sampleItems) {
+        int total = 0;
+        int referred = 0;
+        java.util.Set<String> laboratories = new java.util.LinkedHashSet<>();
+        for (SampleItem sampleItem : sampleItems) {
+            for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
+                if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                    continue;
+                }
+                total++;
+                Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
+                if (!orderProgressService.isOpenReferral(referral)) {
+                    continue;
+                }
+                referred++;
+                if (referral.getOrganization() != null) {
+                    laboratories.add(referral.getOrganization().getOrganizationName());
+                }
+            }
+        }
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("referredTests", referred);
+        summary.put("totalTests", total);
+        summary.put("referredTo", String.join(", ", laboratories));
+        return summary;
+    }
+
+    /** One dashboard row, built only for the samples on the page shown. */
+    private Map<String, Object> orderRow(Sample sample, String sampleWorkflowType) {
+        List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+        StepState steps = stepState(sample, sampleItems, sampleWorkflowType);
+
+        Map<String, Object> orderData = new HashMap<>();
+        orderData.put("id", sample.getId());
+        orderData.put("labNumber", sample.getAccessionNumber());
+        orderData.put("lastUpdated", sample.getLastupdated() != null ? sample.getLastupdated().toString() : "");
+        orderData.put("priority", priorityOf(sample));
+        orderData.put("isExternal", false);
+        orderData.put("returnedFromQA", false);
+
+        boolean isEnvOrVector = "environmental".equalsIgnoreCase(sampleWorkflowType)
+                || "vector".equalsIgnoreCase(sampleWorkflowType);
+        if (isEnvOrVector) {
+            // Environmental orders use VS_COLLECTION_SITE_NAME (VectorSection shared
+            // component stores site as vecCollectionSiteName). Vector orders do the same.
+            // Fall back to ENV_SAMPLING_SITE_NAME for older records.
+            String siteName = observationHistoryService.getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME,
+                    sample.getId());
+            if (siteName == null) {
+                siteName = observationHistoryService.getRawValueForSample(ObservationType.ENV_SAMPLING_SITE_NAME,
+                        sample.getId());
+            }
+            orderData.put("samplingSiteName", siteName != null ? siteName : "---");
+            orderData.put("patientName", null);
+        } else {
+            // Clinical orders show patient name
+            Patient orderPatient = sampleHumanService.getPatientForSample(sample);
+            if (orderPatient != null) {
+                String patientName = (patientService.getFirstName(orderPatient) + " "
+                        + patientService.getLastName(orderPatient)).trim();
+                orderData.put("patientName", patientName);
+            } else {
+                orderData.put("patientName", "---");
+            }
+        }
+
+        // Facility: referring organisation (all workflow types)
+        String facilityName = "";
+        RequesterService requesterService = new RequesterService(sample.getId());
+        Organization referringOrg = requesterService.getOrganization();
+        if (referringOrg == null)
+            referringOrg = requesterService.getOrganizationDepartment();
+        if (referringOrg != null)
+            facilityName = referringOrg.getOrganizationName();
+        orderData.put("facilityName", facilityName.isEmpty() ? "---" : facilityName);
+
+        boolean finished = steps.complete && steps.progress != OrderProgressStatus.CANCELLED;
+        Map<String, Boolean> stepProgress = new HashMap<>();
+        stepProgress.put("enter", isEnterComplete(sample));
+        stepProgress.put("collect", steps.collect || finished);
+        stepProgress.put("label", steps.label || finished);
+        stepProgress.put("qa", steps.qa || finished);
+        orderData.put("stepProgress", stepProgress);
+        orderData.put("status", steps.status());
+        orderData.put("referralSummary", referralSummary(sampleItems));
+        putProgress(orderData, sample,
+                GenericValidator.isBlankOrNull(sampleWorkflowType) ? "clinical" : sampleWorkflowType, steps.progress,
+                steps.complete, steps.fullyReferred);
+        orderData.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
+
+        if (sampleWorkflowType != null) {
+            orderData.put("workflowType", sampleWorkflowType);
+        }
+        return orderData;
+    }
+
+    /**
+     * Search for an order by lab number (accession number).
+     *
+     * <p>
+     * Returns order data including patient information and samples for display in
+     * the order workflow steps. Used by the barcode scanner bar (NAV-6).
+     *
+     * <p>
+     * Example: GET /rest/order/search?labNumber=20231201-001
+     *
+     * @param labNumber the lab/accession number to search for (required)
+     * @return Order data with 200 OK, or 404 if not found
+     */
+
+    /**
+     * The panel an analysis was ordered through, as recorded on the analysis. A
+     * test that is also a member of some panel but was ordered on its own has no
+     * panel, and is reloaded as a standalone test.
+     */
+    private String panelIdOf(Analysis analysis) {
+        Object panel = analysis.getPanel();
+        if (panel == null) {
+            return null;
+        }
+        if (panel instanceof HibernateProxy proxy) {
+            Object id = proxy.getHibernateLazyInitializer().getIdentifier();
+            return id == null ? null : id.toString();
+        }
+        return ((Panel) panel).getId();
+    }
+
+    private String panelNameFor(String panelId, String testId) {
+        try {
+            for (PanelItem panelItem : panelItemService.getPanelItemByTestId(testId)) {
+                if (panelItem.getPanel() != null && panelId.equals(panelItem.getPanel().getId())) {
+                    return panelItem.getPanel().getLocalizedName();
+                }
+            }
+            String name = panelService.getNameForPanelId(panelId);
+            return name == null ? "" : name;
+        } catch (Exception e) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "panelNameFor",
+                    "Panel name lookup failed for panel " + panelId);
+            return "";
+        }
+    }
+
+    @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> searchOrder(@RequestParam(required = false) String labNumber,
+            HttpServletRequest request) {
+
+        if (labNumber == null || labNumber.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        try {
+            // Find the sample by accession number
+            Sample sample = sampleService.getSampleByAccessionNumber(labNumber.trim());
+
+            if (sample == null || !sampleLabUnitScopeService.isVisible(getSysUserId(request), sample)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Build response with order data
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", sample.getId());
+            response.put("labNumber", sample.getAccessionNumber());
+            response.put("receivedDate", sample.getReceivedDateForDisplay());
+            response.put("collectionDate", sample.getCollectionDateForDisplay());
+            response.put("status", sample.getStatus());
+
+            // Get patient information - using PatientInfoBean for consistency with
+            // /rest/patient-details
+            Patient patient = sampleHumanService.getPatientForSample(sample);
+            if (patient != null) {
+                PatientInfoBean patientData = buildPatientProperties(patient);
+                response.put("patientProperties", patientData);
+
+                // Also include orderData structure for frontend compatibility
+                Map<String, Object> orderData = new HashMap<>();
+                orderData.put("patientProperties", patientData);
+                orderData.put("patientUpdateStatus", "UPDATE");
+                response.put("orderData", orderData);
+            }
+
+            // Get sample items
+            List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+            List<Map<String, Object>> samplesData = new ArrayList<>();
+
+            // Map sample_item.id -> index in samplesData so we can resolve
+            // SampleItemQcProfile.parentSampleItemId back to the frontend's array index.
+            Map<Integer, Integer> sampleItemIdToIndex = new HashMap<>();
+            for (int i = 0; i < sampleItems.size(); i++) {
+                String itemId = sampleItems.get(i).getId();
+                if (itemId != null) {
+                    sampleItemIdToIndex.put(Integer.valueOf(itemId), i);
+                }
+            }
+
+            // Vector orders: analyses are anchored to vector_pool_id (not sampitem_id)
+            // after fan-out. Build a per-organism index so each sample_item picks up
+            // only its OWN pool's analyses; unioning across all pools on the sample
+            // would bleed (e.g.) Mosquito tests onto Flea organism rows.
+            // Also build a memberId→poolId map and a poolId→size map so the
+            // frontend can group rows by stable pool identifier (not sampleTypeId,
+            // which would merge two pools of the same animal into one).
+            Map<String, List<Analysis>> analysesByMemberId = new HashMap<>();
+            Map<String, String> poolIdByMemberId = new HashMap<>();
+            Map<String, Integer> poolSizeById = new HashMap<>();
+            if ("V".equals(sample.getDomain())) {
+                for (VectorPool pool : vectorPoolService.getBySampleId(sample.getId())) {
+                    String poolId = String.valueOf(pool.getId());
+                    List<Analysis> poolAnalyses = analysisService.getAnalysesByVectorPoolId(poolId);
+                    List<SampleItem> members = vectorPoolService.getMembersByPoolId(pool.getId());
+                    poolSizeById.put(poolId, members.size());
+                    // Always store an entry per member (even an empty list) so the
+                    // per-item fallback `getAnalysesBySampleItem(sampleItem)` query
+                    // is skipped for pools that legitimately have no analyses yet.
+                    for (SampleItem member : members) {
+                        poolIdByMemberId.put(member.getId(), poolId);
+                        analysesByMemberId.put(member.getId(), poolAnalyses);
+                    }
+                }
+            }
+
+            for (SampleItem sampleItem : sampleItems) {
+                Map<String, Object> sampleItemData = new HashMap<>();
+                sampleItemData.put("id", sampleItem.getId());
+                sampleItemData.put("sampleItemId", sampleItem.getId()); // For frontend to use in updates
+                sampleItemData.put("sortOrder", sampleItem.getSortOrder());
+                sampleItemData.put("sampleTypeId", sampleItem.getTypeOfSampleId());
+                // Vector pool fan-out parents (sample_item rows with quantity=N) are
+                // hard-deleted by VectorPoolFanOutServiceImpl and never reach this
+                // response. The voided flag is still exposed for any non-vector
+                // workflow that may soft-delete a sample_item; `sampleItemService
+                // .getSampleItemsBySampleId(...)` already filters voided=false, so
+                // this defaults to false in the current code path.
+                sampleItemData.put("voided", sampleItem.isVoided());
+                if (sampleItem.getVoidReason() != null) {
+                    sampleItemData.put("voidReason", sampleItem.getVoidReason());
+                }
+                // S-09 (OGC-580): expose the per-specimen rejected flag so the workflow can
+                // surface a rejected/resampled specimen (read-only "Rejected" in the QA
+                // intake-acceptance table, with its replacement-order link) while keeping it
+                // out of the Collect / Label & Store action lists — visible, not silently
+                // dropped.
+                sampleItemData.put("sampleRejected", sampleItem.isRejected());
+                if (sampleItem.getRejectReasonId() != null) {
+                    sampleItemData.put("rejectionReason", sampleItem.getRejectReasonId());
+                }
+
+                // Vector pool membership: expose the stable pool id + size so the
+                // frontend can group organisms by pool. Two pools of the same
+                // sampleTypeId must remain distinct rows.
+                String memberPoolId = poolIdByMemberId.get(sampleItem.getId());
+                if (memberPoolId != null) {
+                    sampleItemData.put("vectorPoolId", memberPoolId);
+                    sampleItemData.put("vectorPoolMemberCount", poolSizeById.getOrDefault(memberPoolId, 0));
+                }
+
+                // Get sample type name
+                if (sampleItem.getTypeOfSampleId() != null) {
+                    var typeOfSample = typeOfSampleService.get(sampleItem.getTypeOfSampleId());
+                    if (typeOfSample != null) {
+                        sampleItemData.put("name", typeOfSample.getLocalizedName());
+                        sampleItemData.put("sampleTypeName", typeOfSample.getLocalizedName());
+                    }
+                }
+
+                String collectionDateDisplay = "";
+                String collectionTimeDisplay = "";
+                if (sampleItem.getCollectionDate() != null) {
+                    collectionDateDisplay = DateUtil.convertTimestampToStringDate(sampleItem.getCollectionDate());
+                    collectionTimeDisplay = DateUtil.convertTimestampToStringTime(sampleItem.getCollectionDate());
+                }
+
+                sampleItemData.put("collectionDate", collectionDateDisplay);
+                sampleItemData.put("collectionTime", collectionTimeDisplay);
+                sampleItemData.put("quantity", sampleItem.getQuantity() != null ? sampleItem.getQuantity() : "");
+                sampleItemData.put("quantityUnit",
+                        sampleItem.getUnitOfMeasure() != null ? sampleItem.getUnitOfMeasure().getId() : "");
+                sampleItemData.put("collectorId", sampleItem.getCollector() != null ? sampleItem.getCollector() : "");
+                sampleItemData.put("labPerformedSampling", sampleItem.isLabPerformedSampling());
+                sampleItemData.put("collectionConditions",
+                        sampleItem.getCollectionConditions() != null ? sampleItem.getCollectionConditions() : "");
+                sampleItemData.put("collectionMethod",
+                        sampleItem.getCollectionMethod() != null ? sampleItem.getCollectionMethod() : "");
+                sampleItemData.put("sampleTemperature",
+                        sampleItem.getSampleTemperature() != null ? sampleItem.getSampleTemperature() : "");
+                sampleItemData.put("specimenOrigin",
+                        sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
+                putReceiptAndArrival(sampleItemData, sampleItem);
+
+                String receivedDateDisplay = "";
+                String receivedTimeDisplay = "";
+                if (sampleItem.getReceivedDate() != null) {
+                    receivedDateDisplay = DateUtil.convertTimestampToStringDate(sampleItem.getReceivedDate());
+                    receivedTimeDisplay = DateUtil.convertTimestampToStringTime(sampleItem.getReceivedDate());
+                }
+                sampleItemData.put("receivedDate", receivedDateDisplay);
+                sampleItemData.put("receivedTime", receivedTimeDisplay);
+
+                Map<String, Object> sampleXML = new HashMap<>();
+                sampleXML.put("collectionDate", collectionDateDisplay);
+                sampleXML.put("collectionTime", collectionTimeDisplay);
+                sampleXML.put("quantity", sampleItem.getQuantity());
+                sampleXML.put("uom",
+                        sampleItem.getUnitOfMeasure() != null ? sampleItem.getUnitOfMeasure().getId() : "");
+                sampleXML.put("collector", sampleItem.getCollector());
+                sampleXML.put("collectionMethod",
+                        sampleItem.getCollectionMethod() != null ? sampleItem.getCollectionMethod() : "");
+                sampleXML.put("sampleTemperature",
+                        sampleItem.getSampleTemperature() != null ? sampleItem.getSampleTemperature() : "");
+                sampleXML.put("specimenOrigin",
+                        sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
+                sampleXML.put("container", sampleItem.getContainer() != null ? sampleItem.getContainer() : "");
+                sampleXML.put("cultureSetNumber", sampleItem.getCultureSetNumber());
+                sampleXML.put("bodySite", sampleItem.getBodySite() != null ? sampleItem.getBodySite() : "");
+                sampleXML.put("collectionLocationId", sampleItem.getCollectionLocationId());
+                sampleXML.put("locationDetails",
+                        sampleItem.getLocationDetails() != null ? sampleItem.getLocationDetails() : "");
+                sampleXML.put("gpsLatitude", sampleItem.getGpsLatitude() != null ? sampleItem.getGpsLatitude() : "");
+                sampleXML.put("gpsLongitude", sampleItem.getGpsLongitude() != null ? sampleItem.getGpsLongitude() : "");
+                sampleItemData.put("sampleXML", sampleXML);
+
+                // Get tests from analysis records for this sample item. For vector
+                // organism children (which have NO direct analysis link), use the
+                // pre-built per-member index FIRST so each member skips the
+                // empty-result getAnalysesBySampleItem query (N+1 across a large
+                // pool). Fall back to the item-anchored query only when no pool
+                // membership is found, which covers non-vector samples and
+                // post-deconvolution item-anchored analyses.
+                List<Analysis> analyses;
+                List<Analysis> memberAnalyses = analysesByMemberId.get(sampleItem.getId());
+                if (memberAnalyses != null) {
+                    analyses = memberAnalyses;
+                } else {
+                    analyses = analysisService.getAnalysesBySampleItem(sampleItem);
+                }
+                List<TestSelectionDTO> testsData = new ArrayList<>();
+                List<Map<String, Object>> panelsData = new ArrayList<>();
+
+                Map<String, List<String>> panelTestIdsMap = new LinkedHashMap<>();
+                Map<String, String> panelNameMap = new HashMap<>();
+                for (Analysis analysis : analyses) {
+                    if (analysis.getTest() == null
+                            || statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                        continue;
+                    }
+                    testsData.add(buildSelectedTestData(analysis.getTest()));
+
+                    String panelId = panelIdOf(analysis);
+                    if (GenericValidator.isBlankOrNull(panelId)) {
+                        continue;
+                    }
+                    panelTestIdsMap.computeIfAbsent(panelId, k -> new ArrayList<>()).add(analysis.getTest().getId());
+                    if (!panelNameMap.containsKey(panelId)) {
+                        panelNameMap.put(panelId, panelNameFor(panelId, analysis.getTest().getId()));
+                    }
+                }
+                for (Map.Entry<String, List<String>> entry : panelTestIdsMap.entrySet()) {
+                    Map<String, Object> panelData = new HashMap<>();
+                    panelData.put("id", entry.getKey());
+                    panelData.put("name", panelNameMap.getOrDefault(entry.getKey(), ""));
+                    panelData.put("testIds", String.join(",", entry.getValue()));
+                    panelsData.add(panelData);
+                }
+
+                sampleItemData.put("tests", testsData);
+                sampleItemData.put("panels", panelsData);
+                sampleItemData.put("index", sampleItem.getSortOrder());
+
+                // Attach QC metadata if this sample item has a QC profile
+                try {
+                    String currentItemId = sampleItem.getId();
+                    if (currentItemId != null) {
+                        sampleItemQcProfileDAO.findBySampleItemId(Integer.valueOf(currentItemId)).ifPresent(profile -> {
+                            Map<String, Object> qcMetadata = new HashMap<>();
+                            qcMetadata.put("qcType", profile.getQcType());
+                            Integer parentItemId = profile.getParentSampleItemId();
+                            Integer parentIndex = parentItemId != null ? sampleItemIdToIndex.get(parentItemId) : null;
+                            qcMetadata.put("parentSampleIndex", parentIndex);
+                            qcMetadata.put("expectedValue",
+                                    profile.getExpectedValue() != null ? profile.getExpectedValue().toPlainString()
+                                            : null);
+                            sampleItemData.put("qcMetadata", qcMetadata);
+                        });
+                    }
+                } catch (Exception e) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "searchOrder",
+                            "Failed to load QC profile for sample item " + sampleItem.getId() + ": " + e.getMessage());
+                }
+
+                // S-14 / OGC-624: surface referral + subcontract metadata per sample so
+                // Step 3 Refer Out can render current status and dispatch existing referrals.
+                // Per-analysis Referrals are deduplicated by referralId, since the FR-01 UI
+                // is per-sample, not per-test.
+                List<Map<String, Object>> referralItemsData = new ArrayList<>();
+                java.util.Set<String> seenReferralIds = new java.util.HashSet<>();
+                for (Analysis analysis : analyses) {
+                    Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
+                    if (referral == null || referral.getId() == null || !seenReferralIds.add(referral.getId())) {
+                        continue;
+                    }
+                    Map<String, Object> referralData = new HashMap<>();
+                    referralData.put("referralId", referral.getId());
+                    if (referral.getOrganization() != null) {
+                        referralData.put("referredInstituteId", referral.getOrganization().getId());
+                        referralData.put("referredInstituteName", referral.getOrganization().getOrganizationName());
+                    }
+                    referralData.put("referralReasonId", referral.getReferralReasonId());
+                    referralData.put("referrer", referral.getRequesterName());
+                    referralData.put("referredSendDate",
+                            referral.getSentDate() != null
+                                    ? DateUtil.convertTimestampToStringDate(referral.getSentDate())
+                                    : "");
+                    referralData.put("referralStatus",
+                            referral.getStatus() != null ? referral.getStatus().name() : null);
+                    ReferralSubcontract subcontract = referral.getSubcontract();
+                    if (subcontract != null) {
+                        referralData.put("subcontractId", subcontract.getId());
+                        referralData.put("agreementReference", subcontract.getAgreementReference());
+                        referralData.put("handoffDatetime",
+                                subcontract.getHandoffDatetimeForDisplay() != null
+                                        ? subcontract.getHandoffDatetimeForDisplay()
+                                        : "");
+                        referralData.put("expectedReturnDate",
+                                subcontract.getExpectedReturnDateForDisplay() != null
+                                        ? subcontract.getExpectedReturnDateForDisplay()
+                                        : "");
+                        referralData.put("cocContactName", subcontract.getCocContactName());
+                        referralData.put("cocContactPhone", subcontract.getCocContactPhone());
+                        referralData.put("cocContactEmail", subcontract.getCocContactEmail());
+                        referralData.put("subcontractNotes", subcontract.getSubcontractNotes());
+                    }
+                    referralItemsData.add(referralData);
+                }
+                sampleItemData.put("referralItems", referralItemsData);
+
+                // Get storage assignment for this sample item
+                SampleStorageAssignment storageAssignment = sampleStorageAssignmentDAO
+                        .findBySampleItemId(sampleItem.getId());
+                if (storageAssignment != null && storageAssignment.getLocationId() != null) {
+                    sampleItemData.put("storageLocationId", storageAssignment.getLocationId());
+                    sampleItemData.put("storageLocationType", storageAssignment.getLocationType());
+                    sampleItemData.put("storagePositionCoordinate", storageAssignment.getPositionCoordinate());
+                    sampleItemData.put("storageNotes", storageAssignment.getNotes());
+
+                    // Get hierarchical path via the service
+                    Map<String, Object> locationInfo = sampleStorageService.getSampleItemLocation(sampleItem.getId());
+                    if (locationInfo != null && locationInfo.get("hierarchicalPath") != null) {
+                        sampleItemData.put("storageHierarchicalPath", locationInfo.get("hierarchicalPath"));
+                    }
+                }
+
+                samplesData.add(sampleItemData);
+            }
+            response.put("samples", samplesData);
+
+            // Build comprehensive sampleOrderItems with provider, site, and clinical info
+            Map<String, Object> sampleOrderItems = buildSampleOrderItems(sample);
+            response.put("sampleOrderItems", sampleOrderItems);
+
+            // Step progress - determine based on actual data
+            boolean isVectorOrder = "V".equals(sample.getDomain());
+            Map<String, Boolean> stepProgress = new HashMap<>();
+            stepProgress.put("enter", true); // If sample exists, enter is complete
+
+            // Vector workflow has no collect step — samples are created at order entry.
+            // For clinical workflow, collect is complete when sample items with tests
+            // all have collection dates set.
+            if (isVectorOrder) {
+                stepProgress.put("collect", true);
+            } else {
+                boolean collectComplete = false;
+                if (!sampleItems.isEmpty()) {
+                    List<SampleItem> sampleItemsWithTests = sampleItems.stream()
+                            .filter(si -> !analysisService.getAnalysesBySampleItem(si).isEmpty())
+                            .collect(java.util.stream.Collectors.toList());
+                    if (!sampleItemsWithTests.isEmpty()) {
+                        collectComplete = sampleItemsWithTests.stream().allMatch(si -> si.getCollectionDate() != null);
+                    }
+                }
+                stepProgress.put("collect", collectComplete);
+            }
+
+            // Vector workflow has no storage requirement — label step is always complete.
+            // For clinical workflow, label is complete when all sample items have storage
+            // assignments or storage is explicitly skipped.
+            boolean labelComplete;
+            if (isVectorOrder) {
+                labelComplete = true;
+            } else if (Boolean.TRUE.equals(sample.getStorageSkipped())) {
+                labelComplete = true;
+            } else if (!sampleItems.isEmpty()) {
+                labelComplete = sampleItems.stream().allMatch(si -> {
+                    SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(si.getId());
+                    return assignment != null && assignment.getLocationId() != null;
+                });
+            } else {
+                labelComplete = false;
+            }
+            stepProgress.put("label", labelComplete);
+
+            // QA is complete if the QA step has been saved (checklist record exists),
+            // regardless of whether all items are checked (checklist is advisory)
+            boolean qaComplete = sampleQaChecklistService.findBySampleId(Integer.parseInt(sample.getId())) != null;
+            stepProgress.put("qa", qaComplete);
+
+            String workflowType = workflowTypeOf(sample);
+            OrderProgressStatus progressStatus = orderProgressService.statusOf(sample,
+                    stepProgress.get("collect") && labelComplete, qaComplete);
+            applyStoredProgress(sample, workflowType, progressStatus, stepProgress);
+            response.put("stepProgress", stepProgress);
+            response.put("workflowType", workflowType);
+            putProgress(response, sample, workflowType, progressStatus);
+
+            response.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "searchOrder", "Error searching for order: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * The stored workflow type of an order; a clinical order saved before the types
+     * were recorded has none.
+     */
+    private String workflowTypeOf(Sample sample) {
+        String stored = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                sample.getId());
+        return GenericValidator.isBlankOrNull(stored) ? "clinical" : stored;
+    }
+
+    /**
+     * A clinical order with a stored progress status reports its steps from that
+     * status (OGC-1266 FR-F5): Prepare Samples is done once the order is Samples
+     * prepared, and Sample check once it is Ready for testing. Orders without one,
+     * and the environmental and vector lanes, keep the flags derived from their
+     * data.
+     */
+    private void applyStoredProgress(Sample sample, String workflowType, OrderProgressStatus status,
+            Map<String, Boolean> stepProgress) {
+        if (OrderProgressStatus.fromStored(sample.getOrderProgressStatus()) == null
+                || !"clinical".equalsIgnoreCase(workflowType)) {
+            return;
+        }
+        boolean prepared = status.isAtLeast(OrderProgressStatus.SAMPLES_PREPARED);
+        stepProgress.put("collect", prepared);
+        stepProgress.put("label", prepared);
+        stepProgress.put("qa", status == OrderProgressStatus.READY_FOR_TESTING);
+    }
+
+    private void putProgress(Map<String, Object> target, Sample sample, String workflowType,
+            OrderProgressStatus status) {
+        boolean fullyReferred = orderProgressService.isFullyReferred(sample.getId());
+        putProgress(target, sample, workflowType, status,
+                orderProgressService.isComplete(status, workflowType, fullyReferred), fullyReferred);
+    }
+
+    private void putProgress(Map<String, Object> target, Sample sample, String workflowType, OrderProgressStatus status,
+            boolean complete, boolean fullyReferred) {
+        target.put("progressStatus", status.name());
+        target.put("complete", complete);
+        target.put("fullyReferred", fullyReferred);
+        target.put("sampleCheckEnabled", orderProgressService.sampleCheckEnabled(workflowType));
+        Map<String, Object> progress = new HashMap<>();
+        progress.put("enteredAt", timestampText(sample.getOrderEnteredAt()));
+        progress.put("preparedAt", timestampText(sample.getOrderPreparedAt()));
+        progress.put("readyAt", timestampText(sample.getOrderReadyAt()));
+        progress.put("releaseNote", sample.getOrderReleaseNote());
+        progress.put("cancelledAt", timestampText(sample.getOrderCancelledAt()));
+        progress.put("cancelReason", sample.getOrderCancelReason());
+        target.put("progress", progress);
+    }
+
+    private static String timestampText(java.sql.Timestamp value) {
+        return value == null ? null : value.toString();
+    }
+
+    /**
+     * Cancels an order that has not finished order entry (FR-A4): its tests are
+     * cancelled and the order is marked Cancelled with the reason, who and when.
+     * Nothing is deleted. A complete or already cancelled order is refused.
+     */
+    @PostMapping(value = "/cancel", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> cancelOrder(@RequestBody Map<String, String> body,
+            HttpServletRequest request) {
+        String labNumber = body == null ? null : body.get("labNumber");
+        if (GenericValidator.isBlankOrNull(labNumber)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "order.cancel.labNumberRequired"));
+        }
+        Sample sample = sampleService.getSampleByAccessionNumber(labNumber.trim());
+        if (sample == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "order.notFound"));
+        }
+        try {
+            Sample cancelled = orderProgressService.cancel(sample.getId(), body.get("reason"), getSysUserId(request));
+            republishToFhir(cancelled);
+            Map<String, Object> response = new HashMap<>();
+            response.put("labNumber", cancelled.getAccessionNumber());
+            putProgress(response, cancelled, workflowTypeOf(cancelled),
+                    OrderProgressStatus.fromStored(cancelled.getOrderProgressStatus()));
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Sends the cancelled order to the FHIR store again, so its Task reads
+     * cancelled and its ServiceRequests revoked instead of the order as it was
+     * entered. The cancellation itself has committed; a failed publish is logged
+     * and does not undo it.
+     */
+    private void republishToFhir(Sample cancelled) {
+        try {
+            fhirTransformService.transformPersistObjectsUnderSamples(List.of(cancelled.getId()));
+        } catch (FhirLocalPersistingException | RuntimeException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "republishToFhir",
+                    "could not republish cancelled order " + cancelled.getAccessionNumber() + ": " + e.getMessage());
+        }
+    }
+
+    boolean hasReferral(List<SampleItem> sampleItems) {
+        for (SampleItem sampleItem : sampleItems) {
+            for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
+                if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                    continue;
+                }
+                if (orderProgressService.isOpenReferral(referralService.getReferralByAnalysisId(analysis.getId()))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    TestSelectionDTO buildSelectedTestData(org.openelisglobal.test.valueholder.Test test) {
+        return new TestSelectionDTO(test, testMethodService.getLinkedMethodDtos(test.getId()));
+    }
+
+    /**
+     * Update the storageSkipped flag on a sample.
+     *
+     * <p>
+     * Used when the user checks "No storage required" checkbox on the Label step.
+     *
+     * @param labNumber      the lab/accession number
+     * @param storageSkipped true if storage is intentionally skipped
+     * @return success/failure response
+     */
+    @org.springframework.web.bind.annotation.PutMapping(value = "/storage-skipped", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> updateStorageSkipped(@RequestParam String labNumber,
+            @RequestParam boolean storageSkipped, HttpServletRequest request) {
+
+        try {
+            Sample sample = sampleService.getSampleByAccessionNumber(labNumber);
+            if (sample == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            sample.setStorageSkipped(storageSkipped);
+            sample.setSysUserId(getSysUserId(request));
+            sampleService.update(sample);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("labNumber", labNumber);
+            response.put("storageSkipped", storageSkipped);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "updateStorageSkipped",
+                    "Error updating storageSkipped: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Build patient properties using PatientInfoBean - matches the format returned
+     * by /rest/patient-details endpoint. This ensures consistency with the existing
+     * patient search functionality.
+     */
+    private PatientInfoBean buildPatientProperties(Patient patient) {
+        initAddressPartIds();
+
+        Person person = patient.getPerson();
+        PatientIdentityTypeMap identityMap = PatientIdentityTypeMap.getInstance();
+        List<PatientIdentity> identityList = PatientUtil.getIdentityListForPatient(patient.getId());
+        List<PatientContact> patientContacts = patientContactService.getForPatient(patient.getId());
+
+        String city = getAddress(person, ADDRESS_PART_VILLAGE_ID);
+        if (GenericValidator.isBlankOrNull(city)) {
+            city = person.getCity();
+        }
+        String commune = getAddress(person, ADDRESS_PART_COMMUNE_ID);
+        String dept = getAddress(person, ADDRESS_PART_DEPT_ID);
+
+        PatientInfoBean patientInfo = new PatientInfoBean();
+        patientInfo.setPatientPK(patient.getId());
+        patientInfo.setPatientUpdateStatus(PatientUpdateStatus.UPDATE);
+        patientInfo.setNationalId(patient.getNationalId());
+        patientInfo.setSTnumber(identityMap.getIdentityValue(identityList, "ST"));
+        patientInfo.setSubjectNumber(identityMap.getIdentityValue(identityList, "SUBJECT"));
+        patientInfo.setLastName(getLastNameForResponse(person));
+        patientInfo.setFirstName(person.getFirstName());
+        patientInfo.setMothersName(identityMap.getIdentityValue(identityList, "MOTHER"));
+        patientInfo.setAka(identityMap.getIdentityValue(identityList, "AKA"));
+        patientInfo.setStreetAddress(person.getStreetAddress());
+        patientInfo.setCity(city);
+        patientInfo.setPrimaryPhone(person.getPrimaryPhone());
+        patientInfo.setEmail(person.getEmail());
+        patientInfo.setGender(patient.getGender());
+        patientInfo.setPatientType(getPatientType(patient));
+        patientInfo.setInsuranceNumber(identityMap.getIdentityValue(identityList, "INSURANCE"));
+        patientInfo.setOccupation(identityMap.getIdentityValue(identityList, "OCCUPATION"));
+        patientInfo.setCustomNotes(identityMap.getIdentityValue(identityList, "CUSTOM_NOTES"));
+        patientInfo.setTargetDiseaseProgramme(identityMap.getIdentityValue(identityList, "DISEASE_PROGRAMME"));
+
+        String format1 = "dd/MM/yyyy";
+        String format2 = "MM/dd/yyyy";
+        String rawBirthDate = patient.getBirthDateForDisplay();
+        if (rawBirthDate != null && !rawBirthDate.isBlank()) {
+            patientInfo.setBirthDateForDisplay(
+                    ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE).equals("fr-FR")
+                            ? DateUtil.formatStringDate(rawBirthDate, format1)
+                            : DateUtil.formatStringDate(rawBirthDate, format2));
+        }
+
+        patientInfo.setCommune(commune);
+        patientInfo.setAddressDepartment(dept);
+        patientInfo.setMothersInitial(identityMap.getIdentityValue(identityList, "MOTHERS_INITIAL"));
+        patientInfo.setEducation(identityMap.getIdentityValue(identityList, "EDUCATION"));
+        patientInfo.setMaritialStatus(identityMap.getIdentityValue(identityList, "MARITIAL"));
+        patientInfo.setNationality(identityMap.getIdentityValue(identityList, "NATIONALITY"));
+        patientInfo.setOtherNationality(identityMap.getIdentityValue(identityList, "OTHER NATIONALITY"));
+        patientInfo.setHealthDistrict(identityMap.getIdentityValue(identityList, "HEALTH DISTRICT"));
+        patientInfo.setHealthRegion(identityMap.getIdentityValue(identityList, "HEALTH REGION"));
+        patientInfo.setGuid(identityMap.getIdentityValue(identityList, "GUID"));
+
+        if (patientContacts.size() >= 1) {
+            PatientContact contact = patientContacts.get(0);
+            patientInfo.setPatientContact(contact);
+        }
+
+        if (patient.getLastupdated() != null) {
+            patientInfo.setPatientLastUpdated(patient.getLastupdated().toString());
+        }
+        if (person.getLastupdated() != null) {
+            patientInfo.setPersonLastUpdated(person.getLastupdated().toString());
+        }
+
+        patientInfo.setReadOnly(false);
+
+        return patientInfo;
+    }
+
+    private void initAddressPartIds() {
+        if (ADDRESS_PART_DEPT_ID == null) {
+            List<AddressPart> partList = addressPartService.getAll();
+            for (AddressPart addressPart : partList) {
+                if ("department".equals(addressPart.getPartName())) {
+                    ADDRESS_PART_DEPT_ID = addressPart.getId();
+                } else if ("commune".equals(addressPart.getPartName())) {
+                    ADDRESS_PART_COMMUNE_ID = addressPart.getId();
+                } else if ("village".equals(addressPart.getPartName())) {
+                    ADDRESS_PART_VILLAGE_ID = addressPart.getId();
+                }
+            }
+        }
+    }
+
+    private String getAddress(Person person, String addressPartId) {
+        if (GenericValidator.isBlankOrNull(addressPartId) || person == null) {
+            return "";
+        }
+        PersonAddress address = personAddressService.getByPersonIdAndPartId(person.getId(), addressPartId);
+        return address != null ? address.getValue() : "";
+    }
+
+    private String getLastNameForResponse(Person person) {
+        if (PatientUtil.getUnknownPerson().getId().equals(person.getId())) {
+            return null;
+        } else {
+            return person.getLastName();
+        }
+    }
+
+    private String getPatientType(Patient patient) {
+        PatientType patientType = patientPatientTypeService.getPatientTypeForPatient(patient.getId());
+        return patientType != null ? patientType.getType() : null;
+    }
+
+    /**
+     * The EQA and no-patient decisions travel with the order, so a later step
+     * opened on it skips the patient block and the consent gate (OGC-1483).
+     */
+    private void putEqaAndNoPatient(Map<String, Object> sampleOrderItems, String sampleId) {
+        if (sampleId == null) {
+            return;
+        }
+        Long id = Long.valueOf(sampleId);
+        sampleEQAService.findBySampleId(id).ifPresent(eqa -> {
+            sampleOrderItems.put("isEQASample", Boolean.TRUE.equals(eqa.getIsEqaSample()));
+            sampleOrderItems.put("eqaProgramId",
+                    eqa.getEqaEnrollmentId() == null ? "" : String.valueOf(eqa.getEqaEnrollmentId()));
+            sampleOrderItems.put("eqaCycleId", eqa.getCycleId() == null ? "" : String.valueOf(eqa.getCycleId()));
+            sampleOrderItems.put("eqaProviderSampleId",
+                    eqa.getEqaProviderSampleId() == null ? "" : eqa.getEqaProviderSampleId());
+        });
+        sampleOrderOverrideService.findBySampleIdAndType(id, OverrideType.NO_PATIENT).ifPresent(override -> {
+            sampleOrderItems.put("noPatientOverride", true);
+            sampleOrderItems.put("noPatientReasonCode",
+                    override.getReasonCode() == null ? "" : override.getReasonCode().name());
+            sampleOrderItems.put("noPatientReason", override.getReason() == null ? "" : override.getReason());
+        });
+    }
+
+    /**
+     * Build sampleOrderItems with all order-level data including: - Lab number and
+     * dates - Provider/Requester info from SampleHuman (provider) and
+     * SampleRequester (organization) - Referring site (organization) info - Program
+     * from ObservationHistory - Clinical information from ObservationHistory
+     */
+    private Map<String, Object> buildSampleOrderItems(Sample sample) {
+        Map<String, Object> sampleOrderItems = new HashMap<>();
+
+        // Basic sample info
+        sampleOrderItems.put("requiredBy",
+                sample.getRequiredBy() != null
+                        ? new java.text.SimpleDateFormat("yyyy-MM-dd").format(sample.getRequiredBy())
+                        : "");
+        sampleOrderItems.put("labNo", sample.getAccessionNumber());
+        sampleOrderItems.put("collectionDate", sample.getCollectionDateForDisplay());
+        sampleOrderItems.put("receivedDateForDisplay", sample.getReceivedDateForDisplay());
+        sampleOrderItems.put("receivedTime", sample.getReceivedTimeForDisplay());
+
+        String sampleId = sample.getId();
+        putEqaAndNoPatient(sampleOrderItems, sampleId);
+
+        // Provider - get from SampleHuman.providerId via
+        // sampleHumanService.getProviderForSample()
+        // This is the correct approach since SamplePatientUpdateData stores provider in
+        // SampleHuman
+        Provider provider = sampleHumanService.getProviderForSample(sample);
+        if (provider != null && provider.getPerson() != null) {
+            Person providerPerson = provider.getPerson();
+            // Ensure person data is loaded
+            personService.getData(providerPerson);
+            sampleOrderItems.put("providerPersonId", providerPerson.getId());
+            sampleOrderItems.put("providerFirstName", providerPerson.getFirstName());
+            sampleOrderItems.put("providerLastName", providerPerson.getLastName());
+            sampleOrderItems.put("providerWorkPhone", providerPerson.getWorkPhone());
+            sampleOrderItems.put("providerEmail", providerPerson.getEmail());
+            sampleOrderItems.put("providerFax", providerPerson.getFax());
+        }
+
+        // Referring site (organization) - use RequesterService for organization
+        RequesterService requesterService = new RequesterService(sampleId);
+        Organization referringSite = requesterService.getOrganization();
+
+        // Referring site department
+        Organization department = requesterService.getOrganizationDepartment();
+
+        // If referringSite is null but department exists, use department as the site
+        // This handles cases where organization was stored with department type instead
+        // of site type
+        if (referringSite == null && department != null) {
+            referringSite = department;
+            department = null; // Clear department since we're using it as the site
+        }
+
+        if (referringSite != null) {
+            sampleOrderItems.put("referringSiteId", referringSite.getId());
+            sampleOrderItems.put("referringSiteName", referringSite.getOrganizationName());
+            sampleOrderItems.put("referringSiteCode", referringSite.getShortName());
+            sampleOrderItems.put("referringSitePhone", referringSite.getPhone());
+            sampleOrderItems.put("referringSiteFax", referringSite.getFax());
+            sampleOrderItems.put("referringSiteEmail", referringSite.getEmail());
+        }
+
+        if (department != null) {
+            sampleOrderItems.put("referringSiteDepartmentId", department.getId());
+            sampleOrderItems.put("referringSiteDepartmentName", department.getOrganizationName());
+        }
+
+        // Env/Vector Requestor contact — independent of Provider above.
+        Person requestorPerson = requesterService.getRequestorPerson();
+        if (requestorPerson != null) {
+            sampleOrderItems.put("requestorPersonId", requestorPerson.getId());
+            sampleOrderItems.put("requestorFirstName", requestorPerson.getFirstName());
+            sampleOrderItems.put("requestorLastName", requestorPerson.getLastName());
+            sampleOrderItems.put("requestorPhone", requestorPerson.getWorkPhone());
+            sampleOrderItems.put("requestorFax", requestorPerson.getFax());
+            sampleOrderItems.put("requestorEmail", requestorPerson.getEmail());
+            sampleOrderItems.put("requestorDepartment", requestorPerson.getDepartment());
+        }
+
+        // Program - Try multiple approaches to find program info
+        // 1. Check observation_history for program NAME
+        // 2. If found, use ProgramSampleService to get the Program.id
+        // 3. If not found in observation_history, check program_sample table directly
+        String programName = observationHistoryService.getRawValueForSample(ObservationType.PROGRAM, sampleId);
+
+        if (programName != null && !programName.isEmpty()) {
+            sampleOrderItems.put("program", programName); // Keep the name for display
+            // Try to resolve the numeric program ID from the name
+            try {
+                ProgramSample programSample = programSampleService.getProgrammeSampleBySample(Integer.valueOf(sampleId),
+                        programName);
+                if (programSample != null && programSample.getProgram() != null) {
+                    addProgramSelection(sampleOrderItems, programSample.getProgram());
+
+                    // Load questionnaire response if available
+                    if (programSample.getQuestionnaireResponseUuid() != null) {
+                        try {
+                            QuestionnaireResponse qr = questionnaireStorageService
+                                    .getQuestionnaireResponse(programSample.getQuestionnaireResponseUuid())
+                                    .orElse(null);
+                            if (qr != null) {
+                                sampleOrderItems.put("additionalQuestions", qr);
+                            }
+                        } catch (Exception qrEx) {
+                            LogEvent.logError(this.getClass().getName(), "buildSampleOrderItems",
+                                    "Error loading QuestionnaireResponse: " + qrEx.getMessage());
+                        }
+                    }
+                } else {
+                    // Fall back: try to find program by name directly
+                    List<Program> allPrograms = programService.getAll();
+                    for (Program p : allPrograms) {
+                        if (p.getProgramName() != null && p.getProgramName().equals(programName)) {
+                            addProgramSelection(sampleOrderItems, p);
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getName(), "buildSampleOrderItems",
+                        "Exception resolving program ID: " + e.getMessage());
+            }
+        } else {
+            // No program in observation_history - check program_sample table directly
+            try {
+                // Get all program samples and filter by sample ID
+                List<ProgramSample> programSamples = programSampleService
+                        .getProgramSamplesByAccessionNumberOrProgramName(sample.getAccessionNumber());
+                if (programSamples != null && !programSamples.isEmpty()) {
+                    ProgramSample ps = programSamples.get(0);
+                    if (ps.getProgram() != null) {
+                        addProgramSelection(sampleOrderItems, ps.getProgram());
+
+                        // Load questionnaire response if available
+                        if (ps.getQuestionnaireResponseUuid() != null) {
+                            try {
+                                QuestionnaireResponse qr = questionnaireStorageService
+                                        .getQuestionnaireResponse(ps.getQuestionnaireResponseUuid()).orElse(null);
+                                if (qr != null) {
+                                    sampleOrderItems.put("additionalQuestions", qr);
+                                }
+                            } catch (Exception qrEx) {
+                                LogEvent.logError(this.getClass().getName(), "buildSampleOrderItems",
+                                        "Error loading QuestionnaireResponse: " + qrEx.getMessage());
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getName(), "buildSampleOrderItems",
+                        "Exception checking program_sample: " + e.getMessage());
+            }
+        }
+
+        // Payment status
+        String paymentStatus = observationHistoryService.getRawValueForSample(ObservationType.PAYMENT_STATUS, sampleId);
+        if (paymentStatus != null) {
+            sampleOrderItems.put("paymentOptionSelection", paymentStatus);
+        }
+        // Also add paymentOptions list for the dropdown
+        sampleOrderItems.put("paymentOptions",
+                DisplayListService.getInstance().getList(ListType.SAMPLE_PATIENT_PAYMENT_OPTIONS));
+
+        // Billing reference number
+        String billingRef = observationHistoryService.getRawValueForSample(ObservationType.BILLING_REFERENCE_NUMBER,
+                sampleId);
+        if (billingRef != null) {
+            sampleOrderItems.put("billingReferenceNumber", billingRef);
+        }
+
+        // Test location code
+        String testLocationCode = observationHistoryService.getRawValueForSample(ObservationType.TEST_LOCATION_CODE,
+                sampleId);
+        if (testLocationCode != null) {
+            sampleOrderItems.put("testLocationCode", testLocationCode);
+        }
+
+        // Other location code
+        String otherLocationCode = observationHistoryService
+                .getRawValueForSample(ObservationType.TEST_LOCATION_CODE_OTHER, sampleId);
+        if (otherLocationCode != null) {
+            sampleOrderItems.put("otherLocationCode", otherLocationCode);
+        }
+
+        // Request date
+        String requestDate = observationHistoryService.getRawValueForSample(ObservationType.REQUEST_DATE, sampleId);
+        if (requestDate != null) {
+            sampleOrderItems.put("requestDate", requestDate);
+        }
+
+        // Next visit date
+        String nextVisitDate = observationHistoryService.getRawValueForSample(ObservationType.NEXT_VISIT_DATE,
+                sampleId);
+        if (nextVisitDate != null) {
+            sampleOrderItems.put("nextVisitDate", nextVisitDate);
+        }
+
+        // Provisional clinical diagnosis
+        String provisionalDiagnosis = observationHistoryService
+                .getRawValueForSample(ObservationType.PROVISIONAL_CLINICAL_DIAGNOSIS, sampleId);
+        if (provisionalDiagnosis != null) {
+            sampleOrderItems.put("provisionalClinicalDiagnosis", provisionalDiagnosis);
+        }
+
+        // Priority (from sample entity if available)
+        if (sample.getPriority() != null) {
+            sampleOrderItems.put("priority", sample.getPriority().name());
+        }
+
+        // Environmental workflow fields (OGC-356)
+        Map<String, String> environmentalFields = buildEnvironmentalFields(sample, sampleId);
+        if (!environmentalFields.isEmpty()) {
+            sampleOrderItems.put("environmentalFields", environmentalFields);
+        }
+
+        return sampleOrderItems;
+    }
+
+    private void addProgramSelection(Map<String, Object> sampleOrderItems, Program program) {
+        sampleOrderItems.put("programId", program.getId());
+        sampleOrderItems.put("program", program.getProgramName());
+        sampleOrderItems.put("programCode", program.getCode());
+    }
+
+    /**
+     * Determine whether Step 1 (Enter Order) is genuinely complete.
+     *
+     * <p>
+     * Generating a lab number alone is not sufficient — the order must have been
+     * saved with its required data. We check:
+     * <ul>
+     * <li>receivedDate is set (always written by a proper Step 1 save)</li>
+     * <li>a patient is linked (clinical workflow), OR</li>
+     * <li>an environmental workflow type is recorded (environmental workflow)</li>
+     * </ul>
+     */
+    private boolean isEnterComplete(Sample sample) {
+        // receivedDate is set by a proper Step 1 save; absent for bare lab-number-only
+        // records
+        if (sample.getReceivedDate() == null) {
+            return false;
+        }
+        // Clinical: patient must be linked
+        Patient patient = sampleHumanService.getPatientForSample(sample);
+        if (patient != null) {
+            return true;
+        }
+        // Environmental: workflow type observation must be recorded
+        String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                sample.getId());
+        return workflowType != null;
+    }
+
+    /**
+     * Build environmental fields map from ObservationHistory entries. Used for
+     * environmental workflow orders (non-patient samples).
+     */
+    private Map<String, String> buildEnvironmentalFields(Sample sample, String sampleId) {
+        Map<String, String> envFields = new HashMap<>();
+
+        LogEvent.logDebug(this.getClass().getSimpleName(), "buildEnvironmentalFields",
+                "Building environmental fields for sampleId: " + sampleId);
+
+        // Workflow type
+        String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                sampleId);
+        LogEvent.logDebug(this.getClass().getSimpleName(), "buildEnvironmentalFields",
+                "workflowType from DB: " + workflowType);
+        if (workflowType != null) {
+            envFields.put("workflowType", workflowType);
+        }
+
+        // Collection site description
+        String siteDescription = observationHistoryService
+                .getRawValueForSample(ObservationType.ENV_COLLECTION_SITE_DESCRIPTION, sampleId);
+        if (siteDescription != null) {
+            envFields.put("collectionSiteDescription", siteDescription);
+        }
+
+        // Requester reference
+        String requesterRef = observationHistoryService.getRawValueForSample(ObservationType.ENV_REQUESTER_REFERENCE,
+                sampleId);
+        if (requesterRef != null) {
+            envFields.put("requesterReference", requesterRef);
+        }
+
+        // Environmental conditions
+        String conditions = observationHistoryService.getRawValueForSample(ObservationType.ENV_ENVIRONMENTAL_CONDITIONS,
+                sampleId);
+        if (conditions != null) {
+            envFields.put("environmentalConditions", conditions);
+        }
+
+        // Location hierarchy (Region, District, Village)
+        String regionId = observationHistoryService.getRawValueForSample(ObservationType.ENV_LOCATION_REGION_ID,
+                sampleId);
+        if (regionId != null) {
+            envFields.put("locationHierarchy.1", regionId);
+        }
+
+        String districtId = observationHistoryService.getRawValueForSample(ObservationType.ENV_LOCATION_DISTRICT_ID,
+                sampleId);
+        if (districtId != null) {
+            envFields.put("locationHierarchy.2", districtId);
+        }
+
+        String villageId = observationHistoryService.getRawValueForSample(ObservationType.ENV_LOCATION_VILLAGE_ID,
+                sampleId);
+        if (villageId != null) {
+            envFields.put("locationHierarchy.3", villageId);
+        }
+
+        // Sampling site fields
+        String samplingSiteId = observationHistoryService.getRawValueForSample(ObservationType.ENV_SAMPLING_SITE_ID,
+                sampleId);
+        if (samplingSiteId != null) {
+            envFields.put("samplingSiteId", samplingSiteId);
+        }
+        String samplingSiteName = observationHistoryService.getRawValueForSample(ObservationType.ENV_SAMPLING_SITE_NAME,
+                sampleId);
+        if (samplingSiteName != null) {
+            envFields.put("samplingSiteName", samplingSiteName);
+        }
+        // siteType, siteSubtype, environmentalZone are resolved live from the site
+        // record rather than read from stale observations.
+        if (samplingSiteId != null) {
+            try {
+                VectorSamplingSite site = vectorSamplingSiteService.get(Integer.valueOf(samplingSiteId.trim()));
+                if (site != null) {
+                    if (!GenericValidator.isBlankOrNull(site.getType())) {
+                        envFields.put("siteType", site.getType());
+                    }
+                    if (!GenericValidator.isBlankOrNull(site.getSubtype())) {
+                        envFields.put("siteSubtype", site.getSubtype());
+                    }
+                    if (!GenericValidator.isBlankOrNull(site.getEnvironmentalZone())) {
+                        envFields.put("environmentalZone", site.getEnvironmentalZone());
+                    }
+                }
+            } catch (NumberFormatException ignored) {
+                // non-numeric id stored — skip live lookup
+            }
+        }
+        String regulatoryRef = observationHistoryService.getRawValueForSample(ObservationType.ENV_REGULATORY_REFERENCE,
+                sampleId);
+        if (regulatoryRef != null) {
+            envFields.put("regulatoryReference", regulatoryRef);
+        }
+        String collectionMethod = observationHistoryService.getRawValueForSample(ObservationType.ENV_COLLECTION_METHOD,
+                sampleId);
+        if (collectionMethod != null) {
+            envFields.put("collectionMethod", collectionMethod);
+        }
+        String waterTemp = observationHistoryService.getRawValueForSample(ObservationType.ENV_WATER_TEMP, sampleId);
+        if (waterTemp != null) {
+            envFields.put("waterTemp", waterTemp);
+        }
+        String ambientTemp = observationHistoryService.getRawValueForSample(ObservationType.ENV_AMBIENT_TEMP, sampleId);
+        if (ambientTemp != null) {
+            envFields.put("ambientTemp", ambientTemp);
+        }
+        String weather = observationHistoryService.getRawValueForSample(ObservationType.ENV_WEATHER, sampleId);
+        if (weather != null) {
+            envFields.put("weather", weather);
+        }
+        String preservationMethod = observationHistoryService
+                .getRawValueForSample(ObservationType.ENV_PRESERVATION_METHOD, sampleId);
+        if (preservationMethod != null) {
+            envFields.put("preservationMethod", preservationMethod);
+        }
+        String fieldNotes = observationHistoryService.getRawValueForSample(ObservationType.ENV_FIELD_NOTES, sampleId);
+        if (fieldNotes != null) {
+            envFields.put("fieldNotes", fieldNotes);
+        }
+        List<SampleComplianceStandard> scsLinks = sampleComplianceStandardService.getAllForSample(sampleId);
+        if (!scsLinks.isEmpty()) {
+            List<String> ids = scsLinks.stream().map(l -> l.getComplianceStandard().getId())
+                    .collect(Collectors.toList());
+            try {
+                envFields.put("complianceStandards", JSON_MAPPER.writeValueAsString(ids));
+            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+                LogEvent.logWarn(this.getClass().getName(), "getEnvironmentalFields",
+                        "Could not serialize compliance standard IDs for sample " + sampleId);
+            }
+        } else {
+            String complianceStandards = observationHistoryService
+                    .getRawValueForSample(ObservationType.ENV_COMPLIANCE_STANDARDS, sampleId);
+            if (complianceStandards != null) {
+                envFields.put("complianceStandards", complianceStandards);
+            }
+        }
+        String contactPerson = observationHistoryService.getRawValueForSample(ObservationType.ENV_CONTACT_PERSON,
+                sampleId);
+        if (contactPerson != null) {
+            envFields.put("contactPerson", contactPerson);
+        }
+        String contactPhone = observationHistoryService.getRawValueForSample(ObservationType.ENV_CONTACT_PHONE,
+                sampleId);
+        if (contactPhone != null) {
+            envFields.put("contactPhone", contactPhone);
+        }
+
+        // GPS coordinates from Sample entity (already added by
+        // 029-add-gps-coordinates-to-sample.xml)
+        if (sample.getGpsLatitude() != null) {
+            envFields.put("gpsLatitude", String.valueOf(sample.getGpsLatitude()));
+        }
+        if (sample.getGpsLongitude() != null) {
+            envFields.put("gpsLongitude", String.valueOf(sample.getGpsLongitude()));
+        }
+        if (sample.getGpsAccuracyMeters() != null) {
+            envFields.put("gpsAccuracy", String.valueOf(sample.getGpsAccuracyMeters()));
+        }
+        if (sample.getGpsCaptureMethod() != null) {
+            envFields.put("gpsCaptureMethod", sample.getGpsCaptureMethod());
+        }
+
+        // Vector surveillance fields
+        String vecCollectionSiteId = observationHistoryService
+                .getRawValueForSample(ObservationType.VS_COLLECTION_SITE_ID, sampleId);
+        if (vecCollectionSiteId != null) {
+            envFields.put("vecCollectionSiteId", vecCollectionSiteId);
+            try {
+                VectorSamplingSite vecSite = vectorSamplingSiteService.get(Integer.valueOf(vecCollectionSiteId.trim()));
+                if (vecSite != null) {
+                    if (!GenericValidator.isBlankOrNull(vecSite.getType()))
+                        envFields.put("vecCollectionSiteType", vecSite.getType());
+                    if (!GenericValidator.isBlankOrNull(vecSite.getSubtype()))
+                        envFields.put("vecCollectionSiteSubtype", vecSite.getSubtype());
+                    if (!GenericValidator.isBlankOrNull(vecSite.getEnvironmentalZone()))
+                        envFields.put("vecCollectionSiteZone", vecSite.getEnvironmentalZone());
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        String vecCollectionSiteName = observationHistoryService
+                .getRawValueForSample(ObservationType.VS_COLLECTION_SITE_NAME, sampleId);
+        if (vecCollectionSiteName != null)
+            envFields.put("vecCollectionSiteName", vecCollectionSiteName);
+        String vecGpsLatitude = observationHistoryService.getRawValueForSample(ObservationType.VS_GPS_LATITUDE,
+                sampleId);
+        if (vecGpsLatitude != null)
+            envFields.put("vecGpsLatitude", vecGpsLatitude);
+        String vecGpsLongitude = observationHistoryService.getRawValueForSample(ObservationType.VS_GPS_LONGITUDE,
+                sampleId);
+        if (vecGpsLongitude != null)
+            envFields.put("vecGpsLongitude", vecGpsLongitude);
+        String vecLifecycleStage = observationHistoryService.getRawValueForSample(ObservationType.VS_LIFECYCLE_STAGE,
+                sampleId);
+        if (vecLifecycleStage != null)
+            envFields.put("vecLifecycleStage", vecLifecycleStage);
+        String vecTrapTypeId = observationHistoryService.getRawValueForSample(ObservationType.VS_TRAP_TYPE_ID,
+                sampleId);
+        if (vecTrapTypeId != null)
+            envFields.put("vecTrapTypeId", vecTrapTypeId);
+        String vecTrapCount = observationHistoryService.getRawValueForSample(ObservationType.VS_TRAP_COUNT, sampleId);
+        if (vecTrapCount != null)
+            envFields.put("vecTrapCount", vecTrapCount);
+        String vecTrapNights = observationHistoryService.getRawValueForSample(ObservationType.VS_TRAP_NIGHTS, sampleId);
+        if (vecTrapNights != null)
+            envFields.put("vecTrapNights", vecTrapNights);
+        String vecTimeOfDay = observationHistoryService.getRawValueForSample(ObservationType.VS_TIME_OF_DAY, sampleId);
+        if (vecTimeOfDay != null)
+            envFields.put("vecTimeOfDay", vecTimeOfDay);
+        String vecRestingContext = observationHistoryService.getRawValueForSample(ObservationType.VS_RESTING_CONTEXT,
+                sampleId);
+        if (vecRestingContext != null)
+            envFields.put("vecRestingContext", vecRestingContext);
+        String vecHumanBitingCatch = observationHistoryService
+                .getRawValueForSample(ObservationType.VS_HUMAN_BITING_CATCH, sampleId);
+        if (vecHumanBitingCatch != null)
+            envFields.put("vecHumanBitingCatch", vecHumanBitingCatch);
+        String vecCollectionNotes = observationHistoryService.getRawValueForSample(ObservationType.VS_COLLECTION_NOTES,
+                sampleId);
+        if (vecCollectionNotes != null)
+            envFields.put("vecCollectionNotes", vecCollectionNotes);
+
+        return envFields;
+    }
+
+    /**
+     * The test section IDs the orders dashboard is narrowed to, or an empty set
+     * meaning the whole lab.
+     *
+     * <p>
+     * The dashboard reads with the same lab-unit scope as the home dashboard and
+     * the order lookups ({@link SampleLabUnitScopeService}). A site can switch the
+     * dashboard back to the whole lab by setting the
+     * {@value #RESTRICT_RECENT_ORDERS_PROPERTY} configuration property to
+     * {@code false}. Global administrators, {@code AllLabUnits} users and users
+     * whose section comes from the login lab-unit constraint read the whole lab;
+     * assigned sections are expanded to their child sections.
+     */
+    private Set<String> resolveAllowedSectionIds(String sysUserId) {
+        if (recentOrderSectionScopingDisabled()) {
+            return Collections.emptySet();
+        }
+        return sampleLabUnitScopeService.restrictedSectionIds(sysUserId);
+    }
+
+    private boolean recentOrderSectionScopingDisabled() {
+        return "false".equalsIgnoreCase(
+                ConfigurationProperties.getInstance().getPropertyValue(RESTRICT_RECENT_ORDERS_PROPERTY));
+    }
+
+    /**
+     * Who received the sample and the condition it arrived in, with display names
+     * (OGC-1424). Empty strings where nothing was recorded.
+     */
+    void putReceiptAndArrival(Map<String, Object> sampleItemData, SampleItem sampleItem) {
+        sampleItemData.put("receivedById", sampleItem.getReceivedById() == null ? "" : sampleItem.getReceivedById());
+        sampleItemData.put("receivedByName", userName(sampleItem.getReceivedById()));
+        sampleItemData.put("arrivalCondition",
+                sampleItem.getArrivalCondition() == null ? "" : sampleItem.getArrivalCondition());
+        sampleItemData.put("arrivalTemperature", sampleItem.getArrivalTemperature() == null ? ""
+                : sampleItem.getArrivalTemperature().stripTrailingZeros().toPlainString());
+        sampleItemData.put("arrivalRecordedByName", userName(sampleItem.getArrivalRecordedById()));
+        sampleItemData.put("arrivalRecordedAt",
+                sampleItem.getArrivalRecordedAt() == null ? "" : sampleItem.getArrivalRecordedAt().toString());
+    }
+
+    private String userName(String systemUserId) {
+        if (GenericValidator.isBlankOrNull(systemUserId)) {
+            return "";
+        }
+        SystemUser user = systemUserService.getUserById(systemUserId);
+        return user == null ? "" : user.getNameForDisplay().trim();
+    }
+}

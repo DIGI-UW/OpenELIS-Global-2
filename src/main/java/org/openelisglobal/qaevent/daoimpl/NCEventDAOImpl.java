@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class NCEventDAOImpl extends BaseDAOImpl<NcEvent, String> implements NCEventDAO {
+public class NCEventDAOImpl extends BaseDAOImpl<NcEvent, Integer> implements NCEventDAO {
 
     public NCEventDAOImpl() {
         super(NcEvent.class);
@@ -40,6 +40,27 @@ public class NCEventDAOImpl extends BaseDAOImpl<NcEvent, String> implements NCEv
     @Override
     @Transactional
     public NcEvent getNCEvent(String id) throws LIMSRuntimeException {
-        return null;
+        try {
+            Integer intId = id != null ? Integer.valueOf(id) : null;
+            return get(intId).orElse(null);
+        } catch (NumberFormatException e) {
+            LogEvent.logError(e);
+            return null;
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NcEvent findByTriggerSource(String triggerSourceType, String triggerSourceId) {
+        try {
+            String sql = "from NcEvent where triggerSourceType = :type and triggerSourceId = :id";
+            Query<NcEvent> query = entityManager.unwrap(Session.class).createQuery(sql, NcEvent.class);
+            query.setParameter("type", triggerSourceType);
+            query.setParameter("id", triggerSourceId);
+            return query.uniqueResult();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in NCEventDAO findByTriggerSource()", e);
+        }
     }
 }

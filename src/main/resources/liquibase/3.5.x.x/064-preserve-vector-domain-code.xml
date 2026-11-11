@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Vector-safe variant of 066-sample-type-domain-enum-migration.xml, which
+    only maps legacy codes 'E' and 'A' and folds everything else into
+    CLINICAL. demo-silnas deployments store vector sample types with the
+    legacy one-character code 'V' (OGC-1049 seeds, SampleDomain.VECTOR), so
+    066 as-is would silently reclassify every domain-V sample type.
+
+    This changeset runs the same migration with 'V' handled, and is included
+    ahead of 066 in base.xml. Both changesets guard on the column still being
+    VARCHAR(1), so exactly one of them performs the migration:
+    - databases that already ran 066 (develop deployments): this MARK_RANs;
+    - everything else (fresh builds, demo-silnas deployments): this runs and
+      066 MARK_RANs.
+    066 itself is upstream's changeset and must not be edited (checksum).
+    -->
+    <changeSet id="sample-type-domain-enum-migration-vector-safe" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims' AND table_name = 'type_of_sample'
+                AND column_name = 'domain' AND character_maximum_length &gt;= 20
+            </sqlCheck>
+        </preConditions>
+        <modifyDataType schemaName="clinlims" tableName="type_of_sample"
+            columnName="domain" newDataType="VARCHAR(20)"/>
+        <sql>
+            UPDATE clinlims.type_of_sample
+            SET domain = CASE UPPER(domain)
+                WHEN 'E' THEN 'ENVIRONMENTAL'
+                WHEN 'ENVIRONMENTAL' THEN 'ENVIRONMENTAL'
+                WHEN 'A' THEN 'VECTOR'
+                WHEN 'V' THEN 'VECTOR'
+                WHEN 'VECTOR' THEN 'VECTOR'
+                ELSE 'CLINICAL'
+            END
+            WHERE domain IS NOT NULL
+        </sql>
+        <addDefaultValue schemaName="clinlims" tableName="type_of_sample"
+            columnName="domain" columnDataType="VARCHAR(20)" defaultValue="CLINICAL"/>
+        <rollback>
+            <dropDefaultValue schemaName="clinlims" tableName="type_of_sample"
+                columnName="domain" columnDataType="VARCHAR(20)"/>
+            <sql>
+                UPDATE clinlims.type_of_sample
+                SET domain = CASE domain
+                    WHEN 'ENVIRONMENTAL' THEN 'E'
+                    WHEN 'VECTOR' THEN 'V'
+                    WHEN 'CLINICAL' THEN 'H'
+                    ELSE domain
+                END
+                WHERE domain IS NOT NULL
+            </sql>
+            <modifyDataType schemaName="clinlims" tableName="type_of_sample"
+                columnName="domain" newDataType="VARCHAR(1)"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

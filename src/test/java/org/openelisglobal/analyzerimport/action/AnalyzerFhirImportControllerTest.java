@@ -1,118 +1,109 @@
 package org.openelisglobal.analyzerimport.action;
 
-import static org.mockito.ArgumentMatchers.anyList;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import ca.uhn.fhir.context.FhirContext;
-import java.util.List;
-import org.junit.After;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.hl7.fhir.r4.model.Bundle;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
-import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportException;
+import org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportService;
+import org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportSummary;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-public class AnalyzerFhirImportControllerTest extends BaseWebContextSensitiveTest {
+/**
+ * Request parsing and response mapping only; this standalone suite does not
+ * claim authentication or authorization coverage.
+ */
+@RunWith(MockitoJUnitRunner.class)
+public class AnalyzerFhirImportControllerTest {
+
+    private static final Path FIXTURE = Path.of("tools", "openelis-analyzer-bridge", "contracts", "analyzer", "v1",
+            "fixtures", "normalized-known-test.fhir.json");
 
     @Mock
-    private AnalyzerResultsService analyzerResultsService;
+    private AnalyzerNormalizedResultImportService importService;
 
-    @Mock
-    private AnalyzerService analyzerService;
-
-    private AnalyzerFhirImportController controller;
-    private Object originalAnalyzerResultsService;
-    private Object originalAnalyzerService;
-    private Object originalFhirContext;
+    private MockMvc mockMvc;
+    private UserSessionData actor;
 
     @Before
-    public void setUp() throws Exception {
-        super.setUp();
-        MockitoAnnotations.initMocks(this);
-        controller = webApplicationContext.getBean(AnalyzerFhirImportController.class);
-        originalAnalyzerResultsService = ReflectionTestUtils.getField(controller, "analyzerResultsService");
-        originalAnalyzerService = ReflectionTestUtils.getField(controller, "analyzerService");
-        originalFhirContext = ReflectionTestUtils.getField(controller, "fhirContext");
-        ReflectionTestUtils.setField(controller, "analyzerResultsService", analyzerResultsService);
-        ReflectionTestUtils.setField(controller, "analyzerService", analyzerService);
+    public void setUp() {
+        AnalyzerFhirImportController controller = new AnalyzerFhirImportController();
+        ReflectionTestUtils.setField(controller, "importService", importService);
         ReflectionTestUtils.setField(controller, "fhirContext", FhirContext.forR4());
-    }
-
-    @After
-    public void tearDown() {
-        ReflectionTestUtils.setField(controller, "analyzerResultsService", originalAnalyzerResultsService);
-        ReflectionTestUtils.setField(controller, "analyzerService", originalAnalyzerService);
-        ReflectionTestUtils.setField(controller, "fhirContext", originalFhirContext);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        actor = new UserSessionData();
+        actor.setSytemUserId(47);
     }
 
     @Test
-    public void importFhirBundle_NoMappableObservations_ReturnsBadRequest() throws Exception {
-        String bundleJson = "{\n" + "  \"resourceType\": \"Bundle\",\n" + "  \"type\": \"transaction\",\n"
-                + "  \"entry\": [\n" + "    {\n" + "      \"fullUrl\": \"urn:uuid:specimen-1\",\n"
-                + "      \"resource\": {\n" + "        \"resourceType\": \"Specimen\",\n"
-                + "        \"identifier\": [{\"value\": \"CNEG\"}]\n" + "      }\n" + "    },\n" + "    {\n"
-                + "      \"resource\": {\n" + "        \"resourceType\": \"Observation\",\n"
-                + "        \"specimen\": {\"reference\": \"urn:uuid:specimen-1\"},\n"
-                + "        \"code\": {\"coding\": [{\"code\": \"CONTROL\"}]}\n" + "      }\n" + "    }\n" + "  ]\n"
-                + "}";
+    public void normalizedBundleDelegatesToTheOwningService() throws Exception {
+        // Parsing creates a new Bundle; its contents are checked after delegation below.
+        when(importService.importBundle(any(Bundle.class), eq("47")))
+                .thenReturn(new AnalyzerNormalizedResultImportSummary("receipt-7", "42", 1, 0, 0));
 
-        mockMvc.perform(post("/analyzer/fhir").contentType(MediaType.APPLICATION_JSON).content(bundleJson))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.errorKey").value("analyzer.fhirImport.error.noObservations"));
+        mockMvc.perform(post("/analyzer/fhir").requestAttr(IActionConstants.USER_SESSION_DATA, actor).contentType("application/fhir+json")
+                .content(Files.readString(FIXTURE))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.receiptId").value("receipt-7"))
+                .andExpect(jsonPath("$.analyzerId").value("42"))
+                .andExpect(jsonPath("$.resultsStaged").value(1)).andExpect(jsonPath("$.resultsHeld").value(0));
 
-        verify(analyzerResultsService, never()).insertAnalyzerResults(anyList(), eq("1"));
+        ArgumentCaptor<Bundle> received = ArgumentCaptor.forClass(Bundle.class);
+        verify(importService).importBundle(received.capture(), eq("47"));
+        Bundle bundle = received.getValue();
+        assertEquals("known-astm-001", bundle.getIdentifier().getValue());
+        org.hl7.fhir.r4.model.Observation observation = (org.hl7.fhir.r4.model.Observation) bundle.getEntry().get(2).getResource();
+        assertEquals("WBC", observation.getCode().getCodingFirstRep().getCode());
+        assertEquals("7.5", observation.getValueQuantity().getValue().toPlainString());
     }
 
     @Test
-    public void importFhirBundle_ValidObservation_InsertsAnalyzerResults() throws Exception {
-        String bundleJson = "{\n" + "  \"resourceType\": \"Bundle\",\n" + "  \"type\": \"transaction\",\n"
-                + "  \"entry\": [\n" + "    {\n" + "      \"fullUrl\": \"urn:uuid:specimen-1\",\n"
-                + "      \"resource\": {\n" + "        \"resourceType\": \"Specimen\",\n"
-                + "        \"identifier\": [{\"value\": \"HARN-FC-2026-00003\"}]\n" + "      }\n" + "    },\n"
-                + "    {\n" + "      \"resource\": {\n" + "        \"resourceType\": \"Observation\",\n"
-                + "        \"specimen\": {\"reference\": \"urn:uuid:specimen-1\"},\n"
-                + "        \"code\": {\"coding\": [{\"code\": \"WBC\"}]},\n" + "        \"valueString\": \"Detected\"\n"
-                + "      }\n" + "    }\n" + "  ]\n" + "}";
+    public void unknownConnectionReturnsVisibleUnprocessableContractError() throws Exception {
+        // Any parsed Bundle triggers this domain error; this test covers HTTP error translation.
+        when(importService.importBundle(any(Bundle.class), eq("47")))
+                .thenThrow(new AnalyzerNormalizedResultImportException(
+                        "analyzer.fhirImport.error.unknownConnection", "Connection is not configured"));
 
-        mockMvc.perform(post("/analyzer/fhir").contentType(MediaType.APPLICATION_JSON).content(bundleJson))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.resultsInserted").value(1));
-
-        verify(analyzerResultsService).insertAnalyzerResults(anyList(), eq("1"));
+        mockMvc.perform(post("/analyzer/fhir").requestAttr(IActionConstants.USER_SESSION_DATA, actor).contentType(MediaType.APPLICATION_JSON)
+                .content(Files.readString(FIXTURE))).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorKey").value("analyzer.fhirImport.error.unknownConnection"));
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    public void importFhirBundle_QcTaggedObservation_PersistsControlResult() throws Exception {
-        String bundleJson = "{\n" + "  \"resourceType\": \"Bundle\",\n" + "  \"type\": \"transaction\",\n"
-                + "  \"entry\": [\n" + "    {\n" + "      \"fullUrl\": \"urn:uuid:specimen-1\",\n"
-                + "      \"resource\": {\n" + "        \"resourceType\": \"Specimen\",\n"
-                + "        \"identifier\": [{\"value\": \"CNEG\"}]\n" + "      }\n" + "    },\n" + "    {\n"
-                + "      \"resource\": {\n" + "        \"resourceType\": \"Observation\",\n"
-                + "        \"meta\": {\"tag\": [{\"system\": \"http://openelis-global.org/fhir/tags\", \"code\": \"QC\", \"display\": \"Quality Control\"}]},\n"
-                + "        \"specimen\": {\"reference\": \"urn:uuid:specimen-1\"},\n"
-                + "        \"code\": {\"coding\": [{\"code\": \"VIH-1\"}]},\n"
-                + "        \"valueString\": \"Positive\"\n" + "      }\n" + "    }\n" + "  ]\n" + "}";
+    public void emptyPayloadDoesNotCallTheDomainService() throws Exception {
+        mockMvc.perform(post("/analyzer/fhir").contentType(MediaType.APPLICATION_JSON).content(""))
+                .andExpect(status().isBadRequest());
+        verifyZeroInteractions(importService);
+    }
 
-        mockMvc.perform(post("/analyzer/fhir").contentType(MediaType.APPLICATION_JSON).content(bundleJson))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.resultsInserted").value(1));
+    @Test
+    public void malformedFhirReturnsBadRequestWithoutCallingTheDomainService() throws Exception {
+        mockMvc.perform(post("/analyzer/fhir").requestAttr(IActionConstants.USER_SESSION_DATA, actor)
+                .contentType(MediaType.APPLICATION_JSON).content("{not-fhir")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorKey").value("analyzer.fhirImport.error.invalidPayload"));
 
-        ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
-        verify(analyzerResultsService).insertAnalyzerResults(captor.capture(), eq("1"));
-        List<AnalyzerResults> inserted = (List<AnalyzerResults>) captor.getValue();
-        org.junit.Assert.assertEquals(1, inserted.size());
-        org.junit.Assert.assertTrue("QC tag should map to isControl=true", inserted.get(0).getIsControl());
+        verifyZeroInteractions(importService);
     }
 }

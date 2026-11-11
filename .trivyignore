@@ -1,0 +1,10 @@
+# Dev environment self-signed TLS certificate
+# Used locally for development; not part of production deployment
+# See docs/dev_setup.md for context
+dev/https/oe_selfsigned.key: AsymmetricPrivateKey
+
+# Base image CVEs (known acceptable risk for dev/test containers)
+# nginx:1.15-alpine and postgres:14.4 are used in development only
+# and periodically updated. Review and update base images when
+# upgrading Docker stack dependencies.
+# Expires: 2026-12-31

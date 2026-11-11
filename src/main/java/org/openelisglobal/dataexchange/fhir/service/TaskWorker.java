@@ -102,7 +102,12 @@ public class TaskWorker {
 
         if (interpretResults.get(0) == InterpreterResults.OK) {
 
-            // checkResult = existanceChecker.check(referringOrderNumber);
+            // OGC-1145 FR-8: a specimen-ambiguous order with no specimen coding
+            // queues on the AwaitingSpecimen hold — same lifecycle as Entered,
+            // but the queue shows it needs the accessioner's sample-type choice.
+            ExternalOrderStatus entryStatus = interpreter.isSpecimenClarificationNeeded()
+                    ? ExternalOrderStatus.AwaitingSpecimen
+                    : ExternalOrderStatus.Entered;
             switch (checkResult) {
             case ORDER_FOUND_QUEUED:
                 if (orderType == OrderType.CANCEL) {
@@ -127,7 +132,7 @@ public class TaskWorker {
                 } else {
                     LogEvent.logDebug(this.getClass().getSimpleName(), "handleOrderRequest",
                             "no order found, entering order: " + referringOrderNumber);
-                    insertNewOrder(referringOrderNumber, message, patient, priority, ExternalOrderStatus.Entered);
+                    insertNewOrder(referringOrderNumber, message, patient, priority, entryStatus);
                     return TaskResult.OK;
                 }
             case ORDER_FOUND_CANCELED:
@@ -138,7 +143,7 @@ public class TaskWorker {
                 } else {
                     LogEvent.logDebug(this.getClass().getSimpleName(), "handleOrderRequest",
                             "order found cancelled, entering order: " + referringOrderNumber);
-                    insertNewOrder(referringOrderNumber, message, patient, priority, ExternalOrderStatus.Entered);
+                    insertNewOrder(referringOrderNumber, message, patient, priority, entryStatus);
                     return TaskResult.OK;
                 }
             default:

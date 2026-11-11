@@ -16,6 +16,7 @@
 package org.openelisglobal.analyzerresults.dao;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.dao.BaseDAO;
 
@@ -35,6 +36,10 @@ public interface AnalyzerResultsDAO extends BaseDAO<AnalyzerResults, String> {
     public AnalyzerResults readAnalyzerResults(String idString);
 
     public List<AnalyzerResults> getDuplicateResultByAccessionAndTest(AnalyzerResults result);
+
+    List<AnalyzerResults> findHeldMappingResultsByAnalyzer(String analyzerId);
+
+    Map<String, Long> countHeldResultsByAnalyzerIds(List<String> analyzerIds);
 
     // public void deleteAll(List<AnalyzerResults> deletableAnalyzerResults) throws
     // LIMSRuntimeException;

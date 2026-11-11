@@ -30,7 +30,7 @@ public class TestResult extends BaseObject<String> {
     private String flags;
     private String testResultType;
     private String value;
-    private String significantDigits;
+    private String reportingDecimalPlaces;
     private String quantLimit;
     private String contLevel;
     private String scriptletName;
@@ -38,9 +38,17 @@ public class TestResult extends BaseObject<String> {
     private Boolean isQuantifiable = false;
     private Boolean isNormal = false;
     private Boolean isActive = true;
+    // Surveillance result classification (POSITIVE / NEGATIVE / INDETERMINATE),
+    // catalog-configured per (test, value). Null when not configured.
+    private String significance;
+    // OGC-949 M5: links a select-list option to its result component (UUID FK).
+    private String componentId;
 
     // transient
     private Boolean isDefault = false;
+    // transient: a select-list option the admin typed rather than picked, stored
+    // as a dictionary entry with that text even when the text is a number
+    private boolean freeText = false;
 
     public TestResult() {
         super();
@@ -51,6 +59,14 @@ public class TestResult extends BaseObject<String> {
     @Override
     public String getId() {
         return this.id;
+    }
+
+    public boolean isFreeText() {
+        return freeText;
+    }
+
+    public void setFreeText(boolean freeText) {
+        this.freeText = freeText;
     }
 
     public Test getTest() {
@@ -114,12 +130,12 @@ public class TestResult extends BaseObject<String> {
         this.resultGroup = resultGroup;
     }
 
-    public String getSignificantDigits() {
-        return significantDigits;
+    public String getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(String significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(String reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public String getTestResultType() {
@@ -199,12 +215,28 @@ public class TestResult extends BaseObject<String> {
         isNormal = normal;
     }
 
+    public String getSignificance() {
+        return significance;
+    }
+
+    public void setSignificance(String significance) {
+        this.significance = significance;
+    }
+
     public void setDefault(boolean isDefault) {
         this.isDefault = isDefault;
     }
 
     public Boolean getDefault() {
         return isDefault;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
     }
 
 }

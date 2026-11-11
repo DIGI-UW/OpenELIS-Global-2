@@ -23,11 +23,18 @@ public class MethodServiceImpl extends AuditableBaseObjectServiceImpl<Method, St
 
     MethodServiceImpl() {
         super(Method.class);
+        this.auditTrailLog = true;
     }
 
     @Override
     protected MethodDAO getBaseObjectDAO() {
         return baseObjectDAO;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Method findById(String id) {
+        return getBaseObjectDAO().get(id).orElse(null);
     }
 
     @Override

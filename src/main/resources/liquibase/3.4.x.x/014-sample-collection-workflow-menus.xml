@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Sample Collection Workflow Navigation (NAV-1, NAV-2, DSH-1 to DSH-9)
+        Expands "Add Order" into 4 independent child menu items plus dashboard:
+        - Order Dashboard (/order) - Default landing page
+        - Enter Order (/order/enter)
+        - Collect Sample (/order/collect)
+        - Label & Store (/order/label)
+        - QA Review (/order/qa)
+    -->
+
+    <!-- Create parent menu for Order Workflow under Sample menu -->
+    <changeSet id="nav-001-create-order-workflow-parent" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_order_workflow'
+            </sqlCheck>
+        </preConditions>
+        <comment>Create Order Workflow parent menu under Sample menu with dashboard as action</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_sample')"/>
+            <column name="presentation_order" valueNumeric="1"/>
+            <column name="element_id" value="menu_order_workflow"/>
+            <column name="action_url" value="/order"/>
+            <column name="display_key" value="sidenav.label.addorder"/>
+            <column name="tool_tip_key" value="sidenav.label.addorder"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- Clear parent action_url so it only expands (doesn't navigate) -->
+    <changeSet id="nav-001a-clear-parent-action-url" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_order_workflow'
+            </sqlCheck>
+        </preConditions>
+        <comment>Clear action_url on parent menu so it expands instead of navigates</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value=""/>
+            <where>element_id = 'menu_order_workflow'</where>
+        </update>
+    </changeSet>
+
+    <!-- Dashboard: Order Dashboard -->
+    <changeSet id="nav-001b-create-order-dashboard-menu" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_order_dashboard'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Order Dashboard menu entry</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_order_workflow')"/>
+            <column name="presentation_order" valueNumeric="0"/>
+            <column name="element_id" value="menu_order_dashboard"/>
+            <column name="action_url" value="/order"/>
+            <column name="display_key" value="sidenav.label.order.dashboard"/>
+            <column name="tool_tip_key" value="sidenav.label.order.dashboard"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- Step 1: Enter Order -->
+    <changeSet id="nav-002-create-order-enter-menu" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_order_enter'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Enter Order menu entry</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_order_workflow')"/>
+            <column name="presentation_order" valueNumeric="1"/>
+            <column name="element_id" value="menu_order_enter"/>
+            <column name="action_url" value="/order/enter"/>
+            <column name="display_key" value="sidenav.label.order.enter"/>
+            <column name="tool_tip_key" value="sidenav.label.order.enter"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- Step 2: Collect Sample -->
+    <changeSet id="nav-003-create-order-collect-menu" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_order_collect'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Collect Sample menu entry</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_order_workflow')"/>
+            <column name="presentation_order" valueNumeric="2"/>
+            <column name="element_id" value="menu_order_collect"/>
+            <column name="action_url" value="/order/collect"/>
+            <column name="display_key" value="sidenav.label.order.collect"/>
+            <column name="tool_tip_key" value="sidenav.label.order.collect"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- Step 3: Label & Store -->
+    <changeSet id="nav-004-create-order-label-menu" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_order_label'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Label and Store menu entry</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_order_workflow')"/>
+            <column name="presentation_order" valueNumeric="3"/>
+            <column name="element_id" value="menu_order_label"/>
+            <column name="action_url" value="/order/label"/>
+            <column name="display_key" value="sidenav.label.order.label"/>
+            <column name="tool_tip_key" value="sidenav.label.order.label"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- Step 4: QA Review -->
+    <changeSet id="nav-005-create-order-qa-menu" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_order_qa'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add QA Review menu entry</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_order_workflow')"/>
+            <column name="presentation_order" valueNumeric="4"/>
+            <column name="element_id" value="menu_order_qa"/>
+            <column name="action_url" value="/order/qa"/>
+            <column name="display_key" value="sidenav.label.order.qa"/>
+            <column name="tool_tip_key" value="sidenav.label.order.qa"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

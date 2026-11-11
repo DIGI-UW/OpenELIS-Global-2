@@ -67,6 +67,14 @@ public class Test extends EnumValueItemImpl {
 
     private String loinc;
 
+    // OGC-949 M1 / OGC-936: test catalog v2.5 domain (the AMR flag reuses the
+    // existing antimicrobialResistance field below — no parallel column)
+    private String domain = "CLINICAL";
+
+    private boolean opensMicrobiologyCase;
+    private String microbiologyCaseRole = "DIRECT";
+    private boolean collectedInSets;
+
     private String stickerRequiredFlag;
 
     private String alternateTestDisplayValue;
@@ -121,6 +129,10 @@ public class Test extends EnumValueItemImpl {
 
     private Boolean antimicrobialResistance;
 
+    // OGC-704: total allowable error (percent) for Westgard sigma metrics;
+    // null where not configured (sigma renders as "not calculable")
+    private Double tea;
+
     @Override
     public String getSortOrder() {
         return sortOrder;
@@ -129,6 +141,38 @@ public class Test extends EnumValueItemImpl {
     @Override
     public void setSortOrder(String sortOrder) {
         this.sortOrder = sortOrder;
+    }
+
+    public boolean isOpensMicrobiologyCase() {
+        return opensMicrobiologyCase;
+    }
+
+    public void setOpensMicrobiologyCase(boolean value) {
+        opensMicrobiologyCase = value;
+    }
+
+    public String getMicrobiologyCaseRole() {
+        return microbiologyCaseRole;
+    }
+
+    public void setMicrobiologyCaseRole(String value) {
+        microbiologyCaseRole = value;
+    }
+
+    public boolean isCollectedInSets() {
+        return collectedInSets;
+    }
+
+    public void setCollectedInSets(boolean value) {
+        collectedInSets = value;
+    }
+
+    public Double getTea() {
+        return tea;
+    }
+
+    public void setTea(Double tea) {
+        this.tea = tea;
     }
 
     public Test() {
@@ -271,6 +315,14 @@ public class Test extends EnumValueItemImpl {
 
     public void setLoinc(String loinc) {
         this.loinc = loinc;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
     }
 
     public String getStickerRequiredFlag() {

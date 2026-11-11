@@ -1,0 +1,272 @@
+/**
+ * InstrumentDetailPage Component
+ *
+ * Page showing detailed information about a laboratory instrument's QC status.
+ * Navigated to from the QC Dashboard InstrumentsTab.
+ *
+ * Route: /analyzers/qc/instruments/:instrumentId
+ */
+
+import React, { useState, useEffect, useLayoutEffect } from "react";
+import {
+  Tag,
+  Tile,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+  Loading,
+  InlineNotification,
+} from "@carbon/react";
+import { useIntl } from "react-intl";
+import { useHistory, useLocation, useParams } from "react-router-dom";
+import {
+  getComplianceTagType,
+  getComplianceLabelKey,
+  getZScoreBadgeType,
+  formatTimestamp,
+} from "./qcDashboardUtils";
+import ActivityTimelineTab from "./ActivityTimelineTab";
+import ControlChartTab from "./ControlChartTab";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { getFromOpenElisServer } from "../../utils/Utils";
+import "./InstrumentDetailModal.css";
+
+const InstrumentDetailPage = () => {
+  const intl = useIntl();
+  const history = useHistory();
+  const location = useLocation();
+  const { instrumentId } = useParams();
+  const [instrumentResponse, setInstrumentResponse] = useState({
+    instrumentId: null,
+    instrument: null,
+  });
+  const loading = instrumentResponse.instrumentId !== instrumentId;
+  const instrument = loading ? null : instrumentResponse.instrument;
+  const activeSubTab =
+    new URLSearchParams(location.search).get("view") === "chart" ? 1 : 0;
+
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [instrumentId, loading]);
+
+  const selectSubTab = ({ selectedIndex }) => {
+    const params = new URLSearchParams(location.search);
+    params.set("view", selectedIndex === 1 ? "chart" : "activity");
+    history.replace({
+      pathname: location.pathname,
+      search: params.toString(),
+      hash: location.hash,
+    });
+  };
+
+  const requestedReturnPath = new URLSearchParams(location.search).get(
+    "returnTo",
+  );
+  const analyzerReturnPath = (() => {
+    if (!requestedReturnPath) {
+      return "/analyzers";
+    }
+
+    try {
+      const candidate = new URL(requestedReturnPath, window.location.origin);
+      if (
+        candidate.origin === window.location.origin &&
+        candidate.pathname === "/analyzers"
+      ) {
+        return `${candidate.pathname}${candidate.search}${candidate.hash}`;
+      }
+    } catch {
+      // Ignore malformed return paths and fall back to the analyzer dashboard.
+    }
+
+    return "/analyzers";
+  })();
+
+  useEffect(() => {
+    if (!instrumentId) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    getFromOpenElisServer(
+      `/rest/qc/dashboard/instruments/${instrumentId}`,
+      (response) => {
+        setInstrumentResponse({
+          instrumentId,
+          instrument: response?.data || response || null,
+        });
+      },
+      controller.signal,
+    );
+
+    return () => controller.abort();
+  }, [instrumentId]);
+
+  if (loading) {
+    return <Loading withOverlay={false} />;
+  }
+
+  if (!instrument) {
+    return (
+      <div>
+        <PageBreadCrumb
+          breadcrumbs={[
+            { label: "home.label", link: "/" },
+            {
+              label: "analyzer.page.hierarchy.root",
+              link: analyzerReturnPath,
+            },
+            { label: "qc.dashboard.title", link: "/qa/qc/dashboard" },
+            {
+              label: "qc.instrument.notFound",
+              isCurrentPage: true,
+            },
+          ]}
+        />
+        <div className="instrument-detail-content">
+          <h1>{intl.formatMessage({ id: "qc.instrument.notFound" })}</h1>
+        </div>
+      </div>
+    );
+  }
+
+  const analyteDetails = instrument.analyteDetails || [];
+  const instrumentName =
+    instrument.instrumentName || instrument.name || instrumentId;
+  const operationalQcNotConfigured =
+    instrument.complianceColor?.toUpperCase() === "NOT_CONFIGURED";
+
+  return (
+    <div
+      data-testid="instrument-detail-page"
+      className="instrument-detail-page"
+    >
+      <PageBreadCrumb
+        breadcrumbs={[
+          { label: "home.label", link: "/" },
+          {
+            label: "analyzer.page.hierarchy.root",
+            link: analyzerReturnPath,
+          },
+          {
+            label: "qc.dashboard.title",
+            link: "/qa/qc/dashboard",
+          },
+          { label: instrumentName, isCurrentPage: true },
+        ]}
+      />
+
+      <div className="instrument-detail-content">
+        <h1>{instrumentName}</h1>
+
+        {/* Status header */}
+        <div
+          className="instrument-detail-status-header"
+          data-testid="instrument-detail-modal-header"
+        >
+          <div>
+            <span className="instrument-detail-subtitle">
+              {instrument.instrumentType && (
+                <span className="instrument-detail-type">
+                  {instrument.instrumentType}
+                </span>
+              )}
+              {instrument.instrumentType && instrument.instrumentLocation && (
+                <span className="instrument-detail-subtitle__separator">
+                  &middot;
+                </span>
+              )}
+              {instrument.instrumentLocation && (
+                <span>{instrument.instrumentLocation}</span>
+              )}
+            </span>
+          </div>
+          <Tag
+            type={getComplianceTagType(instrument.complianceColor)}
+            data-testid="compliance-tag"
+          >
+            {intl.formatMessage({
+              id: getComplianceLabelKey(instrument.complianceColor),
+            })}
+          </Tag>
+        </div>
+
+        {operationalQcNotConfigured && (
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "qc.instrumentDetail.notConfigured.title",
+            })}
+            subtitle={intl.formatMessage({
+              id: "qc.instrumentDetail.notConfigured.description",
+            })}
+          />
+        )}
+
+        {/* Analyte cards */}
+        {analyteDetails.length > 0 && (
+          <div
+            className="instrument-detail-analytes"
+            data-testid="analyte-detail-grid"
+          >
+            {analyteDetails.map((analyte) => (
+              <Tile
+                key={analyte.testId}
+                className="instrument-detail-analyte-card"
+                data-testid={`analyte-card-${analyte.testId}`}
+              >
+                <div className="instrument-detail-analyte-card__name">
+                  {analyte.testName}
+                </div>
+                <div className="instrument-detail-analyte-card__meta">
+                  <Tag
+                    type={getZScoreBadgeType(analyte.latestZScore)}
+                    size="sm"
+                  >
+                    z = {analyte.latestZScore?.toFixed(2) ?? "—"}
+                  </Tag>
+                </div>
+                <div className="instrument-detail-analyte-card__time">
+                  {formatTimestamp(analyte.lastRunTime, intl)}
+                </div>
+              </Tile>
+            ))}
+          </div>
+        )}
+
+        {/* Tabs */}
+        <Tabs selectedIndex={activeSubTab} onChange={selectSubTab}>
+          <TabList aria-label="Instrument detail tabs">
+            <Tab data-testid="tab-activity-timeline">
+              {intl.formatMessage({
+                id: "qc.instrumentDetail.tab.activityTimeline",
+              })}
+            </Tab>
+            <Tab data-testid="tab-control-chart">
+              {intl.formatMessage({
+                id: "qc.instrumentDetail.tab.controlChart",
+              })}
+            </Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel>
+              <ActivityTimelineTab instrument={instrument} open={true} />
+            </TabPanel>
+            <TabPanel>
+              <ControlChartTab
+                instrument={instrument}
+                active={activeSubTab === 1}
+              />
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+
+export default InstrumentDetailPage;

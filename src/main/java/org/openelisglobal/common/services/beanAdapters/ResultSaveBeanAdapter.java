@@ -16,6 +16,8 @@
 
 package org.openelisglobal.common.services.beanAdapters;
 
+import java.math.BigDecimal;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.test.beanItems.TestResultItem;
@@ -29,15 +31,27 @@ public class ResultSaveBeanAdapter {
         bean.setResultType(item.getResultType());
         bean.setMultiSelectResultValues(item.getMultiSelectResultValues());
         bean.setTestId(item.getTestId());
+        bean.setTestResultComponentId(item.getTestResultComponentId());
         bean.setQualifiedResultId(item.getQualifiedResultId());
         bean.setQualifiedResultValue(item.getQualifiedResultValue());
         bean.setQualifiedDictionaryId(item.getQualifiedDictionaryId());
         bean.setResultId(item.getResultId());
         bean.setResultValue(item.getShadowResultValue());
+        bean.setRawResultValue(item.getRawResultValue());
         bean.setReportable(item.getReportable());
         bean.setLowerNormalRange(item.getLowerNormalRange());
         bean.setUpperNormalRange(item.getUpperNormalRange());
-        bean.setSignificantDigits(item.getSignificantDigits());
+        bean.setReportingDecimalPlaces(item.getReportingDecimalPlaces());
+        if (!GenericValidator.isBlankOrNull(item.getExpandedUncertainty())) {
+            try {
+                BigDecimal u = new BigDecimal(item.getExpandedUncertainty());
+                if (u.compareTo(BigDecimal.ZERO) >= 0) {
+                    bean.setExpandedUncertainty(u);
+                    bean.setCoverageFactor(BigDecimal.valueOf(2.0));
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
 
         return bean;
     }
@@ -49,13 +63,16 @@ public class ResultSaveBeanAdapter {
         bean.setResultType(item.getResultType());
         bean.setMultiSelectResultValues(item.getMultiSelectResultValues());
         bean.setTestId(item.getTestId());
+        bean.setTestResultComponentId(item.getTestResultComponentId());
         bean.setQualifiedResultId(item.getQualifiedResultId());
         bean.setQualifiedResultValue(item.getQualifiedResultValue());
         bean.setQualifiedDictionaryId(item.getQualifiedDictionaryId());
         bean.setResultId(item.getResultId());
         bean.setResultValue(item.getResult());
+        // Validation posts the clinical value; displayResult is presentation only.
+        bean.setRawResultValue(item.getResult());
         // bean.setReportable("N");
-        bean.setSignificantDigits(item.getSignificantDigits());
+        bean.setReportingDecimalPlaces(item.getReportingDecimalPlaces());
 
         return bean;
     }

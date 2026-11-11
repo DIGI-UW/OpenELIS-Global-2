@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Environmental Compliance Dashboard (ComplianceDashboardQueryServiceIntegrationTest).
+    June 2026, four environmental orders over three sampling sites: * 9101 at
+    site A: four pH results, all inside the PP 22/2021 range, and a Colour result
+    no threshold applies to. * 9102 at site A: entered, no result yet. * 9103
+    at site B: one pH result (10.0) outside the range. * 9106 at site C: its
+    pH has no result yet; its Colour result has no threshold, so site C has results
+    but no compliance rate. * 9105 at site A was collected in January, outside
+    the period. Seven results but four orders: counting result rows instead of
+    orders is what this guards. Five of the seven results are judged against
+    a threshold (four pass), so the compliance rate is 80%, not 4 of 7. observation_history_type
+    is a protected seed table, so the test inserts the envSamplingSiteId type
+    and each order's site observation itself. -->
+<dataset>
+
+    <test id="9101" description="pH" name="pH" is_active="Y"
+        guid="cd000001-0000-0000-0000-000000000001" orderable="true"
+        lastupdated="2026-01-01 00:00:00" />
+    <test id="9102" description="Colour" name="Colour" is_active="Y"
+        guid="cd000001-0000-0000-0000-000000000005" orderable="true"
+        lastupdated="2026-01-01 00:00:00" />
+
+
+    <vector_sampling_site id="9101" code="CD-A"
+        name="Dashboard Site A" active="true" sys_user_id="1"
+        lastupdated="2026-01-01 00:00:00" />
+    <vector_sampling_site id="9102" code="CD-B"
+        name="Dashboard Site B" active="true" sys_user_id="1"
+        lastupdated="2026-01-01 00:00:00" />
+    <vector_sampling_site id="9103" code="CD-C"
+        name="Dashboard Site C" active="true" sys_user_id="1"
+        lastupdated="2026-01-01 00:00:00" />
+
+    <sample id="9101" accession_number="CD-9101" domain="E"
+        entered_date="2026-06-10 08:00:00" received_date="2026-06-10 08:00:00"
+        is_confirmation="false" lastupdated="2026-06-10 08:00:00" />
+    <sample id="9102" accession_number="CD-9102" domain="E"
+        entered_date="2026-06-11 08:00:00" received_date="2026-06-11 08:00:00"
+        is_confirmation="false" lastupdated="2026-06-11 08:00:00" />
+    <sample id="9103" accession_number="CD-9103" domain="E"
+        entered_date="2026-06-12 08:00:00" received_date="2026-06-12 08:00:00"
+        is_confirmation="false" lastupdated="2026-06-12 08:00:00" />
+    <sample id="9105" accession_number="CD-9105" domain="E"
+        entered_date="2026-01-05 08:00:00" received_date="2026-01-05 08:00:00"
+        is_confirmation="false" lastupdated="2026-01-05 08:00:00" />
+    <sample id="9106" accession_number="CD-9106" domain="E"
+        entered_date="2026-06-15 08:00:00" received_date="2026-06-15 08:00:00"
+        is_confirmation="false" lastupdated="2026-06-15 08:00:00" />
+
+    <sample_item id="9101" samp_id="9101" sort_order="1"
+        status_id="1" collection_date="2026-06-10 07:00:00"
+        lastupdated="2026-06-10 08:00:00" />
+    <sample_item id="9102" samp_id="9102" sort_order="1"
+        status_id="1" collection_date="2026-06-11 07:00:00"
+        lastupdated="2026-06-11 08:00:00" />
+    <sample_item id="9103" samp_id="9103" sort_order="1"
+        status_id="1" collection_date="2026-06-12 07:00:00"
+        lastupdated="2026-06-12 08:00:00" />
+    <sample_item id="9105" samp_id="9105" sort_order="1"
+        status_id="1" collection_date="2026-01-05 07:00:00"
+        lastupdated="2026-01-05 08:00:00" />
+    <sample_item id="9106" samp_id="9106" sort_order="1"
+        status_id="1" collection_date="2026-06-15 07:00:00"
+        lastupdated="2026-06-15 08:00:00" />
+
+
+    <analysis id="9101" sampitem_id="9101" test_id="9101"
+        analysis_type="MANUAL" />
+    <analysis id="9102" sampitem_id="9101" test_id="9101"
+        analysis_type="MANUAL" />
+    <analysis id="9103" sampitem_id="9101" test_id="9101"
+        analysis_type="MANUAL" />
+    <analysis id="9104" sampitem_id="9101" test_id="9101"
+        analysis_type="MANUAL" />
+    <analysis id="9105" sampitem_id="9102" test_id="9101"
+        analysis_type="MANUAL" />
+    <analysis id="9106" sampitem_id="9103" test_id="9101"
+        analysis_type="MANUAL" />
+    <analysis id="9107" sampitem_id="9105" test_id="9101"
+        analysis_type="MANUAL" />
+    <analysis id="9108" sampitem_id="9106" test_id="9101"
+        analysis_type="MANUAL" />
+    <analysis id="9109" sampitem_id="9101" test_id="9102"
+        analysis_type="MANUAL" />
+    <analysis id="9110" sampitem_id="9106" test_id="9102"
+        analysis_type="MANUAL" />
+
+    <result id="9101" analysis_id="9101" value="7.0"
+        is_reportable="Y" lastupdated="2026-06-10 09:00:00" />
+    <result id="9102" analysis_id="9102" value="7.2"
+        is_reportable="Y" lastupdated="2026-06-10 09:00:00" />
+    <result id="9103" analysis_id="9103" value="7.4"
+        is_reportable="Y" lastupdated="2026-06-10 09:00:00" />
+    <result id="9104" analysis_id="9104" value="7.6"
+        is_reportable="Y" lastupdated="2026-06-10 09:00:00" />
+    <result id="9106" analysis_id="9106" value="10.0"
+        is_reportable="Y" lastupdated="2026-06-12 09:00:00" />
+    <result id="9107" analysis_id="9107" value="7.0"
+        is_reportable="Y" lastupdated="2026-01-05 09:00:00" />
+    <result id="9109" analysis_id="9109" value="5" is_reportable="Y"
+        lastupdated="2026-06-10 09:00:00" />
+    <result id="9110" analysis_id="9110" value="3" is_reportable="Y"
+        lastupdated="2026-06-15 09:00:00" />
+
+    <compliance_standard id="9101"
+        fhir_uuid="cd000001-0000-0000-0000-000000000002"
+        name="Dashboard Water Standard" version="2021"
+        description="Water quality regulation" issuing_body="Government"
+        regulation_number="CD 1/2021" country_region="Indonesia"
+        status="ACTIVE" effective_date="2024-01-01" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <parameter_group id="9101"
+        fhir_uuid="cd000001-0000-0000-0000-000000000003" standard_id="9101"
+        name="Physical Parameters" description="Physical water parameters"
+        sort_order="1" is_mandatory="true" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <compliance_threshold id="9101"
+        fhir_uuid="cd000001-0000-0000-0000-000000000004" group_id="9101"
+        test_id="9101" parameter_code="pH" display_name="pH"
+        threshold_type="RANGE" min_value="6.0" max_value="9.0"
+        is_mandatory="true" is_active="true" archived="false" sort_order="1"
+        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <sample_compliance_standards id="9101"
+        sample_id="9101" compliance_standard_id="9101" priority="0"
+        created_date="2026-06-10 08:00:00" last_updated="2026-06-10 08:00:00" />
+    <sample_compliance_standards id="9103"
+        sample_id="9103" compliance_standard_id="9101" priority="0"
+        created_date="2026-06-12 08:00:00" last_updated="2026-06-12 08:00:00" />
+
+</dataset>

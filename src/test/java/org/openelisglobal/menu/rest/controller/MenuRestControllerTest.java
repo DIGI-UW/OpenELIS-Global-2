@@ -72,6 +72,21 @@ public class MenuRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void getAdminMenuById_shouldReturnInactiveMenuItemGivenId() throws Exception {
+        MvcResult urlResult = super.mockMvc.perform(get("/rest/admin/menu/testElement2")
+                .accept(MediaType.APPLICATION_JSON_VALUE).contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
+        String result = urlResult.getResponse().getContentAsString();
+        ObjectMapper objectMapper = new ObjectMapper();
+        MenuItem menuWrapper = objectMapper.readValue(result, MenuItem.class);
+
+        assertNotNull("Menu should not be null", menuWrapper);
+        assertNotNull("Menu object should not be null", menuWrapper.getMenu());
+
+        assertEquals("testElement2", menuWrapper.getMenu().getElementId());
+        assertFalse("Menu should remain inactive", menuWrapper.getMenu().getIsActive());
+    }
+
+    @Test
     public void postMenuTree_shouldAddMenuList() throws Exception {
         ObjectMapper objectMapper = new ObjectMapper();
 

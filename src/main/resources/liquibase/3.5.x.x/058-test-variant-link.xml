@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1142 / FR-46–55 — specimen-variant grouping.
+      A "variant link" records that a test is a member of an assay group. Two
+      tests belong to the same group when and only when they share a group_id
+      (FR-46) — there is no name matching. Membership is created by admin linking
+      (FR-51) or specimen-variant creation (FR-52/54). Unlinking deletes the row.
+      A test can be a member of at most one group (unique on test_id), so the
+      table doubles as the membership index. Table starts empty.
+    -->
+
+    <changeSet id="OGC-1142-test-variant-link-table" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="test_variant_link"/>
+            </not>
+        </preConditions>
+        <createTable schemaName="clinlims" tableName="test_variant_link">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_test_variant_link"/>
+            </column>
+            <!-- Members of the same assay group share this id. -->
+            <column name="group_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <!-- BaseObject @Version maps to last_updated -->
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <!-- A test lives in exactly one group. -->
+        <addUniqueConstraint schemaName="clinlims" tableName="test_variant_link"
+            columnNames="test_id" constraintName="uq_test_variant_link_test"/>
+        <addForeignKeyConstraint constraintName="fk_test_variant_link_test"
+            baseTableSchemaName="clinlims" baseTableName="test_variant_link" baseColumnNames="test_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="test_variant_link" indexName="idx_test_variant_link_group">
+            <column name="group_id"/>
+        </createIndex>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="test_variant_link"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

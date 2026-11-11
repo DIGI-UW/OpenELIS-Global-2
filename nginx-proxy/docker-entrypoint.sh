@@ -1,8 +1,14 @@
 #!/bin/sh
 set -e
 
-# Get domain from environment variable or use default
-DOMAIN="${LETSENCRYPT_DOMAIN:-storage.openelis-global.org}"
+# Require LETSENCRYPT_DOMAIN — no silent fallback. The proxy's cert paths and
+# nginx server_name both depend on it, and a wrong value silently produces
+# mis-routed HTTPS. Set it in .env before starting the proxy.
+if [ -z "${LETSENCRYPT_DOMAIN:-}" ]; then
+    echo "ERROR: LETSENCRYPT_DOMAIN is not set. Export it (usually via .env) before starting the proxy."
+    exit 1
+fi
+DOMAIN="$LETSENCRYPT_DOMAIN"
 
 # Check if Let's Encrypt certificates exist for the domain
 LETSENCRYPT_CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"

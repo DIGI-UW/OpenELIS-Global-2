@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="shipment-018-add-inbound-flag" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="shipping_box" columnName="inbound" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="shipping_box">
+      <column name="inbound" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+    <rollback>
+      <dropColumn tableName="shipping_box" columnName="inbound" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="shipment-018-add-origin-facility-name" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="shipping_box" columnName="origin_facility_name" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="shipping_box">
+      <column name="origin_facility_name" type="VARCHAR(255)"/>
+    </addColumn>
+    <rollback>
+      <dropColumn tableName="shipping_box" columnName="origin_facility_name" schemaName="clinlims"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

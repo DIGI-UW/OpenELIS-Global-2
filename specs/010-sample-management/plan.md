@@ -185,12 +185,13 @@ Document which test types will be used for this feature:
     - Concurrent aliquoting scenario with optimistic locking
 - [x] **Frontend Unit Tests**: React component logic (Jest + React Testing
       Library)
-  - Template: `.specify/templates/testing/JestComponent.test.jsx.template`
+  - Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
   - **Reference**:
     [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
     for detailed patterns
-  - **Reference**: [Jest Best Practices](.specify/guides/jest-best-practices.md)
-    for quick reference
+  - **Reference**:
+    [Vitest Best Practices](.specify/guides/vitest-best-practices.md) for quick
+    reference
   - **Coverage Goal**: >70% (measured via Jest)
   - **SDD Checkpoint**: After Phase 4 (Frontend), all unit tests MUST pass
   - **TDD Workflow**: Red-Green-Refactor cycle for complex logic

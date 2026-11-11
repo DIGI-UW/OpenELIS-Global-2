@@ -1,6 +1,7 @@
 package org.openelisglobal.testconfiguration.form;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.validation.annotations.SafeHtml;
@@ -19,12 +20,29 @@ public class SampleTypeCreateForm extends BaseForm {
     private String existingFrenchNames;
 
     @NotBlank
+    @Size(max = 40)
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String sampleTypeEnglishName;
 
     @NotBlank
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String sampleTypeFrenchName;
+
+    // Optional: a blank description falls back to the English name.
+    @Size(max = 40)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String description;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String domain;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String whonetCode;
+
+    // Whether the new sample type is created active. Defaults to inactive
+    // (null → false) so a type is inactive-until-configured unless the admin
+    // explicitly activates it on create.
+    private Boolean active;
 
     public SampleTypeCreateForm() {
         setFormName("sampleTypeCreateForm");
@@ -76,5 +94,47 @@ public class SampleTypeCreateForm extends BaseForm {
 
     public void setSampleTypeFrenchName(String sampleTypeFrenchName) {
         this.sampleTypeFrenchName = sampleTypeFrenchName;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
+    }
+
+    public String getWhonetCode() {
+        return whonetCode;
+    }
+
+    public void setWhonetCode(String whonetCode) {
+        this.whonetCode = whonetCode;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
+    }
+
+    private Boolean microbiologyIsolate;
+
+    public Boolean getMicrobiologyIsolate() {
+        return microbiologyIsolate;
+    }
+
+    public void setMicrobiologyIsolate(Boolean value) {
+        microbiologyIsolate = value;
     }
 }

@@ -26,6 +26,7 @@ import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -155,17 +156,18 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
             String sql = "";
             // bugzilla 1387 added domain parm
             if (!StringUtil.isNullorNill(domain)) {
-                sql = "from TypeOfSample t where upper(t.description) like upper(:param) and t.domain ="
-                        + " :param2 order by upper(t.description)";
+                sql = "from TypeOfSample t where upper(t.description) like upper(:param) and t.domain in"
+                        + " (:param2) order by upper(t.description)";
             } else {
                 sql = "from TypeOfSample t where upper(t.description) like upper(:param) order by"
                         + " upper(t.description)";
             }
             Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
             query.setParameter("param", filter + "%");
-            // bugzilla 1387 added domain parm
+            // bugzilla 1387 added domain parm; accepts the legacy char or the
+            // enum value (OGC-296 domain migration)
             if (!StringUtil.isNullorNill(domain)) {
-                query.setParameter("param2", domain);
+                query.setParameterList("param2", List.of(domain, Domain.normalize(domain)));
             }
 
             list = query.list();
@@ -181,15 +183,15 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
     @Transactional(readOnly = true)
     public List<TypeOfSample> getTypesForDomain(SampleDomain domain) throws LIMSRuntimeException {
         List<TypeOfSample> list;
-        String key = getKeyForDomain(domain);
+        List<String> keys = getKeysForDomain(domain);
 
         try {
 
-            String sql = "from TypeOfSample t where t.domain = :domainKey order by upper(t.description)";
+            String sql = "from TypeOfSample t where t.domain in (:domainKeys) order by upper(t.description)";
 
             Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
 
-            query.setParameter("domainKey", key);
+            query.setParameterList("domainKeys", keys);
 
             list = query.list();
         } catch (RuntimeException e) {
@@ -203,15 +205,15 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
     @Transactional(readOnly = true)
     public List<TypeOfSample> getTypesForDomainBySortOrder(SampleDomain domain) throws LIMSRuntimeException {
         List<TypeOfSample> list = null;
-        String key = getKeyForDomain(domain);
+        List<String> keys = getKeysForDomain(domain);
 
         try {
 
-            String sql = "from TypeOfSample t where t.domain = :domainKey order by t.sortOrder";
+            String sql = "from TypeOfSample t where t.domain in (:domainKeys) order by t.sortOrder";
 
             Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
 
-            query.setParameter("domainKey", key);
+            query.setParameterList("domainKeys", keys);
 
             list = query.list();
         } catch (RuntimeException e) {
@@ -225,12 +227,14 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
     @Transactional(readOnly = true)
     public TypeOfSample getTypeOfSampleByLocalAbbrevAndDomain(String localAbbrev, String domain)
             throws LIMSRuntimeException {
-        String sql = "From TypeOfSample tos where tos.localAbbreviation = :localAbbrev and tos.domain = :domain";
         try {
-            Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
-            query.setParameter("localAbbrev", localAbbrev);
-            query.setParameter("domain", domain);
-            TypeOfSample typeOfSample = query.uniqueResult();
+            TypeOfSample typeOfSample = findByLocalAbbrevAndExactDomain(localAbbrev, domain);
+            if (typeOfSample == null) {
+                Domain resolved = Domain.fromRaw(domain);
+                if (resolved != null && !resolved.name().equals(domain)) {
+                    typeOfSample = findByLocalAbbrevAndExactDomain(localAbbrev, resolved.name());
+                }
+            }
             return typeOfSample;
         } catch (HibernateException e) {
             handleException(e, "getTypeOfSampeByLocalAbbreviationAndDomain");
@@ -238,27 +242,37 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
         return null;
     }
 
-    private String getKeyForDomain(SampleDomain domain) {
-        String domainKey = "H";
-        switch (domain) {
-        case ANIMAL: {
-            domainKey = "A";
-            break;
-        }
-        case ENVIRONMENTAL: {
-            domainKey = "E";
-            break;
-        }
-        case HUMAN: {
-            domainKey = "H";
-            break;
-        }
-        default: {
-            domainKey = "H";
-        }
-        }
+    /**
+     * Callers pass either the legacy one-character code or the enum value stored
+     * since the OGC-296 migration, so a miss on the raw value is retried against
+     * the canonical enum name. Matched one value at a time because local_abbrev is
+     * not unique across domains, so an IN clause could break uniqueResult().
+     */
+    private TypeOfSample findByLocalAbbrevAndExactDomain(String localAbbrev, String domain) {
+        String sql = "From TypeOfSample tos where tos.localAbbreviation = :localAbbrev and tos.domain = :domain";
+        Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
+        query.setParameter("localAbbrev", localAbbrev);
+        query.setParameter("domain", domain);
+        return query.uniqueResult();
+    }
 
-        return domainKey;
+    /**
+     * Both the enum value stored since the OGC-296 domain migration and the legacy
+     * one-character code (D-030), so rows inserted outside the migration path
+     * (fixtures, plugins) keep matching.
+     */
+    private List<String> getKeysForDomain(SampleDomain domain) {
+        switch (domain) {
+        case ANIMAL:
+            return List.of(Domain.VECTOR.name(), "A");
+        case VECTOR:
+            return List.of(Domain.VECTOR.name(), "V");
+        case ENVIRONMENTAL:
+            return List.of(Domain.ENVIRONMENTAL.name(), "E");
+        case HUMAN:
+        default:
+            return List.of(Domain.CLINICAL.name(), "H");
+        }
     }
 
     // bugzilla 1411
@@ -328,15 +342,20 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
             // duplicates
 
             // bugzilla 2432 add check for local abbreviation
+            boolean hasAbbreviation = !StringUtil.isNullorNill(typeOfSample.getLocalAbbreviation())
+                    && !typeOfSample.getLocalAbbreviation().trim().isEmpty();
             String sql = "from TypeOfSample t where (trim(lower(t.description)) = :description and"
-                    + " trim(lower(t.domain)) = :domain and t.id != :id) or"
-                    + " (trim(lower(t.localAbbreviation)) = :abbrev and trim(lower(t.domain)) = :domain"
-                    + " and t.id != :id)";
+                    + " trim(lower(t.domain)) = :domain and t.id != :id)"
+                    + (hasAbbreviation
+                            ? " or (trim(lower(t.localAbbreviation)) = :abbrev and"
+                                    + " trim(lower(t.domain)) = :domain and t.id != :id)"
+                            : "");
             Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
             query.setParameter("description", typeOfSample.getDescription().toLowerCase().trim());
             query.setParameter("domain", typeOfSample.getDomain().toLowerCase().trim());
-            // bugzila 2432
-            query.setParameter("abbrev", typeOfSample.getLocalAbbreviation().toLowerCase().trim());
+            if (hasAbbreviation) {
+                query.setParameter("abbrev", typeOfSample.getLocalAbbreviation().toLowerCase().trim());
+            }
 
             // initialize with 0 (for new records where no id has been generated
             // yet
@@ -344,7 +363,7 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
             if (!StringUtil.isNullorNill(typeOfSample.getId())) {
                 typeOfSampleId = typeOfSample.getId();
             }
-            query.setParameter("id", Integer.parseInt(typeOfSampleId));
+            query.setParameter("id", typeOfSampleId);
 
             list = query.list();
 
@@ -401,7 +420,7 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
                 + "AND tos.id = tost.typeOfSampleId";
         try {
             Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
-            query.setParameter("id", Integer.parseInt(test.getId()));
+            query.setParameter("id", test.getId());
 
             TypeOfSample tos = query.uniqueResult();
             // closeSession(); // CSL remove old

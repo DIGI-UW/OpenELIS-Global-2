@@ -26,6 +26,7 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasRole('ADMIN')")
 public class TestCatalogRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] {};
@@ -114,16 +116,16 @@ public class TestCatalogRestController extends BaseController {
             if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(resultType)) {
                 List<TestResult> testResults = testService.getPossibleTestResults(test);
                 if (testResults.size() > 0) {
-                    catalog.setSignificantDigits(
-                            testService.getPossibleTestResults(test).get(0).getSignificantDigits());
+                    catalog.setReportingDecimalPlaces(
+                            testService.getPossibleTestResults(test).get(0).getReportingDecimalPlaces());
                 } else {
                     LogEvent.logWarn(this.getClass().getSimpleName(), "createTestList",
                             "test that doesn't have an active test result found. Possibly issue with data in"
                                     + " database");
-                    catalog.setSignificantDigits("0");
+                    catalog.setReportingDecimalPlaces("");
                 }
                 catalog.setHasLimitValues(true);
-                catalog.setResultLimits(getResultLimits(test, catalog.getSignificantDigits()));
+                catalog.setResultLimits(getResultLimits(test, catalog.getReportingDecimalPlaces()));
             }
             catalog.setHasDictionaryValues(
                     TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(catalog.getResultType()));
@@ -181,10 +183,33 @@ public class TestCatalogRestController extends BaseController {
         return dictionaryList;
     }
 
+    /**
+     * Resolve a dictionary-variant test result to its display value.
+     *
+     * <p>
+     * A test result may reference a dictionary entry that no longer exists (or
+     * carry no value at all) — historic data that the catalog has no way to repair
+     * from here. Such a row is skipped rather than allowed to fail the whole
+     * catalog: this is a read-only view, and one unresolvable value must not cost
+     * the caller every other test.
+     *
+     * @return the display value, or null when there is nothing to show
+     */
     private String getDictionaryValue(TestResult testResult) {
 
         if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(testResult.getTestResultType())) {
+            if (org.apache.commons.validator.GenericValidator.isBlankOrNull(testResult.getValue())) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "getDictionaryValue",
+                        "dictionary test result " + testResult.getId() + " has no value; skipping it");
+                return null;
+            }
             Dictionary dictionary = dictionaryService.getDataForId(testResult.getValue());
+            if (dictionary == null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "getDictionaryValue",
+                        "test result " + testResult.getId() + " references missing dictionary entry "
+                                + testResult.getValue() + "; skipping it");
+                return null;
+            }
             String displayValue = dictionary.getLocalizedName();
 
             if ("unknown".equals(displayValue)) {
@@ -202,7 +227,7 @@ public class TestCatalogRestController extends BaseController {
         return null;
     }
 
-    private List<ResultLimitBean> getResultLimits(Test test, String significantDigits) {
+    private List<ResultLimitBean> getResultLimits(Test test, String reportingDecimalPlaces) {
         List<ResultLimitBean> limitBeans = new ArrayList<>();
 
         List<ResultLimit> resultLimitList = SpringContext.getBean(ResultLimitService.class).getResultLimits(test);
@@ -217,13 +242,13 @@ public class TestCatalogRestController extends BaseController {
         for (ResultLimit limit : resultLimitList) {
             ResultLimitBean bean = new ResultLimitBean();
             bean.setNormalRange(SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(limit,
-                    significantDigits, "-"));
+                    reportingDecimalPlaces, "-"));
             bean.setValidRange(SpringContext.getBean(ResultLimitService.class).getDisplayValidRange(limit,
-                    significantDigits, "-"));
+                    reportingDecimalPlaces, "-"));
             bean.setReportingRange(SpringContext.getBean(ResultLimitService.class).getDisplayReportingRange(limit,
-                    significantDigits, "-"));
+                    reportingDecimalPlaces, "-"));
             bean.setCriticalRange(SpringContext.getBean(ResultLimitService.class).getDisplayCriticalRange(limit,
-                    significantDigits, "-"));
+                    reportingDecimalPlaces, "-"));
             bean.setGender(limit.getGender());
             bean.setAgeRange(SpringContext.getBean(ResultLimitService.class).getDisplayAgeRange(limit, "-"));
             limitBeans.add(bean);

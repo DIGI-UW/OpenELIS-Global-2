@@ -18,8 +18,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
@@ -75,17 +73,8 @@ public class IndicatorSectionPerformanceReport extends RetroCIReport implements 
     }
 
     @Override
-    protected String reportFileName() {
-        return "RetroCI_backlog";
-    }
-
-    @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        if (!initialized) {
-            throw new IllegalStateException("initializeReport not called first");
-        }
-
-        return new JRBeanCollectionDataSource(reportItems);
+    protected byte[] renderReport() {
+        return SectionPerformancePdf.render(reportItems);
     }
 
     @Override
@@ -124,9 +113,8 @@ public class IndicatorSectionPerformanceReport extends RetroCIReport implements 
     }
 
     private void addTestItems() {
-        List<Integer> includedStatusList = new ArrayList<>();
-        includedStatusList.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
+        List<String> includedStatusList = new ArrayList<>();
+        includedStatusList.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
 
         List<Analysis> bioAnalysisList = analysisService.getAllAnalysisByTestSectionAndStatus(BIOCHEMISTRY_SECTION_ID,
                 includedStatusList, true);
@@ -147,9 +135,9 @@ public class IndicatorSectionPerformanceReport extends RetroCIReport implements 
     }
 
     private void addValidationItems() {
-        List<Integer> includedStatusList = new ArrayList<>();
-        includedStatusList.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
+        List<String> includedStatusList = new ArrayList<>();
+        includedStatusList
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
 
         List<Analysis> bioAnalysisList = analysisService.getAllAnalysisByTestSectionAndStatus(BIOCHEMISTRY_SECTION_ID,
                 includedStatusList, true);

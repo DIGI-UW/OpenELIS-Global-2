@@ -4,13 +4,21 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import org.apache.commons.lang3.StringUtils;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.dao.TestResultDAO;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,8 +26,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestResult, String>
         implements TestResultService {
+
+    /**
+     * Dictionary category that result select-list options belong to — the same one
+     * the legacy select-list admin page assigns (see
+     * ResultSelectListServiceImpl.addResultSelectList) and that DisplayListService
+     * builds the "Test Result" display list from.
+     */
+    public static final String RESULT_OPTION_DICTIONARY_CATEGORY = "Test Result";
+
     @Autowired
     protected TestResultDAO baseObjectDAO;
+
+    @Autowired
+    private DictionaryService dictionaryService;
+
+    @Autowired
+    private DictionaryCategoryService dictionaryCategoryService;
 
     TestResultServiceImpl() {
         super(TestResult.class);
@@ -53,8 +76,142 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
 
     @Override
     @Transactional(readOnly = true)
+    public List<TestResult> getActiveOptionsByComponentId(String componentId) {
+        Map<String, Object> propertyValues = new HashMap<>();
+        propertyValues.put("componentId", componentId);
+        propertyValues.put("isActive", true);
+        List<TestResult> options = baseObjectDAO.getAllMatching(propertyValues);
+
+        options.removeIf(o -> !TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(o.getTestResultType()));
+        // SORT_ORDER is a numeric column mapped as String; sort numerically, nulls
+        // last. Equal or missing sort orders fall back to creation order (id), so
+        // the list never depends on the order the database happens to return.
+        options.sort(Comparator.comparingInt((TestResult o) -> parseSortOrder(o.getSortOrder()))
+                .thenComparingLong(o -> parseId(o.getId())));
+        return options;
+    }
+
+    private static long parseId(String id) {
+        if (id == null || id.isBlank()) {
+            return Long.MAX_VALUE;
+        }
+        try {
+            return Long.parseLong(id.trim());
+        } catch (NumberFormatException e) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    private static int parseSortOrder(String s) {
+        if (s == null || s.isBlank()) {
+            return Integer.MAX_VALUE;
+        }
+        try {
+            return Integer.parseInt(s.trim());
+        } catch (NumberFormatException e) {
+            return Integer.MAX_VALUE;
+        }
+    }
+
+    @Override
+    @Transactional
+    public List<TestResult> saveOptionsForComponent(Test test, String componentId, List<TestResult> desired,
+            String sysUserId) {
+        List<TestResult> existing = getActiveOptionsByComponentId(componentId);
+        Map<String, TestResult> existingById = new HashMap<>();
+        for (TestResult e : existing) {
+            existingById.put(e.getId(), e);
+        }
+        Set<String> keptIds = new HashSet<>();
+        for (TestResult d : desired) {
+            resolveDictionaryValue(d, sysUserId);
+            TestResult match = d.getId() == null ? null : existingById.get(d.getId());
+            if (match != null) {
+                match.setValue(d.getValue());
+                match.setSortOrder(d.getSortOrder());
+                match.setIsNormal(d.getIsNormal());
+                match.setIsQuantifiable(d.getIsQuantifiable());
+                match.setTestResultType(d.getTestResultType());
+                match.setSysUserId(sysUserId);
+                update(match);
+                keptIds.add(match.getId());
+            } else {
+                // New option: id is sequence-assigned on insert; FK to the (persistent) test.
+                d.setTest(test);
+                d.setComponentId(componentId);
+                d.setIsActive(true);
+                d.setSysUserId(sysUserId);
+                insert(d);
+            }
+        }
+        for (TestResult e : existing) {
+            if (!keptIds.contains(e.getId())) {
+                e.setIsActive(false);
+                e.setSysUserId(sysUserId);
+                update(e);
+            }
+        }
+        return getActiveOptionsByComponentId(componentId);
+    }
+
+    /**
+     * Dictionary-variant option rows must hold a numeric dictionary id in VALUE —
+     * every consumer resolves it via {@code getDictionaryById}. A free-text option
+     * typed in the Test Catalog Editor (FR-83) arrives here as raw text, so it is
+     * materialized into the dictionary master list under the "Test Result" category
+     * (reusing an active entry with the same name if one exists) and the row
+     * repointed at the entry's id. A numeric value that already resolves to an
+     * entry is kept as-is unless the option is marked as typed text (OGC-1458: a
+     * typed "1" is the grade 1, not dictionary entry 1); a numeric value that
+     * resolves to nothing is treated as free text too.
+     */
+    private void resolveDictionaryValue(TestResult option, String sysUserId) {
+        if (!TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(option.getTestResultType())) {
+            return;
+        }
+        String value = option.getValue() == null ? "" : option.getValue().trim();
+        if (value.isEmpty()) {
+            return;
+        }
+        if (!option.isFreeText() && StringUtils.isNumeric(value)
+                && dictionaryService.getDictionaryById(value) != null) {
+            return;
+        }
+        // Scoped to the result-option category. Matching on the name alone reused
+        // whatever active entry happened to have the lowest id — "Negative" and
+        // "Invalid" exist several times over across unrelated categories, so an
+        // option could end up sharing a demographic entry, and renaming that entry
+        // would silently rename the option. The category is part of the identity.
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("dictEntry", value);
+        properties.put("isActive", IActionConstants.YES);
+        properties.put("dictionaryCategory.categoryName", RESULT_OPTION_DICTIONARY_CATEGORY);
+        List<Dictionary> matches = dictionaryService.getAllMatching(properties);
+        if (!matches.isEmpty()) {
+            matches.sort(Comparator.comparingInt(d -> Integer.parseInt(d.getId())));
+            option.setValue(matches.get(0).getId());
+            return;
+        }
+        Dictionary dictionary = new Dictionary();
+        dictionary.setDictEntry(value);
+        dictionary.setIsActive(IActionConstants.YES);
+        dictionary.setSortOrder(1);
+        dictionary.setDictionaryCategory(
+                dictionaryCategoryService.getDictionaryCategoryByName(RESULT_OPTION_DICTIONARY_CATEGORY));
+        dictionary.setSysUserId(sysUserId);
+        option.setValue(dictionaryService.insert(dictionary));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public TestResult getTestResultsByTestAndDictonaryResult(String id, String value) {
         return baseObjectDAO.getTestResultsByTestAndDictonaryResult(id, value);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TestResult getTestResultsByTestAndDictonaryResult(String id, String value, String componentId) {
+        return baseObjectDAO.getTestResultsByTestAndDictonaryResult(id, value, componentId);
     }
 
     @Override

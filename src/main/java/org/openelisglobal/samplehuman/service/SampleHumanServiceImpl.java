@@ -19,6 +19,7 @@ public class SampleHumanServiceImpl extends AuditableBaseObjectServiceImpl<Sampl
 
     SampleHumanServiceImpl() {
         super(SampleHuman.class);
+        this.auditTrailLog = true;
     }
 
     @Override
@@ -35,6 +36,11 @@ public class SampleHumanServiceImpl extends AuditableBaseObjectServiceImpl<Sampl
     @Override
     @Transactional(readOnly = true)
     public Patient getPatientForSample(Sample sample) {
+        // Site-subject orders must never inherit patient demographics, even if an old
+        // sample_human association survived a domain correction.
+        if (sample != null && org.openelisglobal.common.domain.Domain
+                .fromRaw(sample.getDomain()) == org.openelisglobal.common.domain.Domain.ENVIRONMENTAL)
+            return null;
         return baseObjectDAO.getPatientForSample(sample);
     }
 
@@ -57,12 +63,12 @@ public class SampleHumanServiceImpl extends AuditableBaseObjectServiceImpl<Sampl
     }
 
     @Override
-    public List<Patient> getAllPatientsWithSampleEntered() {
-        return baseObjectDAO.getAllPatientsWithSampleEntered();
+    public List<String> getAllPatientIdsWithSampleEntered() {
+        return baseObjectDAO.getAllPatientIdsWithSampleEntered();
     }
 
     @Override
-    public List<Patient> getAllPatientsWithSampleEnteredMissingFhirUuid() {
-        return baseObjectDAO.getAllPatientsWithSampleEnteredMissingFhirUuid();
+    public List<String> getAllPatientIdsWithSampleEnteredMissingFhirUuid() {
+        return baseObjectDAO.getAllPatientIdsWithSampleEnteredMissingFhirUuid();
     }
 }

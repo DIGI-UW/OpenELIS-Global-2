@@ -6,12 +6,14 @@ import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingExcepti
 import org.openelisglobal.organization.service.OrganizationImportService;
 import org.openelisglobal.provider.service.ProviderImportService;
 import org.openelisglobal.spring.util.SpringContext;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/import")
+@PreAuthorize("hasRole('ADMIN')")
 public class ImportController {
 
     private enum ResourceType {

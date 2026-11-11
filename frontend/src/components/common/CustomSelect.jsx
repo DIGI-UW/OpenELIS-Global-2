@@ -1,0 +1,41 @@
+import React from "react";
+import { Select, SelectItem } from "@carbon/react";
+
+const CustomSelect = (props) => {
+  const handleSelect = (e) => {
+    const value = e.target.value;
+    props.onChange?.(value);
+  };
+  return (
+    <>
+      <Select
+        onChange={handleSelect}
+        labelText={props.labelText || ""}
+        id={props.id}
+        value={props.value ? props.value : ""}
+        disabled={props.disabled}
+        aria-label={props["aria-label"]}
+        aria-required={props["aria-required"]}
+        invalid={props.invalid}
+        invalidText={props.invalidText}
+      >
+        <SelectItem text={props.placeholder || "Select..."} value="" />
+        {props.defaultSelect && (
+          <SelectItem
+            text={props.defaultSelect.value}
+            value={props.defaultSelect.id}
+          />
+        )}
+
+        {props.options != null &&
+          props.options.map((option, index) => {
+            return (
+              <SelectItem key={index} text={option.value} value={option.id} />
+            );
+          })}
+      </Select>
+    </>
+  );
+};
+
+export default CustomSelect;

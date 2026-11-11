@@ -1,0 +1,250 @@
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { Grid, Column, Select, SelectItem, Search } from "@carbon/react";
+import { useIntl } from "react-intl";
+import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
+import AlertSummaryTiles from "./AlertSummaryTiles";
+import AlertsTable from "./AlertsTable";
+import AlertAcknowledgeModal from "./AlertAcknowledgeModal";
+import EQADeadlineSummary from "./EQADeadlineSummary";
+import PageBreadCrumb from "../common/PageBreadCrumb";
+import SearchableSelect from "../common/SearchableSelect";
+
+const AUTO_REFRESH_INTERVAL = 60000;
+
+const breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "alerts.dashboard.title", link: "/Alerts" },
+];
+
+const AlertsDashboard = () => {
+  const intl = useIntl();
+  const [summary, setSummary] = useState({});
+  const [alerts, setAlerts] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const [typeFilter, setTypeFilter] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedAlert, setSelectedAlert] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const [alertTypes, setAlertTypes] = useState([]);
+
+  useEffect(() => {
+    getFromOpenElisServer("/rest/alerts/dashboard/types", (types) => {
+      setAlertTypes(Array.isArray(types) ? types : []);
+    });
+  }, []);
+
+  const fetchSummary = useCallback(() => {
+    getFromOpenElisServer("/rest/alerts/dashboard/summary", (data) => {
+      if (data) {
+        setSummary(data);
+      }
+    });
+  }, []);
+
+  const fetchAlerts = useCallback(() => {
+    let url = `/rest/alerts/dashboard?page=${page}&pageSize=${pageSize}`;
+    if (typeFilter) url += `&type=${typeFilter}`;
+    if (severityFilter) url += `&severity=${severityFilter}`;
+    if (statusFilter) url += `&status=${statusFilter}`;
+    if (searchText) url += `&search=${encodeURIComponent(searchText)}`;
+
+    getFromOpenElisServer(url, (data) => {
+      if (data) {
+        setAlerts(data.alerts || []);
+        setTotalCount(data.totalCount || 0);
+      }
+    });
+  }, [page, pageSize, typeFilter, severityFilter, statusFilter, searchText]);
+
+  useEffect(() => {
+    fetchSummary();
+    fetchAlerts();
+  }, [fetchSummary, fetchAlerts]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchSummary();
+      fetchAlerts();
+    }, AUTO_REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [fetchSummary, fetchAlerts]);
+
+  const handleAlertAction = (alert) => {
+    setSelectedAlert(alert);
+    setActionError(null);
+    setModalOpen(true);
+  };
+
+  const handleAlertActionSubmit = (alert, comment) => {
+    const resolving = alert.status === "ACKNOWLEDGED";
+    const payload = comment ? JSON.stringify({ notes: comment }) : "{}";
+    putToOpenElisServer(
+      `/rest/alerts/dashboard/${alert.id}/${resolving ? "resolve" : "acknowledge"}`,
+      payload,
+      (status) => {
+        if (status === 200) {
+          setModalOpen(false);
+          setSelectedAlert(null);
+          fetchSummary();
+          fetchAlerts();
+        } else {
+          setActionError(
+            intl.formatMessage({
+              id: resolving
+                ? "alerts.resolve.error"
+                : "alerts.acknowledge.error",
+            }),
+          );
+        }
+      },
+    );
+  };
+
+  const alertTypeOptions = useMemo(
+    () =>
+      alertTypes.map((type) => ({
+        id: type,
+        value: intl.formatMessage({
+          id: `alerts.type.${type.toLowerCase()}`,
+          defaultMessage: type,
+        }),
+      })),
+    [alertTypes, intl],
+  );
+
+  const handlePageChange = (newPage, newPageSize) => {
+    setPage(newPage);
+    setPageSize(newPageSize);
+  };
+
+  return (
+    <div className="alerts-dashboard pageContent">
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      <h2>{intl.formatMessage({ id: "alerts.dashboard.title" })}</h2>
+
+      <AlertSummaryTiles summary={summary} />
+
+      <Grid condensed style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+        <Column lg={4} md={4} sm={4}>
+          <SearchableSelect
+            id="alert-type-filter"
+            labelText={intl.formatMessage({ id: "alerts.filter.type" })}
+            placeholder={intl.formatMessage({
+              id: "alerts.filter.type.search",
+            })}
+            options={alertTypeOptions}
+            value={typeFilter}
+            onChange={(type) => {
+              setTypeFilter(type);
+              setPage(0);
+            }}
+          />
+        </Column>
+        <Column lg={4} md={4} sm={4}>
+          <Select
+            id="alert-severity-filter"
+            labelText={intl.formatMessage({ id: "alerts.filter.severity" })}
+            value={severityFilter}
+            onChange={(e) => {
+              setSeverityFilter(e.target.value);
+              setPage(0);
+            }}
+          >
+            <SelectItem value="" text="" />
+            <SelectItem
+              value="WARNING"
+              text={intl.formatMessage({ id: "alerts.severity.warning" })}
+            />
+            <SelectItem
+              value="CRITICAL"
+              text={intl.formatMessage({ id: "alerts.severity.critical" })}
+            />
+          </Select>
+        </Column>
+        <Column lg={4} md={4} sm={4}>
+          <Select
+            id="alert-status-filter"
+            labelText={intl.formatMessage({ id: "alerts.filter.status" })}
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(0);
+            }}
+          >
+            <SelectItem value="" text="" />
+            <SelectItem
+              value="OPEN"
+              text={intl.formatMessage({ id: "alerts.status.open" })}
+            />
+            <SelectItem
+              value="ACKNOWLEDGED"
+              text={intl.formatMessage({ id: "alerts.status.acknowledged" })}
+            />
+            <SelectItem
+              value="RESOLVED"
+              text={intl.formatMessage({ id: "alerts.status.resolved" })}
+            />
+          </Select>
+        </Column>
+        <Column lg={4} md={4} sm={4}>
+          {/* Carbon hides a Search's own label, which left this field sitting a
+              label's height above the three Selects beside it. The form item is
+              what a Carbon field uses to stack its label and control, so the
+              four filters share one baseline. */}
+          <div className="cds--form-item">
+            <label className="cds--label" htmlFor="alert-search">
+              {intl.formatMessage({ id: "alerts.filter.search" })}
+            </label>
+            <Search
+              id="alert-search"
+              size="md"
+              labelText={intl.formatMessage({ id: "alerts.filter.search" })}
+              placeholder={intl.formatMessage({ id: "alerts.filter.search" })}
+              value={searchText}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                setPage(0);
+              }}
+            />
+          </div>
+        </Column>
+      </Grid>
+
+      <AlertsTable
+        alerts={alerts}
+        totalCount={totalCount}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={handlePageChange}
+        onAction={handleAlertAction}
+      />
+
+      <EQADeadlineSummary
+        alerts={alerts}
+        onFilterByProvider={(provider) => {
+          setTypeFilter("EQA_DEADLINE");
+          setSearchText(provider);
+          setPage(0);
+        }}
+      />
+
+      <AlertAcknowledgeModal
+        open={modalOpen}
+        alert={selectedAlert}
+        error={actionError}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedAlert(null);
+        }}
+        onSubmit={handleAlertActionSubmit}
+      />
+    </div>
+  );
+};
+
+export default AlertsDashboard;

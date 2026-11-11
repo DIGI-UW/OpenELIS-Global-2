@@ -17,7 +17,7 @@ This checklist provides a standardized manual testing procedure for the Storage 
 
 ### 1.1 Dashboard Load
 
-- [ ] Navigate to `/Storage` or `/Storage/samples`
+- [ ] Navigate to `/Storage` or `/Storage/sample-items`
 - [ ] Dashboard loads without errors (check browser console)
 - [ ] All 4 metric cards are visible:
   - [ ] Total Samples
@@ -29,7 +29,7 @@ This checklist provides a standardized manual testing procedure for the Storage 
 ### 1.2 Tab Navigation
 
 - [ ] Click on each tab (Samples, Rooms, Devices, Shelves, Racks)
-- [ ] URL updates correctly (e.g., `/Storage/samples`, `/Storage/rooms`)
+- [ ] URL updates correctly (e.g., `/Storage/sample-items`, `/Storage/rooms`)
 - [ ] Tab content loads without errors
 - [ ] Tables render with headers even if empty
 - [ ] No console errors when switching tabs

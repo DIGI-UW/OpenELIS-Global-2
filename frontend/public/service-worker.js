@@ -8,7 +8,7 @@ self.addEventListener("install", (event) => {
     caches
       .open(CACHE_NAME)
       .then((cache) => {
-        return cache.addAll(["/", "/index.html", "/styles.css"]);
+        return cache.addAll(["/", "/index.html"]);
       })
       .then(() => self.skipWaiting()), // Skip waiting to activate new service worker immediately
   );

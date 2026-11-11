@@ -64,6 +64,28 @@
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
         <property name="collector" column="collector"
             type="java.lang.String" />
+        <property name="collectionConditions"
+            column="collection_conditions" type="java.lang.String" />
+        <property name="cultureSetNumber" column="culture_set_number"
+            type="integer" />
+        <property name="bodySite" column="body_site"
+            type="java.lang.String" length="40" />
+        <property name="collectionMethod" column="collection_method"
+            type="java.lang.String" />
+        <property name="sampleTemperature"
+            column="sample_temperature" type="java.lang.String" />
+        <property name="specimenOrigin" column="specimen_origin"
+            type="java.lang.String" />
+        <property name="container" column="container"
+            type="java.lang.String" />
+        <property name="locationDetails" column="location_details"
+            type="java.lang.String" />
+        <property name="gpsLatitude" column="gps_latitude"
+            type="java.lang.String" />
+        <property name="gpsLongitude" column="gps_longitude"
+            type="java.lang.String" />
+        <property name="receivedDate" column="received_date"
+            type="java.sql.Timestamp" />
         <property name="fhirUuid" column="fhir_uuid"
             type="java.util.UUID" />
         <property name="rejected" column="rejected"
@@ -74,6 +96,28 @@
             type="java.lang.Boolean" />
         <property name="voidReason" column="void_reason"
             type="java.lang.String" />
+        <property name="labPerformedSampling"
+            column="lab_performed_sampling" type="java.lang.Boolean" />
+
+        <!-- OGC-1424: who received the sample and the condition it arrived in -->
+        <property name="receivedById" column="received_by_id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+        <property name="arrivalCondition" column="arrival_condition"
+            type="java.lang.String" length="32" />
+        <property name="arrivalTemperature"
+            column="arrival_temperature" type="java.math.BigDecimal" />
+        <property name="arrivalRecordedById"
+            column="arrival_recorded_by_id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+        <property name="arrivalRecordedAt"
+            column="arrival_recorded_at" type="java.sql.Timestamp" />
+
+        <!-- V-03 v1.13 — per-aliquot collection-location override + notes -->
+        <property name="collectionLocationId"
+            column="collection_location_id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
+        <property name="collectionNotes" column="collection_notes"
+            type="java.lang.String" length="500" />
 
         <!-- Aliquoting fields for Sample Management feature -->
         <property name="remainingQuantity"

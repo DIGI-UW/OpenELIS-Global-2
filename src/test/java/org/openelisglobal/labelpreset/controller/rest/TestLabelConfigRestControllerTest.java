@@ -1,0 +1,257 @@
+package org.openelisglobal.labelpreset.controller.rest;
+
+import static org.junit.Assert.assertNotNull;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.List;
+import javax.sql.DataSource;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.labelpreset.dao.LabelPresetDAO;
+import org.openelisglobal.labelpreset.dao.TestLabelConfigDAO;
+import org.openelisglobal.labelpreset.dao.TestLabelPresetLinkDAO;
+import org.openelisglobal.labelpreset.form.TestLabelConfigForm;
+import org.openelisglobal.labelpreset.valueholder.BarcodeType;
+import org.openelisglobal.labelpreset.valueholder.LabelPreset;
+import org.openelisglobal.test.service.TestService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+/**
+ * Integration test for {@link TestLabelConfigRestController} (OGC-285 M4).
+ *
+ * <p>
+ * Uses {@link BaseWebContextSensitiveTest} with a real Spring context, real
+ * services, real DAOs and real DB. No {@code @MockBean} of any service.
+ * {@code BaseWebContextSensitiveTest.setDefaultTestAuthentication} grants
+ * ROLE_ADMIN + ROLE_RESULTS, matching the
+ * {@code @PreAuthorize("hasRole('ADMIN')")} on the controller.
+ * </p>
+ *
+ * <p>
+ * Test coverage (from tasks.md T102):
+ * </p>
+ * <ul>
+ * <li>GET returns default (toggle=true, empty links) when no config
+ * persisted.</li>
+ * <li>GET returns existing config after PUT.</li>
+ * <li>PUT happy path persists config + links; reload confirms round-trip.</li>
+ * <li>PUT with order-only preset (prints_per_sample=false) returns 422.</li>
+ * <li>PUT with duplicate presetId in links returns 422.</li>
+ * </ul>
+ */
+public class TestLabelConfigRestControllerTest extends BaseWebContextSensitiveTest {
+
+    private static final String PRESET_PER_SAMPLE_NAME = "T102-PerSample-Preset";
+    private static final String PRESET_ORDER_ONLY_NAME = "T102-OrderOnly-Preset";
+
+    @Autowired
+    private LabelPresetDAO labelPresetDAO;
+
+    @Autowired
+    private TestLabelPresetLinkDAO testLabelPresetLinkDAO;
+
+    @Autowired
+    private TestLabelConfigDAO testLabelConfigDAO;
+
+    @Autowired
+    private TestService testService;
+
+    @Autowired
+    private DataSource dataSource;
+
+    private JdbcTemplate jdbcTemplate;
+    private LabelPreset perSamplePreset;
+    private LabelPreset orderOnlyPreset;
+    private org.openelisglobal.test.valueholder.Test bloodTest;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        jdbcTemplate = new JdbcTemplate(dataSource);
+        executeDataSetWithStateManagement("testdata/test.xml");
+        executeDataSetWithStateManagement("testdata/system-user.xml");
+        cleanTestData();
+
+        bloodTest = testService.getTestById("1");
+        assertNotNull("fixture Test id=1 must exist", bloodTest);
+
+        perSamplePreset = saveLabelPreset(PRESET_PER_SAMPLE_NAME, false, true);
+        orderOnlyPreset = saveLabelPreset(PRESET_ORDER_ONLY_NAME, true, false);
+    }
+
+    @After
+    public void tearDown() {
+        cleanTestData();
+    }
+
+    /**
+     * Remove test data in FK order. Identified by test-specific preset names so a
+     * crashed prior run cannot collide with label_preset UNIQUE(name).
+     */
+    private void cleanTestData() {
+        try {
+            // Links referencing our test presets
+            jdbcTemplate.update(
+                    "DELETE FROM test_label_preset_link WHERE preset_id IN"
+                            + " (SELECT id FROM label_preset WHERE name IN (?, ?))",
+                    PRESET_PER_SAMPLE_NAME, PRESET_ORDER_ONLY_NAME);
+            // TestLabelConfig for Test id=1 (bloodTest)
+            jdbcTemplate.update("DELETE FROM test_label_config WHERE test_id = 1");
+            // The presets themselves
+            jdbcTemplate.update("DELETE FROM label_preset WHERE name IN (?, ?)", PRESET_PER_SAMPLE_NAME,
+                    PRESET_ORDER_ONLY_NAME);
+        } catch (Exception e) {
+            // Ignore cleanup errors — next run will retry.
+        }
+    }
+
+    private LabelPreset saveLabelPreset(String name, boolean printsPerOrder, boolean printsPerSample) {
+        LabelPreset preset = new LabelPreset();
+        preset.setName(name);
+        preset.setHeightMm(30);
+        preset.setWidthMm(60);
+        preset.setBarcodeType(BarcodeType.CODE_128);
+        preset.setPrintsPerOrder(printsPerOrder);
+        preset.setPrintsPerSample(printsPerSample);
+        preset.setDefaultPerOrder(0);
+        preset.setMaxPerOrder(10);
+        preset.setDefaultPerSample(1);
+        preset.setMaxPerSample(5);
+        preset.setIsSystem(false);
+        preset.setIsActive(true);
+        Integer id = labelPresetDAO.insert(preset);
+        assertNotNull("LabelPreset insert should return id", id);
+        return preset;
+    }
+
+    private TestLabelConfigForm formWithPerSamplePreset() {
+        TestLabelConfigForm form = new TestLabelConfigForm();
+        form.setAllowOrderEntryOverride(true);
+        List<TestLabelConfigForm.LinkEntry> links = new ArrayList<>();
+        TestLabelConfigForm.LinkEntry entry = new TestLabelConfigForm.LinkEntry();
+        entry.setPresetId(perSamplePreset.getId());
+        entry.setDefaultQty(1);
+        entry.setMaxQty(5);
+        entry.setAllowOverride(true);
+        links.add(entry);
+        form.setLinks(links);
+        return form;
+    }
+
+    // -----------------------------------------------------------------------
+    // T102a: GET returns default when no config persisted
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void getLabelConfig_returnsDefaultWhenNotPersisted() throws Exception {
+        mockMvc.perform(get("/rest/api/tests/1/labelConfig").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.allowOrderEntryOverride").value(true))
+                .andExpect(jsonPath("$.links.length()").value(0));
+    }
+
+    // -----------------------------------------------------------------------
+    // T102b: PUT happy path + GET round-trip
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void putLabelConfig_happyPath_persistsAndReloads() throws Exception {
+        TestLabelConfigForm form = formWithPerSamplePreset();
+        String json = new ObjectMapper().writeValueAsString(form);
+
+        mockMvc.perform(put("/rest/api/tests/1/labelConfig").contentType(MediaType.APPLICATION_JSON).content(json))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.allowOrderEntryOverride").value(true))
+                .andExpect(jsonPath("$.links.length()").value(1))
+                .andExpect(jsonPath("$.links[0].presetId").value(perSamplePreset.getId()))
+                .andExpect(jsonPath("$.links[0].defaultQty").value(1)).andExpect(jsonPath("$.links[0].maxQty").value(5))
+                .andExpect(jsonPath("$.links[0].allowOverride").value(true));
+
+        // Verify via GET that the state is durable
+        mockMvc.perform(get("/rest/api/tests/1/labelConfig").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.allowOrderEntryOverride").value(true))
+                .andExpect(jsonPath("$.links.length()").value(1))
+                .andExpect(jsonPath("$.links[0].presetId").value(perSamplePreset.getId()));
+    }
+
+    // -----------------------------------------------------------------------
+    // T102c: PUT with order-only preset -> 422
+    // This is the key inversion-test target per T120: if assertPerSamplePreset
+    // is gutted, this test must fail.
+    // -----------------------------------------------------------------------
+
+    /** OGC-1467: a missing links list is refused instead of answering 500. */
+    @Test
+    public void putLabelConfig_withoutLinks_returns400() throws Exception {
+        for (String body : new String[] { "{\"allowOrderEntryOverride\":true,\"links\":null}",
+                "{\"allowOrderEntryOverride\":true,\"links\":[null]}" }) {
+            mockMvc.perform(put("/rest/api/tests/1/labelConfig").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
+    public void putLabelConfig_orderOnlyPreset_returns422() throws Exception {
+        TestLabelConfigForm form = new TestLabelConfigForm();
+        form.setAllowOrderEntryOverride(true);
+        List<TestLabelConfigForm.LinkEntry> links = new ArrayList<>();
+        TestLabelConfigForm.LinkEntry entry = new TestLabelConfigForm.LinkEntry();
+        entry.setPresetId(orderOnlyPreset.getId());
+        entry.setDefaultQty(1);
+        entry.setMaxQty(5);
+        entry.setAllowOverride(true);
+        links.add(entry);
+        form.setLinks(links);
+
+        mockMvc.perform(put("/rest/api/tests/1/labelConfig").contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isUnprocessableEntity());
+    }
+
+    // -----------------------------------------------------------------------
+    // T102d: PUT with duplicate presetId -> 422 (AC-11)
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void putLabelConfig_duplicatePresetId_returns422() throws Exception {
+        TestLabelConfigForm form = new TestLabelConfigForm();
+        form.setAllowOrderEntryOverride(true);
+        List<TestLabelConfigForm.LinkEntry> links = new ArrayList<>();
+
+        // Two entries with the same presetId
+        for (int i = 0; i < 2; i++) {
+            TestLabelConfigForm.LinkEntry entry = new TestLabelConfigForm.LinkEntry();
+            entry.setPresetId(perSamplePreset.getId());
+            entry.setDefaultQty(1);
+            entry.setMaxQty(5);
+            entry.setAllowOverride(true);
+            links.add(entry);
+        }
+        form.setLinks(links);
+
+        mockMvc.perform(put("/rest/api/tests/1/labelConfig").contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isUnprocessableEntity());
+    }
+
+    // -----------------------------------------------------------------------
+    // T102e: PUT with master toggle off -> GET reflects false (AC-12)
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void putLabelConfig_masterToggleOff_persistedAndReturned() throws Exception {
+        TestLabelConfigForm form = formWithPerSamplePreset();
+        form.setAllowOrderEntryOverride(false); // AC-12: master toggle off
+
+        mockMvc.perform(put("/rest/api/tests/1/labelConfig").contentType(MediaType.APPLICATION_JSON)
+                .content(new ObjectMapper().writeValueAsString(form))).andExpect(status().isOk());
+
+        mockMvc.perform(get("/rest/api/tests/1/labelConfig").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.allowOrderEntryOverride").value(false));
+    }
+}

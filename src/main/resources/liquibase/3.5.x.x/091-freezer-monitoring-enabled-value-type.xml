@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.5.0-091-freezer-monitoring-enabled-value-type" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        select count(*) from clinlims.site_information
+        where name = 'freezer.monitoring.enabled' and value_type &lt;&gt; 'boolean';
+      </sqlCheck>
+    </preConditions>
+    <comment>Correct value_type on an already-seeded freezer.monitoring.enabled row. 089's insert is guarded on the row
+      not existing, so a database that ran the pre-rename 070 file keeps that file's value_type 'text' and renders the
+      setting as a free-text box on Site Information - where anything but the literal "true" reads back as false
+      through SystemConfigService.isMonitoringEnabled and silently stops all polling.</comment>
+    <update schemaName="clinlims" tableName="site_information">
+      <column name="value_type" value="boolean"/>
+      <where>name = 'freezer.monitoring.enabled'</where>
+    </update>
+    <rollback/>
+  </changeSet>
+
+</databaseChangeLog>

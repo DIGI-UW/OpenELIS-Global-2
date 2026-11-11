@@ -18,11 +18,11 @@ import org.apache.commons.validator.GenericValidator;
 import org.apache.logging.log4j.core.util.KeyValuePair;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.rest.provider.bean.TestDisplayBean;
 import org.openelisglobal.common.rest.provider.form.DisplayListPagingForm;
 import org.openelisglobal.common.rest.util.DisplayListPaging;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -31,6 +31,7 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.LabelValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -42,7 +43,9 @@ import org.openelisglobal.project.service.ProjectService;
 import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
+import org.openelisglobal.reports.action.implementation.ExportStudyProjectByDate;
 import org.openelisglobal.reports.action.implementation.ExportTrendsByDate;
+import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
@@ -57,6 +60,8 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -90,6 +95,9 @@ public class DisplayListController extends BaseRestController {
     private ProviderService providerService;
 
     @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
+
+    @Autowired
     private PersonService personService;
 
     @Autowired
@@ -120,6 +128,9 @@ public class DisplayListController extends BaseRestController {
     private TestResultService testResultService;
 
     @Autowired
+    private TestResultComponentService testResultComponentService;
+
+    @Autowired
     DictionaryService dictionaryService;
 
     @Autowired(required = false)
@@ -135,6 +146,21 @@ public class DisplayListController extends BaseRestController {
 
     protected static List<Integer> statusList;
     protected static List<String> nfsTestIdList;
+
+    /**
+     * The localized text behind a localization id, or "" when the id is blank or
+     * unknown (the shipped default for a label setting is "-1").
+     */
+    private String localizedOrBlank(String localizationId) {
+        if (GenericValidator.isBlankOrNull(localizationId)) {
+            return "";
+        }
+        try {
+            return StringUtil.blankIfNull(localizationService.getLocalizedValueById(localizationId));
+        } catch (RuntimeException e) {
+            return "";
+        }
+    }
 
     private String escapeRegexChars(String regex) {
         // TODO Auto-generated method stub
@@ -160,6 +186,16 @@ public class DisplayListController extends BaseRestController {
         }
 
         return projects;
+    }
+
+    /** The studies the general export by date can write (CIStudyExport). */
+    @GetMapping(value = "studyprojects", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getStudyExportProjects() {
+        List<IdValuePair> projectList = new ArrayList<>();
+        new ExportStudyProjectByDate().getProjectList()
+                .forEach(project -> projectList.add(new IdValuePair(project.getId(), project.getProjectName())));
+        return projectList;
     }
 
     @GetMapping(value = "trendsprojects", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -256,10 +292,30 @@ public class DisplayListController extends BaseRestController {
         return displayListform;
     }
 
-    @GetMapping(value = "tests", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Autowired
+    private org.openelisglobal.testmethod.service.TestMethodService testMethodService;
+
+    public static class MethodsForTestResponse {
+        public List<IdValuePair> methods;
+        public String defaultMethodId;
+
+        public MethodsForTestResponse(List<IdValuePair> methods, String defaultMethodId) {
+            this.methods = methods;
+            this.defaultMethodId = defaultMethodId;
+        }
+    }
+
+    /**
+     * Returns the active methods linked to the given test, A to Z, plus the default
+     * method id. Falls back to every active method, A to Z (no default), if the
+     * test has no active links.
+     */
+    @GetMapping(value = "methods-for-test/{testId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public List<IdValuePair> getTests() {
-        return DisplayListService.getInstance().getFreshList(ListType.ALL_TESTS);
+    public MethodsForTestResponse getMethodsForTest(@PathVariable String testId) {
+        List<IdValuePair> linked = testMethodService.getMethodDisplayListForTest(testId);
+        return new MethodsForTestResponse(testMethodService.getMethodChoicesForTest(testId),
+                linked == null ? null : testMethodService.getDefaultMethodId(testId));
     }
 
     @GetMapping(value = "tests-by-sample", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -279,84 +335,6 @@ public class DisplayListController extends BaseRestController {
         return tests;
     }
 
-    @GetMapping(value = "samples", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getSamples() {
-        return DisplayListService.getInstance().getList(ListType.SAMPLE_TYPE_ACTIVE);
-    }
-
-    @GetMapping(value = "health-regions", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getHealthRegions() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_HEALTH_REGIONS);
-    }
-
-    @GetMapping(value = "education-list", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getEducationList() {
-        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_EDUCATION);
-    }
-
-    @GetMapping(value = "marital-statuses", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getMaritialList() {
-        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_MARITAL_STATUS);
-    }
-
-    @GetMapping(value = "nationalities", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getNationalityList() {
-        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_NATIONALITY);
-    }
-
-    @GetMapping(value = "programs", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getPrograms() {
-        return DisplayListService.getInstance().getList(ListType.PROGRAM);
-    }
-
-    @GetMapping(value = "dictionaryPrograms", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getDictionaryPrograms() {
-        return DisplayListService.getInstance().getList(ListType.DICTIONARY_PROGRAM);
-    }
-
-    @GetMapping(value = "patientPaymentsOptions", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getSamplePatientPaymentOptions() {
-        return DisplayListService.getInstance().getList(ListType.SAMPLE_PATIENT_PAYMENT_OPTIONS);
-    }
-
-    @GetMapping(value = "testLocationCodes", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getTestLocationCodes() {
-        return DisplayListService.getInstance().getList(ListType.TEST_LOCATION_CODE);
-    }
-
-    @GetMapping(value = "test-rejection-reasons", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getTestRejectionReasons() {
-        return DisplayListService.getInstance().getList(ListType.REJECTION_REASONS);
-    }
-
-    @GetMapping(value = "referral-reasons", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createReferralReasonList() {
-        return DisplayListService.getInstance().getList(ListType.REFERRAL_REASONS);
-    }
-
-    @GetMapping(value = "referral-organizations", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createReferralOrganizationsList() {
-        return DisplayListService.getInstance().getList(ListType.REFERRAL_ORGANIZATIONS);
-    }
-
-    @GetMapping(value = "site-names", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> getSiteNameList() {
-        return DisplayListService.getInstance().getList(ListType.SAMPLE_PATIENT_REFERRING_CLINIC);
-    }
-
     @GetMapping(value = "configuration-properties", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     private Map<String, Object> getConfigurationProperties() {
@@ -373,6 +351,14 @@ public class DisplayListController extends BaseRestController {
 
         configs.put(Property.allowResultRejection.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.allowResultRejection));
+        configs.put(Property.SHOW_FAX_FIELDS.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.SHOW_FAX_FIELDS));
+        configs.put(Property.TRACK_PATIENT_PAYMENT.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.TRACK_PATIENT_PAYMENT));
+        configs.put(Property.USE_BILLING_REFERENCE_NUMBER.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.USE_BILLING_REFERENCE_NUMBER));
+        configs.put(Property.BILLING_REFERENCE_NUMBER_LABEL.toString(), localizedOrBlank(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.BILLING_REFERENCE_NUMBER_LABEL)));
 
         configs.put(Property.AccessionFormat.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat));
@@ -380,16 +366,77 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.USE_ALPHANUM_ACCESSION_PREFIX));
         configs.put(Property.ALERT_FOR_INVALID_RESULTS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ALERT_FOR_INVALID_RESULTS));
+        configs.put(Property.customCriticalMessage.toString(),
+                StringUtil.blankIfNull(acknowledgementService.getCustomCriticalMessage()));
         configs.put(Property.DEFAULT_DATE_LOCALE.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
         configs.put(Property.UseExternalPatientInfo.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.UseExternalPatientInfo));
+        configs.put(Property.DEFAULT_ORDER_LABEL_PRINTED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_ORDER_LABEL_PRINTED));
+        configs.put(Property.MAX_ORDER_LABEL_PRINTED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_ORDER_LABEL_PRINTED));
+        configs.put(Property.DEFAULT_SPECIMEN_LABEL_PRINTED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED));
+        configs.put(Property.MAX_SPECIMEN_LABEL_PRINTED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_SPECIMEN_LABEL_PRINTED));
         configs.put("DEFAULT_PAGE_SIZE",
                 ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         configs.put("FIRST_NAME_REGEX", FIRST_NAME_REGEX);
         configs.put("LAST_NAME_REGEX", LAST_NAME_REGEX);
         configs.put(Property.USE_NEW_ADDRESS_HIERARCHY.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.USE_NEW_ADDRESS_HIERARCHY));
+        configs.put(Property.PATIENT_NATIONAL_ID_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_NATIONAL_ID_REQUIRED));
+        configs.put(Property.PATIENT_SEX_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_SEX_REQUIRED));
+        configs.put(Property.PATIENT_AGE_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_AGE_REQUIRED));
+        configs.put(Property.PATIENT_ALIAS_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ALIAS_ENABLED));
+        configs.put(Property.PATIENT_ALIAS_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ALIAS_LABEL));
+        configs.put(Property.PATIENT_ID_DOCUMENTS_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ID_DOCUMENTS_LABEL));
+        configs.put(Property.REQUESTER_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.REQUESTER_REQUIRED));
+        configs.put(Property.notesRequiredForModifyResults.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.notesRequiredForModifyResults));
+        configs.put(Property.roleRequiredForModifyResults.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.roleRequiredForModifyResults));
+        configs.put(Property.ALLOW_BULK_RELEASE_CLEAR.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR));
+        configs.put(Property.RETEST_NOTE_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.RETEST_NOTE_REQUIRED));
+        configs.put(Property.QC_FAIL_BLOCKS_VALIDATION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.QC_FAIL_BLOCKS_VALIDATION));
+        // The case view's stage rail renders a stage the deployment has switched off
+        // as not applicable rather than hiding it (FR-2.3).
+        configs.put(Property.PATHOLOGY_STAGE_DECALCIFICATION_ENABLED.toString(), ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.PATHOLOGY_STAGE_DECALCIFICATION_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_PROCESSING_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_PROCESSING_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_EMBEDDING_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_EMBEDDING_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_MICROTOMY_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_MICROTOMY_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_STAINING_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_STAINING_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED));
+        configs.put(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED));
+        configs.put(Property.PATHOLOGY_SCAN_VERIFICATION_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_SCAN_VERIFICATION_REQUIRED));
+        // Required-field settings the order-entry lanes must honour. These have
+        // always existed as FormFields, consulted only by the legacy JSP screens,
+        // so the React lanes silently overrode what every shipped profile sets.
+        configs.put(Property.CONSENT_REQUIRED_FOR_COLLECTION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.CONSENT_REQUIRED_FOR_COLLECTION));
+        configs.put(FormFields.Field.PatientRequired.name(),
+                String.valueOf(FormFields.getInstance().useField(FormFields.Field.PatientRequired)));
+        configs.put(FormFields.Field.SampleEntryReferralSiteNameRequired.name(), String
+                .valueOf(FormFields.getInstance().useField(FormFields.Field.SampleEntryReferralSiteNameRequired)));
         return configs;
     }
 
@@ -400,10 +447,26 @@ public class DisplayListController extends BaseRestController {
         Map<String, Object> configs = new HashMap<>();
         configs.put(Property.restrictFreeTextProviderEntry.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.restrictFreeTextProviderEntry));
+        configs.put(Property.restrictFreeTextRequestorEntry.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.restrictFreeTextRequestorEntry));
         configs.put(Property.restrictFreeTextRefSiteEntry.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.restrictFreeTextRefSiteEntry));
+        configs.put(Property.restrictFreeTextSampSiteEntry.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.restrictFreeTextSampSiteEntry));
         configs.put(Property.PHONE_FORMAT.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_FORMAT));
+        configs.put(Property.PHONE_FORMAT_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_FORMAT_LABEL));
+        configs.put(Property.PHONE_INTERNATIONAL_VALIDATION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_INTERNATIONAL_VALIDATION));
+        configs.put(Property.PHONE_INTERNATIONAL_FORMAT_LABEL.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_INTERNATIONAL_FORMAT_LABEL));
+        configs.put(Property.DEFAULT_NATIONALITY.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_NATIONALITY));
+        // The login page is translated too, so the UI needs this before it has a
+        // session — hence the open endpoint rather than the authenticated one.
+        configs.put(Property.OVERRIDE_DEFAULT_TRANSLATION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.OVERRIDE_DEFAULT_TRANSLATION));
         configs.put(Property.releaseNumber.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.releaseNumber));
         configs.put(Property.ACCESSION_NUMBER_VALIDATE.toString(),
@@ -445,6 +508,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ENABLE_CLIENT_REGISTRY));
         configs.put(Property.GPS_ENABLED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ENABLED));
+        configs.put(Property.PATIENT_GPS_CAPTURE_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_GPS_CAPTURE_ENABLED));
         configs.put(Property.GPS_ACCURACY_METERS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ACCURACY_METERS));
         configs.put(Property.GPS_TIMEOUT_SECONDS.toString(),
@@ -478,36 +543,29 @@ public class DisplayListController extends BaseRestController {
         return testList;
     }
 
-    @GetMapping(value = "priorities", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createPriorityList() {
-        return DisplayListService.getInstance().getList(ListType.ORDER_PRIORITY);
-    }
-
-    @GetMapping(value = "panels", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createPanelList() {
-        return DisplayListService.getInstance().getList(ListType.PANELS);
-    }
-
-    @GetMapping(value = "test-sections", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createTestSectionsList() {
-        return DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE);
-    }
-
+    /**
+     * OGC-189 (M2): every consumer of this endpoint is a <em>viewer</em> control —
+     * the Workplan test-section picker, the Results and Validation search filters,
+     * the by-unit report selectors and the dashboard — so it lists
+     * {@code isActive OR hasContent}. A lab unit switched off with analyses still
+     * in flight stays selectable until that work is finished, then drops out on its
+     * own; it never widens what the user is authorized to see.
+     *
+     * <p>
+     * Choosers ("assign this test to a lab unit") must not use this endpoint.
+     */
     @GetMapping(value = "user-test-sections/{roleName}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     private List<IdValuePair> createUserTestSectionsList(HttpServletRequest request, @PathVariable String roleName) {
         if (roleName.equals("ALL")) {
-            return userService.getUserTestSections(getSysUserId(request), null);
+            return userService.getUserViewerTestSections(getSysUserId(request), null);
         } else {
             Role role = roleService.getRoleByName(roleName);
             if (role == null) {
                 return new ArrayList<>();
             }
             String resultsRoleId = role.getId();
-            return userService.getUserTestSections(getSysUserId(request), resultsRoleId);
+            return userService.getUserViewerTestSections(getSysUserId(request), resultsRoleId);
         }
     }
 
@@ -531,6 +589,10 @@ public class DisplayListController extends BaseRestController {
         list.add(new IdValuePair(
                 SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected),
                 SpringContext.getBean(IStatusService.class).getStatusName(AnalysisStatus.BiologistRejected)));
+        // OGC-811 gallery parity: Finalized was missing, so finalized analyses
+        // rendered as a bare status id on the unified worklist
+        list.add(new IdValuePair(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized),
+                SpringContext.getBean(IStatusService.class).getStatusName(AnalysisStatus.Finalized)));
 
         return list;
     }
@@ -626,14 +688,28 @@ public class DisplayListController extends BaseRestController {
             TestDisplayBean testDisplayBean = new TestDisplayBean(test.getId(),
                     TestServiceImpl.getLocalizedTestNameWithType(test), testService.getResultType(test));
             List<IdValuePair> resultList = new ArrayList<>();
+            Map<String, List<IdValuePair>> optionsByComponent = new HashMap<>();
             List<TestResult> results = testResultService.getActiveTestResultsByTest(test.getId());
             results.forEach(result -> {
-                if (result.getValue() != null) {
+                String type = result.getTestResultType();
+                if (result.getValue() != null && ("D".equals(type) || "M".equals(type) || "C".equals(type))) {
                     Dictionary dict = dictionaryService.getDictionaryById(result.getValue());
-                    resultList.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+                    if (dict != null) {
+                        IdValuePair option = new IdValuePair(dict.getId(), dict.getLocalizedName());
+                        resultList.add(option);
+                        if (StringUtils.isNotBlank(result.getComponentId())) {
+                            optionsByComponent.computeIfAbsent(result.getComponentId(), k -> new ArrayList<>())
+                                    .add(option);
+                        }
+                    }
                 }
             });
             testDisplayBean.setResultList(resultList);
+            // A test can report several result types at once - a coded
+            // interpretation beside numeric Ct values - so the rule builders
+            // are told what each component reports rather than being left to
+            // read the primary's type as the whole test's.
+            testDisplayBean.setComponents(componentBeansFor(test, testDisplayBean.getResultType(), optionsByComponent));
             testItems.add(testDisplayBean);
 
             Collections.sort(testItems, new Comparator<TestDisplayBean>() {
@@ -646,6 +722,33 @@ public class DisplayListController extends BaseRestController {
         }
         return testItems;
 
+    }
+
+    /**
+     * The test's components with the result type each one reports. A component that
+     * declares none reports the test's own type, which is what a single-component
+     * test has always done; a test with no components at all yields an empty list
+     * and callers fall back to the test-level type.
+     *
+     * <p>
+     * Each carries the coded values configured against it. The test-level list is
+     * every component's merged together, which cannot say which options belong to
+     * the component a rule actually names.
+     */
+    private List<TestDisplayBean.ComponentBean> componentBeansFor(Test test, String testLevelType,
+            Map<String, List<IdValuePair>> optionsByComponent) {
+        List<TestDisplayBean.ComponentBean> beans = new ArrayList<>();
+        List<TestResultComponent> components = testResultComponentService.getActiveComponentsByTestId(test.getId());
+        if (components == null) {
+            return beans;
+        }
+        for (TestResultComponent component : components) {
+            String label = StringUtils.isNotBlank(component.getLabel()) ? component.getLabel() : component.getCode();
+            String type = StringUtils.isNotBlank(component.getResultType()) ? component.getResultType() : testLevelType;
+            beans.add(new TestDisplayBean.ComponentBean(component.getId(), label, type, component.getIsPrimary(),
+                    optionsByComponent.get(component.getId())));
+        }
+        return beans;
     }
 
     @GetMapping(value = "systemroles", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -681,5 +784,29 @@ public class DisplayListController extends BaseRestController {
                         "oeg-" + r.getName().trim() + "-" + e.getTestSectionName().trim()))
                 .collect(Collectors.toList())));
         return rolesWithTestSections;
+    }
+
+    /**
+     * Get dictionary entries by category name.
+     *
+     * <p>
+     * Used by environmental workflow to fetch managed dropdown values (e.g.,
+     * "Sampling Site Type", "Environmental Zone").
+     *
+     * @param categoryName the dictionary category name
+     * @return list of id/value pairs
+     */
+    @GetMapping(value = "dictionary/category/{categoryName}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getDictionaryByCategory(@PathVariable String categoryName) {
+        List<Dictionary> dictionaries = dictionaryService.getDictionaryEntrysByCategoryNameLocalizedSort(categoryName);
+
+        List<IdValuePair> result = new ArrayList<>();
+        for (Dictionary dict : dictionaries) {
+            if ("Y".equals(dict.getIsActive())) {
+                result.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+            }
+        }
+        return result;
     }
 }

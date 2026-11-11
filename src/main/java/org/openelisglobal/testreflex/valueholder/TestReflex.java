@@ -61,6 +61,25 @@ public class TestReflex extends EnumValueItemImpl {
 
     private ReflexRuleOptions.NumericRelationOptions relation;
 
+    /**
+     * The result component whose value triggers this reflex; null means the test's
+     * primary component. Carried from the authoring condition so the executor can
+     * tell one component's result from another's.
+     */
+    private String componentId;
+
+    /** The specimen this reflex triggers on; null means every specimen. */
+    private String sampleTypeId;
+
+    /**
+     * The specimen the generated test is reported on, as named by the authoring
+     * action; null means the rule names none and the added test's own configuration
+     * decides. Distinct from {@link #sampleTypeId} on purpose: the result that
+     * fires a rule and the result a rule produces are two different measurements,
+     * and a rule reading Respiratory Swab may well report on DBS.
+     */
+    private String addedSampleTypeId;
+
     private String internalNote;
 
     private String externalNote;
@@ -281,5 +300,29 @@ public class TestReflex extends EnumValueItemImpl {
 
     public void setExternalNote(String externalNote) {
         this.externalNote = externalNote;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public String getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(String sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
+    }
+
+    public String getAddedSampleTypeId() {
+        return addedSampleTypeId;
+    }
+
+    public void setAddedSampleTypeId(String addedSampleTypeId) {
+        this.addedSampleTypeId = addedSampleTypeId;
     }
 }

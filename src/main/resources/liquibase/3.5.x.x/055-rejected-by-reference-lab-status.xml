@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    OGC-804: terminal ANALYSIS status for results rejected by the reference lab.
+    name must stay "RejectedByReferenceLab" — StatusService.addToAnalysisMap maps
+    AnalysisStatus.RejectedByReferenceLab by this exact name.
+  -->
+
+  <changeSet id="3.5.0.0-055-add-rejected-by-reference-lab-status" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.status_of_sample
+        WHERE status_type = 'ANALYSIS' AND name = 'RejectedByReferenceLab'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="status_of_sample">
+      <column name="id" valueSequenceNext="status_of_sample_seq"/>
+      <column name="description" value="Result rejected by reference lab; re-collection required"/>
+      <column name="code" value="1"/>
+      <column name="status_type" value="ANALYSIS"/>
+      <column name="lastupdated" valueComputed="now()"/>
+      <column name="name" value="RejectedByReferenceLab"/>
+      <column name="display_key" value="status.analysis.rejectedByReferenceLab"/>
+      <column name="is_active" value="Y"/>
+    </insert>
+    <rollback>
+      <delete tableName="status_of_sample" schemaName="clinlims">
+        <where>status_type = 'ANALYSIS' AND name = 'RejectedByReferenceLab'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

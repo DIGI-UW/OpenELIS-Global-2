@@ -29,6 +29,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
@@ -74,6 +75,7 @@ public class TestReflexUtil {
     private static TestResultService testResultService = SpringContext.getBean(TestResultService.class);
     private static AnalysisService analysisService = SpringContext.getBean(AnalysisService.class);
     private static TestReflexService testReflexService = SpringContext.getBean(TestReflexService.class);
+    private static RuleResultScope ruleResultScope = SpringContext.getBean(RuleResultScope.class);
     private static AnalyteService analyteService = SpringContext.getBean(AnalyteService.class);
     private static ScriptletService scriptletService = SpringContext.getBean(ScriptletService.class);
     private static NoteService noteService = SpringContext.getBean(NoteService.class);
@@ -330,14 +332,20 @@ public class TestReflexUtil {
         if (reflexBean.getResult().getTestResult() == null) {
             return new ArrayList<>();
         }
-        String resultType = testService.getResultType(reflexBean.getResult().getTestResult().getTest());
+        String resultType = resultTypeOf(reflexBean.getResult());
         List<TestReflex> reflexesForResult;
         if (resultType.equals("D")) {
             reflexesForResult = reflexResolver.getTestReflexsByAnalyteAndTest(reflexBean.getResult());
         } else {
             reflexesForResult = reflexResolver.getTestReflexesForResult(reflexBean.getResult());
         }
+        // A reflex names a measurement, not a test. Without this the Ct Value
+        // rule is evaluated against the coded PCR Result saved beside it, and a
+        // rule authored for one specimen fires on every specimen the test runs
+        // on.
         reflexesForResult = reflexesForResult.stream()
+                .filter(e -> ruleResultScope.matchesTrigger(reflexBean.getResult(), e.getTestId(), e.getComponentId(),
+                        e.getSampleTypeId()))
                 .filter(e -> isTestTriggeredByResult(e.getAddedTest(), reflexBean.getResult()))
                 .collect(Collectors.toList());
         return reflexesForResult;
@@ -366,9 +374,8 @@ public class TestReflexUtil {
                     reflex.setActionScriptletId(splitActionId[1]);
                 }
 
-                Optional<Analysis> newAnalysis = addReflexTest(reflex, reflexBean.getResult(),
-                        reflexBean.getPatient().getId(), reflexBean.getSample(), true, true, addedActionId, false,
-                        sysUserId);
+                Optional<Analysis> newAnalysis = addReflexTest(reflex, reflexBean.getResult(), patientIdOf(reflexBean),
+                        reflexBean.getSample(), true, true, addedActionId, false, sysUserId);
                 if (newAnalysis.isPresent()) {
                     reflexAnalysises.add(newAnalysis.get());
                 }
@@ -416,8 +423,8 @@ public class TestReflexUtil {
                 boolean allSibAnalysisCausedReflex = doAllAnalysisHaveReflex(parentAnalysisList, reflexBean);
 
                 Optional<Analysis> newAnalysis = addReflexTest(reflexForResult, reflexBean.getResult(),
-                        reflexBean.getPatient().getId(), reflexBean.getSample(), true, true, null,
-                        allSibAnalysisCausedReflex, sysUserId);
+                        patientIdOf(reflexBean), reflexBean.getSample(), true, true, null, allSibAnalysisCausedReflex,
+                        sysUserId);
                 if (newAnalysis.isPresent()) {
                     reflexAnalysises.add(newAnalysis.get());
                 }
@@ -430,7 +437,7 @@ public class TestReflexUtil {
                     boolean handleAction = siblingReflex.getActionScriptletId() != null
                             && !siblingReflex.getActionScriptletId().equals(reflexForResult.getActionScriptletId());
 
-                    newAnalysis = addReflexTest(siblingReflex, reflexBean.getResult(), reflexBean.getPatient().getId(),
+                    newAnalysis = addReflexTest(siblingReflex, reflexBean.getResult(), patientIdOf(reflexBean),
                             reflexBean.getSample(), addTest, handleAction, null, allSibAnalysisCausedReflex, sysUserId);
                     if (newAnalysis.isPresent()) {
                         reflexAnalysises.add(newAnalysis.get());
@@ -449,6 +456,12 @@ public class TestReflexUtil {
 
     private Boolean applyNumericRelationRulesForReflex(TestReflex reflexTest, Result result) {
         if (reflexTest.getRelation() == null) {
+            return false;
+        }
+        // a blanked value (e.g. a rejected result, OGC-1023) can trigger nothing —
+        // parsing it would throw and fail the whole save
+        if (GenericValidator.isBlankOrNull(result.getValue())
+                || GenericValidator.isBlankOrNull(reflexTest.getNonDictionaryValue())) {
             return false;
         }
         switch (reflexTest.getRelation()) {
@@ -542,14 +555,42 @@ public class TestReflexUtil {
         return handledReflexIdList;
     }
 
+    /**
+     * The patient id a reflex action is recorded against, or {@code null} for a
+     * sample without a patient (environmental and vector orders), which the
+     * observation history accepts (OGC-356).
+     */
+    public static String patientIdOf(TestReflexBean reflexBean) {
+        return reflexBean.getPatient() == null ? null : reflexBean.getPatient().getId();
+    }
+
     private Optional<Analysis> addReflexTest(TestReflex reflex, Result result, String patientId, Sample sample,
             boolean addTest, boolean handleAction, String actionSelectionId, boolean failOnDuplicateTest,
             String sysUserId) {
 
+        // A deactivated rule generates nothing. Asked of the service at
+        // execution rather than inferred from the row existing: deactivating is
+        // meant to delete the rows and reactivating to write them back, but
+        // saving a rule rebuilds them whatever its state, so a deactivated rule
+        // can keep a full set of them.
+        if (!testReflexService.isReflexRuleActive(reflex)) {
+            return Optional.empty();
+        }
+
+        String requestedTestId = reflex.getAddedTestId();
+        if (!GenericValidator.isBlankOrNull(reflex.getFlags())) {
+            requestedTestId = isUserChoiceReflex(reflex) && actionSelectionId != null
+                    && actionSelectionId.startsWith("test_") ? actionSelectionId.substring("test_".length()) : null;
+        }
+        if (addTest && requestedTestId != null
+                && SpringContext.getBean(org.openelisglobal.microbiology.service.MicroIncomingReflexPolicy.class)
+                        .alreadyOnCaseOrWaiting(result.getAnalysis().getId(), requestedTestId))
+            return Optional.empty();
+
         if (addTest || handleAction) {
 
             ReflexAction reflexAction = reflexResolver.getReflexAction();
-            reflexAction.handleReflex(reflex, result, actionSelectionId);
+            reflexAction.handleReflex(reflex, result, actionSelectionId, sysUserId);
 
             ObservationHistory observation = reflexAction.getObservation();
 
@@ -562,6 +603,17 @@ public class TestReflexUtil {
 
             Analysis newAnalysis = reflexAction.getNewAnalysis();
             Result finalResult = reflexAction.getFinalResult();
+
+            ReflexAction.CaseWork caseWork = reflexAction.getCaseWork();
+            if (caseWork != null && addTest) {
+                SpringContext.getBean(org.openelisglobal.microbiology.service.MicroOrderRoutingService.class)
+                        .routeCaseTest(caseWork.order(), caseWork.sampleTypeId(), caseWork.sample(), caseWork.test(),
+                                sysUserId);
+                Analysis trigger = result.getAnalysis();
+                trigger.setSysUserId(sysUserId);
+                trigger.setTriggeredReflex(Boolean.TRUE);
+                analysisService.update(trigger);
+            }
 
             /*******
              * This is allowing duplicate tests to be added for CD4 absolute. If the
@@ -787,8 +839,19 @@ public class TestReflexUtil {
                 && (CONCLUSION_ANAYLETE_ID.equals(analyte.getId()) || CD4_ANAYLETE.getId().equals(analyte.getId()));
     }
 
+    /**
+     * The type of the measurement a result records. On a multi-component test the
+     * component owns it: a numeric Ct beside a coded primary is numeric, whatever
+     * type the test lists first.
+     */
+    private String resultTypeOf(Result result) {
+        Test test = result.getTestResult().getTest();
+        return ruleResultScope.resultTypeForComponent(test.getId(), ruleResultScope.componentIdOf(result),
+                testService.getResultType(test));
+    }
+
     public boolean isTestTriggeredByResult(Test potentialReflexTest, Result potentialTriggerResult) {
-        String resultType = testService.getResultType(potentialTriggerResult.getTestResult().getTest());
+        String resultType = resultTypeOf(potentialTriggerResult);
         if (resultType.equals("D")) {
             return doesDictionaryRelationRulesForReflexApply(potentialReflexTest, potentialTriggerResult);
         } else if (!resultType.equals("D")) {

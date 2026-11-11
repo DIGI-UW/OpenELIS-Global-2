@@ -1,0 +1,116 @@
+/**
+ * AlertsTab Styles
+ * Uses Carbon Design System tokens
+ */
+
+.alerts-tab {
+  padding-top: 1rem;
+}
+
+.alerts-tab__loading {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.alerts-tab__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.alerts-tab__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.alerts-tab__time-filter {
+  min-width: 200px;
+}
+
+.alerts-tab__section {
+  margin-bottom: 2rem;
+}
+
+.alerts-tab__section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+  margin-bottom: 0.25rem;
+}
+
+.alerts-tab__section-count {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #525252);
+  margin-bottom: 1rem;
+}
+
+.alerts-tab__empty-state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.alerts-tab__empty-icon {
+  color: var(--cds-support-success, #24a148);
+  flex-shrink: 0;
+}
+
+.alerts-tab__empty-text {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+}
+
+.alerts-tab__active-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.alerts-tab__violation-card {
+  padding: 1rem 1.25rem;
+  border-left: 4px solid var(--cds-support-error, #da1e28);
+}
+
+.alerts-tab__card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.alerts-tab__card-rule {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--cds-text-primary, #161616);
+}
+
+.alerts-tab__card-details {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #525252);
+  margin-bottom: 0.75rem;
+}
+
+.alerts-tab__card-separator {
+  margin: 0 0.5rem;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.alerts-tab__card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.alerts-tab__card-timestamp {
+  font-size: 0.75rem;
+  color: var(--cds-text-helper, #6f6f6f);
+}

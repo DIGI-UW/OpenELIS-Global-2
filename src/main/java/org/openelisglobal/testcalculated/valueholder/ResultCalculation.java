@@ -47,11 +47,21 @@ public class ResultCalculation extends BaseObject<Integer> {
     @Column(name = "test_id")
     private Set<Test> test;
 
+    /**
+     * The result feeding each operand of the calculation, keyed by operand id.
+     *
+     * <p>
+     * Keyed by test id, one multi-component test could only occupy a single slot,
+     * so whichever component's result was written last became the value the
+     * calculation read. The operand is the thing that names a measurement — it
+     * carries the test, the specimen and the component — so it is what the slot
+     * belongs to.
+     */
     @ElementCollection
     @CollectionTable(name = "test_result_map", joinColumns = @JoinColumn(name = "result_calculation_id", referencedColumnName = "id"))
-    @MapKeyColumn(name = "test_id")
+    @MapKeyColumn(name = "operation_id")
     @Column(name = "result_id")
-    private Map<Integer, Integer> testResultMap;
+    private Map<Integer, Integer> operandResultMap;
 
     @Override
     public Integer getId() {
@@ -87,12 +97,12 @@ public class ResultCalculation extends BaseObject<Integer> {
         this.test = test;
     }
 
-    public Map<Integer, Integer> getTestResultMap() {
-        return testResultMap;
+    public Map<Integer, Integer> getOperandResultMap() {
+        return operandResultMap;
     }
 
-    public void setTestResultMap(Map<Integer, Integer> testResultMap) {
-        this.testResultMap = testResultMap;
+    public void setOperandResultMap(Map<Integer, Integer> operandResultMap) {
+        this.operandResultMap = operandResultMap;
     }
 
     public Result getResult() {

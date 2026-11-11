@@ -14,4 +14,8 @@ runtime code.
 
 ### Current projects
 
-- `projects/catalyst/` - OGC-70 Catalyst (LLM-powered lab data assistant)
+- `projects/analyzer-harness/` — internal Compose configuration, scenario
+  seeding, and analyzer testing/recording tools. The public source-development
+  launcher is `scripts/dev-stack`; full local CI is `scripts/run-ci-checks.sh`.
+- `projects/reporting-uat/` — runtime qualification tools for the isolated
+  reporting UAT deployment.

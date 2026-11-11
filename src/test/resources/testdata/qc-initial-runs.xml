@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- System user (required by sys_user_id FK) -->
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y" />
+
+    <!-- Test (required by test_id FK on qc_control_lot and qc_result) -->
+    <test id="1" name="Glucose" description="Fasting Blood Glucose"
+        guid="a4d5e7c8-9f12-4b3e-8d67-1e23a4b5c6d7" is_active="Y"
+        is_reportable="Y" orderable="true" lastUpdated="2025-01-01 12:00:00" />
+
+    <analyzer id="1" name="TEST BioRad" is_active="true"
+        status="ACTIVE" bridge_connection_id="bridge-1" mapping_id="1"
+        last_updated="2025-01-01 12:00:00" />
+    <analyzer_mapping id="1" analyzer_id="1"
+        revision_number="1" profile_id="fixture.qc-control-lot"
+        profile_revision="1"
+        profile_fingerprint="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        mapping_fingerprint="sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        created_by="1" last_updated="2023-01-01 10:00:00" />
+
+    <!-- Initial Runs control lot: - calculation_method = INITIAL_RUNS - initial_runs_count
+        = 5 - status = ESTABLISHMENT (new lot, no results yet) - NO qc_statistics
+        rows - NO qc_result rows Unlike ROLLING, once statistics are bootstrapped
+        from the first 5 results they remain FIXED — subsequent results do NOT trigger
+        recalculation. -->
+    <qc_control_lot id="lot-initial-runs"
+        fhir_uuid="44444444-4444-4444-4444-444444444444"
+        product_name="Glucose Control Level 1" lot_number="LOT-INITIAL-001"
+        manufacturer="Bio-Rad" control_level="NORMAL" test_id="1"
+        instrument_id="1" calculation_method="INITIAL_RUNS"
+        initial_runs_count="5" activation_date="2025-01-01 00:00:00"
+        status="ESTABLISHMENT" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+</dataset>

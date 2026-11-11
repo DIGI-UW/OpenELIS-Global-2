@@ -66,7 +66,7 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
     public List<TestResult> getAllTestResults() throws LIMSRuntimeException {
         List<TestResult> list;
         try {
-            String sql = "from TestResult";
+            String sql = "from TestResult tr JOIN FETCH tr.test";
             Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(sql, TestResult.class);
             list = query.list();
         } catch (RuntimeException e) {
@@ -137,12 +137,12 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
         try {
             if (testAnalyte.getId() != null && testAnalyte.getResultGroup() != null) {
                 // bugzilla 1845 added testResult sortOrder
-                String sql = "from TestResult t where t.test = :testId and t.resultGroup = :resultGroup order by"
+                String sql = "from TestResult t where t.test.id = :testId and t.resultGroup = :resultGroup order by"
                         + " t.sortOrder";
                 Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(sql, TestResult.class);
 
-                query.setParameter("testId", Integer.parseInt(testAnalyte.getTest().getId()));
-                query.setParameter("resultGroup", Integer.parseInt(testAnalyte.getResultGroup()));
+                query.setParameter("testId", testAnalyte.getTest().getId());
+                query.setParameter("resultGroup", testAnalyte.getResultGroup());
 
                 list = query.list();
             }
@@ -165,10 +165,10 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
 
         List<TestResult> list;
         try {
-            String sql = "from TestResult t where t.test = :testId and t.isActive = true order by t.resultGroup,"
+            String sql = "from TestResult t where t.test.id = :testId and t.isActive = true order by t.resultGroup,"
                     + " t.id asc";
             Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(sql, TestResult.class);
-            query.setParameter("testId", Integer.parseInt(test.getId()));
+            query.setParameter("testId", test.getId());
 
             list = query.list();
         } catch (RuntimeException e) {
@@ -179,22 +179,50 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
         return list;
     }
 
+    /**
+     * OGC-1234: an option removed in the Test Catalog editor stays as an inactive
+     * row with the same value, and a re-added one is a new row beside it. A result
+     * must resolve to the row the test offers now. When no active row exists (a
+     * result entered before the option was removed) the most recent row is the
+     * answer, the one the result was last offered through.
+     */
+    private static TestResult preferActive(List<TestResult> candidates) {
+        TestResult newest = null;
+        for (TestResult candidate : candidates) {
+            if (!Boolean.FALSE.equals(candidate.getIsActive())) {
+                return candidate;
+            }
+            if (newest == null || numericId(candidate) > numericId(newest)) {
+                newest = candidate;
+            }
+        }
+        return newest;
+    }
+
+    private static long numericId(TestResult testResult) {
+        try {
+            return Long.parseLong(testResult.getId().trim());
+        } catch (RuntimeException e) {
+            return Long.MIN_VALUE;
+        }
+    }
+
     @Override
     @Transactional(readOnly = true)
     public TestResult getTestResultsByTestAndDictonaryResult(String testId, String result) throws LIMSRuntimeException {
         if (StringUtil.isInteger(result)) {
             List<TestResult> list;
             try {
-                String sql = "from TestResult t where  t.testResultType in ('D','M','Q') and t.test = :testId and"
-                        + " t.value = :testValue";
+                String sql = "from TestResult t where  t.testResultType in ('D','M','Q','C') and t.test.id = :testId"
+                        + " and t.value = :testValue";
                 Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(sql, TestResult.class);
-                query.setParameter("testId", Integer.parseInt(testId));
+                query.setParameter("testId", testId);
                 query.setParameter("testValue", result);
 
                 list = query.list();
 
                 if (list != null && !list.isEmpty()) {
-                    return list.get(0);
+                    return preferActive(list);
                 }
 
             } catch (RuntimeException e) {
@@ -210,12 +238,41 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
 
     @Override
     @Transactional(readOnly = true)
+    public TestResult getTestResultsByTestAndDictonaryResult(String testId, String result, String componentId)
+            throws LIMSRuntimeException {
+        if (componentId == null || componentId.isBlank()) {
+            return getTestResultsByTestAndDictonaryResult(testId, result);
+        }
+        if (!StringUtil.isInteger(result)) {
+            return null;
+        }
+        try {
+            String sql = "from TestResult t where t.testResultType in ('D','M','Q','C') and t.test.id = :testId"
+                    + " and t.value = :testValue and t.componentId = :componentId";
+            Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(sql, TestResult.class);
+            query.setParameter("testId", testId);
+            query.setParameter("testValue", result);
+            query.setParameter("componentId", componentId);
+            List<TestResult> list = query.list();
+            if (list != null && !list.isEmpty()) {
+                return preferActive(list);
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in TestResult getTestResultsByTestAndDictonaryResult(String testId,"
+                    + " String result, String componentId)", e);
+        }
+        return getTestResultsByTestAndDictonaryResult(testId, result);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<TestResult> getActiveTestResultsByTest(String testId) throws LIMSRuntimeException {
         List<TestResult> list;
         try {
-            String sql = "from TestResult t where  t.test = :testId and t.isActive = true";
+            String sql = "from TestResult t where  t.test.id = :testId and t.isActive = true";
             Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(sql, TestResult.class);
-            query.setParameter("testId", Integer.parseInt(testId));
+            query.setParameter("testId", testId);
 
             list = query.list();
 

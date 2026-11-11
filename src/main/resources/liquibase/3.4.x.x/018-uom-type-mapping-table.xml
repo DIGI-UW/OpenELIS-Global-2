@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Create mapping table for UOM types -->
+
+  <changeSet id="3.4.0.0-create-uom-type-map-table" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="uom_type_map" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+
+    <comment>Create uom_type_map table to map UOMs to usage types</comment>
+
+    <createSequence sequenceName="uom_type_map_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+    <createTable tableName="uom_type_map" schemaName="clinlims">
+      <column name="id" type="NUMERIC(10,0)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="uom_id" type="NUMERIC(10,0)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="uom_type" type="VARCHAR(20)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims"
+      baseTableName="uom_type_map"
+      baseColumnNames="uom_id"
+      constraintName="fk_uom_type_map_uom"
+      referencedTableSchemaName="clinlims"
+      referencedTableName="unit_of_measure"
+      referencedColumnNames="id"
+      onDelete="CASCADE"/>
+
+    <addUniqueConstraint
+      schemaName="clinlims"
+      tableName="uom_type_map"
+      columnNames="uom_id, uom_type"
+      constraintName="uq_uom_type_map"/>
+  </changeSet>
+
+  <!-- Add mL UOM if it doesn't exist -->
+  <changeSet id="3.4.0.0-add-ml-uom" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.unit_of_measure WHERE name = 'mL'
+      </sqlCheck>
+    </preConditions>
+
+    <insert tableName="unit_of_measure" schemaName="clinlims">
+      <column name="id" valueSequenceNext="unit_of_measure_seq"/>
+      <column name="name" value="mL"/>
+      <column name="description" value="Milliliters"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+  <!-- Map mL to SAMPLE_COLLECTION -->
+  <changeSet id="3.4.0.0-map-ml-to-sample-collection" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.uom_type_map m
+        JOIN clinlims.unit_of_measure u ON m.uom_id = u.id
+        WHERE u.name = 'mL' AND m.uom_type = 'SAMPLE_COLLECTION'
+      </sqlCheck>
+    </preConditions>
+
+    <sql>
+      INSERT INTO clinlims.uom_type_map (id, uom_id, uom_type, lastupdated)
+      SELECT nextval('clinlims.uom_type_map_seq'), id, 'SAMPLE_COLLECTION', NOW()
+      FROM clinlims.unit_of_measure
+      WHERE name = 'mL'
+    </sql>
+  </changeSet>
+
+  <!-- Add uL UOM if it doesn't exist -->
+  <changeSet id="3.4.0.0-add-ul-uom" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.unit_of_measure WHERE name = 'uL'
+      </sqlCheck>
+    </preConditions>
+
+    <insert tableName="unit_of_measure" schemaName="clinlims">
+      <column name="id" valueSequenceNext="unit_of_measure_seq"/>
+      <column name="name" value="uL"/>
+      <column name="description" value="Microliters"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+  <!-- Map uL to SAMPLE_COLLECTION -->
+  <changeSet id="3.4.0.0-map-ul-to-sample-collection" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.uom_type_map m
+        JOIN clinlims.unit_of_measure u ON m.uom_id = u.id
+        WHERE u.name = 'uL' AND m.uom_type = 'SAMPLE_COLLECTION'
+      </sqlCheck>
+    </preConditions>
+
+    <sql>
+      INSERT INTO clinlims.uom_type_map (id, uom_id, uom_type, lastupdated)
+      SELECT nextval('clinlims.uom_type_map_seq'), id, 'SAMPLE_COLLECTION', NOW()
+      FROM clinlims.unit_of_measure
+      WHERE name = 'uL'
+    </sql>
+  </changeSet>
+
+  <!-- Add tubes UOM if it doesn't exist -->
+  <changeSet id="3.4.0.0-add-tubes-uom" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.unit_of_measure WHERE name = 'tubes'
+      </sqlCheck>
+    </preConditions>
+
+    <insert tableName="unit_of_measure" schemaName="clinlims">
+      <column name="id" valueSequenceNext="unit_of_measure_seq"/>
+      <column name="name" value="tubes"/>
+      <column name="description" value="Tubes"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+  <!-- Map tubes to SAMPLE_COLLECTION -->
+  <changeSet id="3.4.0.0-map-tubes-to-sample-collection" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.uom_type_map m
+        JOIN clinlims.unit_of_measure u ON m.uom_id = u.id
+        WHERE u.name = 'tubes' AND m.uom_type = 'SAMPLE_COLLECTION'
+      </sqlCheck>
+    </preConditions>
+
+    <sql>
+      INSERT INTO clinlims.uom_type_map (id, uom_id, uom_type, lastupdated)
+      SELECT nextval('clinlims.uom_type_map_seq'), id, 'SAMPLE_COLLECTION', NOW()
+      FROM clinlims.unit_of_measure
+      WHERE name = 'tubes'
+    </sql>
+  </changeSet>
+
+  <!-- Add slides UOM if it doesn't exist -->
+  <changeSet id="3.4.0.0-add-slides-uom" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.unit_of_measure WHERE name = 'slides'
+      </sqlCheck>
+    </preConditions>
+
+    <insert tableName="unit_of_measure" schemaName="clinlims">
+      <column name="id" valueSequenceNext="unit_of_measure_seq"/>
+      <column name="name" value="slides"/>
+      <column name="description" value="Slides"/>
+      <column name="lastupdated" valueDate="CURRENT_TIMESTAMP"/>
+    </insert>
+  </changeSet>
+
+  <!-- Map slides to SAMPLE_COLLECTION -->
+  <changeSet id="3.4.0.0-map-slides-to-sample-collection" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.uom_type_map m
+        JOIN clinlims.unit_of_measure u ON m.uom_id = u.id
+        WHERE u.name = 'slides' AND m.uom_type = 'SAMPLE_COLLECTION'
+      </sqlCheck>
+    </preConditions>
+
+    <sql>
+      INSERT INTO clinlims.uom_type_map (id, uom_id, uom_type, lastupdated)
+      SELECT nextval('clinlims.uom_type_map_seq'), id, 'SAMPLE_COLLECTION', NOW()
+      FROM clinlims.unit_of_measure
+      WHERE name = 'slides'
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

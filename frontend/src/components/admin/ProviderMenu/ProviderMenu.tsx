@@ -1,0 +1,905 @@
+import React, { useContext, useState, useEffect } from "react";
+import {
+  DEFAULT_SERVER_PAGE_SIZE,
+  serverPageSizeFrom,
+  startingRecNoFor,
+} from "../../utils/offsetPaging";
+import { serverPageArrowsProps } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
+import type { ChangeEvent, ReactNode, SyntheticEvent } from "react";
+import {
+  Heading,
+  Loading,
+  Grid,
+  Column,
+  Section,
+  DataTable,
+  Table,
+  TableHead,
+  TableRow,
+  TableBody,
+  TableHeader,
+  TableCell,
+  TableSelectRow,
+  TableContainer,
+  Pagination,
+  Search,
+  InlineNotification,
+  Modal,
+  Select,
+  SelectItem,
+  TextInput,
+  Dropdown,
+} from "@carbon/react";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerFullResponse,
+} from "../../utils/Utils";
+import {
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
+import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import {
+  AlertDialog,
+  NotificationKinds,
+} from "../../common/CustomNotification";
+import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
+import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
+import { looksLikeATitle } from "../../provider/providerDisplayName";
+import { getPhoneFormatHint } from "../../patient/phoneFormatHint";
+
+interface ProviderPerson {
+  titleCode?: string;
+  lastName: string;
+  firstName: string;
+  workPhone?: string;
+  fax?: string;
+  email?: string;
+}
+
+interface ProviderRecord {
+  id: string;
+  fhirUuid: string;
+  person: ProviderPerson;
+  active: boolean;
+}
+
+interface ProviderMenuResponse {
+  providers?: ProviderRecord[];
+  fromRecordCount?: string;
+  toRecordCount?: string;
+  totalRecordCount?: string;
+}
+
+interface ProviderTableRow {
+  id: string;
+  fhirUuid: string;
+  titleCode?: string;
+  lastName: string;
+  firstName: string;
+  active: boolean;
+  telephone?: string;
+  fax?: string;
+  email?: string;
+}
+
+interface YesNoOption {
+  id: "yes" | "no";
+  value: "Yes" | "No";
+}
+
+interface ValidationResult {
+  body: string;
+  status: boolean;
+}
+
+interface CarbonTableCell {
+  id: string;
+  value: ReactNode;
+  info: { header: string };
+}
+
+interface CarbonTableRow {
+  id: string;
+}
+
+interface NotificationContextValue {
+  notificationVisible: boolean;
+  setNotificationVisible: (visible: boolean) => void;
+  addNotification: (notification: {
+    kind: string;
+    title: string;
+    message: string;
+  }) => void;
+}
+
+interface ConfigurationContextValue {
+  reloadConfiguration: () => void;
+  configurationProperties: Record<string, string>;
+}
+
+// eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+  {
+    label: "provider.browse.title",
+    link: "/MasterListsPage/providerMenu",
+  },
+];
+function ProviderMenu() {
+  const { notificationVisible, setNotificationVisible, addNotification } =
+    useContext(NotificationContext) as NotificationContextValue;
+  const { reloadConfiguration, configurationProperties } = useContext(
+    ConfigurationContext,
+  ) as ConfigurationContextValue;
+
+  const intl = useIntl();
+
+  const [page, setPage] = useState(1);
+  const [modifyButton, setModifyButton] = useState(true);
+  const [deactivateButton, setDeactivateButton] = useState(true);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSearching, setIsSearching] = useState(false);
+  const [panelSearchTerm, setPanelSearchTerm] = useState("");
+  const [providerMenuListShow, setProviderMenuListShow] = useState<
+    ProviderTableRow[]
+  >([]);
+  const [fromRecordCount, setFromRecordCount] = useState("");
+  const [toRecordCount, setToRecordCount] = useState("");
+  const [totalRecordCount, setTotalRecordCount] = useState("");
+  const [serverPageSize, setServerPageSize] = useState(
+    DEFAULT_SERVER_PAGE_SIZE,
+  );
+  const startingRecNo = startingRecNoFor(page, serverPageSize);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [currentProvider, setCurrentProvider] =
+    useState<ProviderTableRow | null>(null);
+  const [titleCode, setTitleCode] = useState("");
+  const [titleFilter, setTitleFilter] = useState("");
+  const [providerTitles, setProviderTitles] = useState<
+    { code: string; label: string }[]
+  >([]);
+  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [telephone, setTelephone] = useState<string | undefined>("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve the original state tuple
+  const [fhirUuid, setFhirUuid] = useState("");
+  const [fax, setFax] = useState<string | undefined>("");
+  const [email, setEmail] = useState("");
+  const [isActive, setIsActive] = useState<YesNoOption>({
+    id: "yes",
+    value: "Yes",
+  });
+  const [phoneValidation, setPhoneValidation] = useState<ValidationResult>({
+    body: "",
+    status: true,
+  });
+  const [emailValidation, setEmailValidation] = useState<ValidationResult>({
+    body: "",
+    status: true,
+  });
+
+  const yesOrNo: YesNoOption[] = [
+    { id: "yes", value: "Yes" },
+    { id: "no", value: "No" },
+  ];
+
+  // Browsing and searching are the same list from two endpoints, so which one
+  // is read follows the search box rather than both being read at once.
+  // The title is a filter, never a search term: typing "Dr" in the search box
+  // must not return every doctor (OGC-1223, FR-9).
+  const titleParam = titleFilter
+    ? `&titleCode=${encodeURIComponent(titleFilter)}`
+    : "";
+  const { data: providerMenuList } = useServerData<ProviderMenuResponse>(
+    panelSearchTerm
+      ? `/rest/SearchProviderMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}${titleParam}`
+      : `/rest/ProviderMenu?startingRecNo=${startingRecNo}${titleParam}`,
+  );
+  const invalidateServerData = useInvalidateServerData();
+
+  // The titles a provider may be given. An inactive one already on a record
+  // is still shown, so the dropdown adds it when editing (OGC-1223).
+  useEffect(() => {
+    getFromOpenElisServer(
+      "/rest/dictionary/categories/providerTitle/entries",
+      (response: { code: string; label: string }[] | undefined) => {
+        setProviderTitles(Array.isArray(response) ? response : []);
+      },
+    );
+  }, []);
+
+  useEffect(() => {
+    if (providerMenuList?.providers) {
+      const newProviderMenuList = providerMenuList.providers.map((item) => {
+        return {
+          id: item.id,
+          fhirUuid: item.fhirUuid,
+          titleCode: item.person.titleCode,
+          lastName: item.person.lastName,
+          firstName: item.person.firstName,
+          active: item.active,
+          telephone: item.person.workPhone,
+          fax: item.person.fax,
+          email: item.person.email,
+        };
+      });
+      setFromRecordCount(providerMenuList.fromRecordCount!);
+      setToRecordCount(providerMenuList.toRecordCount!);
+      setTotalRecordCount(providerMenuList.totalRecordCount!);
+      setServerPageSize((previous) =>
+        serverPageSizeFrom(
+          providerMenuList.fromRecordCount,
+          providerMenuList.toRecordCount,
+          providerMenuList.totalRecordCount,
+          previous,
+        ),
+      );
+      setProviderMenuListShow(newProviderMenuList);
+    }
+  }, [providerMenuList]);
+
+  useEffect(() => {
+    if (selectedRowIds.length === 1) {
+      setModifyButton(false);
+    } else {
+      setModifyButton(true);
+    }
+    if (selectedRowIds.length === 0) {
+      setDeactivateButton(true);
+    } else {
+      setDeactivateButton(false);
+    }
+  }, [selectedRowIds]);
+
+  useEffect(() => {
+    if (isSearching && panelSearchTerm === "") {
+      setIsSearching(false);
+      setPage(1);
+    }
+  }, [isSearching, panelSearchTerm]);
+
+  async function displayStatus(res: { status: string | number }) {
+    setNotificationVisible(true);
+    if (res.status == "201" || res.status == "200") {
+      addNotification({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "save.config.success.msg" }),
+      });
+      invalidateServerData();
+      // The row a success just acted on may no longer be in the next read
+      // (a deactivation), so Modify/Deactivate must stop pointing at it.
+      setSelectedRowIds([]);
+    } else {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "server.error.msg" }),
+      });
+    }
+    reloadConfiguration();
+  }
+
+  function deleteDeactivateProvider(event: SyntheticEvent) {
+    event.preventDefault();
+    setLoading(true);
+    postToOpenElisServerFullResponse(
+      `/rest/DeleteProvider?ID=${selectedRowIds.join(",")}&${startingRecNo}=1`,
+      providerMenuListShow,
+      displayStatus,
+    );
+  }
+
+  const handlePageChange = ({ page: newPage }: { page: number }) => {
+    if (newPage !== page) {
+      setPage(newPage);
+      setSelectedRowIds([]);
+    }
+  };
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page,
+      totalPages: Math.max(
+        Math.ceil((Number(totalRecordCount) || 0) / serverPageSize),
+        1,
+      ),
+    },
+    onPageRequest: (pageNumber) => handlePageChange({ page: pageNumber }),
+  });
+
+  const handlePanelSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setIsSearching(true);
+    setPage(1);
+    const query = event.target.value.toLowerCase();
+    setPanelSearchTerm(query);
+    setSelectedRowIds([]);
+  };
+
+  const openAddModal = () => {
+    setTitleCode("");
+    setLastName("");
+    setFirstName("");
+    setTelephone("");
+    setFax("");
+    setEmail("");
+    setIsActive({ id: "yes", value: "Yes" });
+    setIsAddModalOpen(true);
+  };
+
+  const closeAddModal = () => {
+    setIsAddModalOpen(false);
+  };
+
+  const openUpdateModal = (providerId: string) => {
+    const provider = providerMenuListShow.find((p) => p.id === providerId)!;
+    setCurrentProvider(provider);
+    setTitleCode(provider.titleCode || "");
+    setLastName(provider.lastName);
+    setFirstName(provider.firstName);
+    setTelephone(provider.telephone);
+    setFax(provider.fax);
+    setEmail(provider.email || "");
+    setIsActive(
+      provider.active ? { id: "yes", value: "Yes" } : { id: "no", value: "No" },
+    );
+    setIsUpdateModalOpen(true);
+  };
+
+  const closeUpdateModal = () => {
+    setIsUpdateModalOpen(false);
+  };
+
+  const handleAddProvider = () => {
+    const newProvider = {
+      person: {
+        titleCode,
+        lastName,
+        firstName,
+        workPhone: telephone,
+        fax,
+        email,
+      },
+      active: isActive.id === "yes",
+    };
+    postToOpenElisServerFullResponse(
+      "/rest/Provider/FhirUuid?fhirUuid=",
+      JSON.stringify(newProvider),
+      displayStatus,
+    );
+
+    closeAddModal();
+  };
+
+  const handleUpdateProvider = () => {
+    const updatedProvider = {
+      fhirUuid: currentProvider!.fhirUuid,
+      person: {
+        titleCode,
+        lastName,
+        firstName,
+        workPhone: telephone,
+        fax,
+        email,
+      },
+      active: isActive.id === "yes",
+    };
+    postToOpenElisServerFullResponse(
+      "/rest/Provider/FhirUuid?fhirUuid=" + currentProvider!.fhirUuid,
+      JSON.stringify(updatedProvider),
+      displayStatus,
+    );
+
+    closeUpdateModal();
+  };
+
+  const handleLastNameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    if (value === "" || /^[A-Za-z\s]+$/.test(value)) {
+      setLastName(value);
+    }
+  };
+
+  const handleFirstNameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    if (value === "" || /^[A-Za-z\s]+$/.test(value)) {
+      setFirstName(value);
+    }
+  };
+
+  const handleTelephoneChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setTelephone(event.target.value);
+  };
+
+  const handlePhoneValidation = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    getFromOpenElisServer(
+      "/rest/PhoneNumberValidationProvider?fieldId=patientPhone&value=" +
+        encodeURIComponent(value),
+      (resp: ValidationResult) => {
+        setPhoneValidation(resp);
+      },
+    );
+  };
+
+  const handleEmailValidation = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (!value) {
+      setEmailValidation({ body: "", status: true });
+      return;
+    }
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    setEmailValidation({
+      body: valid ? "" : intl.formatMessage({ id: "error.invalid.email" }),
+      status: valid,
+    });
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- preserve original migration behavior
+  const handleFaxChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    if (value === "" || (/^\d+$/.test(value) && value.length <= 10)) {
+      setFax(value);
+    }
+  };
+
+  const renderCell = (cell: CarbonTableCell, row: CarbonTableRow) => {
+    if (cell.info.header === "select") {
+      return (
+        <TableSelectRow
+          key={cell.id}
+          id={cell.id}
+          checked={selectedRowIds.includes(row.id)}
+          name="selectRowCheckbox"
+          ariaLabel="selectRows"
+          onSelect={(e) => {
+            e.stopPropagation();
+            if (selectedRowIds.includes(row.id)) {
+              setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
+            } else {
+              setSelectedRowIds([...selectedRowIds, row.id]);
+            }
+          }}
+        />
+      );
+    } else if (cell.info.header === "active") {
+      return <TableCell key={cell.id}>{cell.value!.toString()}</TableCell>;
+    } else {
+      return <TableCell key={cell.id}>{cell.value}</TableCell>;
+    }
+  };
+
+  if (!loading) {
+    return (
+      <>
+        <Loading />
+      </>
+    );
+  }
+
+  return (
+    <>
+      {notificationVisible === true ? <AlertDialog /> : ""}
+      <div className="adminPageContent">
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <Section>
+              <Heading>
+                <FormattedMessage id="provider.browse.title" />
+              </Heading>
+            </Section>
+          </Column>
+        </Grid>
+        <br />
+        {providerTitles.length > 0 && (
+          <Grid fullWidth={true}>
+            <Column lg={5} md={4} sm={4}>
+              <Select
+                id="providerTitleFilter"
+                labelText={intl.formatMessage({ id: "provider.title.filter" })}
+                value={titleFilter}
+                onChange={(e) => setTitleFilter(e.target.value)}
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({ id: "provider.title.filter.all" })}
+                />
+                {providerTitles.map((option) => (
+                  <SelectItem
+                    key={option.code}
+                    value={option.code}
+                    text={option.label}
+                  />
+                ))}
+              </Select>
+            </Column>
+          </Grid>
+        )}
+        <ActionPaginationButtonType
+          selectedRowIds={selectedRowIds}
+          modifyButton={modifyButton}
+          deactivateButton={deactivateButton}
+          deleteDeactivate={deleteDeactivateProvider}
+          openUpdateModal={openUpdateModal}
+          openAddModal={openAddModal}
+          fromRecordCount={fromRecordCount}
+          toRecordCount={toRecordCount}
+          totalRecordCount={totalRecordCount}
+          type="type1"
+        />
+        <br />
+        <Modal
+          open={isAddModalOpen}
+          modalHeading={intl.formatMessage({
+            id: "provider.modal.add.heading",
+          })}
+          primaryButtonText={intl.formatMessage({ id: "label.button.add" })}
+          secondaryButtonText={intl.formatMessage({
+            id: "label.button.cancel",
+          })}
+          onRequestSubmit={handleAddProvider}
+          onRequestClose={closeAddModal}
+        >
+          <Select
+            id="providerTitle"
+            labelText={intl.formatMessage({ id: "provider.title.field" })}
+            value={titleCode}
+            onChange={(e) => setTitleCode(e.target.value)}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({ id: "provider.title.placeholder" })}
+            />
+            {providerTitles.map((option) => (
+              <SelectItem
+                key={option.code}
+                value={option.code}
+                text={option.label}
+              />
+            ))}
+          </Select>
+          {(looksLikeATitle(firstName) || looksLikeATitle(lastName)) && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "provider.title.inName" })}
+            />
+          )}
+          <TextInput
+            id="lastName"
+            labelText={intl.formatMessage({ id: "provider.providerLastName" })}
+            value={lastName}
+            onChange={(e) => handleLastNameChange(e)}
+            required
+          />
+          <TextInput
+            id="firstName"
+            labelText={intl.formatMessage({ id: "provider.providerFirstName" })}
+            value={firstName}
+            onChange={(e) => handleFirstNameChange(e)}
+            required
+          />
+          <TextInput
+            id="telephone"
+            labelText={intl.formatMessage(
+              {
+                id: "patient.label.primaryphone",
+                defaultMessage: "Phone: {PHONE_FORMAT}",
+              },
+              { PHONE_FORMAT: "" },
+            )}
+            helperText={getPhoneFormatHint(intl, configurationProperties)}
+            value={telephone}
+            onChange={(e) => handleTelephoneChange(e)}
+            onBlur={(e) => handlePhoneValidation(e)}
+            invalid={!phoneValidation.status}
+            invalidText={phoneValidation.status ? "" : phoneValidation.body}
+          />
+          <TextInput
+            id="email"
+            labelText={intl.formatMessage({ id: "provider.email" })}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onBlur={(e) => handleEmailValidation(e)}
+            invalid={!emailValidation.status}
+            invalidText={emailValidation.status ? "" : emailValidation.body}
+          />
+
+          <Dropdown
+            className="dropdown-list"
+            id="isActive"
+            titleText={intl.formatMessage({ id: "label.active" })}
+            label={intl.formatMessage({ id: "provider.select" })}
+            items={yesOrNo}
+            itemToString={(item) => (item ? item.value : "")}
+            selectedItem={isActive}
+            onChange={({ selectedItem }) =>
+              setIsActive(selectedItem as YesNoOption)
+            }
+          />
+          <TextInput
+            id="fax"
+            labelText={intl.formatMessage({ id: "provider.fax" })}
+            value={fax}
+            onChange={(e) => setFax(e.target.value)}
+          />
+        </Modal>
+
+        <Modal
+          open={isUpdateModalOpen}
+          modalHeading={intl.formatMessage({
+            id: "provider.modal.update.heading",
+          })}
+          primaryButtonText={intl.formatMessage({ id: "label.button.update" })}
+          secondaryButtonText={intl.formatMessage({
+            id: "label.button.cancel",
+          })}
+          onRequestSubmit={handleUpdateProvider}
+          onRequestClose={closeUpdateModal}
+        >
+          <Select
+            id="updateProviderTitle"
+            labelText={intl.formatMessage({ id: "provider.title.field" })}
+            value={titleCode}
+            onChange={(e) => setTitleCode(e.target.value)}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({ id: "provider.title.placeholder" })}
+            />
+            {providerTitles.map((option) => (
+              <SelectItem
+                key={option.code}
+                value={option.code}
+                text={option.label}
+              />
+            ))}
+          </Select>
+          {(looksLikeATitle(firstName) || looksLikeATitle(lastName)) && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "provider.title.inName" })}
+            />
+          )}
+          <TextInput
+            id="lastName"
+            labelText={intl.formatMessage({ id: "provider.providerLastName" })}
+            value={lastName}
+            onChange={(e) => handleLastNameChange(e)}
+            required
+          />
+          <TextInput
+            id="firstName"
+            labelText={intl.formatMessage({ id: "provider.providerFirstName" })}
+            value={firstName}
+            onChange={(e) => handleFirstNameChange(e)}
+            required
+          />
+          <TextInput
+            id="telephone"
+            labelText={intl.formatMessage(
+              {
+                id: "patient.label.primaryphone",
+                defaultMessage: "Phone: {PHONE_FORMAT}",
+              },
+              { PHONE_FORMAT: "" },
+            )}
+            helperText={getPhoneFormatHint(intl, configurationProperties)}
+            value={telephone}
+            onChange={(e) => handleTelephoneChange(e)}
+            onBlur={(e) => handlePhoneValidation(e)}
+            invalid={!phoneValidation.status}
+            invalidText={phoneValidation.status ? "" : phoneValidation.body}
+          />
+          <TextInput
+            id="updateEmail"
+            labelText={intl.formatMessage({ id: "provider.email" })}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onBlur={(e) => handleEmailValidation(e)}
+            invalid={!emailValidation.status}
+            invalidText={emailValidation.status ? "" : emailValidation.body}
+          />
+          <Dropdown
+            id="isActive"
+            titleText={intl.formatMessage({ id: "label.active" })}
+            label={intl.formatMessage({ id: "provider.select" })}
+            items={yesOrNo}
+            itemToString={(item) => (item ? item.value : "")}
+            selectedItem={isActive}
+            onChange={({ selectedItem }) =>
+              setIsActive(selectedItem as YesNoOption)
+            }
+          />
+          <TextInput
+            id="fax"
+            labelText={intl.formatMessage({ id: "provider.fax" })}
+            value={fax}
+            onChange={(e) => setFax(e.target.value)}
+          />
+        </Modal>
+
+        <div className="orderLegendBody">
+          <Grid>
+            <Column lg={16} md={8} sm={4}>
+              <Section>
+                <Search
+                  size="lg"
+                  id="provider-search-bar"
+                  labelText={<FormattedMessage id="provider.search" />}
+                  placeholder={intl.formatMessage({
+                    id: "provider.search.placeholder",
+                  })}
+                  onChange={handlePanelSearchChange}
+                  value={(() => {
+                    if (panelSearchTerm) {
+                      return panelSearchTerm;
+                    }
+                    return "";
+                  })()}
+                ></Search>
+              </Section>
+            </Column>
+          </Grid>
+          <br />
+          <>
+            <Grid fullWidth={true} className="gridBoundary">
+              <Column lg={16} md={8} sm={4}>
+                {arrows.show && <ServerPageArrows {...arrows} />}
+                <DataTable
+                  rows={providerMenuListShow}
+                  headers={[
+                    {
+                      key: "select",
+                      header: intl.formatMessage({
+                        id: "provider.select",
+                      }),
+                    },
+                    {
+                      key: "titleCode",
+                      header: intl.formatMessage({
+                        id: "provider.title.field",
+                      }),
+                    },
+                    {
+                      key: "lastName",
+                      header: intl.formatMessage({
+                        id: "provider.providerLastName",
+                      }),
+                    },
+
+                    {
+                      key: "firstName",
+                      header: intl.formatMessage({
+                        id: "provider.providerFirstName",
+                      }),
+                    },
+                    {
+                      key: "active",
+                      header: intl.formatMessage({
+                        id: "provider.isActive",
+                      }),
+                    },
+                    {
+                      key: "telephone",
+                      header: intl.formatMessage({
+                        id: "provider.telephone",
+                      }),
+                    },
+                    {
+                      key: "fax",
+                      header: intl.formatMessage({
+                        id: "provider.fax",
+                      }),
+                    },
+                    {
+                      key: "email",
+                      header: intl.formatMessage({
+                        id: "provider.email",
+                      }),
+                    },
+                  ]}
+                >
+                  {({ rows, headers, getHeaderProps, getTableProps }) => (
+                    <TableContainer>
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          <>
+                            {rows.map((row) => (
+                              <TableRow
+                                key={row.id}
+                                onClick={() => {
+                                  const id = row.id;
+                                  setSelectedRowIds(
+                                    selectedRowIds.includes(id)
+                                      ? selectedRowIds.filter(
+                                          (selectedId) => selectedId !== id,
+                                        )
+                                      : [...selectedRowIds, id],
+                                  );
+                                }}
+                              >
+                                {row.cells.map((cell) => renderCell(cell, row))}
+                              </TableRow>
+                            ))}
+                          </>
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+                <Pagination
+                  onChange={handlePageChange}
+                  page={page}
+                  pageSize={serverPageSize}
+                  pageSizes={[serverPageSize]}
+                  pageSizeInputDisabled
+                  totalItems={Number(totalRecordCount) || 0}
+                  forwardText={intl.formatMessage({
+                    id: "pagination.forward",
+                  })}
+                  backwardText={intl.formatMessage({
+                    id: "pagination.backward",
+                  })}
+                  itemRangeText={(min, max, total) =>
+                    intl.formatMessage(
+                      { id: "pagination.item-range" },
+                      { min: min, max: max, total: total },
+                    )
+                  }
+                  itemsPerPageText={intl.formatMessage({
+                    id: "pagination.items-per-page",
+                  })}
+                  itemText={(min, max) =>
+                    intl.formatMessage(
+                      { id: "pagination.item" },
+                      { min: min, max: max },
+                    )
+                  }
+                  pageNumberText={intl.formatMessage({
+                    id: "pagination.page-number",
+                  })}
+                  pageRangeText={(_current, total) =>
+                    intl.formatMessage(
+                      { id: "pagination.page-range" },
+                      { total: total },
+                    )
+                  }
+                  pageText={(page, pagesUnknown) =>
+                    intl.formatMessage(
+                      { id: "pagination.page" },
+                      { page: pagesUnknown ? "" : page },
+                    )
+                  }
+                />
+              </Column>
+            </Grid>
+          </>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export default injectIntl(ProviderMenu);

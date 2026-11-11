@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="20260407-002" author="reagan-meant">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization_type WHERE short_name = 'sampling site'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add 'sampling site' organization type for environmental workflows</comment>
+        <insert tableName="organization_type" schemaName="clinlims">
+            <column name="id" valueSequenceNext="organization_type_seq"/>
+            <column name="short_name" value="sampling site"/>
+            <column name="description" value="Environmental sampling site for monitoring"/>
+            <column name="name_display_key" value="org.type.sampling.site"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

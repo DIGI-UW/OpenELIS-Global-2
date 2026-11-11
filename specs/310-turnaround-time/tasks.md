@@ -40,12 +40,12 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
 
 ### Branch Setup
 
-- [ ] T000a Create milestone branch
+- [x] T000a Create milestone branch
       `fix/310-OGC-310-turnaround-time-m0-timestamp-precision` from `develop`
 
 ### TDD: Tests First
 
-- [ ] T000b Write unit test verifying hour-level precision for Analysis
+- [x] T000b Write unit test verifying hour-level precision for Analysis
       timestamp fields in
       `src/test/java/org/openelisglobal/analysis/AnalysisTimestampPrecisionTest.java`
       — create Analysis, set `startedDate` to a `Timestamp` with time 14:30:00,
@@ -53,14 +53,14 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
       midnight). Do same for `completedDate` and `releasedDate`. This test MUST
       FAIL before the HBM fix is applied. JUnit 4, extend
       `BaseWebContextSensitiveTest`.
-- [ ] T000c Write unit test for fixed TAT hour calculation in
+- [x] T000c Write unit test for fixed TAT hour calculation in
       `src/test/java/org/openelisglobal/common/rest/provider/PatientDashBoardProviderTATTest.java`
       — given startedDate = Monday 09:00 and releasedDate = Monday 15:00, assert
       TAT = 6 hours (not 0 or 24). This test MUST FAIL before the provider fix.
 
 ### HBM Mapping Fix
 
-- [ ] T000d Change `Analysis.hbm.xml` at
+- [x] T000d Change `Analysis.hbm.xml` at
       `src/main/resources/hibernate/hbm/Analysis.hbm.xml` lines 56-64 — change
       `type="java.sql.Date"` to `type="java.sql.Timestamp"` for `startedDate`
       (line 56), `completedDate` (line 59), `releasedDate` (line 62). Keep
@@ -68,7 +68,7 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
 
 ### Java Field Type Fix
 
-- [ ] T000e Update `Analysis.java` at
+- [x] T000e Update `Analysis.java` at
       `src/main/java/org/openelisglobal/analysis/valueholder/Analysis.java` —
       change field types: `private Date startedDate` (line 53) to
       `private Timestamp startedDate`, `private Date completedDate` (line 55) to
@@ -79,7 +79,7 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
 
 ### Caller Site Updates
 
-- [ ] T000f Update setter call sites that create `java.sql.Date` values for
+- [x] T000f Update setter call sites that create `java.sql.Date` values for
       these fields — change to `java.sql.Timestamp`:
   - `ResultValidationController.java:391` —
     `new java.sql.Date(Calendar.getInstance().getTimeInMillis())` to
@@ -106,13 +106,14 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
   - Test files: `AnalysisServiceTest.java:392-394`,
     `AnalyzerResultsServiceTest.java:143` — update `Date.valueOf` to
     `Timestamp.valueOf`
-- [ ] T000g Update `DateUtil.java` — add `getNowAsTimestamp()` method:
+- [x] T000g ~~Update `DateUtil.java`~~ — `getNowAsTimestamp()` already exists at
+      line 555. No change needed.
       `return new java.sql.Timestamp(System.currentTimeMillis())` for use in the
       setter calls above. Keep `getNowAsSqlDate()` for non-Analysis uses.
 
 ### Fix Existing TAT Calculation
 
-- [ ] T000h Fix `PatientDashBoardProvider.java` at
+- [x] T000h Fix `PatientDashBoardProvider.java` at
       `src/main/java/org/openelisglobal/common/rest/provider/PatientDashBoardProvider.java`
       lines 157-168 — replace `.toLocalDate().atStartOfDay()` pattern with
       direct `Timestamp`-aware calculation: convert `getStartedDate()` and
@@ -123,11 +124,11 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
 
 ### Verification & PR
 
-- [ ] T000i Run full Maven test suite: `mvn test -DskipTests=false` — ALL
+- [x] T000i Run full Maven test suite: `mvn test -DskipTests=false` — ALL
       existing tests must still pass. Run the new precision tests from T000b and
       T000c — they must now PASS.
-- [ ] T000j Run `mvn spotless:apply` to ensure formatting compliance.
-- [ ] T000k Create PR `fix/310-OGC-310-turnaround-time-m0-timestamp-precision` >
+- [x] T000j Run `mvn spotless:apply` to ensure formatting compliance.
+- [x] T000k Create PR `fix/310-OGC-310-turnaround-time-m0-timestamp-precision` >
       `develop`. Title:
       `fix(analysis): restore hour-level precision for Analysis timestamp fields`.
       Description: HBM mapping incorrectly used java.sql.Date for TIMESTAMP
@@ -151,13 +152,13 @@ contracts/api-contracts.md (Calendar Management Endpoints), research.md
 
 ### Branch Setup
 
-- [ ] T001 [US1] Create milestone branch
+- [x] T001 [US1] Create milestone branch
       `feat/310-OGC-306-turnaround-time-m1-calendar-backend` from `develop`
       (after M0 merged)
 
 ### Schema (Liquibase)
 
-- [ ] T002 [P] [US1] Create Liquibase changeset for `public_holiday` table in
+- [x] T002 [P] [US1] Create Liquibase changeset for `public_holiday` table in
       `src/main/resources/liquibase/3.5.x.x/public_holiday.xml` — columns: id
       (SERIAL PK via sequence), holiday_date (DATE NOT NULL), holiday_name
       (VARCHAR(100) NOT NULL), is_recurring (BOOLEAN DEFAULT FALSE), is_active
@@ -165,30 +166,30 @@ contracts/api-contracts.md (Calendar Management Endpoints), research.md
       system_user). Use `clinlims` schema. Follow pattern from
       `src/main/resources/liquibase/2.8.x.x/reflex_rule.xml` (preConditions with
       `onFail="MARK_RAN"`, createSequence, createTable).
-- [ ] T003 [P] [US1] Create Liquibase changeset for `weekend_config` table in
+- [x] T003 [P] [US1] Create Liquibase changeset for `weekend_config` table in
       `src/main/resources/liquibase/3.5.x.x/weekend_config.xml` — columns: id
       (SERIAL PK via sequence), day_of_week (INTEGER NOT NULL UNIQUE),
       is_weekend (BOOLEAN DEFAULT FALSE), lastupdated (TIMESTAMP), sys_user_id
       NOT NULL). Include seed data: 7 rows (0-6), Saturday(6)=true,
       Sunday(0)=true, others=false.
-- [ ] T004 [P] [US1] Create Liquibase changeset for permission modules in
+- [x] T004 [P] [US1] Create Liquibase changeset for permission modules in
       `src/main/resources/liquibase/3.5.x.x/tat_permissions.xml` — insert
       `CalendarManagement` and `TATReport` modules into `system_module` table
       (PascalCase per codebase convention), plus `system_module_url` entries for
       all REST and frontend paths, assign to admin and reports roles in
       `system_role_module`. Follow existing permission module patterns.
-- [ ] T005 [US1] Register all new changesets in
+- [x] T005 [US1] Register all new changesets in
       `src/main/resources/liquibase/base-changelog.xml`
 
 ### Valueholders (JPA Entities)
 
-- [ ] T006 [P] [US1] Create `PublicHoliday.java` valueholder in
+- [x] T006 [P] [US1] Create `PublicHoliday.java` valueholder in
       `src/main/java/org/openelisglobal/calendar/valueholder/PublicHoliday.java`
       — extend `BaseObject<String>` (from
       `src/.../common/valueholder/BaseObject.java`), JPA annotations for all
       fields per data-model.md. Validation: `@NotNull` on holiday_date and
       holiday_name, `@Size(max=100)` on holiday_name.
-- [ ] T007 [P] [US1] Create `WeekendConfig.java` valueholder in
+- [x] T007 [P] [US1] Create `WeekendConfig.java` valueholder in
       `src/main/java/org/openelisglobal/calendar/valueholder/WeekendConfig.java`
       — extend `BaseObject<String>`, JPA annotations. Validation:
       `@Min(0) @Max(6)` on dayOfWeek.
@@ -200,17 +201,17 @@ contracts/api-contracts.md (Calendar Management Endpoints), research.md
       `src/test/java/org/openelisglobal/calendar/valueholder/CalendarEntitiesOrmTest.java`
       — verify JPA mappings load without DB, must run in <5s. Reference:
       testing-roadmap.md ORM Validation Tests section.
-- [ ] T009 [P] [US1] Write unit tests for PublicHolidayService in
+- [x] T009 [P] [US1] Write unit tests for PublicHolidayService in
       `src/test/java/org/openelisglobal/calendar/service/PublicHolidayServiceTest.java`
       — test: create holiday, update holiday, delete holiday, recurring
       expansion across years, duplicate date detection (service-layer per
       FR-CM-006), inactive holiday filtering. Use JUnit 4 + Mockito
       (`@RunWith(MockitoJUnitRunner.class)`, `@Mock` for DAO).
-- [ ] T010 [P] [US1] Write unit tests for WeekendConfigService in
+- [x] T010 [P] [US1] Write unit tests for WeekendConfigService in
       `src/test/java/org/openelisglobal/calendar/service/WeekendConfigServiceTest.java`
       — test: get weekend days, update weekend days, default Sat+Sun, validation
       of day_of_week range 0-6. JUnit 4 + Mockito.
-- [ ] T011 [US1] Write integration tests for CalendarManagementRestController in
+- [x] T011 [US1] Write integration tests for CalendarManagementRestController in
       `src/test/java/org/openelisglobal/calendar/controller/CalendarManagementRestControllerTest.java`
       — extend `BaseWebContextSensitiveTest` (from
       `src/test/java/org/openelisglobal/BaseWebContextSensitiveTest.java`), use
@@ -220,20 +221,20 @@ contracts/api-contracts.md (Calendar Management Endpoints), research.md
 
 ### DAOs
 
-- [ ] T012 [P] [US1] Create `PublicHolidayDAO.java` interface in
+- [x] T012 [P] [US1] Create `PublicHolidayDAO.java` interface in
       `src/main/java/org/openelisglobal/calendar/dao/PublicHolidayDAO.java` —
       extend `BaseDAO<PublicHoliday, String>` (from
       `src/.../common/dao/BaseDAO.java`). Add method:
       `List<PublicHoliday> getHolidaysForYear(int year, boolean includeInactive)`
       to handle recurring expansion.
-- [ ] T013 [P] [US1] Create `WeekendConfigDAO.java` interface in
+- [x] T013 [P] [US1] Create `WeekendConfigDAO.java` interface in
       `src/main/java/org/openelisglobal/calendar/dao/WeekendConfigDAO.java` —
       extend `BaseDAO<WeekendConfig, String>`. Add method:
       `List<WeekendConfig> getWeekendDays()`.
 
 ### Services
 
-- [ ] T014 [US1] Create `PublicHolidayService.java` interface and
+- [x] T014 [US1] Create `PublicHolidayService.java` interface and
       `PublicHolidayServiceImpl.java` in
       `src/main/java/org/openelisglobal/calendar/service/` — extend
       `AuditableBaseObjectServiceImpl<PublicHoliday, String>` (from
@@ -243,7 +244,7 @@ contracts/api-contracts.md (Calendar Management Endpoints), research.md
       duplicate detection at service layer (reject if same month/day in target
       year including recurring occurrences per FR-CM-006), CSV import with
       validation (return imported/skipped/errors), CSV export.
-- [ ] T015 [US1] Create `WeekendConfigService.java` interface and
+- [x] T015 [US1] Create `WeekendConfigService.java` interface and
       `WeekendConfigServiceImpl.java` in
       `src/main/java/org/openelisglobal/calendar/service/` — `@Service`,
       `@Transactional`. Implement: get weekend day IDs, update weekend days
@@ -251,7 +252,7 @@ contracts/api-contracts.md (Calendar Management Endpoints), research.md
 
 ### REST Controller
 
-- [ ] T016 [US1] Create `CalendarManagementRestController.java` in
+- [x] T016 [US1] Create `CalendarManagementRestController.java` in
       `src/main/java/org/openelisglobal/calendar/controller/rest/CalendarManagementRestController.java`
       — `@RestController @RequestMapping("/rest")`. Implement all endpoints from
       contracts/api-contracts.md Calendar Management section:
@@ -263,11 +264,11 @@ contracts/api-contracts.md (Calendar Management Endpoints), research.md
 
 ### Checkpoint & PR
 
-- [ ] T017 [US1] Run all M1 tests:
+- [x] T017 [US1] Run all M1 tests:
       `mvn test -pl . -Dtest="*CalendarEntitiesOrm*,*PublicHolidayService*,*WeekendConfigService*"`
       and `mvn verify -pl . -Dit.test="*CalendarManagementRestController*"` —
       ALL must pass.
-- [ ] T018 [US1] Create PR
+- [x] T018 [US1] Create PR
       `feat/310-OGC-306-turnaround-time-m1-calendar-backend` > `develop`. Title:
       `feat(calendar): OGC-306 M1 — Calendar Management backend (schema, API, tests)`.
 
@@ -285,13 +286,13 @@ DataTable pattern
 
 ### Branch Setup
 
-- [ ] T019 [US1] Create milestone branch
+- [x] T019 [US1] Create milestone branch
       `feat/310-OGC-306-turnaround-time-m2-calendar-frontend-e2e` from `develop`
       (after M1 merged)
 
 ### i18n Keys
 
-- [ ] T020 [US1] Add i18n message keys to `frontend/src/languages/en.json` —
+- [x] T020 [US1] Add i18n message keys to `frontend/src/languages/en.json` —
       keys for: `admin.calendarManagement.title`,
       `admin.calendarManagement.description`,
       `admin.calendarManagement.addHoliday`,
@@ -316,7 +317,7 @@ DataTable pattern
 
 ### TDD: Jest Tests First
 
-- [ ] T021 [P] [US1] Write Jest tests for CalendarManagement component in
+- [x] T021 [P] [US1] Write Jest tests for CalendarManagement component in
       `frontend/src/components/admin/calendarManagement/__tests__/CalendarManagement.test.js`
       — test: renders holiday table, add holiday inline, edit holiday inline,
       delete with confirmation, year filter changes, weekend checkboxes toggle,
@@ -325,14 +326,14 @@ DataTable pattern
       (MF-5), loading skeleton during data fetch (MF-2), error notification on
       API failure (MF-3). Use React Testing Library. Mock
       `getFromOpenElisServer` and `postToOpenElisServerJsonResponse`.
-- [ ] T022 [P] [US1] Write Jest tests for CsvImportPreview component in
+- [x] T022 [P] [US1] Write Jest tests for CsvImportPreview component in
       `frontend/src/components/admin/calendarManagement/__tests__/CsvImportPreview.test.js`
       — test: renders preview table, shows validation errors, import/cancel
       buttons.
 
 ### Frontend Components
 
-- [ ] T023 [US1] Create `CalendarManagement.js` main component in
+- [x] T023 [US1] Create `CalendarManagement.js` main component in
       `frontend/src/components/admin/calendarManagement/CalendarManagement.js` —
       Carbon DataTable with inline add/edit rows per mockup (MF-18: inline, NOT
       modal — intentional design choice over requirements doc). Columns: Date
@@ -350,7 +351,7 @@ DataTable pattern
       `getFromOpenElisServer("/rest/calendar/holidays?year=...")`. Follow
       pattern from
       `frontend/src/components/admin/OrganizationManagement/OrganizationManagement.js`.
-- [ ] T024 [US1] Create `WeekendConfig.js` component in
+- [x] T024 [US1] Create `WeekendConfig.js` component in
       `frontend/src/components/admin/calendarManagement/WeekendConfig.js` — Row
       of Carbon Checkboxes for Mon-Sun. Sat+Sun checked by default. On change:
       PUT `/rest/calendar/weekends` immediately, show Carbon InlineNotification
@@ -361,12 +362,12 @@ DataTable pattern
       Carbon Modal with DataTable preview of parsed CSV rows. Show validation
       errors inline. Import/Cancel buttons. POST
       `/rest/calendar/holidays/import` on confirm.
-- [ ] T026 [US1] Create `index.js` barrel export in
+- [x] T026 [US1] Create `index.js` barrel export in
       `frontend/src/components/admin/calendarManagement/index.js`
 
 ### Routing & Menu Integration
 
-- [ ] T027 [US1] Add "Calendar Management" SideNavLink to
+- [x] T027 [US1] Add "Calendar Management" SideNavLink to
       `frontend/src/components/admin/Admin.js` — add `<SideNavLink>` with
       `renderIcon={CalendarDays}` (or `Calendar` from @carbon/react/icons),
       `onClick={handleNavigation(\`\${path}/calendarManagement\`)}`, `<FormattedMessage id="admin.calendarManagement.title" />`. Add `<Route
@@ -380,7 +381,7 @@ DataTable pattern
 
 ### Playwright E2E with Video (US1)
 
-- [ ] T029a [US1] Create E2E test data seeding: either a SQL fixture
+- [x] T029a [US1] Create E2E test data seeding: either a SQL fixture
       `src/test/resources/tat-demo-data.sql` with sample holidays, OR an
       API-based setup function in `frontend/playwright/helpers/seed-calendar.ts`
       that uses `page.request.post("/rest/calendar/holidays", ...)` to create
@@ -398,7 +399,7 @@ DataTable pattern
       buttons. Methods: `goto()`, `addHoliday(date, name, recurring)`,
       `editHoliday(id, fields)`, `deleteHoliday(id)`,
       `setWeekendDay(day, checked)`, `selectYear(year)`, `getHolidayCount()`.
-- [ ] T031 [US1] `/write-playwright-test` — Create
+- [x] T031 [US1] `/write-playwright-test` — Create
       `frontend/playwright/tests/demo/core/ogc-306-calendar-management.spec.ts`
       — use `test.step()` for each acceptance scenario, `showTitleCard()` +
       `videoPause()` for demo presentation. Use page object from T030. Assert on
@@ -442,13 +443,13 @@ TATSummary computed entities, Sample/Analysis timestamp fields), research.md
 
 ### Branch Setup
 
-- [ ] T036 [US2] Create milestone branch
+- [x] T036 [US2] Create milestone branch
       `feat/310-OGC-307-turnaround-time-m3-tat-backend` from `develop` (after M1
       merged, parallel with M2)
 
 ### TDD: Tests First
 
-- [ ] T037 [P] [US2] Write unit tests for TATCalculationService in
+- [x] T037 [P] [US2] Write unit tests for TATCalculationService in
       `src/test/java/org/openelisglobal/reports/tat/service/TATCalculationServiceTest.java`
       — JUnit 4 + Mockito. Test all 7 segments with known timestamps and
       expected hour values: (1) Order to Collection, (2) Collection to Receipt,
@@ -460,13 +461,13 @@ TATSummary computed entities, Sample/Analysis timestamp fields), research.md
       all-excluded-days returns 0. Test 24-hour working day assumption
       (FR-TAT-024). Mock AnalysisDAO, SampleDAO, PublicHolidayService,
       WeekendConfigService.
-- [ ] T038 [P] [US2] Write unit tests for TATReportService in
+- [x] T038 [P] [US2] Write unit tests for TATReportService in
       `src/test/java/org/openelisglobal/reports/tat/service/TATReportServiceTest.java`
       — test: summary aggregation (mean, median, p90, min, max, stddev),
       histogram bin calculation, breakdown by dimension (lab unit, test,
       priority, sample type, ordering site), pagination logic, sort logic, trend
       aggregation (daily/weekly/monthly). Mock TATCalculationService.
-- [ ] T039 [US2] Write integration tests for TATReportRestController in
+- [x] T039 [US2] Write integration tests for TATReportRestController in
       `src/test/java/org/openelisglobal/reports/tat/controller/TATReportRestControllerTest.java`
       — extend `BaseWebContextSensitiveTest`, MockMvc. Test all 4 endpoints: GET
       summary (with various filter combinations), GET detail (with pagination
@@ -477,41 +478,41 @@ TATSummary computed entities, Sample/Analysis timestamp fields), research.md
 
 ### Beans (Response DTOs)
 
-- [ ] T040 [P] [US2] Create `TATResult.java` in
+- [x] T040 [P] [US2] Create `TATResult.java` in
       `src/main/java/org/openelisglobal/reports/tat/bean/TATResult.java` —
       fields per data-model.md TATResult: labNumber, testName, labUnit,
       priority, sampleType, orderingSite, all 6 timestamps (nullable),
       calendarTatHours (BigDecimal nullable), workingTatHours (BigDecimal
       nullable).
-- [ ] T041 [P] [US2] Create `TATSummaryResponse.java` in
+- [x] T041 [P] [US2] Create `TATSummaryResponse.java` in
       `src/main/java/org/openelisglobal/reports/tat/bean/TATSummaryResponse.java`
       — fields: calculationMode, excludedDaysCount, totalCount, mean, median,
       percentile90, min, max, stdDeviation, histogram (List of TATHistogramBin),
       breakdown (List of TATBreakdownRow).
-- [ ] T042 [P] [US2] Create `TATDetailResponse.java` in
+- [x] T042 [P] [US2] Create `TATDetailResponse.java` in
       `src/main/java/org/openelisglobal/reports/tat/bean/TATDetailResponse.java`
       — fields: totalCount, page (0-based), pageSize, calculationMode, results
       (List of TATResult).
-- [ ] T043 [P] [US2] Create `TATTrendResponse.java` in
+- [x] T043 [P] [US2] Create `TATTrendResponse.java` in
       `src/main/java/org/openelisglobal/reports/tat/bean/TATTrendResponse.java`
       — fields: calculationMode, series (List of TATTrendSeries, each with
       label + dataPoints list of TATTrendPoint with
       period/mean/median/percentile90/count).
-- [ ] T044 [P] [US2] Create supporting beans: `TATHistogramBin.java`,
+- [x] T044 [P] [US2] Create supporting beans: `TATHistogramBin.java`,
       `TATBreakdownRow.java`, `TATTrendSeries.java`, `TATTrendPoint.java` in
       `src/main/java/org/openelisglobal/reports/tat/bean/`.
-- [ ] T045 [P] [US2] Create `TATSegment.java` enum in
+- [x] T045 [P] [US2] Create `TATSegment.java` enum in
       `src/main/java/org/openelisglobal/reports/tat/bean/TATSegment.java` —
       values: ORDER_TO_COLLECTION, COLLECTION_TO_RECEIPT, RECEIPT_TO_TESTING,
       RECEIPT_TO_RESULT, RECEIPT_TO_VALIDATION, RESULT_TO_VALIDATION, OVERALL.
       Each value stores its from/to milestone field names for calculation.
-- [ ] T046 [P] [US2] Create `TATCalculationMode.java` enum in
+- [x] T046 [P] [US2] Create `TATCalculationMode.java` enum in
       `src/main/java/org/openelisglobal/reports/tat/bean/TATCalculationMode.java`
       — values: CALENDAR, WORKING_TIME.
 
 ### Services
 
-- [ ] T047 [US2] Create `TATCalculationService.java` interface and
+- [x] T047 [US2] Create `TATCalculationService.java` interface and
       `TATCalculationServiceImpl.java` in
       `src/main/java/org/openelisglobal/reports/tat/service/` — `@Service`,
       `@Transactional(readOnly=true)`. Core methods:
@@ -524,7 +525,7 @@ TATSummary computed entities, Sample/Analysis timestamp fields), research.md
       PublicHolidayService, with recurring expansion) for the date range.
       `List<TATResult> calculateTATForSegment(TATSegment segment, TATCalculationMode mode, filter params)`
       — query samples/analyses, calculate TAT per result.
-- [ ] T048 [US2] Create `TATReportService.java` interface and
+- [x] T048 [US2] Create `TATReportService.java` interface and
       `TATReportServiceImpl.java` in
       `src/main/java/org/openelisglobal/reports/tat/service/` — `@Service`,
       `@Transactional(readOnly=true)`. Methods:
@@ -538,7 +539,7 @@ TATSummary computed entities, Sample/Analysis timestamp fields), research.md
 
 ### REST Controller
 
-- [ ] T049 [US2] Create `TATReportRestController.java` in
+- [x] T049 [US2] Create `TATReportRestController.java` in
       `src/main/java/org/openelisglobal/reports/tat/controller/rest/TATReportRestController.java`
       — `@RestController @RequestMapping("/rest")`. Implement 4 endpoints from
       contracts/api-contracts.md: `GET /rest/reports/tat/summary`,
@@ -571,13 +572,13 @@ contracts/api-contracts.md (GET /rest/reports/tat/summary)
 
 ### Branch Setup
 
-- [ ] T052 [US2] Create milestone branch
+- [x] T052 [US2] Create milestone branch
       `feat/310-OGC-307-turnaround-time-m4-tat-summary-e2e` from `develop`
       (after M3 merged)
 
 ### i18n Keys
 
-- [ ] T053 [US2] Add i18n message keys to `frontend/src/languages/en.json` —
+- [x] T053 [US2] Add i18n message keys to `frontend/src/languages/en.json` —
       keys for: `reports.tat.title`, `reports.tat.description`,
       `reports.tat.generateReport`, `reports.tat.clearFilters` (MF-1),
       `reports.tat.segment.*` (all 7 segment names), `reports.tat.calendarTime`,
@@ -599,7 +600,7 @@ contracts/api-contracts.md (GET /rest/reports/tat/summary)
 
 ### TDD: Jest Tests First
 
-- [ ] T054 [P] [US2] Write Jest tests for TATFilterBar component in
+- [x] T054 [P] [US2] Write Jest tests for TATFilterBar component in
       `frontend/src/components/reports/tat/__tests__/TATFilterBar.test.js` —
       test: renders all filter controls, date range defaults to last 30 days,
       segment defaults to "Receipt to Validation", calculation mode
@@ -612,7 +613,7 @@ contracts/api-contracts.md (GET /rest/reports/tat/summary)
       test: renders 7 stat cards with correct labels and formatted values (e.g.,
       "3h 42m"), handles null/zero values, shows "Insufficient data" when all
       null.
-- [ ] T056 [P] [US2] Write Jest tests for TATSummaryTab component in
+- [x] T056 [P] [US2] Write Jest tests for TATSummaryTab component in
       `frontend/src/components/reports/tat/__tests__/TATSummaryTab.test.js` —
       test: renders stat cards + histogram + breakdown table, breakdown
       dimension selector, drill-down click calls callback with dimension value,
@@ -621,7 +622,7 @@ contracts/api-contracts.md (GET /rest/reports/tat/summary)
 
 ### Frontend Components
 
-- [ ] T057 [US2] Create `TATReport.js` page component in
+- [x] T057 [US2] Create `TATReport.js` page component in
       `frontend/src/components/reports/tat/TATReport.js` — main page with Carbon
       Tabs (Summary, Detail List, Trends). Manages shared filter state. Calls
       `getFromOpenElisServer("/rest/reports/tat/summary?...")` on "Generate
@@ -632,7 +633,7 @@ contracts/api-contracts.md (GET /rest/reports/tat/summary)
       attributes on key elements for Playwright: `tat-report`,
       `generate-report-button`, `tab-summary`, `tab-detail`, `tab-trends`,
       `filter-summary-badges` (MF-13).
-- [ ] T058 [US2] Create `TATFilterBar.js` in
+- [x] T058 [US2] Create `TATFilterBar.js` in
       `frontend/src/components/reports/tat/TATFilterBar.js` — Carbon DatePicker
       (range), Dropdown (lab unit, segment, sample type, ordering site),
       MultiSelect (test/panel with typeahead), ContentSwitcher (calculation
@@ -653,7 +654,7 @@ contracts/api-contracts.md (GET /rest/reports/tat/summary)
       24-48h, 48h+ (HF-1). Color grading: teal for early bins, yellow for
       mid-range, orange/red for high bins (MF-9). Vertical reference lines for
       median and p90. Tooltip on hover showing count and percentage.
-- [ ] T061 [US2] Create `TATBreakdownTable.js` in
+- [x] T061 [US2] Create `TATBreakdownTable.js` in
       `frontend/src/components/reports/tat/TATBreakdownTable.js` — Carbon
       DataTable with columns: dimension value, count, mean, median, p90, max.
       Max column: apply red text + bold when value >24h (MF-11). Sortable
@@ -661,25 +662,25 @@ contracts/api-contracts.md (GET /rest/reports/tat/summary)
       Sample Type, Ordering Site). Row click triggers drill-down callback
       (navigates to Detail List tab filtered to that value). Helper text below
       table: "Click a row to view individual results" (MF-12).
-- [ ] T062 [US2] Create `TATSummaryTab.js` in
+- [x] T062 [US2] Create `TATSummaryTab.js` in
       `frontend/src/components/reports/tat/TATSummaryTab.js` — composition
       component: TATStatCards + TATHistogram + TATBreakdownTable. Working Time
       info bar (Carbon InlineNotification kind="info") showing excluded day
       count with link to Admin > Calendar Management. Warning bar
       (kind="warning") when no holidays configured (FR-TAT-019).
-- [ ] T063 [US2] Create `index.js` barrel export in
+- [x] T063 [US2] Create `index.js` barrel export in
       `frontend/src/components/reports/tat/index.js`
 
 ### Routing
 
-- [ ] T064 [US2] Add TAT Report route to `frontend/src/App.js` — add
+- [x] T064 [US2] Add TAT Report route to `frontend/src/App.js` — add
       `<SecureRoute path="/TATReport" component={() => <TATReport />} role={Roles.REPORTS} />`
       following existing report route patterns (lines ~786-820). Add navigation
       link in the Reports section or sidebar menu.
 
 ### Playwright E2E with Video (US2)
 
-- [ ] T065a [US2] Create E2E test data seeding for TAT report: SQL fixture or
+- [x] T065a [US2] Create E2E test data seeding for TAT report: SQL fixture or
       API-based setup in `frontend/playwright/helpers/seed-tat-data.ts` that
       creates 10-15 sample/analysis records with realistic timestamps spanning
       last 90 days, multiple priorities (ROUTINE, STAT), sample types, and lab
@@ -737,13 +738,13 @@ endpoints)
 
 ### Branch Setup
 
-- [ ] T072 [US3] Create milestone branch
+- [x] T072 [US3] Create milestone branch
       `feat/310-OGC-307-turnaround-time-m5-tat-detail-trends-e2e` from `develop`
       (after M4 merged)
 
 ### i18n Keys
 
-- [ ] T073 [US3] Add remaining i18n keys to `frontend/src/languages/en.json` —
+- [x] T073 [US3] Add remaining i18n keys to `frontend/src/languages/en.json` —
       keys for: `reports.tat.labNumber`, `reports.tat.patient`,
       `reports.tat.test`, `reports.tat.orderCreated`, `reports.tat.collected`,
       `reports.tat.received`, `reports.tat.testingStarted`,
@@ -757,24 +758,24 @@ endpoints)
 
 ### TDD: Jest Tests First
 
-- [ ] T074 [P] [US3] Write Jest tests for TATDetailListTab in
+- [x] T074 [P] [US3] Write Jest tests for TATDetailListTab in
       `frontend/src/components/reports/tat/__tests__/TATDetailListTab.test.js` —
       test: renders data table with correct columns, pagination controls, sort
       by column click, configurable column visibility, STAT rows have red left
       border class, missing timestamps show "—", lab number renders as link, N/A
       for uncalculable segments.
-- [ ] T075 [P] [US4] Write Jest tests for TATTrendsTab in
+- [x] T075 [P] [US4] Write Jest tests for TATTrendsTab in
       `frontend/src/components/reports/tat/__tests__/TATTrendsTab.test.js` —
       test: renders time series chart, aggregation interval selector, metric
       line toggles, compare-by dimension selector, volume overlay toggle.
-- [ ] T076 [P] [US5] Write Jest tests for TATExport in
+- [x] T076 [P] [US5] Write Jest tests for TATExport in
       `frontend/src/components/reports/tat/__tests__/TATExport.test.js` — test:
       renders export dropdown with CSV/PDF options, CSV click triggers download,
       PDF click triggers download.
 
 ### Frontend Components (US3 — Detail List)
 
-- [ ] T077 [US3] Create `TATDetailListTab.js` in
+- [x] T077 [US3] Create `TATDetailListTab.js` in
       `frontend/src/components/reports/tat/TATDetailListTab.js` — Carbon
       DataTable with server-side pagination (Pagination component, 0-based page
       param). Show `DataTableSkeleton` during page load/sort (MF-2). Columns per
@@ -791,7 +792,7 @@ endpoints)
 
 ### Frontend Components (US4 — Trends)
 
-- [ ] T078 [US4] Create `TATTrendsTab.js` in
+- [x] T078 [US4] Create `TATTrendsTab.js` in
       `frontend/src/components/reports/tat/TATTrendsTab.js` — use
       `@carbon/charts-react` LineChart for trend lines. Show `SkeletonText`
       during data fetch (MF-2). Aggregation interval selector (Carbon Dropdown:
@@ -806,7 +807,7 @@ endpoints)
 
 ### Frontend Components (US5 — Export)
 
-- [ ] T079 [US5] Create `TATExport.js` in
+- [x] T079 [US5] Create `TATExport.js` in
       `frontend/src/components/reports/tat/TATExport.js` — Carbon OverflowMenu
       with MenuItems: "Export CSV", "Export PDF". CSV: trigger browser download
       via `window.open("/rest/reports/tat/export?format=CSV&...")`. PDF: same
@@ -814,11 +815,11 @@ endpoints)
 
 ### Wire Components into TATReport
 
-- [ ] T080 [US3] Integrate TATDetailListTab into TATReport.js Tabs. Wire
+- [x] T080 [US3] Integrate TATDetailListTab into TATReport.js Tabs. Wire
       drill-down from TATBreakdownTable (M4) to Detail List tab with
       breakdownFilter param. Wire tab switching.
-- [ ] T081 [US4] Integrate TATTrendsTab into TATReport.js Tabs.
-- [ ] T082 [US5] Integrate TATExport into TATReport.js header area (available
+- [x] T081 [US4] Integrate TATTrendsTab into TATReport.js Tabs.
+- [x] T082 [US5] Integrate TATExport into TATReport.js header area (available
       from all tabs).
 
 ### Playwright E2E with Video (US3, US4, US5)

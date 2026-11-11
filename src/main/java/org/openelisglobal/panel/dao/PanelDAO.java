@@ -60,8 +60,6 @@ public interface PanelDAO extends BaseDAO<Panel, String> {
 
     boolean duplicatePanelExists(Panel panel);
 
-    boolean duplicatePanelDescriptionExists(Panel panel);
-
     void clearIDMaps();
 
     Panel getPanelByLoincCode(String loincCode);

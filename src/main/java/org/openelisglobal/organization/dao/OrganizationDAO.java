@@ -13,7 +13,9 @@
  */
 package org.openelisglobal.organization.dao;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -99,4 +101,22 @@ public interface OrganizationDAO extends BaseDAO<Organization, String> {
      * @return List of organizations with types eagerly loaded
      */
     List<Organization> searchOrganizationsWithTypes(String filter) throws LIMSRuntimeException;
+
+    /** Every organization with its types loaded (OGC-1363 list views). */
+    List<Organization> getAllWithTypes() throws LIMSRuntimeException;
+
+    /** The children of an organization with their types loaded. */
+    List<Organization> getChildrenWithTypes(String parentId) throws LIMSRuntimeException;
+
+    /** The organizations carrying a type, with their types loaded. */
+    List<Organization> getByTypeIdWithTypes(String typeId) throws LIMSRuntimeException;
+
+    /** Active child organizations per parent id, for the given parents. */
+    Map<String, Long> countActiveChildren(Collection<String> parentIds) throws LIMSRuntimeException;
+
+    /**
+     * Geographic areas (organizations of a type with a hierarchy level) whose name
+     * or code contains the text, case-insensitively.
+     */
+    List<Organization> searchAreas(String text, int limit) throws LIMSRuntimeException;
 }

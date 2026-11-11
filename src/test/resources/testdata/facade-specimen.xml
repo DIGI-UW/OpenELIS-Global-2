@@ -1,0 +1,118 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <localization id="1" description="Panel Name"
+        lastupdated="2025-03-08 12:00:00" />
+
+    <localization id="2" description="Test Name"
+        lastupdated="2025-03-08 12:00:00" />
+
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Complete Blood Count" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="Complete Blood Count" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
+
+    <system_user id="1" external_id="EXT003" login_name="admin"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+    <system_user id="2" external_id="EXT003" login_name="jdoe"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+
+    <unit_of_measure id="1" name="g/L"
+        description="Milligrams per deciliter" />
+    <unit_of_measure id="2" name="g/L"
+        description="Grams per liter" />
+
+
+    <test_trailer id="1" name="Trailer Name 1"
+        description="Description 1" text="Sample Text 1"
+        lastupdated="2025-03-13 12:00:00" />
+    <test_trailer id="2" name="Trailer Name 2"
+        description="Description 2" text="Sample Text 2"
+        lastupdated="2025-03-14 12:00:00" />
+
+    <scriptlet id="1" name="Scriptlet 1" code_type="T"
+        code_source="Source1" lastupdated="2025-03-13 12:00:00" />
+    <scriptlet id="2" name="Scriptlet 2" code_type="T"
+        code_source="Source2" lastupdated="2025-03-14 12:00:00" />
+
+    <label id="1" name="Patient Label"
+        description="Label for patient samples" printer_type="T"
+        scriptlet_id="1" lastupdated="2025-03-20 12:00:00" />
+    <label id="2" name="Specimen Label"
+        description="Label for specimen tracking" printer_type="L"
+        scriptlet_id="2" lastupdated="2025-03-21 08:30:00" />
+
+    <method id="1" name="therapy" description="using therapy"
+        name_localization_id="1" reporting_description=""
+        active_begin="2012-11-01" lastupdated="2023-10-01 12:00:00" />
+    <method id="2" name="imagining" description="scanning the body"
+        name_localization_id="2" reporting_description=""
+        active_begin="2013-11-01" active_end="2013-12-01"
+        lastupdated="2023-10-01 12:00:00" />
+
+    <source_of_sample id="1" description="Blood"
+        domain="P" lastupdated="2025-07-15 10:30:00" />
+
+    <source_of_sample id="2" description="Urine"
+        domain="P" lastupdated="2025-07-15 10:31:00" />
+
+    <status_of_sample id="1"
+        description="This test has not yet been done" code="1"
+        status_type="SAMPLE" lastupdated="2025-03-18" name="SampleEntered" />
+    <status_of_sample id="3"
+        description="The sample has been entered into the system" code="1"
+        status_type="ORDER" lastupdated="2025-03-18" name="Testing Started" />
+    <status_of_sample id="6" description="SampleCanceled"
+        code="6" status_type="SAMPLE" lastupdated="2025-03-18"
+        name="SampleCanceled" />
+    <status_of_sample id="7"
+        description="Technical Rejected" code="6" status_type="SAMPLE"
+        lastupdated="2025-03-18" name="SampleRejected" />
+
+    <type_of_sample id="1"
+        description="Complete Blood Count" domain="H" name_localization_id="1"
+        lastupdated="2023-12-01 12:00:00" />
+    <type_of_sample id="2" description="Urine Sample"
+        domain="H" name_localization_id="2" lastupdated="2023-12-01 12:00:00" />
+    <type_of_sample id="3" description="Serum Sample"
+        domain="H" name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
+
+    <sample id="1" accession_number="DEV01260000000000001"
+        status_id="3" received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <sample id="2" accession_number="DEV01260000000000002"
+        status_id="3" received_date="2024-06-04 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <sample_item id="1" sort_order="1" status_id="3"
+        source_id="1" fhir_uuid="68438220-5cef-44c4-9e6f-9f88e6b93270"
+        samp_id="1" typeosamp_id="3" collection_date="2023-11-15"
+        collector="Edie Maphie" lastupdated="2023-12-01 12:00:00" />
+    <sample_item id="2" sort_order="12" status_id="3"
+        source_id="2" fhir_uuid="68438220-5cef-44c4-9e6f-9f88e6b93271"
+        samp_id="2" typeosamp_id="2" collection_date="2023-11-15"
+        collector="Emily Maphie" lastupdated="2023-12-01 12:00:00" />
+
+    <dictionary_category id="1"
+        description="Category Description 1" local_Abbrev="CA1"
+        name="resultRejectionReasons" lastUpdated="2023-11-01 12:00:00" />
+
+
+    <!-- Dictionary Entries -->
+    <dictionary id="1" is_active="Y"
+        dict_entry="Free sample request form or vice versa. Please submit another sample."
+        local_Abbrev="DE1" dictionary_category_id="1" sort_order="1"
+        lastUpdated="2023-11-01 12:00:00" />
+</dataset>

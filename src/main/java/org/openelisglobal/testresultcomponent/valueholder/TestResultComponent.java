@@ -1,0 +1,251 @@
+package org.openelisglobal.testresultcomponent.valueholder;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.util.UUID;
+import org.hibernate.annotations.Type;
+import org.openelisglobal.common.valueholder.BaseObject;
+
+/**
+ * OGC-949 M5 / OGC-937 — a labeled result field of a test (e.g. systolic vs.
+ * diastolic). Every test has at least a PRIMARY component (auto-created by the
+ * M1 backfill). Result options ({@code test_result.component_id}), ranges
+ * ({@code result_limits.component_id}), and interpretations
+ * ({@code test_result_interpretation.component_id}) all hang off a component.
+ *
+ * <p>
+ * Numeric FK columns ({@code test_id}, {@code uom_id}) map to String via
+ * {@code LIMSStringNumberUserType}, the established OpenELIS idiom (see
+ * {@code TestMethod}). The audit {@code @Version} column ({@code last_updated})
+ * comes from {@link BaseObject}; the table's separate {@code lastupdated}
+ * (DEFAULT now()) is filled by the DB and not mapped here.
+ */
+@Entity
+@Table(name = "test_result_component", schema = "clinlims")
+public class TestResultComponent extends BaseObject<String> {
+
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @Column(name = "id", length = 36)
+    private String id;
+
+    @Column(name = "test_id", nullable = false, precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String testId;
+
+    @Column(name = "code", nullable = false, length = 50)
+    private String code;
+
+    @Column(name = "label", nullable = false, length = 255)
+    private String label;
+
+    @Column(name = "display_order", nullable = false)
+    private Integer displayOrder = 0;
+
+    @Column(name = "result_type", length = 1)
+    private String resultType;
+
+    @Column(name = "uom_id", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String uomId;
+
+    @Column(name = "reporting_decimal_places", precision = 10, scale = 0)
+    private Integer reportingDecimalPlaces;
+
+    @Column(name = "display_log10", nullable = false)
+    private boolean displayLog10 = false;
+
+    // Explicit report-only association within this test; never infer a log field
+    // from its label, terminology code, or unit.
+    @Column(name = "log10_source_component_code", length = 50)
+    private String log10SourceComponentCode;
+
+    @Column(name = "default_result", length = 80)
+    private String defaultResult;
+
+    @Column(name = "allow_multiple_readings", nullable = false)
+    private boolean allowMultipleReadings = false;
+
+    // Exactly one active component per test is the primary — the one mirrored back
+    // to the legacy test / test_result columns. An explicit flag (not the code) so
+    // renaming a component's code can't silently move the primary designation.
+    @Column(name = "is_primary", nullable = false)
+    private boolean isPrimary = false;
+
+    // Per-component default for whether this component prints on the patient
+    // report (OGC-1127). Default true so existing components keep printing.
+    @Column(name = "show_on_report", nullable = false)
+    private boolean showOnReport = true;
+
+    // OGC-1608: a required component without a result keeps its test open and
+    // prints as in progress; an optional one without a result is left off the
+    // patient report. The primary is required unless the catalog says otherwise.
+    @Column(name = "is_required", nullable = false)
+    private boolean isRequired = false;
+
+    @Column(name = "is_active", nullable = false, length = 2)
+    private String isActive = "Y";
+
+    // Detection limits of a quantitative component (OGC-1148): limit of
+    // detection and limit of quantification, both optional, LOD <= LOQ.
+    @Column(name = "lod", precision = 15, scale = 5)
+    private BigDecimal lod;
+
+    @Column(name = "loq", precision = 15, scale = 5)
+    private BigDecimal loq;
+
+    public boolean getDisplayLog10() {
+        return displayLog10;
+    }
+
+    public void setDisplayLog10(boolean displayLog10) {
+        this.displayLog10 = displayLog10;
+    }
+
+    public String getLog10SourceComponentCode() {
+        return log10SourceComponentCode;
+    }
+
+    public void setLog10SourceComponentCode(String code) {
+        log10SourceComponentCode = code == null || code.isBlank() ? null : code.trim();
+    }
+
+    public TestResultComponent() {
+        super();
+        this.id = UUID.randomUUID().toString();
+    }
+
+    @Override
+    public String getId() {
+        return id;
+    }
+
+    @Override
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getTestId() {
+        return testId;
+    }
+
+    public void setTestId(String testId) {
+        this.testId = testId;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public String getLabel() {
+        return label;
+    }
+
+    public void setLabel(String label) {
+        this.label = label;
+    }
+
+    public Integer getDisplayOrder() {
+        return displayOrder;
+    }
+
+    public void setDisplayOrder(Integer displayOrder) {
+        this.displayOrder = displayOrder;
+    }
+
+    public boolean getIsPrimary() {
+        return isPrimary;
+    }
+
+    public void setIsPrimary(boolean isPrimary) {
+        this.isPrimary = isPrimary;
+    }
+
+    public boolean getShowOnReport() {
+        return showOnReport;
+    }
+
+    public void setShowOnReport(boolean showOnReport) {
+        this.showOnReport = showOnReport;
+    }
+
+    public boolean getIsRequired() {
+        return isRequired;
+    }
+
+    public void setIsRequired(boolean isRequired) {
+        this.isRequired = isRequired;
+    }
+
+    public String getResultType() {
+        return resultType;
+    }
+
+    public void setResultType(String resultType) {
+        this.resultType = resultType;
+    }
+
+    public String getUomId() {
+        return uomId;
+    }
+
+    public void setUomId(String uomId) {
+        this.uomId = uomId;
+    }
+
+    public Integer getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
+    }
+
+    public void setReportingDecimalPlaces(Integer reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
+    }
+
+    public String getDefaultResult() {
+        return defaultResult;
+    }
+
+    public void setDefaultResult(String defaultResult) {
+        this.defaultResult = defaultResult;
+    }
+
+    public boolean getAllowMultipleReadings() {
+        return allowMultipleReadings;
+    }
+
+    public void setAllowMultipleReadings(boolean allowMultipleReadings) {
+        this.allowMultipleReadings = allowMultipleReadings;
+    }
+
+    public String getIsActive() {
+        return isActive;
+    }
+
+    public void setIsActive(String isActive) {
+        this.isActive = isActive;
+    }
+
+    public BigDecimal getLod() {
+        return lod;
+    }
+
+    public void setLod(BigDecimal lod) {
+        this.lod = lod;
+    }
+
+    public BigDecimal getLoq() {
+        return loq;
+    }
+
+    public void setLoq(BigDecimal loq) {
+        this.loq = loq;
+    }
+}

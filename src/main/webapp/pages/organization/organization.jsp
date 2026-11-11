@@ -71,6 +71,7 @@ function validateForm(form) {
 		<% }  else { %>
 			<form:hidden path="id" />
 		<% } %>
+		<form:hidden path="email" />
 		<% if( useParent ){ %>
 		<tr>
 			<td class="label">

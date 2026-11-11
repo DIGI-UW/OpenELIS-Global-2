@@ -56,7 +56,9 @@ import org.openelisglobal.program.valueholder.immunohistochemistry.Immunohistoch
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySampleReport;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
+import org.openelisglobal.provider.service.ProviderDisplayName;
 import org.openelisglobal.provider.service.ProviderService;
+import org.openelisglobal.provider.service.ProviderTitleService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.qaevent.service.QaEventService;
 import org.openelisglobal.qaevent.valueholder.QaEvent;
@@ -88,18 +90,19 @@ public class DisplayListService implements LocaleChangeListener {
 
     public enum ListType {
         HOURS, MINS, SAMPLE_TYPE_ACTIVE, SAMPLE_TYPE_INACTIVE, SAMPLE_TYPE, INITIAL_SAMPLE_CONDITION,
-        SAMPLE_PATIENT_PAYMENT_OPTIONS, PATIENT_HEALTH_REGIONS, PATIENT_MARITAL_STATUS, PATIENT_NATIONALITY,
-        PATIENT_EDUCATION, GENDERS, SAMPLE_PATIENT_REFERRING_CLINIC, SAMPLE_PATIENT_CLINIC_DEPARTMENT, QA_EVENTS,
-        TEST_SECTION_ACTIVE, TEST_SECTION_INACTIVE, TEST_SECTION_BY_NAME, HAITI_DEPARTMENTS, PATIENT_SEARCH_CRITERIA,
-        PANELS, PANELS_ACTIVE, PANELS_INACTIVE, ORDERABLE_TESTS, ALL_TESTS, REJECTION_REASONS, REFERRAL_REASONS,
-        REFERRAL_ORGANIZATIONS, TEST_LOCATION_CODE, DICTIONARY_PROGRAM, RESULT_TYPE_LOCALIZED, RESULT_TYPE_RAW,
-        RESULT_TYPE_CODES, UNIT_OF_MEASURE, UNIT_OF_MEASURE_ACTIVE, UNIT_OF_MEASURE_INACTIVE, DICTIONARY_TEST_RESULTS,
-        LAB_COMPONENT, SEVERITY_CONSEQUENCES_LIST, SEVERITY_RECURRENCE_LIST, ACTION_TYPE_LIST, LABORATORY_COMPONENT,
-        SAMPLE_NATURE, ELECTRONIC_ORDER_STATUSES, METHODS, METHODS_INACTIVE, METHOD_BY_NAME, PRACTITIONER_PERSONS,
-        ORDER_PRIORITY, PROGRAM, IMMUNOHISTOCHEMISTRY_STATUS, PATHOLOGY_STATUS, CYTOLOGY_SPECIMEN_ADEQUACY_SATISFACTION,
-        PATHOLOGY_TECHNIQUES, PATHOLOGIST_REQUESTS, PATHOLOGY_REQUEST_STATUS, PATHOLOGIST_CONCLUSIONS,
-        IMMUNOHISTOCHEMISTRY_REPORT_TYPES, IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, CYTOLOGY_STATUS, NOTEBOOK_STATUS,
-        CYTOLOGY_SATISFACTORY_FOR_EVALUATION, CYTOLOGY_UN_SATISFACTORY_FOR_EVALUATION, CYTOLOGY_REPORT_TYPES,
+        SAMPLE_PATIENT_PAYMENT_OPTIONS, PATIENT_PROVINCES, PATIENT_HEALTH_REGIONS, PATIENT_MARITAL_STATUS,
+        PATIENT_NATIONALITY, PATIENT_EDUCATION, PATIENT_DISEASE_PROGRAMME, GENDERS, SAMPLE_PATIENT_REFERRING_CLINIC,
+        SAMPLE_PATIENT_CLINIC_DEPARTMENT, QA_EVENTS, TEST_SECTION_ACTIVE, TEST_SECTION_INACTIVE, TEST_SECTION_BY_NAME,
+        HAITI_DEPARTMENTS, PATIENT_SEARCH_CRITERIA, PANELS, PANELS_ACTIVE, PANELS_INACTIVE, ORDERABLE_TESTS, ALL_TESTS,
+        REJECTION_REASONS, REFERRAL_REASONS, REFERRAL_ORGANIZATIONS, TEST_LOCATION_CODE, DICTIONARY_PROGRAM,
+        RESULT_TYPE_LOCALIZED, RESULT_TYPE_RAW, RESULT_TYPE_CODES, UNIT_OF_MEASURE, UNIT_OF_MEASURE_ACTIVE,
+        UNIT_OF_MEASURE_INACTIVE, DICTIONARY_TEST_RESULTS, LAB_COMPONENT, SEVERITY_CONSEQUENCES_LIST,
+        SEVERITY_RECURRENCE_LIST, ACTION_TYPE_LIST, LABORATORY_COMPONENT, SAMPLE_NATURE, ELECTRONIC_ORDER_STATUSES,
+        METHODS, METHODS_INACTIVE, METHOD_BY_NAME, PRACTITIONER_PERSONS, ORDER_PRIORITY, PROGRAM,
+        IMMUNOHISTOCHEMISTRY_STATUS, PATHOLOGY_STATUS, CYTOLOGY_SPECIMEN_ADEQUACY_SATISFACTION, PATHOLOGY_TECHNIQUES,
+        PATHOLOGIST_REQUESTS, PATHOLOGY_REQUEST_STATUS, PATHOLOGIST_CONCLUSIONS, IMMUNOHISTOCHEMISTRY_REPORT_TYPES,
+        IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, CYTOLOGY_STATUS, NOTEBOOK_STATUS, CYTOLOGY_SATISFACTORY_FOR_EVALUATION,
+        CYTOLOGY_UN_SATISFACTORY_FOR_EVALUATION, CYTOLOGY_REPORT_TYPES,
         CYTOLOGY_DIAGNOSIS_RESULT_EPITHELIAL_CELL_SQUAMOUS, CYTOLOGY_DIAGNOSIS_RESULT_EPITHELIAL_CELL_GLANDULAR,
         CYTOLOGY_DIAGNOSIS_RESULT_NON_NEO_PLASTIC_CELLULAR, CYTOLOGY_DIAGNOSIS_RESULT_REACTIVE_CELLULAR,
         NOTEBOOK_EXPT_TYPE, ANALYZER_LIST, CYTOLOGY_DIAGNOSIS_RESULT_ORGANISMS, CYTOLOGY_DIAGNOSIS_RESULT_OTHER,
@@ -145,6 +148,8 @@ public class DisplayListService implements LocaleChangeListener {
     private LocaleResolver localeResolver;
     @Autowired
     private AnalyzerService analyzerService;
+    @Autowired(required = false)
+    private ProviderTitleService providerTitleService;
     @Autowired
     private OrganizationTypeService organizationTypeService;
 
@@ -157,6 +162,19 @@ public class DisplayListService implements LocaleChangeListener {
             ((GlobalLocaleResolver) localeResolver).addLocalChangeListener(this);
         }
 
+    }
+
+    /**
+     * A provider's title as it prints, resolved from the dictionary entry the code
+     * names. Returns the raw code if the entry has gone, so a name never loses its
+     * rank silently (OGC-1223).
+     */
+    private String providerTitleAbbreviation(String titleCode) {
+        if (titleCode == null || titleCode.isBlank() || providerTitleService == null) {
+            return titleCode;
+        }
+        Dictionary title = providerTitleService.getByCode(titleCode);
+        return title == null ? titleCode : title.getLocalAbbreviation();
     }
 
     public static DisplayListService getInstance() {
@@ -190,6 +208,7 @@ public class DisplayListService implements LocaleChangeListener {
         typeToListMap.put(ListType.INITIAL_SAMPLE_CONDITION,
                 createFromDictionaryCategoryLocalizedSort("specimen reception condition"));
         typeToListMap.put(ListType.SAMPLE_NATURE, createFromDictionaryCategoryLocalizedSort("specimen nature"));
+        typeToListMap.put(ListType.PATIENT_PROVINCES, createPatientProvinces());
         typeToListMap.put(ListType.PATIENT_HEALTH_REGIONS, createPatientHealthRegions());
         typeToListMap.put(ListType.PATIENT_MARITAL_STATUS,
                 createFromDictionaryCategoryLocalizedSort("Marital Status Demographic Information"));
@@ -197,6 +216,8 @@ public class DisplayListService implements LocaleChangeListener {
                 createFromDictionaryCategoryLocalizedSort("Nationality Demographic Information"));
         typeToListMap.put(ListType.PATIENT_EDUCATION,
                 createFromDictionaryCategoryLocalizedSort("Education Level Demographic Information"));
+        typeToListMap.put(ListType.PATIENT_DISEASE_PROGRAMME,
+                createFromDictionaryCategoryLocalizedSort("Patient Disease Programme"));
         typeToListMap.put(ListType.GENDERS, createGenderList());
         typeToListMap.put(ListType.QA_EVENTS, createSortedQAEvents());
         typeToListMap.put(ListType.TEST_SECTION_ACTIVE, createTestSectionActiveList());
@@ -478,6 +499,7 @@ public class DisplayListService implements LocaleChangeListener {
         typeToListMap.put(ListType.INITIAL_SAMPLE_CONDITION,
                 createFromDictionaryCategoryLocalizedSort("specimen reception condition"));
         typeToListMap.put(ListType.SAMPLE_NATURE, createFromDictionaryCategoryLocalizedSort("specimen nature"));
+        typeToListMap.put(ListType.PATIENT_PROVINCES, createPatientProvinces());
         typeToListMap.put(ListType.PATIENT_HEALTH_REGIONS, createPatientHealthRegions());
         typeToListMap.put(ListType.PATIENT_MARITAL_STATUS,
                 createFromDictionaryCategoryLocalizedSort("Marital Status Demographic Information"));
@@ -485,6 +507,8 @@ public class DisplayListService implements LocaleChangeListener {
                 createFromDictionaryCategoryLocalizedSort("Nationality Demographic Information"));
         typeToListMap.put(ListType.PATIENT_EDUCATION,
                 createFromDictionaryCategoryLocalizedSort("Education Level Demographic Information"));
+        typeToListMap.put(ListType.PATIENT_DISEASE_PROGRAMME,
+                createFromDictionaryCategoryLocalizedSort("Patient Disease Programme"));
         typeToListMap.put(ListType.GENDERS, createGenderList());
         typeToListMap.put(ListType.SAMPLE_PATIENT_REFERRING_CLINIC, createReferringClinicList());
         typeToListMap.put(ListType.QA_EVENTS, createSortedQAEvents());
@@ -560,6 +584,18 @@ public class DisplayListService implements LocaleChangeListener {
         typeToListMap.put(ListType.TB_FOLLOWUP_LINE2, createTBFollowupLine2List());
         typeToListMap.put(ListType.ARV_ORG_LIST, createArvOrgList());
         typeToListMap.put(ListType.ACTIVE_ORG_LIST, createActiveOrganizationsList());
+    }
+
+    /**
+     * Reloads the lists built from organizations: the reference labs Refer Out
+     * offers, the referring clinics and the health regions. Called after an
+     * organization is created, changed, activated or imported, so a new or renamed
+     * reference lab is offered without a restart.
+     */
+    public void refreshOrganizationLists() {
+        refreshList(ListType.REFERRAL_ORGANIZATIONS);
+        refreshList(ListType.SAMPLE_PATIENT_REFERRING_CLINIC);
+        refreshList(ListType.PATIENT_HEALTH_REGIONS);
     }
 
     public void refreshList(ListType listType) {
@@ -645,6 +681,10 @@ public class DisplayListService implements LocaleChangeListener {
             typeToListMap.put(ListType.UNIT_OF_MEASURE, createUnitOfMeasureList());
             break;
         }
+        case PATIENT_PROVINCES: {
+            typeToListMap.put(ListType.PATIENT_PROVINCES, createPatientProvinces());
+            break;
+        }
         case PATIENT_HEALTH_REGIONS: {
             typeToListMap.put(ListType.PATIENT_HEALTH_REGIONS, createPatientHealthRegions());
             break;
@@ -652,6 +692,11 @@ public class DisplayListService implements LocaleChangeListener {
         case PATIENT_EDUCATION: {
             typeToListMap.put(ListType.PATIENT_EDUCATION,
                     createFromDictionaryCategoryLocalizedSort("Education Level Demographic Information"));
+            break;
+        }
+        case PATIENT_DISEASE_PROGRAMME: {
+            typeToListMap.put(ListType.PATIENT_DISEASE_PROGRAMME,
+                    createFromDictionaryCategoryLocalizedSort("Patient Disease Programme"));
             break;
         }
         case PATIENT_MARITAL_STATUS: {
@@ -666,18 +711,27 @@ public class DisplayListService implements LocaleChangeListener {
         }
         case PROGRAM: {
             typeToListMap.put(ListType.PROGRAM, createProgramList());
+            break;
         }
         case DICTIONARY_TEST_RESULTS: {
             typeToListMap.put(ListType.DICTIONARY_TEST_RESULTS, createDictionaryTestResults());
+            break;
         }
         case ARV_ORG_LIST: {
             typeToListMap.put(ListType.ARV_ORG_LIST, createArvOrgList());
+            break;
         }
         case ACTIVE_ORG_LIST: {
             typeToListMap.put(ListType.ACTIVE_ORG_LIST, createActiveOrganizationsList());
+            break;
         }
         case RESULT_TYPE_CODES: {
             typeToListMap.put(ListType.RESULT_TYPE_CODES, createResultTypeCodesList());
+            break;
+        }
+        case ANALYZER_LIST: {
+            typeToListMap.put(ListType.ANALYZER_LIST, createAnalyzerList());
+            break;
         }
         }
     }
@@ -701,8 +755,9 @@ public class DisplayListService implements LocaleChangeListener {
         });
 
         for (Provider provider : providerList) {
-            providerDisplayList.add(new IdValuePair(provider.getPerson().getId(),
-                    provider.getPerson().getLastName() + ", " + provider.getPerson().getFirstName()));
+            String abbreviation = providerTitleAbbreviation(provider.getPerson().getTitleCode());
+            providerDisplayList.add(new IdValuePair(provider.getPerson().getId(), ProviderDisplayName.titledFamilyFirst(
+                    abbreviation, provider.getPerson().getFirstName(), provider.getPerson().getLastName())));
         }
 
         return providerDisplayList;
@@ -886,6 +941,25 @@ public class DisplayListService implements LocaleChangeListener {
         return regionList;
     }
 
+    // OGC-669 (LO-01-01): Madagascar provinces sit ABOVE Health Region/District.
+    // Mirrors createPatientHealthRegions — queries organization rows whose
+    // organization_type has typeName="Province". The Province org_type row is
+    // auto-created at startup by AddressHierarchyConfigurationHandler from the
+    // distro CSV's typeName values; its numeric id is sequence-assigned and
+    // varies across installs. Empty list on non-Madagascar deploys (org_type
+    // exists but has no organization rows seeded).
+    private List<IdValuePair> createPatientProvinces() {
+        List<IdValuePair> provinceList = new ArrayList<>();
+        List<Organization> orgList = organizationService.getOrganizationsByTypeName("id", "Province");
+        orgList.sort((e, f) -> {
+            return e.getOrganizationName().compareTo(f.getOrganizationName());
+        });
+        for (Organization org : orgList) {
+            provinceList.add(new IdValuePair(org.getId(), org.getOrganizationName()));
+        }
+        return provinceList;
+    }
+
     /**
      * Get the OrganizationType name for a specific address hierarchy level.
      *
@@ -1056,7 +1130,7 @@ public class DisplayListService implements LocaleChangeListener {
         List<Method> methods = methodService.getAll();
 
         for (Method method : methods) {
-            methodPairs.add(new IdValuePair(method.getId(), method.getLocalization().getLocalizedValue()));
+            methodPairs.add(new IdValuePair(method.getId(), method.getLocalizedValue()));
         }
 
         return methodPairs;

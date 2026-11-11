@@ -41,7 +41,7 @@ public class SamplePdfDAOImpl extends BaseDAOImpl<SamplePdf, String> implements 
         try {
             String sql = "from SamplePdf s where s.accessionNumber = :param and s.allowView='Y'";
             Query<SamplePdf> query = entityManager.unwrap(Session.class).createQuery(sql, SamplePdf.class);
-            query.setParameter("param", accessionNumber);
+            query.setParameter("param", String.valueOf(accessionNumber));
             List<SamplePdf> list = query.list();
             if ((list != null) && !list.isEmpty()) {
                 isFound = true;
@@ -62,7 +62,7 @@ public class SamplePdfDAOImpl extends BaseDAOImpl<SamplePdf, String> implements 
         try {
             String sql = "from SamplePdf s where s.accessionNumber = :param";
             Query<SamplePdf> query = entityManager.unwrap(Session.class).createQuery(sql, SamplePdf.class);
-            query.setParameter("param", Integer.parseInt(samplePdf.getAccessionNumber()));
+            query.setParameter("param", samplePdf.getAccessionNumber());
 
             List<SamplePdf> list = query.list();
             if ((list != null) && !list.isEmpty()) {

@@ -35,16 +35,19 @@ public class PatientLookupRedirectTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
+        ensureReferenceTables("PERSON", "PATIENT");
         // Create persons for test patients
         Person primaryPerson = new Person();
         primaryPerson.setFirstName("John");
         primaryPerson.setLastName("Doe");
+        primaryPerson.setSysUserId("1");
         String primaryPersonId = personService.insert(primaryPerson);
         primaryPerson.setId(primaryPersonId);
 
         Person mergedPerson = new Person();
         mergedPerson.setFirstName("Jonathan");
         mergedPerson.setLastName("Doe");
+        mergedPerson.setSysUserId("1");
         String mergedPersonId = personService.insert(mergedPerson);
         mergedPerson.setId(mergedPersonId);
 

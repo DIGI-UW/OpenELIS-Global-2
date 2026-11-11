@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.10.xsd">
+
+    <!--
+        FRS S-01 alignment (FR-3-013, FR-3-014, data model):
+        Add SELECT_MAP threshold type. SELECT_MAP rows act as parent
+        containers for ComplianceThresholdValueMap entries (one per result
+        option) when the linked test's result type is a select list. The
+        numeric value columns remain null on SELECT_MAP rows.
+    -->
+
+    <changeSet id="020-1-add-select-map-to-threshold-type-check" author="claude">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="compliance_threshold"/>
+        </preConditions>
+        <sql>
+            ALTER TABLE compliance_threshold DROP CONSTRAINT IF EXISTS chk_compliance_threshold_type;
+        </sql>
+        <sql>
+            ALTER TABLE compliance_threshold
+            ADD CONSTRAINT chk_compliance_threshold_type
+            CHECK (threshold_type IN (
+                'RANGE', 'MINIMUM', 'MAXIMUM', 'EXACT', 'BORDERLINE',
+                'DESCRIPTIVE', 'SELECT_MAP'
+            ));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE compliance_threshold DROP CONSTRAINT chk_compliance_threshold_type</sql>
+            <sql>
+                ALTER TABLE compliance_threshold
+                ADD CONSTRAINT chk_compliance_threshold_type
+                CHECK (threshold_type IN (
+                    'RANGE', 'MINIMUM', 'MAXIMUM', 'EXACT', 'BORDERLINE',
+                    'DESCRIPTIVE'
+                ))
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

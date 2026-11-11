@@ -504,7 +504,7 @@ describe("Sample Storage Pagination", () => {
 
   beforeEach(() => {
     cy.viewport(1025, 900);
-    cy.visit("/Storage/samples");
+    cy.visit("/Storage/sample-items");
   });
 
   it("should display first page with 25 items by default", () => {
@@ -607,7 +607,7 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 docker compose -f dev.docker-compose.yml up -d
 ```
 
-2. Navigate to `https://localhost/Storage/samples`
+2. Navigate to `https://localhost/Storage/sample-items`
 3. Verify:
    - Page loads with 25 items in <2 seconds
    - Pagination controls visible

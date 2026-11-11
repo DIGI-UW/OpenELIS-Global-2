@@ -28,6 +28,8 @@ public class UnitOfMeasureServiceImpl extends AuditableBaseObjectServiceImpl<Uni
     @Autowired
     protected UnitOfMeasureDAO unitOfMeasureDAO;
     @Autowired
+    private org.openelisglobal.unitofmeasure.dao.UomTypeMapDAO uomTypeMapDAO;
+    @Autowired
     private LocaleResolver localeResolver;
 
     @PostConstruct
@@ -108,6 +110,12 @@ public class UnitOfMeasureServiceImpl extends AuditableBaseObjectServiceImpl<Uni
     @Transactional(readOnly = true)
     public UnitOfMeasure getUnitOfMeasureByName(UnitOfMeasure unitOfMeasure) {
         return getMatch("unitOfMeasureName", unitOfMeasure.getUnitOfMeasureName()).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UnitOfMeasure> getUnitOfMeasuresByType(String uomType) {
+        return uomTypeMapDAO.getUnitOfMeasuresByType(uomType);
     }
 
     @Override

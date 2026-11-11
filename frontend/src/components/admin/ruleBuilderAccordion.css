@@ -1,0 +1,11 @@
+/*
+ * Carbon keeps a quarter of the width free to the right of an accordion's
+ * content, which is fine for prose and wrong for the reflex and calculated
+ * value rule builders: their rows of selects and test searches are squeezed
+ * into three quarters of the panel. The order workflow used to clear that
+ * padding for every accordion in the app; once that rule was scoped to the
+ * workflow itself (#4315), these two builders needed their own.
+ */
+.ruleBuilderAccordion .cds--accordion__content {
+  padding: 0;
+}

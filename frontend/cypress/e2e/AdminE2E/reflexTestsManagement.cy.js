@@ -23,6 +23,7 @@ describe("Reflex Tests Management", () => {
       reflexTestsConfigPage.verifyPageLoads(test.reflexTets);
       reflexTestsConfigPage.validateToggleStatus(test.toggleOn);
       reflexTestsConfigPage.enterRuleName(test.ruleName);
+      reflexTestsConfigPage.expandRuleBody();
       reflexTestsConfigPage.selectOverAllOptions(test.overAllOptions);
       reflexTestsConfigPage.selectSample(test.sample);
       reflexTestsConfigPage.searchTest(test.searchTest);
@@ -44,7 +45,7 @@ describe("Reflex Tests Management", () => {
   it("Validate Added Rule", () => {
     reflexTestsConfigPage.reloadAndWait();
     cy.fixture("ReflexTestsConfig").then((test) => {
-      reflexTestsConfigPage.validateToggleStatus(test.toggleOff);
+      reflexTestsConfigPage.validateToggleStatus(test.toggleOn);
       reflexTestsConfigPage.validateRuleName(test.ruleName);
     });
   });

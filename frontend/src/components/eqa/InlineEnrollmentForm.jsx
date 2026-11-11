@@ -1,0 +1,411 @@
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Grid,
+  Column,
+  TextInput,
+  TextArea,
+  Button,
+  FilterableMultiSelect,
+  Select,
+  SelectItem,
+} from "@carbon/react";
+import { useIntl } from "react-intl";
+import { getFromOpenElisServer } from "../utils/Utils";
+import { asList } from "./eqaApi";
+import SearchableSelect from "../common/SearchableSelect";
+
+// The "my scheme is not on this list" option: an enrollment may name a provider
+// whose schemes this instance does not carry, so free text stays available.
+const NOT_LISTED = "__notListed__";
+
+const InlineEnrollmentForm = ({
+  enrollment,
+  enrollments = [],
+  onSave,
+  onCancel,
+}) => {
+  const intl = useIntl();
+  const isEdit = !!enrollment;
+
+  const [programName, setProgramName] = useState(
+    enrollment ? enrollment.programName || "" : "",
+  );
+  const [provider, setProvider] = useState(
+    enrollment ? enrollment.provider || "" : "",
+  );
+  const [description, setDescription] = useState(
+    enrollment ? enrollment.description || "" : "",
+  );
+  const [selectedLabUnits, setSelectedLabUnits] = useState([]);
+  const [selectedTests, setSelectedTests] = useState([]);
+  const [selectedPanels, setSelectedPanels] = useState([]);
+  // Which analyte each selected test reports for this scheme, keyed by test id.
+  // Automatic submission cannot name an analyte without this: a result row only
+  // carries one when the test has a test_analyte mapping, which most do not.
+  const [testAnalytes, setTestAnalytes] = useState({});
+  const [dataReady, setDataReady] = useState(false);
+
+  // The schemes this instance carries, and this laboratory's cycles. The first
+  // is what the picker offers; the second is why the pair freezes — a renamed
+  // enrollment detaches from every cycle that matched it by name.
+  const [schemes, setSchemes] = useState([]);
+  const [myCycles, setMyCycles] = useState([]);
+  const [schemeChoice, setSchemeChoice] = useState(NOT_LISTED);
+
+  const [labUnits, setLabUnits] = useState([]);
+  const [tests, setTests] = useState([]);
+  const [panels, setPanels] = useState([]);
+  const [analytes, setAnalytes] = useState([]);
+
+  useEffect(() => {
+    let loaded = 0;
+    const checkReady = () => {
+      loaded++;
+      if (loaded >= 4) setDataReady(true);
+    };
+
+    getFromOpenElisServer("/rest/eqa/programs", (data) => {
+      const items = asList(data).filter((scheme) => scheme.name);
+      setSchemes(items);
+      if (enrollment && items.some((s) => s.name === enrollment.programName)) {
+        setSchemeChoice(enrollment.programName);
+      }
+    });
+
+    getFromOpenElisServer("/rest/eqa/cycles/mine", (data) => {
+      setMyCycles(Array.isArray(data) ? data : []);
+    });
+
+    getFromOpenElisServer("/rest/displayList/TEST_SECTION_ACTIVE", (data) => {
+      if (data) {
+        const items = data.map((ts) => ({
+          id: String(ts.id),
+          text: ts.value,
+        }));
+        setLabUnits(items);
+
+        if (enrollment) {
+          const selected = (enrollment.labUnits || [])
+            .map((lu) => items.find((u) => u.id === String(lu.id)))
+            .filter(Boolean);
+          setSelectedLabUnits(selected);
+        }
+      }
+      checkReady();
+    });
+
+    getFromOpenElisServer("/rest/displayList/ALL_TESTS", (data) => {
+      if (data) {
+        const items = data.map((t) => ({ id: String(t.id), text: t.value }));
+        setTests(items);
+
+        if (enrollment) {
+          const selected = (enrollment.tests || [])
+            .map((t) => items.find((te) => te.id === String(t.id)))
+            .filter(Boolean);
+          setSelectedTests(selected);
+          const mapped = {};
+          (enrollment.tests || []).forEach((t) => {
+            if (t.analyteId) mapped[String(t.id)] = String(t.analyteId);
+          });
+          setTestAnalytes(mapped);
+        }
+      }
+      checkReady();
+    });
+
+    getFromOpenElisServer("/rest/eqa/my-programs/analytes", (data) => {
+      if (data) {
+        setAnalytes(data.map((a) => ({ id: String(a.id), text: a.value })));
+      }
+      checkReady();
+    });
+
+    getFromOpenElisServer("/rest/displayList/PANELS", (data) => {
+      if (data) {
+        const items = data.map((p) => ({ id: String(p.id), text: p.value }));
+        setPanels(items);
+
+        if (enrollment) {
+          const selected = (enrollment.panels || [])
+            .map((p) => items.find((pa) => pa.id === String(p.id)))
+            .filter(Boolean);
+          setSelectedPanels(selected);
+        }
+      }
+      checkReady();
+    });
+  }, []);
+
+  const handleSave = () => {
+    const payload = {
+      programName,
+      provider,
+      description,
+      labUnitIds: selectedLabUnits.map((u) => Number(u.id)),
+      testIds: selectedTests.map((t) => Number(t.id)),
+      panelIds: selectedPanels.map((p) => Number(p.id)),
+      // Only for tests still selected, so deselecting one drops its analyte too.
+      testAnalytes: selectedTests.reduce((acc, t) => {
+        if (testAnalytes[t.id]) acc[Number(t.id)] = Number(testAnalytes[t.id]);
+        return acc;
+      }, {}),
+    };
+    onSave(payload);
+  };
+
+  // A scheme already enrolled is not on offer, deactivated enrollments included:
+  // reactivating one through Edit is the way back, not a second row for the same
+  // scheme. The enrollment being edited keeps its own scheme, or the picker would
+  // drop what it is showing.
+  const offeredSchemes = schemes.filter(
+    (scheme) =>
+      !enrollments.some(
+        (other) =>
+          other.id !== (enrollment ? enrollment.id : null) &&
+          (other.programName || "") === scheme.name,
+      ),
+  );
+
+  // Cycles are matched to an enrollment by programme name — there is no scheme
+  // foreign key — so renaming one silently detaches it from its own cycles.
+  const frozen =
+    isEdit &&
+    myCycles.some((cycle) => cycle.schemeName === enrollment.programName);
+
+  // Latest pick; a late reply for an earlier scheme is ignored.
+  const pickedScheme = useRef(null);
+
+  const pickScheme = (value) => {
+    setSchemeChoice(value);
+    pickedScheme.current = value;
+    if (value === NOT_LISTED) {
+      return;
+    }
+    const scheme = schemes.find((s) => s.name === value);
+    setProgramName(value);
+    setProvider(scheme && scheme.provider ? scheme.provider : "");
+    if (!scheme) {
+      return;
+    }
+    getFromOpenElisServer(`/rest/eqa/programs/${scheme.id}/tests`, (data) => {
+      if (pickedScheme.current !== value) {
+        return;
+      }
+      const ids = asList(data)
+        .filter((assignment) => assignment.isActive !== false)
+        .map((assignment) => String(assignment.testId));
+      setSelectedTests(tests.filter((test) => ids.includes(test.id)));
+    });
+  };
+
+  const isValid = programName.trim() !== "" && provider.trim() !== "";
+
+  return (
+    <div
+      style={{
+        padding: "1rem",
+        backgroundColor: "#f4f4f4",
+        borderTop: "2px solid #0f62fe",
+      }}
+    >
+      <h4 style={{ marginBottom: "1rem" }}>
+        {isEdit
+          ? intl.formatMessage(
+              { id: "eqa.enrollment.editing" },
+              { name: enrollment.programName },
+            )
+          : intl.formatMessage({ id: "eqa.enrollment.new" })}
+      </h4>
+
+      <Grid condensed>
+        <Column lg={5} md={4} sm={4}>
+          <SearchableSelect
+            id="enrollment-scheme"
+            labelText={intl.formatMessage({ id: "eqa.enrollment.scheme" })}
+            helperText={intl.formatMessage({
+              id: frozen
+                ? "eqa.enrollment.scheme.frozen"
+                : "eqa.enrollment.scheme.helper",
+            })}
+            options={[
+              ...offeredSchemes.map((scheme) => ({
+                id: scheme.name,
+                value: scheme.name,
+              })),
+              {
+                id: NOT_LISTED,
+                value: intl.formatMessage({
+                  id: "eqa.enrollment.scheme.other",
+                }),
+              },
+            ]}
+            value={schemeChoice}
+            disabled={frozen}
+            onChange={pickScheme}
+          />
+        </Column>
+        <Column lg={5} md={4} sm={4}>
+          <TextInput
+            id="enrollment-program-name"
+            labelText={intl.formatMessage({
+              id: "eqa.enrollment.programName",
+            })}
+            value={programName}
+            disabled={frozen}
+            onChange={(e) => setProgramName(e.target.value)}
+            placeholder={intl.formatMessage({
+              id: "eqa.enrollment.programName.placeholder",
+            })}
+          />
+        </Column>
+        <Column lg={5} md={4} sm={4}>
+          <TextInput
+            id="enrollment-provider"
+            labelText={intl.formatMessage({ id: "eqa.enrollment.provider" })}
+            value={provider}
+            disabled={frozen}
+            onChange={(e) => setProvider(e.target.value)}
+            placeholder={intl.formatMessage({
+              id: "eqa.enrollment.provider.placeholder",
+            })}
+          />
+        </Column>
+        <Column lg={6} md={4} sm={4}>
+          <TextArea
+            id="enrollment-description"
+            labelText={intl.formatMessage({
+              id: "eqa.enrollment.description",
+            })}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={1}
+          />
+        </Column>
+      </Grid>
+
+      {dataReady && (
+        <Grid condensed style={{ marginTop: "1rem" }}>
+          <Column lg={5} md={4} sm={4}>
+            <FilterableMultiSelect
+              id="enrollment-lab-units"
+              titleText={intl.formatMessage({
+                id: "eqa.enrollment.labUnits",
+              })}
+              items={labUnits}
+              itemToString={(item) => (item ? item.text : "")}
+              initialSelectedItems={selectedLabUnits}
+              onChange={(e) => setSelectedLabUnits(e.selectedItems)}
+              placeholder={intl.formatMessage({
+                id: "eqa.enrollment.selectLabUnits",
+              })}
+            />
+          </Column>
+          <Column lg={5} md={4} sm={4}>
+            <FilterableMultiSelect
+              id="enrollment-tests"
+              titleText={intl.formatMessage({
+                id: "eqa.enrollment.tests",
+              })}
+              items={tests}
+              itemToString={(item) => (item ? item.text : "")}
+              selectedItems={selectedTests}
+              onChange={(e) => setSelectedTests(e.selectedItems)}
+              placeholder={intl.formatMessage({
+                id: "eqa.enrollment.selectTests",
+              })}
+            />
+          </Column>
+          <Column lg={6} md={4} sm={4}>
+            <FilterableMultiSelect
+              id="enrollment-panels"
+              titleText={intl.formatMessage({
+                id: "eqa.enrollment.panels",
+              })}
+              items={panels}
+              itemToString={(item) => (item ? item.text : "")}
+              initialSelectedItems={selectedPanels}
+              onChange={(e) => setSelectedPanels(e.selectedItems)}
+              placeholder={intl.formatMessage({
+                id: "eqa.enrollment.selectPanels",
+              })}
+              helperText={intl.formatMessage({
+                id: "eqa.enrollment.panels.help",
+              })}
+            />
+          </Column>
+        </Grid>
+      )}
+
+      {dataReady && selectedTests.length > 0 && (
+        <Grid style={{ marginTop: "1rem" }}>
+          <Column lg={16} md={8} sm={4}>
+            <h6 style={{ marginBottom: "0.5rem" }}>
+              {intl.formatMessage({ id: "eqa.enrollment.testAnalytes" })}
+            </h6>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                marginBottom: "0.75rem",
+                color: "#525252",
+              }}
+            >
+              {intl.formatMessage({ id: "eqa.enrollment.testAnalytes.help" })}
+            </p>
+          </Column>
+          {selectedTests.map((test) => (
+            <Column lg={5} md={4} sm={4} key={test.id}>
+              <Select
+                id={`enrollment-analyte-${test.id}`}
+                labelText={test.text}
+                value={testAnalytes[test.id] || ""}
+                onChange={(e) =>
+                  setTestAnalytes({
+                    ...testAnalytes,
+                    [test.id]: e.target.value,
+                  })
+                }
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({
+                    id: "eqa.enrollment.selectAnalyte",
+                  })}
+                />
+                {analytes.map((analyte) => (
+                  <SelectItem
+                    key={analyte.id}
+                    value={analyte.id}
+                    text={analyte.text}
+                  />
+                ))}
+              </Select>
+            </Column>
+          ))}
+        </Grid>
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          marginTop: "1rem",
+        }}
+      >
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <Button kind="secondary" size="sm" onClick={onCancel}>
+            {intl.formatMessage({ id: "label.button.cancel" })}
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={!isValid}>
+            {isEdit
+              ? intl.formatMessage({ id: "eqa.enrollment.saveChanges" })
+              : intl.formatMessage({ id: "eqa.enrollment.save" })}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default InlineEnrollmentForm;

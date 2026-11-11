@@ -1,6 +1,7 @@
 package org.openelisglobal.panelItem;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -79,9 +80,27 @@ public class PanelItemServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getPanelItemsForPanelAndItemList() {
-        List<PanelItem> panelItems = panelItemService.getPanelItemsForPanelAndItemList("1", List.of(1));
+        List<PanelItem> panelItems = panelItemService.getPanelItemsForPanelAndItemList("1", List.of("1"));
         assertEquals(1, panelItems.size());
         assertEquals("1", panelItems.get(0).getId());
+    }
+
+    @Test
+    public void getDuplicateSortOrderForPanel_shouldReturnFalseWhenNoDuplicate() {
+        PanelItem panelItem = panelItemService.get("1");
+        panelItem.setPanelName("Test Panel");
+        panelItem.setSortOrder("999");
+        boolean result = panelItemService.getDuplicateSortOrderForPanel(panelItem);
+        assertFalse(result);
+    }
+
+    @Test
+    public void getDuplicateSortOrderForPanel_shouldReturnTrueWhenDuplicate() {
+        PanelItem panelItem2 = panelItemService.get("2");
+        panelItem2.setPanelName("Test Panel");
+        panelItem2.setSortOrder("1");
+        boolean result = panelItemService.getDuplicateSortOrderForPanel(panelItem2);
+        assertTrue(result);
     }
 
 }

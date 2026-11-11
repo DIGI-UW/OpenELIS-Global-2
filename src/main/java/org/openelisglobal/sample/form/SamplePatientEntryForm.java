@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.barcode.form.LabelsSectionForm;
 import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
@@ -11,6 +12,7 @@ import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
+import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientClinicalInfo;
 import org.openelisglobal.patient.action.bean.PatientEnhancedSearch;
@@ -19,6 +21,7 @@ import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
+import org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO;
 import org.openelisglobal.validation.annotations.ValidDate;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -31,6 +34,12 @@ public class SamplePatientEntryForm extends BaseForm {
     }
 
     private Boolean rememberSiteAndRequester;
+
+    /**
+     * Set on a successful save: tests on the order whose reference range will not
+     * be applied because the patient's sex or birth date is missing.
+     */
+    private List<String> rangeNotAppliedTests = new ArrayList<>();
 
     @ValidDate(relative = DateRelation.TODAY, groups = { SamplePatientEntry.class, SamplePatientEntryBatch.class })
     private String currentDate = "";
@@ -65,6 +74,7 @@ public class SamplePatientEntryForm extends BaseForm {
     private String sampleXML = "";
 
     @Valid
+    @NotNull(groups = { SamplePatientEntry.class }, message = "Patient properties are required")
     private PatientManagementInfo patientProperties;
 
     // for display
@@ -77,6 +87,7 @@ public class SamplePatientEntryForm extends BaseForm {
     private PatientClinicalInfo patientClinicalProperties;
 
     @Valid
+    @NotNull(groups = { SamplePatientEntry.class }, message = "Sample order is required")
     private SampleOrderItem sampleOrderItems;
 
     // for display
@@ -93,13 +104,50 @@ public class SamplePatientEntryForm extends BaseForm {
 
     private boolean useReferral;
 
+    /**
+     * Flag for decoupled workflow: if true, samples are not required. This allows
+     * saving orders without samples when using the step-by-step workflow where
+     * samples are added in a later step.
+     */
+    private boolean orderEntryOnly = false;
+
     // for display
     private List<IdValuePair> rejectReasonList;
     private LabelsSectionForm labelsSection;
     private PostSavePrintDialogForm postSavePrintDialog;
 
+    /**
+     * OGC-285 M5b: the technician's chosen per-order / per-sample label quantities
+     * (the {@code persistPayload} emitted by the Order Entry LabelsSection in API
+     * mode). Null on every legacy/decoupled save that does not render the dynamic
+     * LabelsSection — the save hook fires the label persistence ONLY when this is
+     * non-null, so existing saves are untouched. Survives
+     * {@code JSON.stringify(orderFormValues)} via the class-level
+     * {@link JsonIgnoreProperties} even when the frontend omits it.
+     */
+    private OrderLabelPersistRequest labelPersistRequest;
+    private String cancelReason;
+
+    @Valid
+
+    /**
+     * Specimens requested at order entry, saved with the order in one transaction
+     * so an order can never exist without them. Null means the request did not
+     * speak for the specimens at all, which leaves them as they are; an empty list
+     * means none are requested any more.
+     */
+    private List<SampleTypeRequestDTO> requestedSampleTypes;
+
     public SamplePatientEntryForm() {
         setFormName("samplePatientEntryForm");
+    }
+
+    public List<SampleTypeRequestDTO> getRequestedSampleTypes() {
+        return requestedSampleTypes;
+    }
+
+    public void setRequestedSampleTypes(List<SampleTypeRequestDTO> requestedSampleTypes) {
+        this.requestedSampleTypes = requestedSampleTypes;
     }
 
     public String getCurrentDate() {
@@ -316,5 +364,37 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setPostSavePrintDialog(PostSavePrintDialogForm postSavePrintDialog) {
         this.postSavePrintDialog = postSavePrintDialog;
+    }
+
+    public boolean isOrderEntryOnly() {
+        return orderEntryOnly;
+    }
+
+    public void setOrderEntryOnly(boolean orderEntryOnly) {
+        this.orderEntryOnly = orderEntryOnly;
+    }
+
+    public OrderLabelPersistRequest getLabelPersistRequest() {
+        return labelPersistRequest;
+    }
+
+    public void setLabelPersistRequest(OrderLabelPersistRequest labelPersistRequest) {
+        this.labelPersistRequest = labelPersistRequest;
+    }
+
+    public List<String> getRangeNotAppliedTests() {
+        return rangeNotAppliedTests;
+    }
+
+    public void setRangeNotAppliedTests(List<String> rangeNotAppliedTests) {
+        this.rangeNotAppliedTests = rangeNotAppliedTests == null ? new ArrayList<>() : rangeNotAppliedTests;
+    }
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public void setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
     }
 }

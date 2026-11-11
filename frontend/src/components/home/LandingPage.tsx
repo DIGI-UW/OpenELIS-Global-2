@@ -1,38 +1,39 @@
 import React, { useState, useEffect, useContext } from "react";
-import {
-  Grid,
-  Column,
-  TextInput,
-  Button,
-  Checkbox,
-  Tile,
-  Form,
-} from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { Grid, Column, TextInput, Button, Tile, Form } from "@carbon/react";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 
+interface DepartmentOption {
+  id: string;
+  value: string;
+}
+
+interface LandingConfigurationContext {
+  configurationProperties: {
+    REQUIRE_LAB_UNIT_AT_LOGIN?: string;
+  };
+}
+
+interface LandingUserSessionContext {
+  userSessionDetails: {
+    loginLabUnit?: string | boolean;
+  };
+}
+
 const LandingPage: React.FC = () => {
-  const intl = useIntl();
-  const [departments, setDepartments] = useState([]);
-  const [filteredDepartments, setFilteredDepartments] = useState([]);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [filteredDepartments, setFilteredDepartments] = useState<
+    DepartmentOption[]
+  >([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
-  const [rememberChoice, setRememberChoice] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const { configurationProperties } =
-    useContext<ConfigurationContext>(ConfigurationContext);
-  const { userSessionDetails } = useContext<UserSessionDetailsContext>(
+  const { configurationProperties } = useContext(
+    ConfigurationContext,
+  ) as LandingConfigurationContext;
+  const { userSessionDetails } = useContext(
     UserSessionDetailsContext,
-  );
-
-  interface UserSessionDetailsContext {
-    userSessionDetails: any;
-  }
-
-  interface ConfigurationContext {
-    configurationProperties: any;
-  }
+  ) as LandingUserSessionContext;
 
   useEffect(() => {
     if (
@@ -52,7 +53,7 @@ const LandingPage: React.FC = () => {
     });
   }, []);
 
-  const handleSearch = (event) => {
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     const term = event.target.value.toLowerCase();
     setSearchTerm(term);
     setFilteredDepartments(
@@ -60,7 +61,7 @@ const LandingPage: React.FC = () => {
     );
   };
 
-  const handleDepartmentSelect = (departmentId) => {
+  const handleDepartmentSelect = (departmentId: string) => {
     setSelectedDepartment(departmentId);
   };
 
@@ -83,7 +84,9 @@ const LandingPage: React.FC = () => {
     }
   };
 
-  const handlePostLabUbit = (status) => {};
+  const handlePostLabUbit = (_status: unknown) => {
+    void _status;
+  };
 
   return (
     <Grid

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-isolate-workup" author="OGC">
+        <addColumn schemaName="clinlims" tableName="micro_isolate">
+            <column name="gram_stain" type="TEXT"/>
+            <column name="colony_morphology" type="TEXT"/>
+            <column name="identification_method" type="VARCHAR(80)"/>
+            <column name="identification_confidence" type="NUMERIC(5,2)"/>
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="micro_isolate_identification_event">
+            <column name="previous_identification_method" type="VARCHAR(80)"/>
+            <column name="previous_identification_confidence" type="NUMERIC(5,2)"/>
+            <column name="new_identification_method" type="VARCHAR(80)"/>
+            <column name="new_identification_confidence" type="NUMERIC(5,2)"/>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.micro_isolate
+            ADD CONSTRAINT micro_isolate_identification_confidence_chk
+            CHECK (identification_confidence IS NULL OR
+                   (identification_confidence &gt;= 0 AND identification_confidence &lt;= 100));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.micro_isolate
+                DROP CONSTRAINT IF EXISTS micro_isolate_identification_confidence_chk;
+            </sql>
+            <dropColumn schemaName="clinlims" tableName="micro_isolate_identification_event"
+                columnName="new_identification_confidence"/>
+            <dropColumn schemaName="clinlims" tableName="micro_isolate_identification_event"
+                columnName="new_identification_method"/>
+            <dropColumn schemaName="clinlims" tableName="micro_isolate_identification_event"
+                columnName="previous_identification_confidence"/>
+            <dropColumn schemaName="clinlims" tableName="micro_isolate_identification_event"
+                columnName="previous_identification_method"/>
+            <dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="identification_confidence"/>
+            <dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="identification_method"/>
+            <dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="colony_morphology"/>
+            <dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="gram_stain"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

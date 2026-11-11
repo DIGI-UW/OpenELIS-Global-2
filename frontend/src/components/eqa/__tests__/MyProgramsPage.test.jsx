@@ -1,40 +1,52 @@
-import React from "react";
+import React, { useState } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import MyProgramsPage from "../MyProgramsPage";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+  putToOpenElisServerFullResponse,
+} from "../../utils/Utils";
+import { NotificationContext } from "../../layout/Layout";
 
-jest.mock("../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  postToOpenElisServerJsonResponse: jest.fn(),
-  putToOpenElisServer: jest.fn(),
+vi.mock("../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
+  putToOpenElisServer: vi.fn(),
+  putToOpenElisServerFullResponse: vi.fn(),
+  resolveApiErrorMessage: (_intl, _body, fallbackId) => fallbackId,
+  toLocalIsoDate: (date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+      date.getDate(),
+    ).padStart(2, "0")}`,
 }));
 
-jest.mock("../../layout/Layout", () => {
-  const React = require("react");
+vi.mock("../../layout/Layout", () => {
+  // Replaced inline React require
   return {
     NotificationContext: React.createContext({
-      addNotification: jest.fn(),
+      addNotification: vi.fn(),
     }),
   };
 });
 
-jest.mock("../../common/CustomNotification", () => ({
-  NotificationKinds: {
-    success: "success",
-    error: "error",
-    info: "info",
-    warning: "warning",
-  },
-}));
-
-jest.mock("../../common/PageBreadCrumb", () => {
-  return function MockBreadCrumb() {
-    return <div data-testid="breadcrumb">breadcrumb</div>;
+vi.mock("../../common/PageBreadCrumb", () => {
+  return {
+    default: function MockBreadCrumb() {
+      return <div data-testid="breadcrumb">breadcrumb</div>;
+    },
   };
 });
 
-const { getFromOpenElisServer } = require("../../utils/Utils");
+// Replaced inline utils require
+
+// Carbon's floating menu stays visibility:hidden under jsdom, which takes its
+// items out of the accessibility tree that getByRole walks.
+const menuItem = (label) =>
+  screen
+    .queryAllByRole("menuitem", { hidden: true })
+    .find((item) => item.textContent.startsWith(label));
 
 const renderPage = () => {
   return render(
@@ -46,7 +58,7 @@ const renderPage = () => {
 
 describe("MyProgramsPage", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url === "/rest/eqa/my-programs") {
         callback([
@@ -56,6 +68,7 @@ describe("MyProgramsPage", () => {
             provider: "WHO",
             description: "Chemistry proficiency testing",
             isActive: true,
+            status: "Active",
             labUnits: [{ id: 10 }],
             tests: [{ id: 100 }, { id: 101 }],
             panels: [{ id: 200 }],
@@ -66,6 +79,7 @@ describe("MyProgramsPage", () => {
             provider: "CDC",
             description: "Hematology proficiency testing",
             isActive: false,
+            status: "Suspended",
             labUnits: [],
             tests: [],
             panels: [],
@@ -73,28 +87,33 @@ describe("MyProgramsPage", () => {
         ]);
       } else if (url === "/rest/eqa/providers") {
         callback(["WHO", "CDC", "PEPFAR"]);
-      } else if (url === "/rest/test-sections") {
+      } else if (url === "/rest/displayList/TEST_SECTION_ACTIVE") {
         callback([{ id: 10, value: "Chemistry" }]);
-      } else if (url === "/rest/tests") {
+      } else if (url === "/rest/displayList/ALL_TESTS") {
         callback([
           { id: 100, value: "Glucose" },
           { id: 101, value: "Creatinine" },
         ]);
-      } else if (url === "/rest/panels") {
+      } else if (url === "/rest/displayList/PANELS") {
         callback([{ id: 200, value: "Basic Metabolic Panel" }]);
+      } else if (url === "/rest/eqa/my-programs/analytes") {
+        callback([
+          { id: 900, value: "Glucose (serum)" },
+          { id: 901, value: "Creatinine (serum)" },
+        ]);
       }
     });
   });
 
   test("renders page title", () => {
     renderPage();
-    expect(screen.getByText("My EQA Programs")).toBeTruthy();
+    expect(screen.getByText("My EQA Schemes")).toBeTruthy();
   });
 
   test("renders page subtitle", () => {
     renderPage();
     expect(
-      screen.getByText("Programs this laboratory participates in"),
+      screen.getByText("Schemes this laboratory participates in"),
     ).toBeTruthy();
   });
 
@@ -106,35 +125,59 @@ describe("MyProgramsPage", () => {
     expect(screen.getByText("CDC")).toBeTruthy();
   });
 
-  test("renders Enroll in Program button", () => {
+  test("renders Enroll in Scheme button", () => {
     renderPage();
-    expect(screen.getByText("Enroll in Program")).toBeTruthy();
+    expect(screen.getByText("Enroll in Scheme")).toBeTruthy();
   });
 
   test("renders table column headers", () => {
     renderPage();
-    expect(screen.getByText("Program Name")).toBeTruthy();
+    expect(screen.getByText("Scheme Name")).toBeTruthy();
     expect(screen.getByText("Provider")).toBeTruthy();
     expect(screen.getByText("Lab Unit(s)")).toBeTruthy();
     expect(screen.getByText("Tests")).toBeTruthy();
+    expect(screen.getByText("Test panels")).toBeTruthy();
     expect(screen.getByText("Status")).toBeTruthy();
     expect(screen.getByText("Actions")).toBeTruthy();
   });
 
-  test("renders Active and Inactive status tags", () => {
+  test("renders a tag per lifecycle status", () => {
     renderPage();
     expect(screen.getByText("Active")).toBeTruthy();
-    expect(screen.getByText("Inactive")).toBeTruthy();
+    expect(screen.getByText("Suspended")).toBeTruthy();
   });
 
-  test("renders lab unit count tag for enrolled program", () => {
+  test("groups the rows under a heading per status, counted", () => {
     renderPage();
-    expect(screen.getByText("1")).toBeTruthy();
+
+    // The fixture holds one active and one inactive enrolment, so each heading
+    // carries a count of one rather than a total of both.
+    expect(screen.getByText("Active enrolments (1)")).toBeTruthy();
+    expect(screen.getByText("Suspended enrolments (1)")).toBeTruthy();
   });
 
-  test("renders test/panel count tag for enrolled program", () => {
+  test("each heading precedes the rows it covers", () => {
     renderPage();
-    expect(screen.getByText("3")).toBeTruthy();
+
+    const text = document.body.textContent;
+    const activeHeading = text.indexOf("Active enrolments (1)");
+    const chemistry = text.indexOf("Chemistry PT");
+    const inactiveHeading = text.indexOf("Suspended enrolments (1)");
+    const hematology = text.indexOf("Hematology PT");
+
+    // A heading below its own rows would read as covering the group after it.
+    expect(activeHeading).toBeLessThan(chemistry);
+    expect(chemistry).toBeLessThan(inactiveHeading);
+    expect(inactiveHeading).toBeLessThan(hematology);
+  });
+
+  test("renders count tags for enrolled program", () => {
+    renderPage();
+    // Chemistry PT has: 1 lab unit, 2 tests, 1 panel
+    // Multiple elements may render "1" (lab units, panels, etc.)
+    const ones = screen.getAllByText("1");
+    expect(ones.length).toBeGreaterThanOrEqual(2); // lab units + panels
+    expect(screen.getByText("2")).toBeTruthy(); // tests
   });
 
   test("renders breadcrumb navigation", () => {
@@ -142,10 +185,85 @@ describe("MyProgramsPage", () => {
     expect(screen.getByTestId("breadcrumb")).toBeTruthy();
   });
 
-  test("shows inline enrollment form when Enroll in Program is clicked", () => {
+  test("offers only the transitions each enrolment's status allows", () => {
     renderPage();
-    const enrollButton = screen.getByText("Enroll in Program");
+
+    const triggers = screen.getAllByRole("button", { name: /options/i });
+    // Active first, so the first row is Chemistry PT and the second the
+    // suspended Hematology PT.
+    fireEvent.click(triggers[0]);
+    expect(menuItem("Suspend")).toBeTruthy();
+    expect(menuItem("Withdraw")).toBeTruthy();
+    expect(menuItem("Resume")).toBeUndefined();
+
+    fireEvent.click(triggers[1]);
+    expect(menuItem("Resume")).toBeTruthy();
+    expect(menuItem("Suspend")).toBeUndefined();
+  });
+
+  test("a transition is refused until it carries a reason and a date", () => {
+    renderPage();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /options/i })[0]);
+    fireEvent.click(menuItem("Suspend"));
+
+    const confirm = screen
+      .getAllByRole("button", { name: "Suspend" })
+      .find((button) => button.classList.contains("cds--btn--primary"));
+    expect(confirm.disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText("Reason"), {
+      target: { value: "Analyser down for repair" },
+    });
+    // Still short of an effective date, so the transition stays refused.
+    expect(confirm.disabled).toBe(true);
+    expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
+  });
+
+  test("saving a new enrollment says it was saved", () => {
+    const WithNotifications = ({ children }) => {
+      const [notifications, setNotifications] = useState([]);
+      return (
+        <NotificationContext.Provider
+          value={{
+            notifications,
+            addNotification: (n) => setNotifications((all) => [...all, n]),
+            removeNotification: () => {},
+          }}
+        >
+          {children}
+        </NotificationContext.Provider>
+      );
+    };
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+      cb({ id: 3 }),
+    );
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <WithNotifications>
+          <MyProgramsPage />
+        </WithNotifications>
+      </IntlProvider>,
+    );
+
+    fireEvent.click(screen.getByText("Enroll in Scheme"));
+    fireEvent.change(screen.getByLabelText("Scheme Name"), {
+      target: { value: "Virology PT" },
+    });
+    fireEvent.change(screen.getByLabelText("Provider"), {
+      target: { value: "NHLS" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Enrollment" }));
+
+    expect(
+      screen.getByText("Scheme enrollment created successfully"),
+    ).toBeInTheDocument();
+  });
+
+  test("shows inline enrollment form when Enroll in Scheme is clicked", () => {
+    renderPage();
+    const enrollButton = screen.getByText("Enroll in Scheme");
     fireEvent.click(enrollButton);
-    expect(screen.getByText("New EQA Program Enrollment")).toBeTruthy();
+    expect(screen.getByText("New EQA Scheme Enrollment")).toBeTruthy();
   });
 });

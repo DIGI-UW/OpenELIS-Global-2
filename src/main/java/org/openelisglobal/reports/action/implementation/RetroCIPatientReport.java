@@ -13,6 +13,9 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -23,6 +26,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
@@ -45,7 +49,7 @@ public abstract class RetroCIPatientReport extends RetroCIReport {
 
     protected static String ANALYSIS_FINALIZED_STATUS_ID;
 
-    protected static List<Integer> READY_FOR_REPORT_STATUS_IDS;
+    protected static List<String> READY_FOR_REPORT_STATUS_IDS;
     protected Patient reportPatient;
     protected Sample reportSample;
 
@@ -62,10 +66,8 @@ public abstract class RetroCIPatientReport extends RetroCIReport {
 
     static {
         READY_FOR_REPORT_STATUS_IDS = new ArrayList<>();
-        READY_FOR_REPORT_STATUS_IDS
-                .add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Finished)));
-        READY_FOR_REPORT_STATUS_IDS
-                .add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Started)));
+        READY_FOR_REPORT_STATUS_IDS.add(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Finished));
+        READY_FOR_REPORT_STATUS_IDS.add(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Started));
 
         ANALYSIS_FINALIZED_STATUS_ID = SpringContext.getBean(IStatusService.class)
                 .getStatusID(AnalysisStatus.Finalized);
@@ -160,15 +162,14 @@ public abstract class RetroCIPatientReport extends RetroCIReport {
         }
 
         if (onlyResults) {
-            Set<Integer> analysisStatusIds = new HashSet<>();
-            analysisStatusIds.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
-            analysisStatusIds.add(Integer
-                    .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
-            analysisStatusIds.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
-            analysisStatusIds.add(Integer.parseInt(
-                    SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+            Set<String> analysisStatusIds = new HashSet<>();
+            analysisStatusIds
+                    .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
+            analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
+            analysisStatusIds
+                    .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
+            analysisStatusIds
+                    .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
             sampleList = sampleList.stream().filter(
                     e -> (analysisService.getAnalysesBySampleIdAndStatusId(e.getId(), analysisStatusIds).size() > 0))
                     .collect(Collectors.toList());
@@ -316,13 +317,32 @@ public abstract class RetroCIPatientReport extends RetroCIReport {
         return handledOrders;
     }
 
-    protected List<Integer> getProjIdsList(String projID) {
+    protected List<String> getProjIdsList(String projID) {
 
         String[] fields = projID.split(":");
-        List<Integer> projIDList = new ArrayList<>();
+        List<String> projIDList = new ArrayList<>();
         for (int i = 0; i < fields.length; i++) {
-            projIDList.add(Integer.parseInt(fields[i]));
+            projIDList.add(fields[i]);
         }
         return projIDList;
+    }
+
+    /**
+     * One of the report images the web application ships in its static images
+     * folder, or null when the folder or the file is missing.
+     */
+    protected byte[] reportImage(String fileName) {
+        Object imagesPath = reportParameters.get("imagesPath");
+        if (imagesPath == null) {
+            return null;
+        }
+        Path file = Path.of(imagesPath.toString(), fileName);
+        try {
+            return Files.isReadable(file) ? Files.readAllBytes(file) : null;
+        } catch (IOException e) {
+            LogEvent.logError(RetroCIPatientReport.class.getSimpleName(), "reportImage",
+                    "Unreadable report image " + file + ": " + e.getMessage());
+            return null;
+        }
     }
 }

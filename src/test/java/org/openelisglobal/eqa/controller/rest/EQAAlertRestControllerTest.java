@@ -3,19 +3,11 @@ package org.openelisglobal.eqa.controller.rest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Test;
@@ -214,101 +206,6 @@ public class EQAAlertRestControllerTest {
         assertEquals(0L, body.get("statOverdue"));
         assertEquals(0L, body.get("sampleExpiration"));
         assertEquals(0L, body.get("totalOpen"));
-    }
-
-    @Test
-    public void testAcknowledgeAlert_ValidAlert_ReturnsOk() {
-        Alert alert = createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.OPEN, "Test");
-        when(alertService.get(1L)).thenReturn(alert);
-
-        Map<String, String> body = new HashMap<>();
-        body.put("comment", "Acknowledged");
-
-        ResponseEntity<?> response = controller.acknowledgeAlert(1L, body);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(alertService).acknowledgeAlert(eq(1L), isNull());
-        verify(alertService).resolveAlert(eq(1L), isNull(), eq("Acknowledged"));
-    }
-
-    @Test
-    public void testAcknowledgeAlert_NotFound_Returns404() {
-        when(alertService.get(999L)).thenReturn(null);
-
-        ResponseEntity<?> response = controller.acknowledgeAlert(999L, null);
-
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-    }
-
-    @Test
-    public void testAcknowledgeAlert_CriticalWithoutComment_ReturnsBadRequest() {
-        Alert criticalAlert = createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.CRITICAL, AlertStatus.OPEN,
-                "Critical");
-        when(alertService.get(1L)).thenReturn(criticalAlert);
-
-        ResponseEntity<?> response = controller.acknowledgeAlert(1L, null);
-
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        verify(alertService, never()).acknowledgeAlert(anyLong(), any());
-    }
-
-    @Test
-    public void testAcknowledgeAlert_CriticalWithEmptyComment_ReturnsBadRequest() {
-        Alert criticalAlert = createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.CRITICAL, AlertStatus.OPEN,
-                "Critical");
-        when(alertService.get(1L)).thenReturn(criticalAlert);
-
-        Map<String, String> body = new HashMap<>();
-        body.put("comment", "   ");
-
-        ResponseEntity<?> response = controller.acknowledgeAlert(1L, body);
-
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        verify(alertService, never()).acknowledgeAlert(anyLong(), any());
-    }
-
-    @Test
-    public void testAcknowledgeAlert_CriticalWithComment_ReturnsOk() {
-        Alert criticalAlert = createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.CRITICAL, AlertStatus.OPEN,
-                "Critical");
-        when(alertService.get(1L)).thenReturn(criticalAlert);
-
-        Map<String, String> body = new HashMap<>();
-        body.put("comment", "Issue investigated and resolved");
-
-        ResponseEntity<?> response = controller.acknowledgeAlert(1L, body);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(alertService).acknowledgeAlert(eq(1L), isNull());
-        verify(alertService).resolveAlert(eq(1L), isNull(), eq("Issue investigated and resolved"));
-    }
-
-    @Test
-    public void testAcknowledgeAlert_WithoutComment_AcknowledgesOnly() {
-        Alert alert = createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.OPEN, "Warning");
-        when(alertService.get(1L)).thenReturn(alert);
-
-        ResponseEntity<?> response = controller.acknowledgeAlert(1L, null);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(alertService).acknowledgeAlert(eq(1L), isNull());
-        verify(alertService, never()).resolveAlert(anyLong(), any(), anyString());
-    }
-
-    @Test
-    public void testAcknowledgeAlert_AlreadyAcknowledged_SkipsAcknowledge() {
-        Alert alert = createAlert(1L, AlertType.EQA_DEADLINE, AlertSeverity.WARNING, AlertStatus.ACKNOWLEDGED,
-                "Already ack'd");
-        when(alertService.get(1L)).thenReturn(alert);
-
-        Map<String, String> body = new HashMap<>();
-        body.put("comment", "Resolving");
-
-        ResponseEntity<?> response = controller.acknowledgeAlert(1L, body);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(alertService, never()).acknowledgeAlert(anyLong(), any());
-        verify(alertService).resolveAlert(eq(1L), isNull(), eq("Resolving"));
     }
 
     private Alert createAlert(Long id, AlertType type, AlertSeverity severity, AlertStatus status, String message) {

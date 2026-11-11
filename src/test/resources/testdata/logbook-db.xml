@@ -123,16 +123,16 @@
         short_name="HSL" multiple_unit="LA Unit"
         street_address="456 Medical Rd" state="CA"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_d="PWS456" local_abbrev="2" code="HSL002" />
+        pws_id="PWS456" local_abbrev="2" code="HSL002" />
 
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"
         lastupdated="2025-03-20 12:00:00.0" sort_order="2147483647"
-        name_localization_id="1" display_key="TestKey1" />
+        name_localization_id="1" display_key="TestKey1" domain="CLINICAL" />
     <test_section id="2" name="TestSection2"
         description="SectionDescription2" org_id="4" is_external="N"
         lastupdated="2025-03-21 13:00:00.0" sort_order="2147483646"
-        name_localization_id="2" display_key="TestKey2" />
+        name_localization_id="2" display_key="TestKey2" domain="CLINICAL" />
 
     <test_formats id="1" lastupdated="2025-03-21 12:00:00" />
     <test_formats id="2" lastupdated="2025-03-21 12:00:00" />
@@ -180,24 +180,24 @@
         antimicrobial_resistance="false" />
 
     <test_result id="1" test_id="1" result_group="1"
-        flags="FLAG1" tst_rslt_type="N" value="5.6" significant_digits="2"
-        quant_limit="10.0" cont_level="High" lastupdated="2025-04-01 12:00:00"
-        scriptlet_id="1" sort_order="1" is_quantifiable="true"
-        is_active="true" is_normal="true" />
+        flags="FLAG1" tst_rslt_type="N" value="5.6"
+        reporting_decimal_places="2" quant_limit="10.0" cont_level="High"
+        lastupdated="2025-04-01 12:00:00" scriptlet_id="1" sort_order="1"
+        is_quantifiable="true" is_active="true" is_normal="true" />
     <test_result id="2" test_id="2" result_group="2"
         flags="FLAG2" tst_rslt_type="T" value="Positive"
-        significant_digits="0" quant_limit="15.1" cont_level="High"
+        reporting_decimal_places="0" quant_limit="15.1" cont_level="High"
         lastupdated="2025-04-01 12:30:00" scriptlet_id="2" sort_order="2"
         is_quantifiable="true" is_active="true" is_normal="false" />
 
     <test_result id="3" test_id="3" result_group="1"
-        flags="FLAG1" tst_rslt_type="N" value="5.6" significant_digits="2"
-        quant_limit="10.0" cont_level="High" lastupdated="2025-04-01 12:00:00"
-        scriptlet_id="1" sort_order="1" is_quantifiable="true"
-        is_active="true" is_normal="true" />
+        flags="FLAG1" tst_rslt_type="N" value="5.6"
+        reporting_decimal_places="2" quant_limit="10.0" cont_level="High"
+        lastupdated="2025-04-01 12:00:00" scriptlet_id="1" sort_order="1"
+        is_quantifiable="true" is_active="true" is_normal="true" />
     <test_result id="4" test_id="4" result_group="2"
         flags="FLAG2" tst_rslt_type="T" value="Positive"
-        significant_digits="0" quant_limit="15.1" cont_level="High"
+        reporting_decimal_places="0" quant_limit="15.1" cont_level="High"
         lastupdated="2025-04-01 12:30:00" scriptlet_id="2" sort_order="2"
         is_quantifiable="true" is_active="true" is_normal="false" />
 
@@ -272,31 +272,31 @@
     <result id="3" analysis_id="1" sort_order="1" result_type="N"
         value="85.0" analyte_id="3" test_result_id="1" is_reportable="Y"
         lastupdated="2025-04-04 14:00:00" min_normal="70.0" max_normal="100.0"
-        significant_digits="1" grouping="1"
+        reporting_decimal_places="1" grouping="1"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
 
     <result id="4" analysis_id="2" sort_order="2" result_type="N"
         value="14.5" analyte_id="4" test_result_id="2" is_reportable="Y"
         lastupdated="2025-07-07 14:00:00" min_normal="12.0" max_normal="16.0"
-        parent_id="3" significant_digits="1" grouping="1"
+        parent_id="3" reporting_decimal_places="1" grouping="1"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
     <result id="5" analysis_id="1" sort_order="3" result_type="N"
         value="950" analyte_id="7" test_result_id="1" is_reportable="Y"
         lastupdated="2025-07-07 14:00:00" min_normal="500" max_normal="1500"
-        parent_id="3" significant_digits="0" grouping="1"
+        parent_id="3" reporting_decimal_places="0" grouping="1"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440005" />
 
     <result id="6" analysis_id="2" sort_order="4" result_type="N"
         value="2300" analyte_id="6" test_result_id="2" is_reportable="Y"
         lastupdated="2025-07-07 14:00:00" min_normal="1800" max_normal="4000"
-        parent_id="4" significant_digits="0" grouping="1"
+        parent_id="4" reporting_decimal_places="0" grouping="1"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440006" />
 
     <result id="7" analysis_id="2" sort_order="5" result_type="N"
         value="Normal" analyte_id="5" test_result_id="2" is_reportable="Y"
-        lastupdated="2025-07-07 14:00:00" significant_digits="0" grouping="1"
-        fhir_uuid="550e8400-e29b-41d4-a716-446655440007" />
+        lastupdated="2025-07-07 14:00:00" reporting_decimal_places="0"
+        grouping="1" fhir_uuid="550e8400-e29b-41d4-a716-446655440007" />
 
     <result_signature id="2" result_id="3"
         system_user_id="1" is_supervisor="true"
@@ -323,7 +323,7 @@
 
     <test_reflex id="2" tst_rslt_id="2" flags="R"
         lastupdated="2025-08-06 10:10:00" test_analyte_id="2" test_id="2"
-        add_test_id="1" sibling_reflex="1001" scriptlet_id="2"
+        add_test_id="1" sibling_reflex="1" scriptlet_id="2"
         non_dictionary_value="14.5" relation="EQUALS"
         internal_note="Reflex Internal B" external_note="Reflex External B" />
 
@@ -342,40 +342,23 @@
         value2="14.5" reflex_rule_id="2" test_analyte_id="2" />
 
 
-    <inventory_storage_location id="1"
-        fhir_uuid="550e8400-e29b-41d4-a716-446655440004"
-        name="Main Store Room" location_code="ROOM-001" location_type="ROOM"
-        description="Main laboratory storage room" temperature_min="20.00"
-        temperature_max="25.00" is_active="true"
-        last_updated="2026-01-27 00:00:00" />
-
-    <inventory_storage_location id="2"
-        fhir_uuid="550e8400-e29b-41d4-a716-446655440005" name="Refrigerator A"
-        location_code="FRIDGE-001" location_type="REFRIGERATOR"
-        description="Cold storage refrigerator" temperature_min="2.00"
-        temperature_max="8.00" parent_location_id="1" is_active="true"
-        last_updated="2026-01-27 00:00:00" />
-
-
-    <inventory_item id="1"
+    <inventory_item id="1" code="GLOVES"
         fhir_uuid="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" name="Gloves"
-        description="Latex Gloves" item_type="REAGENT" category="PPE"
-        manufacturer="MedSupply" catalog_number="GLV-001"
-        storage_requirements="Room Temperature" quantity_per_unit="1"
-        units="pcs" low_stock_threshold="10" expiration_alert_days="30"
-        stability_after_opening="0" calibration_required="N"
-        individual_tracking="N" is_active="Y"
+        description="Latex Gloves" category="PPE" manufacturer="MedSupply"
+        catalog_number="GLV-001" storage_requirements="Room Temperature"
+        quantity_per_unit="1" units="pcs" low_stock_threshold="10"
+        expiration_alert_days="30" stability_after_opening="0"
+        calibration_required="N" track_lots="N" is_active="Y"
         last_updated="2026-01-27 00:00:00" />
 
-    <inventory_item id="2"
+    <inventory_item id="2" code="SYRINGES"
         fhir_uuid="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" name="Syringes"
-        description="5ml Syringes" item_type="REAGENT" category="Consumables"
+        description="5ml Syringes" category="Consumables"
         manufacturer="MedSupply" catalog_number="SYR-005"
         storage_requirements="Room Temperature" quantity_per_unit="1"
         units="pcs" low_stock_threshold="20" expiration_alert_days="30"
-        stability_after_opening="0" calibration_required="N"
-        individual_tracking="N" is_active="Y"
-        last_updated="2026-01-27 00:00:00" />
+        stability_after_opening="0" calibration_required="N" track_lots="N"
+        is_active="Y" last_updated="2026-01-27 00:00:00" />
 
 
 

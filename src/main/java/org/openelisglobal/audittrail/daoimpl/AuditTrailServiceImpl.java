@@ -18,8 +18,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.sql.Timestamp;
+import java.util.Set;
 import java.util.Vector;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
+import org.openelisglobal.audittrail.util.AuditFieldStringifier;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -31,6 +33,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
+import org.owasp.encoder.Encode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +41,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Transactional
 public class AuditTrailServiceImpl implements AuditTrailService {
+
+    // Field names whose old-values must NOT be written into history.changes.
+    // Two categories: payload-blobs (large base64 strings that would balloon
+    // history rows) and sensitive data (PII/secrets that shouldn't be copied
+    // into a denormalized audit table). Entities can also opt out of a single
+    // field by exposing a `get<Field>_Audit()` getter that returns a redacted
+    // value — the reflection picks that up automatically.
+    private static final Set<String> SENSITIVE_FIELD_NAMES = Set.of("documentData", // PatientIdDocument: base64 image
+                                                                                    // payload
+            "photoData", // PatientPhoto: base64 image payload
+            "thumbnailData" // PatientIdDocument + PatientPhoto: base64 thumbnail payload
+    );
 
     @Autowired
     private ReferenceTablesService referenceTablesService;
@@ -50,7 +65,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
     // before data did not contain anything. Note: This requires making the changes
     // column (in history table) nullable
     @Override
-    public void saveNewHistory(BaseObject newObject, String sysUserId, String tableName) throws LIMSRuntimeException {
+    public String saveNewHistory(BaseObject newObject, String sysUserId, String tableName) throws LIMSRuntimeException {
 
         ReferenceTables referenceTables = new ReferenceTables();
         referenceTables.setTableName(tableName);
@@ -59,7 +74,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
         // bugzilla 2111: if keepHistory is N then return - don't throw exception
         if (referenceTable != null && !referenceTable.getKeepHistory().equals(IActionConstants.YES)) {
             LogEvent.logDebug("AuditTrailDAOImpl", "saveNewHistory()", "NO CHANGES: REF TABLE KEEP_HISTORY IS N");
-            return;
+            return null;
         }
         // if logging failes an exception should be thrown so that INSERT/UPDATE is
         // rolled back
@@ -85,7 +100,11 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
         try {
             String referenceId = newObject.getStringId();
-            hist.setReferenceId(referenceId);
+            if (isNumericKey(referenceId)) {
+                hist.setReferenceId(referenceId);
+            } else {
+                hist.setReferenceKey(referenceId);
+            }
             hist.setSysUserId(sysUserId);
 
             Timestamp timestamp = newObject.getLastupdated();
@@ -96,10 +115,11 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             hist.setTimestamp(timestamp);
             hist.setActivity(IActionConstants.AUDIT_TRAIL_INSERT);
             hist.setReferenceTable(referenceTable.getId());
-            insertData(hist);
+            String historyId = insertData(hist);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "saveNewHistory",
                     "Created INSERT history record for table: " + tableName + ", referenceId: " + referenceId);
+            return historyId;
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error occurred logging INSERT", e);
@@ -169,7 +189,11 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             if ((xml != null) && (xml.length() > 0)) {
                 History hist = new History();
 
-                hist.setReferenceId(referenceId);
+                if (isNumericKey(referenceId)) {
+                    hist.setReferenceId(referenceId);
+                } else {
+                    hist.setReferenceKey(referenceId);
+                }
                 hist.setSysUserId(sysUserId);
 
                 byte[] bytes = xml.getBytes();
@@ -205,7 +229,16 @@ public class AuditTrailServiceImpl implements AuditTrailService {
     }
 
     /**
-     * Returns an array of all fields used by this object from it's class and all
+     * history.reference_id is numeric; a table keyed by a UUID string
+     * (qc_control_lot) keeps its key in reference_key instead. A null key stays on
+     * reference_id so its existing behavior is unchanged.
+     */
+    private boolean isNumericKey(String referenceId) {
+        return referenceId == null || referenceId.matches("\\d+");
+    }
+
+    /**
+     * Returns an array of all fields used by this object from its class and all
      * superclasses.
      *
      * @param objectClass the class
@@ -294,6 +327,9 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             }
 
             String fieldName = fields[ii].getName();
+            if (SENSITIVE_FIELD_NAMES.contains(fieldName)) {
+                continue fieldIteration;
+            }
             if ((!fieldName.equals("id"))
                     // bugzilla 2574
                     // && (!fieldName.equals("lastupdated"))
@@ -322,7 +358,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                         Object objPropNewState = fields[ii].get(newObject);
                         if (objPropNewState != null) {
                             try {
-                                propertyNewState = objPropNewState.toString();
+                                propertyNewState = AuditFieldStringifier.stringify(objPropNewState);
                             } catch (org.hibernate.LazyInitializationException e) {
                                 // Skip lazy-loaded collections that cannot be accessed outside session
                                 LogEvent.logTrace(this.getClass().getName(), "getChanges", "Skipping field " + fieldName
@@ -375,7 +411,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     Object objPreUpdateState = fields[ii].get(existingObject);
                     if (objPreUpdateState != null) {
                         try {
-                            propertyPreUpdateState = objPreUpdateState.toString();
+                            propertyPreUpdateState = AuditFieldStringifier.stringify(objPreUpdateState);
                         } catch (org.hibernate.LazyInitializationException e) {
                             // Skip lazy-loaded collections that cannot be accessed outside session
                             LogEvent.logTrace(this.getClass().getName(), "getChanges",
@@ -521,8 +557,13 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                 m1 = existingObject.getClass().getMethod("getCompletedDate", new Class[0]);
                 o1 = m1.invoke(existingObject, (Object[]) new Class[0]);
 
-                m2 = newObject.getClass().getMethod("getCompletedDate", new Class[0]);
-                o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+                // newObject is null for DELETE events — skip the new-side
+                // reflection. The downstream comparison will treat the new
+                // value as empty, which is the right semantics for a delete.
+                if (newObject != null) {
+                    m2 = newObject.getClass().getMethod("getCompletedDate", new Class[0]);
+                    o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+                }
             }
             if (fieldName.equals("sample")) {
                 fieldName = "collectionDate";
@@ -530,8 +571,10 @@ public class AuditTrailServiceImpl implements AuditTrailService {
                     m1 = existingObject.getClass().getMethod("getCollectionDate", new Class[0]);
                     o1 = m1.invoke(existingObject, (Object[]) new Class[0]);
 
-                    m2 = newObject.getClass().getMethod("getCollectionDate", new Class[0]);
-                    o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+                    if (newObject != null) {
+                        m2 = newObject.getClass().getMethod("getCollectionDate", new Class[0]);
+                        o2 = m2.invoke(newObject, (Object[]) new Class[0]);
+                    }
                 } catch (NoSuchMethodException e) {
                     LogEvent.logWarn(this.getClass().getSimpleName(), "processLabelValueFixes",
                             "ignoring NoSuchMethodException getCollectionDate() for object of type: "
@@ -1346,8 +1389,15 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
         for (int i = 0; i < list.size(); i++) {
             LabelValuePair lvp = (LabelValuePair) list.elementAt(i);
-            XMLUtil.appendKeyValue(lvp.getLabel(), lvp.getValue(), xml);
-            xml.append("\n");
+            // Always emit the tag — even when the old value is blank/null — so
+            // blank-to-filled transitions (e.g. first-time email/phone capture,
+            // merge flags going null→true) are recorded. XMLUtil.appendKeyValue
+            // skips blanks, which is right for non-audit XML but loses signal
+            // here: the field name itself is the record of what changed.
+            String label = lvp.getLabel();
+            String value = lvp.getValue() == null ? "" : lvp.getValue().trim();
+            xml.append(XMLUtil.makeStartTag(label)).append(Encode.forXmlContent(value))
+                    .append(XMLUtil.makeEndTag(label)).append("\n");
         }
 
         return xml.toString();
@@ -1426,7 +1476,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
      *
      * @param history the history object being saved
      */
-    private void insertData(History history) throws LIMSRuntimeException {
-        historyService.insert(history);
+    private String insertData(History history) throws LIMSRuntimeException {
+        return historyService.insert(history);
     }
 }

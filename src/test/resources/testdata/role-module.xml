@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <system_user id="1001" external_id="EXT001"
+        login_name="admin" last_name="Admin" first_name="Test" initials="TA"
+        is_active="Y" is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+
+    <system_module id="2001" name="Module 1"
+        description="Description for Module 1" has_select_flag="Y"
+        has_add_flag="Y" has_update_flag="Y" has_delete_flag="Y" />
+    <system_module id="2002" name="Module 2"
+        description="Description for Module 2" has_select_flag="N"
+        has_add_flag="Y" has_update_flag="N" has_delete_flag="Y" />
+
+    <system_role id="3001" name="TestRole1"
+        description="Test role one" is_grouping_role="false" active="true"
+        editable="true" />
+    <system_role id="3002" name="TestRole2"
+        description="Test role two" is_grouping_role="false" active="true"
+        editable="true" />
+
+    <system_role_module id="4001" has_select="Y"
+        has_add="Y" has_update="N" has_delete="N" system_role_id="3001"
+        system_module_id="2001" />
+    <system_role_module id="4002" has_select="Y"
+        has_add="N" has_update="Y" has_delete="Y" system_role_id="3001"
+        system_module_id="2002" />
+    <system_role_module id="4003" has_select="N"
+        has_add="Y" has_update="N" has_delete="N" system_role_id="3002"
+        system_module_id="2001" />
+
+    <system_user_role system_user_id="1001" role_id="3001" />
+</dataset>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Restores the alert types 036-0-stash-upgrade-alert-types parked as OTHER, now that
+    058-alert-type-union allows them again, and drops the temporary column. Nothing
+    after 058 narrows chk_alert_type below the restored values.
+    -->
+    <changeSet id="3.5.0-058-1-restore-upgrade-alert-types" author="mozzy11">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="alert" columnName="upgrade_stashed_alert_type"/>
+        </preConditions>
+        <sql>
+            UPDATE clinlims.alert
+               SET alert_type = upgrade_stashed_alert_type
+             WHERE upgrade_stashed_alert_type IS NOT NULL;
+            ALTER TABLE clinlims.alert DROP COLUMN upgrade_stashed_alert_type;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

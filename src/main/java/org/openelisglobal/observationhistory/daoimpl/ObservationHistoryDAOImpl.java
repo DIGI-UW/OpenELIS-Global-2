@@ -99,7 +99,7 @@ public class ObservationHistoryDAOImpl extends BaseDAOImpl<ObservationHistory, S
         try {
             Query<ObservationHistory> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ObservationHistory.class);
-            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("sampleItemId", sampleItemId);
 
             List<ObservationHistory> observationList = query.list();
             return observationList;
@@ -117,7 +117,7 @@ public class ObservationHistoryDAOImpl extends BaseDAOImpl<ObservationHistory, S
         try {
             Query<ObservationHistory> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ObservationHistory.class);
-            query.setParameter("sampleId", Integer.parseInt(sampleId));
+            query.setParameter("sampleId", sampleId);
 
             List<ObservationHistory> observationList = query.list();
             return observationList;
@@ -137,8 +137,8 @@ public class ObservationHistoryDAOImpl extends BaseDAOImpl<ObservationHistory, S
         try {
             Query<ObservationHistory> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ObservationHistory.class);
-            query.setParameter("patientId", Integer.parseInt(patientId));
-            query.setParameter("ohTypeId", Integer.parseInt(observationHistoryTypeId));
+            query.setParameter("patientId", patientId);
+            query.setParameter("ohTypeId", observationHistoryTypeId);
 
             List<ObservationHistory> ohList = query.list();
             return ohList;
@@ -158,8 +158,8 @@ public class ObservationHistoryDAOImpl extends BaseDAOImpl<ObservationHistory, S
         try {
             Query<ObservationHistory> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ObservationHistory.class);
-            query.setParameter("sampleId", Integer.parseInt(sampleId));
-            query.setParameter("ohTypeId", Integer.parseInt(observationHistoryTypeId));
+            query.setParameter("sampleId", sampleId);
+            query.setParameter("ohTypeId", observationHistoryTypeId);
 
             ObservationHistory oh = query.setMaxResults(1).uniqueResult();
             return oh;
@@ -180,7 +180,7 @@ public class ObservationHistoryDAOImpl extends BaseDAOImpl<ObservationHistory, S
         try {
             Query<ObservationHistory> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ObservationHistory.class);
-            query.setParameter("typeId", Integer.parseInt(typeId));
+            query.setParameter("typeId", typeId);
             query.setParameter("value", value);
             query.setParameter("valueType", valueType);
 
@@ -230,5 +230,20 @@ public class ObservationHistoryDAOImpl extends BaseDAOImpl<ObservationHistory, S
     @Transactional(readOnly = true)
     public ObservationHistory getById(ObservationHistory observation) throws LIMSRuntimeException {
         return get(observation.getId()).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ObservationHistory> getObservationHistoriesByType(String typeId) throws LIMSRuntimeException {
+        String sql = "from ObservationHistory oh where oh.observationHistoryTypeId = :typeId";
+        try {
+            Query<ObservationHistory> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    ObservationHistory.class);
+            query.setParameter("typeId", typeId);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getObservationHistoriesByType");
+        }
+        return null;
     }
 }

@@ -1,0 +1,312 @@
+package org.openelisglobal.analyzer.service;
+
+import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.qc.dao.QCControlLotDAO;
+import org.openelisglobal.qc.service.QCResultService;
+import org.openelisglobal.qc.valueholder.QCControlLot;
+import org.openelisglobal.qc.valueholder.QCQualitativeOutcome;
+import org.openelisglobal.testcatalog.service.TestQcTargetService;
+import org.openelisglobal.testcatalog.valueholder.TestQcTarget;
+
+/**
+ * Lot matching must never assign a control to an unrelated or ambiguous lot.
+ */
+@RunWith(MockitoJUnitRunner.class)
+public class QCResultProcessingServiceImplTest {
+
+    @Mock
+    private QCControlLotDAO controlLotDAO;
+
+    @Mock
+    private QCResultService qcResultService;
+
+    @Mock
+    private TestQcTargetService testQcTargetService;
+
+    @InjectMocks
+    private QCResultProcessingServiceImpl service;
+
+    private static final String ANALYZER_ID = "42";
+    private static final String TEST_ID = "7";
+    private static final String TEST_ID_INT = "7";
+    private static final String INSTRUMENT_ID = "42";
+    private static final String ACCESSION = "QC-20260505-001";
+    private static final BigDecimal RESULT = new BigDecimal("12.5");
+    private static final String UNIT = "mg/dL";
+    private static final LocalDateTime TS = LocalDateTime.of(2026, 5, 5, 9, 0);
+
+    private QCControlLot lpcLot;
+    private QCControlLot hpcLot;
+    private QCControlLot duplicateLpcLot;
+
+    @Before
+    public void setUp() {
+        lpcLot = new QCControlLot();
+        lpcLot.setId("100");
+        lpcLot.setLotNumber("LOT-LPC-001");
+        lpcLot.setControlLevel("LPC");
+        lpcLot.setStatus("ACTIVE");
+
+        hpcLot = new QCControlLot();
+        hpcLot.setId("101");
+        hpcLot.setLotNumber("LOT-HPC-001");
+        hpcLot.setControlLevel("HPC");
+        hpcLot.setStatus("ACTIVE");
+
+        duplicateLpcLot = new QCControlLot();
+        duplicateLpcLot.setId("102");
+        duplicateLpcLot.setLotNumber("LOT-LPC-002");
+        duplicateLpcLot.setControlLevel("LPC");
+        duplicateLpcLot.setStatus("ACTIVE");
+    }
+
+    @Test
+    public void tier2_singleControlLevelMatch_resolvesAndPersists() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID_INT, INSTRUMENT_ID))
+                .thenReturn(Arrays.asList(lpcLot, hpcLot));
+
+        service.processQCResult(ANALYZER_ID, TEST_ID, ACCESSION, "LPC", RESULT, UNIT, TS);
+
+        verify(qcResultService).createQCResult(eq(ANALYZER_ID), eq(TEST_ID), eq("100"), eq("LPC"), eq(RESULT), eq(UNIT),
+                eq(TS));
+    }
+
+    @Test
+    public void expiredLotCannotReceiveNewControlResults() {
+        lpcLot.setExpirationDate(java.sql.Timestamp.from(java.time.Instant.EPOCH));
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID_INT, INSTRUMENT_ID)).thenReturn(List.of(lpcLot));
+        assertEquals(QCResultProcessingService.Outcome.NO_LOT,
+                service.processQCResult(ANALYZER_ID, TEST_ID, lpcLot.getLotNumber(), "LPC", RESULT, UNIT, TS));
+        verify(qcResultService, never()).createQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void retiredExactLotCannotRedirectToAnotherLotAtTheSameLevel() {
+        lpcLot.setStatus("RETIRED");
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID_INT, INSTRUMENT_ID))
+                .thenReturn(List.of(lpcLot, duplicateLpcLot));
+        assertEquals(QCResultProcessingService.Outcome.NO_LOT,
+                service.processQCResult(ANALYZER_ID, TEST_ID, lpcLot.getLotNumber(), "LPC", RESULT, UNIT, TS));
+        verify(qcResultService, never()).createQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void tier2_ambiguousControlLevel_returnsNullAndDoesNotPersist() {
+        // Two ACTIVE lots share controlLevel="LPC" — schema allows this; resolver
+        // must refuse rather than pick one by DAO order.
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID_INT, INSTRUMENT_ID))
+                .thenReturn(Arrays.asList(lpcLot, duplicateLpcLot, hpcLot));
+
+        service.processQCResult(ANALYZER_ID, TEST_ID, ACCESSION, "LPC", RESULT, UNIT, TS);
+
+        verify(qcResultService, never()).createQCResult(anyString(), anyString(), anyString(), anyString(),
+                any(BigDecimal.class), anyString(), any(LocalDateTime.class));
+    }
+
+    @Test
+    public void unmatchedControlLevelDoesNotUseTheOnlyActiveLot() {
+        // A control at a different level must not contaminate the only active lot.
+        QCControlLot soloActive = new QCControlLot();
+        soloActive.setId("200");
+        soloActive.setLotNumber("LOT-SOLO");
+        soloActive.setControlLevel("MID");
+        soloActive.setStatus("ACTIVE");
+
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID_INT, INSTRUMENT_ID))
+                .thenReturn(Collections.singletonList(soloActive));
+
+        service.processQCResult(ANALYZER_ID, TEST_ID, ACCESSION, "LPC", RESULT, UNIT, TS);
+
+        verify(qcResultService, never()).createQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void specimenIdentifierDisambiguatesLotsAtTheSameLevel() {
+        // The specimen identifies one lot even when several share the same level.
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID_INT, INSTRUMENT_ID))
+                .thenReturn(Arrays.asList(lpcLot, duplicateLpcLot, hpcLot));
+
+        service.processQCResult(ANALYZER_ID, TEST_ID, "LOT-LPC-002", "LPC", RESULT, UNIT, TS);
+
+        verify(qcResultService).createQCResult(eq(ANALYZER_ID), eq(TEST_ID), eq("102"), eq("LPC"), eq(RESULT), eq(UNIT),
+                eq(TS));
+    }
+
+    @Test
+    public void tier2_emptyLotsList_returnsNullAndDoesNotPersist() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID_INT, INSTRUMENT_ID)).thenReturn(Collections.emptyList());
+
+        service.processQCResult(ANALYZER_ID, TEST_ID, ACCESSION, "LPC", RESULT, UNIT, TS);
+
+        verify(qcResultService, never()).createQCResult(anyString(), anyString(), anyString(), anyString(),
+                any(BigDecimal.class), anyString(), any(LocalDateTime.class));
+    }
+
+    @Test
+    public void tier2_establishmentLotMatch_resolves() {
+        // Tier 2 must accept ESTABLISHMENT lots — `isUsable` treats them as
+        // eligible, so when the bridge surfaces an explicit controlLevel and
+        // the only matching lot is in establishment, it resolves cleanly
+        // (consistent with Tier 1's lot-number match across both statuses).
+        QCControlLot establishmentLot = new QCControlLot();
+        establishmentLot.setId("300");
+        establishmentLot.setLotNumber("LOT-EST-001");
+        establishmentLot.setControlLevel("LPC");
+        establishmentLot.setStatus("ESTABLISHMENT");
+
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID_INT, INSTRUMENT_ID))
+                .thenReturn(Collections.singletonList(establishmentLot));
+
+        service.processQCResult(ANALYZER_ID, TEST_ID, ACCESSION, "LPC", RESULT, UNIT, TS);
+
+        verify(qcResultService).createQCResult(eq(ANALYZER_ID), eq(TEST_ID), eq("300"), eq("LPC"), eq(RESULT), eq(UNIT),
+                eq(TS));
+    }
+
+    @Test
+    public void tier2_controlLevelWithWhitespace_isTrimmedBeforeMatching() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID_INT, INSTRUMENT_ID))
+                .thenReturn(Arrays.asList(lpcLot, hpcLot));
+
+        service.processQCResult(ANALYZER_ID, TEST_ID, ACCESSION, "  LPC  ", RESULT, UNIT, TS);
+
+        verify(qcResultService).createQCResult(eq(ANALYZER_ID), eq(TEST_ID), eq("100"), eq("LPC"), eq(RESULT), eq(UNIT),
+                eq(TS));
+    }
+
+    @Test
+    public void qualitativeControlThatGivesItsExpectedAnswerIsRecordedAsPass() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot));
+        when(testQcTargetService.resolveEffectiveTarget(TEST_ID, null, "LPC", "100")).thenReturn(target("501"));
+
+        QCResultProcessingService.Outcome outcome = service.processQualitativeQCResult(ANALYZER_ID, TEST_ID, null,
+                ACCESSION, "LPC", "501", TS);
+
+        assertEquals(QCResultProcessingService.Outcome.RECORDED, outcome);
+        verify(qcResultService).createAnalyzerQualitativeQCResult(ANALYZER_ID, TEST_ID, "100",
+                QCQualitativeOutcome.PASS, TS);
+    }
+
+    @Test
+    public void qualitativeControlWithAnyOtherAnswerIsRecordedAsFail() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot));
+        when(testQcTargetService.resolveEffectiveTarget(TEST_ID, null, "LPC", "100")).thenReturn(target("501"));
+
+        QCResultProcessingService.Outcome outcome = service.processQualitativeQCResult(ANALYZER_ID, TEST_ID, null,
+                ACCESSION, "LPC", "502", TS);
+
+        assertEquals(QCResultProcessingService.Outcome.RECORDED, outcome);
+        verify(qcResultService).createAnalyzerQualitativeQCResult(ANALYZER_ID, TEST_ID, "100",
+                QCQualitativeOutcome.FAIL, TS);
+    }
+
+    @Test
+    public void qualitativeControlWithNoExpectedAnswerIsNotJudged() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot));
+        TestQcTarget numericOnly = target(null);
+        when(testQcTargetService.resolveEffectiveTarget(TEST_ID, null, "LPC", "100")).thenReturn(numericOnly);
+
+        assertEquals(QCResultProcessingService.Outcome.NO_TARGET, service.processQualitativeQCResult(ANALYZER_ID,
+                TEST_ID, null, ACCESSION, "LPC", "501", TS));
+        when(testQcTargetService.resolveEffectiveTarget(TEST_ID, null, "LPC", "100")).thenReturn(null);
+        assertEquals(QCResultProcessingService.Outcome.NO_TARGET, service.processQualitativeQCResult(ANALYZER_ID,
+                TEST_ID, null, ACCESSION, "LPC", "501", TS));
+        verify(qcResultService, never()).createAnalyzerQualitativeQCResult(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void qualitativeControlWithNoMatchingLotIsNotRecorded() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of());
+
+        assertEquals(QCResultProcessingService.Outcome.NO_LOT, service.processQualitativeQCResult(ANALYZER_ID,
+                TEST_ID, null, ACCESSION, "LPC", "501", TS));
+        verify(qcResultService, never()).createAnalyzerQualitativeQCResult(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void missingLotIsReportedRatherThanCountedAsRecorded() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of());
+        assertEquals(QCResultProcessingService.Outcome.NO_LOT,
+                service.processQCResult(ANALYZER_ID, TEST_ID, ACCESSION, null, RESULT, UNIT, TS));
+        verify(qcResultService, never()).createQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void soleEstablishmentLotDoesNotMatchAnUnidentifiedControl() {
+        lpcLot.setStatus("ESTABLISHMENT");
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot));
+        assertEquals(QCResultProcessingService.Outcome.NO_LOT,
+                service.processQCResult(ANALYZER_ID, TEST_ID, ACCESSION, null, RESULT, UNIT, TS));
+        verify(qcResultService, never()).createQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void exactSpecimenWithConflictingLevelDoesNotFallBackToAnotherLot() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot, hpcLot));
+        assertEquals(QCResultProcessingService.Outcome.NO_LOT,
+                service.processQCResult(ANALYZER_ID, TEST_ID, lpcLot.getLotNumber(), "HPC", RESULT, UNIT, TS));
+        verify(qcResultService, never()).createQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void exactSpecimenRecordsTheOriginalMeasurementOnAnEstablishmentLot() {
+        lpcLot.setStatus("ESTABLISHMENT");
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot));
+        assertEquals(QCResultProcessingService.Outcome.RECORDED,
+                service.processQCResult(ANALYZER_ID, TEST_ID, lpcLot.getLotNumber(), null, RESULT, UNIT, TS));
+        verify(qcResultService).createQCResult(ANALYZER_ID, TEST_ID, "100", "LPC", RESULT, UNIT, TS);
+    }
+
+    @Test
+    public void retiredLotCannotReceiveAControl() {
+        lpcLot.setStatus("INACTIVE");
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot));
+        assertEquals(QCResultProcessingService.Outcome.NO_LOT,
+                service.processQCResult(ANALYZER_ID, TEST_ID, lpcLot.getLotNumber(), "LPC", RESULT, UNIT, TS));
+        verify(qcResultService, never()).createQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void reportedLevelDisambiguatesASharedLotNumber() {
+        hpcLot.setLotNumber(lpcLot.getLotNumber());
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot, hpcLot));
+
+        assertEquals(QCResultProcessingService.Outcome.RECORDED,
+                service.processQCResult(ANALYZER_ID, TEST_ID, lpcLot.getLotNumber(), " hpc ", RESULT, UNIT, TS));
+        verify(qcResultService).createQCResult(ANALYZER_ID, TEST_ID, "101", "HPC", RESULT, UNIT, TS);
+    }
+
+    @Test
+    public void sharedLotNumberWithoutALevelRemainsAmbiguous() {
+        hpcLot.setLotNumber(lpcLot.getLotNumber());
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot, hpcLot));
+
+        assertEquals(QCResultProcessingService.Outcome.NO_LOT,
+                service.processQCResult(ANALYZER_ID, TEST_ID, lpcLot.getLotNumber(), null, RESULT, UNIT, TS));
+        verify(qcResultService, never()).createQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    private static TestQcTarget target(String expectedDictResultId) {
+        TestQcTarget target = new TestQcTarget();
+        target.setExpectedDictResultId(expectedDictResultId);
+        return target;
+    }
+}

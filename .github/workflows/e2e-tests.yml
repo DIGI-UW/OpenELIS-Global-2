@@ -4,8 +4,8 @@
 # so the PR-facing checkpoint can link directly to the authoritative run.
 #
 # Non-fork PRs: images already in GHCR from the build workflow (cross_run).
-# Fork PRs: fork-rebuild job builds and pushes images to GHCR (same_run),
-#   since fork pull_request triggers get a read-only GITHUB_TOKEN.
+# Fork PRs: shared-build hands off prebuilt images; this workflow publishes
+#   those images to GHCR in same_run (no second Maven/Docker build).
 name: E2E / Tests
 
 on:
@@ -33,16 +33,93 @@ jobs:
       status_sha: ${{ steps.context.outputs.status_sha }}
       build_run_id: ${{ steps.context.outputs.build_run_id }}
       artifact_source_mode: ${{ steps.context.outputs.artifact_source_mode }}
+      transfer_mode: ${{ steps.context.outputs.transfer_mode }}
       artifact_map_kind: ${{ steps.context.outputs.artifact_map_kind }}
-      include_plugin_jars: ${{ steps.context.outputs.include_plugin_jars }}
       checkpoint_context: ${{ steps.context.outputs.checkpoint_context }}
+      skip: ${{ steps.scope.outputs.skip }}
+      skip_kind: ${{ steps.scope.outputs.skip_kind }}
+      skip_description: ${{ steps.scope.outputs.skip_description }}
+      stack_top: ${{ steps.scope.outputs.stack_top }}
+      stack_number: ${{ steps.scope.outputs.stack_number }}
     steps:
-      - name: Download build context artifact
-        id: download
-        uses: actions/download-artifact@v4
+      # workflow_run always runs from the default branch, so this is the
+      # default branch's copy of the scope rules, not the pull request's.
+      - name: Checkout scope script
+        uses: actions/checkout@v7
         with:
-          name: e2e-build-context
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: Download triggering pull request
+        id: download_scope
+        if: github.event.workflow_run.event == 'pull_request'
+        uses: actions/download-artifact@v7
+        with:
+          name: e2e-scope-context
+          path: /tmp/e2e-scope-context
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Decide E2E scope
+        id: scope
+        uses: actions/github-script@v9
+        env:
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          HEAD_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        with:
+          retries: 3
+          script: |
+            const fs = require('fs');
+            const scope = require('./.github/scripts/e2e-scope.cjs');
+            let reason = null;
+            let stackTop = false;
+            let stackNumber = '';
+            if (process.env.RUN_EVENT === 'pull_request') {
+              const owner = context.repo.owner;
+              const repo = context.repo.repo;
+              let claimedNumber;
+              try {
+                claimedNumber = fs.readFileSync('/tmp/e2e-scope-context/pr_number', 'utf8');
+              } catch (error) {
+                claimedNumber = undefined;
+              }
+              const pull = await scope.resolvePullRequest({ github, owner, repo, claimedNumber,
+                headOwner: process.env.HEAD_OWNER, headBranch: process.env.HEAD_BRANCH,
+                headSha: process.env.HEAD_SHA });
+              if (pull) {
+                reason = await scope.skipReason({ github, owner, repo, pull });
+                stackTop = scope.isStackTop(pull);
+                stackNumber = stackTop ? String(pull.stack.number) : '';
+                core.info(`PR #${pull.number}: ${reason ? `E2E skipped: ${reason.description}` : 'E2E required'}${stackTop ? ` (top of stack #${stackNumber})` : ''}`);
+              } else {
+                core.info('Triggering pull request not confirmed at this head, or shared with another open pull request; running E2E.');
+              }
+            }
+            core.setOutput('skip', reason ? 'true' : 'false');
+            core.setOutput('skip_kind', reason ? reason.kind : '');
+            core.setOutput('skip_description', reason ? reason.description : '');
+            core.setOutput('stack_top', stackTop ? 'true' : 'false');
+            core.setOutput('stack_number', stackNumber);
+
+      - name: Download early build context artifact
+        id: download_context
+        uses: actions/download-artifact@v7
+        with:
+          name: e2e-build-context-core
           path: /tmp/e2e-build-context
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Download transfer-state artifact
+        id: download_transfer
+        uses: actions/download-artifact@v7
+        with:
+          name: e2e-build-transfer-state
+          path: /tmp/e2e-transfer-state
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
@@ -50,7 +127,21 @@ jobs:
       - name: Parse build context
         id: context
         run: |
-          if [ "${{ steps.download.outcome }}" != "success" ] || [ ! -d /tmp/e2e-build-context ]; then
+          if [ "${{ steps.scope.outputs.skip }}" = "true" ]; then
+            echo "E2E suites are skipped: ${{ steps.scope.outputs.skip_description }}"
+            echo "is_fork=false" >> "$GITHUB_OUTPUT"
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+            echo "checkout_ref=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            echo "status_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            echo "build_run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+            echo "artifact_source_mode=skipped" >> "$GITHUB_OUTPUT"
+            echo "transfer_mode=none" >> "$GITHUB_OUTPUT"
+            echo "artifact_map_kind=base" >> "$GITHUB_OUTPUT"
+            echo "checkpoint_context=03 Checkpoint - E2E" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "${{ steps.download_context.outcome }}" != "success" ] || [ ! -d /tmp/e2e-build-context ]; then
             echo "No build context artifact — build likely failed."
             echo "is_fork=false" >> "$GITHUB_OUTPUT"
             echo "pr_number=" >> "$GITHUB_OUTPUT"
@@ -58,14 +149,17 @@ jobs:
             echo "status_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
             echo "build_run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
             echo "artifact_source_mode=none" >> "$GITHUB_OUTPUT"
+            echo "transfer_mode=none" >> "$GITHUB_OUTPUT"
             echo "artifact_map_kind=base" >> "$GITHUB_OUTPUT"
-            echo "include_plugin_jars=true" >> "$GITHUB_OUTPUT"
             echo "checkpoint_context=03 Checkpoint - E2E" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           IS_FORK="$(cat /tmp/e2e-build-context/is_fork 2>/dev/null || echo 'false')"
-          IMAGE_TRANSFER="$(cat /tmp/e2e-build-context/image_transfer 2>/dev/null || echo 'none')"
+          IMAGE_TRANSFER="none"
+          if [ "${{ steps.download_transfer.outcome }}" = "success" ] && [ -d /tmp/e2e-transfer-state ]; then
+            IMAGE_TRANSFER="$(cat /tmp/e2e-transfer-state/image_transfer 2>/dev/null || echo 'none')"
+          fi
           PR_NUMBER="$(cat /tmp/e2e-build-context/pr_number 2>/dev/null || echo '')"
           HEAD_SHA="$(cat /tmp/e2e-build-context/head_sha 2>/dev/null || echo '')"
 
@@ -73,12 +167,17 @@ jobs:
             HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
           fi
 
-          # Fork PRs: build couldn't push to GHCR (read-only token), so
-          # fork-rebuild will build and push within this workflow (same_run).
+          # Fork PRs: expected mode is fork-handoff; privileged publish happens
+          # in this workflow (same_run) without rebuilding images.
           # Non-fork PRs: images already in GHCR from the build (cross_run).
           if [ "$IS_FORK" = "true" ]; then
-            ARTIFACT_SOURCE_MODE="same_run"
-            CHECKOUT_REF="refs/pull/${PR_NUMBER}/merge"
+            if [ "$IMAGE_TRANSFER" = "ghcr" ]; then
+              ARTIFACT_SOURCE_MODE="cross_run"
+              CHECKOUT_REF="$HEAD_SHA"
+            else
+              ARTIFACT_SOURCE_MODE="same_run"
+              CHECKOUT_REF="refs/pull/${PR_NUMBER}/merge"
+            fi
           elif [ "$IMAGE_TRANSFER" = "ghcr" ]; then
             ARTIFACT_SOURCE_MODE="cross_run"
             CHECKOUT_REF="$HEAD_SHA"
@@ -93,11 +192,11 @@ jobs:
           echo "status_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
           echo "build_run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
           echo "artifact_source_mode=$ARTIFACT_SOURCE_MODE" >> "$GITHUB_OUTPUT"
+          echo "transfer_mode=$IMAGE_TRANSFER" >> "$GITHUB_OUTPUT"
           echo "artifact_map_kind=base" >> "$GITHUB_OUTPUT"
-          echo "include_plugin_jars=true" >> "$GITHUB_OUTPUT"
           echo "checkpoint_context=03 Checkpoint - E2E" >> "$GITHUB_OUTPUT"
 
-          echo "Build context: is_fork=$IS_FORK artifact_source_mode=$ARTIFACT_SOURCE_MODE pr=#$PR_NUMBER checkout_ref=$CHECKOUT_REF"
+          echo "Build context: is_fork=$IS_FORK transfer_mode=$IMAGE_TRANSFER artifact_source_mode=$ARTIFACT_SOURCE_MODE pr=#$PR_NUMBER checkout_ref=$CHECKOUT_REF"
 
   set-pending-status:
     name: Set Pending Status
@@ -108,14 +207,16 @@ jobs:
       statuses: write
     steps:
       - name: Post checkpoint status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
+          retries: 3
           script: |
             const sha = '${{ needs.setup.outputs.status_sha }}';
-            const contextName = '03 Checkpoint - E2E';
+            const contexts = ['03 Checkpoint - E2E',
+              '03 Checkpoint - E2E / build-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}'];
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
-            await github.rest.repos.createCommitStatus({
+            const outcomes = await Promise.allSettled(contexts.map(contextName => github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha,
@@ -123,126 +224,108 @@ jobs:
               context: contextName,
               description: 'Playwright, Cypress, and analyzer-harness suites are running...',
               target_url: runUrl
-            });
+            })));
+            const failures = outcomes.filter(outcome => outcome.status === 'rejected');
+            if (failures.length) throw new AggregateError(failures.map(outcome => outcome.reason), 'Could not post all E2E statuses');
 
-  # ─── Fork Rebuild ──────────────────────────────────────────────────────────
-  # Fork PRs get a read-only GITHUB_TOKEN on pull_request, so the build
-  # workflow can't push images to GHCR. This job rebuilds from source within
-  # the workflow_run context (which has the repo's write token) and pushes to
-  # GHCR so the authoritative executor can pull them.
-  fork-rebuild:
-    name: Shared Build (Fork Rebuild)
+  # ─── Fork Image Publish (No Rebuild) ───────────────────────────────────────
+  # Fork PR builds hand off prebuilt Docker images as an artifact. This job
+  # publishes those handed-off images to GHCR in privileged workflow_run
+  # context, avoiding a second Maven/Docker build.
+  fork-image-publish:
+    name: Shared Build (Fork Image Publish)
     needs: setup
-    if: needs.setup.outputs.is_fork == 'true' && needs.setup.outputs.artifact_source_mode == 'same_run'
+    if: needs.setup.outputs.is_fork == 'true' && needs.setup.outputs.transfer_mode == 'fork-handoff'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       packages: write
+      actions: read
     steps:
-      - name: Checkout PR merge ref
-        uses: actions/checkout@v4
+      - name: Download fork image handoff from build workflow
+        uses: actions/download-artifact@v7
         with:
-          ref: ${{ needs.setup.outputs.checkout_ref }}
-          submodules: recursive
-          persist-credentials: false
-
-      - name: Set up Java 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        run: npm ci
-        working-directory: frontend
-
-      - name: Prepare .env
-        run: cp .env.example .env
-
-      - name: Build OpenELIS artifacts for plugin compilation
-        run: |
-          cd dataexport/dataexport-core
-          mvn clean install -DskipTests -Dmaven.test.skip=true
-          cd ..
-          mvn clean install -DskipTests -Dmaven.test.skip=true
-          cd ..
-          # NOTE: Do NOT add -Dmaven.test.skip=true here — the root build must
-          # compile test classes so maven-jar-plugin produces the test-jar
-          # (openelisglobal:jar:tests) required by GenericASTM/File/HL7 plugins.
-          mvn clean install -DskipTests -Dspotless.check.skip=true -Dfix.version=3
-
-      - name: Build plugins
-        run: mvn clean install -DskipTests -Dmaven.test.skip=true
-        working-directory: plugins
-
-      - name: Stage plugin jars for runtime loading
-        run: |
-          rm -rf volume/plugins/*
-          find plugins/analyzers -type f -path "*/target/*.jar" \
-            ! -name "*sources.jar" ! -name "*javadoc.jar" \
-            -exec cp {} volume/plugins/ \;
-          ls -lah volume/plugins
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build all compose images (cached, read-only)
-        uses: docker/bake-action@v5
-        with:
-          files: |
-            build.docker-compose.yml
-            .github/ci/ci.analyzer-harness.yml
-          load: true
-          set: |
-            *.cache-from=type=gha,scope=e2e-shared
+          name: e2e-image-handoff
+          path: /tmp/e2e-image-handoff
+          run-id: ${{ needs.setup.outputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Tag and push compose images to GHCR
+      - name: Load handed-off Docker images
         run: |
-          TAG="sha-${{ needs.setup.outputs.status_sha }}"
+          if [ ! -s /tmp/e2e-image-handoff/e2e-images.tar.gz ]; then
+            echo "::error::Fork image handoff archive missing."
+            exit 1
+          fi
+          gunzip -c /tmp/e2e-image-handoff/e2e-images.tar.gz | docker load
+
+      - name: Publish handed-off compose images to GHCR
+        run: |
+          TAG="sha-${{ needs.setup.outputs.status_sha }}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           export TAG OWNER_LOWER
-          docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/e2e-images-base.txt
-          docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/e2e-images-full.txt
+
+          if [ ! -s /tmp/e2e-image-handoff/e2e-images-full.txt ]; then
+            echo "::error::Fork handoff image list missing."
+            exit 1
+          fi
+          if [ ! -s /tmp/e2e-image-handoff/e2e-images-base.txt ]; then
+            echo "::error::Fork handoff base image list missing."
+            exit 1
+          fi
+
+          # Per-image retry handles GHCR's transient `unknown blob` eventual-
+          # consistency errors. xargs output goes to a temp file so xargs's
+          # exit code can be observed directly — piping to `sort` masks it
+          # under the default Actions shell (`bash -e`, no pipefail).
+          : > /tmp/e2e-image-map.raw
+          PUSH_FAILED=false
           xargs -r -I{} -P4 bash -lc '
             image="$1"
             [ -z "$image" ] && exit 0
-            if docker image inspect "$image" >/dev/null 2>&1; then
-              image_repo="$(echo "$image" | tr "[:upper:]" "[:lower:]" | sed "s|[^a-z0-9._/-]|-|g")"
-              ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/${image_repo}:${TAG}"
-              docker tag "$image" "$ghcr_image"
-              push_err=$(docker push "$ghcr_image" 2>&1) && {
-                printf "%s|%s\n" "$image" "$ghcr_image"
-              } || {
-                echo "PUSH FAILED ($image): $push_err" >&2
-                exit 1
-              }
-            else
+            if ! docker image inspect "$image" >/dev/null 2>&1; then
               echo "WARN: skipping $image (not built locally)" >&2
+              exit 0
             fi
-          ' _ {} < /tmp/e2e-images-full.txt | sort -u > /tmp/e2e-image-map.txt
+            image_repo="$(echo "$image" | tr "[:upper:]" "[:lower:]" | sed "s|[^a-z0-9._/-]|-|g")"
+            ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/${image_repo}:${TAG}"
+            docker tag "$image" "$ghcr_image"
+            attempt=1
+            while [ $attempt -le 3 ]; do
+              if push_err=$(docker push "$ghcr_image" 2>&1); then
+                digest="$(printf "%s\n" "$push_err" | sed -nE "s/.*digest: (sha256:[a-f0-9]{64}).*/\\1/p" | tail -1)"
+                if [ -z "$digest" ]; then
+                  echo "PUSH did not report an immutable digest for $image" >&2
+                  exit 1
+                fi
+                printf "%s|%s@%s\n" "$image" "${ghcr_image%:*}" "$digest"
+                exit 0
+              fi
+              echo "PUSH attempt $attempt failed ($image): $push_err" >&2
+              attempt=$((attempt + 1))
+              [ $attempt -le 3 ] && sleep $((attempt * 5))
+            done
+            echo "PUSH FAILED after 3 attempts ($image)" >&2
+            exit 1
+          ' _ {} < /tmp/e2e-image-handoff/e2e-images-full.txt > /tmp/e2e-image-map.raw || PUSH_FAILED=true
 
-          awk -F'|' 'NR==FNR {base[$1]=1; next} ($1 in base) {print}' \
-            /tmp/e2e-images-base.txt /tmp/e2e-image-map.txt > /tmp/e2e-image-map-base.txt
+          sort -u /tmp/e2e-image-map.raw > /tmp/e2e-image-map.txt
 
-          if [ ! -s /tmp/e2e-image-map.txt ]; then
-            echo "::error::No images were pushed to GHCR"
+          if [ "$PUSH_FAILED" = "true" ] || [ ! -s /tmp/e2e-image-map.txt ]; then
+            echo "::error::GHCR push incomplete — see PUSH FAILED lines above"
+            echo "Map contents so far:"
+            cat /tmp/e2e-image-map.txt || true
             exit 1
           fi
+
+          awk -F'|' 'NR==FNR {base[$1]=1; next} ($1 in base) {print}' \
+            /tmp/e2e-image-handoff/e2e-images-base.txt /tmp/e2e-image-map.txt > /tmp/e2e-image-map-base.txt
+
           if [ ! -s /tmp/e2e-image-map-base.txt ]; then
             echo "WARN: no base compose image mappings found; falling back to full image map."
             cp /tmp/e2e-image-map.txt /tmp/e2e-image-map-base.txt
@@ -250,16 +333,8 @@ jobs:
           echo "Pushed image mappings:"
           cat /tmp/e2e-image-map.txt
 
-      - name: Upload plugin jars artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-plugin-jars
-          path: volume/plugins/*.jar
-          if-no-files-found: error
-          retention-days: 1
-
       - name: Upload Docker image map artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-image-map
           path: /tmp/e2e-image-map.txt
@@ -267,7 +342,7 @@ jobs:
           retention-days: 1
 
       - name: Upload base Docker image map artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map-base.txt
@@ -277,13 +352,25 @@ jobs:
   # ─── Authoritative Executor ────────────────────────────────────────────────
   # Runs for both fork and non-fork PRs, using the shared reusable workflow.
   # Non-fork: pulls pre-built images from GHCR (cross_run from build workflow).
-  # Fork: pulls images from GHCR (same_run from fork-rebuild above).
+  # Fork: pulls images from GHCR (same_run from fork image publish above).
   authoritative-executor:
     name: Authoritative E2E Executor
-    needs: [setup, fork-rebuild]
+    needs: [setup, fork-image-publish]
+    # always() overrides GitHub's default behavior of skipping jobs when a
+    # dependency (fork-image-publish) is skipped. Without it, non-fork PRs
+    # never reach the executor because fork-image-publish is skipped for them.
     if: >-
-      (needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode == 'cross_run')
-      || (needs.setup.outputs.is_fork == 'true' && needs.fork-rebuild.result == 'success')
+      always()
+      && (
+        (needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode == 'cross_run')
+        || (
+          needs.setup.outputs.is_fork == 'true'
+          && (
+            needs.setup.outputs.artifact_source_mode == 'cross_run'
+            || needs.fork-image-publish.result == 'success'
+          )
+        )
+      )
     uses: ./.github/workflows/e2e-authoritative-reusable.yml
     permissions:
       contents: read
@@ -297,7 +384,6 @@ jobs:
       build_run_id: ${{ needs.setup.outputs.build_run_id }}
       artifact_source_mode: ${{ needs.setup.outputs.artifact_source_mode }}
       artifact_map_kind: ${{ needs.setup.outputs.artifact_map_kind }}
-      include_plugin_jars: ${{ needs.setup.outputs.include_plugin_jars }}
       is_fork: ${{ needs.setup.outputs.is_fork }}
       pr_number: ${{ needs.setup.outputs.pr_number }}
       checkpoint_context: ${{ needs.setup.outputs.checkpoint_context }}
@@ -308,7 +394,7 @@ jobs:
   missing-image-transfer:
     name: Missing Image Transfer
     needs: setup
-    if: needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode != 'cross_run'
+    if: needs.setup.result == 'success' && needs.setup.outputs.skip != 'true' && needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode != 'cross_run'
     runs-on: ubuntu-latest
     steps:
       - name: Report missing transfer
@@ -323,7 +409,7 @@ jobs:
     needs:
       [
         setup,
-        fork-rebuild,
+        fork-image-publish,
         authoritative-executor,
         missing-image-transfer,
       ]
@@ -332,15 +418,25 @@ jobs:
       contents: read
     steps:
       - name: Enforce E2E results
+        env:
+          SKIP_DESCRIPTION: ${{ needs.setup.outputs.skip_description }}
         run: |
           IS_FORK="${{ needs.setup.outputs.is_fork }}"
           ARTIFACT_MODE="${{ needs.setup.outputs.artifact_source_mode }}"
 
+          if [[ "${{ needs.setup.result }}" == "success" && "${{ needs.setup.outputs.skip }}" == "true" ]]; then
+            echo "E2E gate passed, suites skipped: $SKIP_DESCRIPTION"
+            exit 0
+          fi
+
           if [[ "$IS_FORK" == "true" ]]; then
-            # Fork path: fork-rebuild must succeed, then executor must succeed
-            if [[ "${{ needs.fork-rebuild.result }}" != "success" ]]; then
-              echo "Fork rebuild failed: ${{ needs.fork-rebuild.result }}"
-              exit 1
+            # Fork path: when same_run publication is required, fork image publish
+            # must succeed before the executor can proceed.
+            if [[ "$ARTIFACT_MODE" == "same_run" ]]; then
+              if [[ "${{ needs.fork-image-publish.result }}" != "success" ]]; then
+                echo "Fork image publish failed: ${{ needs.fork-image-publish.result }}"
+                exit 1
+              fi
             fi
             if [[ "${{ needs.authoritative-executor.result }}" != "success" ]]; then
               echo "Authoritative executor failed: ${{ needs.authoritative-executor.result }}"
@@ -362,24 +458,55 @@ jobs:
   # ─── Report ────────────────────────────────────────────────────────────────
   report-status:
     name: Report Status
-    if: always() && needs.setup.outputs.status_sha != '' && needs.e2e-gate.result != 'cancelled'
+    if: always() && needs.setup.outputs.status_sha != ''
     needs: [setup, set-pending-status, e2e-gate]
     runs-on: ubuntu-latest
     permissions:
+      contents: read
+      pull-requests: read
       statuses: write
     steps:
-      - name: Update checkpoint status
-        uses: actions/github-script@v7
+      # The default branch's copy, as in E2E Context.
+      - name: Checkout scope script
+        uses: actions/checkout@v7
         with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Update checkpoint status
+        uses: actions/github-script@v9
+        with:
+          retries: 3
           script: |
+            const scope = require('./.github/scripts/e2e-scope.cjs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
             const sha = '${{ needs.setup.outputs.status_sha }}';
-            const contextName = '03 Checkpoint - E2E';
+            const contexts = ['03 Checkpoint - E2E',
+              '03 Checkpoint - E2E / build-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}'];
             const gateResult = '${{ needs.e2e-gate.result }}';
             const artifactSourceMode = '${{ needs.setup.outputs.artifact_source_mode }}';
+            const skipKind = '${{ needs.setup.outputs.skip_kind }}';
+            const skipDescription = ${{ toJSON(needs.setup.outputs.skip_description) }};
             const isFork = '${{ needs.setup.outputs.is_fork }}' === 'true';
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const stackTop = '${{ needs.setup.outputs.stack_top }}' === 'true';
+            const stackNumber = Number('${{ needs.setup.outputs.stack_number }}');
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
             let state, description;
-            if (artifactSourceMode === 'none' && !isFork) {
+            // A pull request below the top of its stack keeps the required
+            // context pending until the top's run reports; its own build
+            // context is complete.
+            let buildState;
+            if (gateResult === 'cancelled') {
+              state = 'error';
+              description = 'E2E run was cancelled';
+            } else if (artifactSourceMode === 'skipped' && gateResult === 'success' && skipKind === 'stack') {
+              state = 'pending';
+              buildState = 'success';
+              description = skipDescription;
+            } else if (artifactSourceMode === 'skipped' && gateResult === 'success') {
+              state = 'success';
+              description = skipDescription;
+            } else if (artifactSourceMode === 'none' && !isFork) {
               state = 'failure';
               description = 'E2E build failed - no Docker images were produced';
             } else if (gateResult === 'success') {
@@ -389,12 +516,34 @@ jobs:
               state = 'failure';
               description = 'One or more E2E suites failed';
             }
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha,
-              state,
+            const post = (targetSha, contextName, targetState, targetDescription) => github.rest.repos.createCommitStatus({
+              owner,
+              repo,
+              sha: targetSha,
+              state: targetState,
               context: contextName,
-              description,
+              description: targetDescription,
               target_url: runUrl
             });
+            const outcomes = await Promise.allSettled([
+              post(sha, contexts[0], state, description),
+              post(sha, contexts[1], buildState || state, description),
+            ]);
+            const failures = outcomes.filter(outcome => outcome.status === 'rejected');
+            if (failures.length) throw new AggregateError(failures.map(outcome => outcome.reason), 'Could not post all E2E statuses');
+            // The top of a stack reports for every lower pull request whose
+            // head it contains. One pushed since keeps its pending checkpoint
+            // until the stack is rebuilt.
+            if (stackTop && stackNumber) {
+              const members = await scope.stackMembers({ github, owner, repo, number: stackNumber });
+              for (const member of members) {
+                if (scope.isStackTop(member)) continue;
+                const covered = await scope.containsCommit({ github, owner, repo, sha: member.head.sha, headSha: sha });
+                if (!covered) {
+                  core.info(`PR #${member.number}: head ${member.head.sha} is not in the top's head; its checkpoint stays pending`);
+                  continue;
+                }
+                await post(member.head.sha, contexts[0], state, `Top of stack #${stackNumber}: ${description}`.slice(0, 140));
+                core.info(`PR #${member.number}: posted ${state}`);
+              }
+            }

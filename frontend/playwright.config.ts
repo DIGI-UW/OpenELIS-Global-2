@@ -1,10 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
-import * as path from "path";
+import * as dotenv from "dotenv";
 
 // Load .env from repo root — provides TEST_USER, TEST_PASS, BASE_URL, etc.
 // No manual `set -a && . .env` needed.
-require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
-
+dotenv.config({ path: new URL("../.env", import.meta.url).pathname });
 /**
  * OpenELIS Global Playwright Configuration
  *
@@ -20,30 +19,55 @@ require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
  */
 
 // Demo story proof on the build stack (video-ready).
-const CORE_DEMO_TESTS = ["**/demo/core/**/*.spec.ts"];
+const CORE_DEMO_TESTS = [
+  "**/demo/core/**/*.spec.ts",
+  "playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts",
+];
 
-// Core foundational verification (ci-safe).
+// Core foundational verification on the build stack.
 const CORE_FOUNDATIONAL_TESTS = ["**/foundational/core/**/*.spec.ts"];
 
-// Harness demo story proof (video-ready).
-const HARNESS_DEMO_TESTS = ["**/demo/harness/**/*.spec.ts"];
+// Focused WCAG 2.1 AA qualification for stable core-app feature surfaces.
+const CORE_ACCESSIBILITY_TESTS = ["**/accessibility/core/**/*.spec.ts"];
 
-// Harness foundational verification (ci-safe).
-const HARNESS_FOUNDATIONAL_TESTS = ["**/foundational/harness/**/*.spec.ts"];
+// Explicit disposable-stack performance qualification for core-app surfaces.
+const CORE_PERFORMANCE_TESTS = ["**/performance/core/**/*.spec.ts"];
+
+// Explicit operator-run verification against a deployed review target.
+const CORE_LIVE_UAT_TESTS = ["**/manual-only/core/**/*.spec.ts"];
+
+// Foundational stories verify the catalog and shared mapping surfaces used by
+// setup. The demo project owns the guided connection and assembled result
+// stories. Integrated result/transport stories use API prerequisites in the
+// foundational lane. Video records those same registered UI and integrated stories.
+const HARNESS_FOUNDATIONAL_TESTS = [
+  "**/foundational/harness/**/*.spec.ts",
+  "**/demo/harness/ogc-1054-m1-analyzer-types.spec.ts",
+];
+const HARNESS_DEMO_TESTS = ["**/demo/harness/ogc-1054-m3-guided-setup.spec.ts"];
+// The recorded viewport is the video frame, so nothing is scaled or padded.
+const HARNESS_VIDEO_FRAME = { width: 1280, height: 800 };
 
 // Manual-only harness coverage (real hardware or operator-managed infra).
 const HARNESS_MANUAL_ONLY_TESTS = [
   "**/manual-only/harness/analyzer-test-connection-manual-only.spec.ts",
 ];
 
+const HARNESS_HANG_GUARD = 10 * 60_000;
+
 export default defineConfig({
   testDir: "./playwright/tests",
 
   // Parallelization
   fullyParallel: true,
-  workers: process.env.CI ? 1 : undefined,
-  // Shard tests in CI via CLI: --shard=current/total (see e.g. analyzer-e2e workflow)
-  // CI uses 1 worker to avoid OOM browser crashes on GH Actions runners (7GB RAM)
+  // Single worker EVERYWHERE, not just CI: all projects share one webapp + one
+  // database, so parallel workers interleave writes into shared state that CI
+  // (which has always run 1 worker per shard) can never reproduce — local
+  // multi-worker runs were a parity gap that produced local-only "mystery"
+  // failures. Parallelism comes from CI sharding (--shard=current/total), each
+  // shard owning its own full stack. CI also needs 1 worker to avoid OOM
+  // browser crashes on GH Actions runners (7GB RAM).
+  workers: 1,
 
   // CI safeguards
   forbidOnly: !!process.env.CI,
@@ -61,6 +85,8 @@ export default defineConfig({
   use: {
     baseURL: process.env.BASE_URL || "https://localhost",
     ignoreHTTPSErrors: true,
+    // Story assertions use the source English copy, not regional translations.
+    locale: "en",
 
     // Evidence collection
     trace: "retain-on-failure",
@@ -68,12 +94,17 @@ export default defineConfig({
     video: process.env.PLAYWRIGHT_VIDEO === "on" ? "on" : "off",
 
     // CI stability: prevent Chromium renderer crashes ("Target page closed")
-    // --disable-dev-shm-usage: use /tmp instead of /dev/shm (avoids shared memory exhaustion)
-    // --disable-gpu: skip GPU compositing in headless CI (no GPU available)
     ...(process.env.CI && {
       launchOptions: {
-        args: ["--disable-dev-shm-usage", "--disable-gpu"],
+        args: [
+          "--disable-dev-shm-usage", // use /tmp instead of /dev/shm
+          "--disable-gpu", // skip GPU compositing (no GPU in CI)
+          "--disable-extensions", // no extension overhead
+          "--no-first-run", // skip first-run setup
+          "--js-flags=--max-old-space-size=1024", // cap V8 heap (Carbon doesn't tree-shake)
+        ],
       },
+      serviceWorkers: "block", // block SW registration — self-signed certs cause constant SSL errors
     }),
   },
 
@@ -81,7 +112,14 @@ export default defineConfig({
     // Auth setup — runs once, saves session state
     {
       name: "setup",
-      testMatch: /.*\.setup\.ts/,
+      testMatch: "**/auth.setup.ts",
+    },
+
+    // EQA participant credentials belong only to core projects that use them.
+    {
+      name: "participant-setup",
+      testMatch: "**/participant-auth.setup.ts",
+      dependencies: ["setup"],
     },
 
     // Core foundational verification — runs on CI build stack.
@@ -91,6 +129,45 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
+        contextOptions: { reducedMotion: "reduce" },
+        serviceWorkers: "block",
+      },
+      dependencies: ["setup", "participant-setup"],
+    },
+
+    {
+      name: "core-accessibility",
+      testMatch: CORE_ACCESSIBILITY_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+        contextOptions: { reducedMotion: "reduce" },
+        serviceWorkers: "block",
+      },
+      dependencies: ["setup"],
+    },
+
+    {
+      name: "core-accessibility-mobile",
+      testMatch: CORE_ACCESSIBILITY_TESTS,
+      testIgnore: "**/*-keyboard.spec.ts",
+      use: {
+        ...devices["Pixel 5"],
+        storageState: "playwright/.auth/user.json",
+        contextOptions: { reducedMotion: "reduce" },
+        serviceWorkers: "block",
+      },
+      dependencies: ["setup"],
+    },
+
+    {
+      name: "core-performance",
+      testMatch: CORE_PERFORMANCE_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+        contextOptions: { reducedMotion: "reduce" },
+        serviceWorkers: "block",
       },
       dependencies: ["setup"],
     },
@@ -103,7 +180,7 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
       },
-      dependencies: ["setup"],
+      dependencies: ["setup", "participant-setup"],
     },
 
     // Core demo video — same core demos with slowMo and video (local only)
@@ -118,12 +195,37 @@ export default defineConfig({
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },
       },
+      dependencies: ["setup", "participant-setup"],
+    },
+
+    {
+      name: "core-live-uat",
+      testMatch: CORE_LIVE_UAT_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
       dependencies: ["setup"],
     },
 
-    // Analyzer-stack demo story proof (CI: reusable harness workflow only).
+    // Analyzer-stack verification (CI: reusable harness workflow only).
+    // Harness stories wait on real services, so their time is reported, not budgeted: the
+    // test timeout only ends a test that hangs, with its trace.
+    {
+      name: "harness-foundational",
+      timeout: HARNESS_HANG_GUARD,
+      expect: { timeout: 0 },
+      testMatch: HARNESS_FOUNDATIONAL_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
     {
       name: "harness-demo",
+      timeout: HARNESS_HANG_GUARD,
+      expect: { timeout: 0 },
       testMatch: HARNESS_DEMO_TESTS,
       use: {
         ...devices["Desktop Chrome"],
@@ -133,25 +235,21 @@ export default defineConfig({
     },
     {
       name: "harness-demo-video",
-      testMatch: HARNESS_DEMO_TESTS,
+      timeout: HARNESS_HANG_GUARD,
+      expect: { timeout: 0 },
+      // Every harness story tagged @evidence, and nothing else; the tag also
+      // names the story's lane and stage (see scripts/pw-evidence-videos.mjs).
+      testMatch: [...HARNESS_FOUNDATIONAL_TESTS, ...HARNESS_DEMO_TESTS],
+      grep: /@evidence/,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
-        video: "on",
+        trace: "on",
+        viewport: HARNESS_VIDEO_FRAME,
+        video: { mode: "on", size: HARNESS_VIDEO_FRAME },
         launchOptions: {
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },
-      },
-      dependencies: ["setup"],
-    },
-
-    // Analyzer-stack foundational verification (non-demo, ci-safe).
-    {
-      name: "harness-foundational",
-      testMatch: HARNESS_FOUNDATIONAL_TESTS,
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
       },
       dependencies: ["setup"],
     },

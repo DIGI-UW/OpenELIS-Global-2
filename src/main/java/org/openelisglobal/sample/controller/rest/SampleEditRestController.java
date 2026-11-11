@@ -3,27 +3,26 @@ package org.openelisglobal.sample.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
-import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.provider.validation.IAccessionNumberValidator.ValidationResults;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleOrderService;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -31,14 +30,16 @@ import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
+import org.openelisglobal.sample.action.util.SampleUtil;
 import org.openelisglobal.sample.bean.SampleEditItem;
 import org.openelisglobal.sample.controller.BaseSampleEntryController;
 import org.openelisglobal.sample.form.SampleEditForm;
 import org.openelisglobal.sample.form.SampleEditForm.SampleEdit;
 import org.openelisglobal.sample.service.SampleEditService;
+import org.openelisglobal.sample.service.SampleLabUnitScopeService;
 import org.openelisglobal.sample.service.SampleService;
-import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.validator.SampleEditFormValidator;
+import org.openelisglobal.sample.validator.SampleOrderPartiesValidator;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -52,13 +53,14 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
-import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.Errors;
+import org.springframework.validation.FieldError;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -75,22 +77,20 @@ public class SampleEditRestController extends BaseSampleEntryController {
     @Autowired
     private FhirTransformService fhirTransformService;
 
+    @Autowired
+    private SampleUtil sampleUtil;
+
     // private ObservationHistory paymentObservation = null;
     private static final SampleEditItemComparator testComparator = new SampleEditItemComparator();
-    private static final Set<Integer> excludedAnalysisStatusList;
-    private static final Set<Integer> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
-    private static final Collection<String> ABLE_TO_CANCEL_ROLE_NAMES = new ArrayList<>();
+    private static final Set<String> excludedAnalysisStatusList;
+    private static final Set<String> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
 
     static {
         excludedAnalysisStatusList = new HashSet<>();
-        excludedAnalysisStatusList.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
+        excludedAnalysisStatusList
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
 
-        ENTERED_STATUS_SAMPLE_LIST
-                .add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered)));
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Validator");
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Validation");
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Biologist");
+        ENTERED_STATUS_SAMPLE_LIST.add(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
     }
 
     @Autowired
@@ -110,11 +110,15 @@ public class SampleEditRestController extends BaseSampleEntryController {
     @Autowired
     private SampleHumanService sampleHumanService;
     @Autowired
-    private UserRoleService userRoleService;
+    private org.openelisglobal.sample.service.TestCancelPermission testCancelPermission;
     @Autowired
     private SampleEditService sampleEditService;
     @Autowired
     private UserService userService;
+    @Autowired
+    private StaleSaveGuard staleSaveGuard;
+    @Autowired
+    private SampleLabUnitScopeService sampleLabUnitScopeService;
 
     @GetMapping(value = "SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -127,8 +131,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
 
         request.getSession().setAttribute(SAVE_DISABLED, TRUE);
 
-        boolean allowedToCancelResults = userModuleService.isUserAdmin(request)
-                || userRoleService.userInRole(getSysUserId(request), ABLE_TO_CANCEL_ROLE_NAMES);
+        boolean allowedToCancelResults = testCancelPermission.mayCancelStartedTests(request, getSysUserId(request));
         boolean isEditable = "readwrite".equals(request.getSession().getAttribute(SAMPLE_EDIT_WRITABLE))
                 || "readwrite".equals(request.getParameter("type"));
         form.setIsEditable(isEditable);
@@ -142,7 +145,8 @@ public class SampleEditRestController extends BaseSampleEntryController {
 
             Sample sample = getSample(accessionNumber);
 
-            if (sample != null && !GenericValidator.isBlankOrNull(sample.getId())) {
+            if (sample != null && !GenericValidator.isBlankOrNull(sample.getId())
+                    && sampleLabUnitScopeService.isVisible(getSysUserId(request), sample)) {
 
                 List<SampleItem> sampleItemList = getSampleItems(sample);
                 setPatientInfo(form, sample);
@@ -152,6 +156,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
                 setAddableTestInfo(form, sampleItemList, accessionNumber);
                 setAddableSampleTypes(form, request);
                 setSampleOrderInfo(form, sample);
+                form.setSampleLastupdated(StaleSaveGuard.token(sample.getLastupdated()));
                 form.setAbleToCancelResults(hasResults(currentTestList, allowedToCancelResults));
                 String maxAccessionNumber;
                 if (sampleItemList.size() > 0) {
@@ -200,7 +205,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
         }
 
         Sample sample = getSample(accessionNumber);
-        if (sample == null) {
+        if (sample == null || !sampleLabUnitScopeService.isVisible(getSysUserId(request), sample)) {
             return ResponseEntity.notFound().build();
         }
 
@@ -214,37 +219,49 @@ public class SampleEditRestController extends BaseSampleEntryController {
 
     @PostMapping(value = "SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public void saveSampleEdit(HttpServletRequest request,
+    public ResponseEntity<?> saveSampleEdit(HttpServletRequest request,
             @Validated(SampleEdit.class) @RequestBody SampleEditForm form, BindingResult result)
             throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
+        Sample stored = getSample(form.getAccessionNumber());
+        if (stored != null && !sampleLabUnitScopeService.isVisible(getSysUserId(request), stored)) {
+            return ResponseEntity.notFound().build();
+        }
+        if (stored != null && StaleSaveGuard.isStale(form.getSampleLastupdated(), stored.getLastupdated())) {
+            return staleSaveGuard.conflict("error.order.staleSave", "SAMPLE", stored.getId(), stored.getLastupdated());
+        }
         formValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);
+            List<FieldError> partyErrors = SampleOrderPartiesValidator.partyErrors(result);
+            if (!partyErrors.isEmpty()) {
+                BeanPropertyBindingResult refused = new BeanPropertyBindingResult(form, "form");
+                partyErrors.forEach(refused::addError);
+                return ResponseEntity.badRequest().body(
+                        SamplePatientEntryRestController.buildErrorBody(refused, "Validation failed", null, false));
+            }
         }
-        boolean sampleChanged = accessionNumberChanged(form);
+        boolean sampleChanged = sampleUtil.accessionNumberChanged(form);
         Sample updatedSample = null;
 
         if (sampleChanged) {
-            validateNewAccessionNumber(form.getNewAccessionNumber(), result);
+            sampleUtil.validateNewAccessionNumber(form.getNewAccessionNumber(), result);
             if (result.hasErrors()) {
                 saveErrors(result);
             } else {
                 // updatedSample = updateAccessionNumberInSample(form);
             }
-            updatedSample = updateAccessionNumberInSample(form);
+            updatedSample = sampleUtil.updateAccessionNumberInSample(form, ControllerUtills.getSysUserId(request));
         }
 
         try {
             sampleEditService.editSample(form, request, updatedSample, sampleChanged, getSysUserId(request));
-
         } catch (LIMSRuntimeException e) {
-            if (e.getCause() instanceof StaleObjectStateException) {
-                result.reject("errors.OptimisticLockException", "errors.OptimisticLockException");
-            } else {
-                LogEvent.logDebug(e);
-                result.reject("errors.UpdateException", "errors.UpdateException");
-            }
-            saveErrors(result);
+            // Surface the actual reason (e.g. "Position B12 is already occupied") instead
+            // of letting it fall through to the global advice's "Check server logs".
+            LogEvent.logDebug(e);
+            String message = e.getMessage() != null && !e.getMessage().isBlank() ? e.getMessage()
+                    : "Failed to save sample edit";
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of("message", message));
         }
 
         try {
@@ -252,6 +269,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
         } catch (Exception e) {
             LogEvent.logError(e);
         }
+        return ResponseEntity.ok().build();
     }
 
     @Override
@@ -309,6 +327,9 @@ public class SampleEditRestController extends BaseSampleEntryController {
             throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
 
         Patient patient = sampleHumanService.getPatientForSample(sample);
+        if (patient == null) {
+            return;
+        }
         PatientService patientPatientService = SpringContext.getBean(PatientService.class);
         PersonService personService = SpringContext.getBean(PersonService.class);
         personService.getData(patient.getPerson());
@@ -317,6 +338,8 @@ public class SampleEditRestController extends BaseSampleEntryController {
         form.setDob(patientPatientService.getEnteredDOB(patient));
         form.setGender(patientPatientService.getGender(patient));
         form.setNationalId(patientPatientService.getNationalId(patient));
+        form.setPatientId(patientPatientService.getPatientId(patient));
+        form.setSubjectNumber(patientPatientService.getSubjectNumber(patient));
     }
 
     private List<SampleEditItem> getCurrentTestInfo(List<SampleItem> sampleItemList, String accessionNumber,
@@ -399,16 +422,30 @@ public class SampleEditRestController extends BaseSampleEntryController {
         form.setSampleTypes(userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION));
     }
 
+    /**
+     * The tests the sample item can still take: the sample type's active orderable
+     * tests that are not already live on the item (a cancelled one can be ordered
+     * again). Each carries the sample type so the screen can offer its panels.
+     */
     private void addPossibleTestsToList(SampleItem sampleItem, List<SampleEditItem> possibleTestList,
             String accessionNumber) {
 
         TypeOfSample typeOfSample = typeOfSampleService.get(sampleItem.getTypeOfSampleId());
+
+        Set<String> liveTestIds = new HashSet<>();
+        for (Analysis analysis : analysisService.getAnalysesBySampleItemsExcludingByStatusIds(sampleItem,
+                excludedAnalysisStatusList)) {
+            liveTestIds.add(analysis.getTest().getId());
+        }
 
         List<TypeOfSampleTest> typeOfSampleTestList = typeOfSampleTestService
                 .getTypeOfSampleTestsForSampleType(typeOfSample.getId());
         List<SampleEditItem> typeOfTestSampleItemList = new ArrayList<>();
 
         for (TypeOfSampleTest typeOfSampleTest : typeOfSampleTestList) {
+            if (liveTestIds.contains(typeOfSampleTest.getTestId())) {
+                continue;
+            }
             SampleEditItem sampleEditItem = new SampleEditItem();
 
             sampleEditItem.setTestId(typeOfSampleTest.getTestId());
@@ -416,6 +453,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
             if ("Y".equals(test.getIsActive()) && test.getOrderable()) {
                 sampleEditItem.setTestName(TestServiceImpl.getUserLocalizedTestName(test));
                 sampleEditItem.setSampleItemId(sampleItem.getId());
+                sampleEditItem.setSampleTypeId(typeOfSample.getId());
                 sampleEditItem.setSortOrder(test.getSortOrder());
                 typeOfTestSampleItemList.add(sampleEditItem);
             }
@@ -429,37 +467,6 @@ public class SampleEditRestController extends BaseSampleEntryController {
 
             possibleTestList.addAll(typeOfTestSampleItemList);
         }
-    }
-
-    private Errors validateNewAccessionNumber(String accessionNumber, Errors errors) {
-        ValidationResults results = AccessionNumberUtil.correctFormat(accessionNumber, false);
-
-        if (results != ValidationResults.SUCCESS) {
-            errors.reject("sample.entry.invalid.accession.number.format",
-                    "sample.entry.invalid.accession.number.format");
-        } else if (AccessionNumberUtil.isUsed(accessionNumber)) {
-            errors.reject("sample.entry.invalid.accession.number.used", "sample.entry.invalid.accession.number.used");
-        }
-
-        return errors;
-    }
-
-    private Sample updateAccessionNumberInSample(SampleEditForm form) {
-        Sample sample = sampleService.getSampleByAccessionNumber(form.getAccessionNumber());
-
-        if (sample != null) {
-            sample.setAccessionNumber(form.getNewAccessionNumber());
-            sample.setSysUserId(getSysUserId(request));
-        }
-
-        return sample;
-    }
-
-    private boolean accessionNumberChanged(SampleEditForm form) {
-        String newAccessionNumber = form.getNewAccessionNumber();
-
-        return !GenericValidator.isBlankOrNull(newAccessionNumber)
-                && !newAccessionNumber.equals(form.getAccessionNumber());
     }
 
     private static class SampleEditItemComparator implements Comparator<SampleEditItem> {

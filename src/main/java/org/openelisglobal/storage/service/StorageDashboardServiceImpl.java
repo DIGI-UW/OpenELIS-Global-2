@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.storage.valueholder.StorageBox;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
@@ -54,7 +55,10 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
             }
 
             // Status filtering: Support filtering by any status ID from dropdown
-            // Frontend can send "active", "disposed", or any actual status ID
+            // Frontend can send "active", "disposed", or any actual status ID.
+            // The map's "status" field carries the raw DB status ID here; the
+            // REST controller translates it to the spec enum ("active"|"disposed")
+            // before responding to the client.
             boolean matchesStatus = true;
             if (status != null && !status.isEmpty()) {
                 String statusFilter = status.trim();
@@ -372,6 +376,11 @@ public class StorageDashboardServiceImpl implements StorageDashboardService {
         List<StorageRack> activeRacks = storageLocationService.getAllRacks().stream()
                 .filter(rack -> Boolean.TRUE.equals(rack.getActive())).collect(Collectors.toList());
         counts.put("racks", activeRacks.size());
+
+        // The dashboard shows one tile per level, boxes included.
+        List<StorageBox> activeBoxes = storageLocationService.getAllBoxes().stream()
+                .filter(box -> Boolean.TRUE.equals(box.getActive())).collect(Collectors.toList());
+        counts.put("boxes", activeBoxes.size());
 
         return counts;
     }

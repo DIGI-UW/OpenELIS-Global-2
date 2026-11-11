@@ -38,8 +38,7 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
         try {
             String hql = "FROM BoxSampleItem bsi WHERE bsi.sampleItem.id = :sampleItemId";
             Query<BoxSampleItem> query = entityManager.unwrap(Session.class).createQuery(hql, BoxSampleItem.class);
-            // Convert String to Integer for comparison with numeric database column
-            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("sampleItemId", sampleItemId);
             query.setMaxResults(1);
             List<BoxSampleItem> results = query.list();
             return results.isEmpty() ? null : results.get(0);
@@ -55,8 +54,7 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
             String hql = "FROM BoxSampleItem bsi WHERE bsi.shippingBox.id = :shippingBoxId AND bsi.sampleItem.id = :sampleItemId";
             Query<BoxSampleItem> query = entityManager.unwrap(Session.class).createQuery(hql, BoxSampleItem.class);
             query.setParameter("shippingBoxId", shippingBoxId);
-            // Convert String to Integer for comparison with numeric database column
-            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("sampleItemId", sampleItemId);
             query.setMaxResults(1);
             List<BoxSampleItem> results = query.list();
             return results.isEmpty() ? null : results.get(0);
@@ -100,8 +98,7 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
         try {
             String hql = "SELECT COUNT(*) FROM BoxSampleItem bsi WHERE bsi.sampleItem.id = :sampleItemId";
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
-            // Convert String to Integer for comparison with numeric database column
-            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("sampleItemId", sampleItemId);
             Long count = query.uniqueResult();
             return count != null && count > 0;
         } catch (Exception e) {
@@ -113,7 +110,11 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
     @Override
     public List<String> getAllAssignedSampleItemIds() {
         try {
-            String hql = "SELECT DISTINCT bsi.sampleItem.id FROM BoxSampleItem bsi";
+            // The nulls have to be filtered here, not by the caller: this list is used to
+            // exclude assigned items with NOT IN, and a null in a NOT IN is never true in
+            // SQL, so one null row would hide every unassigned sample in the site. EQA
+            // panel material is exactly such a row: it carries no sample item.
+            String hql = "SELECT DISTINCT bsi.sampleItem.id FROM BoxSampleItem bsi WHERE bsi.sampleItem IS NOT NULL";
             Query<String> query = entityManager.unwrap(Session.class).createQuery(hql, String.class);
             return query.list();
         } catch (Exception e) {

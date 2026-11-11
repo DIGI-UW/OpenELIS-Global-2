@@ -79,7 +79,7 @@ public class ResultInventoryDAOImpl extends BaseDAOImpl<ResultInventory, String>
 
             String sql = "from ResultInventory r where r.resultId = :resultId";
             Query<ResultInventory> query = entityManager.unwrap(Session.class).createQuery(sql, ResultInventory.class);
-            query.setParameter("resultId", Integer.parseInt(result.getId()));
+            query.setParameter("resultId", result.getId());
 
             resultInventories = query.list();
             return resultInventories;

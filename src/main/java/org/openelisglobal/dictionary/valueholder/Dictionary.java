@@ -14,21 +14,37 @@
 package org.openelisglobal.dictionary.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.util.Comparator;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.localization.ShippedLabels;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.springframework.context.i18n.LocaleContextHolder;
 
+@Entity
+@Table(name = "DICTIONARY")
+@DynamicUpdate
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class Dictionary extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
-
-    private String loincCode;
 
     public class ComparatorLocalizedName implements Comparator<Dictionary> {
         @Override
@@ -37,21 +53,110 @@ public class Dictionary extends BaseObject<String> {
         }
     }
 
+    @Id
+    @Column(name = "ID", precision = 10, scale = 0)
+    @GeneratedValue(generator = "dictionary_seq_gen")
+    @GenericGenerator(name = "dictionary_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "dictionary_seq"))
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
+    @Column(name = "IS_ACTIVE", length = 1)
     private String isActive;
 
+    @Column(name = "DICT_ENTRY", length = 4000)
     private String dictEntry;
 
+    @Column(name = "container_population", length = 20)
+    private String containerPopulation;
+
+    public String getContainerPopulation() {
+        return containerPopulation;
+    }
+
+    public void setContainerPopulation(String value) {
+        containerPopulation = value;
+    }
+
+    @Transient
     private String selectedDictionaryCategoryId;
 
-    private ValueHolderInterface dictionaryCategory;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "DICTIONARY_CATEGORY_ID")
+    private DictionaryCategory dictionaryCategory;
 
+    @Column(name = "LOCAL_ABBREV", length = 10)
     private String localAbbreviation;
 
+    @Column(name = "sort_order")
     private Integer sortOrder;
 
-    private ValueHolder localizedDictionaryName;
+    @Column(name = "display_key", length = 100)
+    private String nameKey;
+
+    @Column(name = "LOINC_CODE", length = 20)
+    private String loincCode;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "name_localization_id")
+    private Localization localizedDictionaryName;
+
+    public Dictionary() {
+        super();
+    }
+
+    @Override
+    public String getId() {
+        return this.id;
+    }
+
+    @Override
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getIsActive() {
+        return this.isActive;
+    }
+
+    public void setIsActive(String isActive) {
+        this.isActive = isActive;
+    }
+
+    public DictionaryCategory getDictionaryCategory() {
+        return this.dictionaryCategory;
+    }
+
+    public void setDictionaryCategory(DictionaryCategory dictionaryCategory) {
+        this.dictionaryCategory = dictionaryCategory;
+    }
+
+    public String getDictEntry() {
+        return dictEntry;
+    }
+
+    public void setDictEntry(String dictEntry) {
+        this.dictEntry = dictEntry;
+    }
+
+    @JsonIgnore
+    public String getDictEntryDisplayValue() {
+        String dictEntryDisplayValue;
+        if (!StringUtil.isNullorNill(this.localAbbreviation)) {
+            dictEntryDisplayValue = localAbbreviation + IActionConstants.LOCAL_CODE_DICT_ENTRY_SEPARATOR_STRING
+                    + dictEntry;
+        } else {
+            dictEntryDisplayValue = dictEntry;
+        }
+        return dictEntryDisplayValue;
+    }
+
+    public String getSelectedDictionaryCategoryId() {
+        return selectedDictionaryCategoryId;
+    }
+
+    public void setSelectedDictionaryCategoryId(String selectedDictionaryCategoryId) {
+        this.selectedDictionaryCategoryId = selectedDictionaryCategoryId;
+    }
 
     public Integer getSortOrder() {
         return sortOrder;
@@ -69,105 +174,78 @@ public class Dictionary extends BaseObject<String> {
         this.localAbbreviation = localAbbreviation;
     }
 
-    public Dictionary() {
-        super();
-        this.dictionaryCategory = new ValueHolder();
-        this.localizedDictionaryName = new ValueHolder();
+    @Override
+    public String getNameKey() {
+        return nameKey;
     }
 
     @Override
-    public String getId() {
-        return this.id;
+    public void setNameKey(String nameKey) {
+        this.nameKey = nameKey;
     }
 
-    public String getIsActive() {
-        return this.isActive;
+    public String getLoincCode() {
+        return loincCode;
     }
 
-    public DictionaryCategory getDictionaryCategory() {
-        return (DictionaryCategory) this.dictionaryCategory.getValue();
-    }
-
-    public void setDictionaryCategory(DictionaryCategory dictionaryCategory) {
-        this.dictionaryCategory.setValue(dictionaryCategory);
-    }
-
-    @Override
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public void setIsActive(String isActive) {
-        this.isActive = isActive;
-    }
-
-    public String getDictEntry() {
-        return dictEntry;
-    }
-
-    public void setDictEntry(String dictEntry) {
-        this.dictEntry = dictEntry;
-    }
-
-    @JsonIgnore
-    public String getDictEntryDisplayValue() {
-        String dictEntryDisplayValue;
-        if (!StringUtil.isNullorNill(this.localAbbreviation)) {
-
-            dictEntryDisplayValue = localAbbreviation + IActionConstants.LOCAL_CODE_DICT_ENTRY_SEPARATOR_STRING
-                    + dictEntry;
-        } else {
-            dictEntryDisplayValue = dictEntry;
-        }
-        return dictEntryDisplayValue;
-    }
-
-    public String getSelectedDictionaryCategoryId() {
-        return selectedDictionaryCategoryId;
-    }
-
-    public void setSelectedDictionaryCategoryId(String selectedDictionaryCategoryId) {
-        this.selectedDictionaryCategoryId = selectedDictionaryCategoryId;
-    }
-
-    public String getDisplayValue() {
-        if (localizedDictionaryName == null || localizedDictionaryName.getValue() == null) {
-            return getDictEntry();
-        } else {
-            return getLocalizedDictionaryName().getLocalizedValue();
-        }
+    public void setLoincCode(String loincCode) {
+        this.loincCode = loincCode;
     }
 
     public Localization getLocalizedDictionaryName() {
-        return (Localization) localizedDictionaryName.getValue();
+        return localizedDictionaryName;
     }
 
     public void setLocalizedDictionaryName(Localization localizedDictionaryName) {
-        this.localizedDictionaryName.setValue(localizedDictionaryName);
+        this.localizedDictionaryName = localizedDictionaryName;
     }
 
     /**
-     * Override to prioritize database localization over message bundle
-     * (display_key). Order of precedence: 1. Database localization
+     * Where the label in the current user's language comes from: the shipped
+     * translation, the lab's override of it, or the site's own value (OGC-1507
+     * FR-6).
+     */
+    public String getLabelOrigin() {
+        return ShippedLabels
+                .origin(getNameKey(), localizedDictionaryName, LocaleContextHolder.getLocale().getLanguage()).name();
+    }
+
+    public String getDisplayValue() {
+        if (ShippedLabels.isShipped(getNameKey())) {
+            return ShippedLabels.label(getNameKey(), localizedDictionaryName, dictEntry);
+        }
+        if (localizedDictionaryName == null) {
+            return getDictEntry();
+        } else {
+            return localizedDictionaryName.getLocalizedValue();
+        }
+    }
+
+    /**
+     * An entry OpenELIS ships with a display key in the interface catalogue reads
+     * through that key (OGC-1507). Any other entry: 1. Database localization
      * (localization_value table) 2. Message bundle lookup via nameKey/display_key
      * 3. dictEntry as final fallback
      */
     @Override
     @JsonIgnore
     public String getLocalizedName() {
+        if (ShippedLabels.isShipped(getNameKey())) {
+            return ShippedLabels.label(getNameKey(), localizedDictionaryName, dictEntry);
+        }
         // First, try the new database localization system
-        if (localizedDictionaryName != null && localizedDictionaryName.getValue() != null) {
-            String localizedValue = getLocalizedDictionaryName().getLocalizedValue();
+        if (localizedDictionaryName != null) {
+            String localizedValue = localizedDictionaryName.getLocalizedValue();
             if (localizedValue != null && !localizedValue.isEmpty()) {
                 return localizedValue;
             }
         }
 
         // Fall back to message bundle lookup via nameKey (display_key column)
-        String nameKey = getNameKey();
-        if (nameKey != null) {
-            String localizedName = MessageUtil.getContextualMessage(nameKey.trim());
-            if (localizedName != null && !localizedName.equals(nameKey.trim())) {
+        String key = getNameKey();
+        if (key != null) {
+            String localizedName = MessageUtil.getContextualMessage(key.trim());
+            if (localizedName != null && !localizedName.equals(key.trim())) {
                 return localizedName;
             }
         }
@@ -185,13 +263,4 @@ public class Dictionary extends BaseObject<String> {
     public String toString() {
         return "Dictionary [id=" + id + ", localAbbreviation=" + localAbbreviation + ", nameKey=" + getNameKey() + "]";
     }
-
-    public String getLoincCode() {
-        return loincCode;
-    }
-
-    public void setLoincCode(String loincCode) {
-        this.loincCode = loincCode;
-    }
-
 }

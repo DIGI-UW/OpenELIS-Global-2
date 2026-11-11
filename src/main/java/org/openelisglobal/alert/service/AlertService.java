@@ -1,8 +1,10 @@
 package org.openelisglobal.alert.service;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
+import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.common.service.BaseObjectService;
 
@@ -32,16 +34,41 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
             String contextDataJson);
 
     /**
+     * Create a new alert for a string-keyed entity (e.g. a microbiology critical
+     * communication UUID). Counterpart to
+     * {@link #createAlert(AlertType, String, Long, AlertSeverity, String, String)}
+     * for entities that are not keyed by a database sequence. Same deduplication
+     * and event-publishing behavior, keyed by (alertType, entityType, entityRef)
+     * instead of (alertType, entityType, entityId).
+     */
+    Alert createAlert(AlertType alertType, String entityType, String entityRef, AlertSeverity severity, String message,
+            String contextDataJson);
+
+    /**
      * Acknowledge an alert (transition OPEN → ACKNOWLEDGED).
      *
      * <p>
      * Publishes AlertAcknowledgedEvent upon successful acknowledgment.
+     *
+     * <p>
+     * Equivalent to passing a null note, which clears any note already recorded.
      *
      * @param alertId Alert ID
      * @param userId  User ID who acknowledged the alert
      * @return Updated alert
      */
     Alert acknowledgeAlert(Long alertId, Integer userId);
+
+    /**
+     * Acknowledge an alert, recording the acknowledging user's notes.
+     *
+     * @param alertId             Alert ID
+     * @param userId              User ID who acknowledged the alert
+     * @param acknowledgmentNotes Free-text note; null or blank records none
+     * @return Updated alert
+     * @throws IllegalStateException if the alert is not open
+     */
+    Alert acknowledgeAlert(Long alertId, Integer userId, String acknowledgmentNotes);
 
     /**
      * Resolve an alert (transition ACKNOWLEDGED → RESOLVED).
@@ -66,6 +93,21 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
     List<Alert> getAlertsByEntity(String entityType, Long entityId);
 
     /**
+     * Get all alerts for a string-keyed entity. Counterpart to
+     * {@link #getAlertsByEntity(String, Long)} for entities not keyed by a database
+     * sequence.
+     *
+     * @param entityType Entity class name (e.g.,
+     *                   "MicrobiologyCriticalCommunication")
+     * @param entityRef  Entity reference (e.g. a UUID string)
+     * @return List of alerts for the entity
+     */
+    List<Alert> getAlertsByEntityRef(String entityType, String entityRef);
+
+    /** Outstanding means OPEN or ACKNOWLEDGED. */
+    List<Alert> getOutstandingAlerts(String entityType, AlertType alertType);
+
+    /**
      * Count active alerts (OPEN or ACKNOWLEDGED) for a specific entity.
      *
      * @param entityType Entity class name (e.g., "Freezer")
@@ -73,4 +115,13 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @return Count of active alerts
      */
     Long countActiveAlertsForEntity(String entityType, Long entityId);
+
+    /**
+     * Find unacknowledged alerts (status, severity, entity type) whose startTime is
+     * on or before the given cutoff. Used by escalation schedulers to fetch only
+     * the rows that need action — fetching all alerts of a type and filtering in
+     * memory OOMs as the alert table grows.
+     */
+    List<Alert> getUnacknowledgedAlertsOlderThan(String entityType, AlertStatus status, AlertSeverity severity,
+            OffsetDateTime cutoff);
 }

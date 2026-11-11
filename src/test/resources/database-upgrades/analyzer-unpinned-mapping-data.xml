@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="fixture-analyzer-unpinned-mapping-data"
+        author="openelis">
+        <comment>A saved shared mapping that no analyzer is pinned to.</comment>
+        <sql>
+            INSERT INTO analyzer_profile_binding (id, profile_id, profile_revision,
+            profile_fingerprint)
+            VALUES (900021, 'unpinned-fixture', 1, 'sha256:' || repeat('a', 64));
+            INSERT INTO analyzer_site_binding (id, profile_binding_id,
+            created_by)
+            VALUES (900021, 900021, '1');
+            INSERT INTO analyzer_site_binding_revision
+            (id, site_binding_id, revision_number, binding_fingerprint, created_by)
+            VALUES (900021, 900021, 1, 'sha256:' || repeat('b', 64), '1');
+            INSERT INTO analyzer_site_binding_test
+            (site_binding_revision_id, source_row_key, mapping_state, test_id)
+            VALUES (900021, 'unpinned-test', 'BOUND', (SELECT MIN(id) FROM test));
+        </sql>
+    </changeSet>
+</databaseChangeLog>

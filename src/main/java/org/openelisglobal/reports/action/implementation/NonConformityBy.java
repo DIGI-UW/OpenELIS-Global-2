@@ -21,8 +21,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.reports.form.ReportForm;
 
@@ -106,7 +104,6 @@ public abstract class NonConformityBy extends Report implements IReportCreator {
         super.initializeReport();
         dateRange = new DateRange(form.getLowerDateRange(), form.getUpperDateRange());
 
-        createReportParameters();
         errorFound = !validateSubmitParameters();
         if (errorFound) {
             return;
@@ -128,13 +125,5 @@ public abstract class NonConformityBy extends Report implements IReportCreator {
     /** check everything */
     private boolean validateSubmitParameters() {
         return (dateRange.validateHighLowDate("report.error.message.date.received.missing"));
-    }
-
-    /**
-     * @see org.openelisglobal.reports.action.implementation.Report#getReportDataSource()
-     */
-    @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
     }
 }

@@ -1,0 +1,1842 @@
+import React, { Suspense, useEffect, useRef, useState } from "react";
+import { IntlProvider } from "react-intl";
+import {
+  Route,
+  Redirect,
+  BrowserRouter as Router,
+  Switch,
+} from "react-router-dom";
+import RedirectOldUI from "./RedirectOldUI";
+import ModuleRoutes from "./modules/ModuleRoutes";
+import UserSessionDetailsContext from "./UserSessionDetailsContext";
+import { Admin } from "./components";
+import ChangePassword from "./components/ChangePassword";
+import Home from "./components/Home";
+import Layout from "./components/layout/Layout";
+import StorageManagementPage from "./components/storage/StorageManagementPage";
+import AlertsDashboard from "./components/alerts/AlertsDashboard";
+import ManagementDashboard from "./components/dashboards/management/ManagementDashboard";
+import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
+import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
+import ProviderSchemeList from "./components/eqa/Provider/ProviderSchemeList";
+import ParticipantPerformance from "./components/eqa/Provider/ParticipantPerformance";
+import CycleWizard from "./components/eqa/Provider/CycleWizard";
+import ProviderWorkbenchPage from "./components/eqa/Provider/Workbench/ProviderWorkbenchPage";
+import InHousePanelsPage from "./components/eqa/InHouse/InHousePanelsPage";
+import FollowUpQueuePage from "./components/eqa/FollowUp/FollowUpQueuePage";
+import ProviderFollowupRegister from "./components/eqa/FollowUp/ProviderFollowupRegister";
+import LabPerformancePage from "./components/eqa/Performance/LabPerformancePage";
+import AnalystCompetencyPage from "./components/eqa/Competency/AnalystCompetencyPage";
+import BlindingWizard from "./components/eqa/InHouse/BlindingWizard";
+import MyProgramsPage from "./components/eqa/MyProgramsPage";
+import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
+import QAPlaceholder from "./components/qa/QAPlaceholder";
+import QAOverview from "./components/qa/overview/QAOverview";
+import QIDashboard from "./components/qa/qi/QIDashboard";
+import QIConfigList from "./components/qa/qi/QIConfigList";
+import QIEnabledRoute from "./components/qa/qi/QIEnabledRoute";
+import AmendmentReport from "./components/qa/qi/AmendmentReport";
+import RejectionReport from "./components/qa/qi/RejectionReport";
+import CallbackReport from "./components/qa/qi/CallbackReport";
+import ESignatureLog from "./components/qa/qms/ESignatureLog";
+import CapaRegister from "./components/qa/qms/CapaRegister";
+import Accreditation from "./components/qa/qms/Accreditation";
+import {
+  InventoryItemsPage,
+  InventoryReceivePage,
+  InventoryReportsPage,
+} from "./components/inventory/InventoryManagement";
+import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
+import BoxCreation from "./components/shipment/BoxCreation";
+import BoxDetails from "./components/shipment/BoxDetails";
+import ReceptionWorkflow from "./components/shipment/ReceptionWorkflow";
+import ReferenceLabResults from "./components/referenceLabResults";
+import Login from "./components/Login";
+import LandingPage from "./components/home/LandingPage";
+import lazyWithRetry from "./components/common/lazyWithRetry";
+import ServerReconnectNotice from "./components/common/ServerReconnectNotice";
+import {
+  createServerRetrier,
+  requestSession,
+  retryServerNow,
+  serverRetryDelay,
+  subscribeServerWait,
+} from "./components/utils/serverConnection";
+
+const AnalyzersPage = lazyWithRetry(() => import("./pages/AnalyzersPage"));
+const AnalyzerTypesPage = lazyWithRetry(
+  () => import("./pages/AnalyzerTypesPage"),
+);
+const AnalyzerTypeMappingPage = lazyWithRetry(
+  () => import("./pages/AnalyzerTypeMappingPage"),
+);
+const MicrobiologyPage = lazyWithRetry(
+  () => import("./pages/MicrobiologyPage"),
+);
+const MicrobiologyWorklistPage = lazyWithRetry(
+  () => import("./pages/MicrobiologyWorklistPage"),
+);
+const MicrobiologyWhonetPage = lazyWithRetry(
+  () => import("./pages/MicrobiologyWhonetPage"),
+);
+import {
+  QCDashboard,
+  ControlChartDetail,
+  ControlLotList,
+  InstrumentDetailPage,
+  ControlLotSetup,
+  RuleConfigPanel,
+} from "./components/qc";
+import {
+  LegacyResultsRedirect,
+  UnifiedResultsRoute,
+} from "./components/resultPage/unified/routeGates";
+import { getFromOpenElisServer } from "./components/utils/Utils";
+import { loadLabClock } from "./components/utils/labClock";
+import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
+import { resolveMessagesForLocale } from "./languages";
+import {
+  getMicrobiologyCaseUrl,
+  getMicrobiologyWorklistUrl,
+  MICROBIOLOGY_CASE_PATH,
+  MICROBIOLOGY_WORKLIST_PATH,
+  parseMicrobiologyCaseSearch,
+  parseMicrobiologyWorklistSearch,
+} from "./components/microbiology/MicrobiologyRoutes";
+import { MICROBIOLOGY_WHONET_PATH } from "./components/microbiology/WhonetRoutes";
+import config from "./config.json";
+import { SecureRoute } from "./components/security";
+import "./index.scss";
+import PatientManagement from "./components/patient/PatientManagement";
+import PatientHistory from "./components/patient/PatientHistory";
+import PatientMerge from "./components/patient/PatientMerge";
+import Aliquot from "./components/sample/Aliquot";
+import Workplan from "./components/workplan/Workplan";
+import BatchWorkplan from "./components/workplan/BatchWorkplan";
+import BatchWorkplanPrint from "./components/workplan/batch/BatchWorkplanPrint";
+import AddOrder from "./components/addOrder/Index";
+import FindOrder from "./components/modifyOrder/Index";
+import ModifyOrder from "./components/modifyOrder/ModifyOrder";
+import RoutineReports from "./components/reports/Routine";
+import StudyReports from "./components/reports/Study";
+import TATReport from "./components/reports/tat";
+import { clearReportingDraft } from "./components/reports/CustomDataExport/CustomDataExport";
+import ReportingRoute from "./components/reports/CustomDataExport/ReportingRoute";
+import { REPORTING_ROUTE_PATHS } from "./components/reports/CustomDataExport/routes";
+import VectorSurveillanceReport from "./components/reports/vectorSurveillance/Index";
+import StudyValidation from "./components/validation/Index";
+const AnalyserResultIndex = lazyWithRetry(
+  () => import("./components/analyserResults/Index"),
+);
+import PathologyDashboard from "./components/pathology/PathologyDashboard";
+import CytologyDashboard from "./components/cytology/CytologyDashBoard";
+import NoteBookDashBoard from "./components/notebook/NoteBookDashBoard";
+import NoteBookEntryForm from "./components/notebook/NoteBookEntryForm";
+import CytologyCaseView from "./components/cytology/CytologyCaseView";
+import PathologyCaseView from "./components/pathology/PathologyCaseView";
+import ImmunohistochemistryDashboard from "./components/immunohistochemistry/ImmunohistochemistryDashboard";
+import ImmunohistochemistryCaseView from "./components/immunohistochemistry/ImmunohistochemistryCaseView";
+import EnvironmentalDashboard from "./components/compliance/EnvironmentalDashboard";
+const RoutedResultsViewer = lazyWithRetry(
+  () => import("./components/patient/resultsViewer/results-viewer.tsx"),
+);
+import EOrderPage from "./components/eOrder/Index";
+import RoutineIndex from "./components/reports/routine/Index";
+import StudyIndex from "./components/reports/study/index";
+import ReportIndex from "./components/reports/Index";
+import PrintBarcode from "./components/printBarcode/Index";
+import NonConformIndex from "./components/nonconform/index";
+import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup";
+import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index";
+import LaporanHasilReport from "./components/reports/compliance/LaporanHasilReport";
+import ReportPrintQueue from "./components/reports/printQueue/ReportPrintQueue";
+import SentMessages from "./components/reports/sentMessages/SentMessages";
+import ManualEntryHelper from "./components/reports/vectorSurveillance/ManualEntryHelper";
+import { Roles } from "./components/utils/Utils";
+import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm";
+import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder";
+const FreezerMonitoringDashboard = lazyWithRetry(
+  () => import("./components/coldStorage/FreezerMonitoringDashboard"),
+);
+import ProgramDashboard from "./components/program/programDashboard.jsx";
+import ProgramCaseView from "./components/program/programCaseView.jsx";
+import SampleManagement from "./components/sampleManagement/SampleManagement";
+const ShipmentReport = lazyWithRetry(
+  () => import("./components/shipment/ShipmentReport"),
+);
+
+const GenericSampleOrder = lazyWithRetry(
+  () => import("./components/genericSample/GenericSampleOrder"),
+);
+const GenericSampleOrderEdit = lazyWithRetry(
+  () => import("./components/genericSample/GenericSampleOrderEdit"),
+);
+const GenericSampleOrderImport = lazyWithRetry(
+  () => import("./components/genericSample/GenericSampleOrderImport"),
+);
+const GenericSampleResults = lazyWithRetry(
+  () => import("./components/genericSample/GenericSampleResults"),
+);
+
+import ShipmentSettings from "./components/shipment/ShipmentSettings";
+import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
+import {
+  OrderProvider,
+  OrderDashboard,
+  ClinicalOrderEnter,
+  EnvironmentalOrderEnter,
+  VectorOrderEnter,
+  OrderCollect,
+  OrderLabel,
+  OrderQA,
+  VectorOrderComplete,
+} from "./components/order";
+import {
+  VectorIdentificationWorklist,
+  VectorDeconvolutionWorklist,
+} from "./components/vectorIdentification";
+import { endServerSession } from "./components/utils/endServerSession";
+
+// QA-context breadcrumb for the TAT report mounted at /qa/qi/tat (OGC-696).
+// Labels are i18n keys resolved by PageBreadCrumb.
+const qaTatBreadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "sideNav.label.qa", link: "/qa/overview" },
+  { label: "sideNav.label.qa.qi.dashboard", link: "/qa/qi/dashboard" },
+  { label: "reports.tat.title", link: "" },
+];
+
+export const ANALYZER_RESULTS_ROLES = [
+  Roles.GLOBAL_ADMIN,
+  Roles.ANALYSER_IMPORT,
+];
+
+export const ANALYZER_SETUP_ROLES = [Roles.GLOBAL_ADMIN];
+
+// The quality-indicator reports: same route shape, same roles, each gated on its
+// own indicator being enabled.
+const QI_INDICATOR_ROUTES = [
+  ["tat", "TAT", () => <TATReport breadcrumbs={qaTatBreadcrumbs} />],
+  ["rejection", "REJECTION", () => <RejectionReport />],
+  ["amendment", "AMENDMENT", () => <AmendmentReport />],
+  ["callback", "CALLBACK", () => <CallbackReport />],
+];
+
+export default function App() {
+  // The stored preference, or the browser's full tag (region kept: fr-MG
+  // resolves to its own bundle, not just fr). The resolver accepts either
+  // spelling (fr_MG / fr-MG) and always returns usable messages, so a stale
+  // stored value can never break startup.
+  const initial = resolveMessagesForLocale(
+    localStorage.getItem("locale") || navigator.language,
+  );
+
+  const [locale, setLocale] = useState(initial.code);
+  const [messages, setMessages] = useState(initial.messages);
+
+  const [userSessionDetails, setUserSessionDetails] = useState({});
+  const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
+    useState(false);
+  const [serverWait, setServerWait] = useState(null);
+  const sessionCheck = useRef({
+    generation: 0,
+    current: null,
+    retrier: null,
+    stopped: false,
+  });
+
+  useEffect(() => {
+    const state = sessionCheck.current;
+    const unsubscribe = subscribeServerWait(setServerWait);
+    getUserSessionDetails();
+    return () => {
+      unsubscribe();
+      state.stopped = true;
+      state.retrier?.wake();
+    };
+  }, []);
+
+  // Load and apply site branding (colors, favicon)
+  useEffect(() => {
+    loadAndApplyBranding();
+
+    // Listen for branding updates from admin UI
+    const handleBrandingUpdate = () => {
+      loadAndApplyBranding();
+    };
+    window.addEventListener("branding-updated", handleBrandingUpdate);
+
+    return () => {
+      window.removeEventListener("branding-updated", handleBrandingUpdate);
+    };
+  }, []);
+
+  /**
+   * Checks the session until the server answers (OGC-1442). An unreachable
+   * server is retried with growing gaps and no limit while a non-blocking
+   * notice counts down; the page stays on its URL and renders as soon as the
+   * server is back. A newer call takes over from an older one still retrying,
+   * and every caller receives the newest answer.
+   */
+  const getUserSessionDetails = () => {
+    const state = sessionCheck.current;
+    state.generation += 1;
+    const generation = state.generation;
+    state.retrier?.wake();
+    state.current = checkSessionUntilAnswered(generation);
+    return state.current;
+  };
+
+  const checkSessionUntilAnswered = async (generation) => {
+    const state = sessionCheck.current;
+    const superseded = () => state.stopped || generation !== state.generation;
+    const newerAnswer = () => (state.stopped ? undefined : state.current);
+    const retrier = createServerRetrier();
+    state.retrier = retrier;
+    try {
+      for (let failures = 0; ; ) {
+        try {
+          const jsonResp = await requestSession(
+            config.serverBaseUrl + `/session`,
+          );
+          if (superseded()) {
+            return newerAnswer();
+          }
+          if (jsonResp.authenticated) {
+            localStorage.setItem("CSRF", jsonResp.csrf);
+            await loadLabClock();
+          }
+          if (failures > 0) {
+            loadAndApplyBranding();
+          }
+          setUserSessionDetails(jsonResp);
+          setErrorLoadingSessionDetails(false);
+          return jsonResp;
+        } catch (error) {
+          if (superseded()) {
+            return newerAnswer();
+          }
+          failures += 1;
+          console.error(error);
+          setErrorLoadingSessionDetails(true);
+          await retrier.wait(serverRetryDelay(failures));
+          if (superseded()) {
+            return newerAnswer();
+          }
+        }
+      }
+    } finally {
+      retrier.done();
+      if (state.retrier === retrier) {
+        state.retrier = null;
+      }
+    }
+  };
+
+  const logout = () => {
+    clearReportingDraft();
+    if (userSessionDetails.loginMethod === "SAML") {
+      fetch(config.serverBaseUrl + "/Logout?useSAML=true", {
+        //includes the browser sessionId in the Header for Authentication on the backend server
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": localStorage.getItem("CSRF"),
+        },
+      })
+        .then((response) => response.text())
+        .then((html) => {
+          // Parse the SAML SLO response and submit the form in the current
+          // window — no popup, no iframe needed.
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, "text/html");
+          const samlForm = doc.querySelector("form");
+
+          if (samlForm) {
+            const form = document.createElement("form");
+            form.method = samlForm.method || "POST";
+            form.action = samlForm.action;
+            Array.from(samlForm.querySelectorAll("input")).forEach((input) => {
+              const hidden = document.createElement("input");
+              hidden.type = "hidden";
+              hidden.name = input.name;
+              hidden.value = input.value;
+              form.appendChild(hidden);
+            });
+            document.body.appendChild(form);
+            form.submit();
+          } else {
+            // No SAML form in response — fall back to a direct redirect
+            window.location.href = config.loginRedirect;
+          }
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    } else {
+      endServerSession(config.serverBaseUrl, localStorage.getItem("CSRF")).then(
+        () => {
+          window.location.href = config.loginRedirect;
+        },
+      );
+    }
+  };
+
+  const changeLanguageReact = (lang) => {
+    // The selector hands over whatever code the locales config declared —
+    // underscore or hyphen, any casing. Resolve it to the canonical code and
+    // the best bundle (exact, then base language, then English) so a
+    // configured locale like fr_MG lands on its own translations.
+    const resolved = resolveMessagesForLocale(lang);
+    setLocale(resolved.code);
+    setMessages(resolved.messages);
+    localStorage.setItem("locale", resolved.code);
+  };
+
+  const changeLanguageBackend = async (lang) => {
+    if (userSessionDetails.authenticated) {
+      getFromOpenElisServer("/Home?lang=" + lang, () => {
+        // Language changed on backend
+      });
+    } else {
+      getFromOpenElisServer("/LoginPage?lang=" + lang, () => {
+        // Language changed on backend
+      });
+    }
+  };
+
+  const onChangeLanguage = (lang) => {
+    changeLanguageReact(lang);
+    changeLanguageBackend(lang);
+  };
+
+  const refresh = async (callback) => {
+    await getUserSessionDetails();
+    if (typeof callback === "function") {
+      callback();
+    }
+  };
+
+  const isCheckingLogin = () => {
+    return !("authenticated" in userSessionDetails);
+  };
+
+  const routeErrorStorage = {
+    titleKey: "errorBoundary.route.storage.title",
+    messageKey: "errorBoundary.route.storage.message",
+  };
+
+  const routeErrorPatientResultsViewer = {
+    titleKey: "errorBoundary.route.patientResultsViewer.title",
+    messageKey: "errorBoundary.route.patientResultsViewer.message",
+  };
+
+  const routeErrorResultsSearch = {
+    titleKey: "errorBoundary.route.resultsSearch.title",
+    messageKey: "errorBoundary.route.resultsSearch.message",
+  };
+
+  const routeErrorSamplePatientEntry = {
+    titleKey: "errorBoundary.route.samplePatientEntry.title",
+    messageKey: "errorBoundary.route.samplePatientEntry.message",
+  };
+
+  const routeErrorModifyOrder = {
+    titleKey: "errorBoundary.route.modifyOrder.title",
+    messageKey: "errorBoundary.route.modifyOrder.message",
+  };
+
+  const routeErrorOrderEntry = {
+    titleKey: "errorBoundary.route.orderEntry.title",
+    messageKey: "errorBoundary.route.orderEntry.message",
+  };
+
+  const routeErrorAnalyzers = {
+    titleKey: "errorBoundary.route.analyzers.title",
+    messageKey: "errorBoundary.route.analyzers.message",
+  };
+
+  const routeErrorAnalyzerResults = {
+    titleKey: "errorBoundary.route.analyzerResults.title",
+    messageKey: "errorBoundary.route.analyzerResults.message",
+  };
+
+  return (
+    <IntlProvider
+      locale={locale}
+      key={locale}
+      defaultLocale="en"
+      messages={messages}
+    >
+      <UserSessionDetailsContext.Provider
+        value={{
+          userSessionDetails,
+          errorLoadingSessionDetails,
+          isCheckingLogin,
+          logout,
+          refresh,
+        }}
+      >
+        <>
+          <Router>
+            <Layout onChangeLanguage={onChangeLanguage}>
+              <Switch>
+                <Route path="/login" exact render={() => <Login />} />
+                <Route
+                  path="/ChangePasswordLogin"
+                  exact
+                  render={() => <ChangePassword />}
+                />
+                <Route path="/landing" exact render={() => <LandingPage />} />
+                <SecureRoute path="/" exact render={() => <Home />} role="" />
+                <SecureRoute
+                  path="/Dashboard"
+                  exact
+                  render={() => <Home />}
+                  role=""
+                />
+                <SecureRoute
+                  path="/admin"
+                  render={() => <Admin />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/MasterListsPage"
+                  render={() => <Admin />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/PathologyDashboard"
+                  exact
+                  render={() => <PathologyDashboard />}
+                  role=""
+                  labUnitRole={{ Pathology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/PathologyCaseView/:pathologySampleId"
+                  exact
+                  render={() => <PathologyCaseView />}
+                  role=""
+                  labUnitRole={{ Pathology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/ImmunohistochemistryDashboard"
+                  exact
+                  render={() => <ImmunohistochemistryDashboard />}
+                  role=""
+                  labUnitRole={{ Immunohistochemistry: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/ImmunohistochemistryCaseView/:immunohistochemistrySampleId"
+                  exact
+                  render={() => <ImmunohistochemistryCaseView />}
+                  role=""
+                  labUnitRole={{ Immunohistochemistry: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/CytologyDashboard"
+                  exact
+                  render={() => <CytologyDashboard />}
+                  role=""
+                />
+                <SecureRoute
+                  path="/genericProgram"
+                  exact
+                  render={() => <ProgramDashboard />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/programView/:programSampleId"
+                  exact
+                  render={() => <ProgramCaseView />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/NoteBookDashboard"
+                  exact
+                  render={() => <NoteBookDashBoard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path="/EnvironmentalDashboard"
+                  exact
+                  render={() => <EnvironmentalDashboard />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/NoteBookEntryForm/:notebookid"
+                  exact
+                  render={() => <NoteBookEntryForm />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/NoteBookEntryForm"
+                  exact
+                  render={() => <NoteBookEntryForm />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/NoteBookInstanceEntryForm/:notebookid"
+                  exact
+                  render={() => <NoteBookInstanceEntryForm />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/NoteBookInstanceEditForm/:notebookentryid"
+                  exact
+                  render={() => <NoteBookInstanceEntryForm />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/NotebookSampleOrder/:notebookId/:notebookEntryId"
+                  exact
+                  render={() => <NotebookSampleOrder />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/NotebookSampleOrder/:notebookId"
+                  exact
+                  render={() => <NotebookSampleOrder />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/CytologyCaseView/:cytologySampleId"
+                  exact
+                  render={() => <CytologyCaseView />}
+                  role=""
+                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path={`${MICROBIOLOGY_CASE_PATH}/:caseId`}
+                  exact
+                  component={() => (
+                    <Suspense fallback={null}>
+                      <MicrobiologyPage />
+                    </Suspense>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path={MICROBIOLOGY_WORKLIST_PATH}
+                  exact
+                  component={() => (
+                    <Suspense fallback={null}>
+                      <MicrobiologyWorklistPage />
+                    </Suspense>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path={MICROBIOLOGY_WHONET_PATH}
+                  exact
+                  component={() => (
+                    <Suspense fallback={null}>
+                      <MicrobiologyWhonetPage />
+                    </Suspense>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN, Roles.RESULTS, Roles.REPORTS]}
+                />
+                <Route
+                  path="/MicrobiologyCaseView/:caseId"
+                  exact
+                  render={({ location, match }) => (
+                    <Redirect
+                      to={getMicrobiologyCaseUrl(
+                        match.params.caseId,
+                        parseMicrobiologyCaseSearch(location.search),
+                      )}
+                    />
+                  )}
+                />
+                <Route
+                  path="/MicrobiologyWorklist"
+                  exact
+                  render={({ location }) => (
+                    <Redirect
+                      to={getMicrobiologyWorklistUrl(
+                        parseMicrobiologyWorklistSearch(location.search),
+                      )}
+                    />
+                  )}
+                />
+                <SecureRoute
+                  path="/GenericSample/Order"
+                  exact
+                  render={() => (
+                    <Suspense fallback={null}>
+                      <GenericSampleOrder />
+                    </Suspense>
+                  )}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/GenericSample/Edit"
+                  exact
+                  render={() => (
+                    <Suspense fallback={null}>
+                      <GenericSampleOrderEdit />
+                    </Suspense>
+                  )}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/GenericSample/Import"
+                  exact
+                  render={() => (
+                    <Suspense fallback={null}>
+                      <GenericSampleOrderImport />
+                    </Suspense>
+                  )}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/FreezerMonitoring"
+                  exact
+                  render={() => (
+                    <Suspense fallback={null}>
+                      <FreezerMonitoringDashboard />
+                    </Suspense>
+                  )}
+                  role={[Roles.RECEPTION, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SamplePatientEntry"
+                  exact
+                  render={() => (
+                    <RouteErrorBoundary {...routeErrorSamplePatientEntry}>
+                      <AddOrder />
+                    </RouteErrorBoundary>
+                  )}
+                  role={Roles.RECEPTION}
+                />
+                {/* Clinical Order Workflow */}
+                <Route
+                  path="/order/clinical"
+                  render={({ match }) => (
+                    <OrderProvider workflowType="clinical">
+                      <Switch>
+                        <SecureRoute
+                          path={`${match.path}`}
+                          exact
+                          render={() => <OrderDashboard />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/enter`}
+                          exact
+                          render={() => (
+                            <RouteErrorBoundary {...routeErrorOrderEntry}>
+                              <ClinicalOrderEnter />
+                            </RouteErrorBoundary>
+                          )}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/collect`}
+                          exact
+                          render={() => <OrderCollect />}
+                          role={Roles.RECEPTION}
+                        />
+                        {/* Label & Store folded into Prepare Samples (OGC-1266 M4, D-066) */}
+                        <Route
+                          path={`${match.path}/label`}
+                          exact
+                          render={({ location }) => (
+                            <Redirect
+                              to={{
+                                pathname: `${match.path}/collect`,
+                                search: location.search,
+                              }}
+                            />
+                          )}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/qa`}
+                          exact
+                          render={() => <OrderQA />}
+                          role={Roles.RECEPTION}
+                        />
+                        {/* A step that does not exist never shows a blank page (FR-A16) */}
+                        <Route render={() => <Redirect to={match.path} />} />
+                      </Switch>
+                    </OrderProvider>
+                  )}
+                />
+                {/* Environmental Order Workflow */}
+                <Route
+                  path="/order/environmental"
+                  render={({ match }) => (
+                    <OrderProvider workflowType="environmental">
+                      <Switch>
+                        <SecureRoute
+                          path={`${match.path}`}
+                          exact
+                          render={() => <OrderDashboard />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/enter`}
+                          exact
+                          render={() => (
+                            <RouteErrorBoundary {...routeErrorOrderEntry}>
+                              <EnvironmentalOrderEnter />
+                            </RouteErrorBoundary>
+                          )}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/label`}
+                          exact
+                          render={() => <OrderLabel />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/qa`}
+                          exact
+                          render={() => <OrderQA />}
+                          role={Roles.RECEPTION}
+                        />
+                      </Switch>
+                    </OrderProvider>
+                  )}
+                />
+                {/* Vector Surveillance Order Workflow (no Collect step) */}
+                <Route
+                  path="/order/vector"
+                  render={({ match }) => (
+                    <OrderProvider workflowType="vector">
+                      <Switch>
+                        <SecureRoute
+                          path={`${match.path}`}
+                          exact
+                          render={() => <OrderDashboard />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/enter`}
+                          exact
+                          render={() => (
+                            <RouteErrorBoundary {...routeErrorOrderEntry}>
+                              <VectorOrderEnter />
+                            </RouteErrorBoundary>
+                          )}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/label`}
+                          exact
+                          render={() => <OrderLabel />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/qa`}
+                          exact
+                          render={() => <OrderQA />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/complete`}
+                          exact
+                          render={() => <VectorOrderComplete />}
+                          role={Roles.RECEPTION}
+                        />
+                      </Switch>
+                    </OrderProvider>
+                  )}
+                />
+                {/* Redirect legacy /order and /order/enter to clinical workflow */}
+                <Route
+                  path="/order/enter"
+                  exact
+                  render={() => <Redirect to="/order/clinical/enter" />}
+                />
+                <Route
+                  path="/order"
+                  exact
+                  render={() => <Redirect to="/order/clinical" />}
+                />
+                <SecureRoute
+                  path="/vector/identification"
+                  exact
+                  render={() => <VectorIdentificationWorklist />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/vector/deconvolution"
+                  exact
+                  render={() => <VectorDeconvolutionWorklist />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/ModifyOrder"
+                  exact
+                  render={() => (
+                    <RouteErrorBoundary {...routeErrorModifyOrder}>
+                      <ModifyOrder />
+                    </RouteErrorBoundary>
+                  )}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/SampleEdit"
+                  exact
+                  render={() => <FindOrder />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/NceDashboard"
+                  exact
+                  render={() => <NonConformIndex form="NceDashboard" />}
+                  role={[Roles.RECEPTION, Roles.VALIDATION]}
+                  permission="qa.view.eqa"
+                />
+                <SecureRoute
+                  path="/ReportNonConformingEvent"
+                  exact
+                  render={() => (
+                    <NonConformIndex form="ReportNonConformingEvent" />
+                  )}
+                  role={[Roles.RECEPTION, Roles.VALIDATION]}
+                  permission="qa.view.eqa"
+                />
+                <SecureRoute
+                  path="/ViewNonConformingEvent"
+                  exact
+                  render={() => (
+                    <NonConformIndex form="ViewNonConformingEvent" />
+                  )}
+                  role={[Roles.RECEPTION, Roles.VALIDATION]}
+                  permission="qa.view.eqa"
+                />
+
+                <SecureRoute
+                  path="/NCECorrectiveAction"
+                  exact
+                  render={() => <NonConformIndex form="NCECorrectiveAction" />}
+                  role={[Roles.RECEPTION, Roles.VALIDATION]}
+                  permission="qa.view.eqa"
+                />
+
+                <SecureRoute
+                  path="/SampleBatchEntrySetup"
+                  exact
+                  render={() => <SampleBatchEntrySetup />}
+                  role={Roles.RECEPTION}
+                />
+
+                <SecureRoute
+                  path="/ElectronicOrders"
+                  exact
+                  render={() => <EOrderPage />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/PrintBarcode"
+                  exact
+                  render={() => <PrintBarcode />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/PatientManagement/:patientId?"
+                  exact
+                  render={() => <PatientManagement />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/Alerts"
+                  exact
+                  render={() => <AlertsDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                />
+                <SecureRoute
+                  path="/dashboards/management"
+                  exact
+                  render={() => <ManagementDashboard />}
+                  permission="dashboards.view.management"
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                {/* QA v0.5 IA rehome (OGC-691): EQA and QC pages moved under
+                    /qa/*. Kept so bookmarks and anything still linking an old
+                    path land on the new page. */}
+                <Redirect exact from="/qa/qi" to="/qa/qi/dashboard" />
+                <Redirect exact from="/analyzers/qc/db" to="/qa/qc/dashboard" />
+                <Redirect
+                  exact
+                  from="/analyzers/qc/control-lots"
+                  to="/qa/qc/control-lots"
+                />
+                <Redirect
+                  exact
+                  from="/analyzers/qc/rule-config"
+                  to="/qa/qc/rule-config"
+                />
+                <Redirect exact from="/EQAOrders" to="/qa/eqa/my-cycles" />
+                <Redirect
+                  exact
+                  from="/EQAMyPrograms"
+                  to="/qa/eqa/my-programs"
+                />
+                <Redirect exact from="/EQAManagement" to="/qa/eqa/management" />
+                <Redirect
+                  exact
+                  from="/EQAParticipants"
+                  to="/qa/eqa/participants"
+                />
+                <Redirect
+                  from="/EQADistribution"
+                  to="/qa/eqa/provider/schemes"
+                />
+                {/* EQA V2 absorbed the V1 order list and distribution pages (OGC-608):
+                    orders live on My Cycles, distributions are provider cycles. The
+                    old URLs redirect for one release so bookmarks keep working. */}
+                <Redirect exact from="/qa/eqa/orders" to="/qa/eqa/my-cycles" />
+                {/* The V1 Results & Analysis page listed the same /rest/eqa/orders
+                    My Cycles reads, under a name it did not earn: its statistics
+                    half had already been disconnected. Scoring lives on the
+                    provider workbench and analysis in the participant report. */}
+                <Redirect exact from="/qa/eqa/results" to="/qa/eqa/my-cycles" />
+                <Redirect exact from="/EQAResults" to="/qa/eqa/my-cycles" />
+                <Redirect
+                  from="/qa/eqa/distribution"
+                  to="/qa/eqa/provider/schemes"
+                />
+                {/* qa/019 menu row ships the specification path; page lives in the
+                    /qa/eqa/* family with its V1 siblings. */}
+                <Redirect
+                  exact
+                  from="/eqa/participant/cycles"
+                  to="/qa/eqa/my-cycles"
+                />
+                <SecureRoute
+                  path="/qa/eqa/my-cycles"
+                  exact
+                  component={() => <MyCyclesPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                <SecureRoute
+                  path="/qa/eqa/my-programs"
+                  exact
+                  component={() => <MyProgramsPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                <SecureRoute
+                  path="/qa/eqa/management"
+                  exact
+                  component={() => <EQAProgramManagement />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                <SecureRoute
+                  path="/qa/eqa/participants"
+                  exact
+                  component={() => <EQAParticipantsPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* Provider lane: the scheme list is the entry
+                    point qa/030 points the menu row at, the wizard creates a
+                    cycle, and the workbenches run the one it created. */}
+                <SecureRoute
+                  path="/qa/eqa/provider/schemes/:schemeId/cycles/new"
+                  exact
+                  component={() => <CycleWizard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* Participant performance: the trend the workbench's
+                    per-cycle view cannot show. Declared before the bare scheme
+                    list so the more specific path wins. */}
+                <SecureRoute
+                  path="/qa/eqa/provider/schemes/:schemeId/performance"
+                  exact
+                  component={() => <ParticipantPerformance />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* Both of these 404'd after the provider lane moved: the specification path is
+                    what qa/019 seeded into the menu, and /provider/workbench is the URL
+                    the cycle picker shipped at before the scheme list replaced it. */}
+                <Redirect
+                  exact
+                  from="/eqa/management/provider/schemes"
+                  to="/qa/eqa/provider/schemes"
+                />
+                <Redirect
+                  exact
+                  from="/qa/eqa/provider/workbench"
+                  to="/qa/eqa/provider/schemes"
+                />
+                <SecureRoute
+                  path="/qa/eqa/provider/schemes"
+                  exact
+                  component={() => <ProviderSchemeList />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                <SecureRoute
+                  path="/qa/eqa/provider/cycles/:cycleId/workbench"
+                  exact
+                  component={() => <ProviderWorkbenchPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* Oversight lane: the follow-up queue. qa/019 seeded
+                    its menu row at the specification path, so that path redirects here
+                    the way My Cycles does. Triage writes carry their own
+                    qa.manage.eqa guard server-side. */}
+                <Redirect
+                  exact
+                  from="/eqa/oversight/follow-up-queue"
+                  to="/qa/eqa/follow-up-queue"
+                />
+                <SecureRoute
+                  path="/qa/eqa/follow-up-queue"
+                  exact
+                  component={() => <FollowUpQueuePage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* Provider-side counterpart: follow-up with other labs,
+                    which never becomes a local non-conformity. */}
+                <SecureRoute
+                  path="/qa/eqa/provider/follow-ups"
+                  exact
+                  component={() => <ProviderFollowupRegister />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* Lab Performance: two views of one rollup, as sibling
+                    routes rather than in-page tabs — the specification makes these
+                    submenu children. */}
+                <Redirect
+                  exact
+                  from="/eqa/oversight/lab-performance/coverage"
+                  to="/qa/eqa/lab-performance/coverage"
+                />
+                <SecureRoute
+                  path="/qa/eqa/lab-performance/recent"
+                  exact
+                  component={() => <LabPerformancePage view="recent" />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                <SecureRoute
+                  path="/qa/eqa/lab-performance/coverage"
+                  exact
+                  component={() => <LabPerformancePage view="coverage" />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* Analyst Competency: the last oversight menu row.
+                    qa/019 seeded it at the specification path, which redirects here the
+                    way its two siblings do. Read-only — competency events are
+                    service-written, never posted from this page. */}
+                <Redirect
+                  exact
+                  from="/eqa/oversight/analyst-track"
+                  to="/qa/eqa/analyst-competency"
+                />
+                <SecureRoute
+                  path="/qa/eqa/analyst-competency"
+                  exact
+                  component={() => <AnalystCompetencyPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* In-house blinding: landing list, then the 4-step
+                    wizard. The wizard's writes carry their own qa.manage.eqa
+                    guard server-side, so both routes sit on the read umbrella. */}
+                <SecureRoute
+                  path="/qa/eqa/in-house/new"
+                  exact
+                  component={() => <BlindingWizard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                <SecureRoute
+                  path="/qa/eqa/in-house"
+                  exact
+                  component={() => <InHousePanelsPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  permission="qa.view.eqa"
+                />
+                {/* QA menu (OGC-688): Overview shell + placeholder leaves.
+                    No pillar-landing routes: sidenav parents expand-only
+                    (never navigate), so landing pages would be unreachable. */}
+                <SecureRoute
+                  path="/qa/overview"
+                  exact
+                  component={() => <QAOverview />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path="/qa/qc/reagent-qc"
+                  exact
+                  component={() => <QAPlaceholder feature="reagent-qc" />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/qa/qc/manual-qc"
+                  exact
+                  component={() => <QAPlaceholder feature="manual-qc" />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                {/* QA v1 MVP (OGC-695/696): QI Dashboard replaces the pillar
+                    placeholder; the pillar menu entry is now expand-only. */}
+                <Redirect exact from="/qa/qi" to="/qa/qi/dashboard" />
+                <SecureRoute
+                  path="/qa/qi/dashboard"
+                  exact
+                  component={() => <QIDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path="/qa/qi/config"
+                  exact
+                  component={() => <QIConfigList />}
+                  permission="qa.manage.qi"
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/qa/qi/tat"
+                  exact
+                  component={() => (
+                    <QIEnabledRoute indicator="TAT">
+                      <TATReport breadcrumbs={qaTatBreadcrumbs} />
+                    </QIEnabledRoute>
+                  )}
+                  role={[Roles.RESULTS, Roles.REPORTS]}
+                />
+                <SecureRoute
+                  path="/qa/qi/rejection"
+                  exact
+                  component={() => (
+                    <QIEnabledRoute indicator="REJECTION">
+                      <RejectionReport />
+                    </QIEnabledRoute>
+                  )}
+                  role={[Roles.RESULTS, Roles.REPORTS]}
+                />
+                <SecureRoute
+                  path="/qa/qi/amendment"
+                  exact
+                  component={() => (
+                    <QIEnabledRoute indicator="AMENDMENT">
+                      <AmendmentReport />
+                    </QIEnabledRoute>
+                  )}
+                  role={[Roles.RESULTS, Roles.REPORTS]}
+                />
+                <SecureRoute
+                  path="/qa/qi/callback"
+                  exact
+                  component={() => (
+                    <QIEnabledRoute indicator="CALLBACK">
+                      <CallbackReport />
+                    </QIEnabledRoute>
+                  )}
+                  role={[Roles.RESULTS, Roles.REPORTS]}
+                />
+                <SecureRoute
+                  path="/qa/qms/nce-register"
+                  exact
+                  component={() => (
+                    <NonConformIndex form="ViewNonConformingEvent" />
+                  )}
+                  role={[Roles.RECEPTION, Roles.VALIDATION]}
+                  permission="qa.view.qms"
+                />
+                <SecureRoute
+                  path="/qa/qms/audit-trail"
+                  exact
+                  component={() => <AuditTrailReportIndex />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/qa/qms/e-signature-log"
+                  exact
+                  component={() => <ESignatureLog />}
+                  permission="qa.view.qms"
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/qa/qms/capa-register"
+                  exact
+                  component={() => <CapaRegister />}
+                  permission="qa.view.qms"
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/qa/qms/accreditation"
+                  exact
+                  component={() => <Accreditation />}
+                  permission="qa.view.qms"
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                {/* QA menu (OGC-688): Overview shell + placeholder leaves.
+                    No pillar-landing routes: sidenav parents expand-only
+                    (never navigate), so landing pages would be unreachable. */}
+                <SecureRoute
+                  path="/qa/overview"
+                  exact
+                  render={() => <QAOverview />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path="/qa/qc/reagent-qc"
+                  exact
+                  render={() => <QAPlaceholder feature="reagent-qc" />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/qa/qc/manual-qc"
+                  exact
+                  render={() => <QAPlaceholder feature="manual-qc" />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                {/* QA v1 MVP (OGC-695/696): QI Dashboard replaces the pillar
+                    placeholder; the pillar menu entry is now expand-only. */}
+                <SecureRoute
+                  path="/qa/qi/dashboard"
+                  exact
+                  render={() => <QIDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path="/qa/qi/config"
+                  exact
+                  render={() => <QIConfigList />}
+                  permission="qa.manage.qi"
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                {QI_INDICATOR_ROUTES.map(([slug, indicator, page]) => (
+                  <SecureRoute
+                    key={slug}
+                    path={`/qa/qi/${slug}`}
+                    exact
+                    render={() => (
+                      <QIEnabledRoute indicator={indicator}>
+                        {page()}
+                      </QIEnabledRoute>
+                    )}
+                    role={[Roles.RESULTS, Roles.REPORTS]}
+                  />
+                ))}
+                <SecureRoute
+                  path="/qa/qms/nce-register"
+                  exact
+                  render={() => (
+                    <NonConformIndex form="ViewNonConformingEvent" />
+                  )}
+                  role={[Roles.RECEPTION, Roles.VALIDATION]}
+                />
+                <SecureRoute
+                  path="/qa/qms/audit-trail"
+                  exact
+                  render={() => <AuditTrailReportIndex />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/qa/qms/e-signature-log"
+                  exact
+                  render={() => <ESignatureLog />}
+                  permission="qa.view.qms"
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/qa/qms/capa-register"
+                  exact
+                  render={() => <CapaRegister />}
+                  permission="qa.view.qms"
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/qa/qms/accreditation"
+                  exact
+                  render={() => <Accreditation />}
+                  permission="qa.view.qms"
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/Storage"
+                  exact
+                  render={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <StorageManagementPage />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                {/* Every per-resource URL resolves to the same tabbed page, so
+                    existing bookmarks and menu rows keep working. */}
+                <SecureRoute
+                  path="/Storage/:resource(sample-items|inventory-lots|rooms|devices|shelves|racks|boxes)"
+                  exact
+                  render={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <StorageManagementPage />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/inventory/receive"
+                  exact
+                  render={() => <InventoryReceivePage />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/inventory/reports"
+                  exact
+                  render={() => <InventoryReportsPage />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/inventory"
+                  exact
+                  render={() => <InventoryItemsPage />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment"
+                  exact
+                  render={() => <ShipmentDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/create-box"
+                  exact
+                  render={() => <BoxCreation />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/box/:boxId"
+                  exact
+                  component={BoxDetails}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/receive"
+                  exact
+                  render={() => <ReceptionWorkflow />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/reports"
+                  exact
+                  render={() => (
+                    <Suspense fallback={null}>
+                      <ShipmentReport />
+                    </Suspense>
+                  )}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/settings"
+                  exact
+                  render={() => <ShipmentSettings />}
+                  role={[Roles.RECEPTION, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/reference-lab-results"
+                  exact
+                  render={() => <ReferenceLabResults />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/:tab"
+                  render={() => <ShipmentDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleManagement"
+                  exact
+                  render={() => <SampleManagement />}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                />
+                <SecureRoute
+                  path="/analyzers"
+                  exact
+                  render={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzersPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={ANALYZER_SETUP_ROLES}
+                />
+                <SecureRoute
+                  path="/analyzers/types"
+                  exact
+                  render={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzerTypesPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={ANALYZER_SETUP_ROLES}
+                />
+                <SecureRoute
+                  path="/analyzers/types/:profileId/mapping"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzerTypeMappingPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={ANALYZER_SETUP_ROLES}
+                />
+                <SecureRoute
+                  path="/analyzers/:analyzerId/mapping"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzerTypeMappingPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={ANALYZER_SETUP_ROLES}
+                />
+                <SecureRoute
+                  path="/analyzers/:analyzerId/adoption"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzerTypeMappingPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={ANALYZER_SETUP_ROLES}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/instruments/:instrumentId"
+                  exact
+                  render={() => <InstrumentDetailPage />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                {/* QA v0.5 IA rehome (OGC-689): QC pages moved to /qa/qc/* */}
+                <SecureRoute
+                  path="/qa/qc/dashboard"
+                  exact
+                  render={() => <QCDashboard />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                {/* QA v0.5 IA rehome (OGC-689): QC pages moved to /qa/qc/* */}
+                <Redirect exact from="/analyzers/qc/db" to="/qa/qc/dashboard" />
+                <SecureRoute
+                  path="/qa/qc/dashboard"
+                  exact
+                  render={() => <QCDashboard initialTab={1} />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/qa/qc/alerts"
+                  exact
+                  component={() => <QCDashboard initialTab={1} />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/charts/:analyzerId"
+                  exact
+                  render={() => <ControlChartDetail />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <Redirect
+                  exact
+                  from="/analyzers/qc/control-lots"
+                  to="/qa/qc/control-lots"
+                />
+                <SecureRoute
+                  path="/qa/qc/control-lots"
+                  exact
+                  render={() => <ControlLotList />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/control-lots/new"
+                  exact
+                  render={() => <ControlLotSetup />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/control-lots/:id"
+                  exact
+                  render={() => <ControlLotSetup />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <Redirect
+                  exact
+                  from="/analyzers/qc/rule-config"
+                  to="/qa/qc/rule-config"
+                />
+                <SecureRoute
+                  path="/qa/qc/rule-config"
+                  exact
+                  render={() => <RuleConfigPanel />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/PatientHistory"
+                  exact
+                  render={() => <PatientHistory />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/PatientMerge"
+                  exact
+                  render={() => <PatientMerge />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/GenericSample/Results"
+                  exact
+                  render={() => (
+                    <Suspense fallback={null}>
+                      <GenericSampleResults />
+                    </Suspense>
+                  )}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/Aliquot"
+                  exact
+                  render={() => <Aliquot />}
+                  role={Roles.RECEPTION}
+                />
+
+                <SecureRoute
+                  path="/PatientResults/:patientId"
+                  exact
+                  render={() => (
+                    <RouteErrorBoundary {...routeErrorPatientResultsViewer}>
+                      <Suspense fallback={null}>
+                        <RoutedResultsViewer />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={Roles.RECEPTION}
+                />
+
+                <SecureRoute
+                  path="/Workplan"
+                  exact
+                  component={() => <BatchWorkplan />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/Workplan/batch/:id/print"
+                  exact
+                  component={() => <BatchWorkplanPrint />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/WorkPlanByTestSection"
+                  exact
+                  render={() => <Workplan type="unit" />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/WorkplanByTest"
+                  exact
+                  render={() => <Workplan type="test" />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/WorkplanByPanel"
+                  exact
+                  render={() => <Workplan type="panel" />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/WorkplanByPriority"
+                  exact
+                  render={() => <Workplan type="priority" />}
+                  role={Roles.RESULTS}
+                />
+                {/* OGC-1020 (R1): the one results-entry page; the legacy
+                    result-entry addresses below redirect to it */}
+                <SecureRoute
+                  path="/Results"
+                  exact
+                  render={() => (
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
+                      <UnifiedResultsRoute />
+                    </RouteErrorBoundary>
+                  )}
+                  role={Roles.RESULTS}
+                />
+                <Route
+                  path={[
+                    "/result",
+                    "/LogbookResults",
+                    "/PatientResults",
+                    "/AccessionResults",
+                    "/StatusResults",
+                    "/RangeResults",
+                  ]}
+                  exact
+                  render={() => <LegacyResultsRedirect />}
+                />
+                <SecureRoute
+                  path="/RoutineReports"
+                  exact
+                  render={() => <RoutineReports />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/RoutineReport"
+                  exact
+                  render={() => <RoutineIndex />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/StudyReports"
+                  exact
+                  render={() => <StudyReports />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/StudyReport"
+                  exact
+                  render={() => <StudyIndex />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/Report"
+                  exact
+                  render={() => <ReportIndex />}
+                  role={Roles.REPORTS}
+                />
+                {/* QA v0.5 IA rehome (OGC-690): Audit Trail moved to QMS pillar */}
+                <Route
+                  path="/AuditTrailReport"
+                  exact
+                  render={({ location }) => (
+                    <Redirect
+                      to={{
+                        pathname: "/qa/qms/audit-trail",
+                        search: location.search,
+                      }}
+                    />
+                  )}
+                />
+                <SecureRoute
+                  path={REPORTING_ROUTE_PATHS}
+                  exact
+                  render={() => <ReportingRoute />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/TATReport"
+                  exact
+                  render={() => <TATReport />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/VectorSurveillanceReport"
+                  exact
+                  render={() => <VectorSurveillanceReport />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/LaporanHasil"
+                  exact
+                  render={() => <LaporanHasilReport />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/ReportPrintQueue"
+                  exact
+                  render={() => <ReportPrintQueue />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/SentMessages"
+                  exact
+                  render={() => <SentMessages />}
+                  role={[Roles.REPORTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/VectorManualEntry"
+                  exact
+                  render={() => <ManualEntryHelper />}
+                  role={Roles.REPORTS}
+                />
+                {/* Every validation submenu renders the same component, and
+                    SearchForm picks its mode from window.location.pathname. The
+                    router reuses the mounted instance across these paths, so
+                    without a per-path key the mode effect never re-runs and the
+                    page keeps showing the previous submenu while the URL
+                    changes. The key forces a remount, which is what a fresh load
+                    does and what resets the search state between submenus. */}
+                <SecureRoute
+                  path="/validation"
+                  exact
+                  render={() => <StudyValidation key="validation" />}
+                  role={Roles.VALIDATION}
+                />
+                <SecureRoute
+                  path="/ResultValidation"
+                  exact
+                  render={() => <StudyValidation key="ResultValidation" />}
+                  role={Roles.VALIDATION}
+                />
+                <SecureRoute
+                  path="/AccessionValidation"
+                  exact
+                  render={() => <StudyValidation key="AccessionValidation" />}
+                  role={Roles.VALIDATION}
+                />
+                <SecureRoute
+                  path="/AccessionValidationRange"
+                  exact
+                  render={() => (
+                    <StudyValidation key="AccessionValidationRange" />
+                  )}
+                  role={Roles.VALIDATION}
+                />
+                <SecureRoute
+                  path="/ResultValidationByTestDate"
+                  exact
+                  render={() => (
+                    <StudyValidation key="ResultValidationByTestDate" />
+                  )}
+                  role={Roles.VALIDATION}
+                />
+                <SecureRoute
+                  path="/AnalyzerResults"
+                  exact
+                  render={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzerResults}>
+                      <Suspense fallback={null}>
+                        <AnalyserResultIndex />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={ANALYZER_RESULTS_ROLES}
+                />
+                {/* Pages of installed modules, /m/<module id>/..., before the catch-all */}
+                <Route path="/m/:moduleId" render={() => <ModuleRoutes />} />
+                <Route path="*" render={() => <RedirectOldUI />} />
+              </Switch>
+            </Layout>
+          </Router>
+          {serverWait && (
+            <ServerReconnectNotice
+              retryAt={serverWait.retryAt}
+              onTryNow={retryServerNow}
+            />
+          )}
+        </>
+      </UserSessionDetailsContext.Provider>
+    </IntlProvider>
+  );
+}

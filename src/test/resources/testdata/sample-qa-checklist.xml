@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- Sample records for foreign key mapping -->
+    <!-- Columns aligned with qc-dashboard.xml to avoid DBUnit column-sensing
+        conflicts -->
+    <sample id="100" accession_number="QATEST-001"
+        received_date="2023-10-01 10:00:00" entered_date="2023-10-01 10:00:00"
+        collection_date="2023-10-01 10:00:00" status="1" domain="H"
+        lastupdated="2023-10-01 10:00:00" />
+
+    <sample id="101" accession_number="QATEST-002"
+        received_date="2023-10-01 10:00:00" entered_date="2023-10-01 10:00:00"
+        collection_date="2023-10-01 10:00:00" status="1" domain="H"
+        lastupdated="2023-10-01 10:00:00" />
+
+    <sample id="102" accession_number="QATEST-003"
+        received_date="2023-10-01 10:00:00" entered_date="2023-10-01 10:00:00"
+        collection_date="2023-10-01 10:00:00" status="1" domain="H"
+        lastupdated="2023-10-01 10:00:00" />
+
+    <!-- Dictionary Category for QA Checklist -->
+    <dictionary_category id="50"
+        description="QA Checklist Items" local_Abbrev="QACHK"
+        name="QAChecklistItem" lastUpdated="2023-11-01 12:00:00" />
+
+    <!-- Dictionary Entries mapped to QAChecklistItem (Category 50) -->
+    <!-- Two active, one inactive, to test sorting and filtering -->
+    <dictionary id="200" is_active="Y"
+        dict_entry="Temperature Verified" local_Abbrev="TEMP"
+        dictionary_category_id="50" sort_order="1"
+        lastUpdated="2023-11-01 12:00:00" />
+
+    <dictionary id="201" is_active="N"
+        dict_entry="Package Intact" local_Abbrev="PKG"
+        dictionary_category_id="50" sort_order="2"
+        lastUpdated="2023-11-01 12:00:00" />
+
+    <dictionary id="202" is_active="Y"
+        dict_entry="Volume Sufficient" local_Abbrev="VOL"
+        dictionary_category_id="50" sort_order="3"
+        lastUpdated="2023-11-01 12:00:00" />
+
+    <!-- Existing Sample QA Checklists -->
+    <!-- Sample 100 has all required items verified (Temperature Verified, Volume
+        Sufficient) -->
+    <!-- IDs use high values (9001+) so sequence-generated IDs start at 1 and
+        never collide -->
+    <sample_qa_checklist id="9001" sample_id="100"
+        verified_items="{&quot;Temperature Verified&quot;:true,&quot;Volume Sufficient&quot;:true}"
+        all_required_verified="true" verified_by_user_id="1"
+        verified_date="2024-01-15 08:30:00" last_updated="2024-01-15 08:30:00" />
+
+    <!-- Sample 101 has partial items verified -->
+    <sample_qa_checklist id="9002" sample_id="101"
+        verified_items="{&quot;Temperature Verified&quot;:true,&quot;Volume Sufficient&quot;:false}"
+        all_required_verified="false" verified_by_user_id="1"
+        last_updated="2024-01-15 08:30:00" />
+</dataset>

@@ -31,7 +31,7 @@ public class ProgramSampleDAOImpl extends BaseDAOImpl<ProgramSample, Integer> im
 
         String sql = "from " + className + " ps where ps.sample.id = :sampleId";
         Query<ProgramSample> query = entityManager.unwrap(Session.class).createQuery(sql, ProgramSample.class);
-        query.setParameter("sampleId", sampleId);
+        query.setParameter("sampleId", String.valueOf(sampleId));
         query.setMaxResults(1);
         ProgramSample programme = (ProgramSample) query.uniqueResult();
         return programme;
@@ -50,5 +50,17 @@ public class ProgramSampleDAOImpl extends BaseDAOImpl<ProgramSample, Integer> im
         Query<ProgramSample> query = entityManager.unwrap(Session.class).createQuery(sql, ProgramSample.class);
         query.setParameter("filter", "%" + filter.toLowerCase() + "%");
         return query.list();
+    }
+
+    @Override
+    public long countByProgramId(String programId) {
+        if (programId == null || programId.isBlank()) {
+            return 0L;
+        }
+        String sql = "select count(ps) from ProgramSample ps where ps.program.id = :programId";
+        Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+        query.setParameter("programId", programId);
+        Long result = query.uniqueResult();
+        return result == null ? 0L : result;
     }
 }

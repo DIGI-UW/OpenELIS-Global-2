@@ -1,0 +1,173 @@
+package org.openelisglobal.analyzer.service;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import org.openelisglobal.analyzer.dao.AnalyzerMappingDAO;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@Transactional(readOnly = true)
+public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogService {
+
+    private static final String SCHEMA_VERSION = "1.0";
+
+    private final BridgeProfileCatalogService bridgeCatalogService;
+    private final AnalyzerMappingDAO mappingDAO;
+    private final AnalyzerMappingDefaults mappingDefaults;
+    private final AnalyzerMappingCatalogService mappingCatalogService;
+    private final AnalyzerMappingConfirmationService confirmationService;
+    private final AnalyzerMappingService mappingService;
+
+    @Autowired
+    public AnalyzerTypeCatalogServiceImpl(BridgeProfileCatalogService bridgeCatalogService,
+            AnalyzerMappingDAO mappingDAO, AnalyzerMappingDefaults mappingDefaults,
+            AnalyzerMappingCatalogService mappingCatalogService, AnalyzerMappingConfirmationService confirmationService,
+            AnalyzerMappingService mappingService) {
+        this.bridgeCatalogService = bridgeCatalogService;
+        this.mappingDAO = mappingDAO;
+        this.mappingDefaults = mappingDefaults;
+        this.mappingCatalogService = mappingCatalogService;
+        this.confirmationService = confirmationService;
+        this.mappingService = mappingService;
+    }
+
+    @Override
+    public AnalyzerTypeCatalogView getCatalog() {
+        if (!bridgeCatalogService.isConfigured()) {
+            return AnalyzerTypeCatalogView.unavailable(SCHEMA_VERSION, false, false);
+        }
+        BridgeProfileCatalog bridgeCatalog;
+        try {
+            bridgeCatalog = bridgeCatalogService.getCatalog();
+        } catch (BridgeProfileCatalogException e) {
+            if (e.bridgeNotPaired()) {
+                return AnalyzerTypeCatalogView.unavailable(SCHEMA_VERSION, true, false);
+            }
+            throw e;
+        }
+        Map<String, List<Analyzer>> analyzersByProfileId = bridgeCatalog.profiles().stream()
+                .map(revision -> BridgeAnalyzerProfile.from(revision.profile()).profileId()).distinct()
+                .collect(Collectors.toMap(Function.identity(), this::affectedAnalyzers));
+        List<AnalyzerMappingCatalogService.TestOption> activeTests = mappingCatalogService.searchActiveTests(null);
+        AnalyzerMappingCatalogState catalog = AnalyzerMappingCatalogState.load(mappingCatalogService, activeTests);
+
+        List<AnalyzerTypeCatalogView.TypeSummary> types = bridgeCatalog.profiles().stream().map(revision -> {
+            BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
+            return summarize(revision, analyzersByProfileId.getOrDefault(profile.profileId(), List.of()), activeTests,
+                    catalog);
+        }).sorted(Comparator.comparing(summary -> summary.displayName().toLowerCase(Locale.ROOT))).toList();
+
+        int inUse = (int) types.stream().filter(type -> type.usedBy() > 0).count();
+        int deactivated = (int) types.stream().filter(type -> "INACTIVE".equals(type.status())).count();
+        int needsAttention = (int) types.stream().filter(type -> "ACTIVE".equals(type.status()))
+                .filter(type -> !"READY".equals(type.readiness())).count();
+        AnalyzerTypeCatalogView.CatalogSummary summary = new AnalyzerTypeCatalogView.CatalogSummary(types.size(), inUse,
+                needsAttention, deactivated);
+        return new AnalyzerTypeCatalogView(SCHEMA_VERSION, bridgeCatalog.catalogFingerprint(), summary, types,
+                bridgeCatalog.issues());
+    }
+
+    @Override
+    public AnalyzerTypeCatalogView.TypeSummary getType(String profileId, int revision) {
+        BridgeProfileCatalog.ProfileRevision profileRevision = bridgeCatalogService.getProfile(profileId, revision);
+        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(profileRevision.profile());
+        List<AnalyzerMappingCatalogService.TestOption> activeTests = mappingCatalogService.searchActiveTests(null);
+        return summarize(profileRevision, affectedAnalyzers(profile.profileId()), activeTests,
+                AnalyzerMappingCatalogState.load(mappingCatalogService, activeTests));
+    }
+
+    /**
+     * What a new analyzer on this profile revision would bind by default against
+     * the catalog as it is now. It is a preview of defaults; nothing is saved, and
+     * each analyzer keeps its own mapping.
+     */
+    private AnalyzerTypeCatalogView.TypeSummary summarize(BridgeProfileCatalog.ProfileRevision revision,
+            List<Analyzer> analyzers, List<AnalyzerMappingCatalogService.TestOption> activeTests,
+            AnalyzerMappingCatalogState catalog) {
+        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
+        List<AnalyzerTypeCatalogView.AffectedAnalyzer> affectedAnalyzers = analyzers.stream()
+                .map(analyzer -> affectedAnalyzer(analyzer, profile, catalog)).toList();
+        String status = profile.status();
+        AnalyzerMappingDraft defaults = mappingDefaults.resolve(profile, activeTests);
+        // Both figures count rows of the defaults: a test and each of its parts, and
+        // every answer they declare.
+        AnalyzerTypeCatalogView.MappingSummary testMappings = mappingSummary(defaults.tests().size(),
+                defaults.tests().stream().filter(row -> row.mappingState() == AnalyzerMappingState.BOUND).count(),
+                defaults.tests().stream().filter(row -> row.mappingState() == AnalyzerMappingState.EXCLUDED).count());
+        AnalyzerTypeCatalogView.MappingSummary resultMappings = mappingSummary(defaults.results().size(),
+                defaults.results().stream().filter(row -> row.mappingState() == AnalyzerMappingState.BOUND).count(),
+                defaults.results().stream().filter(row -> row.mappingState() == AnalyzerMappingState.EXCLUDED).count());
+        String readiness = readiness(status, testMappings, resultMappings);
+        return new AnalyzerTypeCatalogView.TypeSummary(profile.profileId(), profile.revision(),
+                profile.revisionFingerprint(), profile.displayName(), profile.manufacturer(), profile.model(),
+                profile.source(), status, profile.protocol(), profile.protocolVersion(), profile.communicationMode(),
+                profile.parentProfileId(), profile.parentRevision(), testMappings, resultMappings,
+                affectedAnalyzers.size(), readiness, nullableText(revision.publication(), "action"),
+                nullableText(revision.publication(), "actor"), nullableText(revision.publication(), "markedAt"),
+                affectedAnalyzers);
+    }
+
+    private List<Analyzer> affectedAnalyzers(String profileId) {
+        return mappingDAO.findAnalyzersInForceOnProfile(profileId);
+    }
+
+    private AnalyzerTypeCatalogView.AffectedAnalyzer affectedAnalyzer(Analyzer analyzer, BridgeAnalyzerProfile profile,
+            AnalyzerMappingCatalogState catalog) {
+        AnalyzerMapping inForce = analyzer.getMapping();
+        AnalyzerMapping latest = mappingDAO.findLatestByAnalyzerId(analyzer.getId()).orElse(inForce);
+        // A saved adoption already targets the latest mapping's revision; it waits for
+        // Verify, not another Adopt.
+        boolean newerProfileRevision = latest.getProfileRevision() < profile.revision();
+        boolean newerMappingRevision = latest.getRevisionNumber() > inForce.getRevisionNumber();
+        return new AnalyzerTypeCatalogView.AffectedAnalyzer(analyzer.getId(), analyzer.getName(), analyzer.isActive(),
+                inForce.getProfileRevision(), inForce.getRevisionNumber(), newerProfileRevision, newerMappingRevision,
+                mappingService.findById(inForce.getId())
+                        .map(mapping -> confirmationService.assessCurrent(mapping, catalog))
+                        .map(assessment -> assessment.currentConfirmation().isPresent()).orElse(false));
+    }
+
+    /**
+     * A row is decided when it is mapped or deliberately excluded; a type is ready
+     * when every row is.
+     */
+    private static AnalyzerTypeCatalogView.MappingSummary mappingSummary(int total, long bound, long excluded) {
+        if (total == 0) {
+            return new AnalyzerTypeCatalogView.MappingSummary(0, 0, 0, "NOT_APPLICABLE");
+        }
+        long decided = bound + excluded;
+        String state = decided == 0 ? "NOT_STARTED" : decided == total ? "COMPLETE" : "INCOMPLETE";
+        return new AnalyzerTypeCatalogView.MappingSummary(Math.toIntExact(bound), Math.toIntExact(excluded), total,
+                state);
+    }
+
+    private static String readiness(String status, AnalyzerTypeCatalogView.MappingSummary testMappings,
+            AnalyzerTypeCatalogView.MappingSummary resultMappings) {
+        if (!"ACTIVE".equals(status)) {
+            return "DEACTIVATED";
+        }
+        if (testMappings.total() == 0) {
+            return "NEEDS_PROFILE_TESTS";
+        }
+        if ("COMPLETE".equals(testMappings.state())
+                && ("COMPLETE".equals(resultMappings.state()) || "NOT_APPLICABLE".equals(resultMappings.state()))) {
+            return "READY";
+        }
+        return "NEEDS_LOCAL_MAPPING";
+    }
+
+    private static String nullableText(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        return value.isMissingNode() || value.isNull() || value.asText().isBlank() ? null : value.asText();
+    }
+
+}

@@ -1,6 +1,5 @@
 package org.openelisglobal.coldstorage.service;
 
-import java.io.File;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -9,14 +8,10 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.WeekFields;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
-import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.JasperRunManager;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.alert.service.AlertService;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.coldstorage.service.dto.FreezerDailyLogData;
@@ -24,10 +19,8 @@ import org.openelisglobal.coldstorage.service.dto.FreezerMonthlyLogData;
 import org.openelisglobal.coldstorage.service.dto.FreezerWeeklyLogData;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.coldstorage.valueholder.FreezerReading;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,58 +45,55 @@ public class FreezerReportServiceImpl implements FreezerReportService {
     private static final DateTimeFormatter MONTH_YEAR_FORMATTER = DateTimeFormatter.ofPattern("MMMM yyyy",
             Locale.ENGLISH);
     private static final DateTimeFormatter MONTH_DAY_FORMATTER = DateTimeFormatter.ofPattern("MMM dd", Locale.ENGLISH);
-    private static final WeekFields WEEK_FIELDS = WeekFields.of(Locale.getDefault());
+    // Single locale source for all week-number/label math and display, so
+    // boundary calculations (weekOfMonth) and rendered labels never disagree.
+    private static final Locale REPORT_LOCALE = Locale.ENGLISH;
+    private static final WeekFields WEEK_FIELDS = WeekFields.of(REPORT_LOCALE);
 
     @Override
     public List<FreezerDailyLogData> generateDailyLogData(Long freezerId, LocalDate startDate, LocalDate endDate) {
-        OffsetDateTime startDateTime = startDate.atStartOfDay(ZoneId.systemDefault()).toOffsetDateTime();
-        OffsetDateTime endDateTime = endDate.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toOffsetDateTime();
+        ZoneId zone = ZoneId.systemDefault();
+        OffsetDateTime startDateTime = startDate.atStartOfDay(zone).toOffsetDateTime();
+        // Exclusive next-midnight boundary (minus 1ns so the underlying inclusive
+        // BETWEEN query still captures the very last instant of endDate) instead of
+        // inclusive 23:59:59, which left a sub-second gap
+        // (23:59:59.001-23:59:59.999999999) unreported.
+        OffsetDateTime endDateTime = endDate.plusDays(1).atStartOfDay(zone).toOffsetDateTime().minusNanos(1);
 
-        List<FreezerReading> readings = new ArrayList<>();
-        if (freezerId != null) {
-            readings = freezerReadingService.getReadingsBetween(freezerId, startDateTime, endDateTime);
-        } else {
-            List<Freezer> allFreezers = freezerService.getAllFreezers("");
-            for (Freezer freezer : allFreezers) {
-                readings.addAll(freezerReadingService.getReadingsBetween(freezer.getId(), startDateTime, endDateTime));
+        List<Freezer> freezersToCheck = freezerId != null
+                ? freezerService.findById(freezerId).map(List::of).orElse(List.of())
+                : freezerService.getAllFreezersForReporting();
+
+        List<FreezerDailyLogData> result = new ArrayList<>();
+        for (Freezer freezer : freezersToCheck) {
+            List<FreezerReading> readings = freezerReadingService.getReadingsBetween(freezer.getId(), startDateTime,
+                    endDateTime);
+            if (readings.isEmpty()) {
+                continue;
+            }
+            // Batch-fetch alerts for this freezer once instead of once per reading
+            // (previously an N+1: checkIfAlertExistsAtTime queried alerts per reading).
+            List<Alert> freezerAlerts = alertService.getAlertsByEntity("Freezer", freezer.getId());
+            for (FreezerReading reading : readings) {
+                result.add(mapToDailyLogData(reading, freezerAlerts));
             }
         }
 
-        return readings.stream().map(this::mapToDailyLogData).collect(Collectors.toList());
+        return result;
     }
 
     @Override
     public byte[] generatePdfReport(String reportType, Long freezerId, LocalDate startDate, LocalDate endDate) {
-        try {
-            LogEvent.logInfo(this.getClass().getSimpleName(), "generatePdfReport",
-                    "Starting PDF generation - reportType: " + reportType + ", freezerId: " + freezerId);
-
-            String reportPath = getReportPath(reportType);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "generatePdfReport", "Report path: " + reportPath);
-
-            Map<String, Object> parameters = buildReportParameters(freezerId, startDate, endDate, reportType);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "generatePdfReport",
-                    "Parameters built: " + parameters.size() + " parameters");
-
-            JRBeanCollectionDataSource dataSource = buildDataSource(reportType, freezerId, startDate, endDate);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "generatePdfReport",
-                    "Data source built with " + dataSource.getRecordCount() + " records");
-
-            File reportFile = new ClassPathResource(reportPath).getFile();
-            LogEvent.logInfo(this.getClass().getSimpleName(), "generatePdfReport",
-                    "Report file exists: " + reportFile.exists() + ", path: " + reportFile.getAbsolutePath());
-
-            byte[] pdfBytes = JasperRunManager.runReportToPdf(reportFile.getAbsolutePath(), parameters, dataSource);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "generatePdfReport",
-                    "PDF generated successfully: " + pdfBytes.length + " bytes");
-
-            return pdfBytes;
-        } catch (JRException | java.io.IOException e) {
-            LogEvent.logError(this.getClass().getSimpleName(), "generatePdfReport",
-                    "Error generating report: " + e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException("Failed to generate PDF report", e);
-        }
+        FreezerTemperatureReportPdf.Heading heading = buildHeading(freezerId, startDate, endDate, reportType);
+        return switch (reportType.toLowerCase()) {
+        case "daily", "dailylog", "freezerdailylogreport" ->
+            FreezerTemperatureReportPdf.daily(heading, generateDailyLogData(freezerId, startDate, endDate));
+        case "weekly", "weeklylog" ->
+            FreezerTemperatureReportPdf.weekly(heading, generateWeeklyLogData(freezerId, startDate, endDate));
+        case "monthly", "monthlylog" ->
+            FreezerTemperatureReportPdf.monthly(heading, generateMonthlyLogData(freezerId, startDate, endDate));
+        default -> throw new IllegalArgumentException("Unknown report type: " + reportType);
+        };
     }
 
     @Override
@@ -322,15 +312,8 @@ public class FreezerReportServiceImpl implements FreezerReportService {
         return java.time.Month.valueOf(monthName.toUpperCase()).getValue();
     }
 
-    private String getReportPath(String reportType) {
-        // Use single unified template for all report types
-        return "reports/FreezerTemperatureMonitoringReport.jasper";
-    }
-
-    private Map<String, Object> buildReportParameters(Long freezerId, LocalDate startDate, LocalDate endDate,
+    private FreezerTemperatureReportPdf.Heading buildHeading(Long freezerId, LocalDate startDate, LocalDate endDate,
             String reportType) {
-        Map<String, Object> parameters = new HashMap<>();
-
         String facilityName = siteInformationService.getSiteInformationByName("siteNumber") != null
                 ? siteInformationService.getSiteInformationByName("siteNumber").getValue()
                 : "Laboratory";
@@ -343,7 +326,6 @@ public class FreezerReportServiceImpl implements FreezerReportService {
             }
         }
 
-        // Determine report type display name
         String reportTypeDisplay = switch (reportType.toLowerCase()) {
         case "daily", "dailylog", "freezerdailylogreport" -> "Daily Log";
         case "weekly", "weeklylog" -> "Weekly Log";
@@ -351,34 +333,12 @@ public class FreezerReportServiceImpl implements FreezerReportService {
         default -> "Temperature Log";
         };
 
-        parameters.put("reportTitle", "Temperature Monitoring Report");
-        parameters.put("reportType", reportTypeDisplay);
-        parameters.put("labName", facilityName);
-        parameters.put("facilityName", facilityName);
-        parameters.put("freezerName", freezerName);
-        parameters.put("startDate", startDate.format(DATE_FORMATTER));
-        parameters.put("endDate", endDate.format(DATE_FORMATTER));
-        parameters.put("reportDate", LocalDate.now().format(DATE_FORMATTER));
-        parameters.put("complianceFooter",
-                "This report complies with CAP, CLIA, FDA, and WHO guidelines for temperature-controlled storage monitoring.");
-
-        return parameters;
+        return new FreezerTemperatureReportPdf.Heading(reportTypeDisplay, facilityName, freezerName,
+                startDate.format(DATE_FORMATTER), endDate.format(DATE_FORMATTER),
+                LocalDate.now().format(DATE_FORMATTER));
     }
 
-    private JRBeanCollectionDataSource buildDataSource(String reportType, Long freezerId, LocalDate startDate,
-            LocalDate endDate) {
-        return switch (reportType.toLowerCase()) {
-        case "daily", "dailylog", "freezerdailylogreport" ->
-            new JRBeanCollectionDataSource(generateDailyLogData(freezerId, startDate, endDate));
-        case "weekly", "weeklylog" ->
-            new JRBeanCollectionDataSource(generateWeeklyLogData(freezerId, startDate, endDate));
-        case "monthly", "monthlylog" ->
-            new JRBeanCollectionDataSource(generateMonthlyLogData(freezerId, startDate, endDate));
-        default -> throw new IllegalArgumentException("Unknown report type: " + reportType);
-        };
-    }
-
-    private FreezerDailyLogData mapToDailyLogData(FreezerReading reading) {
+    private FreezerDailyLogData mapToDailyLogData(FreezerReading reading, List<Alert> freezerAlerts) {
         FreezerDailyLogData data = new FreezerDailyLogData();
 
         OffsetDateTime recordedAt = reading.getRecordedAt();
@@ -402,7 +362,7 @@ public class FreezerReportServiceImpl implements FreezerReportService {
         data.setTemperature(reading.getTemperatureCelsius());
         data.setHumidity(reading.getHumidityPercentage());
         data.setStatus(reading.getStatus() != null ? reading.getStatus().name() : "NORMAL");
-        data.setAlertTriggered(checkIfAlertExistsAtTime(reading));
+        data.setAlertTriggered(checkIfAlertExistsAtTime(reading, freezerAlerts));
 
         return data;
     }
@@ -422,16 +382,22 @@ public class FreezerReportServiceImpl implements FreezerReportService {
                 weekEnd.format(MONTH_DAY_FORMATTER), date.getYear());
     }
 
-    private boolean checkIfAlertExistsAtTime(FreezerReading reading) {
-        if (reading.getFreezer() == null || reading.getRecordedAt() == null) {
+    /**
+     * Checks whether any alert in the (already batch-fetched, per-freezer)
+     * {@code freezerAlerts} list started within +/-5 minutes of this reading.
+     * {@code freezerAlerts} is fetched once per freezer per report (see
+     * {@link #generateDailyLogData}) rather than once per reading, to avoid an N+1
+     * query pattern when a report spans many readings.
+     */
+    private boolean checkIfAlertExistsAtTime(FreezerReading reading, List<Alert> freezerAlerts) {
+        if (reading.getRecordedAt() == null || freezerAlerts == null || freezerAlerts.isEmpty()) {
             return false;
         }
         OffsetDateTime readingTime = reading.getRecordedAt();
         OffsetDateTime startWindow = readingTime.minusMinutes(5);
         OffsetDateTime endWindow = readingTime.plusMinutes(5);
 
-        List<Alert> alerts = alertService.getAlertsByEntity("Freezer", reading.getFreezer().getId());
-        return alerts.stream().filter(alert -> alert.getStartTime() != null).anyMatch(
+        return freezerAlerts.stream().filter(alert -> alert.getStartTime() != null).anyMatch(
                 alert -> !alert.getStartTime().isBefore(startWindow) && !alert.getStartTime().isAfter(endWindow));
     }
 

@@ -45,6 +45,10 @@
         <property name="text" type="java.lang.String">
             <column name="TEXT" />
         </property>
+        <property name="testResultComponentId"
+            type="java.lang.String">
+            <column name="TEST_RESULT_COMPONENT_ID" length="36" />
+        </property>
     </class>
     <!-- Note: could not solve transient object issues, sorry <query name="note.getNext">
         from Note n order by n.referenceTables.id, n.referenceId, n.noteType </query>

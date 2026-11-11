@@ -78,17 +78,6 @@
   margin: 5px;
 }
 
-.searchActionButtons {
-  padding: 2px;
-  margin: 5px;
-  display: inline-block;
-}
-
-.searchActionButtons button {
-  margin: 10px;
-  text-align: center;
-}
-
 .sampleType {
   margin-top: 20px;
   /*padding-bottom: 10px;*/
@@ -112,15 +101,11 @@
   margin-left: 5px;
 }
 
-.inputTime {
-  margin-left: 2px;
-}
-
-.cds--accordion__heading {
+.orderWorkFlowDiv .cds--accordion__heading {
   background-color: #d9d8d9;
 }
 
-.cds--accordion__content {
+.orderWorkFlowDiv .cds--accordion__content {
   padding: 0px !important;
 }
 
@@ -141,23 +126,34 @@
   color: red !important;
 }
 .orderEntrySuccessMsg {
-  width: 240px;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  margin: auto;
-}
-.printBarCodeBtn {
-  width: 220px;
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
   text-align: center;
 }
-.confirmPrintCodeBtn {
-  height: 30px;
-  width: 70px;
+
+.orderEntrySuccessHeader {
+  align-items: center;
   text-align: center;
-  margin-top: 26px;
-  margin-left: 10px;
+}
+
+.orderEntrySuccessIcon {
+  color: var(--cds-support-success);
+  display: block;
+  margin: 0 auto;
+}
+
+.orderEntrySuccessTitle {
+  margin: 0;
+}
+
+.orderEntrySuccessPrintPanel {
+  margin-top: 1.5rem;
+  text-align: left;
+}
+
+.orderEntrySuccessActions {
+  margin-top: 1rem;
 }
 .placeAnotherOrderBtn {
   width: 220px;

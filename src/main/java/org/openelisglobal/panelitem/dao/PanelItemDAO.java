@@ -54,6 +54,5 @@ public interface PanelItemDAO extends BaseDAO<PanelItem, String> {
 
     List<PanelItem> getPanelItemByTestId(String id) throws LIMSRuntimeException;
 
-    List<PanelItem> getPanelItemsForPanelAndItemList(String panelId, List<Integer> testList)
-            throws LIMSRuntimeException;
+    List<PanelItem> getPanelItemsForPanelAndItemList(String panelId, List<String> testList) throws LIMSRuntimeException;
 }

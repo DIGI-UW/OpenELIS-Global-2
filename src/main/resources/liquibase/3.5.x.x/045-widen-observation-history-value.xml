@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Widen observation_history.value from VARCHAR(80) to VARCHAR(500) so
+      free-text observations such as the Provisional Clinical Diagnosis
+      captured on Add Order can hold longer multi-line clinical content
+      (requirement: at least 250 characters).
+      Idempotent via an information_schema precondition.
+    -->
+    <changeSet author="openelis" id="widen-observation-history-value-to-500">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="80">SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'observation_history' AND column_name = 'value'</sqlCheck>
+        </preConditions>
+        <modifyDataType schemaName="clinlims" tableName="observation_history" columnName="value" newDataType="VARCHAR(500)"/>
+    </changeSet>
+</databaseChangeLog>

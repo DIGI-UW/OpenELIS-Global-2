@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!--
+        Fix instrument_id column types (INT -> NUMERIC(10,0)) to match analyzer.id,
+        then add missing FK constraints. Same pattern as
+        3.4.14.x/004-fix-analyzer-fk-types-and-cascade.xml.
+    -->
+
+    <changeSet id="008-01-fix-instrument-id-types" author="code-review">
+        <comment>Align instrument_id columns from INT to NUMERIC(10,0) to match analyzer.id type</comment>
+
+        <modifyDataType tableName="qc_control_lot"
+            columnName="instrument_id" newDataType="NUMERIC(10,0)"/>
+        <modifyDataType tableName="qc_result"
+            columnName="instrument_id" newDataType="NUMERIC(10,0)"/>
+        <modifyDataType tableName="westgard_rule_config"
+            columnName="instrument_id" newDataType="NUMERIC(10,0)"/>
+        <modifyDataType tableName="qc_rule_violation"
+            columnName="instrument_id" newDataType="NUMERIC(10,0)"/>
+    </changeSet>
+
+    <changeSet id="008-02-add-instrument-fk-constraints" author="code-review">
+        <comment>Add missing foreign key constraints for instrument_id columns referencing analyzer table</comment>
+
+        <addForeignKeyConstraint
+            baseTableName="qc_control_lot"
+            baseColumnNames="instrument_id"
+            constraintName="fk_qc_control_lot_analyzer"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            baseTableName="qc_result"
+            baseColumnNames="instrument_id"
+            constraintName="fk_qc_result_analyzer"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            baseTableName="westgard_rule_config"
+            baseColumnNames="instrument_id"
+            constraintName="fk_westgard_rule_config_analyzer"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            baseTableName="qc_rule_violation"
+            baseColumnNames="instrument_id"
+            constraintName="fk_qc_rule_violation_analyzer"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"/>
+    </changeSet>
+
+</databaseChangeLog>

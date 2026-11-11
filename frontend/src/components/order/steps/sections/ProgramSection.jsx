@@ -1,0 +1,631 @@
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useIntl, FormattedMessage } from "react-intl";
+import {
+  Grid,
+  Column,
+  Tile,
+  ComboBox,
+  TextInput,
+  Select,
+  SelectItem,
+  DatePicker,
+  DatePickerInput,
+  InlineNotification,
+} from "@carbon/react";
+import { getFromOpenElisServer } from "../../../utils/Utils";
+import { filterByTypedLabel } from "../../comboFilter";
+import Questionnaire from "../../../common/Questionnaire";
+import VectorFieldSurveyPanel from "./VectorFieldSurveyPanel";
+
+/**
+ * ProgramSection - Program selection with dynamic additional fields
+ *
+ * Implements:
+ * - ORD-10: Program field typeahead ComboBox
+ * - Program-specific additional fields (VL, EID, TB, etc.)
+ */
+
+/**
+ * `domain` is the order's domain (CLINICAL / ENVIRONMENTAL / VECTOR). When it
+ * is given the picker only offers active programs of that domain (OGC-781
+ * FR-6); without it every active program is offered.
+ */
+const ProgramSection = ({ orderData, setOrderData, isReadOnly, domain }) => {
+  const intl = useIntl();
+  const componentMounted = useRef(true);
+  const questionnaireProgramIdRef = useRef(null);
+  const appendedProgramIdRef = useRef(null);
+
+  const [programs, setPrograms] = useState([]);
+  const [programsLoaded, setProgramsLoaded] = useState(false);
+  const [questionnaire, setQuestionnaire] = useState(
+    orderData?.sampleOrderItems?.questionnaire || null,
+  );
+  const currentProgramId = orderData?.sampleOrderItems?.programId;
+  const selectedProgram =
+    programs.find(
+      (program) => String(program.id) === String(currentProgramId || ""),
+    ) || null;
+  const displayedQuestionnaire = questionnaire;
+  const questionnaireResponse =
+    orderData?.sampleOrderItems?.additionalQuestions || null;
+  // Convert questionnaire to response format
+  const convertQuestionnaireToResponse = (questionnaireData) => {
+    if (!questionnaireData || !questionnaireData.item) {
+      return null;
+    }
+
+    const items = questionnaireData.item.map((currentItem) => ({
+      linkId: currentItem.linkId,
+      definition: currentItem.definition,
+      text: currentItem.text,
+      answer: [],
+    }));
+
+    return {
+      resourceType: "QuestionnaireResponse",
+      id: "",
+      questionnaire: "Questionnaire/" + questionnaireData.id,
+      status: "in-progress",
+      item: items,
+    };
+  };
+
+  // Fetch programs on mount
+  useEffect(() => {
+    componentMounted.current = true;
+    const url = domain
+      ? `/rest/user-programs?domain=${encodeURIComponent(domain)}`
+      : "/rest/user-programs";
+    getFromOpenElisServer(url, (response) => {
+      if (!componentMounted.current) {
+        return;
+      }
+      // Anything but a list leaves the section empty rather than letting a
+      // later find() throw and take the whole order page down with it.
+      setPrograms(Array.isArray(response) ? response : []);
+      setProgramsLoaded(true);
+    });
+    return () => {
+      componentMounted.current = false;
+    };
+  }, [domain]);
+
+  // An order already filed under a program the picker no longer offers (it
+  // was deactivated, or belongs to another domain) must still show that
+  // program instead of a blank picker.
+  useEffect(() => {
+    if (!programsLoaded || !currentProgramId) {
+      return;
+    }
+    const known = programs.some(
+      (program) => String(program.id) === String(currentProgramId),
+    );
+    if (known || appendedProgramIdRef.current === String(currentProgramId)) {
+      return;
+    }
+    appendedProgramIdRef.current = String(currentProgramId);
+    getFromOpenElisServer(`/rest/program/${currentProgramId}`, (response) => {
+      if (!componentMounted.current || !response?.program?.programName) {
+        return;
+      }
+      setPrograms((previous) =>
+        previous.some(
+          (program) => String(program.id) === String(currentProgramId),
+        )
+          ? previous
+          : [
+              ...previous,
+              {
+                id: String(response.program.id || currentProgramId),
+                value: response.program.programName,
+                code: response.program.code,
+                domain: response.domain,
+                active: response.active,
+              },
+            ],
+      );
+    });
+  }, [programsLoaded, programs, currentProgramId]);
+
+  // Fetch program-specific questionnaire. Saved responses remain canonical in
+  // orderData; this component only owns the fetched questionnaire structure.
+  const fetchProgramQuestionnaire = useCallback(
+    (programId, preserveResponses = false) => {
+      if (!programId) {
+        return;
+      }
+      getFromOpenElisServer(
+        `/rest/program/${programId}/questionnaire`,
+        (response) => {
+          if (componentMounted.current && response?.item) {
+            setQuestionnaire(response);
+
+            const convertedResponse = preserveResponses
+              ? undefined
+              : convertQuestionnaireToResponse(response);
+            setOrderData((prev) => ({
+              ...prev,
+              sampleOrderItems: {
+                ...prev.sampleOrderItems,
+                questionnaire: response,
+                ...(preserveResponses
+                  ? {}
+                  : { additionalQuestions: convertedResponse }),
+              },
+            }));
+          } else if (componentMounted.current) {
+            setQuestionnaire(null);
+            if (!preserveResponses) {
+              setOrderData((prev) => ({
+                ...prev,
+                sampleOrderItems: {
+                  ...prev.sampleOrderItems,
+                  questionnaire: null,
+                  additionalQuestions: null,
+                },
+              }));
+            }
+          }
+        },
+      );
+    },
+    [setOrderData],
+  );
+
+  useEffect(() => {
+    if (!programsLoaded || !selectedProgram) {
+      questionnaireProgramIdRef.current = null;
+      return;
+    }
+    if (
+      String(questionnaireProgramIdRef.current) === String(selectedProgram.id)
+    ) {
+      return;
+    }
+
+    questionnaireProgramIdRef.current = selectedProgram.id;
+    fetchProgramQuestionnaire(
+      selectedProgram.id,
+      Boolean(orderData?.sampleOrderItems?.additionalQuestions),
+    );
+  }, [
+    fetchProgramQuestionnaire,
+    orderData?.sampleOrderItems?.additionalQuestions,
+    programsLoaded,
+    selectedProgram,
+  ]);
+
+  const applyProgramChange = (selectedItem) => {
+    if (selectedItem) {
+      setOrderData((prev) => ({
+        ...prev,
+        sampleOrderItems: {
+          ...prev.sampleOrderItems,
+          programId: selectedItem.id,
+          programCode: selectedItem.code,
+        },
+      }));
+    } else {
+      setOrderData((prev) => ({
+        ...prev,
+        sampleOrderItems: {
+          ...prev.sampleOrderItems,
+          programId: "",
+          programCode: undefined,
+          questionnaire: null,
+          additionalQuestions: null,
+        },
+      }));
+      setQuestionnaire(null);
+    }
+  };
+
+  const handleProgramChange = ({ selectedItem }) => {
+    applyProgramChange(selectedItem);
+  };
+
+  // Get answer for a questionnaire item
+  const getAnswer = (linkId) => {
+    if (!questionnaireResponse?.item || !questionnaire?.item) {
+      return "";
+    }
+
+    const responseItem = questionnaireResponse.item.find(
+      (item) => item.linkId === linkId,
+    );
+    const questionnaireItem = questionnaire.item.find(
+      (item) => item.linkId === linkId,
+    );
+
+    if (!responseItem || !questionnaireItem || !responseItem.answer?.length) {
+      return "";
+    }
+
+    switch (questionnaireItem.type) {
+      case "boolean":
+        return responseItem.answer[0]?.valueBoolean ?? "";
+      case "decimal":
+        return responseItem.answer[0]?.valueDecimal ?? "";
+      case "integer":
+        return responseItem.answer[0]?.valueInteger ?? "";
+      case "date":
+        return responseItem.answer[0]?.valueDate ?? "";
+      case "time":
+        return responseItem.answer[0]?.valueTime ?? "";
+      case "string":
+      case "text":
+        return responseItem.answer[0]?.valueString ?? "";
+      case "quantity":
+        return responseItem.answer[0]?.valueQuantity ?? "";
+      case "choice":
+        return responseItem.answer[0]?.valueCoding
+          ? responseItem.answer[0].valueCoding.code
+          : (responseItem.answer[0]?.valueString ?? "");
+      default:
+        return "";
+    }
+  };
+
+  // Handle questionnaire answer change
+  const handleAnswerChange = (e) => {
+    const { id, value } = e.target;
+
+    if (!questionnaireResponse || !questionnaire) {
+      return;
+    }
+
+    const updatedQuestionnaireResponse = { ...questionnaireResponse };
+    const responseItem = updatedQuestionnaireResponse.item.find(
+      (item) => item.linkId === id,
+    );
+    const questionnaireItem = questionnaire.item.find(
+      (item) => item.linkId === id,
+    );
+
+    if (!responseItem || !questionnaireItem) {
+      return;
+    }
+
+    responseItem.answer = [];
+
+    if (value !== "") {
+      switch (questionnaireItem.type) {
+        case "boolean":
+          responseItem.answer.push({ valueBoolean: value });
+          break;
+        case "decimal":
+          responseItem.answer.push({ valueDecimal: value });
+          break;
+        case "integer":
+          responseItem.answer.push({ valueInteger: value });
+          break;
+        case "date":
+          responseItem.answer.push({ valueDate: value });
+          break;
+        case "time":
+          responseItem.answer.push({ valueTime: value });
+          break;
+        case "string":
+        case "text":
+          responseItem.answer.push({ valueString: value });
+          break;
+        case "quantity":
+          responseItem.answer.push({ valueQuantity: value });
+          break;
+        case "choice": {
+          // Handle single select and multiselect
+          let items = value;
+          if (!Array.isArray(items)) {
+            items = [{ value: value }];
+          }
+          for (const item of items) {
+            const curValue = item.value || item;
+            const option = questionnaireItem.answerOption?.find(
+              (opt) => opt?.valueCoding?.code === curValue,
+            );
+            if (option) {
+              responseItem.answer.push({ valueCoding: option.valueCoding });
+            } else {
+              const stringOption = questionnaireItem.answerOption?.find(
+                (opt) => opt.valueString === curValue,
+              );
+              if (stringOption) {
+                responseItem.answer.push({
+                  valueString: stringOption.valueString,
+                });
+              }
+            }
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    }
+
+    setOrderData((prev) => ({
+      ...prev,
+      sampleOrderItems: {
+        ...prev.sampleOrderItems,
+        additionalQuestions: updatedQuestionnaireResponse,
+      },
+    }));
+  };
+
+  // Simple handler for VL-specific hardcoded fields (flat object structure)
+  const [vlFields, setVlFields] = useState(
+    orderData?.sampleOrderItems?.vlProgramFields || {},
+  );
+
+  const handleVLFieldChange = (field, value) => {
+    const updatedVlFields = { ...vlFields, [field]: value };
+    setVlFields(updatedVlFields);
+    setOrderData((prev) => ({
+      ...prev,
+      sampleOrderItems: {
+        ...prev.sampleOrderItems,
+        vlProgramFields: updatedVlFields,
+      },
+    }));
+  };
+
+  // VL Program specific fields (example)
+  const renderVLProgramFields = () => (
+    <div className="program-fields">
+      <Grid>
+        <Column lg={5} md={4} sm={4}>
+          <Select
+            id="arvRegimen"
+            labelText={intl.formatMessage({
+              id: "vl.arvRegimen",
+              defaultMessage: "ARV Regimen",
+            })}
+            value={vlFields.arvRegimen || ""}
+            onChange={(e) => handleVLFieldChange("arvRegimen", e.target.value)}
+            disabled={isReadOnly}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "select.regimen",
+                defaultMessage: "Select Regimen...",
+              })}
+            />
+            <SelectItem value="TDF/3TC/DTG" text="TDF/3TC/DTG" />
+            <SelectItem value="TDF/3TC/EFV" text="TDF/3TC/EFV" />
+            <SelectItem value="AZT/3TC/NVP" text="AZT/3TC/NVP" />
+            <SelectItem value="ABC/3TC/DTG" text="ABC/3TC/DTG" />
+          </Select>
+        </Column>
+        <Column lg={5} md={4} sm={4}>
+          <TextInput
+            id="durationOnARV"
+            labelText={intl.formatMessage({
+              id: "vl.durationOnARV",
+              defaultMessage: "Duration on ARV (months)",
+            })}
+            placeholder={intl.formatMessage({
+              id: "vl.durationOnARV.placeholder",
+              defaultMessage: "Enter months on treatment",
+            })}
+            value={vlFields.durationOnARV || ""}
+            onChange={(e) =>
+              handleVLFieldChange("durationOnARV", e.target.value)
+            }
+            disabled={isReadOnly}
+          />
+        </Column>
+        <Column lg={6} md={4} sm={4}>
+          <Select
+            id="vlIndication"
+            labelText={intl.formatMessage({
+              id: "vl.indication",
+              defaultMessage: "Indication for VL Test",
+            })}
+            value={vlFields.vlIndication || ""}
+            onChange={(e) =>
+              handleVLFieldChange("vlIndication", e.target.value)
+            }
+            disabled={isReadOnly}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "select",
+                defaultMessage: "Select...",
+              })}
+            />
+            <SelectItem value="routine" text="Routine Monitoring" />
+            <SelectItem value="targeted" text="Targeted (Clinical Suspicion)" />
+            <SelectItem value="confirmatory" text="Confirmatory" />
+          </Select>
+        </Column>
+
+        <Column lg={8} md={4} sm={4}>
+          <Select
+            id="pregnancyStatus"
+            labelText={intl.formatMessage({
+              id: "vl.pregnancyStatus",
+              defaultMessage: "Pregnancy / Breastfeeding Status",
+            })}
+            value={vlFields.pregnancyStatus || ""}
+            onChange={(e) =>
+              handleVLFieldChange("pregnancyStatus", e.target.value)
+            }
+            disabled={isReadOnly}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "select",
+                defaultMessage: "Select...",
+              })}
+            />
+            <SelectItem value="not_applicable" text="Not Applicable" />
+            <SelectItem value="pregnant" text="Pregnant" />
+            <SelectItem value="breastfeeding" text="Breastfeeding" />
+          </Select>
+        </Column>
+        <Column lg={8} md={4} sm={4}>
+          <DatePicker
+            datePickerType="single"
+            dateFormat="d/m/Y"
+            onChange={(dates) => {
+              if (dates && dates[0]) {
+                const date = dates[0];
+                const formatted = `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()}`;
+                handleVLFieldChange("lastVLDate", formatted);
+              }
+            }}
+          >
+            <DatePickerInput
+              id="lastVLDate"
+              labelText={intl.formatMessage({
+                id: "vl.lastVLDate",
+                defaultMessage: "Date of Last VL Result",
+              })}
+              placeholder="dd/mm/yyyy"
+              disabled={isReadOnly}
+            />
+          </DatePicker>
+        </Column>
+
+        <Column lg={8} md={4} sm={4}>
+          <TextInput
+            id="lastVLResult"
+            labelText={intl.formatMessage({
+              id: "vl.lastVLResult",
+              defaultMessage: "Last VL Result (copies/mL)",
+            })}
+            placeholder={intl.formatMessage({
+              id: "vl.lastVLResult.placeholder",
+              defaultMessage: "e.g., 150",
+            })}
+            value={vlFields.lastVLResult || ""}
+            onChange={(e) =>
+              handleVLFieldChange("lastVLResult", e.target.value)
+            }
+            disabled={isReadOnly}
+          />
+        </Column>
+      </Grid>
+    </div>
+  );
+
+  // Identify the programme by its configured code.
+  // The name is only a fallback, and then only on a whole-word match:
+  // a bare "vl" substring also fires on names like Sylvatic or Salvador.
+  const programCode = selectedProgram?.code?.toUpperCase() || "";
+  const programName = selectedProgram?.value?.toLowerCase() || "";
+  const isVLProgram =
+    programCode === "VL" ||
+    programCode === "VIRAL_LOAD" ||
+    /\bvl\b/.test(programName) ||
+    programName.includes("viral load");
+
+  // Check if the Vector Field Survey program is selected (custom larval/pupal panel)
+  const isVectorFieldSurvey =
+    programCode === "VECTOR_FIELD_SURVEY" ||
+    programName.includes("vector field survey");
+
+  return (
+    <Tile className="order-section program-section">
+      <h4 className="section-title">
+        <FormattedMessage id="label.program" defaultMessage="Program" />
+      </h4>
+
+      <Grid>
+        <Column lg={8} md={6} sm={4}>
+          <ComboBox
+            key={selectedProgram?.id || "empty"}
+            id="program"
+            titleText={intl.formatMessage({
+              id: "label.program",
+              defaultMessage: "Program",
+            })}
+            items={programs}
+            itemToString={(item) => (item ? item.value : "")}
+            shouldFilterItem={filterByTypedLabel(selectedProgram?.value)}
+            selectedItem={selectedProgram}
+            onChange={handleProgramChange}
+            placeholder={intl.formatMessage({
+              id: "program.placeholder",
+              defaultMessage: "Type to filter or select from the list",
+            })}
+            disabled={isReadOnly}
+          />
+          <p className="helper-text">
+            <FormattedMessage
+              id="program.helper"
+              defaultMessage="Type to filter or select from the list. Selecting a program displays its specific Additional Order Information fields below."
+            />
+          </p>
+        </Column>
+      </Grid>
+
+      {programsLoaded && programs.length === 0 && (
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          title={
+            domain
+              ? intl.formatMessage(
+                  { id: "orderEntry.programPicker.empty.domain" },
+                  {
+                    domain: intl.formatMessage({
+                      id: `label.domain.${domain}`,
+                    }),
+                  },
+                )
+              : intl.formatMessage({ id: "orderEntry.programPicker.empty" })
+          }
+        />
+      )}
+
+      {/* Additional Order Information - Program Specific */}
+      {selectedProgram && (
+        <div className="additional-order-info">
+          <h5 className="subsection-title">
+            <FormattedMessage
+              id="order.additionalInfo"
+              defaultMessage="Additional Order Information"
+            />
+            {" — "}
+            {selectedProgram.value}
+          </h5>
+          <p className="helper-text">
+            <FormattedMessage
+              id="order.additionalInfo.helper"
+              defaultMessage="These fields are specific to the selected program and provide additional context needed for this workflow."
+            />
+          </p>
+
+          {/* A configured questionnaire governs. The built-in VL panel used to
+              render instead of it, which made a VL programme's own
+              questionnaire — pregnancy included — unreachable; it is now the
+              fallback for VL programmes that have not configured one. */}
+          {isVectorFieldSurvey && displayedQuestionnaire ? (
+            <VectorFieldSurveyPanel
+              questionnaire={displayedQuestionnaire}
+              getAnswer={getAnswer}
+              onAnswerChange={handleAnswerChange}
+              isReadOnly={isReadOnly}
+            />
+          ) : displayedQuestionnaire ? (
+            <Questionnaire
+              questionnaire={displayedQuestionnaire}
+              onAnswerChange={handleAnswerChange}
+              getAnswer={getAnswer}
+            />
+          ) : isVLProgram ? (
+            renderVLProgramFields()
+          ) : null}
+        </div>
+      )}
+    </Tile>
+  );
+};
+
+export default ProgramSection;

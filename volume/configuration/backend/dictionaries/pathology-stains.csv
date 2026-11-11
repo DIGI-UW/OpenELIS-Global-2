@@ -1,0 +1,11 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,displayKey,localization:en
+Pathology Stains,H&E,HE,Y,1,,dictionary.pathologyStains.hAndE,H&E
+Pathology Stains,PAS,PAS,Y,2,,dictionary.pathologyStains.pas,PAS
+Pathology Stains,PAS-D,PASD,Y,3,,dictionary.pathologyStains.pasD,PAS-D
+Pathology Stains,Reticulin,RETIC,Y,4,,dictionary.pathologyStains.reticulin,Reticulin
+Pathology Stains,Masson trichrome,MASSON,Y,5,,dictionary.pathologyStains.massonTrichrome,Masson trichrome
+Pathology Stains,Perls iron,PERLS,Y,6,,dictionary.pathologyStains.perlsIron,Perls iron
+Pathology Stains,Congo red,CONGO,Y,7,,dictionary.pathologyStains.congoRed,Congo red
+Pathology Stains,Ziehl-Neelsen,ZN,Y,8,,dictionary.pathologyStains.ziehlNeelsen,Ziehl-Neelsen
+Pathology Stains,Grocott (GMS),GMS,Y,9,,dictionary.pathologyStains.grocottGms,Grocott (GMS)
+Pathology Stains,Orcein,ORCEIN,Y,10,,dictionary.pathologyStains.orcein,Orcein

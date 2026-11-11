@@ -1,0 +1,1113 @@
+import React from "react";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import "@testing-library/jest-dom";
+import { IntlProvider } from "react-intl";
+import { MemoryRouter, Route } from "react-router-dom";
+import { vi } from "vitest";
+import OEHeader from "./Header";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { ConfigurationContext, NotificationContext } from "./Layout";
+import messages from "../../languages/en.json";
+import { getFromOpenElisServer, getFromOpenElisServerV2 } from "../utils/Utils";
+
+// Mock Utils
+vi.mock("../utils/Utils", async () => {
+  const actualUtils = await vi.importActual("../utils/Utils");
+  return {
+    ...actualUtils,
+    getFromOpenElisServer: vi.fn(),
+    getFromOpenElisServerV2: vi.fn().mockResolvedValue({}),
+    putToOpenElisServer: vi.fn(),
+    postToOpenElisServer: vi.fn(),
+    deleteToOpenElisServer: vi.fn(),
+    urlBase64ToUint8Array: vi.fn(),
+    formatTimestamp: vi.fn((ts) => ts),
+  };
+});
+
+// Import mocked functions for use in tests
+// Replaced inline utils require
+
+// Mock localStorage
+const localStorageMock = (() => {
+  let store = {};
+  return {
+    getItem: vi.fn((key) => store[key] || null),
+    setItem: vi.fn((key, value) => {
+      store[key] = value;
+    }),
+    removeItem: vi.fn((key) => {
+      delete store[key];
+    }),
+    clear: vi.fn(() => {
+      store = {};
+    }),
+  };
+})();
+Object.defineProperty(window, "localStorage", { value: localStorageMock });
+
+// Test configuration
+const mockUserSessionDetails = {
+  authenticated: true,
+  roles: ["ROLE_USER"],
+  userId: "1",
+  firstName: "Test",
+  lastName: "User",
+  loginLabUnit: "Test Lab",
+  logout: vi.fn(),
+};
+
+const mockConfigurationContext = {
+  configurationProperties: {
+    BANNER_TEXT: "Test LIMS",
+    releaseNumber: "3.2.1",
+  },
+  reloadConfiguration: vi.fn(),
+};
+
+const mockNotificationContext = {
+  notificationVisible: false,
+  setNotificationVisible: vi.fn(),
+  notifications: [],
+  addNotification: vi.fn(),
+  removeNotification: vi.fn(),
+};
+
+/**
+ * Realistic menu mock that matches actual database structure
+ * Based on liquibase migrations and en.json translation keys
+ */
+const MOCK_MENU_DATA = [
+  {
+    menu: {
+      elementId: "menu_home",
+      displayKey: "banner.menu.home",
+      actionURL: "/Dashboard",
+      isActive: true,
+    },
+    childMenus: [],
+  },
+  {
+    menu: {
+      elementId: "menu_sample",
+      displayKey: "banner.menu.sample",
+      actionURL: "",
+      isActive: true,
+    },
+    childMenus: [
+      {
+        menu: {
+          elementId: "menu_sample_add",
+          displayKey: "sidenav.label.addorder",
+          actionURL: "/SamplePatientEntry",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+      {
+        menu: {
+          elementId: "menu_sample_edit",
+          displayKey: "sidenav.label.editorder",
+          actionURL: "/FindOrder",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+    ],
+  },
+  {
+    menu: {
+      elementId: "menu_results",
+      displayKey: "banner.menu.results",
+      actionURL: "",
+      isActive: true,
+    },
+    childMenus: [
+      {
+        menu: {
+          elementId: "menu_results_logbook",
+          displayKey: "banner.menu.results.logbook",
+          actionURL: "/LogbookResults",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+      {
+        menu: {
+          elementId: "menu_results_patient",
+          displayKey: "sidenav.label.results.patient",
+          actionURL: "/PatientResults",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+    ],
+  },
+  {
+    menu: {
+      elementId: "menu_resultvalidation",
+      displayKey: "banner.menu.resultvalidation",
+      actionURL: "",
+      isActive: true,
+    },
+    childMenus: [
+      {
+        menu: {
+          elementId: "menu_resultvalidation_routine",
+          displayKey: "sidenav.label.validation.routine",
+          actionURL: "/ResultValidation",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+    ],
+  },
+  {
+    menu: {
+      elementId: "menu_workplan",
+      displayKey: "banner.menu.workplan",
+      actionURL: "",
+      isActive: true,
+    },
+    childMenus: [
+      {
+        menu: {
+          elementId: "menu_workplan_test",
+          displayKey: "sidenav.label.workplan.test",
+          actionURL: "/WorkPlanByTest",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+    ],
+  },
+  {
+    menu: {
+      elementId: "menu_reports",
+      displayKey: "banner.menu.reports",
+      actionURL: "",
+      isActive: true,
+    },
+    childMenus: [
+      {
+        menu: {
+          elementId: "menu_reports_routine",
+          displayKey: "sidenav.label.reports.routine",
+          actionURL: "",
+          isActive: true,
+        },
+        childMenus: [
+          {
+            menu: {
+              elementId: "menu_reports_status",
+              displayKey: "sidenav.label.statusreport",
+              actionURL: "/Report?type=patient&report=patientCILNSP_vreduit",
+              isActive: true,
+            },
+            childMenus: [],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    menu: {
+      elementId: "menu_storage",
+      displayKey: "banner.menu.storage",
+      actionURL: "",
+      isActive: true,
+    },
+    childMenus: [
+      {
+        menu: {
+          elementId: "menu_storage_management",
+          displayKey: "storage.nav.dashboard",
+          actionURL: "/Storage",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+      {
+        menu: {
+          elementId: "menu_freezer_monitoring",
+          displayKey: "sidenav.label.storage.coldstorage",
+          actionURL: "/FreezerMonitoring",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+    ],
+  },
+  {
+    menu: {
+      elementId: "menu_admin",
+      displayKey: "sidenav.label.admin",
+      actionURL: "",
+      isActive: true,
+    },
+    childMenus: [
+      {
+        menu: {
+          elementId: "menu_admin_usermgt",
+          displayKey: "sidenav.label.admin.usermgt",
+          actionURL: "/MasterListsPage#!usersManagement",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+      {
+        menu: {
+          elementId: "menu_admin_menu",
+          displayKey: "sidenav.label.admin.menu",
+          actionURL: "",
+          isActive: true,
+        },
+        childMenus: [
+          {
+            menu: {
+              elementId: "menu_admin_menu_global",
+              displayKey: "sidenav.label.admin.menu.global",
+              actionURL: "/MasterListsPage#!globalMenuManagement",
+              isActive: true,
+            },
+            childMenus: [],
+          },
+        ],
+      },
+    ],
+  },
+];
+
+const renderHeader = (options = {}) => {
+  const {
+    initialRoute = "/",
+    isDesktop = true,
+    navOpen = isDesktop,
+    menuData = MOCK_MENU_DATA,
+    navContext = "main",
+    sessionDetails = mockUserSessionDetails,
+    logout = vi.fn(),
+    showSideNav = true,
+  } = options;
+  const mockGetFromServer = getFromOpenElisServer;
+  mockGetFromServer.mockImplementation((url, callback) => {
+    if (url === "/rest/menu") {
+      callback(menuData);
+    } else if (url.includes("/notifications")) {
+      callback([]);
+    } else if (url === "/rest/database-cleaning/status") {
+      callback({ trainingInstallation: false });
+    }
+  });
+
+  const mockToggle = vi.fn();
+  const mockCloseSideNav = vi.fn();
+
+  const result = render(
+    <MemoryRouter initialEntries={[initialRoute]}>
+      <IntlProvider locale="en" messages={messages}>
+        <UserSessionDetailsContext.Provider
+          value={{ userSessionDetails: sessionDetails, logout }}
+        >
+          <ConfigurationContext.Provider value={mockConfigurationContext}>
+            <NotificationContext.Provider value={mockNotificationContext}>
+              <OEHeader
+                onChangeLanguage={vi.fn()}
+                navOpen={navOpen}
+                isDesktop={isDesktop}
+                toggleSideNav={mockToggle}
+                closeSideNav={mockCloseSideNav}
+                navContext={navContext}
+                showSideNav={showSideNav}
+              />
+              <Route
+                path="*"
+                render={({ location }) => (
+                  <span data-testid="current-path">
+                    {location.pathname + location.search}
+                  </span>
+                )}
+              />
+            </NotificationContext.Provider>
+          </ConfigurationContext.Provider>
+        </UserSessionDetailsContext.Provider>
+      </IntlProvider>
+    </MemoryRouter>,
+  );
+  return { ...result, mockCloseSideNav, mockToggle };
+};
+
+describe("Header Component - M2b Enhancement Tests", () => {
+  test("preserves stable selectors on Carbon parent and leaf menu labels", async () => {
+    const { container } = renderHeader();
+
+    await waitFor(() => {
+      expect(container.querySelector("#menu_sample")).toBeInTheDocument();
+      expect(container.querySelector("#menu_results")).toBeInTheDocument();
+      expect(container.querySelector("#menu_reports")).toBeInTheDocument();
+      expect(container.querySelector("span#menu_home")).toBeInTheDocument();
+      expect(
+        container.querySelector("span#menu_sample_add"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorageMock.clear();
+  });
+
+  test("renders Carbon sidenav lists with direct list-item children", async () => {
+    const { container } = renderHeader();
+
+    await waitFor(() => {
+      expect(container.querySelector("#menu_home_nav")).toBeTruthy();
+    });
+
+    const sideNavLists = container.querySelectorAll(
+      ".cds--side-nav__items, .cds--side-nav__menu",
+    );
+    expect(sideNavLists.length).toBeGreaterThan(0);
+    sideNavLists.forEach((list) => {
+      Array.from(list.children).forEach((child) => {
+        expect(child.tagName).toBe("LI");
+      });
+    });
+  });
+
+  describe("reporting navigation", () => {
+    const leaf = (id, label, url) => ({
+      menu: {
+        elementId: id,
+        displayKey: label,
+        actionURL: url,
+        isActive: true,
+      },
+      childMenus: [],
+    });
+    const menuData = [
+      MOCK_MENU_DATA[0],
+      {
+        menu: {
+          elementId: "menu_reports",
+          displayKey: "banner.menu.reports",
+          isActive: true,
+        },
+        childMenus: [
+          leaf(
+            "menu_reports_status_patient",
+            "openreports.patientTestStatus",
+            "/Report?type=patient&report=patientCILNSP_vreduit",
+          ),
+          leaf(
+            "menu_reports_custom_data_export",
+            "reporting.title",
+            "/reports/custom-data-export",
+          ),
+          leaf(
+            "menu_reports_queue",
+            "reporting.queue",
+            "/reports/custom-data-export?view=queue",
+          ),
+        ],
+      },
+    ];
+
+    test.each([
+      [
+        "/reports/custom-data-export?job=example&view=queue&page=2&review=example",
+        "My Report Queue",
+      ],
+      [
+        "/reports/custom-data-export?view=builder&step=columns&type=SAMPLE_TESTING",
+        "Custom Data Export",
+      ],
+      [
+        "/Report?report=patientCILNSP_vreduit&review=example&type=patient",
+        "Patient Status Report",
+      ],
+    ])(
+      "a deep link selects only its menu entry and opens Reports: %s",
+      async (initialRoute, name) => {
+        const { container } = renderHeader({ menuData, initialRoute });
+        const selected = await screen.findByRole("link", { name, exact: true });
+        expect(selected).toHaveAttribute("aria-current", "page");
+        expect(
+          container.querySelectorAll('.cds--side-nav [aria-current="page"]'),
+        ).toHaveLength(1);
+        expect(
+          screen.getByRole("button", { name: "Reports", exact: true }),
+        ).toHaveAttribute("aria-expanded", "true");
+      },
+    );
+
+    test("opening the queue from Home expands Reports and preserves native modified-click behavior", async () => {
+      renderHeader({ menuData, initialRoute: "/Dashboard" });
+      const reports = await screen.findByRole("button", {
+        name: "Reports",
+        exact: true,
+      });
+      fireEvent.click(reports);
+      const queue = screen.getByRole("link", {
+        name: "My Report Queue",
+        exact: true,
+      });
+      expect(fireEvent.click(queue, { ctrlKey: true })).toBe(true);
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/Dashboard",
+      );
+      fireEvent.click(queue);
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/reports/custom-data-export?view=queue",
+      );
+      expect(
+        screen.getByRole("link", { name: "My Report Queue", exact: true }),
+      ).toHaveAttribute("aria-current", "page");
+      expect(
+        screen.getByRole("button", { name: "Reports", exact: true }),
+      ).toHaveAttribute("aria-expanded", "true");
+    });
+  });
+
+  describe("Home item active state", () => {
+    test.each(["/", "/Dashboard"])(
+      "landing on %s highlights the Home menu item",
+      async (route) => {
+        const { container } = renderHeader({ initialRoute: route });
+
+        await waitFor(() => {
+          expect(container.querySelector('a[href="/Dashboard"]')).toBeTruthy();
+        });
+
+        const homeLink = container.querySelector('a[href="/Dashboard"]');
+        expect(homeLink).toHaveClass("cds--side-nav__link--current");
+        expect(homeLink).toHaveAttribute("aria-current", "page");
+      },
+    );
+  });
+
+  describe("Responsive sidenav", () => {
+    test("desktop renders a persistent expanded nav and no toggle button", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(() => {
+        expect(container.querySelector(".cds--side-nav")).toBeTruthy();
+      });
+
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).not.toHaveClass("cds--side-nav--hidden");
+      expect(container.querySelector('[data-cy="menuButton"]')).toBeNull();
+    });
+
+    test("small viewport renders hamburger; nav is a closed overlay drawer", async () => {
+      const { container, mockToggle } = renderHeader({ isDesktop: false });
+
+      await waitFor(() => {
+        expect(container.querySelector('[data-cy="menuButton"]')).toBeTruthy();
+      });
+
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).not.toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).toHaveClass("cds--side-nav--hidden");
+
+      fireEvent.click(container.querySelector('[data-cy="menuButton"]'));
+      expect(mockToggle).toHaveBeenCalledTimes(1);
+    });
+
+    test("small viewport with drawer open closes on outside mousedown", async () => {
+      const { container, mockCloseSideNav } = renderHeader({
+        isDesktop: false,
+        navOpen: true,
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector(".cds--side-nav")).toHaveClass(
+          "cds--side-nav--expanded",
+        );
+      });
+
+      fireEvent.mouseDown(document.body);
+      expect(mockCloseSideNav).toHaveBeenCalled();
+    });
+
+    test("desktop never closes nav on outside mousedown", async () => {
+      const { container, mockCloseSideNav } = renderHeader();
+
+      await waitFor(() => {
+        expect(container.querySelector(".cds--side-nav")).toBeTruthy();
+      });
+
+      fireEvent.mouseDown(document.body);
+      expect(mockCloseSideNav).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Menu Auto-Expansion (useMenuAutoExpand integration)", () => {
+    /**
+     * TEST: Auto-expand parent menu when on nested route
+     * When user navigates to /Storage/Dashboard, the Storage menu should auto-expand
+     * This requires integrating useMenuAutoExpand hook
+     */
+    test("FUTURE: parent menu auto-expands when child route is active", async () => {
+      // Navigate to nested storage route
+      const { container } = renderHeader("/Storage/Dashboard");
+
+      await waitFor(() => {
+        const sideNav = container.querySelector(".cds--side-nav");
+        expect(sideNav).toBeTruthy();
+      });
+
+      // TODO: After T066, verify Storage menu is expanded
+      // For now, just verify menu renders
+      // The menu should have expanded="true" or similar state
+    });
+  });
+
+  describe("HOC Migration Verification", () => {
+    /**
+     * TEST: Component renders correctly with MemoryRouter
+     * Verifies Header works with standard React Router, preparing for HOC removal
+     */
+    test("renders header structure with router context", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(
+        () => {
+          const header = container.querySelector("#mainHeader");
+          expect(header).toBeTruthy();
+        },
+        { timeout: 3000 },
+      );
+    });
+
+    /**
+     * TEST: Component renders with IntlProvider
+     * Verifies Header works with standard React Intl, preparing for HOC removal
+     */
+    test("renders banner section with intl context", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(
+        () => {
+          const banner = container.querySelector(".banner");
+          expect(banner).toBeTruthy();
+        },
+        { timeout: 3000 },
+      );
+    });
+  });
+
+  describe("Existing Functionality Preservation", () => {
+    test("menu toggle button is visible when authenticated on small viewports", async () => {
+      const { container } = renderHeader({ isDesktop: false });
+
+      await waitFor(() => {
+        const menuButton = container.querySelector('[data-cy="menuButton"]');
+        expect(menuButton).toBeTruthy();
+      });
+    });
+
+    test("search icon is visible when authenticated", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(() => {
+        const searchIcon = container.querySelector("#search-Icon");
+        expect(searchIcon).toBeTruthy();
+      });
+    });
+
+    test("notification icon is visible when authenticated", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(() => {
+        const notificationIcon = container.querySelector("#notification-Icon");
+        expect(notificationIcon).toBeTruthy();
+      });
+    });
+
+    test("user icon is visible when authenticated", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(() => {
+        const userIcon = container.querySelector("#user-Icon");
+        expect(userIcon).toBeTruthy();
+      });
+    });
+  });
+
+  describe("URL Matching and Active State", () => {
+    test.each(["/Storage", "/WorkPlanByTest"])(
+      "nested route %s has one active, visible navigation destination",
+      async (initialRoute) => {
+        const { container } = renderHeader({ initialRoute });
+        await waitFor(() => {
+          const selected = container.querySelector(
+            '.cds--side-nav [aria-current="page"]',
+          );
+          expect(selected).toHaveAttribute("href", initialRoute);
+          expect(selected).toBeVisible();
+          expect(
+            container.querySelectorAll('.cds--side-nav [aria-current="page"]'),
+          ).toHaveLength(1);
+        });
+      },
+    );
+  });
+
+  describe("Menu Initialization", () => {
+    /**
+     * Test: Menu items from API get expanded property initialized to false
+     * Ensures no undefined expanded properties that cause toggle bugs
+     */
+    test("menu items from API get expanded=false initialized", async () => {
+      const menuWithoutExpanded = [
+        {
+          menu: {
+            elementId: "menu_storage",
+            displayKey: "banner.menu.storage",
+            actionURL: "",
+            isActive: true,
+          },
+          childMenus: [
+            {
+              menu: {
+                elementId: "menu_storage_mgmt",
+                displayKey: "sidenav.label.storage.management",
+                actionURL: "/Storage",
+                isActive: true,
+              },
+              childMenus: [],
+              // Note: No expanded property - simulates real API response
+            },
+          ],
+          // Note: No expanded property - simulates real API response
+        },
+      ];
+
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url === "/rest/menu") {
+          callback(menuWithoutExpanded);
+        }
+      });
+
+      renderHeader();
+
+      // Wait for menu to load and ensure item rendered
+      await waitFor(() => {
+        expect(screen.getByText("Storage")).toBeTruthy();
+      });
+    });
+  });
+
+  describe("Admin navigation context switching", () => {
+    const MENU_DATA = [
+      {
+        menu: {
+          elementId: "menu_home",
+          displayKey: "banner.menu.home",
+          actionURL: "/Dashboard",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+      {
+        menu: {
+          elementId: "menu_administration",
+          displayKey: "sidenav.label.admin",
+          actionURL: "/MasterListsPage",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+    ];
+
+    test("clicking link to /MasterListsPage keeps the desktop nav open", async () => {
+      const { container, mockCloseSideNav } = renderHeader({
+        menuData: MENU_DATA,
+      });
+      await waitFor(() => {
+        expect(
+          container.querySelector("#menu_administration_nav"),
+        ).toBeTruthy();
+      });
+
+      fireEvent.click(container.querySelector("#menu_administration_nav"));
+      expect(mockCloseSideNav).not.toHaveBeenCalled();
+      expect(container.querySelector(".cds--side-nav")).toHaveClass(
+        "cds--side-nav--expanded",
+      );
+    });
+
+    test("clicking a non-admin leaf keeps the desktop nav open", async () => {
+      const { container, mockCloseSideNav } = renderHeader({
+        menuData: MENU_DATA,
+      });
+      await waitFor(() => {
+        expect(container.querySelector("#menu_home_nav")).toBeTruthy();
+      });
+
+      fireEvent.click(container.querySelector("#menu_home_nav"));
+      expect(mockCloseSideNav).not.toHaveBeenCalled();
+      expect(container.querySelector(".cds--side-nav")).toHaveClass(
+        "cds--side-nav--expanded",
+      );
+    });
+
+    test("Admin opens its dashboard in one click, with no submenu to expand", async () => {
+      // The shipped menu carries no children under Admin: the dashboard itself
+      // lists the admin destinations, stuck analyzer events among them.
+      const configuredAdminMenu = [
+        MENU_DATA[0],
+        {
+          ...MENU_DATA[1],
+          menu: { ...MENU_DATA[1].menu, actionURL: "/MasterListsPage" },
+          childMenus: [],
+        },
+      ];
+      renderHeader({ menuData: configuredAdminMenu });
+
+      const adminMenu = await screen.findByRole("link", { name: "Admin" });
+      expect(adminMenu).toHaveAttribute("href", "/MasterListsPage");
+      expect(
+        screen.queryByRole("button", { name: "Admin" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Stuck analyzer events"),
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(adminMenu);
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/MasterListsPage",
+      );
+    });
+
+    test("admin context renders Admin nav contents instead of main menu contents", async () => {
+      renderHeader({
+        initialRoute: "/MasterListsPage",
+        menuData: MENU_DATA,
+        navContext: "admin",
+      });
+
+      expect(await screen.findByText("Back to main menu")).toBeInTheDocument();
+      expect(
+        screen.getByText(messages["sidenav.label.admin.testmgt"]),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(messages["banner.menu.home"]),
+      ).not.toBeInTheDocument();
+      const statusCalls = getFromOpenElisServer.mock.calls.filter(
+        ([url]) => url === "/rest/database-cleaning/status",
+      );
+      expect(statusCalls).toHaveLength(1);
+    });
+
+    test("admin nav items expose href and current-route state", async () => {
+      renderHeader({
+        initialRoute: "/MasterListsPage/billingMenuManagement",
+        navContext: "admin",
+      });
+
+      const billingLink = (
+        await screen.findByText(messages["sidenav.label.admin.menu.billing"])
+      ).closest("a");
+
+      expect(billingLink).toHaveAttribute(
+        "href",
+        "/MasterListsPage/billingMenuManagement",
+      );
+      expect(billingLink).toHaveAttribute("aria-current", "page");
+    });
+
+    test("admin back control navigates to /Dashboard", async () => {
+      renderHeader({
+        initialRoute: "/MasterListsPage",
+        navContext: "admin",
+      });
+
+      fireEvent.click(await screen.findByText("Back to main menu"));
+
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/Dashboard",
+      );
+    });
+  });
+
+  describe("User panel actions", () => {
+    test.each([{ authenticated: false }, {}])(
+      "unauthenticated or unresolved shell does not request protected header resources",
+      async (sessionDetails) => {
+        renderHeader({
+          sessionDetails,
+        });
+
+        await waitFor(() => {
+          expect(screen.getByRole("button", { name: "Language" })).toBeTruthy();
+        });
+
+        expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+          "/rest/notifications",
+          expect.any(Function),
+        );
+        expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+          "/rest/properties",
+          expect.any(Function),
+        );
+        expect(getFromOpenElisServerV2).not.toHaveBeenCalledWith(
+          "/rest/notification/pnconfig",
+        );
+      },
+    );
+
+    test("subscription state loads only when Notifications is opened", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(() => {
+        expect(getFromOpenElisServer).toHaveBeenCalledWith(
+          "/rest/notifications",
+          expect.any(Function),
+        );
+      });
+      expect(getFromOpenElisServerV2).not.toHaveBeenCalledWith(
+        "/rest/notification/pnconfig",
+      );
+
+      fireEvent.click(container.querySelector("#notification-Icon"));
+
+      await waitFor(() => {
+        expect(getFromOpenElisServerV2).toHaveBeenCalledWith(
+          "/rest/notification/pnconfig",
+        );
+      });
+    });
+
+    test("authenticated panel orders locale, change password, then logout", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('[data-cy="headerChangePassword"]'),
+        ).toBeTruthy();
+      });
+
+      const panelItems = [
+        ...container.querySelectorAll(".headerPanel ul > li"),
+      ];
+      const localeIndex = panelItems.findIndex((li) =>
+        li.querySelector("#selector"),
+      );
+      const changePasswordIndex = panelItems.findIndex(
+        (li) => li.dataset.cy === "headerChangePassword",
+      );
+      const logoutIndex = panelItems.findIndex(
+        (li) => li.dataset.cy === "logOut",
+      );
+
+      expect(localeIndex).toBeGreaterThan(-1);
+      expect(changePasswordIndex).toBe(localeIndex + 1);
+      expect(logoutIndex).toBe(changePasswordIndex + 1);
+    });
+
+    test("change password item navigates to /ChangePasswordLogin", async () => {
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { ...originalLocation, href: "" };
+
+      const { container } = renderHeader();
+      await waitFor(() => {
+        expect(
+          container.querySelector('[data-cy="headerChangePassword"]'),
+        ).toBeTruthy();
+      });
+
+      fireEvent.click(
+        container.querySelector('[data-cy="headerChangePassword"]'),
+      );
+      expect(window.location.href).toBe("/ChangePasswordLogin");
+
+      window.location = originalLocation;
+    });
+
+    test("logout item calls the session logout", async () => {
+      const logout = vi.fn();
+      const { container } = renderHeader({ logout });
+
+      await waitFor(() => {
+        expect(container.querySelector('[data-cy="logOut"]')).toBeTruthy();
+      });
+
+      fireEvent.click(container.querySelector('[data-cy="logOut"]'));
+      expect(logout).toHaveBeenCalledTimes(1);
+    });
+
+    test("unauthenticated panel hides change password and logout but keeps locale", async () => {
+      const { container } = renderHeader({
+        sessionDetails: { authenticated: false },
+      });
+
+      expect(container.querySelector("#selector")).toBeTruthy();
+      expect(
+        container.querySelector('[data-cy="headerChangePassword"]'),
+      ).toBeNull();
+      expect(container.querySelector('[data-cy="logOut"]')).toBeNull();
+    });
+  });
+
+  describe("Focused screen (showSideNav=false)", () => {
+    test("hides the sidenav and hamburger even when authenticated", async () => {
+      const desktop = renderHeader({ showSideNav: false });
+      await waitFor(() => {
+        expect(desktop.container.querySelector("#user-Icon")).toBeTruthy();
+      });
+      expect(desktop.container.querySelector(".cds--side-nav")).toBeNull();
+      desktop.unmount();
+
+      const mobile = renderHeader({ showSideNav: false, isDesktop: false });
+      expect(
+        mobile.container.querySelector('[data-cy="menuButton"]'),
+      ).toBeNull();
+    });
+
+    test("still renders the sidenav by default", async () => {
+      const { container } = renderHeader();
+      await waitFor(() => {
+        expect(container.querySelector(".cds--side-nav")).toBeTruthy();
+      });
+    });
+  });
+});
+
+describe("OEHeader menu items whose children are all deactivated", () => {
+  // A parent renders as an expandable SideNavMenu and never navigates, so a
+  // parent left holding only deactivated children became an expandable that
+  // opened onto nothing — the Storage Management case.
+  const MENU_WITH_DEACTIVATED_CHILDREN = [
+    {
+      menu: {
+        elementId: "menu_storage",
+        displayKey: "banner.menu.storage",
+        actionURL: "",
+        isActive: true,
+      },
+      childMenus: [
+        {
+          menu: {
+            elementId: "menu_storage_management",
+            displayKey: "storage.nav.dashboard",
+            actionURL: "/Storage",
+            isActive: true,
+          },
+          childMenus: [
+            {
+              menu: {
+                elementId: "menu_storage_rooms",
+                displayKey: "storage.nav.rooms",
+                actionURL: "/Storage/rooms",
+                isActive: false,
+              },
+              childMenus: [],
+            },
+            {
+              menu: {
+                elementId: "menu_storage_boxes",
+                displayKey: "storage.nav.boxes",
+                actionURL: "/Storage/boxes",
+                isActive: false,
+              },
+              childMenus: [],
+            },
+          ],
+        },
+      ],
+    },
+  ];
+
+  test("renders the parent as a navigable link, not an empty expandable", async () => {
+    const { container } = renderHeader({
+      menuData: MENU_WITH_DEACTIVATED_CHILDREN,
+    });
+
+    // The leaf branch puts elementId + "_nav" on the anchor itself; the bare
+    // elementId lands on an inner span. An expandable parent renders a
+    // button.cds--side-nav__submenu instead, so this anchor would not exist.
+    const link = await waitFor(() => {
+      const el = container.querySelector(
+        'a#menu_storage_management_nav[href="/Storage"]',
+      );
+      expect(el).toBeTruthy();
+      return el;
+    });
+
+    expect(
+      link.closest("li").querySelector(".cds--side-nav__submenu"),
+    ).toBeNull();
+  });
+
+  test("navigates when the parent is clicked", async () => {
+    const { container, getByTestId } = renderHeader({
+      menuData: MENU_WITH_DEACTIVATED_CHILDREN,
+    });
+
+    const link = await waitFor(() => {
+      const el = container.querySelector(
+        'a#menu_storage_management_nav[href="/Storage"]',
+      );
+      expect(el).toBeTruthy();
+      return el;
+    });
+
+    fireEvent.click(link);
+
+    await waitFor(() => {
+      expect(getByTestId("current-path").textContent).toBe("/Storage");
+    });
+  });
+
+  // A deactivated row is not reachable from the sidenav, so a URL that only
+  // matches one must not auto-expand the parent onto rows nobody can use.
+  const MENU_WITH_A_DEACTIVATED_MATCH = [
+    {
+      menu: {
+        elementId: "menu_storage",
+        displayKey: "banner.menu.storage",
+        actionURL: "",
+        isActive: true,
+      },
+      childMenus: [
+        {
+          menu: {
+            elementId: "menu_storage_cold",
+            displayKey: "sidenav.label.storage.coldstorage",
+            actionURL: "/ColdStorage",
+            isActive: true,
+          },
+          childMenus: [],
+        },
+        {
+          menu: {
+            elementId: "menu_storage_rooms",
+            displayKey: "storage.nav.rooms",
+            actionURL: "/Storage/rooms",
+            isActive: false,
+          },
+          childMenus: [],
+        },
+      ],
+    },
+  ];
+
+  test("a deactivated child's path does not expand its parent", async () => {
+    const { container } = renderHeader({
+      menuData: MENU_WITH_A_DEACTIVATED_MATCH,
+      initialRoute: "/Storage/rooms",
+    });
+
+    const submenu = await waitFor(() => {
+      const el = container.querySelector("button.cds--side-nav__submenu");
+      expect(el).toBeTruthy();
+      return el;
+    });
+    expect(submenu).toHaveAttribute("aria-expanded", "false");
+  });
+});

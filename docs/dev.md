@@ -55,7 +55,6 @@ be retrieved from the classloader
 - languages
 - liquibase
 - reports
-- plugin
 - tiles
 - properties
 

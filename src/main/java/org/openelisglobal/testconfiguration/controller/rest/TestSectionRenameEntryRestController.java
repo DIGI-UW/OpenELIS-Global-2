@@ -12,6 +12,8 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testconfiguration.form.TestSectionRenameEntryForm;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasRole('ADMIN')")
 public class TestSectionRenameEntryRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "testSectionId", "nameEnglish", "nameFrench" };
@@ -62,14 +65,14 @@ public class TestSectionRenameEntryRestController extends BaseController {
     }
 
     @PostMapping(value = "/TestSectionRenameEntry")
-    public TestSectionRenameEntryForm updateTestSectionRenameEntry(HttpServletRequest request,
+    public ResponseEntity<?> updateTestSectionRenameEntry(HttpServletRequest request,
             @RequestBody @Valid TestSectionRenameEntryForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             form.setTestSectionList(
                     DisplayListService.getInstance().getList(DisplayListService.ListType.TEST_SECTION_ACTIVE));
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         String testSectionId = form.getTestSectionId();
@@ -80,7 +83,7 @@ public class TestSectionRenameEntryRestController extends BaseController {
         updateTestSectionNames(testSectionId, nameEnglish, nameFrench, userId);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private void updateTestSectionNames(String testSectionId, String nameEnglish, String nameFrench, String userId) {

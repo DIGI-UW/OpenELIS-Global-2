@@ -1,49 +1,51 @@
 package org.openelisglobal.analyzer.service;
 
-/**
- * Service interface for processing QC results from ASTM Q-segments
- * 
- * 
- * This service coordinates the complete QC result processing workflow: (1)
- * Q-segment parsing (via ASTMQSegmentParser), (2) Mapping application (via
- * QCResultExtractionService), (3) Persistence via Feature 003's
- * QCResultService.createQCResult() method.
- * 
- * The service ensures that QC results are processed within the same transaction
- * as patient result processing (per FR-021 requirement: "within the same
- * transaction").
- * 
- * Integration Pattern: Direct service call from Feature 004's message
- * processing service to Feature 003's QCResultService.createQCResult() method.
- * This ensures immediate consistency and follows the 5-layer architecture
- * pattern (004's service calls 003's service).
- * 
- * Error Handling: If Feature 003's QCResultService is unavailable or throws an
- * exception, this service should create an AnalyzerError with type
- * QC_MAPPING_INCOMPLETE (per FR-011).
- */
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+/** Processes a Bridge-recognized control result in OpenELIS operational QC. */
 public interface QCResultProcessingService {
 
     /**
-     * Processes QC result through Feature 003's QCResultService
-     * 
-     * This method coordinates: (1) Receives QCResultDTO from
-     * QCResultExtractionService (after Q-segment parsing and mapping), (2) Calls
-     * Feature 003's QCResultService.createQCResult() to persist the QC result, (3)
-     * Returns the created QCResult entity.
-     * 
-     * Transaction Boundary: This method should use @Transactional with REQUIRED
-     * propagation to ensure it runs within the same transaction as patient result
-     * processing. This ensures atomicity: both patient and QC results are persisted
-     * together or both fail together.
-     * 
-     * @param qcResultDTO QC result data extracted from Q-segment (from
-     *                    QCResultExtractionService)
-     * @param analyzerId  Analyzer ID (for association with analyzer configuration)
-     * @return Created QCResult entity (from Feature 003's QCResultService)
-     * @throws RuntimeException if Feature 003's QCResultService is unavailable or
-     *                          throws an exception (should be wrapped and handled
-     *                          gracefully)
+     * Process a normalized result that the pinned Bridge profile classified as a
+     * control and OpenELIS mapped to a local Test.
+     *
+     * @param analyzerId      OpenELIS analyzer ID resolved from the Bridge
+     *                        connection
+     * @param testId          local Test selected by the current site binding
+     * @param accessionNumber Specimen accession number (specimen identifier)
+     * @param controlLevel    clinical control level extracted by Bridge; may be
+     *                        null
+     * @param resultValue     Numeric result value
+     * @param unit            Unit of measure
+     * @param timestamp       Run date/time from Observation.effectiveDateTime
      */
-    Object processQCResult(QCResultDTO qcResultDTO, String analyzerId);
+    Outcome processQCResult(String analyzerId, String testId, String accessionNumber, String controlLevel,
+            BigDecimal resultValue, String unit, LocalDateTime timestamp);
+
+    /** What became of a control measurement. */
+    enum Outcome {
+        /** Persisted as a numeric measurement or a qualitative PASS/FAIL. */
+        RECORDED,
+        /** No usable control lot matched; nothing is recorded. */
+        NO_LOT,
+        /** The test and level have no expected answer to judge against. */
+        NO_TARGET,
+        /** No exact number or mapped answer is available for QC evaluation. */
+        UNSUPPORTED_VALUE
+    }
+
+    /**
+     * Judge a control that reported an answer rather than a number against the Test
+     * Catalog QC target of its lot's level (the lot's own override first), and
+     * record PASS when the answer is the expected one, FAIL otherwise. Nothing is
+     * guessed: with no lot or no expected answer nothing is recorded.
+     *
+     * @param componentId        the component the answer belongs to; null for the
+     *                           test's primary result
+     * @param answerDictionaryId the dictionary entry the analyzer's mapping turned
+     *                           the reported value into
+     */
+    Outcome processQualitativeQCResult(String analyzerId, String testId, String componentId, String accessionNumber,
+            String controlLevel, String answerDictionaryId, LocalDateTime timestamp);
 }

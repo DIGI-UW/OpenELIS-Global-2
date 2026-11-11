@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- OGC-1148: the QC targets a test's control levels are judged against
+       (expected value and tolerance, or an expected qualitative outcome), with
+       an optional override per control lot. Entered once in the Test Catalog,
+       read by Results Entry control capture as the prefill source. Deactivated,
+       never deleted. -->
+  <changeSet author="oe" id="102-test-qc-targets-1">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="test_qc_target" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+
+    <createTable tableName="test_qc_target" schemaName="clinlims">
+      <column name="id" type="VARCHAR(36)">
+        <constraints primaryKey="true" primaryKeyName="test_qc_target_pkey" nullable="false"/>
+      </column>
+      <column name="test_id" type="NUMERIC(10,0)">
+        <constraints nullable="false"/>
+      </column>
+      <!-- null = the primary (reported) component; per-component targets are reserved -->
+      <column name="component_id" type="VARCHAR(36)"/>
+      <column name="control_level" type="VARCHAR(10)">
+        <constraints nullable="false"/>
+      </column>
+      <!-- null = the level default; set = an override for that control lot -->
+      <column name="qc_control_lot_id" type="VARCHAR(36)"/>
+      <column name="expected_value" type="NUMERIC(15,5)"/>
+      <column name="uncertainty" type="NUMERIC(15,5)"/>
+      <column name="expected_dict_result_id" type="NUMERIC(10,0)"/>
+      <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+        <constraints nullable="false"/>
+      </column>
+      <column name="sys_user_id" type="NUMERIC(10,0)"/>
+      <!-- BaseObject maps its lastupdated property to a last_updated column. -->
+      <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+    </createTable>
+
+    <sql>ALTER TABLE clinlims.test_qc_target ADD CONSTRAINT test_qc_target_level_chk CHECK (control_level IN ('LOW', 'NORMAL', 'HIGH'))</sql>
+    <sql>ALTER TABLE clinlims.test_qc_target ADD CONSTRAINT test_qc_target_uncertainty_chk CHECK (uncertainty IS NULL OR uncertainty &gt;= 0)</sql>
+
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims" baseTableName="test_qc_target" baseColumnNames="test_id"
+      referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id"
+      constraintName="test_qc_target_test_fk" onDelete="CASCADE"/>
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims" baseTableName="test_qc_target" baseColumnNames="component_id"
+      referencedTableSchemaName="clinlims" referencedTableName="test_result_component" referencedColumnNames="id"
+      constraintName="test_qc_target_component_fk" onDelete="CASCADE"/>
+    <!-- qc_control_lot lives in the connection's default schema (the QC changelogs
+         declare none), which differs between installations, so the lot link is
+         enforced by the application (the save rejects a lot that is not one of
+         the test's) rather than by a cross-schema foreign key. -->
+    <createIndex schemaName="clinlims" tableName="test_qc_target" indexName="idx_test_qc_target_lot">
+      <column name="qc_control_lot_id"/>
+    </createIndex>
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims" baseTableName="test_qc_target" baseColumnNames="expected_dict_result_id"
+      referencedTableSchemaName="clinlims" referencedTableName="dictionary" referencedColumnNames="id"
+      constraintName="test_qc_target_dictionary_fk"/>
+
+    <createIndex schemaName="clinlims" tableName="test_qc_target" indexName="idx_test_qc_target_test">
+      <column name="test_id"/>
+    </createIndex>
+
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="test_qc_target"/>
+    </rollback>
+  </changeSet>
+
+  <!-- OGC-1148: detection limits per result component, so a below-limit result
+       is structured data instead of free-typed "&lt;0.0033" text. Optional. -->
+  <changeSet author="oe" id="102-test-qc-targets-2">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="test_result_component" columnName="lod" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="test_result_component" schemaName="clinlims">
+      <column name="lod" type="NUMERIC(15,5)"/>
+      <column name="loq" type="NUMERIC(15,5)"/>
+    </addColumn>
+    <sql>ALTER TABLE clinlims.test_result_component ADD CONSTRAINT test_result_component_lod_loq_chk CHECK ((lod IS NULL OR lod &gt;= 0) AND (loq IS NULL OR loq &gt;= 0) AND (lod IS NULL OR loq IS NULL OR lod &lt;= loq))</sql>
+    <rollback>
+      <sql>ALTER TABLE clinlims.test_result_component DROP CONSTRAINT IF EXISTS test_result_component_lod_loq_chk</sql>
+      <dropColumn tableName="test_result_component" schemaName="clinlims" columnName="lod"/>
+      <dropColumn tableName="test_result_component" schemaName="clinlims" columnName="loq"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

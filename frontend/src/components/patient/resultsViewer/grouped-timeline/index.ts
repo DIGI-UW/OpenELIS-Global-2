@@ -1,6 +1,8 @@
 import GroupedTimeline from "./grouped-timeline";
-import styles from "./grouped-timeline.styles.scss";
+import "./grouped-timeline.styles.scss";
 import useGetManyObstreeData from "./useObstreeData";
 
+export const styles = {};
+
 export default GroupedTimeline;
-export { GroupedTimeline, styles, useGetManyObstreeData };
+export { GroupedTimeline, useGetManyObstreeData, styles as defaultStyles };

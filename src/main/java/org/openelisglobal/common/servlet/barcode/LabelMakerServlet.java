@@ -14,6 +14,7 @@ import org.openelisglobal.barcode.labeltype.Label;
 import org.openelisglobal.barcode.labeltype.OrderLabel;
 import org.openelisglobal.barcode.labeltype.SpecimenLabel;
 import org.openelisglobal.barcode.service.BarcodeInfoService;
+import org.openelisglobal.barcode.util.LabelQuantityPolicy;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.log.LogEvent;
@@ -24,6 +25,7 @@ import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.labelpreset.service.LabelQuantityRefusedException;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.sample.service.SampleService;
@@ -49,6 +51,12 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
 
     private static final long serialVersionUID = 4756240897909804141L;
 
+    static final int DEFAULT_MAX_REQUEST_QUANTITY = LabelQuantityPolicy.DEFAULT_MAXIMUM;
+
+    static int getMaxRequestQuantity() {
+        return LabelQuantityPolicy.maximum();
+    }
+
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         boolean unauthorized = false;
@@ -64,28 +72,47 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
             return;
         }
 
-        // Backward compatibility for existing pathology callers that still use
-        // /LabelMakerServlet?labelType=block|slide&code=<value>
-        if (printLegacyPathologyLabelTypeRequest(request, response)) {
-            return;
-        }
-
-        if ("true".equalsIgnoreCase(request.getParameter("prePrinting"))) {
-            // writes to response
-            try {
-                prePrintLabels(request, response);
-            } catch (NumberFormatException | LIMSInvalidConfigurationException e) {
-                LogEvent.logError(this.getClass().getSimpleName(), "doGet",
-                        "invalid configuration, could not generate a pre-printed accession number");
-                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                response.setContentType("text/html; charset=utf-8");
-                response.getWriter().println(MessageUtil.getMessage("error.accession.no.error"));
+        try {
+            // Backward compatibility for existing pathology callers that still use
+            // /LabelMakerServlet?labelType=block|slide&code=<value>
+            if (printLegacyPathologyLabelTypeRequest(request, response)) {
                 return;
             }
-        } else {
-            // writes to response
-            printExistingOrder(request, response);
+
+            if ("true".equalsIgnoreCase(request.getParameter("prePrinting"))) {
+                // writes to response
+                try {
+                    prePrintLabels(request, response);
+                } catch (LIMSInvalidConfigurationException e) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "doGet",
+                            "invalid configuration, could not generate a pre-printed accession number");
+                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                    response.setContentType("text/html; charset=utf-8");
+                    response.getWriter().println(MessageUtil.getMessage("error.accession.no.error"));
+                    return;
+                }
+            } else {
+                // writes to response
+                printExistingOrder(request, response);
+            }
+        } catch (LabelQuantityRefusedException | NumberFormatException e) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.setContentType("text/plain; charset=utf-8");
+            response.getWriter().println(refusalMessage(e));
         }
+    }
+
+    /**
+     * The refusal in the user's language, naming the limit when one was exceeded.
+     */
+    private static String refusalMessage(RuntimeException e) {
+        if (e instanceof LabelQuantityRefusedException refusal
+                && (LabelQuantityRefusedException.JOB_TOO_LARGE.equals(refusal.getMessageKey())
+                        || LabelQuantityRefusedException.ABOVE_LIMIT.equals(refusal.getMessageKey()))) {
+            return MessageUtil.getMessage(refusal.getMessageKey(),
+                    new Object[] { refusal.getMessageArgs().get("max") });
+        }
+        return MessageUtil.getMessage("barcode.label.error.quantity.invalid");
     }
 
     private boolean printLegacyPathologyLabelTypeRequest(HttpServletRequest request, HttpServletResponse response)
@@ -109,6 +136,7 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
             quantity = "1";
         }
 
+        LabelQuantityPolicy.require(Integer.parseInt(quantity), 1);
         BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
         UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
         labelMaker.setOverride(override);
@@ -334,8 +362,10 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
                 BarcodeInfoService barcodeInfoService = SpringContext.getBean(BarcodeInfoService.class);
                 barcodeInfoService.recordPrintedCounts(labNo, labelMaker.getLabels());
             } catch (Exception e) {
-                LogEvent.logError("LabelMakerServlet", "printExistingOrder",
-                        "Failed to record printed counts: " + e.getMessage());
+                // Don't fail the print response if persistence falls over, but
+                // surface the stack trace so the cap drift is debuggable.
+                LogEvent.logError("LabelMakerServlet:printExistingOrder - failed to record printed counts for " + labNo,
+                        e);
             }
             response.setContentType("application/pdf");
             response.addHeader("Content-Disposition", "inline; filename=" + "sample.pdf");
@@ -358,16 +388,25 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
      * @param override    Ensure is bool
      * @return any errors that were generated along the way
      */
-    private Errors validate(String labNo, String programCode, String type, String quantity, String override) {
+    Errors validate(String labNo, String programCode, String type, String quantity, String override) {
         Errors errors = new BaseErrors();
-        // Validate quantity
-        if (!org.apache.commons.validator.GenericValidator.isInt(quantity)) {
+        // Quantity must parse as a positive int and stay below the configured
+        // per-request cap. The per-label cap (Label.getMaxNumLabels, compared
+        // against BarcodeLabelInfo.numPrinted) is enforced downstream in
+        // BarcodeLabelMaker.shouldQueueLabel — but it's bypassed when
+        // override=true, so this cap is the only stop on a runaway render loop.
+        int maxRequestQuantity = getMaxRequestQuantity();
+        if (!org.apache.commons.validator.GenericValidator.isInt(quantity) || Integer.parseInt(quantity) <= 0
+                || Integer.parseInt(quantity) > maxRequestQuantity) {
             errors.reject("barcode.label.error.quantity.invalid", "barcode.label.error.quantity.invalid");
         }
-        // Validate type
-        if (!"default".equals(type) && !"order".equals(type) && !"specimen".equals(type) && !"blank".equals(type)
-                && !"block".equals(type) && !"slide".equals(type) && !"freezer".equals(type)
-                && !"blockOrder".equals(type) && !"slideOrder".equals(type)) {
+        // Whitelist must stay aligned with BarcodeLabelMaker.generateLabels —
+        // the bare block/slide/freezer types have no dispatcher branch; first-party
+        // callers route through the *Order variants via
+        // BarcodeWorkflowPrintServiceImpl.mapLabelTypeForUrl.
+        if (!"default".equals(type) && !"order".equals(type) && !"specimen".equals(type)
+                && !"specimenOrder".equals(type) && !"blank".equals(type) && !"blockOrder".equals(type)
+                && !"slideOrder".equals(type) && !"freezerOrder".equals(type)) {
             errors.reject("barcode.label.error.type.invalid", "barcode.label.error.type.invalid");
         }
         // Validate "labNo" (either labNo, labNo.itemNo)
@@ -393,7 +432,8 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
             errors.reject("barcode.label.error.accession.invalid", "barcode.label.error.accession.invalid");
         }
         SampleService sampleService = SpringContext.getBean(SampleService.class);
-        if (sampleService.getSampleByAccessionNumber(labNo) == null) {
+        String accessionForLookup = labNo.contains(".") ? labNo.substring(0, labNo.lastIndexOf(".")) : labNo;
+        if (sampleService.getSampleByAccessionNumber(accessionForLookup) == null) {
             errors.reject("barcode.label.error.accession.nosample", "barcode.label.error.accession.nosample");
         }
         // validate override

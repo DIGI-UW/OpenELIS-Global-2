@@ -12,7 +12,9 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class NcEventServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -21,16 +23,15 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/nc-event.xml");
-
     }
 
     @Test
     public void getAll_shouldReturnAllEvents() {
         List<NcEvent> ncEvents = ncEventService.getAll();
         assertEquals(3, ncEvents.size());
-        assertEquals("1", ncEvents.get(0).getId());
-        assertEquals("2", ncEvents.get(1).getId());
-        assertEquals("3", ncEvents.get(2).getId());
+        assertEquals(Integer.valueOf(1), ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(2), ncEvents.get(1).getId());
+        assertEquals(Integer.valueOf(3), ncEvents.get(2).getId());
 
     }
 
@@ -38,7 +39,7 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
     public void getAllMatching() {
         List<NcEvent> ncEvents = ncEventService.getAllMatching("name", "Sample Mislabeling");
         assertEquals(1, ncEvents.size());
-        assertEquals("1", ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(1), ncEvents.get(0).getId());
 
     }
 
@@ -53,9 +54,9 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
     public void getAllOrdered() {
         List<NcEvent> ncEvents = ncEventService.getAllOrdered("id", false);
         assertEquals(3, ncEvents.size());
-        assertEquals("1", ncEvents.get(0).getId());
-        assertEquals("2", ncEvents.get(1).getId());
-        assertEquals("3", ncEvents.get(2).getId());
+        assertEquals(Integer.valueOf(1), ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(2), ncEvents.get(1).getId());
+        assertEquals(Integer.valueOf(3), ncEvents.get(2).getId());
     }
 
     @Test
@@ -63,9 +64,9 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
         List<String> list = List.of("id");
         List<NcEvent> ncEvents = ncEventService.getAllOrdered(list, false);
         assertEquals(3, ncEvents.size());
-        assertEquals("1", ncEvents.get(0).getId());
-        assertEquals("2", ncEvents.get(1).getId());
-        assertEquals("3", ncEvents.get(2).getId());
+        assertEquals(Integer.valueOf(1), ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(2), ncEvents.get(1).getId());
+        assertEquals(Integer.valueOf(3), ncEvents.get(2).getId());
     }
 
     @Test
@@ -73,7 +74,7 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
         List<String> list = List.of("id");
         List<NcEvent> ncEvents = ncEventService.getAllMatchingOrdered("name", "Sample Mislabeling", list, false);
         assertEquals(1, ncEvents.size());
-        assertEquals("1", ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(1), ncEvents.get(0).getId());
     }
 
     @Test
@@ -81,7 +82,7 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
         Map<String, Object> map = Map.of("name", "Sample Mislabeling");
         List<NcEvent> ncEvents = ncEventService.getAllMatchingOrdered(map, "id", false);
         assertEquals(1, ncEvents.size());
-        assertEquals("1", ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(1), ncEvents.get(0).getId());
     }
 
     @Test
@@ -90,7 +91,7 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
         Map<String, Object> map = Map.of("name", "Sample Mislabeling");
         List<NcEvent> ncEvents = ncEventService.getAllMatchingOrdered(map, list, false);
         assertEquals(1, ncEvents.size());
-        assertEquals("1", ncEvents.get(0).getId());
+        assertEquals(Integer.valueOf(1), ncEvents.get(0).getId());
     }
 
     @Test
@@ -171,6 +172,7 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void deleteAll() {
         List<NcEvent> ncEvents = ncEventService.getAll();
+        ncEvents.forEach(e -> e.setSysUserId(TEST_SYS_USER_ID));
         ncEventService.deleteAll(ncEvents);
         List<NcEvent> ncEvent = ncEventService.getAll();
         assertEquals(0, ncEvent.size());
@@ -178,7 +180,8 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void delete() {
-        NcEvent ncEvent = ncEventService.get("1");
+        NcEvent ncEvent = ncEventService.get(1);
+        ncEvent.setSysUserId(TEST_SYS_USER_ID);
         ncEventService.delete(ncEvent);
         List<NcEvent> ncEvents = ncEventService.getAll();
         assertEquals(2, ncEvents.size());

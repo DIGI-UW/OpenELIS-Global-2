@@ -15,8 +15,6 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.dictionary.form.DictionaryForm;
@@ -25,6 +23,7 @@ import org.openelisglobal.dictionary.validator.DictionaryFormValidator;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
+import org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.owasp.encoder.Encode;
@@ -47,7 +46,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class DictionaryRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "dirtyFormFields", "id",
-            "selectedDictionaryCategoryId", "isActive", "dictEntry", "localAbbreviation" };
+            "selectedDictionaryCategoryId", "isActive", "dictEntry", "localAbbreviation", "containerPopulation" };
 
     @Autowired
     private DictionaryFormValidator formValidator;
@@ -55,15 +54,45 @@ public class DictionaryRestController extends BaseController {
     private DictionaryService dictionaryService;
     @Autowired
     private DictionaryCategoryService dictionaryCategoryService;
+    @Autowired
+    private DictionaryTerminologyMappingService answerTerminology;
 
+    /**
+     * Runs before every handler of this controller, the shared lookups included, so
+     * it is open to any signed-in user; each admin handler keeps its own guard.
+     */
     @ModelAttribute("form")
+    @PreAuthorize("isAuthenticated()")
     public DictionaryForm form() {
         return new DictionaryForm();
     }
 
+    /** Runs before binding for every handler, as {@link #form()} does. */
     @InitBinder
+    @PreAuthorize("isAuthenticated()")
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
+    }
+
+    @GetMapping(value = "/dictionary/categories/{categoryName}/entries", produces = "application/json")
+    @PreAuthorize("hasAnyRole('RESULTS', 'ADMIN', 'RECEPTION', 'VALIDATION', 'PATHOLOGIST', 'CYTOPATHOLOGIST')")
+    public ResponseEntity<List<DictionaryEntryDTO>> getDictionaryEntriesByCategoryName(
+            @PathVariable String categoryName) {
+        try {
+            List<Dictionary> entries = dictionaryService.getActiveSortedEntriesByCategoryName(categoryName);
+            List<DictionaryEntryDTO> dtos = new ArrayList<>();
+            for (Dictionary d : entries) {
+                String code = d.getLocalAbbreviation();
+                if (code == null || code.isBlank()) {
+                    code = d.getId();
+                }
+                dtos.add(new DictionaryEntryDTO(code, d.getLocalizedName()));
+            }
+            return ResponseEntity.ok(dtos);
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @RequestMapping(value = "/Dictionary", method = RequestMethod.GET)
@@ -171,19 +200,11 @@ public class DictionaryRestController extends BaseController {
 
         setDefaultButtonAttributes(request);
 
+        String previousLoinc = isBlankOrZero(form.getId()) ? null : dictionaryService.get(form.getId()).getLoincCode();
         Dictionary dictionary = setupDictionary(form);
 
         try {
-            String id = form.getId();
-            if (!(id == null || "0".equals(id))) {
-                // UPDATE
-                // bugzilla 2062
-                boolean isDictionaryFrozenCheckRequired = checkForDictionaryFrozenCheck(form);
-                dictionaryService.update(dictionary);
-            } else {
-                // INSERT
-                dictionaryService.insert(dictionary);
-            }
+            answerTerminology.saveAnswer(dictionary, previousLoinc, false);
         } catch (LIMSRuntimeException e) {
             // bugzilla 2154
             LogEvent.logError(e);
@@ -246,53 +267,6 @@ public class DictionaryRestController extends BaseController {
         return dictionary;
     }
 
-    private boolean checkForDictionaryFrozenCheck(DictionaryForm form) {
-        boolean isDictionaryFrozenCheckRequired = false;
-        // there is an exception to rule of checking whether dictionary record
-        // is frozen (can no longer be updated):
-        // currenly if only isActive has changed and
-        // the current value is 'Y'
-        // OR
-        // bugzilla 1847: also the local abbreviation can be deleted/updated/inserted at
-        // anytime
-        String dirtyFormFields = form.getDirtyFormFields();
-        String isActiveValue = form.getIsActive();
-
-        String[] dirtyFields = dirtyFormFields
-                .split(ConfigurationProperties.getInstance().getPropertyValue("default.idSeparator"), -1);
-        List<String> listOfDirtyFields = new ArrayList<>();
-
-        for (int i = 0; i < dirtyFields.length; i++) {
-            String dirtyField = dirtyFields[i];
-            if (!StringUtil.isNullorNill(dirtyField)) {
-                listOfDirtyFields.add(dirtyField);
-            }
-        }
-
-        List<String> listOfDirtyFieldsNoFrozenCheckRequired = new ArrayList<>();
-        listOfDirtyFieldsNoFrozenCheckRequired.add("isActive");
-        listOfDirtyFieldsNoFrozenCheckRequired.add("localAbbreviation");
-
-        // bugzilla 1847 : added to exception for frozen check required
-        // isActive changed to Y (no frozen check required)
-        // localAbbreviation has changed (no frozen check required)
-        if (!listOfDirtyFields.isEmpty()) {
-            for (int i = 0; i < listOfDirtyFields.size(); i++) {
-                String dirtyField = listOfDirtyFields.get(i);
-                if (!listOfDirtyFieldsNoFrozenCheckRequired.contains(dirtyField)) {
-                    isDictionaryFrozenCheckRequired = true;
-                } else {
-                    // in case of isActive: need to make sure it changed to YES to be able
-                    // to skip isFrozenCheck
-                    if (dirtyField.equals("isActive") && !isActiveValue.equals(YES)) {
-                        isDictionaryFrozenCheckRequired = true;
-                    }
-                }
-            }
-        }
-        return isDictionaryFrozenCheckRequired;
-    }
-
     @RequestMapping(value = "/CancelDictionary", method = RequestMethod.GET)
     public ResponseEntity<?> cancelDictionary(HttpServletRequest request, SessionStatus status) {
         status.setComplete();
@@ -326,4 +300,16 @@ public class DictionaryRestController extends BaseController {
     protected String getPageSubtitleKey() {
         return "dictionary.edit.title";
     }
+
+    @lombok.Getter
+    @lombok.RequiredArgsConstructor
+    public static class DictionaryEntryDTO {
+        private final String code;
+        private final String label;
+    }
+
+    private static boolean isBlankOrZero(String id) {
+        return StringUtils.isBlank(id) || "0".equals(id);
+    }
+
 }

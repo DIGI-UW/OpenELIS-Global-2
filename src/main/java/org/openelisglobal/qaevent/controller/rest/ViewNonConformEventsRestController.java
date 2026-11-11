@@ -57,7 +57,11 @@ public class ViewNonConformEventsRestController extends BaseRestController {
             @RequestParam(required = false) String nceNumber, @RequestParam(required = false) String status,
             HttpServletRequest request) {
         Map<String, Object> searchParameters = new HashMap<>();
-        searchParameters.put("status", status);
+        // blank status = any status, matching the other params' guards below —
+        // deep links (?nceNumber=...) must resolve NCEs that moved past Pending
+        if (status != null && !status.isBlank()) {
+            searchParameters.put("status", status);
+        }
         List<NcEvent> searchResults = new ArrayList<>();
         if (!"".equalsIgnoreCase(labNumber)) {
             searchParameters.put("labOrderNumber", labNumber);
@@ -78,8 +82,8 @@ public class ViewNonConformEventsRestController extends BaseRestController {
         NonConformingEventForm response = new NonConformingEventForm();
 
         response.setnceEventsSearchResults(searchResults);
-        response.setNceCategories(nceCategoryService.getAllNceCategories());
-        response.setNceTypes(nceTypeService.getAllNceTypes());
+        response.setNceCategories(nceCategoryService.getAllCategoriesAsIdValuePairs());
+        response.setNceTypes(nceTypeService.getAllTypesAsIdValuePairs());
         response.setLabComponentList(
                 DisplayListService.getInstance().getList(DisplayListService.ListType.LABORATORY_COMPONENT));
         response.setSeverityConsequencesList(
@@ -98,15 +102,18 @@ public class ViewNonConformEventsRestController extends BaseRestController {
             sampleItems.add(si);
         }
         response.setSpecimens(sampleItems);
-        response.setReportDate(DateUtil.formatDateAsText(event.getReportDate()));
-        response.setDateOfEvent(DateUtil.formatDateAsText(event.getDateOfEvent()));
+        response.setReportDate(event.getReportDate() != null ? DateUtil.formatDateAsText(event.getReportDate()) : "");
+        response.setDateOfEvent(
+                event.getDateOfEvent() != null ? DateUtil.formatDateAsText(event.getDateOfEvent()) : "");
 
         return ResponseEntity.ok().body(response);
     }
 
     @PostMapping(value = "/rest/viewNonConformEvents", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> postReportNonConformingEvent(@RequestBody NonConformingEventForm form) {
+    public ResponseEntity<?> postReportNonConformingEvent(@RequestBody NonConformingEventForm form,
+            HttpServletRequest request) {
         try {
+            form.setCurrentUserId(getSysUserId(request));
             boolean updated = nonConformingEventWorker.updateFollowUp(form);
             if (updated) {
                 return ResponseEntity.ok().body(Map.of("success", true));

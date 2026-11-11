@@ -1,0 +1,259 @@
+package org.openelisglobal.labelpreset.controller.rest;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
+import java.util.Map;
+import javax.sql.DataSource;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.labelpreset.dao.LabelPresetDAO;
+import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
+import org.openelisglobal.labelpreset.service.OrderLabelRequestService;
+import org.openelisglobal.labelpreset.valueholder.BarcodeType;
+import org.openelisglobal.labelpreset.valueholder.LabelPreset;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+/**
+ * Integration test for {@link OrderLabelReprintController} (OGC-285 M6). Real
+ * Spring stack — controller + service + DAO + PostgreSQL via
+ * {@link BaseWebContextSensitiveTest} and MockMvc.
+ *
+ * <p>
+ * {@code labelpreset.controller.rest} is in the test component scan (it is NOT
+ * excluded in {@code AppTestConfig}), and {@code BaseWebContextSensitiveTest}
+ * seeds a {@code ROLE_ADMIN}+{@code ROLE_RESULTS} security context, so the
+ * controller's {@code @PreAuthorize("isAuthenticated()")} is satisfied. The
+ * {@code getOrderLabels_nonAdminAuthenticatedUser_isAllowed} case additionally
+ * proves a non-admin (RESULTS-only) user is allowed — the OGC-285 order.read
+ * regression guard.
+ */
+public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest {
+
+    private static final String ACCESSION = "OLR-T168-A";
+    private static final String SPECIMEN_PRESET = "T168-CtrlSpecimen";
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Autowired
+    private OrderLabelRequestService orderLabelRequestService;
+
+    @Autowired
+    private LabelPresetDAO labelPresetDAO;
+
+    private JdbcTemplate jdbc;
+    private String sampleId;
+    private String sampleItemId;
+    private LabelPreset preset;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        jdbc = new JdbcTemplate(dataSource);
+        executeDataSetWithStateManagement("testdata/test.xml");
+        executeDataSetWithStateManagement("testdata/system-user.xml");
+        cleanTestData();
+
+        sampleId = String.valueOf(jdbc.queryForObject("SELECT nextval('sample_seq')", Long.class));
+        jdbc.update(
+                "INSERT INTO sample (id, accession_number, entered_date, received_date, lastupdated, sys_user_id) "
+                        + "VALUES (?, ?, CURRENT_DATE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)",
+                Long.valueOf(sampleId), ACCESSION);
+
+        sampleItemId = String.valueOf(jdbc.queryForObject("SELECT nextval('sample_item_seq')", Long.class));
+        jdbc.update(
+                "INSERT INTO sample_item (id, samp_id, sort_order, status_id, lastupdated) "
+                        + "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                Long.valueOf(sampleItemId), Long.valueOf(sampleId), 1, 1);
+
+        preset = new LabelPreset();
+        preset.setName(SPECIMEN_PRESET);
+        preset.setHeightMm(25);
+        preset.setWidthMm(50);
+        preset.setBarcodeType(BarcodeType.CODE_128);
+        preset.setPrintsPerOrder(false);
+        preset.setPrintsPerSample(true);
+        preset.setDefaultPerOrder(0);
+        preset.setMaxPerOrder(10);
+        preset.setDefaultPerSample(1);
+        preset.setMaxPerSample(5);
+        preset.setIsSystem(false);
+        preset.setIsActive(true);
+        labelPresetDAO.insert(preset);
+
+        OrderLabelPersistRequest payload = new OrderLabelPersistRequest();
+        OrderLabelPersistRequest.PersistSampleRow row = new OrderLabelPersistRequest.PersistSampleRow("S1");
+        row.getCells().add(new OrderLabelPersistRequest.PersistCell(preset.getId(), 2));
+        payload.getSampleRows().add(row);
+        orderLabelRequestService.persistRequest(sampleId, Map.of("S1", sampleItemId), payload, TEST_SYS_USER_ID,
+                Map.of("S1", List.of()));
+    }
+
+    @After
+    public void tearDown() {
+        cleanTestData();
+    }
+
+    @Test
+    public void getOrderLabels_returnsRowsWithFrozenSnapshot() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels", sampleId).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].parent_sample_id").value(sampleId))
+                .andExpect(jsonPath("$[0].sample_item_id").value(sampleItemId))
+                .andExpect(jsonPath("$[0].preset_id").value(preset.getId())).andExpect(jsonPath("$[0].qty").value(2))
+                // frozen snapshot is exposed verbatim (snake_case nested shape)
+                .andExpect(jsonPath("$[0].preset_snapshot.preset.id").value(preset.getId()))
+                .andExpect(jsonPath("$[0].preset_snapshot.preset.height_mm").value(25))
+                .andExpect(jsonPath("$[0].preset_snapshot.preset.barcode_type").value("CODE_128"));
+    }
+
+    @Test
+    public void getOrderLabelsByAccession_resolvesAccessionToSameRows() throws Exception {
+        // Frontends hold the accession, not the internal Sample PK. The
+        // accession-keyed path must surface the identical rows as the PK path.
+        mockMvc.perform(
+                get("/api/orders/by-accession/{accessionNumber}/labels", ACCESSION).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].parent_sample_id").value(sampleId))
+                .andExpect(jsonPath("$[0].sample_item_id").value(sampleItemId))
+                .andExpect(jsonPath("$[0].preset_id").value(preset.getId())).andExpect(jsonPath("$[0].qty").value(2))
+                .andExpect(jsonPath("$[0].preset_snapshot.preset.id").value(preset.getId()))
+                .andExpect(jsonPath("$[0].preset_snapshot.preset.height_mm").value(25))
+                .andExpect(jsonPath("$[0].preset_snapshot.preset.barcode_type").value("CODE_128"));
+    }
+
+    @Test
+    public void getOrderLabelsByAccession_unknownAccession_returns404() throws Exception {
+        mockMvc.perform(get("/api/orders/by-accession/{accessionNumber}/labels", "OLR-T168-DOES-NOT-EXIST")
+                .accept(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void printOrderLabels_nonNumericIds_return400() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", "not-an-id")).andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("sampleItemId", "abc"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/orders/{id}/labels", "not-an-id")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void printFromSnapshot_returnsApplicationPdf() throws Exception {
+        mockMvc.perform(get("/api/barcode/print/{orderId}/{presetId}", sampleId, preset.getId()))
+                .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
+    }
+
+    @Test
+    public void printFromSnapshot_noRows_returns404() throws Exception {
+        // A preset id with no persisted rows for this order yields an empty render.
+        mockMvc.perform(get("/api/barcode/print/{orderId}/{presetId}", sampleId, 999999))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void bothSnapshotRoutes_refuseUnsafeSavedQuantitiesWith422() throws Exception {
+        jdbc.update("UPDATE order_label_request SET qty = 101 WHERE parent_sample_id = ?", Long.valueOf(sampleId));
+        mockMvc.perform(get("/api/barcode/print/{orderId}/{presetId}", sampleId, preset.getId()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.messageKey").value("barcode.label.error.quantity.limit"))
+                .andExpect(jsonPath("$.messageArgs.max").value(100));
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId)).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.messageKey").value("barcode.label.error.quantity.limit"))
+                .andExpect(jsonPath("$.messageArgs.max").value(100));
+    }
+
+    // ── OGC-1422: one PDF endpoint behind Print row / column / all ───────────
+
+    @Test
+    public void printOrderLabels_withoutFilters_returnsEveryLabelOfTheOrder() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId)).andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
+    }
+
+    @Test
+    public void printOrderLabels_filtersBySampleItemPresetAndScope() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("sampleItemId", sampleItemId))
+                .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("scope", "sample").param("presetId",
+                String.valueOf(preset.getId()))).andExpect(status().isOk());
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("scope", "order"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("sampleItemId", "0"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("presetId", "999999"))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * Regression guard for the OGC-285 auth fix: reprint is the {@code order.read}
+     * surface (US5 — a laboratory <em>technician</em> reprints). It must NOT be
+     * admin-only. This test drops the {@code ROLE_ADMIN} the base class grants and
+     * runs as a {@code RESULTS}-only user; under the previous
+     * {@code @PreAuthorize("hasRole('ADMIN')")} it returned 403. Inversion check:
+     * reverting the controller to {@code hasRole('ADMIN')} turns this 200 into a
+     * 403 and fails the test.
+     */
+    @Test
+    public void getOrderLabels_nonAdminAuthenticatedUser_isAllowed() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("resultsuser",
+                "N/A", List.of(new SimpleGrantedAuthority("ROLE_RESULTS"))));
+        mockMvc.perform(get("/api/orders/{id}/labels", sampleId).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].preset_id").value(preset.getId()));
+    }
+
+    private void cleanTestData() {
+        try {
+            jdbc.update("DELETE FROM order_label_request WHERE parent_sample_id IN "
+                    + "(SELECT id FROM sample WHERE accession_number = ?)", ACCESSION);
+            jdbc.update("DELETE FROM order_label_request WHERE preset_id IN "
+                    + "(SELECT id FROM label_preset WHERE name LIKE 'T168-%')");
+            jdbc.update(
+                    "DELETE FROM sample_item WHERE samp_id IN " + "(SELECT id FROM sample WHERE accession_number = ?)",
+                    ACCESSION);
+            jdbc.update("DELETE FROM sample WHERE accession_number = ?", ACCESSION);
+            jdbc.update("DELETE FROM label_preset WHERE name LIKE 'T168-%'");
+        } catch (Exception e) {
+            // ignored — next run retries
+        }
+    }
+
+    // ── OGC-1169: a chosen quantity, capped at the preset maximum ─────────────
+
+    @Test
+    public void printOrderLabels_withQuantityUpToThePresetMax_returnsPdf() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("presetId", String.valueOf(preset.getId()))
+                .param("scope", "sample").param("sampleItemId", sampleItemId).param("quantity", "5"))
+                .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
+    }
+
+    @Test
+    public void printOrderLabels_quantityAbovePresetMax_returns422NamingTheRule() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("presetId", String.valueOf(preset.getId()))
+                .param("scope", "sample").param("quantity", "6")).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.messageKey").value("error.labels.quantity.max"));
+    }
+
+    @Test
+    public void printOrderLabels_quantityBelowOne_returns422WithItsOwnRule() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("quantity", "0"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.messageKey").value("error.labels.quantity.min"));
+    }
+
+    @Test
+    public void getOrderLabels_carriesEachLabelsMaximumForItsScope() throws Exception {
+        mockMvc.perform(get("/api/orders/by-accession/{accession}/labels", ACCESSION)).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].max_qty").value(preset.getMaxPerSample()));
+    }
+}

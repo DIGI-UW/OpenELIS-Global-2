@@ -1,193 +1,125 @@
 package org.openelisglobal.analyzer.service;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
-import org.openelisglobal.analyzer.dao.AnalyzerDAO;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerError;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.qc.dao.QCControlLotDAO;
+import org.openelisglobal.qc.service.QCResultService;
+import org.openelisglobal.qc.valueholder.QCControlLot;
+import org.openelisglobal.qc.valueholder.QCQualitativeOutcome;
+import org.openelisglobal.testcatalog.service.TestQcTargetService;
+import org.openelisglobal.testcatalog.valueholder.TestQcTarget;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Implementation of QCResultProcessingService for processing QC results from
- * ASTM Q-segments
- * 
- * 
- * This service coordinates the complete QC result processing workflow: (1)
- * Receives QCResultDTO from QCResultExtractionService (after Q-segment parsing
- * and mapping), (2) Calls Feature 003's QCResultService.createQCResult() to
- * persist the QC result, (3) Returns the created QCResult entity.
- * 
- * Transaction Boundary: Uses @Transactional with REQUIRED propagation to ensure
- * it runs within the same transaction as patient result processing. This
- * ensures atomicity: both patient and QC results are persisted together or both
- * fail together (per FR-021 requirement: "within the same transaction").
- * 
- * Integration Pattern: Direct service call from Feature 004's message
- * processing service to Feature 003's QCResultService.createQCResult() method.
- * This ensures immediate consistency and follows the 5-layer architecture
- * pattern (004's service calls 003's service).
- * 
- * Error Handling: If Feature 003's QCResultService is unavailable or throws an
- * exception, this service creates an AnalyzerError with type MAPPING (will be
- * QC_MAPPING_INCOMPLETE and severity ERROR (per FR-011).
- * 
- * Note: Feature 003's QCResultService is injected via @Autowired(required =
- * false) since it may not be implemented yet. When Feature 003 is implemented,
- * this service will automatically use the real QCResultService.
+ * Records a control only when its specimen identifier or reported level
+ * identifies a usable lot.
  */
 @Service
 @Transactional
 public class QCResultProcessingServiceImpl implements QCResultProcessingService {
 
-    /**
-     * Feature 003's QCResultService interface
-     * 
-     * This service is NOT autowired since Feature 003 may not be implemented yet.
-     * When Feature 003 is implemented, this can be changed to:
-     * 
-     * @Autowired(required = false) private
-     *                     org.openelisglobal.qc.service.QCResultService
-     *                     qcResultService;
-     * 
-     *                     For now, it will be null and handled gracefully. It can
-     *                     be set manually via setter for testing or when Feature
-     *                     003 is available.
-     * 
-     *                     The interface signature matches Feature 003's spec.md
-     *                     FR-008 and research.md line 173-190.
-     */
-    private Object qcResultService; // Placeholder for Feature 003's QCResultService - NOT autowired
+    private static final String CLASS_NAME = "QCResultProcessingServiceImpl";
 
     @Autowired
-    private AnalyzerErrorService analyzerErrorService;
+    private QCResultService qcResultService;
 
     @Autowired
-    private AnalyzerDAO analyzerDAO;
+    private QCControlLotDAO controlLotDAO;
 
-    /**
-     * Setter for testing purposes (allows Mockito injection)
-     */
-    public void setQcResultService(Object qcResultService) {
-        this.qcResultService = qcResultService;
-    }
+    @Autowired
+    private TestQcTargetService testQcTargetService;
 
-    /**
-     * Setter for testing purposes (allows Mockito injection)
-     */
-    public void setAnalyzerErrorService(AnalyzerErrorService analyzerErrorService) {
-        this.analyzerErrorService = analyzerErrorService;
-    }
+    @Override
+    @Transactional(propagation = Propagation.REQUIRED)
+    public Outcome processQCResult(String analyzerId, String testId, String accessionNumber, String controlLevel,
+            BigDecimal resultValue, String unit, LocalDateTime timestamp) {
 
-    /**
-     * Setter for testing purposes (allows Mockito injection)
-     */
-    public void setAnalyzerDAO(AnalyzerDAO analyzerDAO) {
-        this.analyzerDAO = analyzerDAO;
+        if (testId == null || analyzerId == null || accessionNumber == null) {
+            LogEvent.logWarn(CLASS_NAME, "processQCResult", "Skipping QC processing — missing required field: testId="
+                    + testId + " analyzerId=" + analyzerId + " accession=" + accessionNumber);
+            return Outcome.NO_LOT;
+        }
+
+        // analyzerId and testId are already String — they match the
+        // String-typed instrumentId/testId on QCControlLot (bridged to
+        // NUMERIC SQL via LIMSStringNumberUserType). No parsing needed.
+        QCControlLot lot = findMatchingControlLot(accessionNumber, controlLevel, testId, analyzerId);
+        if (lot == null) {
+            LogEvent.logError(CLASS_NAME, "processQCResult",
+                    "No matching QC control lot for accession=" + accessionNumber + " controlLevel=" + controlLevel
+                            + " testId=" + testId + " instrumentId=" + analyzerId
+                            + " — create an ACTIVE control lot for this test+instrument via the QC dashboard");
+            return Outcome.NO_LOT;
+        }
+
+        // Persistence failures must roll back the caller's result staging and delivery
+        // receipt too.
+        qcResultService.createQCResult(analyzerId, testId, lot.getId(), lot.getControlLevel(), resultValue, unit,
+                timestamp);
+        LogEvent.logInfo(CLASS_NAME, "processQCResult",
+                "QC result created for lot=" + lot.getLotNumber() + " test=" + testId + " instrument=" + analyzerId);
+        return Outcome.RECORDED;
     }
 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
-    public Object processQCResult(QCResultDTO qcResultDTO, String analyzerId) {
-        if (qcResultDTO == null) {
-            throw new IllegalArgumentException("QCResultDTO cannot be null");
+    public Outcome processQualitativeQCResult(String analyzerId, String testId, String componentId,
+            String accessionNumber, String controlLevel, String answerDictionaryId, LocalDateTime timestamp) {
+        QCControlLot lot = findMatchingControlLot(accessionNumber, controlLevel, testId, analyzerId);
+        if (lot == null) {
+            LogEvent.logError(CLASS_NAME, "processQualitativeQCResult",
+                    "No matching QC control lot for accession=" + accessionNumber + " controlLevel=" + controlLevel
+                            + " testId=" + testId + " instrumentId=" + analyzerId);
+            return Outcome.NO_LOT;
         }
-        if (analyzerId == null || analyzerId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Analyzer ID cannot be null or empty");
+        TestQcTarget target = testQcTargetService.resolveEffectiveTarget(testId, componentId, lot.getControlLevel(),
+                lot.getId());
+        if (target == null || target.getExpectedDictResultId() == null) {
+            return Outcome.NO_TARGET;
         }
-
-        if (qcResultService == null) {
-            // Service unavailable - create AnalyzerError (per FR-011)
-            String errorMessage = String.format(
-                    "QCResultService not available for analyzer %s. QC result processing requires Feature 003 (Westgard QC) to be implemented.",
-                    analyzerId);
-            createQCError(analyzerId, errorMessage, null);
-            throw new LIMSRuntimeException("QCResultService not available: " + errorMessage);
-        }
-
-        try {
-            Analyzer analyzer = analyzerDAO.get(analyzerId)
-                    .orElseThrow(() -> new LIMSRuntimeException("Analyzer not found: " + analyzerId));
-
-            Timestamp timestamp = qcResultDTO.getTimestamp() != null
-                    ? new Timestamp(qcResultDTO.getTimestamp().getTime())
-                    : new Timestamp(System.currentTimeMillis());
-
-            // Call Feature 003's QCResultService.createQCResult()
-            // Note: Using reflection since Feature 003's service doesn't exist yet
-            // When Feature 003 is implemented, this can be replaced with direct method
-            // call:
-            // return qcResultService.createQCResult(
-            // qcResultDTO.getAnalyzerId(),
-            // qcResultDTO.getTestId(),
-            // qcResultDTO.getControlLotId(),
-            // qcResultDTO.getControlLevel(),
-            // qcResultDTO.getResultValue(),
-            // qcResultDTO.getUnit(),
-            // timestamp);
-
-            try {
-                java.lang.reflect.Method createQCResultMethod = qcResultService.getClass().getMethod("createQCResult",
-                        String.class, String.class, String.class, QCResultDTO.ControlLevel.class, BigDecimal.class,
-                        String.class, Timestamp.class);
-
-                Object qcResult = createQCResultMethod.invoke(qcResultService,
-                        qcResultDTO.getAnalyzerId() != null ? qcResultDTO.getAnalyzerId() : analyzerId,
-                        qcResultDTO.getTestId(), qcResultDTO.getControlLotId(), qcResultDTO.getControlLevel(),
-                        qcResultDTO.getResultValue(), qcResultDTO.getUnit(), timestamp);
-
-                return qcResult;
-
-            } catch (Exception e) {
-                // Method call failed - create AnalyzerError (per FR-011)
-                String errorMessage = String.format(
-                        "Failed to create QC result for analyzer %s, test %s, control lot %s: %s", analyzerId,
-                        qcResultDTO.getTestId(), qcResultDTO.getControlLotId(),
-                        e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
-                createQCError(analyzerId, errorMessage, null);
-                throw new LIMSRuntimeException("Failed to create QC result: " + errorMessage, e);
-            }
-
-        } catch (LIMSRuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            // Unexpected error - create AnalyzerError (per FR-011)
-            String errorMessage = String.format("Unexpected error processing QC result for analyzer %s: %s", analyzerId,
-                    e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
-            createQCError(analyzerId, errorMessage, null);
-            LogEvent.logError(errorMessage, e);
-            throw new LIMSRuntimeException("Failed to process QC result: " + errorMessage, e);
-        }
+        QCQualitativeOutcome outcome = target.getExpectedDictResultId().equals(answerDictionaryId)
+                ? QCQualitativeOutcome.PASS
+                : QCQualitativeOutcome.FAIL;
+        qcResultService.createAnalyzerQualitativeQCResult(analyzerId, testId, lot.getId(), outcome, timestamp);
+        return Outcome.RECORDED;
     }
 
     /**
-     * Create AnalyzerError for QC processing failures
-     * 
-     * @param analyzerId   Analyzer ID
-     * @param errorMessage Error message
-     * @param rawMessage   Raw ASTM message (if available)
+     * Exact specimen matches take precedence; otherwise a reported level must
+     * identify one usable lot.
      */
-    private void createQCError(String analyzerId, String errorMessage, String rawMessage) {
-        try {
-            Analyzer analyzer = analyzerDAO.get(analyzerId).orElse(null);
-            if (analyzer == null) {
-                LogEvent.logError("QCResultProcessingServiceImpl", "createQCError",
-                        "Cannot create error: Analyzer not found: " + analyzerId);
-                return;
-            }
-
-            // Create error with type QC_MAPPING_INCOMPLETE (per FR-011)
-            analyzerErrorService.createError(analyzer, AnalyzerError.ErrorType.QC_MAPPING_INCOMPLETE,
-                    AnalyzerError.Severity.ERROR, errorMessage, rawMessage);
-
-        } catch (Exception e) {
-            // Log error creation failure but don't propagate (error logging shouldn't
-            // fail processing)
-            LogEvent.logError("Failed to create AnalyzerError: " + e.getMessage(), e);
+    private QCControlLot findMatchingControlLot(String specimenId, String controlLevel, String testId,
+            String instrumentId) {
+        if (testId == null || instrumentId == null || specimenId == null) {
+            return null;
         }
+        List<QCControlLot> lots = controlLotDAO.getByTestAndInstrument(testId, instrumentId);
+        List<QCControlLot> exact = lots.stream().filter(lot -> specimenId.equals(lot.getLotNumber())).toList();
+        if (!exact.isEmpty()) {
+            // An explicit specimen identity must not be redirected to another lot when its
+            // level conflicts.
+            List<QCControlLot> matching = exact
+                    .stream().filter(QCResultProcessingServiceImpl::isUsable).filter(lot -> controlLevel == null
+                            || controlLevel.isBlank() || controlLevel.trim().equalsIgnoreCase(lot.getControlLevel()))
+                    .toList();
+            return matching.size() == 1 ? matching.get(0) : null;
+        }
+        if (controlLevel == null || controlLevel.isBlank()) {
+            return null;
+        }
+        List<QCControlLot> matching = lots.stream().filter(QCResultProcessingServiceImpl::isUsable)
+                .filter(lot -> controlLevel.trim().equalsIgnoreCase(lot.getControlLevel())).toList();
+        return matching.size() == 1 ? matching.get(0) : null;
+    }
+
+    private static boolean isUsable(QCControlLot lot) {
+        String status = lot.getStatus();
+        return ("ACTIVE".equals(status) || "ESTABLISHMENT".equals(status)) && (lot.getExpirationDate() == null
+                || !lot.getExpirationDate().toInstant().isBefore(java.time.Instant.now()));
     }
 }

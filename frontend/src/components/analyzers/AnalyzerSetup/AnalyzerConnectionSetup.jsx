@@ -1,0 +1,756 @@
+import React, { useEffect, useState } from "react";
+import { Button, InlineNotification, Loading } from "@carbon/react";
+import { useIntl } from "react-intl";
+
+import {
+  activateAnalyzer,
+  deactivateAnalyzer,
+  startAnalyzerSetupReception,
+  getAnalyzerActivationReadiness,
+  getAnalyzerDeliveryIssues,
+  retryAnalyzerDelivery,
+  resetAnalyzerProfile,
+  testConnection,
+  updateAnalyzer,
+} from "../../../services/analyzerService";
+import AnalyzerConnectionFields, {
+  initializeConnectionValues,
+  invalidConnectionFields,
+  serializeConnectionValues,
+} from "./AnalyzerConnectionFields";
+import AnalyzerSetupReception from "./AnalyzerSetupReception";
+import AnalyzerReceivedSources from "./AnalyzerReceivedSources";
+
+const EMPTY_FIELDS = [];
+
+const isApiError = (response) =>
+  !response ||
+  Boolean(response.error) ||
+  Boolean(response.messageKey) ||
+  Boolean(response.connectionErrorKey) ||
+  Number(response.statusCode) >= 400;
+
+const hasMessage = (intl, id) =>
+  Boolean(id) && Object.prototype.hasOwnProperty.call(intl.messages, id);
+
+const normalizedCheckKey = (key) =>
+  String(key || "other")
+    .toLowerCase()
+    .replaceAll("-", "_");
+
+const formatCheckKind = (intl, check) => {
+  const id = `analyzer.setup.connect.checkKind.${normalizedCheckKey(check.key)}`;
+  return intl.formatMessage({
+    id: hasMessage(intl, id) ? id : "analyzer.setup.connect.checkKind.other",
+  });
+};
+
+const formatCheckMessage = (intl, check) => {
+  const id = `analyzer.setup.connect.check.${check.messageKey}`;
+  if (hasMessage(intl, id)) {
+    return intl.formatMessage({ id }, check.details);
+  }
+  const statusId = `analyzer.setup.connect.checkStatus.${String(
+    check.status || "failed",
+  ).toLowerCase()}`;
+  return intl.formatMessage({
+    id: hasMessage(intl, statusId)
+      ? statusId
+      : "analyzer.setup.connect.checkStatus.failed",
+  });
+};
+
+const PORT_SOURCE_MESSAGES = new Map([
+  ["Connection override", "analyzer.setup.connect.portSource.override"],
+  ["Profile default", "analyzer.setup.connect.portSource.profile"],
+  ["Bridge default", "analyzer.setup.connect.portSource.bridge"],
+]);
+
+// Render only endpoint evidence from the probe, never settings inferred by OE2
+// or arbitrary detail fields returned by a newer Bridge.
+const ProbeEndpointDetails = ({ check }) => {
+  const intl = useIntl();
+  const kind = normalizedCheckKey(check.key);
+  const { host, port, portSource } = check.details || {};
+  const hasHost = typeof host === "string" && host.trim().length > 0;
+  const hasPort = Number.isInteger(port) && port > 0 && port <= 65535;
+  const sourceId = PORT_SOURCE_MESSAGES.get(portSource);
+  if (kind === "listener") {
+    return hasPort ? (
+      <p>
+        {intl.formatMessage(
+          { id: "analyzer.setup.connect.listenerPort" },
+          { port: String(port) },
+        )}
+      </p>
+    ) : null;
+  }
+  if (kind !== "remote_protocol") return null;
+  return (
+    <>
+      {hasHost && hasPort && (
+        <p>
+          {intl.formatMessage(
+            { id: "analyzer.setup.connect.destination" },
+            { host, port: String(port) },
+          )}
+        </p>
+      )}
+      {sourceId && (
+        <p>
+          {intl.formatMessage(
+            { id: "analyzer.setup.connect.portSource" },
+            { source: intl.formatMessage({ id: sourceId }) },
+          )}
+        </p>
+      )}
+      {check.status !== "PASSED" && (
+        <p>
+          {intl.formatMessage({
+            id: "analyzer.setup.connect.destinationRemediation",
+          })}
+        </p>
+      )}
+    </>
+  );
+};
+
+const probeOutcomeMessage = (status) => {
+  switch (status) {
+    case "SUCCEEDED":
+      return "analyzer.setup.connect.outcome.success";
+    case "TIMEOUT":
+      return "analyzer.setup.connect.outcome.timeout";
+    case "BLOCKED":
+      return "analyzer.setup.connect.outcome.missing_configuration";
+    default:
+      return "analyzer.setup.connect.outcome.failure";
+  }
+};
+
+const isActivationResult = (response, analyzerId) =>
+  Boolean(response) &&
+  !response.error &&
+  String(response.analyzerId) === String(analyzerId) &&
+  typeof response.ready === "boolean" &&
+  typeof response.activated === "boolean" &&
+  Array.isArray(response.blockers);
+
+const isProbeResult = (response, saved) => {
+  const connection = saved?.connection;
+  return (
+    !isApiError(response) &&
+    Boolean(connection) &&
+    response.schemaVersion === "1.0" &&
+    String(response.connectionId) === String(saved.bridgeConnectionId) &&
+    response.profileRef?.profileId === saved.profileId &&
+    Number(response.profileRef?.revision) === Number(saved.profileRevision) &&
+    response.profileRef?.fingerprint === saved.profileFingerprint &&
+    Number(response.configRevision) >= 1 &&
+    response.configFingerprint === connection.configFingerprint &&
+    response.nonMutating === true &&
+    Array.isArray(response.checks)
+  );
+};
+
+// Blockers cleared by the Verify step: it pins the analyzer to the current shared mapping revision.
+const MAPPING_BLOCKERS = new Set([
+  "analyzer.activation.blocker.mappings",
+  "analyzer.activation.blocker.recognition",
+]);
+
+export const needsMappingVerification = (readiness) =>
+  Boolean(
+    readiness?.blockers?.some((blocker) => MAPPING_BLOCKERS.has(blocker.code)),
+  );
+
+// What the Bridge set aside on this connection; its own detail text is not shown.
+const BRIDGE_DEGRADED_BLOCKERS = new Set([
+  "analyzer.connection.readiness.profileUnavailable",
+  "analyzer.connection.readiness.restoreFailed",
+]);
+
+const formatActivationBlocker = (intl, blocker) => {
+  const id = blocker?.code;
+  return intl.formatMessage(
+    {
+      id:
+        id && hasMessage(intl, id)
+          ? id
+          : "analyzer.setup.connect.activation.blockerUnknown",
+    },
+    blocker?.args,
+  );
+};
+
+const MAX_RECEIVED_SENDERS = 5;
+
+/**
+ * Sender fields of messages the Bridge holds that no other analyzer owns, so
+ * setup can name this instrument by what it actually sends.
+ */
+export const receivedSenders = (rows = [], connectionId) =>
+  [
+    ...new Set(
+      rows
+        .filter(
+          (row) =>
+            row.sender &&
+            (!row.connectionId ||
+              String(row.connectionId) === String(connectionId)),
+        )
+        .map((row) => row.sender),
+    ),
+  ].slice(0, MAX_RECEIVED_SENDERS);
+
+const AnalyzerConnectionSetup = ({
+  candidate,
+  onCandidateChange,
+  onClose,
+  onVerifyMappings,
+  onReadinessChange,
+  onProfileReset,
+  onContinue,
+  protocol,
+}) => {
+  const intl = useIntl();
+  const fields = candidate?.connection?.fields || EMPTY_FIELDS;
+  const [settings, setSettings] = useState(() =>
+    initializeConnectionValues(fields),
+  );
+  const [changedSecrets, setChangedSecrets] = useState(() => new Set());
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [action, setAction] = useState(null);
+  const [probe, setProbe] = useState(null);
+  const [error, setError] = useState(false);
+  const [readiness, setReadiness] = useState(null);
+  const [readinessLoading, setReadinessLoading] = useState(
+    Boolean(candidate?.id),
+  );
+  const [activationError, setActivationError] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetRefusal, setResetRefusal] = useState(null);
+
+  const [sourceQueued, setSourceQueued] = useState(false);
+  const [senders, setSenders] = useState([]);
+  const [receptionBlockers, setReceptionBlockers] = useState([]);
+  const asksForSender = fields.some((field) => field.key === "senderId");
+
+  useEffect(() => {
+    if (!asksForSender || onContinue) {
+      return undefined;
+    }
+    const controller = new AbortController();
+    getAnalyzerDeliveryIssues((response) => {
+      setSenders(
+        receivedSenders(response?.data?.rows, candidate?.bridgeConnectionId),
+      );
+    }, controller.signal);
+    return () => controller.abort();
+  }, [asksForSender, candidate?.bridgeConnectionId, onContinue]);
+
+  const submitting = action !== null;
+  // A connection the Bridge could not restart is not running, so an analyzer
+  // still marked active is offered activation again, not only a save.
+  const restoreFailed = Boolean(
+    candidate?.connection?.readiness?.blockers?.some(
+      (blocker) =>
+        blocker.messageKey === "analyzer.connection.readiness.restoreFailed",
+    ),
+  );
+  const alreadyActive =
+    !restoreFailed &&
+    (candidate?.status === "ACTIVE" || readiness?.activated === true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    if (candidate?.id) {
+      getAnalyzerActivationReadiness(
+        candidate.id,
+        (result) => {
+          setReadinessLoading(false);
+          if (!isActivationResult(result, candidate.id)) {
+            setReadiness(null);
+            setActivationError(true);
+            return;
+          }
+          setReadiness(result);
+        },
+        controller.signal,
+      );
+    }
+    return () => controller.abort();
+  }, [candidate?.id]);
+
+  useEffect(() => {
+    onReadinessChange?.(readiness);
+  }, [onReadinessChange, readiness]);
+
+  const refreshReadiness = (analyzerId = candidate.id) => {
+    setReadinessLoading(true);
+    setActivationError(false);
+    getAnalyzerActivationReadiness(analyzerId, (result) => {
+      setReadinessLoading(false);
+      if (!isActivationResult(result, analyzerId)) {
+        setReadiness(null);
+        setActivationError(true);
+        return;
+      }
+      setReadiness(result);
+    });
+  };
+
+  const resetProfile = () => {
+    setResetting(true);
+    setResetRefusal(null);
+    resetAnalyzerProfile(candidate.id, (result) => {
+      setResetting(false);
+      if (result?.ok) {
+        onProfileReset?.();
+        return;
+      }
+      setResetRefusal(
+        result?.messageKey || "analyzer.setup.connect.reset.failed",
+      );
+    });
+  };
+
+  const updateSetting = (field, value) => {
+    setSettings((previous) => ({ ...previous, [field.key]: value }));
+    if (field.inputKind === "SECRET") {
+      setChangedSecrets((previous) => {
+        const next = new Set(previous);
+        next.add(field.key);
+        return next;
+      });
+    }
+    setProbe(null);
+    setError(false);
+    setReadiness(null);
+    setActivationError(false);
+  };
+
+  const validate = (values = settings) =>
+    Boolean(candidate?.id && candidate?.connection) &&
+    invalidConnectionFields(fields, values, changedSecrets).length === 0;
+
+  const connectionPayload = (values = settings) => ({
+    name: candidate.name,
+    profileId: candidate.profileId,
+    profileRevision: candidate.profileRevision,
+    testUnitIds: candidate.testUnitIds,
+    connectionValues: serializeConnectionValues(fields, values, changedSecrets),
+  });
+
+  const saveCandidate = (nextAction, onSaved, values = settings) => {
+    setSubmitAttempted(true);
+    setError(false);
+    if (!validate(values)) {
+      return;
+    }
+
+    setAction(nextAction);
+    updateAnalyzer(candidate.id, connectionPayload(values), (saved) => {
+      if (isApiError(saved) || !saved.connection) {
+        setAction(null);
+        setError(true);
+        return;
+      }
+      setSettings(initializeConnectionValues(saved.connection.fields || []));
+      setChangedSecrets(new Set());
+      setSubmitAttempted(false);
+      setProbe(null);
+      setError(false);
+      onCandidateChange?.(saved);
+      onSaved(saved);
+    });
+  };
+
+  const runProbe = () => {
+    setProbe(null);
+    saveCandidate("probe", (saved) => {
+      testConnection(saved.id, (result) => {
+        setAction(null);
+        if (!isProbeResult(result, saved)) {
+          setError(true);
+          return;
+        }
+        setProbe(result);
+        refreshReadiness(saved.id);
+      });
+    });
+  };
+
+  const finishAndActivate = () => {
+    setReadiness(null);
+    setActivationError(false);
+    saveCandidate("activate", (saved) => {
+      activateAnalyzer(saved.id, (result) => {
+        setAction(null);
+        if (!isActivationResult(result, saved.id)) {
+          setActivationError(true);
+          return;
+        }
+        setReadiness(result);
+        if (result.activated && result.status === "ACTIVE") {
+          onCandidateChange?.({ ...saved, status: "ACTIVE" });
+          onClose?.();
+        }
+      });
+    });
+  };
+
+  const saveAndFinishLater = () => {
+    saveCandidate("save", () => {
+      setAction(null);
+      onClose?.();
+    });
+  };
+
+  const startReception = (source = null) => {
+    setSourceQueued(false);
+    const values = source
+      ? {
+          ...settings,
+          senderId: source.sender,
+          host: source.sourceId,
+          port: source.listenerPort,
+        }
+      : settings;
+    setReceptionBlockers([]);
+    saveCandidate(
+      "reception",
+      (saved) => {
+        startAnalyzerSetupReception(saved.id, (result) => {
+          setAction(null);
+          if (
+            !result?.receiving ||
+            String(result.analyzerId) !== String(saved.id) ||
+            result.status !== "VALIDATION"
+          ) {
+            setReceptionBlockers(
+              result?.blockers?.length
+                ? result.blockers
+                : [{ code: "analyzer.setup.reception.startError" }],
+            );
+            return;
+          }
+          onCandidateChange?.({
+            ...saved,
+            status: "VALIDATION",
+            active: false,
+            connection: {
+              ...saved.connection,
+              actualRuntimeState: "ACTIVE",
+              receptionPurpose: "SETUP",
+            },
+          });
+          if (source) {
+            setAction("adopt");
+            retryAnalyzerDelivery(source.id, (response) => {
+              setAction(null);
+              const queued =
+                response?.status === "accepted" &&
+                response.id === source.id &&
+                response.state === "QUEUED";
+              setSourceQueued(queued);
+              if (!queued)
+                setReceptionBlockers([
+                  { code: "analyzer.setup.sources.retryError" },
+                ]);
+            });
+          }
+        });
+      },
+      values,
+    );
+  };
+
+  const stopReception = () => {
+    setAction("stop");
+    deactivateAnalyzer(candidate.id, (result) => {
+      setAction(null);
+      if (
+        !result?.deactivated ||
+        String(result.analyzerId) !== String(candidate.id)
+      ) {
+        setReceptionBlockers([{ code: "analyzer.setup.reception.stopError" }]);
+        return;
+      }
+      onCandidateChange?.({
+        ...candidate,
+        status: "INACTIVE",
+        active: false,
+        connection: { ...candidate.connection, actualRuntimeState: "INACTIVE" },
+      });
+    });
+  };
+
+  if (!candidate?.id || !candidate?.connection) {
+    return (
+      <InlineNotification
+        kind="error"
+        lowContrast
+        hideCloseButton
+        title={intl.formatMessage({ id: "analyzer.setup.connect.loadError" })}
+      />
+    );
+  }
+
+  return (
+    <div className="analyzer-setup__connect">
+      {onContinue &&
+        !alreadyActive &&
+        asksForSender &&
+        settings.connectionRole === "SERVER" &&
+        protocol && (
+          <AnalyzerReceivedSources
+            protocol={protocol}
+            busy={submitting}
+            onAdopt={startReception}
+          />
+        )}
+      {sourceQueued && (
+        <InlineNotification
+          kind="info"
+          hideCloseButton
+          title={intl.formatMessage({ id: "analyzer.setup.sources.queued" })}
+        />
+      )}
+      <AnalyzerConnectionFields
+        fields={fields}
+        values={settings}
+        changedSecrets={changedSecrets}
+        submitAttempted={submitAttempted}
+        onChange={updateSetting}
+        suggestions={{ senderId: senders }}
+      />
+
+      <div className="analyzer-setup__connect-actions">
+        <Button type="button" disabled={submitting} onClick={runProbe}>
+          {intl.formatMessage({
+            id:
+              action === "probe"
+                ? "analyzer.setup.connect.testing"
+                : "analyzer.setup.connect.test",
+          })}
+        </Button>
+      </div>
+
+      {error && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({ id: "analyzer.setup.connect.error" })}
+        />
+      )}
+
+      {probe && (
+        <section
+          className="analyzer-setup__connect-evidence"
+          aria-labelledby="analyzer-setup-connect-evidence-title"
+        >
+          <InlineNotification
+            kind={probe.status === "SUCCEEDED" ? "success" : "error"}
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: probeOutcomeMessage(probe.status),
+            })}
+          />
+          <h4 id="analyzer-setup-connect-evidence-title">
+            {intl.formatMessage({ id: "analyzer.setup.connect.evidence" })}
+          </h4>
+          <dl>
+            {probe.checks.map((check) => (
+              <div key={check.key}>
+                <dt>{formatCheckKind(intl, check)}</dt>
+                <dd>
+                  {formatCheckMessage(intl, check)}
+                  <ProbeEndpointDetails check={check} />
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+
+      {onContinue && !alreadyActive && (
+        <AnalyzerSetupReception
+          candidate={candidate}
+          busy={submitting}
+          onStart={() => startReception()}
+          onStop={stopReception}
+          blockers={receptionBlockers}
+        />
+      )}
+      {(candidate?.connection?.readiness?.blockers || [])
+        .filter((blocker) => BRIDGE_DEGRADED_BLOCKERS.has(blocker.messageKey))
+        .map((blocker) => (
+          <InlineNotification
+            key={blocker.key}
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage(
+              { id: blocker.messageKey },
+              {
+                profileId: candidate.connection.profileRef?.profileId,
+                revision: candidate.connection.profileRef?.revision,
+              },
+            )}
+          />
+        ))}
+      {onProfileReset &&
+        (candidate?.connection?.readiness?.blockers || []).some(
+          (blocker) =>
+            blocker.messageKey ===
+            "analyzer.connection.readiness.profileUnavailable",
+        ) && (
+          <Button
+            type="button"
+            kind="tertiary"
+            size="sm"
+            disabled={submitting || resetting}
+            onClick={resetProfile}
+          >
+            {intl.formatMessage({ id: "analyzer.setup.connect.reset" })}
+          </Button>
+        )}
+      {resetRefusal && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({ id: resetRefusal })}
+        />
+      )}
+      {!onContinue && (
+        <section
+          className="analyzer-setup__activation-readiness"
+          aria-labelledby="analyzer-setup-activation-readiness-title"
+        >
+          <h4 id="analyzer-setup-activation-readiness-title">
+            {intl.formatMessage({
+              id: "analyzer.setup.connect.activation.readiness",
+            })}
+          </h4>
+          {readinessLoading && (
+            <Loading
+              small
+              withOverlay={false}
+              description={intl.formatMessage({
+                id: "analyzer.setup.connect.activation.loading",
+              })}
+            />
+          )}
+          {activationError && (
+            <InlineNotification
+              kind="error"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: "analyzer.setup.connect.activation.error",
+              })}
+            />
+          )}
+          {readiness?.ready && (
+            <InlineNotification
+              kind="success"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: readiness.activated
+                  ? "analyzer.setup.connect.activation.active"
+                  : "analyzer.setup.connect.activation.ready",
+              })}
+            />
+          )}
+          {readiness?.blockers
+            .filter((blocker) => !BRIDGE_DEGRADED_BLOCKERS.has(blocker.code))
+            .map((blocker, index) => (
+              <InlineNotification
+                key={`${blocker.code}-${index}`}
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                title={formatActivationBlocker(intl, blocker)}
+              />
+            ))}
+          {onVerifyMappings && needsMappingVerification(readiness) && (
+            <Button
+              type="button"
+              kind="tertiary"
+              size="sm"
+              disabled={submitting}
+              onClick={onVerifyMappings}
+            >
+              {intl.formatMessage({
+                id: "analyzer.setup.connect.activation.verifyMappings",
+              })}
+            </Button>
+          )}
+        </section>
+      )}
+
+      <div className="analyzer-setup__completion-actions">
+        <Button
+          type="button"
+          disabled={submitting}
+          onClick={
+            onContinue && !alreadyActive
+              ? () =>
+                  saveCandidate("continue", (saved) => {
+                    setAction(null);
+                    onContinue(saved);
+                  })
+              : alreadyActive
+                ? saveAndFinishLater
+                : finishAndActivate
+          }
+        >
+          {intl.formatMessage({
+            id:
+              onContinue && !alreadyActive
+                ? "analyzer.setup.connect.continue"
+                : action === "activate"
+                  ? "analyzer.setup.connect.activation.activating"
+                  : action === "save"
+                    ? "analyzer.setup.connect.activation.saving"
+                    : alreadyActive
+                      ? "analyzer.setup.connect.activation.saveChanges"
+                      : "analyzer.setup.connect.activation.finish",
+          })}
+        </Button>
+        {!alreadyActive && (
+          <Button
+            type="button"
+            kind="secondary"
+            disabled={submitting}
+            onClick={saveAndFinishLater}
+          >
+            {intl.formatMessage({
+              id:
+                action === "save"
+                  ? "analyzer.setup.connect.activation.saving"
+                  : "analyzer.setup.connect.activation.saveLater",
+            })}
+          </Button>
+        )}
+        <Button
+          type="button"
+          kind="ghost"
+          disabled={submitting}
+          onClick={onClose}
+        >
+          {intl.formatMessage({
+            id: "analyzer.setup.connect.activation.cancel",
+          })}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+export default AnalyzerConnectionSetup;

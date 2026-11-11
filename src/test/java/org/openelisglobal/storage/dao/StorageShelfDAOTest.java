@@ -76,14 +76,14 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
         jdbcTemplate.update(
                 "INSERT INTO storage_shelf (id, label, code, parent_device_id, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testShelf1Id, "Shelf A", "SHELF-A", testDeviceId, true, 1);
+                testShelf1Id, "DT-Shelf-A", "DT-SHF-A", testDeviceId, true, 1);
         testShelf1 = storageShelfDAO.get(testShelf1Id).orElse(null);
 
         testShelf2Id = 9103;
         jdbcTemplate.update(
                 "INSERT INTO storage_shelf (id, label, code, parent_device_id, active, sys_user_id, last_updated, fhir_uuid) "
                         + "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, gen_random_uuid())",
-                testShelf2Id, "Shelf B", "SHELF-B", testDeviceId, true, 1);
+                testShelf2Id, "DT-Shelf-B", "DT-SHF-B", testDeviceId, true, 1);
         testShelf2 = storageShelfDAO.get(testShelf2Id).orElse(null);
     }
 
@@ -97,7 +97,7 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
             // Delete in FK order: shelf -> device -> room
             // Use both code and id to handle leftover records from previous test runs
             jdbcTemplate
-                    .execute("DELETE FROM storage_shelf WHERE code IN ('SHELF-A', 'SHELF-B') OR id IN (9102, 9103)");
+                    .execute("DELETE FROM storage_shelf WHERE code IN ('DT-SHF-A', 'DT-SHF-B') OR id IN (9102, 9103)");
             jdbcTemplate.execute("DELETE FROM storage_device WHERE code = 'TSTDEV-SHF' OR id = 9101");
             jdbcTemplate.execute("DELETE FROM storage_room WHERE code = 'TSTRM-SHF' OR id = 9100");
         } catch (Exception e) {
@@ -113,12 +113,12 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
     public void testFindByLabel_WithValidLabel_ReturnsShelf() {
         // Act: Execute HQL query - this will fail if HQL references non-existent
         // properties
-        StorageShelf result = storageShelfDAO.findByLabel("Shelf A");
+        StorageShelf result = storageShelfDAO.findByLabel("DT-Shelf-A");
 
         // Assert
         assertNotNull("Shelf should be found", result);
-        assertEquals("Label should match", "Shelf A", result.getLabel());
-        assertEquals("Code should match", "SHELF-A", result.getCode());
+        assertEquals("Label should match", "DT-Shelf-A", result.getLabel());
+        assertEquals("Code should match", "DT-SHF-A", result.getCode());
     }
 
     /**
@@ -143,8 +143,8 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
 
         // Assert
         assertEquals("Should return two shelves", 2, results.size());
-        assertTrue("Should contain shelf 1", results.stream().anyMatch(s -> s.getLabel().equals("Shelf A")));
-        assertTrue("Should contain shelf 2", results.stream().anyMatch(s -> s.getLabel().equals("Shelf B")));
+        assertTrue("Should contain shelf 1", results.stream().anyMatch(s -> s.getLabel().equals("DT-Shelf-A")));
+        assertTrue("Should contain shelf 2", results.stream().anyMatch(s -> s.getLabel().equals("DT-Shelf-B")));
     }
 
     /**
@@ -153,11 +153,11 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
     @Test
     public void testFindByLabelAndParentDevice_WithValidParams_ReturnsShelf() {
         // Act: Execute HQL query
-        StorageShelf result = storageShelfDAO.findByLabelAndParentDevice("Shelf A", testDevice);
+        StorageShelf result = storageShelfDAO.findByLabelAndParentDevice("DT-Shelf-A", testDevice);
 
         // Assert
         assertNotNull("Shelf should be found", result);
-        assertEquals("Label should match", "Shelf A", result.getLabel());
+        assertEquals("Label should match", "DT-Shelf-A", result.getLabel());
     }
 
     /**
@@ -182,7 +182,7 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
 
         // Assert
         assertTrue("Should return at least 2 shelves", results.size() >= 2);
-        assertTrue("Should contain shelf 1", results.stream().anyMatch(s -> s.getLabel().equals("Shelf A")));
-        assertTrue("Should contain shelf 2", results.stream().anyMatch(s -> s.getLabel().equals("Shelf B")));
+        assertTrue("Should contain shelf 1", results.stream().anyMatch(s -> s.getLabel().equals("DT-Shelf-A")));
+        assertTrue("Should contain shelf 2", results.stream().anyMatch(s -> s.getLabel().equals("DT-Shelf-B")));
     }
 }

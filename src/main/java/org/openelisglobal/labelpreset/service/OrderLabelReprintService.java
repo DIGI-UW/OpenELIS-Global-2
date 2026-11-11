@@ -1,0 +1,91 @@
+package org.openelisglobal.labelpreset.service;
+
+import java.io.ByteArrayOutputStream;
+import java.util.List;
+import org.openelisglobal.barcode.labeltype.SnapshotLabel;
+import org.openelisglobal.labelpreset.dto.OrderLabelRequestView;
+import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
+import org.openelisglobal.labelpreset.valueholder.PresetSnapshotDto;
+
+/**
+ * Reprint service for persisted {@code order_label_request} rows (OGC-285 M6).
+ *
+ * <p>
+ * <b>AC-20 contract — the central invariant of this milestone:</b> every render
+ * path here reads dimensions, fields and barcode symbology from the row's
+ * frozen {@link PresetSnapshotDto} and MUST NOT re-fetch {@code label_preset}
+ * or {@code test_label_preset_link}. A reprint that re-reads the live preset is
+ * a defect. The {@code @Transactional(readOnly = true)} implementation resolves
+ * LAZY associations and serializes the JSONB inside the transaction.
+ */
+public interface OrderLabelReprintService {
+
+    /**
+     * All persisted label requests for an order (parent sample), projected to a
+     * lazy-safe view with the frozen snapshot intact.
+     *
+     * @param orderId the parent {@code Sample} id (the "order")
+     * @return the rows in persistence order (possibly empty)
+     */
+    List<OrderLabelRequestView> listByOrder(String orderId);
+
+    /**
+     * Render a print-ready PDF for every {@code order_label_request} row of the
+     * given order and preset, each rendered from its own frozen snapshot at the
+     * stored {@code qty}. Dimensions/fields/barcode come from the snapshot only.
+     *
+     * @param orderId  the parent {@code Sample} id
+     * @param presetId the preset whose rows should be rendered
+     * @return a PDF stream; empty if no matching rows exist
+     */
+    ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId);
+
+    /**
+     * Render a print-ready PDF for the order's persisted label requests that match
+     * every given filter, each row rendered from its own frozen snapshot at the
+     * stored {@code qty}. A {@code null} filter matches everything.
+     *
+     * @param orderId      the parent {@code Sample} id
+     * @param presetId     only rows of this preset
+     * @param sampleItemId only the rows bound to this sample item
+     * @param scope        {@code "order"} for the per-order rows only,
+     *                     {@code "sample"} for the per-sample rows only
+     * @return a PDF stream; empty if no row matches
+     */
+    ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId, String sampleItemId, String scope);
+
+    /**
+     * Like {@link #renderFromSnapshot(String, Integer, String, String)} but prints
+     * {@code quantity} copies of each matched label instead of the saved quantity
+     * (OGC-1169, FR-I5). The quantity may not exceed the preset's maximum for the
+     * label's scope; above it an {@link IllegalArgumentException} is thrown.
+     * {@code null} keeps the saved quantities.
+     */
+    ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId, String sampleItemId, String scope,
+            Integer quantity);
+
+    /**
+     * Decrease-only quantity update. Allows lowering {@code qty} to the given value
+     * (or leaving it unchanged); rejects any value greater than the currently saved
+     * qty.
+     *
+     * @param requestId the {@code order_label_request} id
+     * @param newQty    the requested quantity (must be {@code >= 1} and {@code <=}
+     *                  the saved qty)
+     * @return the updated row
+     * @throws IllegalArgumentException if the row is missing, or the new qty is not
+     *                                  a decrease (or equal)
+     */
+    OrderLabelRequest decreaseQty(Integer requestId, Integer newQty);
+
+    /**
+     * Build the hermetic {@link SnapshotLabel} for a snapshot. Exposed so tests can
+     * assert the label frame (dimensions) comes from the snapshot, NOT the live
+     * preset (AC-20). Does not touch the database.
+     *
+     * @param snapshot the frozen snapshot
+     * @param labNo    the barcode payload
+     * @return the label
+     */
+    SnapshotLabel buildSnapshotLabel(PresetSnapshotDto snapshot, String labNo);
+}

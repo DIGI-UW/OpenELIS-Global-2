@@ -1,5 +1,13 @@
 # Feature Specification: Box Storage Hierarchy Enhancement
 
+> **Status:** DEFERRED — design-only; no implementation work scheduled. **Last
+> reconciled:** 2026-04-20 **Reality notes:** Storage subsystem saw heavy
+> refactor work through early 2026 (picker decomposition in PR #3430, storage
+> CRUD hardening, canonical ARIA picker pattern) but did not add a Box hierarchy
+> level. The Virtual Position architectural shift described here is
+> unimplemented. Spec retained as the design-of-record for when this work is
+> picked up; plan/tasks not yet drafted.
+
 **Feature Branch**: `spec/clarify/OGC-149-box-plate-hierarchy`  
 **Created**: December 5, 2025  
 **Updated**: December 9, 2025  
@@ -77,6 +85,17 @@ Positions are **not persistent database entities**. Instead:
 - Supports high-volume labs without database bloat
 - Flexible assignment: Samples can be assigned to device, shelf, rack, or box
   levels with optional position coordinates
+
+## Clarifications
+
+### Session 2026-04-18
+
+- **Add Box entry point clarification:** Box creation is routed through the
+  Boxes resource page toolbar (`/Storage/boxes/new`) rather than a rack-embedded
+  action.
+- **Delete behavior clarification:** Box deletion uses non-cascade delete
+  validation consistent with backend behavior (`DELETE /rest/storage/boxes/{id}`
+  without cascade summary endpoint).
 
 ## User Scenarios & Testing _(mandatory)_
 

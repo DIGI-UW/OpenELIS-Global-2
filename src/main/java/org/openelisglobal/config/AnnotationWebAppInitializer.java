@@ -5,12 +5,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRegistration;
 import org.openelisglobal.common.servlet.barcode.LabelMakerServlet;
 import org.openelisglobal.common.servlet.query.AjaxQueryXMLServlet;
-import org.openelisglobal.common.servlet.reports.ReportsServlet;
 import org.openelisglobal.common.servlet.validation.AjaxTextServlet;
 import org.openelisglobal.common.servlet.validation.AjaxXMLServlet;
 import org.openelisglobal.dataexchange.aggregatereporting.IndicatorAggregationReportingServlet;
-import org.openelisglobal.dataexchange.order.action.OrderRawServlet;
-import org.openelisglobal.dataexchange.order.action.OrderServlet;
 import org.openelisglobal.fhir.servlets.FhirRestfulServer;
 import org.openelisglobal.metricservice.action.MetricServicesServlet;
 import org.springframework.web.WebApplicationInitializer;
@@ -43,6 +40,7 @@ public class AnnotationWebAppInitializer implements WebApplicationInitializer {
                 new DispatcherServlet(rootContext));
         dispatcher.setLoadOnStartup(++startupOrder);
         dispatcher.addMapping("/");
+        dispatcher.setAsyncSupported(true);
         // Enable Multipart Support
         dispatcher.setMultipartConfig(new jakarta.servlet.MultipartConfigElement(null, // Location
                 10485760, // Max file size (10MB)
@@ -82,10 +80,6 @@ public class AnnotationWebAppInitializer implements WebApplicationInitializer {
         // ajaxSelectDropDownXMLServlet.setLoadOnStartup(++startupOrder);
         // ajaxSelectDropDownXMLServlet.addMapping("/ajaxSelectDropDownXML");
 
-        ServletRegistration.Dynamic reportsServlet = servletContext.addServlet("reportsServlet", ReportsServlet.class);
-        reportsServlet.setLoadOnStartup(++startupOrder);
-        reportsServlet.addMapping("/reportsServlet");
-
         ServletRegistration.Dynamic ajaxDataXMLLServlet = servletContext.addServlet("ajaxDataXML",
                 org.openelisglobal.common.servlet.data.AjaxXMLServlet.class);
         ajaxDataXMLLServlet.setLoadOnStartup(++startupOrder);
@@ -106,15 +100,6 @@ public class AnnotationWebAppInitializer implements WebApplicationInitializer {
                 .addServlet("IndicatorAggregationServlet", IndicatorAggregationReportingServlet.class);
         indicatorAggregationServlet.setLoadOnStartup(++startupOrder);
         indicatorAggregationServlet.addMapping("/IndicatorAggregation");
-
-        ServletRegistration.Dynamic orderServlet = servletContext.addServlet("OrderRequestServlet", OrderServlet.class);
-        orderServlet.setLoadOnStartup(++startupOrder);
-        orderServlet.addMapping("/OrderRequest");
-
-        ServletRegistration.Dynamic orderRequestRawServlet = servletContext.addServlet("OrderRequestRawServlet",
-                OrderRawServlet.class);
-        orderRequestRawServlet.setLoadOnStartup(++startupOrder);
-        orderRequestRawServlet.addMapping("/OrderRequest_Raw");
 
         ServletRegistration.Dynamic labelMakerServlet = servletContext.addServlet("LabelMakerServlet",
                 LabelMakerServlet.class);

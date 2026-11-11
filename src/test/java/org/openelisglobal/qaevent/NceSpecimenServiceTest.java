@@ -39,19 +39,19 @@ public class NceSpecimenServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getSpecimenByNceId_ShouldReturnAllNceSpecimensWithAnNceIdMatchingTheParameterValue() {
-        nceSpecimenList = nceSpecimenService.getSpecimenByNceId("1002");
+        nceSpecimenList = nceSpecimenService.getSpecimenByNceId(1002);
         assertNotNull(nceSpecimenList);
         assertEquals(3, nceSpecimenList.size());
-        assertEquals("2", nceSpecimenList.get(0).getId());
+        assertEquals(Integer.valueOf(2), nceSpecimenList.get(0).getId());
     }
 
     @Test
     public void getSpecimenBySampleItemId_ShouldReturnAllNceSpecimensWithASampleIdMatchingTheParameterValue() {
-        nceSpecimenList = nceSpecimenService.getSpecimenBySampleItemId("601");
+        nceSpecimenList = nceSpecimenService.getSpecimenBySampleItemId(601);
         assertNotNull(nceSpecimenList);
         assertEquals(2, nceSpecimenList.size());
-        assertEquals("5", nceSpecimenList.get(1).getId());
-        assertEquals("4", nceSpecimenList.get(0).getId());
+        assertEquals(Integer.valueOf(5), nceSpecimenList.get(1).getId());
+        assertEquals(Integer.valueOf(4), nceSpecimenList.get(0).getId());
     }
 
     @Test
@@ -59,7 +59,7 @@ public class NceSpecimenServiceTest extends BaseWebContextSensitiveTest {
         nceSpecimenList = nceSpecimenService.getAll();
         assertNotNull(nceSpecimenList);
         assertEquals(5, nceSpecimenList.size());
-        assertEquals("3", nceSpecimenList.get(2).getId());
+        assertEquals(Integer.valueOf(3), nceSpecimenList.get(2).getId());
     }
 
     @Test
@@ -67,7 +67,7 @@ public class NceSpecimenServiceTest extends BaseWebContextSensitiveTest {
         nceSpecimenList = nceSpecimenService.getAllMatching("nceId", "1002");
         assertNotNull(nceSpecimenList);
         assertEquals(3, nceSpecimenList.size());
-        assertEquals("4", nceSpecimenList.get(1).getId());
+        assertEquals(Integer.valueOf(4), nceSpecimenList.get(1).getId());
     }
 
     @Test
@@ -75,7 +75,7 @@ public class NceSpecimenServiceTest extends BaseWebContextSensitiveTest {
         nceSpecimenList = nceSpecimenService.getAllMatching(propertyValues);
         assertNotNull(nceSpecimenList);
         assertEquals(2, nceSpecimenList.size());
-        assertEquals("2", nceSpecimenList.get(1).getId());
+        assertEquals(Integer.valueOf(2), nceSpecimenList.get(1).getId());
     }
 
     @Test
@@ -83,7 +83,7 @@ public class NceSpecimenServiceTest extends BaseWebContextSensitiveTest {
         nceSpecimenList = nceSpecimenService.getAllOrdered("id", false);
         assertNotNull(nceSpecimenList);
         assertEquals(5, nceSpecimenList.size());
-        assertEquals("3", nceSpecimenList.get(2).getId());
+        assertEquals(Integer.valueOf(3), nceSpecimenList.get(2).getId());
     }
 
     @Test
@@ -91,7 +91,7 @@ public class NceSpecimenServiceTest extends BaseWebContextSensitiveTest {
         nceSpecimenList = nceSpecimenService.getAllOrdered(orderProperties, true);
         assertNotNull(nceSpecimenList);
         assertEquals(5, nceSpecimenList.size());
-        assertEquals("1", nceSpecimenList.get(4).getId());
+        assertEquals(Integer.valueOf(1), nceSpecimenList.get(4).getId());
     }
 
     @Test
@@ -99,7 +99,7 @@ public class NceSpecimenServiceTest extends BaseWebContextSensitiveTest {
         nceSpecimenList = nceSpecimenService.getAllMatchingOrdered("nceId", "1002", "sampleItemId", true);
         assertNotNull(nceSpecimenList);
         assertEquals(3, nceSpecimenList.size());
-        assertEquals("4", nceSpecimenList.get(1).getId());
+        assertEquals(Integer.valueOf(4), nceSpecimenList.get(1).getId());
     }
 
     @Test
@@ -107,7 +107,7 @@ public class NceSpecimenServiceTest extends BaseWebContextSensitiveTest {
         nceSpecimenList = nceSpecimenService.getAllMatchingOrdered("nceId", "1002", orderProperties, true);
         assertNotNull(nceSpecimenList);
         assertEquals(3, nceSpecimenList.size());
-        assertEquals("5", nceSpecimenList.get(2).getId());
+        assertEquals(Integer.valueOf(5), nceSpecimenList.get(2).getId());
     }
 
     @Test
@@ -115,7 +115,7 @@ public class NceSpecimenServiceTest extends BaseWebContextSensitiveTest {
         nceSpecimenList = nceSpecimenService.getAllMatchingOrdered(propertyValues, "sampleItemId", true);
         assertNotNull(nceSpecimenList);
         assertEquals(2, nceSpecimenList.size());
-        assertEquals("1", nceSpecimenList.get(0).getId());
+        assertEquals(Integer.valueOf(1), nceSpecimenList.get(0).getId());
     }
 
     @Test
@@ -123,7 +123,7 @@ public class NceSpecimenServiceTest extends BaseWebContextSensitiveTest {
         nceSpecimenList = nceSpecimenService.getAllMatchingOrdered(propertyValues, orderProperties, false);
         assertNotNull(nceSpecimenList);
         assertEquals(2, nceSpecimenList.size());
-        assertEquals("1", nceSpecimenList.get(0).getId());
+        assertEquals(Integer.valueOf(1), nceSpecimenList.get(0).getId());
     }
 
     @Test
@@ -193,11 +193,11 @@ public class NceSpecimenServiceTest extends BaseWebContextSensitiveTest {
     public void delete_ShouldDeleteANceSpecimen() {
         nceSpecimenList = nceSpecimenService.getAll();
         assertEquals(5, nceSpecimenList.size());
-        assertTrue(nceSpecimenList.stream().anyMatch(ncs -> "2".equals(ncs.getId())));
-        NceSpecimen nceSpecimen = nceSpecimenService.get("2");
+        assertTrue(nceSpecimenList.stream().anyMatch(ncs -> ncs.getId().equals(2)));
+        NceSpecimen nceSpecimen = nceSpecimenService.get(2);
         nceSpecimenService.delete(nceSpecimen);
         List<NceSpecimen> newNceSpecimens = nceSpecimenService.getAll();
-        assertFalse(newNceSpecimens.stream().anyMatch(ncs -> "2".equals(ncs.getId())));
+        assertFalse(newNceSpecimens.stream().anyMatch(ncs -> ncs.getId().equals(2)));
         assertEquals(4, newNceSpecimens.size());
     }
 

@@ -4,33 +4,34 @@
 # Single unified script for loading ALL E2E test fixtures
 # Supports both Docker and direct psql connections
 #
-# Usage: ./load-test-fixtures.sh [--reset] [--no-verify] [--analyzers=MODE]
+# Usage: ./load-test-fixtures.sh [--reset] [--no-verify] [--profile=PROFILE]
 #
-# Analyzer modes (--analyzers=MODE):
-#   full     - Analyzer type safety net + cleanup + type linking (default)
-#   minimal  - analyzer-minimal.sql only (3 generic types, no cleanup)
-#   none     - Skip all analyzer fixtures (storage/patient only)
+# Fixture profiles (--profile=PROFILE):
+#   harness  - Core fixtures; analyzer orders are created through the OE2 API
+#   core     - Foundational + storage fixtures + core demo patient
 #
 # Files loaded (in order):
 #   1. e2e-foundational-data.sql - Providers, Organizations (base data for ALL tests)
-#   2. Analyzer fixtures (depends on --analyzers= mode)
-#   3. storage-e2e.xml (DBUnit XML) - Storage hierarchy + E2E test data
+#   2. storage-e2e.xml (DBUnit XML) - Storage hierarchy + E2E test data
 #      Converted to SQL on-demand (*.generated.sql files never committed)
-#   4. fixtures/analyzer-harness-lane-data.sql - Only when --analyzers=full (HARN-* demo accessions)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
-ANALYZER_MINIMAL_SQL_FILE="$SCRIPT_DIR/analyzer-minimal.sql"
-FILE_IMPORT_E2E_SQL="$SCRIPT_DIR/fixtures/file-import-e2e.sql"
-ANALYZER_HARNESS_LANE_SQL_FILE="$SCRIPT_DIR/fixtures/analyzer-harness-lane-data.sql"
+STORAGE_IN_PROGRESS_ORDER_SQL="$SCRIPT_DIR/fixtures/storage-in-progress-order.sql"
+REPORTING_RESULTS_SQL="$SCRIPT_DIR/fixtures/reporting-repeated-results.sql"
+REPORTING_FIELDS_SQL="$SCRIPT_DIR/fixtures/reporting-field-values.sql"
+REPORTING_NC_SQL="$SCRIPT_DIR/fixtures/reporting-non-conformance.sql"
+REPORTING_REFERRALS_SQL="$SCRIPT_DIR/fixtures/reporting-referrals.sql"
+REPORTING_RECOVERY_SQL="$SCRIPT_DIR/fixtures/reporting-recovery.sql"
+REPORTING_SOURCE_JSON="$SCRIPT_DIR/../../main/resources/reporting/sample-testing.json"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 
 RESET=false
 VERIFY=true
-ANALYZER_MODE="full"
+PROFILE="harness"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -43,18 +44,18 @@ while [[ $# -gt 0 ]]; do
             VERIFY=false
             shift
             ;;
-        --analyzers=*)
-            ANALYZER_MODE="${1#*=}"
-            if [[ ! "$ANALYZER_MODE" =~ ^(minimal|full|none)$ ]]; then
-                echo "ERROR: Invalid analyzer mode: $ANALYZER_MODE"
-                echo "Valid modes: minimal, full, none"
+        --profile=*)
+            PROFILE="${1#*=}"
+            if [[ ! "$PROFILE" =~ ^(core|harness)$ ]]; then
+                echo "ERROR: Invalid fixture profile: $PROFILE"
+                echo "Valid profiles: core, harness"
                 exit 1
             fi
             shift
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--reset] [--no-verify] [--analyzers=minimal|full|none]"
+            echo "Usage: $0 [--reset] [--no-verify] [--profile=core|harness]"
             exit 1
             ;;
     esac
@@ -65,7 +66,7 @@ echo "Loading Test Fixtures"
 echo "======================================"
 echo ""
 echo "Foundational SQL: $FOUNDATIONAL_SQL_FILE"
-echo "Analyzer mode: $ANALYZER_MODE"
+echo "Fixture profile: $PROFILE"
 echo "Storage fixtures: DBUnit XML -> Generated SQL (on-demand)"
 if [ "$RESET" = true ]; then
     echo "Reset: Enabled (will reset test data before loading)"
@@ -142,7 +143,6 @@ check_dependencies() {
     local STATUS_COUNT
     local ROOM_COUNT
     local STORAGE_ROOM_TABLE_EXISTS
-    local ANALYZER_TYPE_TABLE_EXISTS
     local PROVIDER_FHIR_UUID_EXISTS
     local PROVIDER_ACTIVE_EXISTS
     local ORGANIZATION_FHIR_UUID_EXISTS
@@ -156,7 +156,6 @@ check_dependencies() {
             # Some environments may not seed analysis statuses ('Not Tested', 'Finalized') consistently.
             STATUS_COUNT=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE name = 'Entered';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             STORAGE_ROOM_TABLE_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT to_regclass('clinlims.storage_room') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]' || echo "f")
-            ANALYZER_TYPE_TABLE_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT to_regclass('clinlims.analyzer_type') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]' || echo "f")
             PROVIDER_FHIR_UUID_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'provider' AND column_name = 'fhir_uuid';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             PROVIDER_ACTIVE_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'provider' AND column_name = 'active';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             ORGANIZATION_FHIR_UUID_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'organization' AND column_name = 'fhir_uuid';" 2>/dev/null | tr -d '[:space:]' || echo "0")
@@ -166,7 +165,6 @@ check_dependencies() {
             TYPE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
             STATUS_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM status_of_sample WHERE name = 'Entered';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             STORAGE_ROOM_TABLE_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT to_regclass('clinlims.storage_room') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]' || echo "f")
-            ANALYZER_TYPE_TABLE_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT to_regclass('clinlims.analyzer_type') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]' || echo "f")
             PROVIDER_FHIR_UUID_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'provider' AND column_name = 'fhir_uuid';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             PROVIDER_ACTIVE_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'provider' AND column_name = 'active';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             ORGANIZATION_FHIR_UUID_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'organization' AND column_name = 'fhir_uuid';" 2>/dev/null | tr -d '[:space:]' || echo "0")
@@ -177,11 +175,10 @@ check_dependencies() {
         # Foundational fixtures require current-schema columns and storage tables.
         if [ "$TYPE_COUNT" -ge 3 ] && [ "$STATUS_COUNT" -ge 1 ] \
             && [ "$STORAGE_ROOM_TABLE_EXISTS" = "t" ] \
-            && [ "$ANALYZER_TYPE_TABLE_EXISTS" = "t" ] \
             && [ "$PROVIDER_FHIR_UUID_EXISTS" -ge 1 ] \
             && [ "$PROVIDER_ACTIVE_EXISTS" -ge 1 ] \
             && [ "$ORGANIZATION_FHIR_UUID_EXISTS" -ge 1 ]; then
-            echo "Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present, provider/organization FHIR columns present, storage_room and analyzer_type tables present)"
+            echo "Dependencies verified (sample/status data, provider/organization columns, and storage schema present)"
             if [ "$ROOM_COUNT" -lt 3 ]; then
                 echo "   Note: storage_room table is ready; DBUnit loader will populate fixture rows"
             fi
@@ -199,7 +196,6 @@ check_dependencies() {
             echo "   provider.active column present: $PROVIDER_ACTIVE_EXISTS"
             echo "   organization.fhir_uuid column present: $ORGANIZATION_FHIR_UUID_EXISTS"
             echo "   storage_room table present: $STORAGE_ROOM_TABLE_EXISTS"
-            echo "   analyzer_type table present: $ANALYZER_TYPE_TABLE_EXISTS"
             echo "   storage hierarchy rows: $ROOM_COUNT"
             echo "   Waiting ${RETRY_DELAY}s for Liquibase to complete..."
             sleep $RETRY_DELAY
@@ -240,12 +236,6 @@ check_dependencies() {
         exit 1
     fi
 
-    if [ "$ANALYZER_TYPE_TABLE_EXISTS" != "t" ]; then
-        echo "ERROR: analyzer schema is not ready for analyzer fixtures."
-        echo "Required table missing: analyzer_type."
-        echo "Please ensure Liquibase has finished before loading fixtures."
-        exit 1
-    fi
 }
 
 # Helper: Load a SQL file via Docker or psql (reduces duplication)
@@ -255,6 +245,7 @@ load_sql_file() {
     local sql_file="$1"
     local label="$2"
     local fatal="${3:-nonfatal}"
+    local psql_options=("${@:4}")
 
     if [ ! -f "$sql_file" ]; then
         if [ "$fatal" = "fatal" ]; then
@@ -268,9 +259,9 @@ load_sql_file() {
 
     echo "Loading $label..."
     if [ "$USE_DOCKER" = true ]; then
-        docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 < "$sql_file"
+        docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 "${psql_options[@]}" < "$sql_file"
     else
-        psql -v ON_ERROR_STOP=1 -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -f "$sql_file"
+        psql -v ON_ERROR_STOP=1 -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" "${psql_options[@]}" -f "$sql_file"
     fi
 
     if [ $? -eq 0 ]; then
@@ -326,28 +317,24 @@ SELECT setval('result_seq', CAST((SELECT COALESCE(MAX(id), 30000) + 1 FROM resul
     echo ""
 }
 
-# Load analyzer fixtures based on --analyzers= mode
-load_analyzer_fixtures() {
-    case "$ANALYZER_MODE" in
-        none)
-            echo "Analyzer mode: none (skipping all analyzer fixtures)"
-            echo ""
-            ;;
-        minimal)
-            # 3 generic analyzer types (ASTM, HL7, File) — safety net for plugin loader
-            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 generic types)" "fatal"
-            ;;
-        full)
-            # 3 generic analyzer types + cleanup + deactivation of non-generic types
-            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 generic types)" "fatal"
+# Runs AFTER storage-e2e.xml, for fixtures that FK-reference storage patients.
+load_profile_lane_fixtures() {
+    load_sql_file "$REPORTING_RESULTS_SQL" "synthetic reporting repeat fixture" "fatal"
+    load_sql_file "$REPORTING_FIELDS_SQL" "synthetic reporting field values" "fatal"
+    load_sql_file "$REPORTING_NC_SQL" "synthetic reporting non-conformance" "fatal"
+    load_sql_file "$REPORTING_REFERRALS_SQL" "synthetic reporting referral fixture" "fatal"
+    load_sql_file "$REPORTING_RECOVERY_SQL" "synthetic reporting queue fixtures" "fatal" \
+        -v "source_definition=$(cat "$REPORTING_SOURCE_JSON")"
 
-            # Clean up stale E2E/legacy analyzers + deactivate non-generic types
-            if [ -f "$FILE_IMPORT_E2E_SQL" ]; then
-                load_sql_file "$FILE_IMPORT_E2E_SQL" "file-import-e2e.sql (cleanup + dashboard deactivation)"
-            fi
-            ;;
-    esac
+    # Seed one Not-Tested analysis linked to sample_item 10001 (from storage-e2e.xml)
+    # so ORDERS_IN_PROGRESS returns a labNumber for the storage-assign-order-label spec.
+    # Idempotent + FK-guarded inside the SQL; non-fatal if the file is absent.
+    if [ -f "$STORAGE_IN_PROGRESS_ORDER_SQL" ]; then
+        load_sql_file "$STORAGE_IN_PROGRESS_ORDER_SQL" \
+            "storage in-progress analysis (ORDERS_IN_PROGRESS seed)"
+    fi
 }
+
 
 # Verification function
 verify_fixtures() {
@@ -456,9 +443,16 @@ verify_fixtures() {
 
 # Determine execution method: Docker or direct psql
 USE_DOCKER=false
-DB_CONTAINER=""
+DB_CONTAINER="${DB_CONTAINER:-}"
 if command -v docker &> /dev/null; then
-    DB_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '^openelisglobal-database$|analyzer-harness.*-db-' | head -1)
+    if [ -n "$DB_CONTAINER" ]; then
+        if [ "$(docker inspect --format '{{.State.Running}}' "$DB_CONTAINER" 2>/dev/null)" != "true" ]; then
+            echo "ERROR: Explicit database container is not running: $DB_CONTAINER"
+            exit 1
+        fi
+    else
+        DB_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E '^openelisglobal-database$|analyzer-harness.*-db-' | head -1)
+    fi
     if [ -n "$DB_CONTAINER" ]; then
         USE_DOCKER=true
         echo "Using Docker container: $DB_CONTAINER"
@@ -495,16 +489,13 @@ fi
 # 1. Load foundational data (providers, organizations)
 load_sql_file "$FOUNDATIONAL_SQL_FILE" "foundational fixtures (providers, organizations)" "fatal"
 
-# 2. Load analyzer fixtures (based on --analyzers= mode)
-load_analyzer_fixtures
-
-# 3. Load storage hierarchy + E2E test data via generated SQL
+# 2. Load profile fixtures (analyzer types, file-import cleanup)
+# 2. Load storage hierarchy + E2E test data via generated SQL
+#    (Creates patient id 1000 referenced by lane fixtures below.)
 load_sql_file "$STORAGE_SQL" "storage fixtures (generated SQL)" "fatal"
 
-# 4. Isolated analyzer harness demo accessions (HARN-*) — requires storage patients/types
-if [ "$ANALYZER_MODE" = "full" ]; then
-    load_sql_file "$ANALYZER_HARNESS_LANE_SQL_FILE" "analyzer harness lane fixtures (HARN-* accessions)" "fatal"
-fi
+# 3. Load profile lane fixtures (after storage — these FK-ref storage patients)
+load_profile_lane_fixtures
 
 normalize_sequences
 

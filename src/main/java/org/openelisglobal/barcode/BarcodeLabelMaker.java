@@ -3,28 +3,15 @@ package org.openelisglobal.barcode;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
-import com.itextpdf.text.BadElementException;
-import com.itextpdf.text.Chunk;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Image;
-import com.itextpdf.text.Paragraph;
-import com.itextpdf.text.Rectangle;
-import com.itextpdf.text.pdf.Barcode;
-import com.itextpdf.text.pdf.Barcode128;
-import com.itextpdf.text.pdf.PdfContentByte;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfTemplate;
-import com.itextpdf.text.pdf.PdfWriter;
-import com.itextpdf.text.pdf.draw.LineSeparator;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.imageio.ImageIO;
 import org.apache.commons.lang3.StringUtils;
@@ -37,6 +24,8 @@ import org.openelisglobal.barcode.labeltype.SlideLabel;
 import org.openelisglobal.barcode.labeltype.SpecimenLabel;
 import org.openelisglobal.barcode.service.BarcodeLabelInfoService;
 import org.openelisglobal.barcode.util.BarcodeConfigUtil;
+import org.openelisglobal.barcode.util.LabelQuantityPolicy;
+import org.openelisglobal.barcode.valueholder.BarcodeLabelInfo;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.AltYearAccessionValidator;
@@ -45,9 +34,13 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.observationhistory.service.ObservationHistoryService;
+import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
@@ -58,6 +51,21 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.valueholder.Test;
+import org.openpdf.text.BadElementException;
+import org.openpdf.text.Chunk;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Image;
+import org.openpdf.text.Paragraph;
+import org.openpdf.text.Rectangle;
+import org.openpdf.text.pdf.Barcode;
+import org.openpdf.text.pdf.Barcode128;
+import org.openpdf.text.pdf.PdfContentByte;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfTemplate;
+import org.openpdf.text.pdf.PdfWriter;
+import org.openpdf.text.pdf.draw.LineSeparator;
 
 /**
  * Class for taking lists of Label objects and turning them into a printable
@@ -123,7 +131,7 @@ public class BarcodeLabelMaker {
         return barcodeLabelService;
     }
 
-    private static final Set<Integer> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
+    private static final Set<String> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
     private static volatile boolean initialized = false;
 
     /**
@@ -134,7 +142,7 @@ public class BarcodeLabelMaker {
      * @return Set containing the status ID for SampleStatus.Entered, or empty set
      *         if initialization fails
      */
-    private static Set<Integer> getEnteredStatusSampleList() {
+    private static Set<String> getEnteredStatusSampleList() {
         if (!initialized) {
             synchronized (ENTERED_STATUS_SAMPLE_LIST) {
                 if (!initialized) {
@@ -144,10 +152,7 @@ public class BarcodeLabelMaker {
                             String statusId = statusService.getStatusID(SampleStatus.Entered);
 
                             if (statusId != null && !statusId.equals("-1") && !statusId.trim().isEmpty()) {
-                                int parsed = BarcodeConfigUtil.parseIntSafe(statusId, -1);
-                                if (parsed >= 0) {
-                                    ENTERED_STATUS_SAMPLE_LIST.add(parsed);
-                                }
+                                ENTERED_STATUS_SAMPLE_LIST.add(statusId);
                             } else {
                                 LogEvent.logError("BarcodeLabelMaker", "getEnteredStatusSampleList",
                                         "SampleStatus.Entered not found in database. Status ID: " + statusId);
@@ -202,6 +207,14 @@ public class BarcodeLabelMaker {
     public void generatePrePrintLabels(Integer numSetsOfLabels, Integer numOrderLabelsPerSet,
             Integer numSpecimenLabelsPerSet, String facilityName, List<Test> tests, String startingAt)
             throws LIMSInvalidConfigurationException {
+        LabelQuantityPolicy.require(numSetsOfLabels, 1);
+        LabelQuantityPolicy.require(numOrderLabelsPerSet, 0);
+        LabelQuantityPolicy.require(numSpecimenLabelsPerSet, 0);
+        if (numOrderLabelsPerSet == 0 && numSpecimenLabelsPerSet == 0) {
+            LabelQuantityPolicy.require(0, 1);
+        }
+        LabelQuantityPolicy
+                .requireTotal((long) numSetsOfLabels * ((long) numOrderLabelsPerSet + numSpecimenLabelsPerSet));
         IAccessionNumberGenerator accessionValidator = null;
         if (Boolean
                 .valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.USE_ALT_ACCESSION_PREFIX))) {
@@ -210,22 +223,16 @@ public class BarcodeLabelMaker {
         }
         for (int i = 0; i < numSetsOfLabels; ++i) {
             String accessionNumber = genNextPrePrintedAccessionNumber(accessionValidator, startingAt);
-            OrderLabel orderLabel = new OrderLabel(accessionNumber, facilityName);
-            orderLabel.setNumLabels(numOrderLabelsPerSet);
-            // orderLabel.linkBarcodeLabelInfo();
-            // get sysUserId from login module
-            // orderLabel.setSysUserId(sysUserId);
-            // if (orderLabel.checkIfPrintable() || "true".equals(override)) {
-            labels.add(orderLabel);
-
-            SpecimenLabel specimenLabel = new SpecimenLabel(accessionNumber, facilityName, tests);
-            specimenLabel.setNumLabels(numSpecimenLabelsPerSet);
-            // specimenLabel.linkBarcodeLabelInfo();
-            // get sysUserId from login module
-            // specimenLabel.setSysUserId(sysUserId);
-            // if (specimenLabel.checkIfPrintable() || "true".equals(override)) {
-            labels.add(specimenLabel);
-            // }
+            if (numOrderLabelsPerSet > 0) {
+                OrderLabel orderLabel = new OrderLabel(accessionNumber, facilityName);
+                orderLabel.setNumLabels(numOrderLabelsPerSet);
+                labels.add(orderLabel);
+            }
+            if (numSpecimenLabelsPerSet > 0) {
+                SpecimenLabel specimenLabel = new SpecimenLabel(accessionNumber, facilityName, tests);
+                specimenLabel.setNumLabels(numSpecimenLabelsPerSet);
+                labels.add(specimenLabel);
+            }
         }
     }
 
@@ -272,18 +279,20 @@ public class BarcodeLabelMaker {
                 labels.add(orderLabel);
             }
 
-            // 1 specimen label per sampleitem
-            List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    getEnteredStatusSampleList());
+            // 1 specimen label per sampleitem — use getSampleItemsBySampleId (no status
+            // filter) for all workflows. The status filter was meant to exclude drafts but
+            // at the label step the order is already submitted, and clinical items may not
+            // be in Entered status depending on the save path.
+            List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleId(sample.getId());
+            boolean isEnvOrVector = isEnvOrVectorSample(sample);
             for (SampleItem sampleItem : sampleItemList) {
-                SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
-                        labNo);
+                SpecimenLabel specLabel = isEnvOrVector ? buildEnvSpecimenLabel(sample, sampleItem, labNo)
+                        : new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
                 int specimenQuantity = BarcodeConfigUtil.parseIntSafe(
                         ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED),
                         1);
                 specLabel.setNumLabels(specimenQuantity);
                 specLabel.linkBarcodeLabelInfo();
-                // get sysUserId from login module
                 specLabel.setSysUserId(sysUserId);
                 if (shouldQueueLabel(specLabel, specimenQuantity, override)) {
                     labels.add(specLabel);
@@ -304,20 +313,25 @@ public class BarcodeLabelMaker {
 
             // individual specimen case
         } else if ("specimen".equals(type)) {
-            String specimenNumber = labNo.substring(labNo.lastIndexOf(".") + 1);
-            labNo = labNo.substring(0, labNo.lastIndexOf("."));
+            int separatorIndex = labNo.lastIndexOf(".");
+            String specimenNumber = separatorIndex >= 0 ? labNo.substring(separatorIndex + 1) : null;
+            if (separatorIndex >= 0) {
+                labNo = labNo.substring(0, separatorIndex);
+            }
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
-            List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    getEnteredStatusSampleList());
+            boolean isEnvOrVectorSpec = isEnvOrVectorSample(sample);
+            List<SampleItem> sampleItemList = isEnvOrVectorSpec
+                    ? sampleItemService.getSampleItemsBySampleId(sample.getId())
+                    : sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(), getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
-                // get only the sample item matching the specimen number
-                if (sampleItem.getSortOrder().equals(specimenNumber)) {
-                    SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
-                            labNo);
+                // when no specimen number was supplied, print labels for every sample item;
+                // otherwise only for the matching sort order
+                if (specimenNumber == null || sampleItem.getSortOrder().equals(specimenNumber)) {
+                    SpecimenLabel specLabel = isEnvOrVectorSpec ? buildEnvSpecimenLabel(sample, sampleItem, labNo)
+                            : new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
                     int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
                     specLabel.setNumLabels(requestedQuantity);
                     specLabel.linkBarcodeLabelInfo();
-                    // get sysUserId from login module
                     specLabel.setSysUserId(sysUserId);
                     if (shouldQueueLabel(specLabel, requestedQuantity, override)) {
                         labels.add(specLabel);
@@ -327,15 +341,16 @@ public class BarcodeLabelMaker {
             // all specimen for an order case
         } else if ("specimenOrder".equals(type)) {
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
-            List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    getEnteredStatusSampleList());
+            boolean isEnvOrVectorSpecOrder = isEnvOrVectorSample(sample);
+            List<SampleItem> sampleItemList = isEnvOrVectorSpecOrder
+                    ? sampleItemService.getSampleItemsBySampleId(sample.getId())
+                    : sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(), getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
-                SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
-                        labNo);
+                SpecimenLabel specLabel = isEnvOrVectorSpecOrder ? buildEnvSpecimenLabel(sample, sampleItem, labNo)
+                        : new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
                 int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
                 specLabel.setNumLabels(requestedQuantity);
                 specLabel.linkBarcodeLabelInfo();
-                // get sysUserId from login module
                 specLabel.setSysUserId(sysUserId);
                 if (shouldQueueLabel(specLabel, requestedQuantity, override)) {
                     labels.add(specLabel);
@@ -349,6 +364,9 @@ public class BarcodeLabelMaker {
             String specimenType = resolveSpecimenTypeContext(sampleItems);
             for (PathologySample pathologySample : pathologySamples) {
                 for (PathologyBlock block : pathologySample.getBlocks()) {
+                    if (!block.isActive()) {
+                        continue;
+                    }
                     BlockLabel label = new BlockLabel(sampleService.getPatient(sample), sample, pathologySample, block,
                             labNo, specimenType);
                     int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
@@ -365,12 +383,18 @@ public class BarcodeLabelMaker {
         } else if ("slideOrder".equals(type)) {
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             List<PathologySample> pathologySamples = pathologySampleService.getAllMatching("sample.id", sample.getId());
+            // slides on one order mostly share a few stains, so each is looked up once
+            Map<String, String> stainNames = new HashMap<>();
             for (PathologySample pathologySample : pathologySamples) {
-                String blockId = resolveBlockIdContext(pathologySample);
                 String caseNumber = pathologySample.getId() != null ? String.valueOf(pathologySample.getId()) : "";
-                for (PathologySlide slide : pathologySample.getSlides()) {
+                // slides are lazy and this case was loaded in a transaction that has closed
+                for (PathologySlide slide : pathologySampleService.getSlides(pathologySample.getId())) {
+                    if (!slide.isActive()) {
+                        continue;
+                    }
+                    String blockId = blockContextFor(slide, pathologySample);
                     SlideLabel label = new SlideLabel(sampleService.getPatient(sample), sample, pathologySample, slide,
-                            labNo, "", blockId, caseNumber);
+                            labNo, stainNameOf(slide, stainNames), blockId, caseNumber);
                     int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
                     label.setNumLabels(requestedQuantity);
                     label.linkBarcodeLabelInfo();
@@ -409,6 +433,13 @@ public class BarcodeLabelMaker {
             if (shouldQueueLabel(blankLabel, blankLabel.getNumLabels(), override)) {
                 labels.add(blankLabel);
             }
+        } else {
+            // No matching branch — keep LabelMakerServlet's whitelist and this
+            // dispatcher in sync. Without this trace, an unhandled type yields
+            // an empty PDF that the servlet renders as a misleading
+            // "max reached / Override?" page.
+            LogEvent.logError("BarcodeLabelMaker", "generateLabels",
+                    "Unhandled label type '" + type + "' for labNo " + labNo + " — no labels generated");
         }
 
     }
@@ -443,12 +474,50 @@ public class BarcodeLabelMaker {
         return StringUtils.defaultString(sampleItem.getTypeOfSample().getLocalizedName());
     }
 
-    private String resolveBlockIdContext(PathologySample pathologySample) {
-        if (pathologySample == null || pathologySample.getBlocks() == null || pathologySample.getBlocks().isEmpty()
-                || pathologySample.getBlocks().get(0) == null || pathologySample.getBlocks().get(0).getId() == null) {
+    private boolean isEnvOrVectorSample(Sample sample) {
+        ObservationHistoryService observationHistoryService = SpringContext.getBean(ObservationHistoryService.class);
+        String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                sample.getId());
+        return "environmental".equals(workflowType) || "vector".equals(workflowType);
+    }
+
+    private SpecimenLabel buildEnvSpecimenLabel(Sample sample, SampleItem sampleItem, String labNo) {
+        SampleService sampleService = SpringContext.getBean(SampleService.class);
+        return new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
+    }
+
+    /**
+     * The stain a slide carries, by its dictionary name; a slide with no stain, or
+     * one whose entry is gone, prints a blank stain. Names already looked up for
+     * this request are reused from {@code stainNames}.
+     */
+    private String stainNameOf(PathologySlide slide, Map<String, String> stainNames) {
+        return stainNames.computeIfAbsent(slide.getStainId(), stainId -> DictionaryEntryNames
+                .localizedNameOf(SpringContext.getBean(DictionaryService.class), stainId).orElse(""));
+    }
+
+    /**
+     * Names the block a slide's label points to: the slide's own recorded block, or
+     * the case's first block in use for a slide that never recorded one.
+     */
+    private String blockContextFor(PathologySlide slide, PathologySample pathologySample) {
+        if (pathologySample == null || pathologySample.getBlocks() == null) {
             return "";
         }
-        return String.valueOf(pathologySample.getBlocks().get(0).getId());
+        Integer blockId = slide.getBlockId();
+        if (blockId != null) {
+            for (PathologyBlock block : pathologySample.getBlocks()) {
+                if (block != null && blockId.equals(block.getId())) {
+                    return block.displayIdentifier();
+                }
+            }
+        }
+        for (PathologyBlock block : pathologySample.getBlocks()) {
+            if (block != null && block.isActive()) {
+                return block.displayIdentifier();
+            }
+        }
+        return "";
     }
 
     private String resolvePatientIdentifier(Patient patient) {
@@ -464,12 +533,22 @@ public class BarcodeLabelMaker {
         return StringUtils.defaultString(patientIdentifier);
     }
 
+    private void validateRenderQuantities() {
+        long total = 0;
+        for (Label label : labels) {
+            LabelQuantityPolicy.require(label.getNumLabels(), 0);
+            total += label.getNumLabels();
+            LabelQuantityPolicy.requireTotal(total);
+        }
+    }
+
     /**
      * Creates a PDF as a stream of all the stored labels
      *
      * @return Stream of all labels that have been generated
      */
     public ByteArrayOutputStream createLabelsAsStream() {
+        validateRenderQuantities();
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         if (labels.isEmpty()) {
             LogEvent.logError("BarcodeLabelMaker", "createLabelsAsStream", "Labels list is empty!");
@@ -506,6 +585,7 @@ public class BarcodeLabelMaker {
      * @return Stream of all labels that have been generated
      */
     public ByteArrayOutputStream createLabelsAsStreamWithMaximumPrints() {
+        validateRenderQuantities();
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         if (labels.isEmpty()) {
             return stream;
@@ -526,7 +606,20 @@ public class BarcodeLabelMaker {
                         label.incrementNumPrinted();
                     }
                 }
-                getBarcodeLabelService().save(label.getLabelInfo());
+                try {
+                    upsertLabelInfo(label);
+                } catch (jakarta.persistence.OptimisticLockException | org.hibernate.StaleObjectStateException e) {
+                    // Tolerate concurrent print requests racing to update the same label row
+                    LogEvent.logWarn("BarcodeLabelMaker", "createLabelsAsStreamWithMaximumPrints",
+                            "Optimistic lock on label print count (concurrent request): " + e.getMessage());
+                } catch (jakarta.persistence.PersistenceException e) {
+                    // Unique-constraint violation — a concurrent request inserted the same code
+                    // between our getDataByCode check and our insert. Recover by merging into
+                    // the winning row instead of failing the whole print request.
+                    mergePrintIncrementAfterRace(label, e);
+                } catch (RuntimeException e) {
+                    throw e;
+                }
             }
             document.close();
             writer.close();
@@ -535,6 +628,57 @@ public class BarcodeLabelMaker {
         }
 
         return stream;
+    }
+
+    private void upsertLabelInfo(Label label) {
+        BarcodeLabelInfo info = label != null ? label.getLabelInfo() : null;
+        if (info == null) {
+            return;
+        }
+        // If the info object has no DB id, a row for this code may already exist from a
+        // previous print. Load it and merge our increment rather than blindly
+        // inserting.
+        if (info.getId() == null || (info.getId() instanceof String && ((String) info.getId()).isBlank())) {
+            String code = info.getCode();
+            if (code != null && !code.isBlank()) {
+                BarcodeLabelInfo existing = getBarcodeLabelService().getDataByCode(code);
+                if (existing != null) {
+                    existing.setNumPrinted(existing.getNumPrinted() + info.getNumPrinted());
+                    existing.setSysUserId(sysUserId);
+                    label.setLabelInfo(existing);
+                    info = existing;
+                }
+            }
+        }
+        getBarcodeLabelService().save(info);
+    }
+
+    private void mergePrintIncrementAfterRace(Label label, RuntimeException originalError) {
+        BarcodeLabelInfo losingInfo = label != null ? label.getLabelInfo() : null;
+        String code = losingInfo != null ? losingInfo.getCode() : null;
+        int delta = losingInfo != null ? losingInfo.getNumPrinted() : 0;
+        if (code == null || delta <= 0) {
+            LogEvent.logWarn("BarcodeLabelMaker", "mergePrintIncrementAfterRace",
+                    "Unique-constraint conflict on label code " + code + " with no recoverable delta: "
+                            + originalError.getMessage());
+            return;
+        }
+        try {
+            BarcodeLabelInfo persisted = getBarcodeLabelService().getDataByCode(code);
+            if (persisted == null) {
+                LogEvent.logWarn("BarcodeLabelMaker", "mergePrintIncrementAfterRace", "Constraint conflict on " + code
+                        + " but no persisted row resolvable; " + "print count for this request not recorded.");
+                return;
+            }
+            persisted.setNumPrinted(persisted.getNumPrinted() + delta);
+            persisted.setSysUserId(sysUserId);
+            getBarcodeLabelService().save(persisted);
+            label.setLabelInfo(persisted);
+        } catch (RuntimeException retryEx) {
+            LogEvent.logError("BarcodeLabelMaker", "mergePrintIncrementAfterRace",
+                    "Failed to merge label print count after constraint conflict for code " + code + ": "
+                            + retryEx.getMessage());
+        }
     }
 
     // parse label info to draw label and add to document
@@ -593,7 +737,7 @@ public class BarcodeLabelMaker {
             }
 
             // convert table to image, scale image, and center it on document
-            document.add(scaleCentreTableAsImage(label, writer, table));
+            document.add(scaleCentreTableAsImage(label, writer, table, false));
         } else {
             // QR code layout with QR on left, fields on right
             PdfPTable mainTable = new PdfPTable(2); // 2 columns for QR and fields
@@ -615,9 +759,9 @@ public class BarcodeLabelMaker {
             fieldsTable.setWidthPercentage(100);
 
             // Add code text in larger font and bold
-            com.itextpdf.text.Font boldFont = new com.itextpdf.text.Font(label.getValueFont());
+            org.openpdf.text.Font boldFont = new org.openpdf.text.Font(label.getValueFont());
             boldFont.setSize(15); // Larger font size
-            boldFont.setStyle(com.lowagie.text.Font.BOLD);
+            boldFont.setStyle(org.openpdf.text.Font.BOLD);
 
             String codeForText = label.getCode();
             if (codeForText == null) {
@@ -651,25 +795,35 @@ public class BarcodeLabelMaker {
             fieldsCell.setPadding(5);
             mainTable.addCell(fieldsCell);
 
-            document.add(scaleCentreTableAsImage(label, writer, mainTable));
+            document.add(scaleCentreTableAsImage(label, writer, mainTable, true));
         }
     }
 
     /**
      * Converts table to a scaled, centered image
      *
-     * @param label  The label to specify the dimensions
-     * @param writer For the stream
-     * @param table  The table to convert and scale
+     * @param label           The label to specify the dimensions
+     * @param writer          For the stream
+     * @param table           The table to convert and scale
+     * @param keepProportions Scale width and height together instead of only
+     *                        stretching the height to the label
      * @return An image representation of the table
      * @throws BadElementException
      */
-    private Image scaleCentreTableAsImage(Label label, PdfWriter writer, PdfPTable table) throws BadElementException {
+    private Image scaleCentreTableAsImage(Label label, PdfWriter writer, PdfPTable table, boolean keepProportions)
+            throws BadElementException {
         PdfContentByte cb = writer.getDirectContent();
         PdfTemplate template = cb.createTemplate(table.getTotalWidth(), table.getTotalHeight());
         table.writeSelectedRows(0, -1, 0, table.getTotalHeight(), template);
         Image labelAsImage = Image.getInstance(template);
-        labelAsImage.scaleAbsoluteHeight(label.pdfHeight - (2 * label.getMargin()));
+        if (keepProportions) {
+            // Scaling only the height stretches the content; a QR code with
+            // non-square modules does not scan.
+            labelAsImage.scaleToFit(label.pdfWidth - (2 * label.getMargin()),
+                    label.pdfHeight - (2 * label.getMargin()));
+        } else {
+            labelAsImage.scaleAbsoluteHeight(label.pdfHeight - (2 * label.getMargin()));
+        }
         labelAsImage.setAbsolutePosition(((label.pdfWidth) - labelAsImage.getScaledWidth()) / 2,
                 ((label.pdfHeight) - labelAsImage.getScaledHeight()) / 2);
         return labelAsImage;

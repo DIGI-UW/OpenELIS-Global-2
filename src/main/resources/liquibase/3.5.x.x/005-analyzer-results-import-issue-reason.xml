@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="pmanko" id="3.5.0-005-add-analyzer-results-import-issue-reason">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="analyzer_results" columnName="import_issue_reason" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="analyzer_results" schemaName="clinlims">
+            <column name="import_issue_reason" type="varchar(200)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

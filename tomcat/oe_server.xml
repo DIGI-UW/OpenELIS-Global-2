@@ -20,7 +20,7 @@
      Documentation at /docs/config/server.html
  -->
 <Server port="-1" shutdown="SHUTDOWN">
-     <Listener className="org.apache.catalina.startup.VersionLoggerListener" />
+     <Listener className="org.apache.catalina.startup.VersionLoggerListener" logArgs="false" />
      <!-- Security listener. Documentation at /docs/config/listeners.html
   <Listener className="org.apache.catalina.security.SecurityListener" />
   -->
@@ -87,8 +87,11 @@
           <Connector port="8443" protocol="org.apache.coyote.http11.Http11NioProtocol"
                maxThreads="150" SSLEnabled="true">
                <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
-               <SSLHostConfig truststoreFile="${oe.ssl.truststorepath}"
-                    truststorePassword="${oe.ssl.truststorepassword}" truststoreType="PKCS12">
+               <!-- Client certificates are requested, never required. Any is accepted
+                    in the handshake; OpenELIS recognises the paired Analyzer Bridge
+                    by its certificate's fingerprint. -->
+               <SSLHostConfig certificateVerification="optional"
+                    trustManagerClassName="org.openelisglobal.tomcat.AnyClientCertificateTrustManager">
                     <Certificate certificateKeystoreFile="${oe.ssl.keystorepath}"
                          certificateKeystorePassword="${oe.ssl.keystorepassword}"
                          certificateKeystoreType="PKCS12"
@@ -135,8 +138,10 @@
                          resourceName="UserDatabase" />
                </Realm>
 
+               <!-- Contexts are declared below. Scanning the same WARs also deploys
+                    a second application, duplicating imports and scheduled jobs. -->
                <Host name="localhost" appBase="webapps"
-                    unpackWARs="true" autoDeploy="true">
+                    unpackWARs="true" autoDeploy="false" deployOnStartup="false">
 
                     <Context docBase="ROOT" path="/api" />
                     <Context docBase="OpenELIS-Global"
@@ -144,7 +149,8 @@
                          <Resources cacheMaxSize="102400" />
                          <Resource auth="Container"
                               driverClassName="org.postgresql.Driver" maxTotal="20" maxIdle="10"
-                              maxWaitMillis="-1" name="jdbc/LimsDS" type="javax.sql.DataSource"
+                              maxWaitMillis="30000" removeAbandonedOnBorrow="true"
+                              removeAbandonedTimeout="300" logAbandoned="true" name="jdbc/LimsDS" type="javax.sql.DataSource"
                               url="${datasource.url}" username="${datasource.username}"
                               password="${datasource.password}" />
                     </Context>

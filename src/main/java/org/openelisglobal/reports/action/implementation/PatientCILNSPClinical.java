@@ -23,7 +23,6 @@ import net.sf.jasperreports.engine.JRDataSource;
 import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -44,25 +43,22 @@ import org.openelisglobal.test.valueholder.Test;
 
 public class PatientCILNSPClinical extends PatientReport implements IReportCreator, IReportParameterSetter {
 
-    private static Set<Integer> analysisStatusIds;
+    private static Set<String> analysisStatusIds;
     protected List<ClinicalPatientData> clinicalReportItems;
 
     static {
         analysisStatusIds = new HashSet<>();
-        analysisStatusIds.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
-        analysisStatusIds.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
-        analysisStatusIds.add(Integer.parseInt(
-                SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
-        analysisStatusIds.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
-        analysisStatusIds.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
-        analysisStatusIds.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
-        analysisStatusIds.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+        analysisStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
+        analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
+        analysisStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated));
+        analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
+        analysisStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
+        analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
+        analysisStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
     }
 
     static final String configName = ConfigurationProperties.getInstance().getPropertyValue(Property.configurationName);
@@ -106,8 +102,8 @@ public class PatientCILNSPClinical extends PatientReport implements IReportCreat
         boolean isConfirmationSample = sampleService.isConfirmationSample(currentSample);
         List<Analysis> analysisList = analysisService
                 .getAnalysesBySampleIdAndStatusId(sampleService.getId(currentSample), analysisStatusIds);
-        List<Analysis> filteredAnalysisList = userService.filterAnalysesByLabUnitRoles(systemUserId, analysisList,
-                Constants.ROLE_REPORTS);
+        analysisList = includeIssuedMicrobiologyAnalyses(analysisList);
+        List<Analysis> filteredAnalysisList = filterAnalysesForReportUser(analysisList);
         List<ClinicalPatientData> currentSampleReportItems = new ArrayList<>(filteredAnalysisList.size());
         currentConclusion = null;
         for (Analysis analysis : filteredAnalysisList) {
@@ -116,6 +112,15 @@ public class PatientCILNSPClinical extends PatientReport implements IReportCreat
                 sampleSet.add(analysis.getSampleItem());
                 if (analysis.getTest() != null) {
                     currentAnalysis = analysis;
+                    var microReport = microbiologyReports().issuedForAnalysis(analysis.getId());
+                    if (microReport != null) {
+                        if (reportedMicroCases.add(microReport.caseId)) {
+                            var data = buildMicrobiologyPatientData(microReport, hasParentResult);
+                            reportItems.add(data);
+                            currentSampleReportItems.add(data);
+                        }
+                        continue;
+                    }
                     ClinicalPatientData resultsData = buildClinicalPatientData(hasParentResult);
                     if (isConfirmationSample) {
                         String alerts = resultsData.getAlerts();
@@ -194,7 +199,7 @@ public class PatientCILNSPClinical extends PatientReport implements IReportCreat
                 copyParentData(data, parentData);
 
                 data.setResult(reportReferralResultValue);
-                data.setNote(note);
+                data.setNote(noteWithReferralAttribution(note, referral));
                 data.setSampleType(parentData.getSampleType());
                 data.setSampleId(parentData.getSampleId());
                 String testId = referralResult.getTestId();
@@ -313,7 +318,7 @@ public class PatientCILNSPClinical extends PatientReport implements IReportCreat
                 ClinicalPatientData marker = new ClinicalPatientData(data);
                 ResultService resultResultService = SpringContext.getBean(ResultService.class);
                 Result result = data.getParentResult();
-                marker.setTestName(resultResultService.getSimpleResultValue(result));
+                marker.setTestName(resultResultService.formatSimpleResultForDisplay(result));
                 marker.setResult(null);
                 marker.setTestRefRange(null);
                 marker.setParentMarker(true);

@@ -34,7 +34,7 @@
         </property>
         <property name="fhirUuid" column="fhir_uuid"
             type="java.util.UUID" />
-        <property name="active" column="active"
+        <property name="active" access="field" column="active"
             type="java.lang.Boolean" />
         <property name="desynchronized" column="desynchronized"
             type="java.lang.Boolean" />

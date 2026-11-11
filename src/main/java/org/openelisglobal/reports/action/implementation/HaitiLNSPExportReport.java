@@ -164,7 +164,7 @@ public class HaitiLNSPExportReport extends CSVExportReport {
 
         if (SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)
                 .equals(analysis.getStatusId())) {
-            ts.setResultDate(DateUtil.convertSqlDateToStringDate(analysis.getCompletedDate()));
+            ts.setResultDate(DateUtil.convertTimestampToStringDate(analysis.getCompletedDate()));
 
             List<Result> resultList = resultService.getResultsByAnalysis(analysis);
             if (!resultList.isEmpty()) {
@@ -237,10 +237,14 @@ public class HaitiLNSPExportReport extends CSVExportReport {
         }
     }
 
+    static String exportResultValue(Result result, ResultService service) {
+        return "N".equals(result.getResultType()) ? result.getValue() : service.formatResultForDisplay(result, true);
+    }
+
     private void setAppropriateResults(List<Result> resultList, Analysis analysis, TestSegmentedExportBean data) {
         Result result = resultList.get(0);
         ResultService resultResultService = SpringContext.getBean(ResultService.class);
-        String reportResult = resultResultService.getResultValue(result, true);
+        String reportResult = exportResultValue(result, resultResultService);
         Result quantifiableResult = analysisService.getQuantifiedResult(analysis);
         if (quantifiableResult != null) {
             reportResult += ":" + quantifiableResult.getValue();

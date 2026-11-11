@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    OGC-669 (LO-01-01 Patient identification): add Madagascar-specific address
+    fields to patient registration per Beth's spec "Full address (including
+    fokontany, hamlet or lot), Province, Region, District".
+
+    Province sits above the existing Health Region / Health District in the
+    Madagascar admin hierarchy. Fokontany is the smallest official admin unit.
+    The Province organization_type row itself is created at startup by
+    AddressHierarchyConfigurationHandler when it reads the distro
+    madagascar-levels.csv (config-driven, not Liquibase).
+
+    The "or" in Beth's spec parses as alternation: a Malagasy address has one
+    sub-fokontany identifier line, filled with a hamlet name in rural areas
+    or a Lot/parcel designator in urban areas (e.g. "Lot II A 12 BIS"). One
+    column hamlet_or_lot, freetext.
+
+    All three columns are nullable so existing non-Madagascar deploys are
+    unaffected.
+  -->
+
+  <changeSet id="3.5.0-023-add-person-province" author="claude-uat">
+    <preConditions onFail="MARK_RAN">
+      <not><columnExists tableName="person" columnName="province" schemaName="clinlims"/></not>
+    </preConditions>
+    <addColumn tableName="person" schemaName="clinlims">
+      <column name="province" type="VARCHAR(120)"><constraints nullable="true"/></column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-023-add-person-fokontany" author="claude-uat">
+    <preConditions onFail="MARK_RAN">
+      <not><columnExists tableName="person" columnName="fokontany" schemaName="clinlims"/></not>
+    </preConditions>
+    <addColumn tableName="person" schemaName="clinlims">
+      <column name="fokontany" type="VARCHAR(120)"><constraints nullable="true"/></column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="3.5.0-023-add-person-hamlet-or-lot" author="claude-uat">
+    <preConditions onFail="MARK_RAN">
+      <not><columnExists tableName="person" columnName="hamlet_or_lot" schemaName="clinlims"/></not>
+    </preConditions>
+    <addColumn tableName="person" schemaName="clinlims">
+      <column name="hamlet_or_lot" type="VARCHAR(120)"><constraints nullable="true"/></column>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>
