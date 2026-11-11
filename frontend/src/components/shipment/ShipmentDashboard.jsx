@@ -27,6 +27,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import { AlertDialog } from "../common/CustomNotification";
+import SearchableSelect from "../common/SearchableSelect";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -35,11 +36,13 @@ import CancelReferralModal from "./CancelReferralModal";
 import MarkAsLostModal from "./MarkAsLostModal";
 import "./ShipmentDashboard.css";
 import ShipmentNavigation from "./ShipmentNavigation";
+import useSiteDateFormat from "../common/useSiteDateFormat";
 
 const TAB_ROUTES = ["boxes", "unassigned"];
 
 const ShipmentDashboard = () => {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const history = useHistory();
   const location = useLocation();
   const componentMounted = useRef(true);
@@ -195,6 +198,14 @@ const ShipmentDashboard = () => {
     });
   };
 
+  const reportLoadFailure = (messageId) => {
+    addNotification({
+      kind: "error",
+      title: intl.formatMessage({ id: "notification.error" }),
+      message: intl.formatMessage({ id: messageId }),
+    });
+  };
+
   const fetchBoxes = () => {
     setLoading(true);
     let url = "/rest/shipping-box";
@@ -206,8 +217,11 @@ const ShipmentDashboard = () => {
 
     getFromOpenElisServer(url, (response) => {
       if (componentMounted.current) {
-        if (response) {
+        if (Array.isArray(response)) {
           setBoxes(response);
+        } else {
+          setBoxes([]);
+          reportLoadFailure("shipment.error.fetchBoxes");
         }
         setLoading(false);
       }
@@ -224,8 +238,12 @@ const ShipmentDashboard = () => {
 
     getFromOpenElisServer(url, (response) => {
       if (componentMounted.current) {
-        if (response) {
+        if (Array.isArray(response)) {
           setUnassignedSamples(response);
+        } else {
+          setUnassignedSamples([]);
+          if (!silent)
+            reportLoadFailure("shipment.error.fetchUnassignedSamples");
         }
         if (!silent) setLoading(false);
       }
@@ -233,8 +251,18 @@ const ShipmentDashboard = () => {
   };
 
   // Filter data based on search term and date range
+  const facilityOptions = facilities
+    .filter((facility) => facility.id !== "")
+    .map((facility) => ({ id: facility.id, value: facility.text }));
+
   const getFilteredBoxes = () => {
     let filtered = boxes;
+
+    if (filterFacility) {
+      filtered = filtered.filter(
+        (box) => String(box.destinationFacilityId) === String(filterFacility),
+      );
+    }
 
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
@@ -631,29 +659,26 @@ const ShipmentDashboard = () => {
                       setFilterState(selectedItem?.id || "")
                     }
                   />
-                  <Dropdown
+                  <SearchableSelect
                     id="facility-filter"
-                    titleText={intl.formatMessage({
+                    labelText={intl.formatMessage({
                       id: "shipment.filter.facility",
                     })}
-                    label={intl.formatMessage({ id: "label.select" })}
-                    items={facilities}
-                    itemToString={(item) => (item ? item.text : "")}
-                    selectedItem={facilities.find(
-                      (f) => f.id === filterFacility,
-                    )}
-                    onChange={({ selectedItem }) =>
-                      setFilterFacility(selectedItem?.id || "")
-                    }
+                    placeholder={intl.formatMessage({ id: "label.all" })}
+                    options={facilityOptions}
+                    value={filterFacility}
+                    onChange={setFilterFacility}
                   />
                   <DatePicker
+                    dateFormat={siteDate.dateFormat}
+                    parseDate={siteDate.parseDate}
                     datePickerType="single"
                     onChange={([date]) => setFilterDateFrom(date)}
                     value={filterDateFrom}
                   >
                     <DatePickerInput
                       id="date-from"
-                      placeholder="mm/dd/yyyy"
+                      placeholder={siteDate.placeholder}
                       labelText={intl.formatMessage({
                         id: "shipment.filter.dateFrom",
                       })}
@@ -661,13 +686,15 @@ const ShipmentDashboard = () => {
                     />
                   </DatePicker>
                   <DatePicker
+                    dateFormat={siteDate.dateFormat}
+                    parseDate={siteDate.parseDate}
                     datePickerType="single"
                     onChange={([date]) => setFilterDateTo(date)}
                     value={filterDateTo}
                   >
                     <DatePickerInput
                       id="date-to"
-                      placeholder="mm/dd/yyyy"
+                      placeholder={siteDate.placeholder}
                       labelText={intl.formatMessage({
                         id: "shipment.filter.dateTo",
                       })}
@@ -746,20 +773,15 @@ const ShipmentDashboard = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     value={searchTerm}
                   />
-                  <Dropdown
+                  <SearchableSelect
                     id="facility-filter-unassigned"
-                    titleText={intl.formatMessage({
+                    labelText={intl.formatMessage({
                       id: "shipment.filter.facility",
                     })}
-                    label={intl.formatMessage({ id: "label.select" })}
-                    items={facilities}
-                    itemToString={(item) => (item ? item.text : "")}
-                    selectedItem={facilities.find(
-                      (f) => f.id === filterFacility,
-                    )}
-                    onChange={({ selectedItem }) =>
-                      setFilterFacility(selectedItem?.id || "")
-                    }
+                    placeholder={intl.formatMessage({ id: "label.all" })}
+                    options={facilityOptions}
+                    value={filterFacility}
+                    onChange={setFilterFacility}
                   />
                 </div>
 

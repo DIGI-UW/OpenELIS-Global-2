@@ -51,6 +51,7 @@ import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement
 import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu";
 import SampleTypeEditor from "./sampleTypeManagement/SampleTypeManagement.jsx";
+import ContainerTypes from "./containerTypes/ContainerTypes.jsx";
 import LabUnitManagement from "./labUnitManagement/LabUnitManagement.jsx";
 import ComplianceStandardsAdmin from "./complianceStandards/ComplianceStandardsAdmin";
 import {
@@ -63,6 +64,7 @@ import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning";
 import VectorSurveillanceSetup from "./vectorSurveillance/VectorSurveillanceSetup";
 import SampleAcceptanceChecklistSetup from "./sampleAcceptance/SampleAcceptanceChecklistSetup";
 import AdminDashboard from "./AdminDashboard";
+import ModulesAdminPage from "../../modules/ModulesAdminPage";
 import StuckAnalyzerEvents from "./StuckAnalyzerEvents";
 import MicrobiologyReferenceAdmin from "./microbiologyReference/MicrobiologyReferenceAdmin";
 
@@ -216,6 +218,7 @@ function Admin() {
         path={`${path}/SampleTypeEditor/:sampleTypeId?/:section?`}
         component={SampleTypeEditor}
       />
+      <Route path={`${path}/ContainerTypes`} component={ContainerTypes} />
       <Route
         path={[
           `${path}/TestSectionManagement`,
@@ -374,6 +377,7 @@ function Admin() {
         path={`${path}/SampleAcceptanceChecklist`}
         component={SampleAcceptanceChecklistSetup}
       />
+      <Route path={`${path}/modules`} component={ModulesAdminPage} />
       <Route
         path={path}
         exact

@@ -62,6 +62,9 @@ export default function BatchWorkplanPrint() {
     (batch.qc?.lots || []).find((lot) => lot.controlLotId === lotId)
       ?.ruleCodes || [];
   const nceNumber = releaseRows.find((release) => release.nceNumber)?.nceNumber;
+  const overrideReason = releaseRows.find(
+    (release) => release.overrideReason,
+  )?.overrideReason;
   const released = batch.status === "ACTIVE" || batch.status === "COMPLETED";
 
   return (
@@ -113,6 +116,14 @@ export default function BatchWorkplanPrint() {
               <FormattedMessage id="workplan.batch.print.nce" />
             </dt>
             <dd>{nceNumber}</dd>
+          </>
+        )}
+        {overrideReason && (
+          <>
+            <dt>
+              <FormattedMessage id="workplan.batch.print.overrideReason" />
+            </dt>
+            <dd>{overrideReason}</dd>
           </>
         )}
       </dl>

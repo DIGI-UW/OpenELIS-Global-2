@@ -2,10 +2,15 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import svgr from "vite-plugin-svgr";
+import { federation } from "@module-federation/vite";
 import path from "path";
+import moduleFederationConfig from "./module-federation.config.js";
 
 export default defineConfig({
-  plugins: [react(), svgr()],
+  // The federation plugin makes the application the host of module remotes
+  // (loaded at runtime from /rest/module-registry) and a remote itself,
+  // `openelis_core`, whose exposed surface modules import (docs/modules.md).
+  plugins: [react(), svgr(), federation(moduleFederationConfig)],
   resolve: {
     extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
     alias: [

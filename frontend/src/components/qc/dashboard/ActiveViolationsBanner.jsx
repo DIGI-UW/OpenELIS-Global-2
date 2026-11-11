@@ -35,7 +35,7 @@ const MAX_ROWS = 5;
 const severityRank = (violation) =>
   violation.severity === "REJECTION" ? 0 : 1;
 
-const ActiveViolationsBanner = ({ refreshSignal }) => {
+const ActiveViolationsBanner = ({ refreshSignal, onAcknowledged }) => {
   const intl = useIntl();
   const history = useHistory();
 
@@ -58,7 +58,8 @@ const ActiveViolationsBanner = ({ refreshSignal }) => {
       violationId,
       () => {
         setError(null);
-        loadViolations();
+        if (onAcknowledged) onAcknowledged();
+        else loadViolations();
       },
       () => setError(intl.formatMessage({ id: ACKNOWLEDGE_FAILED_KEY })),
     );

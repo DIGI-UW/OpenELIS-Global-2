@@ -8,6 +8,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.validator.GenericValidator;
@@ -34,6 +35,8 @@ import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.eqa.service.EQACycleSubmissionService;
+import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.result.action.util.ResultEntryAlert;
@@ -49,6 +52,8 @@ import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.service.ResultEntryPresenceService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
+import org.openelisglobal.resultrun.form.WaitingRun;
+import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -109,6 +114,8 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
 
     @Autowired
     private AnalysisService analysisService;
+    @Autowired
+    private ResultRunService resultRunService;
 
     @Autowired(required = false)
     private org.openelisglobal.notifications.service.HeaderNotificationService headerNotificationService;
@@ -144,6 +151,10 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     private org.openelisglobal.result.service.ResultService resultService;
     @Autowired
     private org.openelisglobal.inventory.service.InventoryItemService inventoryItemService;
+    @Autowired
+    private SampleEQAService sampleEQAService;
+    @Autowired
+    private EQACycleSubmissionService cycleSubmissionService;
 
     /**
      * Lab Units the user may enter results for, each carrying its domain so the
@@ -311,6 +322,13 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return staleResponse;
         }
 
+        Optional<WaitingRun> waiting = resultRunService.waitingFor(analysis);
+        if (waiting.isPresent()) {
+            body.put("error", MessageUtil.getMessage("run.refusal.waiting", new String[] { waiting.get().label() }));
+            body.put("waitingRun", waiting.get());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+        }
+
         // A test carrying a live referral is not referred again, and the bench has to
         // be told rather than have the refer-out quietly dropped from the save.
         if (item.isRefer() && ResultUtil.hasOpenReferral(analysis)) {
@@ -342,6 +360,17 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
         }
 
+        if (isAnswered(item) && capturesAnalyst(analysis)) {
+            if (GenericValidator.isBlankOrNull(item.getEqaAnalystId())) {
+                body.put("error", MessageUtil.getMessage("eqa.result.analystRequired"));
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
+            }
+            if (cycleSubmissionService.participantRowTaken(analysis)) {
+                body.put("error", MessageUtil.getMessage("eqa.result.providerSampleCodeRequired"));
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
+            }
+        }
+
         List<ResultEntryAlert> alerts = acknowledgementService.alertsForItems(Collections.singletonList(item));
         List<ResultEntryAlert> owed = alerts.stream().filter(alert -> !alert.isAcknowledged())
                 .collect(Collectors.toList());
@@ -353,6 +382,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         ResultUtil.createResultsFromItems(dataSet, supportReferrals, alwaysValidate, useTechnicianName, statusRuleSet,
                 request);
         ResultUtil.createAnalysisOnlyUpdates(dataSet, request);
+        ResultUtil.holdOpenWhileRequiredComponentsBlank(dataSet);
 
         List<IResultUpdate> updaters = new ArrayList<>(ResultUpdateRegister.getRegisteredUpdaters());
         updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
@@ -364,6 +394,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                     .map(e -> analysisService.getOrderAccessionNumber(e)).collect(Collectors.toList()));
             body.put("calculated", reflexAnalyses.stream().filter(e -> e.getResultCalculated())
                     .map(e -> analysisService.getOrderAccessionNumber(e)).collect(Collectors.toList()));
+            recordEqaAnalyst(item, getSysUserId(request));
 
             // A generated test outlives the page that generated it, so saying so
             // has to outlive it too: the logbook page has always recorded these
@@ -443,7 +474,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                 .filter(r -> r != null && r.getId() != null).findFirst().ifPresent(r -> {
                     body.put("resultId", r.getId());
                     body.put("rawResultValue", StringUtil.blankIfNull(r.getEnteredValue()));
-                    body.put("resultValue", resultService.getResultValue(r, false));
+                    body.put("resultValue", resultService.formatResultForDisplay(r, false));
                 });
         return ResponseEntity.ok(body);
     }
@@ -546,6 +577,32 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         } catch (RuntimeException ex) {
             // Recording the notification must never fail the save it describes.
             LogEvent.logError(ex);
+        }
+    }
+
+    private static boolean isAnswered(TestResultItem item) {
+        return !GenericValidator.isBlankOrNull(item.getResultValue())
+                || !GenericValidator.isBlankOrNull(item.getMultiSelectResultValues());
+    }
+
+    private boolean capturesAnalyst(Analysis analysis) {
+        if (analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+            return false;
+        }
+        return sampleEQAService.findPerAnalystSchemeId(Long.valueOf(analysis.getSampleItem().getSample().getId()))
+                .isPresent();
+    }
+
+    // Logged, not thrown: the clinical result is already saved.
+    private void recordEqaAnalyst(TestResultItem item, String sysUserId) {
+        if (GenericValidator.isBlankOrNull(item.getEqaAnalystId())) {
+            return;
+        }
+        try {
+            cycleSubmissionService.assignAnalyst(analysisService.get(item.getAnalysisId()),
+                    Long.valueOf(item.getEqaAnalystId()), sysUserId);
+        } catch (RuntimeException e) {
+            LogEvent.logError("recording the EQA analyst for analysis " + item.getAnalysisId(), e);
         }
     }
 

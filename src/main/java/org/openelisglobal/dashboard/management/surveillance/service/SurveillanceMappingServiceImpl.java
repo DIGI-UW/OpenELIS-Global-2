@@ -1,5 +1,6 @@
 package org.openelisglobal.dashboard.management.surveillance.service;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
@@ -77,7 +78,8 @@ public class SurveillanceMappingServiceImpl extends AuditableBaseObjectServiceIm
         List<SkippedRow> skipped = new ArrayList<>();
         int added = 0;
         int updated = 0;
-        try (CSVParser parser = CSVParser.parse(csv, FORMAT)) {
+        BufferedReader in = new BufferedReader(csv);
+        try (CSVParser parser = CSVParser.parse(in, FORMAT.builder().setDelimiter(delimiter(in)).build())) {
             List<String> missing = COLUMNS.stream().filter(c -> !parser.getHeaderMap().containsKey(c)).toList();
             if (!missing.isEmpty()) {
                 throw new IllegalArgumentException("Missing columns: " + String.join(", ", missing));
@@ -108,6 +110,14 @@ public class SurveillanceMappingServiceImpl extends AuditableBaseObjectServiceIm
         }
         ReportingAudit.surveillanceMappingsImported(sysUserId, added, updated, skipped.size(), sourceFile);
         return new SurveillanceImportResult(added, updated, skipped);
+    }
+
+    // Excel saves CSV with semicolons in locales that use a decimal comma.
+    private static char delimiter(BufferedReader in) throws IOException {
+        in.mark(8192);
+        String header = in.readLine();
+        in.reset();
+        return header != null && header.contains(";") && !header.contains(",") ? ';' : ',';
     }
 
     private List<TestSurveillanceMapping> parse(CSVRecord record, Map<String, SurveillanceProgram> programs,

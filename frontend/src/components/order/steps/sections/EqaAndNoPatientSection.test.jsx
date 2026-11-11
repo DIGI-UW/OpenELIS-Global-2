@@ -38,6 +38,10 @@ const serve =
 
 import EqaAndNoPatientSection from "./EqaAndNoPatientSection";
 
+const SCHEME_NAME = new RegExp(`^${messages["order.eqa.scheme"]}`);
+const findSchemeSelector = () =>
+  screen.findByRole("combobox", { name: SCHEME_NAME });
+
 const renderSection = (sampleOrderItems = {}, options = {}) => {
   const setOrderData = vi.fn();
   const orderData = {
@@ -183,6 +187,8 @@ describe("EqaAndNoPatientSection", () => {
   it("offers only the lab's active enrollments", async () => {
     renderSection({ isEQASample: true });
 
+    await userEvent.setup().click(await findSchemeSelector());
+
     expect(
       await screen.findByRole("option", { name: "WHO Malaria (WHO)" }),
     ).toBeInTheDocument();
@@ -204,7 +210,7 @@ describe("EqaAndNoPatientSection", () => {
       screen.getByText(messages["order.eqa.noEnrollments.title"]),
     ).toBeInTheDocument();
     expect(
-      screen.queryByLabelText(messages["order.eqa.scheme"]),
+      screen.queryByRole("combobox", { name: SCHEME_NAME }),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText(/Provider Sample ID/)).toBeInTheDocument();
   });
@@ -212,12 +218,9 @@ describe("EqaAndNoPatientSection", () => {
   it("stores the chosen enrollment's id and clears an earlier cycle", async () => {
     const { applied } = renderSection({ isEQASample: true, eqaCycleId: "9" });
 
-    await userEvent
-      .setup()
-      .selectOptions(
-        await screen.findByLabelText(messages["order.eqa.scheme"]),
-        "7",
-      );
+    const user = userEvent.setup();
+    await user.click(await findSchemeSelector());
+    await user.click(screen.getByRole("option", { name: "WHO Malaria (WHO)" }));
 
     expect(applied()).toEqual(
       expect.objectContaining({ eqaProgramId: "7", eqaCycleId: "" }),

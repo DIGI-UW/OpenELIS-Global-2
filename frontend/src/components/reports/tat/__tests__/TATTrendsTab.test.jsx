@@ -74,14 +74,12 @@ describe("TATTrendsTab", () => {
       callback(mockTrendData);
     });
 
-    const { container } = renderWithIntl(
+    renderWithIntl(
       <TATTrendsTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
     await waitFor(() => {
-      // Carbon Dropdown renders — check for the container element
-      const dropdowns = container.querySelectorAll(".cds--dropdown");
-      expect(dropdowns.length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByRole("combobox", { name: /^Aggregation/ })).toHaveTextContent("Daily");
     });
   });
 
@@ -121,14 +119,12 @@ describe("TATTrendsTab", () => {
       callback(mockTrendData);
     });
 
-    const { container } = renderWithIntl(
+    renderWithIntl(
       <TATTrendsTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
     await waitFor(() => {
-      // At least 2 dropdowns: interval + compare-by
-      const dropdowns = container.querySelectorAll(".cds--dropdown");
-      expect(dropdowns.length).toBeGreaterThanOrEqual(2);
+      expect(screen.getByRole("combobox", { name: /^Compare by/ })).toHaveTextContent("None");
     });
   });
 

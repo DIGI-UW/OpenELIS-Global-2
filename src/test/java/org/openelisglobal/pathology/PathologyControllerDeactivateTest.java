@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import java.util.Map;
 import org.junit.Test;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletResponse;
 
@@ -128,6 +129,39 @@ public class PathologyControllerDeactivateTest extends PathologyControllerTestSu
                 jdbcTemplate.queryForObject(
                         "SELECT count(*) FROM clinlims.pathology_block WHERE id = ? AND tissue_type_id IS NOT NULL",
                         Integer.class, LEGACY_BLOCK_ID).intValue());
+    }
+
+    /** A signed-out case's blocks and slides change only after it is reopened. */
+    @Test
+    public void deactivateOnASignedOutCase_answers400WithTheMessageId() throws Exception {
+        storeAt(PathologyStatus.COMPLETED);
+
+        MockHttpServletResponse block = postAsTechnician(BLOCK_ENDPOINT, null);
+        MockHttpServletResponse slide = postAsTechnician(SLIDE_ENDPOINT, null);
+
+        assertEquals("a signed-out case's block is not retired", HttpStatus.BAD_REQUEST.value(), block.getStatus());
+        assertEquals("and the answer carries the message the screen translates", "pathology.error.caseCompleted",
+                bodyOf(block).get("messageKey"));
+        assertEquals("nor is its slide", HttpStatus.BAD_REQUEST.value(), slide.getStatus());
+        assertEquals("for the same reason", "pathology.error.caseCompleted", bodyOf(slide).get("messageKey"));
+        assertTrue("the block is still in use", isActive("pathology_block", LEGACY_BLOCK_ID));
+        assertTrue("the slide is still in use", isActive("pathology_slide", LEGACY_SLIDE_ID));
+    }
+
+    /**
+     * Retiring a block already retired is still answered with the row on a
+     * signed-out case, since nothing would change.
+     */
+    @Test
+    public void deactivateARetiredBlockOnASignedOutCase_stillAnswers200() throws Exception {
+        assertEquals("setup: the block is retired", HttpStatus.OK.value(),
+                postAsTechnician(BLOCK_ENDPOINT, null).getStatus());
+        storeAt(PathologyStatus.COMPLETED);
+
+        MockHttpServletResponse again = postAsTechnician(BLOCK_ENDPOINT, null);
+
+        assertEquals("a second retirement is nothing to do, not a refusal", HttpStatus.OK.value(), again.getStatus());
+        assertEquals("and answers the row as it stands", Boolean.FALSE, bodyOf(again).get("active"));
     }
 
     // helpers
