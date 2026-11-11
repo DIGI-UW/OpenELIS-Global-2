@@ -430,7 +430,7 @@ it("lets keyboard users focus and scroll the referrals table", async () => {
     }),
   ).toHaveAttribute("tabindex", "0");
 });
-it("keeps the isolate Save disabled while the browser is offline", async () => {
+it("keeps the isolate Save disabled and says why while the browser is offline", async () => {
   const onLine = vi
     .spyOn(window.navigator, "onLine", "get")
     .mockReturnValue(false);
@@ -446,6 +446,11 @@ it("keeps the isolate Save disabled while the browser is offline", async () => {
     expect(
       within(dialog).getByRole("button", { name: "Save", exact: true }),
     ).toBeDisabled();
+    expect(
+      within(dialog).getByText(
+        "Working offline; refresh when network returns.",
+      ),
+    ).toBeVisible();
   } finally {
     onLine.mockRestore();
   }

@@ -11,6 +11,7 @@ import {
 import { useIntl } from "react-intl";
 import { labTimestamp } from "./MicrobiologyTime";
 import { MODAL_FIRST_FIELD, ReturnFocus } from "./returnFocus";
+import OfflineNotice from "./OfflineNotice";
 
 export default function CaseAttachmentNotes({
   detail,
@@ -74,6 +75,7 @@ export default function CaseAttachmentNotes({
           onSecondarySubmit={() => setOpen(false)}
         >
           <Stack gap={4}>
+            <OfflineNotice />
             {notes.map((note) => (
               <div key={note.id}>
                 <Tag>

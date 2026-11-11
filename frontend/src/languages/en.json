@@ -11295,6 +11295,7 @@
   "microbiology.worklist.summary.title": "Work needing action",
   "microbiology.worklist.summary.totalPending": "Total pending",
   "microbiology.worklist.table.hint": "Cases are ordered by urgency and the next required action.",
+  "microbiology.worklist.table.lastLoaded": "These rows are from the last list that loaded, not this filter.",
   "microbiology.worklist.table.astTitle": "AST runs",
   "microbiology.worklist.table.title": "Open microbiology cases",
   "microbiology.worklist.viewAudit": "View audit",

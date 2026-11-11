@@ -36,6 +36,7 @@ import {
   Tile,
 } from "@carbon/react";
 import { MODAL_FIRST_FIELD, useReturnFocus } from "./returnFocus";
+import OfflineNotice from "./OfflineNotice";
 
 const units = ["HOURS", "DAYS", "WEEKS"];
 const outcomes = ["GROWTH", "NO_GROWTH", "CONTAMINATED"];
@@ -262,6 +263,7 @@ function CultureActionForm({
       preventCloseOnClickOutside
     >
       <Stack gap={5}>
+        <OfflineNotice />
         {action.kind === "inoculate" && (
           <>
             {action.chooseParent &&

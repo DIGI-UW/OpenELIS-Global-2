@@ -35,7 +35,7 @@ import {
 import ReferralStatusTag from "../order/steps/referOut/referralStatusTag";
 import OrderReferOutForm from "../order/steps/referOut/OrderReferOutForm";
 import { MODAL_FIRST_FIELD, useReturnFocus } from "./returnFocus";
-import { useOnline } from "./OfflineNotice";
+import OfflineNotice, { useOnline } from "./OfflineNotice";
 
 const labels = {
   referred: "label.results.history.event.REFERRAL",
@@ -219,6 +219,7 @@ function IsolateAction({
       preventCloseOnClickOutside
     >
       <Stack gap={5}>
+        <OfflineNotice />
         {error && (
           <InlineNotification kind="error" title={t(error)} hideCloseButton />
         )}
