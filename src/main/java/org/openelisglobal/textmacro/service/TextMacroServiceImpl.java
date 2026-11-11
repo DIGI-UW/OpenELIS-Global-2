@@ -14,6 +14,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.textmacro.dao.TextMacroDAO;
 import org.openelisglobal.textmacro.form.TextMacroAdminForm;
 import org.openelisglobal.textmacro.form.TextMacroAdminQueryForm;
@@ -136,9 +137,10 @@ public class TextMacroServiceImpl implements TextMacroService {
             for (TextMacro macro : macros) {
                 String contexts = macro.getContexts().stream().map(Enum::name).sorted()
                         .collect(java.util.stream.Collectors.joining("|"));
-                printer.printRecord(macro.getCode(), macro.getExpansionText(), macro.getCategory(), contexts,
-                        macro.isActive(), macro.getProvenance(), nullToEmpty(macro.getSourceKey()),
-                        nullToEmpty(macro.getSourceVersion()));
+                printer.printRecord(macro.getCode(), StringUtil.csvFormulaGuard(macro.getExpansionText()),
+                        macro.getCategory(), contexts, macro.isActive(), macro.getProvenance(),
+                        StringUtil.csvFormulaGuard(macro.getSourceKey()),
+                        StringUtil.csvFormulaGuard(macro.getSourceVersion()));
             }
             printer.flush();
             return writer.toString();
@@ -294,10 +296,6 @@ public class TextMacroServiceImpl implements TextMacroService {
             throw new TextMacroRequestException("INVALID_MACRO_BULK_ACTION", "Unsupported macro bulk action: " + value);
         }
         return action;
-    }
-
-    private String nullToEmpty(String value) {
-        return value == null ? "" : value;
     }
 
     private String requireText(String value, String code, String message) {

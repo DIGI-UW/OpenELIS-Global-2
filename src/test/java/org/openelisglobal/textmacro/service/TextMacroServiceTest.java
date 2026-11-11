@@ -161,6 +161,24 @@ public class TextMacroServiceTest {
     }
 
     @Test
+    public void exportKeepsSpreadsheetsFromReadingPhraseTextAsAFormula() throws IOException {
+        TextMacro positive = macro("positive-id", ".pos", TextMacroContext.MICROBIOLOGY_CULTURE_READING);
+        positive.setExpansionText("+ve growth");
+        positive.setSourceKey("=HYPERLINK(\"http://example.test\")");
+        positive.setSourceVersion("@2026");
+        when(macroDAO.findAllWithContexts()).thenReturn(List.of(positive));
+
+        try (CSVParser parser = CSVParser.parse(new StringReader(service.exportCsv()),
+                CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build())) {
+            CSVRecord record = parser.getRecords().get(0);
+            assertEquals("'+ve growth", record.get("expansion_text"));
+            assertEquals("'=HYPERLINK(\"http://example.test\")", record.get("source_key"));
+            assertEquals("'@2026", record.get("source_version"));
+            assertEquals(".pos", record.get("code"));
+        }
+    }
+
+    @Test
     public void bulkDeactivateValidatesSelectionThenAttributesEveryWrite() {
         TextMacro first = macro("first-id", ".first", TextMacroContext.MICROBIOLOGY_CULTURE_READING);
         TextMacro second = macro("second-id", ".second", TextMacroContext.MICROBIOLOGY_CLINICAL_HISTORY);

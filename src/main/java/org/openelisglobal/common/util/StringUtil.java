@@ -106,16 +106,23 @@ public class StringUtil {
         if (value == null) {
             return "";
         }
-        if (!value.isEmpty()) {
-            char first = value.charAt(0);
-            if (first == '=' || first == '+' || first == '-' || first == '@') {
-                value = "'" + value;
-            }
-        }
+        value = csvFormulaGuard(value);
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;
+    }
+
+    /**
+     * Prefixes a value a spreadsheet would read as a formula (CWE-1236), for
+     * writers such as CSVPrinter that do their own quoting.
+     */
+    public static String csvFormulaGuard(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        char first = value.charAt(0);
+        return first == '=' || first == '+' || first == '-' || first == '@' ? "'" + value : value;
     }
 
     public static String replaceCharAtIndex(String string, char character, int index) {
