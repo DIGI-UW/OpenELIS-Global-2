@@ -59,6 +59,7 @@ import {
   OTHER_REASON,
   cancelReasonText as reasonText,
 } from "./cancelReasons";
+import useSiteDateFormat from "../common/useSiteDateFormat";
 
 /**
  * OrderDashboard - Default landing page for "Add Order" menu (DSH-1 to DSH-9)
@@ -144,6 +145,7 @@ const priorityOptions = (intl) => [
 
 const OrderDashboardContent = () => {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const STATUS_OPTIONS = useMemo(() => statusOptions(intl), [intl]);
   const PRIORITY_OPTIONS = useMemo(() => priorityOptions(intl), [intl]);
   const history = useHistory();
@@ -849,6 +851,8 @@ const OrderDashboardContent = () => {
             </div>
             <div className="dashboard-filter-item">
               <DatePicker
+                dateFormat={siteDate.dateFormat}
+                parseDate={siteDate.parseDate}
                 datePickerType="single"
                 onChange={(dates) =>
                   applyFilter(setDateRange)((prev) => ({
@@ -859,7 +863,7 @@ const OrderDashboardContent = () => {
               >
                 <DatePickerInput
                   id="date-start"
-                  placeholder="mm/dd/yyyy"
+                  placeholder={siteDate.placeholder}
                   labelText={intl.formatMessage({
                     id: "order.filter.dateFrom",
                     defaultMessage: "From",
@@ -870,6 +874,8 @@ const OrderDashboardContent = () => {
             </div>
             <div className="dashboard-filter-item">
               <DatePicker
+                dateFormat={siteDate.dateFormat}
+                parseDate={siteDate.parseDate}
                 datePickerType="single"
                 onChange={(dates) =>
                   applyFilter(setDateRange)((prev) => ({
@@ -880,7 +886,7 @@ const OrderDashboardContent = () => {
               >
                 <DatePickerInput
                   id="date-end"
-                  placeholder="mm/dd/yyyy"
+                  placeholder={siteDate.placeholder}
                   labelText={intl.formatMessage({
                     id: "order.filter.dateTo",
                     defaultMessage: "To",
