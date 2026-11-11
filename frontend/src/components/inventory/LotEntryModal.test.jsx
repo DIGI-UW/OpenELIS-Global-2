@@ -541,7 +541,7 @@ describe("LotEntryModal — calendar dates on an edited lot", () => {
 });
 
 describe("LotEntryModal — quantity on an edited lot", () => {
-  it("locks the quantity, which only an adjustment may change", () => {
+  it("labels the quantity as what is left, and locks it, since only an adjustment may change it", () => {
     renderWithIntl(
       <LotEntryModal
         open
@@ -558,8 +558,8 @@ describe("LotEntryModal — quantity on an edited lot", () => {
       />,
     );
 
-    expect(
-      screen.getByLabelText(messages["lot.initialQuantity"]),
-    ).toBeDisabled();
+    expect(screen.getByLabelText("Current Quantity")).toBeDisabled();
+    expect(screen.getByLabelText("Current Quantity")).toHaveValue(4);
+    expect(screen.queryByLabelText("Initial Quantity")).not.toBeInTheDocument();
   });
 });

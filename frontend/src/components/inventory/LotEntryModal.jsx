@@ -423,7 +423,11 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
 
           <NumberInput
             id="currentQuantity"
-            label={<FormattedMessage id="lot.initialQuantity" />}
+            label={
+              <FormattedMessage
+                id={isEdit ? "lot.currentQuantity" : "lot.initialQuantity"}
+              />
+            }
             value={formData.currentQuantity}
             onChange={(e, { value }) => handleChange("currentQuantity", value)}
             min={0}
