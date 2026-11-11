@@ -172,6 +172,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         for (String testId : touchedTestIds) {
             try {
                 testResultComponentService.syncPrimaryComponentFromLegacy(testId, "1");
+                testResultComponentService.syncDictionaryNormals(testId, "1");
                 Test test = testService.getTestById(testId);
                 if (test != null && test.getLoinc() != null && !test.getLoinc().trim().isEmpty()) {
                     terminologyMappingService.syncLegacyLoinc(testId, test.getLoinc(), "1");
