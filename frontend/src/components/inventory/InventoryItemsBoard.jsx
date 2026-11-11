@@ -193,7 +193,9 @@ const InventoryItemsBoard = () => {
   const countableLots = (row) =>
     (lotsByItem.get(row.itemId) || []).filter(
       (lot) =>
-        !locationFilter || lot.location?.hierarchicalPath === locationFilter,
+        lot.status !== "CONSUMED" &&
+        lot.status !== "DISPOSED" &&
+        (!locationFilter || lot.location?.hierarchicalPath === locationFilter),
     );
 
   // Includes the expired and QC-failed lots that row.onHand leaves out.

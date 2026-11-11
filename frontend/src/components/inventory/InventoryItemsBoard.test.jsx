@@ -714,6 +714,37 @@ describe("InventoryItemsBoard", () => {
       expect(new Set(ids).size).toBe(ids.length);
     });
 
+    it("leaves used-up and disposed lots out of the count", async () => {
+      const spent = (overrides) =>
+        lot({
+          currentQuantity: 0,
+          availableForUse: false,
+          countsAsAvailableStock: false,
+          inventoryItem: { id: 2, name: SYPHILIS.name },
+          location: { hierarchicalPath: "Room 2" },
+          ...overrides,
+        });
+      await renderBoard(undefined, [
+        ...LOTS,
+        spent({ id: 202, lotNumber: "SYPH-12", status: "CONSUMED" }),
+        spent({ id: 203, lotNumber: "SYPH-31", status: "DISPOSED" }),
+      ]);
+      enterCountMode();
+
+      const row = rowNamed(SYPHILIS.name);
+      expect(within(row).getByRole("spinbutton")).toBeInTheDocument();
+      expect(row).toHaveTextContent("of 8 tests");
+
+      fireEvent.click(screen.getByRole("button", { name: SYPHILIS.name }));
+      expect(screen.getByRole("button", { name: "SYPH-77" })).toBeVisible();
+      expect(
+        screen.queryByRole("button", { name: "SYPH-12" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "SYPH-31" }),
+      ).not.toBeInTheDocument();
+    });
+
     it("refuses to count an item with several lots from the row", async () => {
       await renderBoard();
       enterCountMode();
