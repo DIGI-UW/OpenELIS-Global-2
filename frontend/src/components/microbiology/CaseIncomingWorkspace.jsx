@@ -23,6 +23,7 @@ import {
 import ResultAlertModal, {
   acknowledgementRefusal,
 } from "../resultPage/ResultAlertModal";
+import { MODAL_FIRST_FIELD, ReturnFocus } from "./returnFocus";
 
 export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
   const intl = useIntl();
@@ -227,10 +228,12 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
         </Table>
       </TableContainer>
       {!loading && !rows.length && <p>{t("microbiology.incoming.empty")}</p>}
+      {selected && <ReturnFocus />}
       {selected && (
         <Modal
           open={!alerts}
           passiveModal
+          selectorPrimaryFocus={MODAL_FIRST_FIELD}
           modalHeading={selected.testName}
           onRequestClose={() => {
             if (!saving) setSelected(null);

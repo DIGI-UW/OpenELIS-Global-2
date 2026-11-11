@@ -124,3 +124,25 @@ it("keeps the item open without retrying when acknowledgement is declined", asyn
     }),
   ).toBeEnabled();
 });
+it("moves keyboard focus to the destination search and back to Review when the dialog closes", async () => {
+  show();
+  const trigger = await screen.findByRole("button", {
+    name: messages["microbiology.incoming.review"],
+  });
+  trigger.focus();
+  fireEvent.click(trigger);
+  expect(
+    screen.getByLabelText(messages["microbiology.incoming.findDestination"]),
+  ).toHaveFocus();
+  fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", {
+        name: messages["microbiology.incoming.review"],
+      }),
+    ).toHaveFocus(),
+  );
+});

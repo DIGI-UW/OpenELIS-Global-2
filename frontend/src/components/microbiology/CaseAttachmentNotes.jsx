@@ -10,6 +10,7 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { labTimestamp } from "./MicrobiologyTime";
+import { MODAL_FIRST_FIELD, ReturnFocus } from "./returnFocus";
 
 export default function CaseAttachmentNotes({
   detail,
@@ -57,10 +58,12 @@ export default function CaseAttachmentNotes({
       >
         {t("microbiology.testing.notesCount", { count: notes.length })}
       </Button>
+      {open && <ReturnFocus />}
       {open && (
         <Modal
           open
           passiveModal={!detail.canWrite}
+          selectorPrimaryFocus={MODAL_FIRST_FIELD}
           modalHeading={t("microbiology.testing.notes")}
           closeButtonLabel={t("label.button.close")}
           primaryButtonText={t("microbiology.testing.saveNote")}

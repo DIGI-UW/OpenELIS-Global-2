@@ -14,3 +14,8 @@ export const useReturnFocus = () => {
   const [trigger] = useState(() => document.activeElement);
   useEffect(() => () => returnFocus(trigger), [trigger]);
 };
+
+export const ReturnFocus = () => {
+  useReturnFocus();
+  return null;
+};

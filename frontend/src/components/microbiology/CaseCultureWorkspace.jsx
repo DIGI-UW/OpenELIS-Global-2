@@ -35,6 +35,7 @@ import {
   TextInput,
   Tile,
 } from "@carbon/react";
+import { MODAL_FIRST_FIELD, useReturnFocus } from "./returnFocus";
 
 const units = ["HOURS", "DAYS", "WEEKS"];
 const outcomes = ["GROWTH", "NO_GROWTH", "CONTAMINATED"];
@@ -86,6 +87,7 @@ function CultureActionForm({
   saving,
 }) {
   const intl = useIntl();
+  useReturnFocus();
   const t = (key, values) =>
     intl.formatMessage({ id: `microbiology.culture.${key}` }, values);
   const [draft, setDraft] = useState(action.draft);
@@ -252,6 +254,7 @@ function CultureActionForm({
       primaryButtonText={t("save")}
       secondaryButtonText={t("cancel")}
       primaryButtonDisabled={!valid || saving || !detail.canWrite}
+      selectorPrimaryFocus={MODAL_FIRST_FIELD}
       onRequestSubmit={submit}
       onRequestClose={() => {
         if (!saving) onClose();

@@ -681,3 +681,23 @@ it("routed subculture requires an eligible parent and preserves its specimen", a
   );
   expect(consumed).toHaveBeenCalledTimes(1);
 });
+it("moves keyboard focus into the culture dialog and back to its trigger when it closes", async () => {
+  show(api([]));
+  const trigger = await screen.findByRole("button", {
+    name: "Inoculate culture",
+  });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const dialog = screen.getByRole("dialog");
+  expect(dialog).toContainElement(document.activeElement);
+  expect(document.activeElement.tagName).not.toBe("BUTTON");
+  fireEvent.keyDown(dialog, { key: "Escape" });
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Inoculate culture" }),
+    ).toHaveFocus(),
+  );
+});
