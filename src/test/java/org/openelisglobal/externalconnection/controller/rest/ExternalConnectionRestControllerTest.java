@@ -67,6 +67,9 @@ public class ExternalConnectionRestControllerTest extends BaseWebContextSensitiv
                                 + "\"activeAuthenticationType\":\"BASIC\",\"uri\":\"smtp://mail.example.org:587\"}}"))
                 .andReturn();
         assertEquals(400, result.getResponse().getStatus());
+        assertTrue(result.getResponse().getContentType().startsWith(MediaType.APPLICATION_JSON_VALUE));
+        assertTrue(result.getResponse().getContentAsString()
+                .contains("\"message\":\"Email, SMS and WhatsApp are set up on the Notifications > Channels page.\""));
     }
 
     @SuppressWarnings("unchecked")

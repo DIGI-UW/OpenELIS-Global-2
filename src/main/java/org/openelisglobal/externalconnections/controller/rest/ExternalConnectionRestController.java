@@ -130,14 +130,14 @@ public class ExternalConnectionRestController extends BaseController {
 
         ExternalConnection formConnection = form.getExternalConnection();
         if (formConnection == null) {
-            return ResponseEntity.badRequest().body("External connection data is required.");
+            return ResponseEntity.badRequest().body(Map.of("message", "External connection data is required."));
         }
 
         String sysUserId = getSysUserId(request);
         boolean isNew = formConnection.getId() == null || formConnection.getId() == 0;
         if (isNew && CHANNEL_TYPES.contains(formConnection.getProgrammedConnection())) {
-            return ResponseEntity.badRequest()
-                    .body("Email, SMS and WhatsApp are set up on the Notifications > Channels page.");
+            return ResponseEntity.badRequest().body(
+                    Map.of("message", "Email, SMS and WhatsApp are set up on the Notifications > Channels page."));
         }
 
         try {
@@ -198,14 +198,14 @@ public class ExternalConnectionRestController extends BaseController {
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e);
             if (e.getCause() instanceof org.hibernate.StaleObjectStateException) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body("Another transaction has updated this record. Please refresh and try again.");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message",
+                        "Another transaction has updated this record. Please refresh and try again."));
             }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to save external connection: " + e.getMessage());
+                    .body(Map.of("message", "Failed to save external connection: " + e.getMessage()));
         }
 
-        return ResponseEntity.ok("External connection saved successfully.");
+        return ResponseEntity.ok(Map.of("message", "External connection saved successfully."));
     }
 
     @Override
