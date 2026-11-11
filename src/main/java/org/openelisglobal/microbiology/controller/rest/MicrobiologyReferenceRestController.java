@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/microbiology/reference")
 @PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicrobiologyReferenceRestController extends BaseRestController {
+    private static final int ORGANISM_PAGE = 20;
+    private static final int MAX_ORGANISMS = 50;
 
     private final MicrobiologyReferenceService referenceService;
     private final MicroBreakpointService breakpointService;
@@ -53,13 +55,18 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
         return ResponseEntity.ok(forms);
     }
 
+    /**
+     * The organism list is too long to send whole: a picker asks for the matches to
+     * what was typed, or for the organisms it already holds by id.
+     */
     @GetMapping("/organisms")
-    public ResponseEntity<List<MicroReferenceOptionForm>> getOrganisms() {
-        List<MicroReferenceOptionForm> forms = new ArrayList<>();
-        for (MicroOrganism organism : referenceService.getActiveOrganisms()) {
-            forms.add(toOrganismForm(organism));
-        }
-        return ResponseEntity.ok(forms);
+    public ResponseEntity<List<MicroReferenceOptionForm>> getOrganisms(@RequestParam(required = false) String q,
+            @RequestParam(required = false) List<String> id,
+            @RequestParam(defaultValue = "" + ORGANISM_PAGE) int limit) {
+        List<MicroOrganism> organisms = id == null || id.isEmpty()
+                ? referenceService.searchOrganisms(q, Math.max(1, Math.min(limit, MAX_ORGANISMS)))
+                : referenceService.getOrganisms(id.stream().limit(MAX_ORGANISMS).toList());
+        return ResponseEntity.ok(organisms.stream().map(this::toOrganismForm).toList());
     }
 
     @GetMapping("/breakpoint-standards")
@@ -117,6 +124,7 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
         form.id = organism.getId();
         form.label = organism.getDisplayName();
         form.code = organism.getWhonetCode();
+        form.whonetName = organism.getWhonetName();
         return form;
     }
 }

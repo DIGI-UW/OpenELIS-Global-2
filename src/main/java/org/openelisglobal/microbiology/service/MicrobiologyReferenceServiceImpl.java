@@ -33,8 +33,14 @@ public class MicrobiologyReferenceServiceImpl implements MicrobiologyReferenceSe
 
     @Override
     @Transactional(readOnly = true)
-    public List<MicroOrganism> getActiveOrganisms() {
-        return organismDAO.getActiveOrganisms();
+    public List<MicroOrganism> searchOrganisms(String text, int limit) {
+        return organismDAO.searchActive(text, limit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroOrganism> getOrganisms(List<String> ids) {
+        return organismDAO.getByIds(ids);
     }
 
     @Override

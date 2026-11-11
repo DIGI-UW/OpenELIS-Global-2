@@ -132,8 +132,6 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
         var f = new MicroIsolateWorkspaceForm.Options();
         f.methods = methods.getAllActiveMethods().stream().map(m -> new IdValuePair(m.getId(), m.getMethodName()))
                 .toList();
-        f.organisms = organisms.getActiveOrganisms().stream().map(o -> new IdValuePair(o.getId(), o.getDisplayName()))
-                .toList();
         f.sampleTypes = sampleTypes.getAll().stream().filter(t -> t.getIsActive() && t.isMicrobiologyIsolate())
                 .map(t -> new IdValuePair(t.getId(), t.getDescription())).toList();
         f.originalSpecimenTypes = sampleTypes.getAll().stream()

@@ -10,6 +10,15 @@ public interface MicroOrganismDAO extends BaseDAO<MicroOrganism, String> {
 
     List<MicroOrganism> getByIds(List<String> ids);
 
+    /**
+     * Active organisms whose name, WHONET name or WHONET code matches the text. An
+     * exact WHONET code leads, then the most common in human infections, then those
+     * WHONET has a code for. Blank text matches every organism.
+     */
+    List<MicroOrganism> searchActive(String text, int limit);
+
+    List<String> getActiveOrganismGroups();
+
     Optional<MicroOrganism> findByDisplayNameIgnoreCase(String displayName);
 
     Optional<MicroOrganism> findByWhonetCodeIgnoreCase(String whonetCode);

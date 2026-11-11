@@ -14,7 +14,6 @@ import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDefaultDAO;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
-import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -34,16 +33,6 @@ public class MicrobiologyReferenceServiceTest {
 
     @Mock
     private MicroPatientOriginDefaultDAO patientOriginDefaultDAO;
-
-    @Test
-    public void getActiveOrganismsUsesReferenceDao() {
-        MicroOrganism organism = new MicroOrganism();
-        when(organismDAO.getActiveOrganisms()).thenReturn(List.of(organism));
-
-        MicrobiologyReferenceService service = service();
-
-        org.junit.Assert.assertTrue(organism == service.getActiveOrganisms().get(0));
-    }
 
     @Test
     public void getActiveAstPanelsPassesOrganismGroup() {

@@ -5,6 +5,7 @@ import {
   labTimeZone,
 } from "./MicrobiologyTime";
 import ContainerLabelButton from "./ContainerLabelButton";
+import OrganismPicker, { OrganismName } from "./OrganismPicker";
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import {
@@ -150,6 +151,15 @@ function IsolateAction({
       onChange={({ selectedItem }) => set(key, selectedItem?.id || "")}
     />
   );
+  const organism = (key) => (
+    <OrganismPicker
+      id={`isolate-${key}`}
+      key={key}
+      titleText={t(key)}
+      value={draft[key]}
+      onChange={(id) => set(key, id)}
+    />
+  );
   const needsSample =
     isolate &&
     !isolate.sampleItemId &&
@@ -246,7 +256,7 @@ function IsolateAction({
         )}
         {isIdentification && (
           <>
-            {combo("organismId", options.organisms)}
+            {organism("organismId")}
             {select("identificationMethod", options.methods)}
             {select(
               "identificationStatus",
@@ -282,7 +292,7 @@ function IsolateAction({
               options.originalSpecimenTypes || [],
             )}
             {combo("sendingOrganizationId", options.organizations)}
-            {combo("reportedOrganismId", options.organisms)}
+            {organism("reportedOrganismId")}
             {input("reportedOrganismText")}
           </>
         )}
@@ -509,11 +519,12 @@ export default function CaseIsolateWorkspace({
                       </dd>
                       <dt>{t("reportedOrganismText")}</dt>
                       <dd>
-                        {options.organisms.find(
-                          (o) => o.id === isolate.reportedOrganismId,
-                        )?.value ||
-                          isolate.reportedOrganismText ||
-                          t("notAvailable")}
+                        <OrganismName
+                          id={isolate.reportedOrganismId}
+                          fallback={
+                            isolate.reportedOrganismText || t("notAvailable")
+                          }
+                        />
                       </dd>
                     </dl>
                   </>

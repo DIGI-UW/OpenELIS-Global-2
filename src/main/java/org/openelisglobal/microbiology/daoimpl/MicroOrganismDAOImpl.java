@@ -40,6 +40,27 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
 
     @Override
     @Transactional(readOnly = true)
+    public List<MicroOrganism> searchActive(String text, int limit) {
+        String q = text == null ? "" : text.trim().toLowerCase(java.util.Locale.ROOT);
+        return entityManager.unwrap(Session.class)
+                .createQuery("from MicroOrganism o where o.isActive = 'Y' and (:q = ''"
+                        + " or lower(o.displayName) like :fragment or lower(o.whonetName) like :fragment"
+                        + " or lower(o.whonetCode) = :q)"
+                        + " order by case when lower(o.whonetCode) = :q then 0 else 1 end,"
+                        + " o.prevalence asc nulls last, case when o.whonetCode is null then 1 else 0 end,"
+                        + " lower(o.displayName)", MicroOrganism.class)
+                .setParameter("q", q).setParameter("fragment", "%" + q + "%").setMaxResults(limit).list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getActiveOrganismGroups() {
+        return entityManager.unwrap(Session.class).createQuery("select distinct o.organismGroup from MicroOrganism o"
+                + " where o.isActive = 'Y' and o.organismGroup is not null", String.class).list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<MicroOrganism> findByDisplayNameIgnoreCase(String displayName) {
         Query<MicroOrganism> query = entityManager.unwrap(Session.class).createQuery(
                 "from MicroOrganism o where lower(o.displayName) = lower(:displayName)", MicroOrganism.class);

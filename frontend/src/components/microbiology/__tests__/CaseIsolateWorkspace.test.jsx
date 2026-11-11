@@ -6,6 +6,12 @@ import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import CaseIsolateWorkspace from "../CaseIsolateWorkspace";
 
+vi.mock("../OrganismSearch", () => ({
+  searchOrganisms: vi.fn().mockResolvedValue([]),
+  getOrganism: vi.fn().mockResolvedValue(null),
+  organismText: (organism) => organism?.label || "",
+}));
+
 const isolate = {
   id: "i1",
   label: "ISO-1",
@@ -22,7 +28,6 @@ const isolate = {
 };
 const options = {
   methods: [{ id: "m1", value: "Biochemical identification" }],
-  organisms: [{ id: "o1", value: "Escherichia coli" }],
   sampleTypes: [{ id: "isolate-type", value: "Configured isolate specimen" }],
   sources: [{ id: "s1", value: "SOURCE-1", sampleTypeId: "specimen" }],
   tests: [],

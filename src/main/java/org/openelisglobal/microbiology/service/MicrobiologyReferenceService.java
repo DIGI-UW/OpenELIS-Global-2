@@ -6,7 +6,9 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 
 public interface MicrobiologyReferenceService {
-    List<MicroOrganism> getActiveOrganisms();
+    List<MicroOrganism> searchOrganisms(String text, int limit);
+
+    List<MicroOrganism> getOrganisms(List<String> ids);
 
     List<MicroAntibiotic> getActiveAntibiotics();
 

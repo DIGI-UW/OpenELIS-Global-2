@@ -5,4 +5,5 @@ public class MicroReferenceOptionForm {
     public String id;
     public String label;
     public String code;
+    public String whonetName;
 }
