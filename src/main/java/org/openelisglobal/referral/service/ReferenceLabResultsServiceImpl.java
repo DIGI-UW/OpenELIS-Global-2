@@ -15,6 +15,7 @@ import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Quantity;
+import org.hl7.fhir.r4.model.Task;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -74,6 +75,9 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
     @Autowired
     private ReferralService referralService;
 
+    @Autowired
+    private org.openelisglobal.sample.service.SampleLabUnitScopeService sampleLabUnitScopeService;
+
     @Override
     public void acceptReferral(String referralId, String actorUserId) {
         Referral referral = referralDAO.getReferralById(referralId);
@@ -106,8 +110,14 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
     @Override
     @Transactional(readOnly = true)
     public List<ReferenceLabReferralDTO> getDashboardReferrals(DashboardView view) {
+        return getDashboardReferrals(view, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReferenceLabReferralDTO> getDashboardReferrals(DashboardView view, String sysUserId) {
         List<Referral> referrals = referralDAO.getReferralsByStatus(statusesFor(view)).stream()
-                .filter(r -> belongsInBucket(r, view)).toList();
+                .filter(r -> belongsInBucket(r, view)).filter(r -> visibleTo(sysUserId, r)).toList();
         List<ReferenceLabReferralDTO> dtos = new ArrayList<>(referrals.size());
         for (Referral referral : referrals) {
             dtos.add(toDto(referral, view));
@@ -120,15 +130,30 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
     @Override
     @Transactional(readOnly = true)
     public ReferenceLabMetricsDTO getDashboardMetrics() {
-        long outstanding = referralDAO.getReferralsByStatus(OUTSTANDING_STATUSES).size();
-        List<Referral> completed = referralDAO.getReferralsByStatus(RETURNED_STATUSES);
+        return getDashboardMetrics(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isReferralVisible(String referralId, String sysUserId) {
+        Referral referral = referralDAO.getReferralById(referralId);
+        return referral == null || visibleTo(sysUserId, referral);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReferenceLabMetricsDTO getDashboardMetrics(String sysUserId) {
+        long outstanding = referralDAO.getReferralsByStatus(OUTSTANDING_STATUSES).stream()
+                .filter(r -> visibleTo(sysUserId, r)).count();
+        List<Referral> completed = referralDAO.getReferralsByStatus(RETURNED_STATUSES).stream()
+                .filter(r -> visibleTo(sysUserId, r)).toList();
         // Returned excludes both actioned cases: manual entries (OGC-799) and
         // Accepted/reconciled rows (OGC-803) — they belong in History, not Returned.
         long returned = completed.stream()
                 .filter(r -> !Boolean.TRUE.equals(r.getManuallyEntered()) && !Boolean.TRUE.equals(r.getReconciled()))
                 .count();
         long reconciledToday = completed.stream().filter(r -> reconciledOn(r, LocalDate.now())).count();
-        long rejectedThisWeek = countRejectedSince(LocalDate.now().minusDays(7));
+        long rejectedThisWeek = countRejectedSince(LocalDate.now().minusDays(7), sysUserId);
         return new ReferenceLabMetricsDTO(outstanding, returned, reconciledToday, rejectedThisWeek,
                 resolveStuckThresholdDays());
     }
@@ -165,9 +190,25 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
         };
     }
 
-    private long countRejectedSince(LocalDate cutoff) {
+    /**
+     * A referral is read by the users who may read its order; with no user given
+     * every referral counts.
+     */
+    private boolean visibleTo(String sysUserId, Referral referral) {
+        if (sysUserId == null) {
+            return true;
+        }
+        Analysis analysis = referral.getAnalysis();
+        if (analysis == null || analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+            return true;
+        }
+        return sampleLabUnitScopeService.isVisible(sysUserId, analysis.getSampleItem().getSample());
+    }
+
+    private long countRejectedSince(LocalDate cutoff, String sysUserId) {
         Instant cutoffInstant = cutoff.atStartOfDay(ZoneId.systemDefault()).toInstant();
         return referralDAO.getReferralsByStatus(Collections.singletonList(ReferralStatus.REJECTED)).stream()
+                .filter(r -> visibleTo(sysUserId, r))
                 .filter(r -> r.getLastupdated() != null && !r.getLastupdated().toInstant().isBefore(cutoffInstant))
                 .count();
     }
@@ -192,7 +233,6 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
         ReferenceLabReferralDTO dto = new ReferenceLabReferralDTO();
         dto.setId(referral.getId());
         dto.setStatus(toFhirStatus(referral.getStatus()));
-        dto.setPriority(referral.getPriority());
         dto.setRequestor(referral.getRequesterName());
         dto.setSentDate(toIso(referral.getSentDate()));
         dto.setBoxReceivedDate(toIso(latestChangedAt(referral.getId(), ReferralStatus.RECEIVED)));
@@ -205,6 +245,12 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
             if (sample != null) {
                 dto.setLabNumber(sample.getAccessionNumber());
                 dto.setCollectedDate(toIso(sample.getCollectionDate()));
+                // The urgency of a referral is the urgency of its order. The referral's own
+                // priority column has no writer anywhere, so reading that one left the
+                // column blank and made the page's priority filter match nothing at all.
+                if (sample.getPriority() != null) {
+                    dto.setPriority(sample.getPriority().name());
+                }
                 Patient patient = sampleHumanService.getPatientForSample(sample);
                 if (patient != null) {
                     dto.setPatientDisplay(formatPatient(patient));
@@ -232,6 +278,7 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
         ShippingBox box = referral.getAssignedBox();
         if (box != null) {
             dto.setBoxId(box.getBoxId());
+            dto.setBoxKey(box.getId());
         }
 
         if (view == DashboardView.OUTSTANDING && referral.getSentDate() != null) {
@@ -265,6 +312,9 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
             List<ReferenceLabReferralDTO.ResultCard> cards = new ArrayList<>();
             for (ReferralResultsImportObjects imp : fhirApiWorkflowService
                     .fetchReturnedResults(referral.getFhirUuid())) {
+                if (dto.getPeerReason() == null) {
+                    dto.setPeerReason(peerReasonText(imp));
+                }
                 if (imp.observations == null) {
                     continue;
                 }
@@ -280,6 +330,26 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
             LogEvent.logWarn(this.getClass().getSimpleName(), "enrichReturnedResults",
                     "could not live-read results for referral " + referral.getId() + ": " + e.getMessage());
         }
+    }
+
+    /**
+     * The reason the peer laboratory recorded on its Task. Already in hand from the
+     * same fetch that builds the result cards, so reading it costs no extra
+     * round-trip. Prefers coded text, falls back to the first coding's display.
+     */
+    private String peerReasonText(ReferralResultsImportObjects imp) {
+        if (imp.originalReferralObjects == null || imp.originalReferralObjects.task == null) {
+            return null;
+        }
+        Task task = imp.originalReferralObjects.task;
+        if (!task.hasStatusReason()) {
+            return null;
+        }
+        CodeableConcept reason = task.getStatusReason();
+        if (reason.hasText()) {
+            return reason.getText();
+        }
+        return reason.hasCoding() ? reason.getCodingFirstRep().getDisplay() : null;
     }
 
     private ReferenceLabReferralDTO.ResultCard toResultCard(Observation obs) {
@@ -310,7 +380,12 @@ public class ReferenceLabResultsServiceImpl implements ReferenceLabResultsServic
         return card;
     }
 
-    private String referenceRangeText(Observation.ObservationReferenceRangeComponent rr) {
+    /**
+     * Static so the critical-result alert can render a range the same way this card
+     * does. Injecting this service there would be circular, since this one already
+     * depends on FhirReferralService.
+     */
+    public static String referenceRangeText(Observation.ObservationReferenceRangeComponent rr) {
         if (rr.hasText()) {
             return rr.getText();
         }

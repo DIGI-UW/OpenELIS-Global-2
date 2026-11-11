@@ -77,6 +77,11 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
     public void tearDown() {
         // Reset the global configuration to avoid affecting other tests in CI
         ConfigurationProperties.getInstance().setPropertyValue(Property.PATIENT_RESULTS_SMTP_ENABLED, "false");
+        jdbcTemplate.update("DELETE FROM clinlims.notification_log_attempt WHERE notification_log_id IN"
+                + " (SELECT id FROM clinlims.notification_log WHERE product = 'ALERT')");
+        jdbcTemplate.update("DELETE FROM clinlims.notification_log_channel WHERE notification_log_id IN"
+                + " (SELECT id FROM clinlims.notification_log WHERE product = 'ALERT')");
+        jdbcTemplate.update("DELETE FROM clinlims.notification_log WHERE product = 'ALERT'");
     }
 
     @Test
@@ -166,9 +171,56 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
         Mockito.verify(javaMailSender, Mockito.after(2000).never()).send(ArgumentMatchers.any(SimpleMailMessage.class));
     }
 
+    /**
+     * An alert's email is queued in the delivery outbox under product Alert, where
+     * Sent Messages shows it and the delivery worker sends it; nothing is sent from
+     * the alert thread itself.
+     */
+    @Test
+    public void handleAlertCreated_queuesAMessageInTheOutbox_forAFreezerOfflineAlert() {
+        // The fixture seeds an active EMAIL config for both alert natures, so a
+        // queued row alone would not say which one governs offline alerts. Silencing
+        // the temperature nature leaves EQUIPMENT_ALERT as the only route that can
+        // produce a message, which is the contract the Alert Settings screen shows.
+        jdbcTemplate.update("UPDATE clinlims.notification_config_option SET active = false"
+                + " WHERE notification_nature = 'FREEZER_TEMPERATURE_ALERT'");
+        long before = countAlertRows();
+
+        Alert offlineAlert = new Alert();
+        offlineAlert.setAlertType(AlertType.FREEZER_OFFLINE);
+        offlineAlert.setAlertEntityType("Freezer");
+        offlineAlert.setAlertEntityId(7L);
+        offlineAlert.setSeverity(AlertSeverity.CRITICAL);
+        offlineAlert.setStatus(AlertStatus.OPEN);
+        offlineAlert.setMessage("Freezer is not responding to monitoring polls: timeout");
+        offlineAlert.setStartTime(OffsetDateTime.now());
+
+        alertNotificationService.handleAlertCreated(new AlertCreatedEvent(this, offlineAlert));
+
+        Assert.assertEquals("An offline alert should notify through the equipment nature, not the temperature one",
+                before + 1, countAlertRows());
+        java.util.Map<String, Object> row = jdbcTemplate.queryForMap("SELECT event_code, recipient_email,"
+                + " rendered_subject, rendered_message, overall_status FROM clinlims.notification_log"
+                + " WHERE product = 'ALERT' ORDER BY id DESC LIMIT 1");
+        Assert.assertEquals("EQUIPMENT_ALERT", row.get("event_code"));
+        Assert.assertEquals("test@example.com", row.get("recipient_email"));
+        Assert.assertTrue("Subject should name the alert type",
+                String.valueOf(row.get("rendered_subject")).contains("FREEZER_OFFLINE"));
+        Assert.assertTrue("Message should carry the offline reason",
+                String.valueOf(row.get("rendered_message")).contains("not responding to monitoring polls"));
+        Assert.assertTrue("queued for the worker, or failed at once when Email is not set up",
+                List.of("QUEUED", "FAILED").contains(String.valueOf(row.get("overall_status"))));
+    }
+
+    private long countAlertRows() {
+        Long count = jdbcTemplate
+                .queryForObject("SELECT COUNT(*) FROM clinlims.notification_log WHERE product = 'ALERT'", Long.class);
+        return count == null ? 0 : count;
+    }
+
     @Test
     public void getUnacknowledgedAlertsOlderThan_shouldReturnCorrectAlerts_whenCutoffProvided() {
-        OffsetDateTime cutoff = OffsetDateTime.parse("2025-05-10T12:00:00Z");
+        OffsetDateTime cutoff = alertService.get(100L).getStartTime().plusHours(2);
         List<Alert> alerts = alertService.getUnacknowledgedAlertsOlderThan("Freezer", AlertStatus.OPEN,
                 AlertSeverity.CRITICAL, cutoff);
 

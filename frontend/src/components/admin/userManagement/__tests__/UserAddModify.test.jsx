@@ -1,0 +1,582 @@
+import React from "react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
+import { IntlProvider } from "react-intl";
+import { MemoryRouter, Route } from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resolveMessagesForLocale } from "../../../../languages";
+import messages from "../../../../languages/en.json";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../../utils/Utils";
+import { createQueryClient } from "../../../utils/queryClient";
+import {
+  NotificationContext,
+  ConfigurationContext,
+} from "../../../layout/Layout";
+import UserAddModify from "../UserAddModify";
+
+vi.mock("../../../utils/Utils", async () => {
+  const actual = await vi.importActual("../../../utils/Utils");
+  const getFromOpenElisServer = vi.fn();
+  return {
+    ...actual,
+    getFromOpenElisServer,
+    fetchFromOpenElisServer: vi.fn(
+      (url) =>
+        new Promise((resolve, reject) =>
+          getFromOpenElisServer(url, (response) =>
+            response === undefined
+              ? reject(new Error("read failed"))
+              : resolve(response),
+          ),
+        ),
+    ),
+    postToOpenElisServerJsonResponse: vi.fn(),
+  };
+});
+
+const HEMATOLOGY = "36";
+const BIOCHEMISTRY = "56";
+const VALIDATION = "10";
+const RECEPTION = "4";
+
+// Mirrors what GET /rest/UnifiedSystemUser returns for an existing user whose
+// only lab unit grant is Validation on Hematology.
+const user = (loginName, selectedTestSectionLabUnits = {}) => ({
+  systemUser: { id: "5", loginName, firstName: "Ada", lastName: "Lovelace" },
+  systemUserId: "5",
+  loginUserId: "5",
+  userLoginName: loginName,
+  userFirstName: "Ada",
+  userLastName: "Lovelace",
+  userPassword: "@@@@@@@@@",
+  confirmPassword: "@@@@@@@@@",
+  expirationDate: "01/01/2035",
+  timeout: "480",
+  accountActive: "Y",
+  accountDisabled: "N",
+  accountLocked: "N",
+  allowCopyUserRoles: "N",
+  selectedRoles: [],
+  globalRoles: [],
+  labUnitRoles: [
+    { elementID: "4", roleId: RECEPTION, roleName: "Reception" },
+    { elementID: "7", roleId: VALIDATION, roleName: "Validation" },
+  ],
+  testSections: [
+    { id: HEMATOLOGY, value: "Hematology" },
+    { id: BIOCHEMISTRY, value: "Biochemistry" },
+  ],
+  selectedTestSectionLabUnits,
+});
+
+const rowSelect = (key) => document.getElementById(`select-${key}`);
+
+describe("UserAddModify", () => {
+  let assign;
+  let addNotification;
+
+  const renderAt = (path, client = createQueryClient(), locale = "en") =>
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <IntlProvider
+          locale={locale}
+          messages={resolveMessagesForLocale(locale).messages}
+        >
+          <QueryClientProvider client={client}>
+            <ConfigurationContext.Provider
+              value={{
+                reloadConfiguration: vi.fn(),
+                configurationProperties: {},
+              }}
+            >
+              <NotificationContext.Provider
+                value={{
+                  notificationVisible: false,
+                  setNotificationVisible: vi.fn(),
+                  addNotification,
+                }}
+              >
+                <Route path="/MasterListsPage/userManagement/:ID?">
+                  <UserAddModify />
+                </Route>
+                <Route path="/MasterListsPage/userEdit">
+                  <UserAddModify />
+                </Route>
+                <Route exact path="/MasterListsPage/userManagement">
+                  <div>user list</div>
+                </Route>
+              </NotificationContext.Provider>
+            </ConfigurationContext.Provider>
+          </QueryClientProvider>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+  const renderExisting = (loginName, grants) => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/UnifiedSystemUser"))
+        return callback(user(loginName, grants));
+      if (url.startsWith("/rest/users")) return callback([]);
+      return callback(undefined);
+    });
+    return renderAt("/MasterListsPage/userEdit?ID=5-5&startingRecNo=1");
+  };
+
+  beforeEach(() => {
+    getFromOpenElisServer.mockReset();
+    postToOpenElisServerJsonResponse.mockReset();
+    addNotification = vi.fn();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/UnifiedSystemUser"))
+        return callback(user("ada"));
+      if (url.startsWith("/rest/users")) return callback([]);
+      return callback(undefined);
+    });
+    assign = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...window.location, reload: vi.fn(), assign },
+    });
+  });
+
+  it.each(["en", "en-US", "en-GB", "en-PG", "en-LK"])(
+    "explains unfiltered CSV access in %s without stale administrator-only guidance",
+    async (locale) => {
+      renderAt("/MasterListsPage/userEdit", createQueryClient(), locale);
+      expect(
+        await screen.findByText(
+          /CSV exports without a lab unit filter require the Reports role for All Lab Units or the Global Administrator role/,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          /CSV export only Availbale for Global Administrators/,
+        ),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it("goes back to the user list without leaving the app", async () => {
+    renderAt("/MasterListsPage/userManagement/5");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Exit" })).toBeInTheDocument(),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Exit" }));
+
+    expect(await screen.findByText("user list")).toBeInTheDocument();
+    // Leaving used to download the whole app again to reach a route the router
+    // already serves.
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  describe("lab unit rows", () => {
+    it("shows the stored lab unit, not the first option", async () => {
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+
+      await waitFor(() => expect(rowSelect(HEMATOLOGY)).not.toBeNull());
+
+      // The row's <select> used to be uncontrolled and stranded on option 0
+      // ("All Lab Units") because its options arrive after first mount.
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+      expect(
+        within(rowSelect(HEMATOLOGY)).getByRole("option", {
+          name: "Hematology",
+        }).selected,
+      ).toBe(true);
+    });
+
+    it("never adds an All Lab Units row from Add New Permission", async () => {
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add New Permission" }),
+      );
+
+      await waitFor(() => expect(rowSelect(BIOCHEMISTRY)).not.toBeNull());
+      expect(rowSelect(BIOCHEMISTRY)).toHaveValue(BIOCHEMISTRY);
+      expect(rowSelect("AllLabUnits")).toBeNull();
+    });
+
+    it("asks before All Lab Units replaces scoped grants, and cancel keeps them", async () => {
+      renderExisting("qa_heme", {
+        [HEMATOLOGY]: [VALIDATION],
+        [BIOCHEMISTRY]: [],
+      });
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+
+      await userEvent.selectOptions(rowSelect(BIOCHEMISTRY), "AllLabUnits");
+
+      const dialog = await screen.findByRole("dialog", {
+        name: /Replace lab unit permissions\?/,
+      });
+      expect(within(dialog).getByText("Hematology: Validation")).toBeVisible();
+      expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY);
+      expect(rowSelect(BIOCHEMISTRY)).toHaveValue(BIOCHEMISTRY);
+
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: /Cancel/ }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.queryByText("Hematology: Validation"),
+        ).not.toBeInTheDocument(),
+      );
+      expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY);
+      expect(rowSelect(BIOCHEMISTRY)).toHaveValue(BIOCHEMISTRY);
+      expect(rowSelect("AllLabUnits")).toBeNull();
+    });
+
+    it("collapses to a single All Lab Units row once confirmed", async () => {
+      renderExisting("qa_heme", {
+        [HEMATOLOGY]: [VALIDATION],
+        [BIOCHEMISTRY]: [],
+      });
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+
+      await userEvent.selectOptions(rowSelect(BIOCHEMISTRY), "AllLabUnits");
+      const dialog = await screen.findByRole("dialog", {
+        name: /Replace lab unit permissions\?/,
+      });
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: /Replace permissions/ }),
+      );
+
+      await waitFor(() => expect(rowSelect("AllLabUnits")).not.toBeNull());
+      expect(rowSelect("AllLabUnits")).toHaveValue("AllLabUnits");
+      expect(rowSelect(HEMATOLOGY)).toBeNull();
+      expect(rowSelect(BIOCHEMISTRY)).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Add New Permission" }),
+      ).toBeDisabled();
+    });
+
+    it("switches to All Lab Units directly when nothing scoped would be lost", async () => {
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+
+      await userEvent.selectOptions(rowSelect(HEMATOLOGY), "AllLabUnits");
+
+      await waitFor(() => expect(rowSelect("AllLabUnits")).not.toBeNull());
+      // Carbon keeps a closed Modal in the DOM; visibility is the signal.
+      expect(document.querySelector(".cds--modal.is-visible")).toBeNull();
+      expect(rowSelect(HEMATOLOGY)).toBeNull();
+    });
+  });
+
+  it("says the user could not be found instead of showing an empty form", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/UnifiedSystemUser")) return callback(undefined);
+      if (url.startsWith("/rest/users")) return callback([]);
+      return callback(undefined);
+    });
+    renderAt("/MasterListsPage/userEdit?ID=999-888&startingRecNo=1");
+
+    expect(
+      await screen.findByTestId("user-not-found", {}, { timeout: 10000 }),
+    ).toHaveTextContent("This user could not be found.");
+    expect(document.getElementById("login-name")).toBeNull();
+  });
+
+  describe("login name", () => {
+    it("accepts a stored login name with an underscore", async () => {
+      renderExisting("qa_recept", {});
+
+      await waitFor(() =>
+        expect(document.getElementById("login-name")).toHaveValue("qa_recept"),
+      );
+
+      expect(document.getElementById("login-name")).not.toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
+    });
+
+    it("explains why a login name is invalid", async () => {
+      renderExisting("qa_recept", {});
+      await waitFor(() =>
+        expect(document.getElementById("login-name")).toHaveValue("qa_recept"),
+      );
+
+      await userEvent.type(document.getElementById("login-name"), "1");
+
+      expect(document.getElementById("login-name")).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
+      expect(
+        screen.getByText(messages["notification.invalid.loginName"]),
+      ).toBeVisible();
+    });
+  });
+
+  describe("password", () => {
+    it("marks a password the server would refuse as invalid (OGC-1545 walk)", async () => {
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+      await waitFor(() =>
+        expect(document.getElementById("login-password")).not.toBeNull(),
+      );
+      const password = document.getElementById("login-password");
+
+      await userEvent.clear(password);
+      await userEvent.type(password, "abc-def*1");
+      expect(password).toHaveAttribute("data-invalid", "true");
+
+      await userEvent.clear(password);
+      await userEvent.type(password, "abc_def*1");
+      expect(password).not.toHaveAttribute("data-invalid");
+    });
+  });
+
+  describe("save", () => {
+    const save = async () => {
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(addNotification).toHaveBeenCalled());
+      return addNotification.mock.calls[0][0];
+    };
+
+    it("says the user was updated, not added, after modifying", async () => {
+      postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+        cb({ forward: "redirect:/UnifiedSystemUser" }),
+      );
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+
+      const notification = await save();
+
+      expect(notification.kind).toBe("success");
+      expect(notification.message).toBe(
+        "User information updated successfully.",
+      );
+    });
+
+    it("does not report success when the server answers with the form instead of the redirect", async () => {
+      postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+        cb({ forward: "unifiedSystemUserDefinition" }),
+      );
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+
+      const notification = await save();
+
+      expect(notification.kind).toBe("error");
+      expect(notification.message).toBe(messages["server.error.msg"]);
+    });
+
+    it("names why the server refused the save (OGC-1545)", async () => {
+      postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+        cb({
+          forward: "unifiedSystemUserDefinition",
+          errorKey: "errors.loginName.duplicated",
+          error:
+            "Login name, qa_heme, is already in use.  Please select another.",
+          statusCode: 400,
+        }),
+      );
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+
+      const notification = await save();
+
+      expect(notification.kind).toBe("error");
+      expect(notification.message).toBe(
+        "Login name, qa_heme, is already in use.  Please select another.",
+      );
+    });
+
+    it("shows the server's charset refusal under Login Name until the login changes (OGC-1593)", async () => {
+      const refusal = "Login name may only contain these characters: a-z ._@-";
+      postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+        cb({
+          forward: "unifiedSystemUserDefinition",
+          errorKey: "errors.loginName.charset",
+          error: refusal,
+          statusCode: 400,
+        }),
+      );
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+
+      const notification = await save();
+
+      expect(notification.message).toBe(refusal);
+      const login = document.getElementById("login-name");
+      expect(login).toHaveAttribute("data-invalid", "true");
+      expect(screen.getByText(refusal)).toBeInTheDocument();
+
+      await userEvent.type(login, "x");
+      expect(screen.queryByText(refusal)).not.toBeInTheDocument();
+    });
+
+    it("sends one save for a double click while the first is in flight (OGC-1545 review)", async () => {
+      let answer;
+      postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) => {
+        answer = cb;
+      });
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+
+      const saveButton = screen.getByRole("button", { name: "Save" });
+      fireEvent.click(saveButton);
+      fireEvent.click(saveButton);
+
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+      act(() => answer({ forward: "redirect:/UnifiedSystemUser" }));
+    });
+
+    it("does not report success when the server refuses the save", async () => {
+      postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+        cb({ error: "labUnitRoles.allLabUnitsExclusive", statusCode: 400 }),
+      );
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+
+      const notification = await save();
+
+      expect(notification.kind).toBe("error");
+      expect(notification.message).toBe(
+        messages["systemuserrole.allLabUnits.exclusive.error"],
+      );
+    });
+  });
+
+  describe("add form", () => {
+    // GET /rest/UnifiedSystemUser?ID=0 stamps systemUserLastupdated with the
+    // current time, so no two reads of the blank form are equal.
+    const blankUser = (stamp) => ({
+      ...user(""),
+      systemUserId: "",
+      loginUserId: "",
+      userFirstName: "",
+      userLastName: "",
+      userPassword: "",
+      confirmPassword: "",
+      systemUserLastupdated: stamp,
+      selectedTestSectionLabUnits: {},
+    });
+    const loginNameInput = () => document.getElementById("login-name");
+
+    it("keeps what was typed when the blank form is read again", async () => {
+      let reads = 0;
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url.startsWith("/rest/UnifiedSystemUser"))
+          return callback(blankUser(++reads));
+        if (url.startsWith("/rest/users")) return callback([]);
+        return callback(undefined);
+      });
+      const client = createQueryClient();
+      renderAt(
+        "/MasterListsPage/userEdit?ID=0&startingRecNo=1&roleFilter=",
+        client,
+      );
+      await waitFor(() => expect(loginNameInput()).not.toBeNull());
+      await waitFor(() => expect(reads).toBe(1));
+
+      await userEvent.type(loginNameInput(), "wil");
+      expect(loginNameInput()).toHaveValue("wil");
+
+      // Opening the form from the list serves the cached payload and reads it
+      // again; that second read used to land mid-typing and replace every field.
+      await act(async () => {
+        await client.refetchQueries();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(reads).toBe(2);
+      expect(loginNameInput()).toHaveValue("wil");
+    });
+  });
+
+  describe("reopening and reactivating", () => {
+    const firstNameInput = () => document.getElementById("first-name");
+    const saveButton = () => screen.getByRole("button", { name: "Save" });
+
+    it("seeds a reopened user from a fresh read and keeps Save enabled", async () => {
+      let firstName = "Ada";
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url.startsWith("/rest/UnifiedSystemUser"))
+          return callback({ ...user("ada"), userFirstName: firstName });
+        if (url.startsWith("/rest/users")) return callback([]);
+        return callback(undefined);
+      });
+      const client = createQueryClient();
+      const firstVisit = renderAt(
+        "/MasterListsPage/userEdit?ID=5-5&startingRecNo=1",
+        client,
+      );
+      await waitFor(() => expect(firstNameInput()).toHaveValue("Ada"));
+      expect(saveButton()).toBeEnabled();
+      firstVisit.unmount();
+
+      // Another session renames the user; the list's Modify mounts the form
+      // again on the same cache.
+      firstName = "Grace";
+      renderAt("/MasterListsPage/userEdit?ID=5-5&startingRecNo=1", client);
+
+      await waitFor(() => expect(firstNameInput()).toHaveValue("Grace"));
+      expect(saveButton()).toBeEnabled();
+    });
+
+    it("lets a deactivated user be reactivated without retyping the names", async () => {
+      // Deactivation deletes the login row, so the payload carries the names
+      // but no login id, login name or password.
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url.startsWith("/rest/UnifiedSystemUser"))
+          return callback({
+            ...user("ada"),
+            loginUserId: "",
+            userLoginName: "",
+            userPassword: "",
+            confirmPassword: "",
+            accountActive: "N",
+          });
+        if (url.startsWith("/rest/users")) return callback([]);
+        return callback(undefined);
+      });
+      renderAt("/MasterListsPage/userEdit?ID=5-0&startingRecNo=1");
+      await waitFor(() => expect(firstNameInput()).toHaveValue("Ada"));
+      expect(saveButton()).toBeDisabled();
+
+      await userEvent.type(document.getElementById("login-name"), "ada");
+      await userEvent.type(
+        document.getElementById("login-password"),
+        "Password**",
+      );
+      await userEvent.type(
+        document.getElementById("login-repeat-password"),
+        "Password**",
+      );
+
+      await waitFor(() => expect(saveButton()).toBeEnabled());
+    });
+  });
+});

@@ -75,6 +75,12 @@
         <property name="domain" type="java.lang.String">
             <column name="DOMAIN" length="20" />
         </property>
+        <property name="opensMicrobiologyCase" type="boolean"
+            column="opens_microbiology_case" not-null="true" />
+        <property name="microbiologyCaseRole" type="java.lang.String"
+            column="microbiology_case_role" not-null="true" />
+        <property name="collectedInSets" type="boolean"
+            column="collected_in_sets" not-null="true" />
         <property name="stickerRequiredFlag" type="java.lang.String">
             <column name="STICKER_REQ_FLAG" length="1" />
         </property>
@@ -124,7 +130,10 @@
         <property name="notifyResults" type="java.lang.Boolean"
             column="notify_results" />
         <property name="guid" type="java.lang.String" column="guid" />
-        <property name="name" type="java.lang.String" column="name" />
+        <!-- getName() answers in the reader's language, so the column is written
+            on insert only; a read must never turn into an update (OGC-1442) -->
+        <property name="name" type="java.lang.String" column="name"
+            update="false" />
         <many-to-one name="defaultTestResult"
             class="org.openelisglobal.testresult.valueholder.TestResult"
             fetch="select" lazy="false">
@@ -135,6 +144,9 @@
 
         <property name="antimicrobialResistance"
             type="java.lang.Boolean" column="antimicrobial_resistance" />
+
+        <!-- OGC-704: total allowable error (percent) for sigma metrics -->
+        <property name="tea" type="java.lang.Double" column="TEA" />
     </class>
     <!-- <query name="test.getNext"> -->
     <!-- from Test t order by t.testSection.testSectionName, t.testName -->

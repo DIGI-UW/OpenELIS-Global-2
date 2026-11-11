@@ -4,6 +4,26 @@
 
 set -e
 
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+# Prefer the repository-pinned SDKMAN JDK so hooks behave like project builds
+# even when the invoking shell has not enabled SDKMAN auto-env.
+SDKMAN_JAVA_VERSION=$(sed -n 's/^java=//p' .sdkmanrc 2>/dev/null | head -1)
+SDKMAN_JAVA_HOME="${SDKMAN_DIR:-$HOME/.sdkman}/candidates/java/$SDKMAN_JAVA_VERSION"
+if [ -n "$SDKMAN_JAVA_VERSION" ] && [ -x "$SDKMAN_JAVA_HOME/bin/java" ]; then
+    export JAVA_HOME="$SDKMAN_JAVA_HOME"
+    export PATH="$JAVA_HOME/bin:$PATH"
+fi
+
+JAVA_MAJOR=$(java -XshowSettings:properties -version 2>&1 \
+    | awk -F= '/java.specification.version/ { gsub(/[[:space:]]/, "", $2); print $2; exit }')
+if [ "$JAVA_MAJOR" != "21" ]; then
+    echo "ERROR: OpenELIS pre-commit formatting requires Java 21 (found ${JAVA_MAJOR:-unknown})."
+    echo "Install the .sdkmanrc version or activate a Java 21 JDK before committing."
+    exit 1
+fi
+
 echo "🎨 Running auto-formatters on staged files..."
 
 # Get list of staged files
@@ -29,7 +49,7 @@ POM_FILES=$(echo "$STAGED_FILES" | grep 'pom\.xml$' || true)
 if [ -n "$JAVA_FILES" ] || [ -n "$MD_FILES" ] || [ -n "$SH_FILES" ] || [ -n "$XML_FILES" ] || [ -n "$GITIGNORE_FILES" ] || [ -n "$POM_FILES" ]; then
     echo "  → Formatting Spotless-managed files (java/md/sh/xml/gitignore/pom)..."
     # Spotless applies to entire project, but we only re-stage modified files
-    mvn spotless:apply -q 2>/dev/null || true
+    mvn spotless:apply -q
     FORMATTED=true
 fi
 
@@ -40,7 +60,7 @@ if [ -n "$FRONTEND_FILES" ]; then
     # Format only staged frontend files
     echo "$FRONTEND_FILES" | while IFS= read -r file; do
         if [ -f "$file" ]; then
-            (cd frontend && npx prettier --write "../$file" --silent 2>/dev/null) || true
+            (cd frontend && npx prettier --write "../$file")
         fi
     done
     FORMATTED=true

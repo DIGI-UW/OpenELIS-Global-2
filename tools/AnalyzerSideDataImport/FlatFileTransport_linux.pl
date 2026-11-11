@@ -101,7 +101,7 @@ sub printTime{
     print "$hour:$minute:$second, $weekDays[$dayOfWeek] $months[$month] $dayOfMonth, $year\n";
 }
 
-my $upLoadtargetURL = 'https://localhost:8443/OpenELIS-Global/importAnalyzer';
+my $upLoadtargetURL = 'https://localhost:8443/api/OpenELIS-Global/importAnalyzer';
 
 my $stagingDir1 = ".//staging";
 #my $stagingDir2 = "Y:";

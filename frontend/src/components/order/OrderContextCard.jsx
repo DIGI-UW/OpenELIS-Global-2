@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Tile, Tag, ProgressBar } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useOrderContext } from "./OrderContext";
+import { progressReached } from "./OrderStepper";
 
 /**
  * OrderContextCard - Persistent context card displayed on all workflow steps.
@@ -25,6 +26,8 @@ const OrderContextCard = ({ className = "" }) => {
     stepProgress,
     storageSkipped,
     isReadOnly,
+    progress,
+    sampleCheckEnabled,
   } = useOrderContext();
 
   // Don't render if no order is loaded
@@ -101,6 +104,10 @@ const OrderContextCard = ({ className = "" }) => {
         0,
       );
 
+  const workflowType =
+    orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
+    "clinical";
+
   // Calculate step completion based on actual data state (same logic as OrderStepper)
   const isEnterComplete = !!displayLabNumber;
   // Vector workflow has no collect step — sample items are created at order entry
@@ -115,21 +122,57 @@ const OrderContextCard = ({ className = "" }) => {
     : allHaveStorage || storageSkipped;
   const isQaComplete = stepProgress?.qa || false;
 
-  // Vector workflow: 3 steps (enter, label, qa); clinical: 4 steps (enter, collect, label, qa)
-  const totalSteps = isVectorWorkflow ? 3 : 4;
-  const completedSteps = isVectorWorkflow
-    ? [isEnterComplete, isLabelComplete, isQaComplete].filter(Boolean).length
-    : [
-        isEnterComplete,
-        isCollectComplete,
-        isLabelComplete,
-        isQaComplete,
-      ].filter(Boolean).length;
+  // Clinical (OGC-1266 FR-A12): Enter Order, Prepare Samples and, while the
+  // laboratory's sample acceptance setting is not Off, Sample check; each
+  // counted from the recorded progress, else from the data-derived flags.
+  const recorded = Boolean(progress?.status);
+  const isPrepareComplete = recorded
+    ? progressReached(progress.status, "SAMPLES_PREPARED")
+    : isCollectComplete && isLabelComplete;
+  const isCheckComplete = recorded
+    ? progress.status === "READY_FOR_TESTING"
+    : isQaComplete;
+  const clinicalSteps = [
+    isEnterComplete,
+    isPrepareComplete,
+    ...(sampleCheckEnabled === false ? [] : [isCheckComplete]),
+  ];
+
+  // Vector: 3 steps (enter, label, qa); environmental: 3 (enter, label, qa)
+  const laneSteps =
+    workflowType === "clinical"
+      ? clinicalSteps
+      : [isEnterComplete, isLabelComplete, isQaComplete];
+  const totalSteps = laneSteps.length;
+  const completedSteps = laneSteps.filter(Boolean).length;
   const progressPercent = (completedSteps / totalSteps) * 100;
 
-  // Determine order status
+  // The order's recorded progress (OGC-1266 FR-F5) when the server has
+  // reported it; the step count for orders saved before it was recorded.
   const getOrderStatus = () => {
-    if (completedSteps === 4) return { label: "Completed", type: "green" };
+    const recorded = {
+      ENTERED: { labelId: "order.status.entered", type: "blue" },
+      SAMPLES_PREPARED: {
+        labelId: progress?.complete
+          ? "order.status.complete"
+          : "order.status.samplesPrepared",
+        type: progress?.complete ? "green" : "teal",
+      },
+      READY_FOR_TESTING: {
+        labelId: "order.status.readyForTesting",
+        type: "green",
+      },
+      CANCELLED: { labelId: "order.status.cancelled", type: "gray" },
+    }[progress?.status];
+    if (recorded) {
+      return {
+        label: intl.formatMessage({ id: recorded.labelId }),
+        type: recorded.type,
+      };
+    }
+    if (completedSteps === totalSteps) {
+      return { label: "Completed", type: "green" };
+    }
     if (completedSteps === 0) return { label: "New", type: "gray" };
     return { label: "In Progress", type: "blue" };
   };
@@ -137,7 +180,10 @@ const OrderContextCard = ({ className = "" }) => {
   const status = getOrderStatus();
 
   return (
-    <Tile className={`order-context-card ${className}`}>
+    <Tile
+      className={`order-context-card ${className}`}
+      data-testid="order-context-card"
+    >
       <div className="context-card-content">
         {/* Lab Number and Status */}
         <div className="context-primary">
@@ -230,6 +276,9 @@ const OrderContextCard = ({ className = "" }) => {
         {/* Step Progress */}
         <div className="context-progress">
           <ProgressBar
+            label={intl.formatMessage({
+              id: "order.context.workflowProgress",
+            })}
             value={progressPercent}
             size="small"
             hideLabel

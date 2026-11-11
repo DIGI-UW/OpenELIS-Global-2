@@ -1,3 +1,20 @@
+.storage-location-picker-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.storage-location-picker-create-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.storage-location-picker-create-row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
 /*
  * Inline create form rendered directly under the level row whose "Add new"
  * button opened it. Visual boundary makes it clear the form is a child of

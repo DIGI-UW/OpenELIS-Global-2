@@ -52,7 +52,7 @@ public class Result extends EnumValueItemImpl {
      * PropertyAccessException and took the whole query with it, so a single row
      * without a precision made every result in its lab unit unreachable (OGC-1170).
      */
-    private Integer significantDigits;
+    private Integer reportingDecimalPlaces;
     private ValueHolder parentResult;
     private Integer grouping;
 
@@ -68,6 +68,16 @@ public class Result extends EnumValueItemImpl {
     private BigDecimal expandedUncertainty;
 
     private BigDecimal coverageFactor;
+
+    /**
+     * When this result was validated on its own, as one component of a
+     * multi-component test whose other components were still waiting. Null
+     * otherwise.
+     */
+    private java.sql.Timestamp validatedDate;
+
+    /** OGC-1200 FR-A2: the run this result was produced in, when it has one. */
+    private Long runId;
 
     public Result() {
         super();
@@ -127,8 +137,31 @@ public class Result extends EnumValueItemImpl {
         this.testResult.setValue(testResult);
     }
 
+    /**
+     * The value in a form every numeric parser accepts. A numeric result typed in
+     * written scientific notation is stored as the technologist wrote it, and reads
+     * back here as canonical e-notation, so a caller handing it to
+     * {@link Double#parseDouble(String)}, to a SQL cast or to the FHIR interface
+     * always gets a number. {@link #getEnteredValue()} returns what was typed,
+     * which is what the screens and the report display.
+     */
     public String getValue() {
+        return "N".equals(resultType) ? StringUtil.normalizeScientificNotation(value) : value;
+    }
+
+    /** The value exactly as it was entered, for display. */
+    public String getEnteredValue() {
         return value;
+    }
+
+    /**
+     * Display/report formatting only. Optional decimal places never change the
+     * clinical value used for persistence, calculations, flags or exchange.
+     */
+    @JsonIgnore
+    public String getDisplayValue() {
+        return "N".equals(resultType) ? StringUtil.roundToPlaces(getEnteredValue(), getReportingDecimalPlaces())
+                : getValue();
     }
 
     public String getValue(Boolean getActualNumericValue) {
@@ -138,25 +171,6 @@ public class Result extends EnumValueItemImpl {
             }
         }
         return value;
-    }
-
-    @JsonIgnore
-    public long getVLValueAsNumber() {
-        long finalResult = 0;
-        String workingResult = value.split("\\(")[0].trim();
-        if (workingResult.toLowerCase().contains("log7") || workingResult.contains(">")) {
-            finalResult = 10000000;
-        } else if (workingResult.toUpperCase().contains("LL") || workingResult.contains("<")) {
-            finalResult = virralloadLowLimit;
-        } else {
-            try {
-                finalResult = Long.parseLong(workingResult.replaceAll("[^0-9]", ""));
-            } catch (Exception e) {
-                finalResult = -1;
-            }
-        }
-
-        return finalResult;
     }
 
     public void setValue(String value) {
@@ -192,15 +206,19 @@ public class Result extends EnumValueItemImpl {
     /**
      * @return the recorded precision, or -1 where none was recorded — the value the
      *         formatters already read as "report exactly as stored". Zero is not a
-     *         safe stand-in: it is an instruction to cut the value at the decimal
-     *         point.
+     *         safe stand-in: it explicitly requests whole-number reporting.
      */
-    public int getSignificantDigits() {
-        return significantDigits == null ? -1 : significantDigits;
+    public int getReportingDecimalPlaces() {
+        return reportingDecimalPlaces == null ? -1 : reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(int significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(int reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
+    }
+
+    /** Records that no precision applies, so the value is reported as stored. */
+    public void clearReportingDecimalPlaces() {
+        this.reportingDecimalPlaces = null;
     }
 
     public Result getParentResult() {
@@ -281,6 +299,22 @@ public class Result extends EnumValueItemImpl {
 
     public void setCoverageFactor(BigDecimal coverageFactor) {
         this.coverageFactor = coverageFactor;
+    }
+
+    public java.sql.Timestamp getValidatedDate() {
+        return validatedDate;
+    }
+
+    public Long getRunId() {
+        return runId;
+    }
+
+    public void setRunId(Long runId) {
+        this.runId = runId;
+    }
+
+    public void setValidatedDate(java.sql.Timestamp validatedDate) {
+        this.validatedDate = validatedDate;
     }
 
     @Override

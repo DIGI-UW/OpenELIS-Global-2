@@ -6,8 +6,10 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.provider.bean.patientHistory.PanelDisplay;
 import org.openelisglobal.common.rest.provider.bean.patientHistory.ResultDisplay;
 import org.openelisglobal.common.rest.provider.bean.patientHistory.ResultTree;
@@ -22,6 +24,7 @@ import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
@@ -88,14 +91,21 @@ public class PatientResultTreeService {
     @Autowired
     private UnitOfMeasureService unitOfMeasureService;
 
+    @Autowired
+    private UserService userService;
+
     @Transactional(readOnly = true)
-    public List<ResultTree> getResultTree(String patientId) {
+    public List<ResultTree> getResultTree(String patientId, String systemUserId) {
         Patient patient = patientService.get(patientId);
+        Set<String> visibleTestIds = visibleTestIds(systemUserId);
         Map<String, SectionNode> sections = new LinkedHashMap<>();
         Map<String, List<TestResultComponent>> componentsByTest = new LinkedHashMap<>();
 
         for (Result result : resultsForPatient(patientId)) {
             Analysis analysis = result.getAnalysis();
+            if (!isVisible(analysis, visibleTestIds)) {
+                continue;
+            }
             TestSection section = analysis.getTest().getTestSection();
             TypeOfSample sampleType = analysis.getSampleItem() == null ? null
                     : analysis.getSampleItem().getTypeOfSample();
@@ -137,18 +147,20 @@ public class PatientResultTreeService {
      * one component on one specimen.
      */
     @Transactional(readOnly = true)
-    public PanelDisplay getTestResultTree(String patientId, String testId, String componentId, String sampleTypeId) {
+    public PanelDisplay getTestResultTree(String patientId, String testId, String componentId, String sampleTypeId,
+            String systemUserId) {
         Test test = testService.get(testId.trim());
         if (test == null) {
             return null;
         }
+        Set<String> visibleTestIds = visibleTestIds(systemUserId);
         Patient patient = patientService.get(patientId);
         Map<String, List<TestResultComponent>> componentsByTest = new LinkedHashMap<>();
         Map<String, PanelNode> panels = new LinkedHashMap<>();
 
         for (Result result : resultsForPatient(patientId)) {
             Analysis analysis = result.getAnalysis();
-            if (!test.getId().equals(analysis.getTest().getId())) {
+            if (!test.getId().equals(analysis.getTest().getId()) || !isVisible(analysis, visibleTestIds)) {
                 continue;
             }
             TypeOfSample sampleType = analysis.getSampleItem() == null ? null
@@ -174,6 +186,32 @@ public class PatientResultTreeService {
         panelDisplay.setDisplay(test.getLocalizedName());
         panelDisplay.setSubSets(testDisplays);
         return panelDisplay;
+    }
+
+    /**
+     * The tests whose results the reader may see here, or {@code null} when the
+     * whole lab is theirs.
+     *
+     * <p>
+     * Patient History is read from the patient's record, which is Reception's
+     * screen, so it is scoped by the reader's Reception lab units the way the
+     * incoming orders list is. It used to show every result the patient had,
+     * whichever lab unit produced it.
+     */
+    private Set<String> visibleTestIds(String systemUserId) {
+        if (GenericValidator.isBlankOrNull(systemUserId)
+                || userService.hasAllLabUnits(systemUserId, Constants.ROLE_RECEPTION)) {
+            return null;
+        }
+        return userService.getTestIdsInUserLabUnits(systemUserId, Constants.ROLE_RECEPTION);
+    }
+
+    /** A result belongs to the reader when its test is one of theirs. */
+    private boolean isVisible(Analysis analysis, Set<String> visibleTestIds) {
+        if (visibleTestIds == null) {
+            return true;
+        }
+        return analysis.getTest() != null && visibleTestIds.contains(analysis.getTest().getId());
     }
 
     /**
@@ -280,7 +318,7 @@ public class PatientResultTreeService {
         testDisplay.setConceptUuid(test.getId());
         testDisplay.setDatatype(configuredType);
         testDisplay.setUnits(unitOfMeasure(test, component));
-        applyResultLimit(testDisplay, resultLimit, significantDigits(test, component));
+        applyResultLimit(testDisplay, resultLimit, reportingDecimalPlaces(test, component));
         testDisplay.setObs(resultDisplays);
         return testDisplay;
     }
@@ -290,7 +328,7 @@ public class PatientResultTreeService {
      * An unset bound is left null rather than folded onto a neighbouring one — a
      * missing critical limit must not make every out-of-range value critical.
      */
-    private void applyResultLimit(TestDisplay testDisplay, ResultLimit resultLimit, String significantDigits) {
+    private void applyResultLimit(TestDisplay testDisplay, ResultLimit resultLimit, String reportingDecimalPlaces) {
         if (resultLimit == null) {
             return;
         }
@@ -300,8 +338,8 @@ public class PatientResultTreeService {
         testDisplay.setHiCritical(finiteOrNull(resultLimit.getHighCritical()));
         testDisplay.setLowAbsolute(finiteOrNull(resultLimit.getLowValid()));
         testDisplay.setHiAbsolute(finiteOrNull(resultLimit.getHighValid()));
-        testDisplay
-                .setRange(resultLimitService.getDisplayReferenceRange(resultLimit, significantDigits, RANGE_SEPARATOR));
+        testDisplay.setRange(
+                resultLimitService.getDisplayReferenceRange(resultLimit, reportingDecimalPlaces, RANGE_SEPARATOR));
     }
 
     private Double finiteOrNull(double value) {
@@ -332,7 +370,7 @@ public class PatientResultTreeService {
             Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
             return dictionary == null ? "" : dictionary.getLocalizedName();
         }
-        return resultService.getSimpleResultValue(result);
+        return resultService.formatSimpleResultForDisplay(result);
     }
 
     private String configuredResultType(Test test, TestResultComponent component) {
@@ -354,15 +392,15 @@ public class PatientResultTreeService {
     }
 
     /** The precision the component's own result options are configured with. */
-    private String significantDigits(Test test, TestResultComponent component) {
+    private String reportingDecimalPlaces(Test test, TestResultComponent component) {
         for (TestResult testResult : testService.getPossibleTestResults(test)) {
             if (component == null || component.getId().equals(testResult.getComponentId())
                     || (component.getIsPrimary() && testResult.getComponentId() == null)) {
-                return GenericValidator.isBlankOrNull(testResult.getSignificantDigits()) ? "0"
-                        : testResult.getSignificantDigits();
+                return GenericValidator.isBlankOrNull(testResult.getReportingDecimalPlaces()) ? null
+                        : testResult.getReportingDecimalPlaces();
             }
         }
-        return "0";
+        return null;
     }
 
     private static final class SectionNode {

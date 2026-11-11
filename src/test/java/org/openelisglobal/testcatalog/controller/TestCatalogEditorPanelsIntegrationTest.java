@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.DisplayListService;
@@ -68,8 +69,6 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
     @Autowired
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
-    @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
@@ -96,8 +95,7 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
-                panelService, panelItemService);
+                typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         cleanup();
         panelAId = seedPanel(PANEL_A_ID, "PanelsITAlpha");
         panelBId = seedPanel(PANEL_B_ID, "PanelsITBeta");
@@ -202,6 +200,7 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
 
     private TestPanelsResponse put(MembershipItem... items) {
         PanelMembershipUpdate body = new PanelMembershipUpdate();
+        body.memberships = new java.util.ArrayList<>();
         for (MembershipItem i : items) {
             body.memberships.add(i);
         }
@@ -243,7 +242,9 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     @org.junit.Test
     public void reposition_andRemove_persists() {
         put(membership(panelAId, 5), membership(panelBId, 3));
-        // Keep only panel A, at a new position → B is removed.
+        // Keep only panel A, at a new position → B is removed. B would be left
+        // with no tests, so it is inactive first (OGC-1456).
+        jdbc.update("UPDATE clinlims.panel SET is_active = 'N' WHERE id = ?", PANEL_B_ID);
         put(membership(panelAId, 9));
         TestPanelsResponse loaded = controller.getTestPanels(testId()).getBody();
         assertEquals(1, loaded.memberships.size());
@@ -330,6 +331,7 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     @org.junit.Test
     public void saveTestPanels_unknownPanelReturns422() {
         PanelMembershipUpdate body = new PanelMembershipUpdate();
+        body.memberships = new java.util.ArrayList<>();
         body.memberships.add(membership(panelAId, 1));
         body.memberships.add(membership("99999999", 2));
         ResponseEntity<TestPanelsResponse> resp = controller.saveTestPanels(testId(), body, authedRequest());
@@ -482,13 +484,15 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
             assertEquals("N", jdbc.queryForObject("SELECT is_active FROM clinlims.panel WHERE id = ?", String.class,
                     Long.parseLong(panelId)));
 
-            // zero tests → activation is rejected
+            // zero tests → activation is rejected, and the refusal says why
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                     .put("/rest/test-catalog/panels/" + panelId + "/basic-info")
                     .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"active\":true}")
                     .session(authedSession()))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
-                            .isUnprocessableEntity());
+                            .isUnprocessableEntity())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.refusal")
+                            .value("activation.needsTest"));
 
             // give it a member test → activation succeeds
             put(membership(panelId, 1));
@@ -550,8 +554,10 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                     "SELECT count(*) FROM clinlims.sampletype_panel WHERE panel_id = ?" + " AND sample_type_id = ?",
                     Integer.class, Long.parseLong(panelId), sampleTypeId));
 
-            // removing every test empties membership AND the junction; the
-            // active state is untouched (editing never auto-flips)
+            // an active panel keeps at least one test (OGC-1456); once it is
+            // deactivated, removing every test empties membership AND the junction,
+            // and the active state is untouched (editing never auto-flips)
+            jdbc.update("UPDATE clinlims.panel SET is_active = 'N' WHERE id = ?", Long.parseLong(panelId));
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                     .put("/rest/test-catalog/panels/" + panelId + "/tests")
                     .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"tests\":[]}")
@@ -560,7 +566,7 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
                             .jsonPath("$.panel.testCount").value(0))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
-                            .jsonPath("$.panel.active").value(true));
+                            .jsonPath("$.panel.active").value(false));
             assertEquals(Integer.valueOf(0),
                     jdbc.queryForObject("SELECT count(*) FROM clinlims.sampletype_panel WHERE panel_id = ?",
                             Integer.class, Long.parseLong(panelId)));
@@ -575,7 +581,8 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     /**
      * OGC-224 C3 — the domain guard on BOTH sides of the one model: a test whose
      * domain differs from the panel's is rejected (422) by the panel-side Tests
-     * write and by the test-side memberships write.
+     * write and by the test-side memberships write. OGC-1232: each refusal names
+     * the panel's domain and the test that does not belong to it.
      */
     @org.junit.Test
     public void membershipWrites_rejectCrossDomainTests() throws Exception {
@@ -586,14 +593,30 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                     .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                     .content("{\"tests\":[{\"testId\":\"" + testId() + "\",\"position\":1}]}").session(authedSession()))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
-                            .isUnprocessableEntity());
+                            .isUnprocessableEntity())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.domainConflict.domain").value("CLINICAL"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.domainConflict.tests[0].testId").value(testId()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.domainConflict.tests[0].domain").value("ENVIRONMENTAL"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.domainConflict.tests[0].name").isNotEmpty());
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                     .put("/rest/test-catalog/tests/" + testId() + "/panels")
                     .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                     .content("{\"memberships\":[{\"panelId\":\"" + panelAId + "\",\"position\":1}]}")
                     .session(authedSession()))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
-                            .isUnprocessableEntity());
+                            .isUnprocessableEntity())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.domainConflict.domain").value("CLINICAL"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.domainConflict.panelId").value(panelAId))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.domainConflict.panelName").value("PanelsITAlpha"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.domainConflict.tests[0].testId").value(testId()));
             assertEquals(Long.valueOf(0L), membershipRowCount(panelAId));
         } finally {
             jdbc.update("UPDATE clinlims.test SET domain = 'CLINICAL' WHERE id = ?", TEST_ID);
@@ -678,7 +701,8 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     /**
      * OGC-224 C2 — domain writes are validated: an unknown domain is 422, and the
      * domain can never move away from existing member tests (a panel never mixes
-     * domains).
+     * domains). OGC-1232: the refusal names the requested domain and every member
+     * test that stands in the way, and leaves the stored domain alone.
      */
     @org.junit.Test
     public void savePanelBasicInfo_domainValidationAndMemberGuard() throws Exception {
@@ -690,14 +714,49 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                         .isUnprocessableEntity());
 
         // TEST_ID's test.domain defaults to CLINICAL — with it as a member,
-        // moving the panel to ENVIRONMENTAL would mix domains → 422
+        // moving the panel to ENVIRONMENTAL would mix domains → 422 whose body
+        // names that test and its domain
         put(membership(panelAId, 1));
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                 .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .content("{\"domain\":\"ENVIRONMENTAL\"}").session(authedSession()))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
-                        .isUnprocessableEntity());
+                        .isUnprocessableEntity())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.domainConflict.domain").value("ENVIRONMENTAL"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.domainConflict.tests.length()").value(1))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.domainConflict.tests[0].testId").value(testId()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.domainConflict.tests[0].domain").value("CLINICAL"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.domainConflict.tests[0].name").isNotEmpty());
+        assertEquals("a refused move leaves the stored domain alone", "CLINICAL", jdbc.queryForObject(
+                "SELECT domain FROM clinlims.panel WHERE id = ?", String.class, Long.parseLong(panelAId)));
+
+        // the editor sends every field on each save: a rename that travels with a
+        // refused domain change must not be written either (it used to reach the
+        // display localization before the guard refused)
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(
+                        "{\"name\":\"PanelsIT Moved\",\"description\":\"moved\",\"domain\":\"ENVIRONMENTAL\",\"active\":false}")
+                .session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                        .isUnprocessableEntity())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.refusal")
+                        .value("domain.conflict"));
+        assertEquals("PanelsITAlpha", jdbc.queryForObject("SELECT name FROM clinlims.panel WHERE id = ?", String.class,
+                Long.parseLong(panelAId)));
+        assertEquals("PanelsITAlpha",
+                jdbc.queryForObject("SELECT lv.value FROM clinlims.localization_value lv"
+                        + " JOIN clinlims.panel p ON p.name_localization_id = lv.localization_id"
+                        + " WHERE p.id = ? AND lv.locale = 'en'", String.class, Long.parseLong(panelAId)));
+        assertEquals("PanelsITAlpha", jdbc.queryForObject("SELECT description FROM clinlims.panel WHERE id = ?",
+                String.class, Long.parseLong(panelAId)));
 
         // the members' own domain is always acceptable
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -707,6 +766,122 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.domain")
                         .value("CLINICAL"));
+    }
+
+    /**
+     * OGC-1232 — every Basic Info refusal names its rule, and a name the panel
+     * already carries is never one: a panel created elsewhere with a name longer
+     * than the editor's 20-character limit stays editable, while an actual rename
+     * to such a name is refused with the reason and writes nothing.
+     */
+    @org.junit.Test
+    public void savePanelBasicInfo_namesEveryRefusal_andKeepsLongExistingNamesEditable() throws Exception {
+        long longNamedId = 95455L;
+        String longName = "PanelsITLongName12345";
+        assertEquals(21, longName.length());
+        seedPanel(longNamedId, longName);
+        String longNamedPanel = String.valueOf(longNamedId);
+        try {
+            // unchanged 21-character name + a domain change on a zero-member panel → 200
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + longNamedPanel + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"" + longName + "\",\"description\":\"" + longName
+                            + "\",\"domain\":\"VECTOR\",\"active\":false}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.domain")
+                            .value("VECTOR"));
+            assertEquals("VECTOR",
+                    jdbc.queryForObject("SELECT domain FROM clinlims.panel WHERE id = ?", String.class, longNamedId));
+
+            // an actual rename to 21 characters is refused, by name, and writes nothing
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"PanelsITAlphaRenamed1\",\"description\":\"kept\"}").session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                            .isUnprocessableEntity())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.refusal")
+                            .value("name.tooLong"));
+            assertEquals("PanelsITAlpha", jdbc.queryForObject("SELECT name FROM clinlims.panel WHERE id = ?",
+                    String.class, Long.parseLong(panelAId)));
+            assertEquals("PanelsITAlpha", jdbc.queryForObject("SELECT description FROM clinlims.panel WHERE id = ?",
+                    String.class, Long.parseLong(panelAId)));
+
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"name\":\"  \"}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                            .isUnprocessableEntity())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.refusal")
+                            .value("name.required"));
+
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content("{\"description\":\"" + "d".repeat(61) + "\"}").session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                            .isUnprocessableEntity())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.refusal")
+                            .value("description.tooLong"));
+
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"domain\":\"MARINE\"}")
+                    .session(authedSession()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                            .isUnprocessableEntity())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.refusal")
+                            .value("domain.unknown"));
+        } finally {
+            java.util.List<Long> localizationIds = jdbc.queryForList(
+                    "SELECT name_localization_id FROM clinlims.panel WHERE id = ?", Long.class, longNamedId);
+            jdbc.update("DELETE FROM clinlims.panel WHERE id = ?", longNamedId);
+            for (Long localizationId : localizationIds) {
+                jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id = ?", localizationId);
+                jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", localizationId);
+            }
+            refreshPanelLists();
+        }
+    }
+
+    /**
+     * OGC-1234: a description may repeat another panel's (it used to fail the save
+     * with a blank 500), while a rename onto another panel's name, in any letter
+     * case, is refused as name.duplicate and writes nothing, the display
+     * localization included.
+     */
+    @org.junit.Test
+    public void savePanelBasicInfo_sharedDescriptionSaves_andRenameOntoAnotherPanelsNameIsRefused() throws Exception {
+        long panelA = Long.parseLong(panelAId);
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"PanelsITAlpha\",\"description\":\"PanelsITBeta\"}").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.description")
+                        .value("PanelsITBeta"));
+        assertEquals("PanelsITBeta",
+                jdbc.queryForObject("SELECT description FROM clinlims.panel WHERE id = ?", String.class, panelA));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"panelsitbeta\",\"description\":\"changed\"}").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                        .isUnprocessableEntity())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.refusal")
+                        .value("name.duplicate"));
+        assertEquals("PanelsITAlpha",
+                jdbc.queryForObject("SELECT name FROM clinlims.panel WHERE id = ?", String.class, panelA));
+        assertEquals("PanelsITBeta",
+                jdbc.queryForObject("SELECT description FROM clinlims.panel WHERE id = ?", String.class, panelA));
+        assertEquals("PanelsITAlpha",
+                jdbc.queryForObject("SELECT lv.value FROM clinlims.localization_value lv"
+                        + " JOIN clinlims.panel p ON p.name_localization_id = lv.localization_id"
+                        + " WHERE p.id = ? AND lv.locale = 'en'", String.class, panelA));
     }
 
     /**
@@ -772,11 +947,13 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
             assertEquals("24331-1", jdbc.queryForObject("SELECT loinc FROM clinlims.panel WHERE id = ?", String.class,
                     Long.parseLong(panelId)));
 
-            // validation: unknown source and in-request duplicates are 422s
+            // validation: a source longer than its column and in-request duplicates are
+            // 422s
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                     .put("/rest/test-catalog/panels/" + panelId + "/terminology")
                     .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                    .content("{\"mappings\":[{\"source\":\"BOGUS\",\"code\":\"1\"}]}").session(authedSession()))
+                    .content("{\"mappings\":[{\"source\":\"ABCDEFGHIJKLMNOPQRSTU\",\"code\":\"1\"}]}")
+                    .session(authedSession()))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
                             .isUnprocessableEntity());
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -862,5 +1039,213 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                 }
             }
         }
+    }
+
+    /**
+     * Renaming a panel on Basic Info changes its English name only; the French
+     * name, set on Localization, is kept. It used to be overwritten with the
+     * English one.
+     */
+    @Test
+    public void renamingAPanelKeepsItsFrenchName() {
+        org.springframework.test.util.ReflectionTestUtils.setField(controller, "localizationService",
+                localizationService);
+        jdbc.update(
+                "UPDATE clinlims.localization_value SET value = 'PanelsITAlpha FR' WHERE locale = 'fr'"
+                        + " AND localization_id = (SELECT name_localization_id FROM clinlims.panel WHERE id = ?)",
+                PANEL_A_ID);
+
+        TestCatalogEditorRestController.PanelBasicInfoRequest body = new TestCatalogEditorRestController.PanelBasicInfoRequest();
+        body.name = "PanelsITAlphaRenamed";
+        assertEquals(200, controller.savePanelBasicInfo(panelAId, body, authedRequest()).getStatusCode().value());
+
+        assertEquals("PanelsITAlphaRenamed", panelName(PANEL_A_ID, "en"));
+        assertEquals("PanelsITAlpha FR", panelName(PANEL_A_ID, "fr"));
+    }
+
+    private String panelName(long panelId, String locale) {
+        return jdbc.queryForObject(
+                "SELECT lv.value FROM clinlims.panel p JOIN clinlims.localization_value lv"
+                        + " ON lv.localization_id = p.name_localization_id WHERE p.id = ? AND lv.locale = ?",
+                String.class, panelId, locale);
+    }
+
+    private org.springframework.test.web.servlet.MvcResult send(String method, String url, String body)
+            throws Exception {
+        return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .request(org.springframework.http.HttpMethod.valueOf(method), url)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(body)
+                .session(authedSession())).andReturn();
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode json(org.springframework.test.web.servlet.MvcResult result)
+            throws Exception {
+        String content = result.getResponse().getContentAsString();
+        return new com.fasterxml.jackson.databind.ObjectMapper().readTree(content.isEmpty() ? "{}" : content);
+    }
+
+    private String testsBody(String... testIds) {
+        StringBuilder body = new StringBuilder("{\"tests\":[");
+        for (int i = 0; i < testIds.length; i++) {
+            body.append(i == 0 ? "" : ",").append("{\"testId\":\"").append(testIds[i]).append("\",\"position\":")
+                    .append(i + 1).append("}");
+        }
+        return body.append("]}").toString();
+    }
+
+    /** OGC-1456: an active panel never ends up with zero tests. */
+    @org.junit.Test
+    public void savePanelTests_refusesToEmptyAnActivePanel() throws Exception {
+        String url = "/rest/test-catalog/panels/" + panelAId + "/tests";
+        assertEquals(200, send("PUT", url, testsBody(testId())).getResponse().getStatus());
+
+        org.springframework.test.web.servlet.MvcResult refused = send("PUT", url, "{\"tests\":[]}");
+
+        assertEquals(422, refused.getResponse().getStatus());
+        assertEquals("tests.activeNeedsTest", json(refused).path("refusal").asText());
+        assertEquals(Long.valueOf(1L), membershipRowCount(panelAId));
+    }
+
+    @org.junit.Test
+    public void savePanelTests_emptiesAnInactivePanel() throws Exception {
+        String url = "/rest/test-catalog/panels/" + panelAId + "/tests";
+        assertEquals(200, send("PUT", url, testsBody(testId())).getResponse().getStatus());
+        jdbc.update("UPDATE clinlims.panel SET is_active = 'N' WHERE id = ?", PANEL_A_ID);
+
+        assertEquals(200, send("PUT", url, "{\"tests\":[]}").getResponse().getStatus());
+        assertEquals(Long.valueOf(0L), membershipRowCount(panelAId));
+    }
+
+    /**
+     * OGC-1456: the picker hides inactive tests and the server agrees; a member
+     * that was deactivated after it joined stays and does not block the save.
+     */
+    @org.junit.Test
+    public void savePanelTests_refusesToAddAnInactiveTest_butKeepsAnInactiveMember() throws Exception {
+        String url = "/rest/test-catalog/panels/" + panelAId + "/tests";
+        jdbc.update("UPDATE clinlims.test SET is_active = 'N' WHERE id = ?", TEST_ID);
+
+        org.springframework.test.web.servlet.MvcResult refused = send("PUT", url, testsBody(testId()));
+        assertEquals(422, refused.getResponse().getStatus());
+        assertEquals("tests.inactive", json(refused).path("refusal").asText());
+        assertEquals(testId(), json(refused).path("refusedTests").path(0).path("testId").asText());
+        assertEquals(Long.valueOf(0L), membershipRowCount(panelAId));
+
+        jdbc.update("UPDATE clinlims.test SET is_active = 'Y' WHERE id = ?", TEST_ID);
+        assertEquals(200, send("PUT", url, testsBody(testId())).getResponse().getStatus());
+        jdbc.update("UPDATE clinlims.test SET is_active = 'N' WHERE id = ?", TEST_ID);
+        assertEquals(200, send("PUT", url, testsBody(testId())).getResponse().getStatus());
+        assertEquals(Long.valueOf(1L), membershipRowCount(panelAId));
+    }
+
+    @org.junit.Test
+    public void savePanelTests_refusesMalformedMembersWithoutA500() throws Exception {
+        String url = "/rest/test-catalog/panels/" + panelAId + "/tests";
+
+        assertEquals(422, send("PUT", url, testsBody("abc")).getResponse().getStatus());
+        assertEquals(400, send("PUT", url, "{\"tests\":null}").getResponse().getStatus());
+        assertEquals(400, send("PUT", url, "{\"tests\":[null]}").getResponse().getStatus());
+        assertEquals(Long.valueOf(0L), membershipRowCount(panelAId));
+    }
+
+    /** OGC-1456: the test-side Panels write cannot empty an active panel either. */
+    @org.junit.Test
+    public void saveTestPanels_refusesToTakeTheLastTestOutOfAnActivePanel() throws Exception {
+        String url = "/rest/test-catalog/tests/" + testId() + "/panels";
+        assertEquals(200, send("PUT", url, "{\"memberships\":[{\"panelId\":\"" + panelAId + "\",\"position\":1}]}")
+                .getResponse().getStatus());
+
+        org.springframework.test.web.servlet.MvcResult refused = send("PUT", url, "{\"memberships\":[]}");
+
+        assertEquals(422, refused.getResponse().getStatus());
+        assertEquals("panel.activeNeedsTest", json(refused).path("refusal").asText());
+        assertEquals("PanelsITAlpha", json(refused).path("refusedPanels").path(0).path("panelName").asText());
+        assertEquals(Long.valueOf(1L), membershipRowCount(panelAId));
+    }
+
+    /** OGC-1456: a create obeys the same 20-character limit as a rename. */
+    @org.junit.Test
+    public void createPanel_refusesANameOverTwentyCharacters() throws Exception {
+        String name = "PanelsIT21CharsLong!x";
+        assertEquals(21, name.length());
+
+        org.springframework.test.web.servlet.MvcResult refused = send("POST", "/rest/test-catalog/panels",
+                "{\"name\":\"" + name + "\",\"active\":false}");
+
+        assertEquals(422, refused.getResponse().getStatus());
+        assertEquals("name.tooLong", json(refused).path("refusal").asText());
+        assertEquals(Integer.valueOf(0),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.panel WHERE name = ?", Integer.class, name));
+    }
+
+    /**
+     * OGC-1456: a code that does not fit is refused by name, and a LOINC longer
+     * than a LOINC can be leaves the panel's routing LOINC and mappings alone.
+     */
+    @org.junit.Test
+    public void panelTerminology_refusesCodesThatDoNotFit_andChangesNothing() throws Exception {
+        String url = "/rest/test-catalog/panels/" + panelAId + "/terminology";
+        assertEquals(200, send("PUT", url,
+                "{\"mappings\":[{\"source\":\"LOINC\",\"code\":\"24331-1\"," + "\"relationship\":\"SAME_AS\"}]}")
+                .getResponse().getStatus());
+
+        org.springframework.test.web.servlet.MvcResult longLoinc = send("PUT", url,
+                "{\"mappings\":[{\"source\":\"LOINC\",\"code\":\"12345678-90\",\"relationship\":\"SAME_AS\"}]}");
+        assertEquals(422, longLoinc.getResponse().getStatus());
+        assertEquals("loinc.tooLong", json(longLoinc).path("refusal").asText());
+        assertEquals("12345678-90", json(longLoinc).path("refusedCode").asText());
+
+        String longCode = "W".repeat(81);
+        org.springframework.test.web.servlet.MvcResult tooLong = send("PUT", url,
+                "{\"mappings\":[{\"source\":\"WHONET\",\"code\":\"" + longCode + "\"}]}");
+        assertEquals(422, tooLong.getResponse().getStatus());
+        assertEquals("code.tooLong", json(tooLong).path("refusal").asText());
+
+        assertEquals("24331-1",
+                jdbc.queryForObject("SELECT loinc FROM clinlims.panel WHERE id = ?", String.class, PANEL_A_ID));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.panel_terminology_mapping WHERE panel_id = ? AND is_active = 'Y'",
+                Integer.class, PANEL_A_ID));
+    }
+
+    /**
+     * OGC-1456 review: a save that leaves its list out is refused, never read as an
+     * empty list that clears what is stored.
+     */
+    @org.junit.Test
+    public void saves_thatLeaveTheirListOutAreRefused() throws Exception {
+        String members = "/rest/test-catalog/panels/" + panelAId + "/tests";
+        assertEquals(200, send("PUT", members, testsBody(testId())).getResponse().getStatus());
+
+        assertEquals(400, send("PUT", members, "{}").getResponse().getStatus());
+        assertEquals(400,
+                send("PUT", "/rest/test-catalog/tests/" + testId() + "/panels", "{}").getResponse().getStatus());
+        assertEquals(400,
+                send("PUT", "/rest/test-catalog/panels/" + panelAId + "/terminology", "{}").getResponse().getStatus());
+        assertEquals("the member stays", Long.valueOf(1L), membershipRowCount(panelAId));
+    }
+
+    /**
+     * OGC-1463: a member list saved from a page loaded before another editor's
+     * save.
+     */
+    @org.junit.Test
+    public void savePanelTests_fromAnOldPageIsRefusedAsStale() throws Exception {
+        String url = "/rest/test-catalog/panels/" + panelAId + "/tests";
+        String loadedVersion = json(send("GET", "/rest/test-catalog/panels/" + panelAId + "/test-order", ""))
+                .path("version").asText();
+        assertEquals(200, send("PUT", url, testsBody(testId())).getResponse().getStatus());
+
+        org.springframework.test.web.servlet.MvcResult stale = send("PUT", url,
+                "{\"tests\":[],\"version\":\"" + loadedVersion + "\"}");
+
+        assertEquals(409, stale.getResponse().getStatus());
+        assertEquals("stale", json(stale).path("conflict").asText());
+        assertEquals("the other editor's member stands", Long.valueOf(1L), membershipRowCount(panelAId));
+        String current = json(send("GET", "/rest/test-catalog/panels/" + panelAId + "/test-order", "")).path("version")
+                .asText();
+        assertEquals(200, send("PUT", url,
+                "{\"tests\":[{\"testId\":\"" + testId() + "\",\"position\":1}],\"version\":\"" + current + "\"}")
+                .getResponse().getStatus());
     }
 }

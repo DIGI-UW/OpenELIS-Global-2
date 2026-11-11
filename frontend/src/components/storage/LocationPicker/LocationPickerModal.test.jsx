@@ -3,7 +3,7 @@
  *
  * Title flips based on `currentLocation`:
  *   null/undefined → "Assign Storage Location"
- *   present        → "Move Sample"
+ *   present        → "Move Item"
  *
  * onConfirm payload: { selection, position, reason, notes }.
  */
@@ -53,10 +53,9 @@ const renderWithIntl = (component) =>
     </IntlProvider>,
   );
 
-const mockSample = {
-  id: "42",
-  sampleAccessionNumber: "DEV0126-001",
-  sampleType: "Whole Blood",
+const mockOccupant = {
+  label: "DEV0126-001",
+  type: "Whole Blood",
   status: "Active",
 };
 
@@ -71,7 +70,8 @@ describe("LocationPickerModal", () => {
     const { container } = renderWithIntl(
       <LocationPickerModal
         isOpen={false}
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -84,7 +84,8 @@ describe("LocationPickerModal", () => {
     renderWithIntl(
       <LocationPickerModal
         isOpen
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -92,11 +93,12 @@ describe("LocationPickerModal", () => {
     expect(screen.getByText(/assign storage location/i)).toBeInTheDocument();
   });
 
-  it("shows 'Move Sample' title when currentLocation is present", () => {
+  it("shows 'Move Item' title when currentLocation is present", () => {
     renderWithIntl(
       <LocationPickerModal
         isOpen
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         currentLocation={{
           selection: { room: { id: 1, name: "Main Lab" } },
           position: null,
@@ -105,14 +107,15 @@ describe("LocationPickerModal", () => {
         onCancel={vi.fn()}
       />,
     );
-    expect(screen.getByText(/move sample/i)).toBeInTheDocument();
+    expect(screen.getByText(/move item/i)).toBeInTheDocument();
   });
 
-  it("renders the sample info (accession, type, status)", () => {
+  it("renders the occupant info (identifier, type, status)", () => {
     renderWithIntl(
       <LocationPickerModal
         isOpen
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -126,7 +129,8 @@ describe("LocationPickerModal", () => {
     const { rerender } = renderWithIntl(
       <LocationPickerModal
         isOpen
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,
@@ -137,7 +141,8 @@ describe("LocationPickerModal", () => {
       <IntlProvider locale="en" messages={{}}>
         <LocationPickerModal
           isOpen
-          sample={mockSample}
+          occupant={mockOccupant}
+          occupantType="SAMPLE_ITEM"
           currentLocation={{
             selection: { room: { id: 1, name: "Main Lab" } },
             position: null,
@@ -156,7 +161,8 @@ describe("LocationPickerModal", () => {
     renderWithIntl(
       <LocationPickerModal
         isOpen
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         onCancel={onCancel}
         onConfirm={onConfirm}
       />,
@@ -171,7 +177,8 @@ describe("LocationPickerModal", () => {
       <IntlProvider locale="en" messages={{}}>
         <LocationPickerModal
           isOpen={isOpen}
-          sample={mockSample}
+          occupant={mockOccupant}
+          occupantType="SAMPLE_ITEM"
           currentLocation={currentLocation}
           onConfirm={vi.fn()}
           onCancel={vi.fn()}
@@ -188,10 +195,6 @@ describe("LocationPickerModal", () => {
       />,
     );
 
-    // Dirty the state: switch to create mode, type a reason + notes.
-    fireEvent.click(
-      screen.getByRole("button", { name: /create new location/i }),
-    );
     fireEvent.change(screen.getByLabelText(/reason for move/i), {
       target: { value: "freezer failure" },
     });
@@ -211,13 +214,73 @@ describe("LocationPickerModal", () => {
       />,
     );
 
-    // Mode is back to search (the create-mode trigger is visible again).
-    expect(
-      screen.getByRole("button", { name: /create new location/i }),
-    ).toBeInTheDocument();
     // Reason and notes are empty.
     expect(screen.getByLabelText(/reason for move/i)).toHaveValue("");
     expect(screen.getByLabelText(/^notes$/i)).toHaveValue("");
+  });
+
+  it("fills in the ancestors and enables deeper levels when a shelf is picked from search", async () => {
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.startsWith("/rest/storage/locations/search")) {
+        cb([
+          {
+            id: 9,
+            type: "shelf",
+            label: "Shelf A",
+            hierarchicalPath: "Main Lab > Freezer 1 > Shelf A",
+            parentDeviceId: 5,
+            parentDeviceName: "Freezer 1",
+            parentRoomId: 1,
+            parentRoomName: "Main Lab",
+          },
+        ]);
+      } else if (url.startsWith("/rest/storage/racks")) {
+        cb([{ id: 12, label: "Rack 3" }]);
+      } else {
+        cb([]);
+      }
+    });
+    renderWithIntl(
+      <LocationPickerModal
+        isOpen
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    const rackField = () =>
+      document
+        .querySelector("#location-picker-rack")
+        .querySelector("button.cds--list-box__field");
+    expect(rackField()).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/search for a storage location/i), {
+      target: { value: "shelf a" },
+    });
+    fireEvent.click(
+      await screen.findByRole("option", {
+        name: "Main Lab > Freezer 1 > Shelf A",
+      }),
+    );
+
+    expect(
+      document.querySelector(".storage-location-picker-modal-summary"),
+    ).toHaveTextContent("Main Lab > Freezer 1 > Shelf A");
+    expect(
+      document
+        .querySelector("#location-picker-room")
+        .querySelector(".cds--list-box__label"),
+    ).toHaveTextContent("Main Lab");
+    expect(
+      document
+        .querySelector("#location-picker-device")
+        .querySelector(".cds--list-box__label"),
+    ).toHaveTextContent("Freezer 1");
+    expect(rackField()).toBeEnabled();
+    fireEvent.click(rackField());
+    expect(screen.getByRole("option", { name: "Rack 3" })).toBeInTheDocument();
   });
 
   it("Confirm button passes the picker payload to onConfirm", () => {
@@ -230,14 +293,11 @@ describe("LocationPickerModal", () => {
     renderWithIntl(
       <LocationPickerModal
         isOpen
-        sample={mockSample}
+        occupant={mockOccupant}
+        occupantType="SAMPLE_ITEM"
         onConfirm={onConfirm}
         onCancel={vi.fn()}
       />,
-    );
-    // Pick a room via create-mode cascade
-    fireEvent.click(
-      screen.getByRole("button", { name: /create new location/i }),
     );
     const roomTrigger = document
       .querySelector("#location-picker-room")

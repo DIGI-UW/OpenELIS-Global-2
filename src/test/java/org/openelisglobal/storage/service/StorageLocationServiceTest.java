@@ -14,10 +14,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
-import org.openelisglobal.storage.dao.StorageDeviceDAO;
-import org.openelisglobal.storage.dao.StorageRackDAO;
-import org.openelisglobal.storage.dao.StorageRoomDAO;
-import org.openelisglobal.storage.dao.StorageShelfDAO;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
@@ -30,16 +26,16 @@ import org.openelisglobal.storage.valueholder.StorageShelf;
 public class StorageLocationServiceTest {
 
     @Mock
-    private StorageRoomDAO storageRoomDAO;
+    private StorageRoomService storageRoomService;
 
     @Mock
-    private StorageDeviceDAO storageDeviceDAO;
+    private StorageDeviceService storageDeviceService;
 
     @Mock
-    private StorageShelfDAO storageShelfDAO;
+    private StorageShelfService storageShelfService;
 
     @Mock
-    private StorageRackDAO storageRackDAO;
+    private StorageRackService storageRackService;
 
     @Mock
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
@@ -54,8 +50,8 @@ public class StorageLocationServiceTest {
         room.setId(1);
         room.setName("Empty Room");
 
-        when(storageRoomDAO.get(1)).thenReturn(java.util.Optional.of(room));
-        when(storageDeviceDAO.findByParentRoomId(1)).thenReturn(Collections.emptyList());
+        when(storageRoomService.getRoom(1)).thenReturn(java.util.Optional.of(room));
+        when(storageDeviceService.findByParentRoomId(1)).thenReturn(Collections.emptyList());
 
         // Act
         DeletionValidationResult result = storageLocationService.canDeleteRoom(1);
@@ -77,8 +73,8 @@ public class StorageLocationServiceTest {
         StorageDevice device2 = new StorageDevice();
         device2.setId(11);
 
-        when(storageRoomDAO.get(1)).thenReturn(java.util.Optional.of(room));
-        when(storageDeviceDAO.findByParentRoomId(1)).thenReturn(Arrays.asList(device1, device2));
+        when(storageRoomService.getRoom(1)).thenReturn(java.util.Optional.of(room));
+        when(storageDeviceService.findByParentRoomId(1)).thenReturn(Arrays.asList(device1, device2));
 
         // Act
         DeletionValidationResult result = storageLocationService.canDeleteRoom(1);
@@ -98,8 +94,8 @@ public class StorageLocationServiceTest {
         device.setId(10);
         device.setName("Empty Device");
 
-        when(storageDeviceDAO.get(10)).thenReturn(java.util.Optional.of(device));
-        when(storageShelfDAO.findByParentDeviceId(10)).thenReturn(Collections.emptyList());
+        when(storageDeviceService.getDevice(10)).thenReturn(java.util.Optional.of(device));
+        when(storageShelfService.findByParentDeviceId(10)).thenReturn(Collections.emptyList());
 
         // Act
         DeletionValidationResult result = storageLocationService.canDeleteDevice(10);
@@ -123,8 +119,8 @@ public class StorageLocationServiceTest {
         StorageShelf shelf3 = new StorageShelf();
         shelf3.setId(22);
 
-        when(storageDeviceDAO.get(10)).thenReturn(java.util.Optional.of(device));
-        when(storageShelfDAO.findByParentDeviceId(10)).thenReturn(Arrays.asList(shelf1, shelf2, shelf3));
+        when(storageDeviceService.getDevice(10)).thenReturn(java.util.Optional.of(device));
+        when(storageShelfService.findByParentDeviceId(10)).thenReturn(Arrays.asList(shelf1, shelf2, shelf3));
 
         // Act
         DeletionValidationResult result = storageLocationService.canDeleteDevice(10);
@@ -144,8 +140,8 @@ public class StorageLocationServiceTest {
         shelf.setId(20);
         shelf.setLabel("Empty Shelf");
 
-        when(storageShelfDAO.get(20)).thenReturn(java.util.Optional.of(shelf));
-        when(storageRackDAO.findByParentShelfId(20)).thenReturn(Collections.emptyList());
+        when(storageShelfService.getShelf(20)).thenReturn(java.util.Optional.of(shelf));
+        when(storageRackService.findByParentShelfId(20)).thenReturn(Collections.emptyList());
 
         // Act
         DeletionValidationResult result = storageLocationService.canDeleteShelf(20);
@@ -165,8 +161,8 @@ public class StorageLocationServiceTest {
         StorageRack rack1 = new StorageRack();
         rack1.setId(30);
 
-        when(storageShelfDAO.get(20)).thenReturn(java.util.Optional.of(shelf));
-        when(storageRackDAO.findByParentShelfId(20)).thenReturn(Arrays.asList(rack1));
+        when(storageShelfService.getShelf(20)).thenReturn(java.util.Optional.of(shelf));
+        when(storageRackService.findByParentShelfId(20)).thenReturn(Arrays.asList(rack1));
 
         // Act
         DeletionValidationResult result = storageLocationService.canDeleteShelf(20);
@@ -186,7 +182,7 @@ public class StorageLocationServiceTest {
         rack.setId(30);
         rack.setLabel("Empty Rack");
 
-        when(storageRackDAO.get(30)).thenReturn(java.util.Optional.of(rack));
+        when(storageRackService.getRack(30)).thenReturn(java.util.Optional.of(rack));
         when(sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", 30)).thenReturn(0);
 
         // Act
@@ -204,7 +200,7 @@ public class StorageLocationServiceTest {
         rack.setId(30);
         rack.setLabel("Rack-01");
 
-        when(storageRackDAO.get(30)).thenReturn(java.util.Optional.of(rack));
+        when(storageRackService.getRack(30)).thenReturn(java.util.Optional.of(rack));
         when(sampleStorageAssignmentDAO.countByLocationTypeAndId("rack", 30)).thenReturn(15);
 
         // Act
@@ -243,7 +239,7 @@ public class StorageLocationServiceTest {
     public void testIsNameUniqueWithinParent_RoomDuplicate_ReturnsFalse() {
         StorageRoom existing = new StorageRoom();
         existing.setId(5);
-        when(storageRoomDAO.findByName("Main Lab")).thenReturn(existing);
+        when(storageRoomService.findByName("Main Lab")).thenReturn(existing);
 
         boolean unique = storageLocationService.isNameUniqueWithinParent("Main Lab", null, "room", null);
 
@@ -254,7 +250,7 @@ public class StorageLocationServiceTest {
     public void testIsNameUniqueWithinParent_DeviceDuplicate_ReturnsFalse() {
         StorageDevice existing = new StorageDevice();
         existing.setId(10);
-        when(storageDeviceDAO.findByNameAndParentRoomId("Freezer-01", 1)).thenReturn(existing);
+        when(storageDeviceService.findByNameAndParentRoomId("Freezer-01", 1)).thenReturn(existing);
 
         boolean unique = storageLocationService.isNameUniqueWithinParent("Freezer-01", 1, "device", null);
 
@@ -265,7 +261,7 @@ public class StorageLocationServiceTest {
     public void testIsNameUniqueWithinParent_ShelfDuplicate_ReturnsFalse() {
         StorageShelf existing = new StorageShelf();
         existing.setId(20);
-        when(storageShelfDAO.findByLabelAndParentDeviceId("Shelf-A", 2)).thenReturn(existing);
+        when(storageShelfService.findByLabelAndParentDeviceId("Shelf-A", 2)).thenReturn(existing);
 
         boolean unique = storageLocationService.isNameUniqueWithinParent("Shelf-A", 2, "shelf", null);
 
@@ -276,7 +272,7 @@ public class StorageLocationServiceTest {
     public void testIsNameUniqueWithinParent_RackDuplicate_ReturnsFalse() {
         StorageRack existing = new StorageRack();
         existing.setId(30);
-        when(storageRackDAO.findByLabelAndParentShelfId("Rack-01", 3)).thenReturn(existing);
+        when(storageRackService.findByLabelAndParentShelfId("Rack-01", 3)).thenReturn(existing);
 
         boolean unique = storageLocationService.isNameUniqueWithinParent("Rack-01", 3, "rack", null);
 
@@ -285,7 +281,7 @@ public class StorageLocationServiceTest {
 
     @Test
     public void testIsNameUniqueWithinParent_RoomUnique_WhenDaoReturnsNull() {
-        when(storageRoomDAO.findByName("New Lab")).thenReturn(null);
+        when(storageRoomService.findByName("New Lab")).thenReturn(null);
 
         boolean unique = storageLocationService.isNameUniqueWithinParent("New Lab", null, "room", null);
 
@@ -296,7 +292,7 @@ public class StorageLocationServiceTest {
     public void testIsNameUniqueWithinParent_DeviceUnique_WhenExcludeIdMatchesExisting() {
         StorageDevice existing = new StorageDevice();
         existing.setId(10);
-        when(storageDeviceDAO.findByNameAndParentRoomId("Freezer-02", 1)).thenReturn(existing);
+        when(storageDeviceService.findByNameAndParentRoomId("Freezer-02", 1)).thenReturn(existing);
 
         boolean unique = storageLocationService.isNameUniqueWithinParent("Freezer-02", 1, "device", 10);
 

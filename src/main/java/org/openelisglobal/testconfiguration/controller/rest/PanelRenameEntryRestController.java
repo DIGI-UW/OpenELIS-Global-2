@@ -12,6 +12,7 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.testconfiguration.form.PanelRenameEntryForm;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -62,13 +63,13 @@ public class PanelRenameEntryRestController extends BaseController {
     }
 
     @PostMapping(value = "/PanelRenameEntry")
-    public PanelRenameEntryForm updatePanelRenameEntry(HttpServletRequest request,
+    public ResponseEntity<?> updatePanelRenameEntry(HttpServletRequest request,
             @RequestBody @Valid PanelRenameEntryForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             form.setPanelList(DisplayListService.getInstance().getList(DisplayListService.ListType.PANELS));
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         String panelId = form.getPanelId();
@@ -79,7 +80,7 @@ public class PanelRenameEntryRestController extends BaseController {
         updatePanelNames(panelId, nameEnglish, nameFrench, userId);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private void updatePanelNames(String panelId, String nameEnglish, String nameFrench, String userId) {

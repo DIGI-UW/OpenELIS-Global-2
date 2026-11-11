@@ -3,6 +3,7 @@ package org.openelisglobal.patient.service;
 import jakarta.annotation.PostConstruct;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -578,6 +579,12 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
 
     @Override
     @Transactional(readOnly = true)
+    public List<Patient> getMergedPatientsIn(Collection<String> patientIds) {
+        return getBaseObjectDAO().getMergedPatientsIn(patientIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Patient getPatientByPerson(Person person) {
         return getBaseObjectDAO().getPatientByPerson(person);
     }
@@ -659,7 +666,17 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
         patientInfo.setPatientPK(patient.getId());
     }
 
+    /**
+     * Saves the emergency contact submitted with the patient. A new contact with no
+     * person is nothing to save: callers that do not carry contact details, such as
+     * the FHIR facade, leave the stored contact untouched that way.
+     */
     private void persistContact(PatientManagementInfo patientInfo, Patient patient) {
+        if (patientInfo.getPatientContact() == null
+                || (GenericValidator.isBlankOrNull(patientInfo.getPatientContact().getId())
+                        && patientInfo.getPatientContact().getPerson() == null)) {
+            return;
+        }
         if (GenericValidator.isBlankOrNull(patientInfo.getPatientContact().getId())) {
             PatientContact contact = patientInfo.getPatientContact();
             Person contactPerson = patientInfo.getPatientContact().getPerson();

@@ -6,6 +6,7 @@ import {
   RadioButtonGroup,
   RadioButton,
   TextArea,
+  TextInput,
   InlineNotification,
   InlineLoading,
 } from "@carbon/react";
@@ -14,7 +15,7 @@ import { useIntl, FormattedMessage } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
-import { Roles } from "../../../utils/Utils";
+import { Roles, postToOpenElisServerJsonResponse } from "../../../utils/Utils";
 import {
   ANSWER,
   getSampleItemEvaluation,
@@ -103,6 +104,8 @@ const SampleAcceptanceChecklist = ({
   // are terminal (no resample / re-collection).
   const poolMode = !!vectorPoolId;
   const isVector = domain === "VECTOR";
+  const isEqa = evaluation?.eqa === true;
+  const rejectsOnly = isVector || isEqa;
 
   const seedAnswers = useCallback((latest) => {
     const seeded = {};
@@ -168,6 +171,38 @@ const SampleAcceptanceChecklist = ({
   const canResample = (userSessionDetails?.roles || []).some((r) =>
     [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN].includes(r),
   );
+
+  // AB: under ADVISORY enforcement a user could simply carry on past a failed
+  // check and nothing was kept — no reason, no user, no timestamp. Continuing
+  // is still allowed, but it is now a decision the order remembers. This is
+  // also what a role without resample/reject rights does with a failed
+  // sample: rejecting voids a specimen and creates a replacement, so that
+  // stays authorised, while recording a decision to proceed does not.
+  const [showContinueWithTesting, setShowContinueWithTesting] = useState(false);
+  const [continueReason, setContinueReason] = useState("");
+  const [continueSaving, setContinueSaving] = useState(false);
+  const canContinueWithTesting =
+    enforcement !== "MANDATORY" && status === STATUS.REVIEW;
+
+  const handleContinueWithTesting = () => {
+    if (!labNumber || !continueReason.trim()) {
+      return;
+    }
+    setContinueSaving(true);
+    postToOpenElisServerJsonResponse(
+      `/rest/order-override/${encodeURIComponent(labNumber)}`,
+      JSON.stringify({
+        overrideType: "CONTINUE_WITH_TESTING",
+        reasonCode: "MANUAL",
+        reason: continueReason.trim(),
+      }),
+      () => {
+        setContinueSaving(false);
+        setShowContinueWithTesting(false);
+        setContinueReason("");
+      },
+    );
+  };
 
   // ---- handlers ------------------------------------------------------------
 
@@ -239,6 +274,7 @@ const SampleAcceptanceChecklist = ({
     notify(NotificationKinds.success, "sampleAcceptance.resample.success", {
       accession: result?.newAccessionNumber || "",
     });
+    onRejected?.();
     load();
   };
 
@@ -322,6 +358,8 @@ const SampleAcceptanceChecklist = ({
 
   const resampledToSampleId = evaluation?.resample?.resampledToSampleId;
   const resampledFromSampleId = evaluation?.resample?.resampledFromSampleId;
+  const resampledToAccession = evaluation?.resample?.resampledToAccession;
+  const resampledFromAccession = evaluation?.resample?.resampledFromAccession;
 
   return (
     <Tile className="sac-tile">
@@ -341,6 +379,8 @@ const SampleAcceptanceChecklist = ({
                   id="sampleAcceptance.qa.subtitle.rejectedVector"
                   defaultMessage="This catch was rejected — read-only."
                 />
+              ) : isEqa ? (
+                <FormattedMessage id="sampleAcceptance.qa.subtitle.rejectedEqa" />
               ) : (
                 <FormattedMessage
                   id="sampleAcceptance.qa.subtitle.rejected"
@@ -378,7 +418,12 @@ const SampleAcceptanceChecklist = ({
               defaultMessage:
                 "This sample was rejected and resampled. Replacement order: {accession}.",
             },
-            { accession: newAccession || `#${resampledToSampleId}` },
+            {
+              accession:
+                newAccession ||
+                resampledToAccession ||
+                `#${resampledToSampleId}`,
+            },
           )}
         />
       )}
@@ -392,12 +437,18 @@ const SampleAcceptanceChecklist = ({
             defaultMessage: "Replacement sample",
           })}
           subtitle={intl.formatMessage(
-            {
-              id: "sampleAcceptance.banner.resampledFrom",
-              defaultMessage:
-                "This is a replacement created by a resample of sample #{id}.",
-            },
-            { id: resampledFromSampleId },
+            resampledFromAccession
+              ? {
+                  id: "sampleAcceptance.banner.resampledFrom.accession",
+                  defaultMessage:
+                    "This is a replacement created by a resample of sample {accession}.",
+                }
+              : {
+                  id: "sampleAcceptance.banner.resampledFrom",
+                  defaultMessage:
+                    "This is a replacement created by a resample of sample #{id}.",
+                },
+            { accession: resampledFromAccession, id: resampledFromSampleId },
           )}
         />
       )}
@@ -533,9 +584,9 @@ const SampleAcceptanceChecklist = ({
           hideCloseButton
           title=""
           subtitle={intl.formatMessage({
-            id: "sampleAcceptance.qa.failHint",
-            defaultMessage:
-              "This sample has failed checks — report an NCE or resample instead of accepting.",
+            id: rejectsOnly
+              ? "sampleAcceptance.qa.failHint.reject"
+              : "sampleAcceptance.qa.failHint",
           })}
         />
       )}
@@ -562,7 +613,7 @@ const SampleAcceptanceChecklist = ({
               defaultMessage="Report NCE"
             />
           </Button>
-          {canResample && !isVector && (
+          {canResample && !rejectsOnly && (
             <Button
               kind="tertiary"
               renderIcon={Renew}
@@ -574,7 +625,7 @@ const SampleAcceptanceChecklist = ({
               />
             </Button>
           )}
-          {canResample && isVector && (
+          {canResample && rejectsOnly && (
             <Button
               kind="danger--tertiary"
               renderIcon={Close}
@@ -586,12 +637,50 @@ const SampleAcceptanceChecklist = ({
               />
             </Button>
           )}
+          {canContinueWithTesting && (
+            <Button
+              kind="tertiary"
+              onClick={() => setShowContinueWithTesting((v) => !v)}
+            >
+              <FormattedMessage
+                id="sampleAcceptance.qa.button.continueWithTesting"
+                defaultMessage="Continue with testing"
+              />
+            </Button>
+          )}
+        </div>
+      )}
+
+      {showContinueWithTesting && (
+        <div className="sac-continue-with-testing">
+          <TextInput
+            id="continueWithTestingReason"
+            labelText={intl.formatMessage({
+              id: "sampleAcceptance.qa.continueWithTesting.reason",
+              defaultMessage:
+                "Why is this sample being tested despite the failed check?",
+            })}
+            value={continueReason}
+            onChange={(e) => setContinueReason(e.target.value)}
+          />
+          <Button
+            kind="primary"
+            size="sm"
+            disabled={!continueReason.trim() || continueSaving}
+            onClick={handleContinueWithTesting}
+          >
+            <FormattedMessage
+              id="sampleAcceptance.qa.continueWithTesting.record"
+              defaultMessage="Record and continue"
+            />
+          </Button>
         </div>
       )}
 
       {showNce && (
         <InlineNceForm
           accessionNumber={labNumber}
+          sampleItemId={sampleItemId}
           initialDescription={buildFailureReason()}
           onClose={() => setShowNce(false)}
           onSubmitSuccess={() => setShowNce(false)}
@@ -614,6 +703,7 @@ const SampleAcceptanceChecklist = ({
           sampleItemId={sampleItemId}
           labNumber={labNumber}
           initialReason={buildFailureReason()}
+          eqa={isEqa}
           onClose={() => setShowReject(false)}
           onSuccess={handleRejectSuccess}
         />

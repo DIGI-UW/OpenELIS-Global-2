@@ -13,5 +13,7 @@ public interface FreezerDAO extends BaseDAO<Freezer, Long> {
 
     List<Freezer> getAllFreezers();
 
+    List<Freezer> getAllFreezersIncludingDeleted();
+
     List<Freezer> searchFreezers(String search);
 }

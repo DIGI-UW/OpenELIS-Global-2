@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.5.0-090-alert-acknowledgment-notes" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <and>
+        <tableExists schemaName="clinlims" tableName="alert"/>
+        <not>
+          <columnExists tableName="alert" columnName="acknowledgment_notes" schemaName="clinlims"/>
+        </not>
+      </and>
+    </preConditions>
+    <comment>Give acknowledgment its own notes column. The alert detail modal has always offered a notes field on an
+      OPEN alert and sent it to /acknowledge, where it was read by nobody and dropped, while the same field on a
+      RESOLVED alert was persisted as resolution_notes.</comment>
+    <addColumn tableName="alert" schemaName="clinlims">
+      <column name="acknowledgment_notes" type="TEXT"/>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

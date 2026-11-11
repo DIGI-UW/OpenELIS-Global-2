@@ -48,4 +48,19 @@ public class NCEventDAOImpl extends BaseDAOImpl<NcEvent, Integer> implements NCE
             return null;
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NcEvent findByTriggerSource(String triggerSourceType, String triggerSourceId) {
+        try {
+            String sql = "from NcEvent where triggerSourceType = :type and triggerSourceId = :id";
+            Query<NcEvent> query = entityManager.unwrap(Session.class).createQuery(sql, NcEvent.class);
+            query.setParameter("type", triggerSourceType);
+            query.setParameter("id", triggerSourceId);
+            return query.uniqueResult();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in NCEventDAO findByTriggerSource()", e);
+        }
+    }
 }

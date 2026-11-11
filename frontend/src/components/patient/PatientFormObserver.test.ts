@@ -114,3 +114,73 @@ describe("mergePatientIntoOrderFormValues", () => {
     expect(result.patientProperties.patientUpdateStatus).toBe("UPDATE");
   });
 });
+
+describe("the patient the order already holds", () => {
+  const orderWithSavedPatient = {
+    sampleOrderItems: { labNo: "DEV01260000000000552" },
+    patientUpdateStatus: "NO_ACTION",
+    patientProperties: {
+      patientPK: "115",
+      firstName: "Nia",
+      lastName: "Qadup",
+      nationalId: "QA1407N1",
+      patientUpdateStatus: "NO_ACTION",
+    },
+  };
+
+  it("is kept when a form without a patient id asks to add the patient", () => {
+    const result = mergePatientIntoOrderFormValues(
+      orderWithSavedPatient,
+      {
+        firstName: "Nia",
+        lastName: "Qadup",
+        nationalId: "QA1407N1",
+        primaryPhone: "0788123456",
+      },
+      "ADD",
+    );
+
+    expect(result.patientProperties.patientPK).toBe("115");
+    expect(result.patientProperties.patientUpdateStatus).toBe("UPDATE");
+    expect(result.patientUpdateStatus).toBe("UPDATE");
+    expect(result.patientProperties.primaryPhone).toBe("0788123456");
+  });
+
+  it("is kept with the status the form derived when it is not an add", () => {
+    const result = mergePatientIntoOrderFormValues(
+      orderWithSavedPatient,
+      { firstName: "Nia", lastName: "Qadup", nationalId: "QA1407N1" },
+      "NO_ACTION",
+    );
+
+    expect(result.patientProperties.patientPK).toBe("115");
+    expect(result.patientProperties.patientUpdateStatus).toBe("NO_ACTION");
+  });
+
+  it("gives way to a form for another patient", () => {
+    const result = mergePatientIntoOrderFormValues(
+      orderWithSavedPatient,
+      { patientPK: "7", firstName: "Mary", lastName: "Kila" },
+      "NO_ACTION",
+    );
+
+    expect(result.patientProperties.patientPK).toBe("7");
+    expect(result.patientProperties.firstName).toBe("Mary");
+  });
+
+  it("does not exist for an order whose patient was cleared, so a new one is added", () => {
+    const result = mergePatientIntoOrderFormValues(
+      {
+        ...orderWithSavedPatient,
+        patientUpdateStatus: "",
+        patientProperties: { patientPK: "", firstName: "", lastName: "" },
+      },
+      { firstName: "Mary", lastName: "Kila", nationalId: "NID-2" },
+      "ADD",
+    );
+
+    expect(result.patientProperties.patientPK).toBeUndefined();
+    expect(result.patientProperties.patientUpdateStatus).toBe("ADD");
+    expect(result.patientUpdateStatus).toBe("ADD");
+  });
+});

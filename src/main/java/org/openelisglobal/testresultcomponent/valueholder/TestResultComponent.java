@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
@@ -52,8 +53,16 @@ public class TestResultComponent extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String uomId;
 
-    @Column(name = "significant_digits", precision = 10, scale = 0)
-    private Integer significantDigits;
+    @Column(name = "reporting_decimal_places", precision = 10, scale = 0)
+    private Integer reportingDecimalPlaces;
+
+    @Column(name = "display_log10", nullable = false)
+    private boolean displayLog10 = false;
+
+    // Explicit report-only association within this test; never infer a log field
+    // from its label, terminology code, or unit.
+    @Column(name = "log10_source_component_code", length = 50)
+    private String log10SourceComponentCode;
 
     @Column(name = "default_result", length = 80)
     private String defaultResult;
@@ -72,8 +81,38 @@ public class TestResultComponent extends BaseObject<String> {
     @Column(name = "show_on_report", nullable = false)
     private boolean showOnReport = true;
 
+    // OGC-1608: a required component without a result keeps its test open and
+    // prints as in progress; an optional one without a result is left off the
+    // patient report. The primary is required unless the catalog says otherwise.
+    @Column(name = "is_required", nullable = false)
+    private boolean isRequired = false;
+
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
+
+    // Detection limits of a quantitative component (OGC-1148): limit of
+    // detection and limit of quantification, both optional, LOD <= LOQ.
+    @Column(name = "lod", precision = 15, scale = 5)
+    private BigDecimal lod;
+
+    @Column(name = "loq", precision = 15, scale = 5)
+    private BigDecimal loq;
+
+    public boolean getDisplayLog10() {
+        return displayLog10;
+    }
+
+    public void setDisplayLog10(boolean displayLog10) {
+        this.displayLog10 = displayLog10;
+    }
+
+    public String getLog10SourceComponentCode() {
+        return log10SourceComponentCode;
+    }
+
+    public void setLog10SourceComponentCode(String code) {
+        log10SourceComponentCode = code == null || code.isBlank() ? null : code.trim();
+    }
 
     public TestResultComponent() {
         super();
@@ -138,6 +177,14 @@ public class TestResultComponent extends BaseObject<String> {
         this.showOnReport = showOnReport;
     }
 
+    public boolean getIsRequired() {
+        return isRequired;
+    }
+
+    public void setIsRequired(boolean isRequired) {
+        this.isRequired = isRequired;
+    }
+
     public String getResultType() {
         return resultType;
     }
@@ -154,12 +201,12 @@ public class TestResultComponent extends BaseObject<String> {
         this.uomId = uomId;
     }
 
-    public Integer getSignificantDigits() {
-        return significantDigits;
+    public Integer getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(Integer significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(Integer reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public String getDefaultResult() {
@@ -184,5 +231,21 @@ public class TestResultComponent extends BaseObject<String> {
 
     public void setIsActive(String isActive) {
         this.isActive = isActive;
+    }
+
+    public BigDecimal getLod() {
+        return lod;
+    }
+
+    public void setLod(BigDecimal lod) {
+        this.lod = lod;
+    }
+
+    public BigDecimal getLoq() {
+        return loq;
+    }
+
+    public void setLoq(BigDecimal loq) {
+        this.loq = loq;
     }
 }

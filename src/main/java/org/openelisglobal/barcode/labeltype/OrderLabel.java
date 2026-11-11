@@ -1,6 +1,7 @@
 package org.openelisglobal.barcode.labeltype;
 
 import java.util.ArrayList;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.barcode.LabelField;
 import org.openelisglobal.barcode.util.BarcodeConfigUtil;
@@ -10,6 +11,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.labelpreset.valueholder.LabelFieldKey;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.patient.service.PatientService;
@@ -226,14 +228,15 @@ public class OrderLabel extends Label {
             dob = StringUtil.replaceNullWithEmptyString(patient.getBirthDateForDisplay());
         }
 
-        boolean useDob = "true"
-                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_DOB));
-        boolean usePatientId = "true"
-                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_ID));
-        boolean usePatientName = "true".equals(
-                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_NAME));
-        boolean useSiteId = "true"
-                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_FIELD_SITE_ID));
+        Set<String> presetFields = LabelFieldPolicy.printedFields(LabelFieldPolicy.ORDER);
+        boolean useDob = LabelFieldPolicy.prints(presetFields, LabelFieldKey.PATIENT_DOB,
+                Property.ORDER_LABEL_FIELD_PATIENT_DOB);
+        boolean usePatientId = LabelFieldPolicy.prints(presetFields, LabelFieldKey.PATIENT_ID,
+                Property.ORDER_LABEL_FIELD_PATIENT_ID);
+        boolean usePatientName = LabelFieldPolicy.prints(presetFields, LabelFieldKey.PATIENT_NAME,
+                Property.ORDER_LABEL_FIELD_PATIENT_NAME);
+        boolean useSiteId = LabelFieldPolicy.prints(presetFields, LabelFieldKey.SITE_ID,
+                Property.ORDER_LABEL_FIELD_SITE_ID);
         // adding fields above bar code
         aboveFields = new ArrayList<>();
         if (usePatientName)

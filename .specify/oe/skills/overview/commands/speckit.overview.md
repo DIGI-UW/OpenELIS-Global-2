@@ -48,7 +48,7 @@ Writes `<SPEC_DIR>/canvas/canvas-data.json` (created if missing). Stdout reports
 python3 .specify/oe/skills/overview/scripts/build-canvas.py <SPEC_DIR>
 ```
 
-Assembles `templates/canvas.html.template` + `canvas-data.json` → `<SPEC_DIR>/canvas/overview.html`. Substitutes the `{{*_JSON}}` placeholders with the extracted data.
+Assembles `.specify/oe/skills/overview/templates/canvas.html.template` + `canvas-data.json` → `<SPEC_DIR>/canvas/overview.html`. Substitutes the `{{*_JSON}}` placeholders with the extracted data.
 
 ### Step 4 — Verify locally
 
@@ -58,6 +58,7 @@ xdg-open <SPEC_DIR>/canvas/overview.html   # Linux
 ```
 
 Check:
+
 - All visible tabs render (Overview / Stories / Data Model / Roadmap / Decisions / API / Testing / Spec Files / PR + Commits)
 - Tabs with no data are hidden (per hide-when-empty rules)
 - Light/dark mode toggle in the top-right works + persists across reloads

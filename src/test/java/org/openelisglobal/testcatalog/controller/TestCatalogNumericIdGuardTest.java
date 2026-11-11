@@ -15,7 +15,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.junit.Before;
 import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.config.ControllerSetup;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panelitem.service.PanelItemService;
@@ -43,11 +42,16 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.servlet.handler.MappedInterceptor;
+import org.springframework.web.util.ServletRequestPathUtils;
 
 /**
  * OGC-1153 defect 4 — a non-numeric entity id in a Test Catalog URL must answer
@@ -103,9 +107,8 @@ public class TestCatalogNumericIdGuardTest {
                 mock(TestResultComponentService.class), mock(TestResultInterpretationService.class),
                 mock(TestResultService.class), mock(ResultLimitService.class),
                 mock(RangeCoverageValidationService.class), handlingService, mock(AnalyzerService.class),
-                mock(AnalyzerTestMappingService.class), mock(TypeOfSampleService.class),
-                mock(TypeOfSampleTestService.class), mock(TestTerminologyMappingService.class),
-                mock(PanelService.class), mock(PanelItemService.class));
+                mock(TypeOfSampleService.class), mock(TypeOfSampleTestService.class),
+                mock(TestTerminologyMappingService.class), mock(PanelService.class), mock(PanelItemService.class));
         TestCatalogActivationRestController activation = new TestCatalogActivationRestController(testService,
                 mock(ResultLimitService.class), mock(RangeCoverageValidationService.class),
                 mock(TestActivationAcknowledgmentService.class), mock(TestResultComponentService.class),
@@ -193,6 +196,31 @@ public class TestCatalogNumericIdGuardTest {
      * the handler sees it, so the guard must not reject a URL that resolves today;
      * everything the {@code NUMERIC(10)} id column cannot hold is rejected.
      */
+    /**
+     * OGC-1467: the sample type, lab unit and test-method URLs take the same ids
+     * and answered 500 for a non-numeric one; the guard covers them too.
+     */
+    @org.junit.Test
+    public void guard_coversTheCatalogsOtherIdUrls() throws Exception {
+        MappedInterceptor mapped = new MappedInterceptor(TestCatalogNumericIdGuard.GUARDED_PATH_PATTERNS,
+                new TestCatalogNumericIdGuard());
+        for (String[] url : new String[][] { { "/rest/sample-types/abc", "sampleTypeId" },
+                { "/rest/lab-units-management/abc", "labUnitId" },
+                { "/rest/lab-units-management/abc/tests", "labUnitId" }, { "/rest/test/abc/methods", "testId" } }) {
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", url[0]);
+            ServletRequestPathUtils.parseAndCache(request);
+            assertTrue(url[0] + " is guarded", mapped.matches(request));
+            request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, java.util.Map.of(url[1], "abc"));
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            assertFalse(url[0] + " stops at the guard",
+                    mapped.getInterceptor().preHandle(request, response, new Object()));
+            assertEquals(404, response.getStatus());
+        }
+        MockHttpServletRequest localization = new MockHttpServletRequest("GET", "/rest/localizations/abc");
+        ServletRequestPathUtils.parseAndCache(localization);
+        assertFalse(mapped.matches(localization));
+    }
+
     @org.junit.Test
     public void isNumericId_acceptsOnlyWhatTheIdColumnCanHold() {
         assertTrue(TestCatalogNumericIdGuard.isNumericId("5"));
@@ -249,8 +277,9 @@ public class TestCatalogNumericIdGuardTest {
         }
         assertEquals("the classpath scan must find every controller on the guarded prefix, not pass vacuously",
                 Set.of("TestAlertRuleRestController", "TestCatalogActivationRestController",
-                        "TestCatalogEditorRestController", "TestReagentLinkRestController",
-                        "TestReflexCalcRestController", "TestStorageHistoryRestController"),
+                        "TestCatalogEditorRestController", "TestCatalogQcTargetsRestController",
+                        "TestReagentLinkRestController", "TestReflexCalcRestController",
+                        "TestStorageHistoryRestController"),
                 scanned);
         assertEquals(
                 "unclassified /rest/test-catalog path variables — guard them in"

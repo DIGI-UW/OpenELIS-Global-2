@@ -1,0 +1,747 @@
+import React from "react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
+import { IntlProvider } from "react-intl";
+import { MemoryRouter, Route } from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import messages from "../../../../../languages/en.json";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServer,
+  postToOpenElisServerFormData,
+} from "../../../../utils/Utils";
+import { createQueryClient } from "../../../../utils/queryClient";
+import {
+  ConfigurationContext,
+  NotificationContext,
+} from "../../../../layout/Layout";
+import ConfigMenuDisplay from "../ConfigMenuDisplay";
+
+vi.mock("../../../../utils/Utils", async () => {
+  const actual = await vi.importActual("../../../../utils/Utils");
+  const getFromOpenElisServer = vi.fn();
+  return {
+    ...actual,
+    getFromOpenElisServer,
+    fetchFromOpenElisServer: vi.fn(
+      (url: string) =>
+        new Promise((resolve, reject) =>
+          getFromOpenElisServer(url, (response: unknown) =>
+            response === undefined
+              ? reject(new Error("read failed"))
+              : resolve(response),
+          ),
+        ),
+    ),
+    postToOpenElisServer: vi.fn(),
+    postToOpenElisServerFormData: vi.fn(),
+  };
+});
+
+const MENU = "NonConformityConfigurationMenu";
+const CONFIG = "NonConformityConfiguration";
+
+const config = (value: string) => ({
+  id: "7",
+  name: "resultsOnly",
+  description: "Results only",
+  value,
+  valueType: "boolean",
+  paramName: "resultsOnly",
+});
+
+describe("ConfigMenuDisplay", () => {
+  let onServer: { value: string };
+  let reloadConfiguration: ReturnType<typeof vi.fn>;
+
+  const renderScreen = (
+    content = <ConfigMenuDisplay id="admin.formEntryConfig" menuType={MENU} />,
+  ) =>
+    render(
+      <MemoryRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <QueryClientProvider client={createQueryClient()}>
+            <NotificationContext.Provider
+              value={{
+                notificationVisible: false,
+                setNotificationVisible: vi.fn(),
+                addNotification: vi.fn(),
+              }}
+            >
+              <ConfigurationContext.Provider value={{ reloadConfiguration }}>
+                {content}
+              </ConfigurationContext.Provider>
+            </NotificationContext.Provider>
+          </QueryClientProvider>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+  const openTheEditor = async () => {
+    renderScreen();
+    const row = await screen.findByLabelText("selectRow");
+    fireEvent.click(row);
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+    return screen.findByRole("heading", { name: "Edit Record" });
+  };
+
+  beforeEach(() => {
+    onServer = { value: "false" };
+    reloadConfiguration = vi.fn();
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url === `/rest/${MENU}`)
+          return callback({ menuList: [config(onServer.value)] });
+        if (url.startsWith(`/rest/${CONFIG}?ID=`))
+          return callback(config(onServer.value));
+        return callback(undefined);
+      },
+    );
+    (postToOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
+  });
+
+  it.each([false, true])(
+    "clears old state while a different menu loads (editor open: %s)",
+    async (openEditor) => {
+      let completeRead: ((response: unknown) => void) | undefined;
+      (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+        (url: string, callback: (response: unknown) => void) => {
+          if (url === `/rest/${MENU}`)
+            return callback({ menuList: [config("false")] });
+          if (url.startsWith(`/rest/${CONFIG}?ID=`))
+            return callback(config("false"));
+          if (url === "/rest/SiteInformationMenu") completeRead = callback;
+        },
+      );
+      function Switcher() {
+        const [menu, setMenu] = React.useState(MENU);
+        return (
+          <>
+            <button onClick={() => setMenu("SiteInformationMenu")}>
+              Switch menu
+            </button>
+            <ConfigMenuDisplay id="admin.formEntryConfig" menuType={menu} />
+          </>
+        );
+      }
+      renderScreen(<Switcher />);
+      fireEvent.click(await screen.findByLabelText("selectRow"));
+      expect(screen.getByRole("button", { name: "Modify" })).toBeEnabled();
+
+      if (openEditor) {
+        await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+        await screen.findByRole("heading", { name: "Edit Record" });
+      }
+      await userEvent.click(
+        screen.getByRole("button", { name: "Switch menu" }),
+      );
+      expect(
+        screen.queryByRole("heading", { name: "Edit Record" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Results only")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Modify" })).toBeDisabled();
+      await waitFor(() => expect(completeRead).toBeDefined());
+      await act(async () =>
+        completeRead?.({
+          menuList: [
+            { ...config("true"), id: "8", description: "24 hour clock" },
+          ],
+        }),
+      );
+      expect(await screen.findByText("24 hour clock")).toBeInTheDocument();
+      expect(screen.getByLabelText("selectRow")).not.toBeChecked();
+      expect(screen.getByRole("button", { name: "Modify" })).toBeDisabled();
+    },
+  );
+
+  it("lists the configuration values", async () => {
+    renderScreen();
+
+    expect(await screen.findByText("Results only")).toBeInTheDocument();
+  });
+
+  it("shows a stored setting key under its translated name and description (OGC-1547)", async () => {
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) =>
+        callback(
+          url === `/rest/${MENU}`
+            ? {
+                menuList: [
+                  {
+                    ...config("{part}{n}"),
+                    id: "8",
+                    name: "pathology.identifier.blockFormat",
+                    description: "stored English text",
+                    valueType: "text",
+                  },
+                  config("false"),
+                ],
+              }
+            : undefined,
+        ),
+    );
+    renderScreen();
+
+    expect(
+      await screen.findByText("Pathology: block designation pattern"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Pattern for a block designation; {part} is the part, {n} the block number within it",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("pathology.identifier.blockFormat"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("resultsOnly")).toBeInTheDocument();
+    expect(screen.getByText("Results only")).toBeInTheDocument();
+  });
+
+  it("edits a stored setting key under its translated name and description", async () => {
+    const translated = {
+      ...config("false"),
+      name: "useMultiLevelValidation",
+      paramName: "useMultiLevelValidation",
+      description: "stored English text",
+    };
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url === `/rest/${MENU}`)
+          return callback({ menuList: [translated] });
+        if (url.startsWith(`/rest/${CONFIG}?ID=`)) return callback(translated);
+        return callback(undefined);
+      },
+    );
+
+    await openTheEditor();
+
+    expect(screen.getByText("Use the validation policy")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        messages["siteInformation.description.useMultiLevelValidation"],
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("stored English text")).not.toBeInTheDocument();
+  });
+
+  it("names the menu in its breadcrumb with its translated title", async () => {
+    const errors = vi.spyOn(console, "error");
+    renderScreen();
+    await screen.findByText("Results only");
+
+    const crumbs = screen
+      .getByRole("navigation", { name: /breadcrumb/i })
+      .querySelectorAll("li");
+    const current = crumbs[crumbs.length - 1];
+    expect(current).toHaveTextContent(messages["admin.formEntryConfig"]);
+    expect(
+      errors.mock.calls.some(([message]) =>
+        String(message).includes("MISSING_TRANSLATION"),
+      ),
+    ).toBe(false);
+    errors.mockRestore();
+  });
+
+  it("returns to the list showing the saved value", async () => {
+    await openTheEditor();
+
+    await userEvent.click(screen.getByLabelText("True"));
+    (postToOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, body: string, callback: (status: number) => void) => {
+        onServer = { value: "true" };
+        callback(200);
+      },
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    // Reloading the document is what used to close the editor and refresh the
+    // list; both now happen without leaving the app.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "Edit Record" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText("true")).toBeInTheDocument();
+    expect(reloadConfiguration).toHaveBeenCalledOnce();
+  });
+
+  it("reopens a just saved setting with the saved value", async () => {
+    await openTheEditor();
+    await userEvent.click(screen.getByLabelText("True"));
+    (postToOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, body: string, callback: (status: number) => void) => {
+        onServer = { value: "true" };
+        callback(200);
+      },
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("true")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("selectRow"));
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+    await screen.findByRole("heading", { name: "Edit Record" });
+
+    await waitFor(() => expect(screen.getByLabelText("True")).toBeChecked());
+    (postToOpenElisServer as ReturnType<typeof vi.fn>).mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    const [, body] = (postToOpenElisServer as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(JSON.parse(body).value).toBe("true");
+  });
+
+  it("does not refresh runtime configuration when saving fails", async () => {
+    await openTheEditor();
+    (postToOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, body: string, callback: (status: number) => void) =>
+        callback(500),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(reloadConfiguration).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("heading", { name: "Edit Record" }),
+    ).toBeInTheDocument();
+  });
+
+  it("returns to the list when the edit is abandoned", async () => {
+    await openTheEditor();
+
+    await userEvent.click(screen.getByRole("button", { name: "Exit" }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "Edit Record" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(postToOpenElisServer).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * A menu whose rows include an image: the list fetches each image separately,
+ * and those answers land while the editor for another row is open.
+ */
+describe("ConfigMenuDisplay with an image row", () => {
+  const IMAGE_MENU = "PrintedReportsConfigurationMenu";
+  const IMAGE_CONFIG = "PrintedReportsConfiguration";
+
+  const textRow = {
+    id: "1",
+    name: "labDirector",
+    description: "The lab director's name",
+    value: "Dr A",
+    valueType: "text",
+    paramName: "labDirector",
+  };
+  const imageRow = {
+    id: "2",
+    name: "headerLeftImage",
+    description: "Image for the left side of report header",
+    value: "",
+    valueType: "logoUpload",
+    paramName: "headerLeftImage",
+  };
+
+  /** The image answers the list is still waiting on. */
+  let pendingImages: Array<() => void>;
+  /** Rereads of the record that have not answered yet. */
+  let pendingRereads: Array<() => void>;
+  let onServerValue: string;
+  let recordRead: number;
+  /** When set, every reread of a record is held until the test delivers it. */
+  let holdRereads: boolean;
+
+  beforeEach(() => {
+    pendingImages = [];
+    pendingRereads = [];
+    onServerValue = textRow.value;
+    recordRead = 0;
+    holdRereads = false;
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url === `/rest/${IMAGE_MENU}`)
+          return callback({ menuList: [textRow, imageRow] });
+        if (url.startsWith(`/rest/${IMAGE_CONFIG}?ID=`)) {
+          const answer = url.endsWith("ID=2")
+            ? imageRow
+            : { ...textRow, value: onServerValue };
+          recordRead += 1;
+          // A reread can be held so it lands while the user is typing, the way
+          // a slow backend does.
+          if (!holdRereads || recordRead === 1) return callback(answer);
+          pendingRereads.push(() => callback(answer));
+          return;
+        }
+        if (url.startsWith("/dbImage/")) {
+          pendingImages.push(() =>
+            callback({ value: "data:image/png;base64,AA" }),
+          );
+          return;
+        }
+        return callback(undefined);
+      },
+    );
+    (postToOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
+  });
+
+  let queryClient: ReturnType<typeof createQueryClient>;
+
+  const renderImageMenu = () => {
+    queryClient = createQueryClient();
+    return render(
+      <MemoryRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <QueryClientProvider client={queryClient}>
+            <NotificationContext.Provider
+              value={{
+                notificationVisible: false,
+                setNotificationVisible: vi.fn(),
+                addNotification: vi.fn(),
+              }}
+            >
+              <ConfigMenuDisplay
+                id="admin.formEntryConfig"
+                menuType={IMAGE_MENU}
+              />
+            </NotificationContext.Provider>
+          </QueryClientProvider>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+  };
+
+  const openTheTextEditor = async () => {
+    fireEvent.click((await screen.findAllByLabelText("selectRow"))[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+    await screen.findByRole("heading", { name: "Edit Record" });
+    return document.getElementById("textInput") as HTMLInputElement;
+  };
+
+  const openTheImageEditor = async () => {
+    renderImageMenu();
+    await waitFor(() => expect(pendingImages.length).toBeGreaterThan(0));
+    act(() => pendingImages.splice(0).forEach((deliver) => deliver()));
+    await waitFor(() =>
+      expect(screen.getAllByLabelText("selectRow")).toHaveLength(2),
+    );
+    fireEvent.click(screen.getAllByLabelText("selectRow")[1]);
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+    await screen.findByRole("heading", { name: "Edit Record" });
+    await waitFor(() => expect(pendingImages.length).toBeGreaterThan(0));
+    (postToOpenElisServerFormData as ReturnType<typeof vi.fn>).mockReset();
+  };
+
+  it("keeps a removal decision when the stored logo arrives late", async () => {
+    await openTheImageEditor();
+    fireEvent.click(screen.getByLabelText("Remove Image"));
+    await act(async () =>
+      pendingImages.splice(0).forEach((deliver) => deliver()),
+    );
+    expect(screen.getByLabelText("Remove Image")).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    const [, body] = (postToOpenElisServerFormData as ReturnType<typeof vi.fn>)
+      .mock.calls[0];
+    expect(body.get("removeImage")).toBe("true");
+    expect(body.has("logoFile")).toBe(false);
+  });
+
+  it("keeps the chosen upload when the stored logo arrives late", async () => {
+    await openTheImageEditor();
+    const file = new File(["replacement"], "logo.png", { type: "image/png" });
+    await userEvent.upload(
+      document.querySelector('input[type="file"]') as HTMLInputElement,
+      file,
+    );
+    await act(async () =>
+      pendingImages.splice(0).forEach((deliver) => deliver()),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    const [, body] = (postToOpenElisServerFormData as ReturnType<typeof vi.fn>)
+      .mock.calls[0];
+    expect(body.get("logoFile")).toBe(file);
+    expect(body.get("removeImage")).toBe("false");
+  });
+
+  it("keeps what is typed when a reread of the record answers mid-edit", async () => {
+    holdRereads = true;
+    renderImageMenu();
+
+    // Cycle one: edit, save. Saving marks every read out of date.
+    let input = await openTheTextEditor();
+    await userEvent.clear(input);
+    await userEvent.type(input, "Dr B");
+    (postToOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, body: string, callback: (status: number) => void) => {
+        onServerValue = "Dr B";
+        callback(200);
+      },
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "Edit Record" }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // Cycle two: the cached record is out of date, so the editor waits for
+    // the reread instead of offering the value it replaced.
+    fireEvent.click((await screen.findAllByLabelText("selectRow"))[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+    await waitFor(() => expect(pendingRereads.length).toBeGreaterThan(0));
+    expect(document.getElementById("textInput")).toBeNull();
+    await act(async () =>
+      pendingRereads.splice(0).forEach((deliver) => deliver()),
+    );
+    input = (await screen.findByDisplayValue("Dr B")) as HTMLInputElement;
+
+    // A later reread answering mid-edit leaves what is typed alone.
+    await userEvent.clear(input);
+    await userEvent.type(input, "Dr C");
+    onServerValue = "Dr D";
+    await act(async () => {
+      queryClient.invalidateQueries();
+    });
+    await waitFor(() => expect(pendingRereads.length).toBeGreaterThan(0));
+    await act(async () =>
+      pendingRereads.splice(0).forEach((deliver) => deliver()),
+    );
+
+    expect(input.isConnected).toBe(true);
+    expect(input.value).toBe("Dr C");
+  });
+
+  it("keeps what is typed after an image record was edited first", async () => {
+    renderImageMenu();
+    await screen.findAllByLabelText("selectRow");
+    // Wait for the image row to join the list so it can be selected.
+    pendingImages.forEach((deliver) => deliver());
+    await waitFor(() =>
+      expect(screen.getAllByLabelText("selectRow").length).toBe(2),
+    );
+
+    // Edit the image record, then abandon it.
+    fireEvent.click(screen.getAllByLabelText("selectRow")[1]);
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+    await screen.findByRole("heading", { name: "Edit Record" });
+    await userEvent.click(screen.getByRole("button", { name: "Exit" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "Edit Record" }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // Now edit the text record.
+    const input = await openTheTextEditor();
+    await userEvent.clear(input);
+    await userEvent.type(input, "Dr C");
+
+    expect(input.isConnected).toBe(true);
+    expect(input.value).toBe("Dr C");
+  });
+
+  it("keeps what is typed when the list's image answers arrive", async () => {
+    render(
+      <MemoryRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <QueryClientProvider client={createQueryClient()}>
+            <NotificationContext.Provider
+              value={{
+                notificationVisible: false,
+                setNotificationVisible: vi.fn(),
+                addNotification: vi.fn(),
+              }}
+            >
+              <ConfigMenuDisplay
+                id="admin.formEntryConfig"
+                menuType={IMAGE_MENU}
+              />
+            </NotificationContext.Provider>
+          </QueryClientProvider>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click((await screen.findAllByLabelText("selectRow"))[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+    await screen.findByRole("heading", { name: "Edit Record" });
+
+    const input = document.getElementById("textInput") as HTMLInputElement;
+    await userEvent.clear(input);
+    await userEvent.type(input, "Dr B");
+
+    // The image the list asked for on mount answers now, mid-edit.
+    expect(pendingImages.length).toBeGreaterThan(0);
+    pendingImages.forEach((deliver) => deliver());
+
+    await waitFor(() => expect(input.isConnected).toBe(true));
+    expect(input.value).toBe("Dr B");
+    expect(
+      screen.getByRole("heading", { name: "Edit Record" }),
+    ).toBeInTheDocument();
+  });
+});
+
+/**
+ * Admin reaches these screens through a route. Passing the screen to `component`
+ * as an inline arrow gives React a new component type on every render of Admin,
+ * so anything that re-renders Admin — a notification arriving or timing out —
+ * throws the screen away and builds a new one, losing the open editor. The
+ * reload used to hide this: saving replaced the document anyway.
+ */
+describe("ConfigMenuDisplay behind a route", () => {
+  const routed = { value: "false" };
+  const RouteHost = ({ useRenderProp }: { useRenderProp: boolean }) => {
+    const [, setTick] = React.useState(0);
+    const screenEl = (
+      <ConfigMenuDisplay id="admin.formEntryConfig" menuType={MENU} />
+    );
+    return (
+      <MemoryRouter initialEntries={["/menu"]}>
+        <IntlProvider locale="en" messages={messages}>
+          <QueryClientProvider client={createQueryClient()}>
+            <NotificationContext.Provider
+              value={{
+                notificationVisible: false,
+                setNotificationVisible: vi.fn(),
+                addNotification: vi.fn(),
+              }}
+            >
+              <button type="button" onClick={() => setTick((n) => n + 1)}>
+                notify
+              </button>
+              {useRenderProp ? (
+                <Route path="/menu" render={() => screenEl} />
+              ) : (
+                <Route path="/menu" component={() => screenEl} />
+              )}
+            </NotificationContext.Provider>
+          </QueryClientProvider>
+        </IntlProvider>
+      </MemoryRouter>
+    );
+  };
+
+  beforeEach(() => {
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url === `/rest/${MENU}`)
+          return callback({ menuList: [config(routed.value)] });
+        if (url.startsWith(`/rest/${CONFIG}?ID=`))
+          return callback(config(routed.value));
+        return callback(undefined);
+      },
+    );
+  });
+
+  const openTheEditorBehind = async (useRenderProp: boolean) => {
+    render(<RouteHost useRenderProp={useRenderProp} />);
+    fireEvent.click(await screen.findByLabelText("selectRow"));
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+    await screen.findByRole("heading", { name: "Edit Record" });
+    await userEvent.click(screen.getByRole("button", { name: "notify" }));
+  };
+
+  it("keeps the open editor when Admin re-renders", async () => {
+    await openTheEditorBehind(true);
+
+    expect(
+      screen.getByRole("heading", { name: "Edit Record" }),
+    ).toBeInTheDocument();
+  });
+
+  it("loses the open editor when the route names the screen inline", async () => {
+    await openTheEditorBehind(false);
+
+    expect(
+      screen.queryByRole("heading", { name: "Edit Record" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * OGC-1364: on Result Configuration the validation policy replaces "validate
+ * all results" once "Use the validation policy" is on.
+ */
+describe("ConfigMenuDisplay on Result Configuration", () => {
+  const RESULT_MENU = "ResultConfigurationMenu";
+  const rows = [
+    {
+      id: "56",
+      name: "validate all results",
+      description: "all results should be validated even if normal",
+      value: "true",
+      valueType: "boolean",
+    },
+    {
+      id: "190",
+      name: "blockSelfValidation",
+      description: "Block self-validation",
+      value: "false",
+      valueType: "boolean",
+    },
+  ];
+
+  const renderResultMenu = (enabled: boolean) => {
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url === `/rest/${RESULT_MENU}`) return callback({ menuList: rows });
+        if (url === "/rest/validation-policy/default")
+          return callback({
+            trigger: "ALL",
+            levels: 1,
+            levelRoles: [{ level: 1, roleId: 10, roleName: "Validation" }],
+            enabled,
+            maxLevels: 1,
+            blockSelfValidation: false,
+          });
+        return callback(undefined);
+      },
+    );
+    render(
+      <MemoryRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <QueryClientProvider client={createQueryClient()}>
+            <NotificationContext.Provider
+              value={{
+                notificationVisible: false,
+                setNotificationVisible: vi.fn(),
+                addNotification: vi.fn(),
+              }}
+            >
+              <ConfigurationContext.Provider
+                value={{ reloadConfiguration: vi.fn() }}
+              >
+                <ConfigMenuDisplay
+                  id="sidenav.label.admin.formEntry.resultConfig"
+                  menuType={RESULT_MENU}
+                />
+              </ConfigurationContext.Provider>
+            </NotificationContext.Provider>
+          </QueryClientProvider>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+  };
+
+  it("keeps validate all results while the policy is off", async () => {
+    renderResultMenu(false);
+
+    expect(await screen.findByText("validate all results")).toBeInTheDocument();
+    expect(screen.queryByTestId("validation-policy")).not.toBeInTheDocument();
+  });
+
+  it("shows the policy in place of validate all results while it is on", async () => {
+    renderResultMenu(true);
+
+    expect(await screen.findByTestId("validation-policy")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Block self-validation"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("validate all results")).not.toBeInTheDocument();
+  });
+});

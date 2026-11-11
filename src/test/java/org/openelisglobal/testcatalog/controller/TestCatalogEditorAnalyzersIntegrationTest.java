@@ -27,7 +27,7 @@ public class TestCatalogEditorAnalyzersIntegrationTest extends BaseWebContextSen
     private static final long TEST_ID = 95411L;
     private static final long TEST_ID_NOMAP = 95412L;
     private static final long ANALYZER_ID = 95413L;
-    private static final long ANALYZER_TYPE_ID = 95414L;
+    private static final long MAPPING_ID = 95416L;
 
     @Autowired
     private TestService testService;
@@ -52,9 +52,6 @@ public class TestCatalogEditorAnalyzersIntegrationTest extends BaseWebContextSen
 
     @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
-
-    @Autowired
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
 
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
@@ -84,8 +81,7 @@ public class TestCatalogEditorAnalyzersIntegrationTest extends BaseWebContextSen
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
-                panelService, panelItemService);
+                typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
@@ -95,16 +91,18 @@ public class TestCatalogEditorAnalyzersIntegrationTest extends BaseWebContextSen
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'Y', ?, NOW())",
                 TEST_ID_NOMAP, "AnalyzersIT-nomap", "no mappings", UUID.randomUUID().toString());
-        // Column set mirrors testdata/analyzer-test-mapping.xml (proven sufficient).
-        jdbc.update("INSERT INTO clinlims.analyzer_type (id, name, plugin_class_name) VALUES (?, ?, ?)",
-                ANALYZER_TYPE_ID, "AnalyzersIT Type", "oe.plugin.analyzer.AnalyzersIT");
         jdbc.update(
-                "INSERT INTO clinlims.analyzer (id, name, analyzer_type, analyzer_type_id, description, location,"
-                        + " is_active, has_setup_page, last_updated)"
-                        + " VALUES (?, ?, 'CHEMISTRY', ?, ?, ?, true, false, NOW())",
-                ANALYZER_ID, "Cobalt 9000", ANALYZER_TYPE_ID, "AnalyzersIT analyzer", "Lab A");
-        jdbc.update("INSERT INTO clinlims.analyzer_test_map (analyzer_id, analyzer_test_name, test_id, last_updated)"
-                + " VALUES (?, ?, ?, NOW())", ANALYZER_ID, "Cobalt Glucose", TEST_ID);
+                "INSERT INTO clinlims.analyzer" + " (id, name, is_active, status, bridge_connection_id, last_updated)"
+                        + " VALUES (?, ?, true, 'ACTIVE', ?, NOW())",
+                ANALYZER_ID, "Cobalt 9000", "bridge-test-catalog-95413");
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping"
+                + " (id, analyzer_id, revision_number, profile_id, profile_revision, profile_fingerprint,"
+                + " mapping_fingerprint, created_by)" + " VALUES (?, ?, 1, 'test-catalog-fixture', 1, ?, ?, '1')",
+                MAPPING_ID, ANALYZER_ID, "sha256:" + "a".repeat(64), "sha256:" + "b".repeat(64));
+        jdbc.update("UPDATE clinlims.analyzer SET mapping_id = ? WHERE id = ?", MAPPING_ID, ANALYZER_ID);
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping_test"
+                + " (mapping_id, source_row_key, mapping_state, test_id, last_updated)"
+                + " VALUES (?, ?, 'BOUND', ?, NOW())", MAPPING_ID, "Cobalt Glucose", TEST_ID);
     }
 
     @After
@@ -113,9 +111,10 @@ public class TestCatalogEditorAnalyzersIntegrationTest extends BaseWebContextSen
     }
 
     private void cleanup() {
-        jdbc.update("DELETE FROM clinlims.analyzer_test_map WHERE analyzer_id = ?", ANALYZER_ID);
+        jdbc.update("UPDATE clinlims.analyzer SET mapping_id = NULL WHERE id = ?", ANALYZER_ID);
+        jdbc.update("DELETE FROM clinlims.analyzer_mapping_test WHERE mapping_id = ?", MAPPING_ID);
+        jdbc.update("DELETE FROM clinlims.analyzer_mapping WHERE id = ?", MAPPING_ID);
         jdbc.update("DELETE FROM clinlims.analyzer WHERE id = ?", ANALYZER_ID);
-        jdbc.update("DELETE FROM clinlims.analyzer_type WHERE id = ?", ANALYZER_TYPE_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id IN (?, ?)", TEST_ID, TEST_ID_NOMAP);
     }
 

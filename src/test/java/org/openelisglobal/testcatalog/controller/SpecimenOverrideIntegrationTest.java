@@ -60,8 +60,6 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
     @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
     @Autowired
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
-    @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
@@ -84,8 +82,7 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
-                panelService, panelItemService);
+                typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         cleanup();
         seedSampleType(SERUM_LIKE, "OvSerum 1145");
         seedSampleType(CSF_LIKE, "OvCsf 1145");
@@ -151,6 +148,7 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
     public void terminology_specimenOverride_roundTripsAndGuardsScope() {
         String testId = String.valueOf(TEST_ID);
         TerminologyResponse body = new TerminologyResponse();
+        body.mappings = new java.util.ArrayList<>();
         body.mappings.add(mapping("L-OV-SHARED", null));
         body.mappings.add(mapping("L-OV-CSF", String.valueOf(CSF_LIKE)));
         ResponseEntity<TerminologyResponse> saved = controller.saveTerminology(testId, body, authedRequest());
@@ -165,15 +163,18 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
 
         // a scope outside the test's associated types is refused
         TerminologyResponse bad = new TerminologyResponse();
+        bad.mappings = new java.util.ArrayList<>();
         bad.mappings.add(mapping("L-OV-BAD", String.valueOf(FOREIGN_TYPE)));
         assertEquals(422, controller.saveTerminology(testId, bad, authedRequest()).getStatusCode().value());
 
         // same code under two scopes is legal; same code in the SAME scope is not
         TerminologyResponse dupScope = new TerminologyResponse();
+        dupScope.mappings = new java.util.ArrayList<>();
         dupScope.mappings.add(mapping("L-OV-X", String.valueOf(CSF_LIKE)));
         dupScope.mappings.add(mapping("L-OV-X", null));
         assertEquals(200, controller.saveTerminology(testId, dupScope, authedRequest()).getStatusCode().value());
         TerminologyResponse dupSame = new TerminologyResponse();
+        dupSame.mappings = new java.util.ArrayList<>();
         dupSame.mappings.add(mapping("L-OV-Y", String.valueOf(CSF_LIKE)));
         dupSame.mappings.add(mapping("L-OV-Y", String.valueOf(CSF_LIKE)));
         assertEquals(422, controller.saveTerminology(testId, dupSame, authedRequest()).getStatusCode().value());
@@ -191,6 +192,7 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
     public void ranges_specimenOverride_roundTripsGuardsAndDoesNotGateActivation() {
         String testId = String.valueOf(TEST_ID);
         RangesResponse body = new RangesResponse();
+        body.ranges = new java.util.ArrayList<>();
         body.ranges.add(range(null, 10d, 20d));
         // the CSF-scoped override covers only part of nothing special — its
         // "gaps" must not appear (shared rows back the rest)
@@ -207,6 +209,8 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
         assertFalse("specimen-scoped rows never gate activation with gaps", loaded.coverage.hasGaps());
 
         RangesResponse bad = new RangesResponse();
+
+        bad.ranges = new java.util.ArrayList<>();
         bad.ranges.add(range(String.valueOf(FOREIGN_TYPE), 1d, 2d));
         assertEquals(422, controller.saveRanges(testId, bad, authedRequest()).getStatusCode().value());
     }
@@ -215,6 +219,7 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
     public void resultLimitResolution_scopedWinsForItsSpecimen_sharedForOthers() {
         String testId = String.valueOf(TEST_ID);
         RangesResponse body = new RangesResponse();
+        body.ranges = new java.util.ArrayList<>();
         body.ranges.add(range(null, 10d, 20d));
         body.ranges.add(range(String.valueOf(CSF_LIKE), 1d, 5d));
         assertEquals(200, controller.saveRanges(testId, body, authedRequest()).getStatusCode().value());
@@ -231,6 +236,26 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
 
         ResultLimit noContext = resultLimitService.getResultLimitForTestAndPatient(testId, patient);
         assertEquals("no specimen context evaluates the shared set", 10d, noContext.getLowNormal(), 0.0001);
+    }
+
+    // OGC-1266: pH authored for Drinking Water and Surface Water only showed the
+    // Drinking Water range on a plain Water sample.
+    @org.junit.Test
+    public void resultLimitResolution_aSpecimenWithoutARangeBorrowsNone() {
+        String testId = String.valueOf(TEST_ID);
+        RangesResponse body = new RangesResponse();
+        body.ranges = new java.util.ArrayList<>();
+        body.ranges.add(range(String.valueOf(CSF_LIKE), 1d, 5d));
+        assertEquals(200, controller.saveRanges(testId, body, authedRequest()).getStatusCode().value());
+
+        Patient patient = new Patient();
+
+        assertEquals(
+                "CSF keeps its own range", 1d, resultLimitService
+                        .getResultLimitForTestAndPatient(testId, patient, String.valueOf(CSF_LIKE)).getLowNormal(),
+                0.0001);
+        assertNull("serum has no range of its own and no shared one",
+                resultLimitService.getResultLimitForTestAndPatient(testId, patient, String.valueOf(SERUM_LIKE)));
     }
 
     @org.junit.Test

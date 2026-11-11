@@ -20,6 +20,11 @@ import org.springframework.mock.web.MockServletContext;
 
 public class DiagnosticReportFacadeTest extends BaseWebContextSensitiveTest {
 
+    /** analysis id=1 in result-facade.xml. */
+
+    /** analysis id=2 in result-facade.xml. */
+    private static final String ANALYSIS_2_FHIR_UUID = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02";
+
     private RestfulServer fhirServlet;
     private ObjectMapper objectMapper;
 
@@ -51,13 +56,7 @@ public class DiagnosticReportFacadeTest extends BaseWebContextSensitiveTest {
     @Test
     public void readDiagnosticReport_shouldReturnSuccess() throws Exception {
 
-        String fhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02";
-
-        MockHttpServletRequest request = buildFhirRequest("GET", "/DiagnosticReport/" + fhirUuid);
-
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        fhirServlet.service(request, response);
+        MockHttpServletResponse response = serve(buildFhirRequest("GET", "/DiagnosticReport/" + ANALYSIS_2_FHIR_UUID));
 
         assertEquals(200, response.getStatus());
 
@@ -73,11 +72,7 @@ public class DiagnosticReportFacadeTest extends BaseWebContextSensitiveTest {
 
         String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
 
-        MockHttpServletRequest request = buildFhirRequest("GET", "/DiagnosticReport/" + nonExistentUuid);
-
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        fhirServlet.service(request, response);
+        MockHttpServletResponse response = serve(buildFhirRequest("GET", "/DiagnosticReport/" + nonExistentUuid));
 
         assertEquals(404, response.getStatus());
 
@@ -89,11 +84,7 @@ public class DiagnosticReportFacadeTest extends BaseWebContextSensitiveTest {
     @Test
     public void readDiagnosticReport_withInvalidUuid_shouldReturn400() throws Exception {
 
-        MockHttpServletRequest request = buildFhirRequest("GET", "/DiagnosticReport/not-a-uuid");
-
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        fhirServlet.service(request, response);
+        MockHttpServletResponse response = serve(buildFhirRequest("GET", "/DiagnosticReport/not-a-uuid"));
 
         assertEquals(400, response.getStatus());
 
@@ -110,11 +101,16 @@ public class DiagnosticReportFacadeTest extends BaseWebContextSensitiveTest {
         request.addParameter("subject", "Patient/550e8400-e29b-41d4-a716-446655440001");
         request.addParameter("status", "final");
 
-        MockHttpServletResponse response = new MockHttpServletResponse();
-
-        fhirServlet.service(request, response);
+        MockHttpServletResponse response = serve(request);
 
         assertNotNull(response);
         org.junit.Assert.assertTrue(response.getStatus() != 404);
     }
+
+    private MockHttpServletResponse serve(MockHttpServletRequest request) throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+        return response;
+    }
+
 }

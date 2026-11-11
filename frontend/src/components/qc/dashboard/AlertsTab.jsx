@@ -36,22 +36,20 @@ import {
 import { CheckmarkFilled } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerFullResponse,
-} from "../../utils/Utils";
-import {
+  ACKNOWLEDGE_FAILED_KEY,
+  acknowledgeViolation,
+  fetchViolations,
   getSeverityTagType,
   formatTimestamp,
   filterByTimePeriod,
 } from "./qcDashboardUtils";
 import "./AlertsTab.css";
 
-const AlertsTab = () => {
+const AlertsTab = ({ refreshSignal, onAcknowledged }) => {
   const intl = useIntl();
   const intlRef = useRef(intl);
   intlRef.current = intl;
 
-  console.log("Rendered alerts tab");
   const [violations, setViolations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -81,28 +79,28 @@ const AlertsTab = () => {
   ];
 
   const loadViolations = useCallback(() => {
-    setLoading(true);
     setError(null);
 
-    getFromOpenElisServer("/rest/qc/violations", (response) => {
-      if (response && response.data) {
-        setViolations(response.data.violations || response.data || []);
-      } else if (Array.isArray(response)) {
-        setViolations(response);
-      } else {
+    fetchViolations(
+      {},
+      (rows) => {
+        setViolations(rows);
+        setLoading(false);
+      },
+      () => {
         setError(
           intlRef.current.formatMessage({
             id: "qc.dashboard.error.loadFailed",
           }),
         );
-      }
-      setLoading(false);
-    });
+        setLoading(false);
+      },
+    );
   }, []);
 
   useEffect(() => {
     loadViolations();
-  }, [loadViolations]);
+  }, [loadViolations, refreshSignal]);
 
   // Filter by time period
   const filteredViolations = useMemo(() => {
@@ -127,19 +125,8 @@ const AlertsTab = () => {
   }, [filteredViolations]);
 
   const handleAcknowledge = (violationId) => {
-    const endpoint = `/rest/qc/violations/${violationId}/acknowledge`;
-    postToOpenElisServerFullResponse(
-      endpoint,
-      JSON.stringify({}),
-      (response) => {
-        if (response.ok) {
-          loadViolations();
-        } else {
-          setError(
-            intl.formatMessage({ id: "qc.violations.error.acknowledgeFailed" }),
-          );
-        }
-      },
+    acknowledgeViolation(violationId, onAcknowledged || loadViolations, () =>
+      setError(intl.formatMessage({ id: ACKNOWLEDGE_FAILED_KEY })),
     );
   };
 

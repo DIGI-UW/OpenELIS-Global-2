@@ -1,28 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { TextInput } from "@carbon/react";
+import { InlineLoading, TextInput } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { LEVEL_ORDER } from "../useLocationPicker";
-
-/**
- * SearchField — flat type-ahead input for the LocationPicker.
- *
- * Hits the existing `/rest/storage/locations/search?q=` endpoint, which
- * returns matches across all hierarchy levels (Room/Device/Shelf/Rack)
- * with a pre-composed `hierarchicalPath` per result. The user clicks a
- * result; we hand it back via `onSelect` and the parent's reducer
- * dispatches `PRELOAD` to populate the cascading selection.
- *
- * Stateless beyond a debounce timer ref. All actual state lives in the
- * useLocationPicker reducer; this component receives `query` + `results`
- * as props and fires callbacks. That separation is the structural fix
- * for the legacy LocationFilterDropdown's prop-sync race (the
- * `// CRITICAL: Don't sync when form just closed` workarounds).
- *
- * Threshold: skip the API for queries < 2 chars (matches the legacy
- * LocationFilterDropdown threshold so the API isn't pummeled by single-
- * character typing). Debounce: 300ms.
- */
 
 const DEBOUNCE_MS = 300;
 const MIN_QUERY_LENGTH = 2;
@@ -39,6 +19,17 @@ export default function SearchField({
   const debounceRef = useRef(null);
   const requestIdRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [status, setStatus] = useState("idle");
+  // Picking a result writes its full path into the input; searching for
+  // that path again finds nothing and shows "No storage locations match".
+  const pickedPathRef = useRef(null);
+  // The parent passes onResultsChange as an inline arrow, so its identity
+  // changes every render. Depending on it re-runs the search effect on every
+  // render, and any state update in that effect then loops forever.
+  const onResultsChangeRef = useRef(onResultsChange);
+  useEffect(() => {
+    onResultsChangeRef.current = onResultsChange;
+  }, [onResultsChange]);
 
   const deepestSelectedLevel = LEVEL_ORDER.reduce((deepest, level) => {
     if (selectedSelection[level]?.id) return level;
@@ -69,23 +60,38 @@ export default function SearchField({
       debounceRef.current = null;
     }
     if (!query || query.length < MIN_QUERY_LENGTH) {
-      // Clear stale results only if non-empty. Calling
-      // onResultsChange unconditionally would loop: the parent
-      // re-renders, passes a new onResultsChange identity, this
-      // effect re-fires, and so on.
-      if (results.length > 0) onResultsChange([]);
+      setStatus("idle");
+      onResultsChangeRef.current([]);
       return undefined;
     }
+    if (query === pickedPathRef.current) {
+      setStatus("idle");
+      return undefined;
+    }
+    setStatus("loading");
     debounceRef.current = setTimeout(() => {
-      getFromOpenElisServer(
-        `/rest/storage/locations/search?q=${encodeURIComponent(query)}`,
-        (response) => {
-          if (requestId !== requestIdRef.current) {
-            return;
-          }
-          onResultsChange(Array.isArray(response) ? response : []);
-        },
-      );
+      try {
+        getFromOpenElisServer(
+          `/rest/storage/locations/search?q=${encodeURIComponent(query)}`,
+          (response) => {
+            if (requestId !== requestIdRef.current) {
+              return;
+            }
+            if (response === null || response === undefined) {
+              setStatus("error");
+              onResultsChangeRef.current([]);
+              return;
+            }
+            setStatus("loaded");
+            onResultsChangeRef.current(Array.isArray(response) ? response : []);
+          },
+        );
+      } catch (e) {
+        if (requestId === requestIdRef.current) {
+          setStatus("error");
+          onResultsChangeRef.current([]);
+        }
+      }
     }, DEBOUNCE_MS);
     return () => {
       if (debounceRef.current) {
@@ -93,8 +99,15 @@ export default function SearchField({
         debounceRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, onResultsChange]);
+  }, [query]);
+
+  const pick = (result) => {
+    const path = result.hierarchicalPath || result.name || "";
+    pickedPathRef.current = path;
+    onSelect(result);
+    onQueryChange(path);
+    onResultsChange([]);
+  };
 
   return (
     <div className="storage-location-picker-search">
@@ -130,15 +143,52 @@ export default function SearchField({
             setActiveIndex((prev) => Math.max(prev - 1, 0));
             return;
           }
-          if ((e.key === "Enter" || e.key === " ") && activeIndex >= 0) {
+          if (e.key === "Enter" && activeIndex >= 0) {
             e.preventDefault();
-            const selected = results[activeIndex];
-            onSelect(selected);
-            onQueryChange(selected.hierarchicalPath || selected.name || "");
-            onResultsChange([]);
+            pick(results[activeIndex]);
           }
         }}
       />
+      {query.length > 0 && query.length < MIN_QUERY_LENGTH && (
+        <p className="storage-location-picker-search-status">
+          {intl.formatMessage({
+            id: "storage.search.location.minLength",
+            defaultMessage: "Keep typing, at least 2 characters",
+          })}
+        </p>
+      )}
+      {status === "loading" && (
+        <div className="storage-location-picker-search-status">
+          <InlineLoading
+            description={intl.formatMessage({
+              id: "storage.search.location.searching",
+              defaultMessage: "Searching...",
+            })}
+          />
+        </div>
+      )}
+      {status === "error" && (
+        <p
+          className="storage-location-picker-search-status storage-location-picker-search-error"
+          role="alert"
+        >
+          {intl.formatMessage({
+            id: "storage.search.location.error",
+            defaultMessage: "Could not search locations. Please try again.",
+          })}
+        </p>
+      )}
+      {status === "loaded" && results.length === 0 && (
+        <p className="storage-location-picker-search-status">
+          {intl.formatMessage(
+            {
+              id: "storage.search.location.noResults",
+              defaultMessage: 'No storage locations match "{query}"',
+            },
+            { query },
+          )}
+        </p>
+      )}
       {results.length > 0 && (
         <ul
           id="storage-location-picker-search-results"
@@ -170,11 +220,7 @@ export default function SearchField({
                 className={`storage-search-result depth-${depth}`}
                 style={{ paddingLeft: `${0.75 + depth * 1}rem` }}
                 onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => {
-                  onSelect(result);
-                  onQueryChange(result.hierarchicalPath || result.name || "");
-                  onResultsChange([]);
-                }}
+                onClick={() => pick(result)}
               >
                 {depth > 0 && (
                   <span className="storage-search-result-ancestors">

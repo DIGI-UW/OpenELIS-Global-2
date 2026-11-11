@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState } from "react";
 import {
   Heading,
   Button,
@@ -8,10 +8,12 @@ import {
   Section,
   ListItem,
 } from "@carbon/react";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../utils/Utils";
+  useServerData,
+  useInvalidateServerData,
+} from "../../utils/useServerData";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -42,28 +44,18 @@ function PanelOrder() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const [isLoading, setIsLoading] = useState(false);
   const [confirmSelection, setConfirmSelection] = useState(false);
-  const [panelOrderList, setPanelOrderList] = useState({});
+  const [pendingOrder, setPendingOrder] = useState(null);
   const [panelOrderListPost, setPanelOrderListPost] = useState([]);
   const intl = useIntl();
 
-  const componentMounted = useRef(false);
-
-  const handlePanelOrderList = (res) => {
-    if (!res) {
-      setIsLoading(true);
-    } else {
-      setPanelOrderList(res);
-    }
-  };
-
   const handlePanelOrderListCall = () => {
-    if (!panelOrderListPost) {
-      setIsLoading(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+    if (!panelOrderListPost?.length) {
+      // Accepting an unchanged preview is complete once it leaves confirmation.
+      setPendingOrder(null);
+      setPanelOrderListPost([]);
+      setConfirmSelection(false);
+      return;
     }
     postToOpenElisServerJsonResponse(
       "/rest/PanelOrder",
@@ -79,23 +71,21 @@ function PanelOrder() {
   };
 
   const handlePostPanelOrderListCallBack = (res) => {
-    if (res) {
-      if (res) {
-        setIsLoading(false);
-        addNotification({
-          title: intl.formatMessage({
-            id: "notification.title",
-          }),
-          message: intl.formatMessage({
-            id: "notification.user.post.delete.success",
-          }),
-          kind: NotificationKinds.success,
-        });
-        setTimeout(() => {
-          window.location.reload();
-        }, 200);
-        setNotificationVisible(true);
-      }
+    if (!requestFailed(res)) {
+      addNotification({
+        title: intl.formatMessage({
+          id: "notification.title",
+        }),
+        message: intl.formatMessage({
+          id: "save.success",
+        }),
+        kind: NotificationKinds.success,
+      });
+      setPendingOrder(null);
+      setPanelOrderListPost([]);
+      setConfirmSelection(false);
+      refreshPanelOrderList("/rest/PanelOrder");
+      setNotificationVisible(true);
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -106,17 +96,18 @@ function PanelOrder() {
     }
   };
 
-  useEffect(() => {
-    componentMounted.current = true;
-    setIsLoading(true);
-    getFromOpenElisServer(`/rest/PanelOrder`, handlePanelOrderList);
-    return () => {
-      componentMounted.current = false;
-      setIsLoading(false);
-    };
-  }, []);
+  // The order shown is a read of /rest/PanelOrder; a save marks it out of date
+  // and the screen reads it again, which is what reloading used to do.
+  const { data: fetchedPanelOrderList, isFetching: panelOrderListFetching } =
+    useServerData("/rest/PanelOrder");
+  const refreshPanelOrderList = useInvalidateServerData();
 
-  if (!isLoading) {
+  // A pending reorder sits on top of the stored order, so discarding it is
+  // clearing it: the stored array comes back as the same reference the list
+  // was seeded from, which is a change the list can see.
+  const shownOrder = pendingOrder ?? fetchedPanelOrderList?.panelList;
+
+  if (panelOrderListFetching && !fetchedPanelOrderList) {
     return (
       <>
         <Loading />
@@ -176,26 +167,21 @@ function PanelOrder() {
           <br />
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
-              {panelOrderList &&
-                panelOrderList?.panelList &&
-                panelOrderList?.panelList?.length > 0 && (
-                  <CustomCommonSortableOrderList
-                    test={panelOrderList?.panelList}
-                    onSort={(updatedList) => {
-                      setPanelOrderList((prev) => ({
-                        ...prev,
-                        panelList: updatedList,
-                      }));
-                      setPanelOrderListPost(
-                        updatedList.map(({ id, sortOrder }) => ({
-                          id: Number(id),
-                          sortOrder,
-                        })),
-                      );
-                    }}
-                    disableSorting={confirmSelection}
-                  />
-                )}
+              {shownOrder?.length > 0 && (
+                <CustomCommonSortableOrderList
+                  test={shownOrder}
+                  onSort={(updatedList) => {
+                    setPendingOrder(updatedList);
+                    setPanelOrderListPost(
+                      updatedList.map(({ id, sortOrder }) => ({
+                        id: Number(id),
+                        sortOrder,
+                      })),
+                    );
+                  }}
+                  disableSorting={confirmSelection}
+                />
+              )}
             </Column>
           </Grid>
           {confirmSelection && (
@@ -221,6 +207,7 @@ function PanelOrder() {
                 onClick={() => {
                   if (confirmSelection) {
                     handlePanelOrderListCall();
+                    return;
                   }
                   setConfirmSelection(true);
                 }}
@@ -237,7 +224,11 @@ function PanelOrder() {
                 type="button"
                 kind="tertiary"
                 onClick={() => {
-                  window.location.reload();
+                  // Discard the pending reordering and show what is stored.
+                  setPendingOrder(null);
+                  setPanelOrderListPost([]);
+                  setConfirmSelection(false);
+                  refreshPanelOrderList("/rest/PanelOrder");
                 }}
               >
                 {confirmSelection ? (
@@ -268,23 +259,22 @@ function PanelOrder() {
           <hr />
           <br />
           <Grid fullWidth={true}>
-            {panelOrderList &&
-              panelOrderList?.existingPanelList?.map((epl, index) => {
-                return (
-                  <Column lg={4} md={4} sm={4} key={index}>
-                    <span style={{ fontWeight: "bold" }}>
-                      {epl?.typeOfSampleName}
-                    </span>
-                    {epl?.panels?.map((panel, index) => {
-                      return (
-                        <Column lg={4} md={4} sm={4} key={index}>
-                          <ListItem>{panel?.panelName}</ListItem>
-                        </Column>
-                      );
-                    })}
-                  </Column>
-                );
-              })}
+            {fetchedPanelOrderList?.existingPanelList?.map((epl, index) => {
+              return (
+                <Column lg={4} md={4} sm={4} key={index}>
+                  <span style={{ fontWeight: "bold" }}>
+                    {epl?.typeOfSampleName}
+                  </span>
+                  {epl?.panels?.map((panel, index) => {
+                    return (
+                      <Column lg={4} md={4} sm={4} key={index}>
+                        <ListItem>{panel?.panelName}</ListItem>
+                      </Column>
+                    );
+                  })}
+                </Column>
+              );
+            })}
           </Grid>
           <br />
           <hr />
@@ -306,23 +296,22 @@ function PanelOrder() {
           <hr />
           <br />
           <Grid fullWidth={true}>
-            {panelOrderList &&
-              panelOrderList?.inactivePanelList?.map((epl, index) => {
-                return (
-                  <Column lg={4} md={4} sm={4} key={index}>
-                    <span style={{ fontWeight: "bold" }}>
-                      {epl?.typeOfSampleName}
-                    </span>
-                    {epl?.panels?.map((panel, index) => {
-                      return (
-                        <Column lg={4} md={4} sm={4} key={index}>
-                          <ListItem>{panel?.panelName}</ListItem>
-                        </Column>
-                      );
-                    })}
-                  </Column>
-                );
-              })}
+            {fetchedPanelOrderList?.inactivePanelList?.map((epl, index) => {
+              return (
+                <Column lg={4} md={4} sm={4} key={index}>
+                  <span style={{ fontWeight: "bold" }}>
+                    {epl?.typeOfSampleName}
+                  </span>
+                  {epl?.panels?.map((panel, index) => {
+                    return (
+                      <Column lg={4} md={4} sm={4} key={index}>
+                        <ListItem>{panel?.panelName}</ListItem>
+                      </Column>
+                    );
+                  })}
+                </Column>
+              );
+            })}
           </Grid>
         </div>
       </div>

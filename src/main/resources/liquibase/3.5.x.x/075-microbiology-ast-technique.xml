@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-ast-technique" author="OGC">
+        <addColumn schemaName="clinlims" tableName="micro_ast_run">
+            <column name="technique" type="VARCHAR(40)"/>
+        </addColumn>
+        <update schemaName="clinlims" tableName="micro_ast_run">
+            <column name="technique" value="LEGACY_UNSPECIFIED_ZONE"/>
+            <where>method = 'ZONE'</where>
+        </update>
+        <update schemaName="clinlims" tableName="micro_ast_run">
+            <column name="technique" value="LEGACY_UNSPECIFIED_MIC"/>
+            <where>technique IS NULL</where>
+        </update>
+        <addNotNullConstraint schemaName="clinlims" tableName="micro_ast_run"
+            columnName="technique" columnDataType="VARCHAR(40)"/>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_run
+            ADD CONSTRAINT micro_ast_run_technique_chk
+            CHECK (technique IN ('VITEK_2', 'PHOENIX', 'ETEST', 'BROTH_MICRODILUTION',
+                'DISK_DIFFUSION', 'LEGACY_UNSPECIFIED_MIC', 'LEGACY_UNSPECIFIED_ZONE'))
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.micro_ast_run
+                DROP CONSTRAINT micro_ast_run_technique_chk
+            </sql>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="technique"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

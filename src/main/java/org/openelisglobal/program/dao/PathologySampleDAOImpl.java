@@ -5,6 +5,7 @@ import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
+import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.springframework.stereotype.Component;
@@ -38,6 +39,17 @@ public class PathologySampleDAOImpl extends BaseDAOImpl<PathologySample, Integer
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Long getCountWithOpenRequests() {
+        String sql = "select count(distinct ps.id) from PathologySample ps join ps.requests r where r.status = :status";
+        Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+        query.setParameter("status", RequestStatus.OPENED);
+        Long count = query.uniqueResult();
+
+        return count;
+    }
+
+    @Override
     public List<PathologySample> searchWithStatusAndAccesionNumber(List<PathologyStatus> statuses, String labNumber) {
         String sql = "from PathologySample ps where ps.status in (:statuses) and ps.sample.accessionNumber ="
                 + " :labNumber";
@@ -59,5 +71,23 @@ public class PathologySampleDAOImpl extends BaseDAOImpl<PathologySample, Integer
         query.setParameter("dateto", to);
         Long count = query.uniqueResult();
         return count;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PathologySample getCaseOfBlock(Integer blockId) {
+        Query<PathologySample> query = entityManager.unwrap(Session.class).createQuery(
+                "select ps from PathologySample ps join ps.blocks b where b.id = :id", PathologySample.class);
+        query.setParameter("id", blockId);
+        return query.list().stream().findFirst().orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PathologySample getCaseOfSlide(Integer slideId) {
+        Query<PathologySample> query = entityManager.unwrap(Session.class).createQuery(
+                "select ps from PathologySample ps join ps.slides s where s.id = :id", PathologySample.class);
+        query.setParameter("id", slideId);
+        return query.list().stream().findFirst().orElse(null);
     }
 }

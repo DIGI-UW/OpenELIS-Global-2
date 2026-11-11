@@ -27,6 +27,11 @@ public class SampleEditForm extends BaseForm {
     @NotNull(groups = { SampleEdit.class })
     private Boolean noSampleFound = Boolean.FALSE;
 
+    // The sample's version when the order was loaded; a save against a newer one is
+    // refused (OGC-1376).
+    @Pattern(regexp = "^[0-9]*$", groups = { SampleEdit.class })
+    private String sampleLastupdated;
+
     @NotNull(groups = { SampleEdit.class })
     private Boolean isConfirmationSample = Boolean.FALSE;
 
@@ -411,5 +416,13 @@ public class SampleEditForm extends BaseForm {
 
     public void setRejectReasonList(List<IdValuePair> rejectReasonList) {
         this.rejectReasonList = rejectReasonList;
+    }
+
+    public String getSampleLastupdated() {
+        return sampleLastupdated;
+    }
+
+    public void setSampleLastupdated(String sampleLastupdated) {
+        this.sampleLastupdated = sampleLastupdated;
     }
 }

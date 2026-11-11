@@ -2,12 +2,17 @@ package org.openelisglobal.testconfiguration.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import javax.validation.Valid;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
+import org.openelisglobal.common.domain.Domain;
+import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
@@ -25,6 +30,8 @@ import org.openelisglobal.testconfiguration.action.SampleTypePanel;
 import org.openelisglobal.testconfiguration.form.PanelCreateForm;
 import org.openelisglobal.testconfiguration.service.PanelCreateService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -111,13 +118,27 @@ public class PanelCreateRestController extends BaseController {
         return builder.toString();
     }
 
+    /**
+     * OGC-1232 — creates the panel in the domain the form names (CLINICAL when it
+     * names none) and answers with the outcome instead of the form: 400 with the
+     * field errors when validation fails, 409 when the name or description already
+     * belongs to a panel, 500 when the insert fails for any other reason. A 200
+     * therefore means the panel exists.
+     */
     @PostMapping(value = "/PanelCreate")
-    public PanelCreateForm postPanelCreate(HttpServletRequest request, @RequestBody @Valid PanelCreateForm form,
+    public ResponseEntity<?> postPanelCreate(HttpServletRequest request, @RequestBody @Valid PanelCreateForm form,
             BindingResult result) {
+        Domain domain = Domain.DEFAULT;
+        if (!GenericValidator.isBlankOrNull(form.getDomain())) {
+            domain = Domain.fromRaw(form.getDomain());
+            if (domain == null) {
+                result.rejectValue("domain", "error.panel.domain.invalid",
+                        "domain must be one of " + Arrays.toString(Domain.values()));
+            }
+        }
         if (result.hasErrors()) {
             saveErrors(result);
-            // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return ResponseEntity.badRequest().body(result.getAllErrors());
         }
 
         String identifyingName = form.getPanelEnglishName();
@@ -127,7 +148,7 @@ public class PanelCreateRestController extends BaseController {
 
         Localization localization = createLocalization(form.getPanelFrenchName(), identifyingName, systemUserId);
 
-        Panel panel = createPanel(identifyingName, systemUserId, loinc);
+        Panel panel = createPanel(identifyingName, systemUserId, loinc, domain);
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, systemUserId);
         SystemModule resultModule = createSystemModule("LogbookResults", identifyingName, systemUserId);
         SystemModule validationModule = createSystemModule("ResultValidation", identifyingName, systemUserId);
@@ -142,28 +163,32 @@ public class PanelCreateRestController extends BaseController {
         try {
             panelCreateService.insert(localization, panel, workplanModule, resultModule, validationModule,
                     workplanResultModule, resultResultModule, validationValidationModule, sampleTypeId, systemUserId);
+        } catch (LIMSDuplicateRecordException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "postPanelCreate", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "duplicate", "message",
+                    "A panel with this name or description already exists: " + identifyingName));
         } catch (LIMSRuntimeException e) {
-            LogEvent.logDebug(e);
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "insertFailed", "message", "The panel could not be created."));
         }
 
         // A LOINC typed here has to reach the terminology mappings too, or the new
         // Panel Editor shows nothing for the panel and saving there writes its
         // empty set back over this column.
-        if (panel.getId() != null) {
-            try {
-                panelTerminologyMappingService.syncLegacyLoinc(panel.getId(), loinc, systemUserId);
-            } catch (LIMSRuntimeException e) {
-                // The panel itself is created; a mapping that did not follow is
-                // recoverable by opening the editor, so never fail the create.
-                LogEvent.logError(e);
-            }
+        try {
+            panelTerminologyMappingService.syncLegacyLoinc(panel.getId(), loinc, systemUserId);
+        } catch (LIMSRuntimeException e) {
+            // The panel itself is created; a mapping that did not follow is
+            // recoverable by opening the editor, so never fail the create.
+            LogEvent.logError(e);
         }
 
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS_INACTIVE);
 
-        // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        form.setCreatedPanelId(panel.getId());
+        return ResponseEntity.ok(form);
     }
 
     private Localization createLocalization(String french, String english, String currentUserId) {
@@ -187,7 +212,7 @@ public class PanelCreateRestController extends BaseController {
         return roleModule;
     }
 
-    private Panel createPanel(String identifyingName, String userId, String loinc) {
+    private Panel createPanel(String identifyingName, String userId, String loinc, Domain domain) {
         Panel panel = new Panel();
         panel.setDescription(identifyingName);
         panel.setPanelName(identifyingName);
@@ -195,6 +220,7 @@ public class PanelCreateRestController extends BaseController {
         panel.setSortOrderInt(Integer.MAX_VALUE);
         panel.setSysUserId(userId);
         panel.setLoinc(loinc);
+        panel.setDomain(domain.name());
         return panel;
     }
 

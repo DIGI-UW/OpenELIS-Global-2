@@ -1,7 +1,6 @@
 # Unified Playwright E2E executor — parameterized for both core and harness.
-# Called by e2e-authoritative-reusable.yml twice: once for core projects
-# (build.docker-compose.yml only) and once for harness projects (with
-# analyzer bridge overlay). Runs test shards, merges blob reports into
+# Called for core and analyzer harness projects.
+# Runs test shards, merges blob reports into
 # a single HTML report, and enforces a gate.
 name: E2E / Playwright (Reusable)
 
@@ -16,6 +15,11 @@ on:
         description: "Prefix for artifact names (e.g. core, harness)"
         required: true
         type: string
+      shard_indices:
+        description: "JSON array of shard indices; use [1] for a single story"
+        required: false
+        type: string
+        default: "[1,2]"
       compose_files:
         description: "Comma-separated Docker Compose files to start"
         required: false
@@ -27,7 +31,7 @@ on:
         type: string
         default: "core"
       setup_analyzer_harness:
-        description: "Run analyzer harness setup (plugin jars, seeding, cert validation)"
+        description: "Run analyzer harness setup (runtime, seeding, cert validation)"
         required: false
         type: boolean
         default: false
@@ -60,19 +64,21 @@ on:
 
 jobs:
   # ─── Pre-warm Playwright browser cache ─────────────────────────────────────
-  # Runs once per workflow invocation so the 4 parallel shards (2 here × 2
-  # callers — core and harness) don't all hammer the Playwright CDN on a cold
-  # cache. On a warm cache this job finishes in ~10s with no network I/O
+  # Runs once per suite invocation so its parallel shards do not all hammer
+  # the Playwright CDN on a cold cache. On a warm cache this job finishes in
+  # ~10s with no network I/O
   # beyond the cache backend. The shards' own `actions/cache` step restores
   # the key this job saves.
   pre-warm-playwright:
     name: Pre-warm Playwright cache
-    runs-on: ubuntu-latest
+    # Pinned: the Playwright release in package.json ships no browser build
+    # for ubuntu-latest's Ubuntu 26.04 image, so the install step fails there.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
@@ -84,7 +90,7 @@ jobs:
 
       - name: Restore Playwright browser cache
         id: pw-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
@@ -122,9 +128,11 @@ jobs:
 
   # ─── Test Shards ────────────────────────────────────────────────────────────
   test-shards:
-    name: ${{ inputs.artifact_prefix }} ${{ matrix.shard_index }}/2
+    name: ${{ inputs.artifact_prefix }} ${{ matrix.shard_index }}/${{ strategy.job-total }}
     needs: pre-warm-playwright
-    runs-on: ubuntu-latest
+    # Pinned: the Playwright release in package.json ships no browser build
+    # for ubuntu-latest's Ubuntu 26.04 image, so the install step fails there.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: read
@@ -132,10 +140,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard_index: [1, 2]
+        shard_index: ${{ fromJSON(inputs.shard_indices) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           submodules: recursive
@@ -167,7 +175,7 @@ jobs:
         working-directory: frontend
 
       - name: Restore Playwright browser cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
@@ -177,6 +185,11 @@ jobs:
       - name: Install Playwright browsers
         timeout-minutes: 15
         run: |
+          # --with-deps runs apt-get update, which fails the whole install when
+          # any source fails; packages.microsoft.com answered 403 on a runner
+          # (2026-10-20). Chromium's dependencies come from the Ubuntu archive.
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list \
+            /etc/apt/sources.list.d/microsoft-prod.sources
           for attempt in 1 2 3; do
             echo "::group::Playwright install attempt $attempt"
             # A timed-out --with-deps attempt orphans apt-get still holding the
@@ -209,7 +222,7 @@ jobs:
 
       - name: Download image map (cross-run)
         if: inputs.artifact_source_mode == 'cross_run'
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
@@ -218,34 +231,10 @@ jobs:
 
       - name: Download image map (same-run)
         if: inputs.artifact_source_mode == 'same_run'
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
-
-      - name: Download plugin jars (cross-run)
-        if: inputs.setup_analyzer_harness && inputs.artifact_source_mode == 'cross_run'
-        uses: actions/download-artifact@v6
-        with:
-          name: e2e-plugin-jars
-          path: /tmp/e2e-plugin-jars
-          run-id: ${{ inputs.build_run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download plugin jars (same-run)
-        if: inputs.setup_analyzer_harness && inputs.artifact_source_mode == 'same_run'
-        uses: actions/download-artifact@v6
-        with:
-          name: e2e-plugin-jars
-          path: /tmp/e2e-plugin-jars
-
-      - name: Restore plugin jars for runtime loading
-        if: inputs.setup_analyzer_harness
-        run: |
-          mkdir -p volume/plugins
-          rm -rf volume/plugins/*
-          cp /tmp/e2e-plugin-jars/*.jar volume/plugins/
-          ls -lah volume/plugins
 
       # ── Docker Setup ────────────────────────────────────────────────────────
 
@@ -272,6 +261,10 @@ jobs:
       # ── Container Startup ───────────────────────────────────────────────────
 
       - name: Start containers (no rebuild)
+        env:
+          # The fixture provisioner is intentionally disabled in normal deployments.
+          # Core E2E uses the ADMIN-gated endpoint to build its disposable scenario.
+          OE_UAT_SCENARIOS_ENABLED: "true"
         run: |
           COMPOSE_CMD=(docker compose)
           IFS=',' read -ra FILES <<< "${{ inputs.compose_files }}"
@@ -328,7 +321,7 @@ jobs:
 
       - name: Seed analyzers via REST API
         if: inputs.setup_analyzer_harness
-        run: bash projects/analyzer-harness/seed-analyzers.sh
+        run: bash projects/analyzer-harness/seed-analyzers.sh --ensure-connections
         env:
           BASE_URL: https://localhost
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
@@ -374,7 +367,7 @@ jobs:
           for p in "${PROJECTS[@]}"; do
             CMD+=("--project=$p")
           done
-          CMD+=("--shard=${{ matrix.shard_index }}/2")
+          CMD+=("--shard=${{ matrix.shard_index }}/${{ strategy.job-total }}")
           if [[ "${{ inputs.setup_analyzer_harness }}" == "true" ]]; then
             CMD+=("--workers=1")
           fi
@@ -386,9 +379,9 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+          ANALYZER_INGRESS_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          ANALYZER_INGRESS_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
           ANALYZER_HARNESS: ${{ inputs.setup_analyzer_harness && 'true' || '' }}
-          FILE_IMPORT_POLL_MS: ${{ inputs.setup_analyzer_harness && '1000' || '' }}
-          FILE_IMPORT_DROP_BUFFER_MS: ${{ inputs.setup_analyzer_harness && '15000' || '' }}
 
       - name: Memory snapshot (post-test) + monitor dump
         if: ${{ !cancelled() }}
@@ -463,7 +456,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
@@ -480,7 +473,7 @@ jobs:
 
       - name: Download blob reports from shards
         continue-on-error: true
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: frontend/all-blob-reports
           pattern: ${{ inputs.artifact_prefix }}-blob-report-*

@@ -1,0 +1,140 @@
+import {
+  differenceInCalendarDays,
+  format,
+  isValid,
+  parse,
+  parseISO,
+} from "date-fns";
+import { labNow } from "../utils/labClock";
+
+export const configuredDatePattern = (dateLocale) =>
+  dateLocale === "fr-FR" ? "dd/MM/yyyy" : "MM/dd/yyyy";
+
+/**
+ * Today on the lab's clock as `yyyy-MM-dd`.
+ *
+ * `toISOString()` reports UTC, which puts a lab west of Greenwich a day behind
+ * and a lab east of it a day ahead for part of every day, and the browser's
+ * clock can sit in another zone than the lab. Collection and receipt dates are
+ * wall-clock events at the site, so they are stamped from the lab's clock.
+ */
+export const todayLocalIso = (now = labNow()) => format(now, "yyyy-MM-dd");
+
+/** The current wall-clock time at the site as `HH:mm`. */
+export const currentLocalTime = (now = labNow()) => format(now, "HH:mm");
+
+export const formatIsoDateForBackend = (isoDate, dateLocale) => {
+  if (!isoDate) {
+    return "";
+  }
+  if (isoDate.includes("/")) {
+    return isoDate;
+  }
+  const parsed = parseISO(isoDate.slice(0, 10));
+  return isValid(parsed)
+    ? format(parsed, configuredDatePattern(dateLocale))
+    : isoDate;
+};
+
+export const formatPickerDateForIso = (pickerDate, dateLocale) => {
+  if (!pickerDate) {
+    return "";
+  }
+  const pattern = configuredDatePattern(dateLocale);
+  const parsed = parse(pickerDate, pattern, labNow());
+  return isValid(parsed) && format(parsed, pattern) === pickerDate
+    ? format(parsed, "yyyy-MM-dd")
+    : "";
+};
+
+export const normalizeDateForState = (dateValue, dateLocale) => {
+  if (!dateValue) {
+    return "";
+  }
+  const isoDate = dateValue.slice(0, 10);
+  const parsedIso = parseISO(isoDate);
+  if (isValid(parsedIso) && format(parsedIso, "yyyy-MM-dd") === isoDate) {
+    return isoDate;
+  }
+  return formatPickerDateForIso(dateValue, dateLocale);
+};
+
+export const daysBetweenIsoDates = (startDate, endDate) => {
+  if (!startDate || !endDate) {
+    return null;
+  }
+  const start = parseISO(startDate.slice(0, 10));
+  const end = parseISO(endDate.slice(0, 10));
+  return isValid(start) && isValid(end)
+    ? differenceInCalendarDays(end, start)
+    : null;
+};
+
+/**
+ * The shortest holding time, in minutes, among a sample's ordered tests.
+ *
+ * Holding time is a test attribute (`Test.timeHolding`), never user input, and
+ * a sample carrying several tests must satisfy the tightest of them.
+ */
+export const shortestHoldingMinutes = (tests = []) => {
+  const limits = tests
+    .map((test) => parseInt(test?.timeHolding, 10))
+    .filter((minutes) => Number.isFinite(minutes) && minutes > 0);
+  return limits.length > 0 ? Math.min(...limits) : null;
+};
+
+/**
+ * When a sample must be tested by, measured from lab receipt.
+ *
+ * The existing over-hold flag on Results measures from collection; receipt is
+ * the correct anchor for the laboratory's own clock, and is what the order
+ * flow can show at intake. Falls back to collection when receipt is not yet
+ * recorded. Returns null when nothing can be derived.
+ */
+export const holdingDeadline = (sample = {}, tests = []) => {
+  const minutes = shortestHoldingMinutes(tests);
+  if (!minutes) {
+    return null;
+  }
+  const anchorDate = sample.receivedDate || sample.collectionDate;
+  if (!anchorDate) {
+    return null;
+  }
+  const anchorTime = sample.receivedDate
+    ? sample.receivedTime || "00:00"
+    : sample.collectionTime || "00:00";
+  const parsed = parseISO(`${anchorDate.slice(0, 10)}T${anchorTime}`);
+  if (!isValid(parsed)) {
+    return null;
+  }
+  return new Date(parsed.getTime() + minutes * 60 * 1000);
+};
+
+/**
+ * Renders a holding time in minutes as a short "36 h 30 min" style label, in
+ * the reader's language when `intl` is given (OGC-1443).
+ */
+export const formatHoldingMinutes = (minutes, intl) => {
+  if (!minutes) {
+    return "";
+  }
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  const say = (id, values, fallback) =>
+    intl ? intl.formatMessage({ id }, values) : fallback;
+  if (hours === 0) {
+    return say(
+      "sample.handling.holding.minutes",
+      { minutes: rest },
+      `${rest} min`,
+    );
+  }
+  if (rest === 0) {
+    return say("sample.handling.holding.hours", { hours }, `${hours} h`);
+  }
+  return say(
+    "sample.handling.holding.hoursMinutes",
+    { hours, minutes: rest },
+    `${hours} h ${rest} min`,
+  );
+};

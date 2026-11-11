@@ -3,7 +3,6 @@ import {
   Column,
   DatePicker,
   DatePickerInput,
-  Dropdown,
   Grid,
   InlineNotification,
   Link as CarbonLink,
@@ -38,8 +37,10 @@ import React, {
   useState,
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory, useLocation } from "react-router-dom";
+import { Link as RouterLink, useHistory, useLocation } from "react-router-dom";
+import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import SearchableSelect from "../common/SearchableSelect";
 import { NotificationContext } from "../layout/Layout";
 import ShipmentNavigation from "../shipment/ShipmentNavigation";
 import {
@@ -50,9 +51,13 @@ import {
 import MarkLostModal from "./MarkLostModal";
 import RejectModal from "./RejectModal";
 import "./ReferenceLabResults.css";
+import useSiteDateFormat from "../common/useSiteDateFormat";
 
 const VIEWS = ["outstanding", "returned", "history"];
-const PRIORITIES = ["Routine", "Urgent", "STAT"];
+// The real OrderPriority enum, which is what a sample actually carries. The
+// filter used to offer Routine/Urgent/STAT, a vocabulary the backend has never
+// used, so selecting any of them matched nothing.
+const PRIORITIES = ["ROUTINE", "STAT", "ASAP", "TIMED", "FUTURE_STAT"];
 
 const STATUS_TAG_KIND = {
   draft: "gray",
@@ -66,10 +71,16 @@ const STATUS_TAG_KIND = {
 };
 
 const PRIORITY_TAG_KIND = {
-  Routine: "gray",
-  Urgent: "warm-gray",
+  ROUTINE: "gray",
   STAT: "red",
+  ASAP: "purple",
+  TIMED: "cyan",
+  FUTURE_STAT: "magenta",
 };
+
+// The stored value is the enum name; what a person reads is a translated label.
+const priorityLabel = (priority, intl) =>
+  intl.formatMessage({ id: `sample.priority.${priority}` });
 
 const OUTCOME_TAG_KIND = {
   Reconciled: "teal",
@@ -87,6 +98,7 @@ const METRIC_COLOR = {
 
 const ReferenceLabResults = () => {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const history = useHistory();
   const location = useLocation();
   const componentMounted = useRef(true);
@@ -251,7 +263,9 @@ const ReferenceLabResults = () => {
   const filteredRows = useMemo(() => {
     let rows = referrals;
     if (filterRefLab) {
-      rows = rows.filter((r) => r.referenceLabId === filterRefLab);
+      rows = rows.filter(
+        (r) => String(r.referenceLabId) === String(filterRefLab),
+      );
     }
     if (filterPriority.length > 0) {
       rows = rows.filter((r) => filterPriority.includes(r.priority));
@@ -304,6 +318,10 @@ const ReferenceLabResults = () => {
 
   return (
     <div className="reference-lab-results">
+      {/* Without this the page's own messages are created and thrown away: every
+          accept, reject, mark-lost and notify said nothing at all, whether it
+          worked or failed. */}
+      <AlertDialog />
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },
@@ -421,58 +439,43 @@ const ReferenceLabResults = () => {
       <div className="reference-lab-results__filters">
         <Grid narrow>
           <Column lg={4} md={4} sm={4}>
-            <Dropdown
+            <SearchableSelect
               id="ref-lab-filter"
-              titleText={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "referral.filter.referenceLab",
               })}
-              label={intl.formatMessage({ id: "referral.filter.allRefLabs" })}
-              items={[
-                {
-                  id: null,
-                  name: intl.formatMessage({
-                    id: "referral.filter.allRefLabs",
-                  }),
-                },
-                ...referenceLabs,
-              ]}
-              itemToString={(item) => (item ? item.name : "")}
-              selectedItem={
-                referenceLabs.find((r) => r.id === filterRefLab) || {
-                  id: null,
-                  name: intl.formatMessage({
-                    id: "referral.filter.allRefLabs",
-                  }),
-                }
-              }
-              onChange={({ selectedItem }) =>
-                setFilterRefLab(selectedItem?.id || null)
-              }
+              placeholder={intl.formatMessage({
+                id: "referral.filter.allRefLabs",
+              })}
+              options={referenceLabs.map((lab) => ({
+                id: lab.id,
+                value: lab.name,
+              }))}
+              value={filterRefLab ?? ""}
+              onChange={(id) => setFilterRefLab(id || null)}
             />
           </Column>
           <Column lg={4} md={4} sm={4}>
             <DatePicker
+              dateFormat={siteDate.dateFormat}
+              parseDate={siteDate.parseDate}
               datePickerType="range"
               onChange={([from, to]) => {
                 setFilterDateFrom(from || null);
                 setFilterDateTo(to || null);
               }}
-              value={
-                filterDateFrom && filterDateTo
-                  ? [filterDateFrom, filterDateTo]
-                  : []
-              }
+              value={[filterDateFrom, filterDateTo].filter(Boolean)}
             >
               <DatePickerInput
                 id="date-from"
-                placeholder="mm/dd/yyyy"
+                placeholder={siteDate.placeholder}
                 labelText={intl.formatMessage({
                   id: "referral.filter.dateRange",
                 })}
               />
               <DatePickerInput
                 id="date-to"
-                placeholder="mm/dd/yyyy"
+                placeholder={siteDate.placeholder}
                 labelText={" "}
               />
             </DatePicker>
@@ -485,7 +488,7 @@ const ReferenceLabResults = () => {
                 id: "referral.filter.allPriorities",
               })}
               items={PRIORITIES}
-              itemToString={(i) => i}
+              itemToString={(i) => (i ? priorityLabel(i, intl) : "")}
               selectedItems={filterPriority}
               onChange={({ selectedItems }) =>
                 setFilterPriority(selectedItems || [])
@@ -639,11 +642,11 @@ const renderStatus = (status) => {
   );
 };
 
-const renderPriority = (priority) => {
+const renderPriority = (priority, intl) => {
   if (!priority) return null;
   return (
     <Tag type={PRIORITY_TAG_KIND[priority] || "gray"} size="sm">
-      {priority}
+      {priorityLabel(priority, intl)}
     </Tag>
   );
 };
@@ -821,7 +824,7 @@ const OutstandingTable = ({
               <TableCell>{row.referenceLabName || "—"}</TableCell>
               <TableCell>
                 {row.boxId ? (
-                  <CarbonLink href={`/SampleShipment/box/${row.boxId}`}>
+                  <CarbonLink href={`/SampleShipment/box/${row.boxKey}`}>
                     {row.boxId}
                   </CarbonLink>
                 ) : (
@@ -831,12 +834,13 @@ const OutstandingTable = ({
               <TableCell>{renderDate(row.sentDate)}</TableCell>
               <TableCell>{renderStatus(row.status)}</TableCell>
               <TableCell>{renderDays(row.daysOutstanding)}</TableCell>
-              <TableCell>{renderPriority(row.priority)}</TableCell>
+              <TableCell>{renderPriority(row.priority, intl)}</TableCell>
               <TableCell onClick={(e) => e.stopPropagation()}>
                 <Button
                   kind="tertiary"
                   size="sm"
-                  href={`/result?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
+                  as={RouterLink}
+                  to={`/Results?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
                   className="reference-lab-results__enter-result"
                 >
                   <FormattedMessage id="referral.action.enterResult" />
@@ -1071,7 +1075,7 @@ const ExpandPanel = ({
         />
         <DetailRow
           label={intl.formatMessage({ id: "referral.expand.detail.priority" })}
-          value={renderPriority(row.priority)}
+          value={renderPriority(row.priority, intl)}
         />
       </Column>
 
@@ -1089,7 +1093,7 @@ const ExpandPanel = ({
           label={intl.formatMessage({ id: "referral.expand.detail.boxId" })}
           value={
             row.boxId ? (
-              <CarbonLink href={`/SampleShipment/box/${row.boxId}`}>
+              <CarbonLink href={`/SampleShipment/box/${row.boxKey}`}>
                 {row.boxId}
               </CarbonLink>
             ) : null
@@ -1141,7 +1145,8 @@ const ExpandPanel = ({
               <Button
                 kind="primary"
                 size="sm"
-                href={`/result?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
+                as={RouterLink}
+                to={`/Results?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
               >
                 <FormattedMessage id="referral.action.enterResult" />
               </Button>
@@ -1203,7 +1208,7 @@ const ExpandPanel = ({
             </div>
             {row.labNumber && (
               <CarbonLink
-                href={`/result?accessionNumber=${row.labNumber}`}
+                href={`/Results?accessionNumber=${encodeURIComponent(row.labNumber)}`}
                 className="reference-lab-results__result-entry-link"
               >
                 <FormattedMessage id="referral.action.openResultEntry" />

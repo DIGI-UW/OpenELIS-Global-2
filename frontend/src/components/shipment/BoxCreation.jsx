@@ -25,7 +25,7 @@ import {
 } from "@carbon/react";
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
@@ -41,7 +41,18 @@ import ShipmentNavigation from "./ShipmentNavigation";
 const BoxCreation = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const { addNotification } = useContext(NotificationContext);
+
+  // Add to Box links here with the sample and its referral lab
+  const linkQuery = new URLSearchParams(location.search);
+  const linkFacilityId = linkQuery.get("facilityId") || null;
+  const linkSampleItemId = linkQuery.get("sampleItemId") || null;
+  const [prefilling, setPrefilling] = useState(
+    Boolean(linkFacilityId || linkSampleItemId),
+  );
+  const [destinationNotLoaded, setDestinationNotLoaded] = useState(false);
+  const [sampleNotLoaded, setSampleNotLoaded] = useState(false);
 
   // Auto-generated box number
   const [boxNumber, setBoxNumber] = useState("");
@@ -102,10 +113,17 @@ const BoxCreation = () => {
   const [rejectionReasons, setRejectionReasons] = useState([]);
 
   useEffect(() => {
-    fetchFacilities();
+    const facilitiesRequest = fetchFacilities();
+    if (prefilling) {
+      prefillFromLink(facilitiesRequest);
+    }
     fetchRejectionReasons();
     fetchBoxLabelPrefix();
     generateBoxNumber();
+    // Ambient is what an unset box is saved as, so show it as chosen rather than
+    // leaving the field reading "Select" while the summary and the saved box both
+    // say Ambient.
+    setSelectedTemperature(temperatureOptions[0]);
   }, []);
 
   useEffect(() => {
@@ -147,15 +165,51 @@ const BoxCreation = () => {
     );
   };
 
-  const fetchFacilities = () => {
-    getFromOpenElisServer(
-      "/rest/displayList/REFERRAL_ORGANIZATIONS",
+  const fetchFacilities = () =>
+    getFromOpenElisServerV2("/rest/displayList/REFERRAL_ORGANIZATIONS").then(
       (response) => {
-        if (response) {
-          setFacilities(response);
-        }
+        setFacilities(response);
+        return response;
       },
+      () => null,
     );
+
+  // The sample's own lab wins over the link's facilityId, and only a lab from
+  // the destination list is ever preselected.
+  const prefillFromLink = async (facilitiesRequest) => {
+    const sampleRequest = linkSampleItemId
+      ? getFromOpenElisServerV2("/rest/unassigned-sample/items")
+          .then(
+            (items) =>
+              items.find(
+                (item) => String(item.sampleItemId) === linkSampleItemId,
+              ) || null,
+          )
+          .catch(() => null)
+      : null;
+    const [referralLabs, sample] = await Promise.all([
+      facilitiesRequest,
+      sampleRequest,
+    ]);
+
+    setSampleNotLoaded(Boolean(linkSampleItemId) && !sample);
+    if (sample || linkFacilityId) {
+      const destinationId = sample
+        ? sample.destinationFacilityId
+        : linkFacilityId;
+      const destination = (referralLabs || []).find(
+        (lab) => String(lab.id) === String(destinationId),
+      );
+      if (destination) {
+        setSelectedFacility(destination);
+        if (sample) {
+          setAddedSamples([buildSampleToAdd(sample)]);
+        }
+      } else {
+        setDestinationNotLoaded(true);
+      }
+    }
+    setPrefilling(false);
   };
 
   const fetchRejectionReasons = () => {
@@ -423,7 +477,6 @@ const BoxCreation = () => {
       destinationFacilityId: Number.parseInt(selectedFacility.id),
       temperatureRequirement: selectedTemperature?.id || "AMBIENT",
       capacity: capacity,
-      actualSampleCount: addedSamples.length,
       notes: notes,
       state: "DRAFT",
     };
@@ -469,13 +522,27 @@ const BoxCreation = () => {
               }
             }
 
-            addNotification({
-              kind: errors > 0 ? "warning" : "success",
-              title: intl.formatMessage({ id: "notification.success" }),
-              message: intl.formatMessage({
-                id: "shipment.notification.boxCreated",
-              }),
-            });
+            addNotification(
+              errors > 0
+                ? {
+                    kind: "error",
+                    title: intl.formatMessage({ id: "notification.error" }),
+                    message: intl.formatMessage(
+                      { id: "shipment.error.partialSampleAdd" },
+                      {
+                        added: addedSamples.length - errors,
+                        total: addedSamples.length,
+                      },
+                    ),
+                  }
+                : {
+                    kind: "success",
+                    title: intl.formatMessage({ id: "notification.success" }),
+                    message: intl.formatMessage({
+                      id: "shipment.notification.boxCreated",
+                    }),
+                  },
+            );
             setLoading(false);
             history.push(`/SampleShipment/box/${response.id}`);
           };
@@ -501,7 +568,6 @@ const BoxCreation = () => {
       destinationFacilityId: Number.parseInt(selectedFacility.id),
       temperatureRequirement: selectedTemperature?.id || "AMBIENT",
       capacity: capacity,
-      actualSampleCount: addedSamples.length,
       notes: notes,
       state: "DRAFT",
     };
@@ -522,25 +588,41 @@ const BoxCreation = () => {
 
         if (response && response.id) {
           const addSamplesAndMarkReady = async () => {
-            // Add all samples in parallel using Promise.all
-            if (addedSamples.length > 0) {
-              await Promise.all(
-                addedSamples.map(
-                  (sample) =>
-                    new Promise((resolve) => {
-                      postToOpenElisServerJsonResponse(
-                        "/rest/box-sample/items",
-                        JSON.stringify({
-                          shippingBoxId: response.id,
-                          sampleItemId: sample.sampleItemId || sample.id,
-                        }),
-                        () => {
-                          resolve();
-                        },
-                      );
-                    }),
+            // One sample at a time, and each answer read: these all write the same box
+            // row, and a box that quietly holds fewer samples than the operator staged
+            // sends a short shipment to the reference lab.
+            let added = 0;
+            for (const sample of addedSamples) {
+              const ok = await new Promise((resolve) => {
+                postToOpenElisServerJsonResponse(
+                  "/rest/box-sample/items",
+                  JSON.stringify({
+                    shippingBoxId: response.id,
+                    sampleItemId: sample.sampleItemId || sample.id,
+                  }),
+                  (res) => {
+                    resolve(!(res?.error || res?.status >= 400));
+                  },
+                );
+              });
+              if (ok) {
+                added++;
+              }
+            }
+
+            if (added < addedSamples.length) {
+              // Left as a draft on purpose: the operator can still add what is missing.
+              addNotification({
+                kind: "error",
+                title: intl.formatMessage({ id: "notification.error" }),
+                message: intl.formatMessage(
+                  { id: "shipment.error.partialSampleAdd" },
+                  { added, total: addedSamples.length },
                 ),
-              );
+              });
+              setLoading(false);
+              history.push(`/SampleShipment/box/${response.id}`);
+              return;
             }
 
             // Mark as ready after all samples added
@@ -671,8 +753,31 @@ const BoxCreation = () => {
       <Grid fullWidth className="box-creation-content">
         {/* Left Column - Form */}
         <Column lg={10} md={5} sm={4}>
+          {destinationNotLoaded && !selectedFacility && (
+            <InlineNotification
+              kind="error"
+              title={intl.formatMessage({ id: "notification.error" })}
+              subtitle={intl.formatMessage({
+                id: "shipment.error.linkDestinationNotLoaded",
+              })}
+              lowContrast
+              hideCloseButton
+            />
+          )}
+          {sampleNotLoaded && addedSamples.length === 0 && (
+            <InlineNotification
+              kind="error"
+              title={intl.formatMessage({ id: "notification.error" })}
+              subtitle={intl.formatMessage({
+                id: "shipment.error.linkSampleNotLoaded",
+              })}
+              lowContrast
+              hideCloseButton
+            />
+          )}
+
           {/* Validation Messages */}
-          {validationMessages.length > 0 && (
+          {!prefilling && validationMessages.length > 0 && (
             <div className="validation-messages">
               {validationMessages.map((message, index) => (
                 <InlineNotification
@@ -971,10 +1076,7 @@ const BoxCreation = () => {
                   <FormattedMessage id="shipment.box.temperature" />:
                 </span>
                 <span className="summary-value">
-                  {selectedTemperature?.label ||
-                    intl.formatMessage({
-                      id: "shipment.temperature.ambient",
-                    })}
+                  {selectedTemperature?.label}
                 </span>
               </div>
             </div>

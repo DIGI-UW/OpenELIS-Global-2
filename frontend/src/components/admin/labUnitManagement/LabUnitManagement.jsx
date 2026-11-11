@@ -41,6 +41,7 @@ import {
   RadioButtonGroup,
   RadioButton,
   Toggle,
+  Dropdown,
   Button,
   InlineNotification,
   Modal,
@@ -63,8 +64,9 @@ import useActiveLocales from "../../common/useActiveLocales";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import StaleSaveNotice, { isStaleConflict } from "../../common/StaleSaveNotice";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -101,9 +103,12 @@ const mapLabUnit = (item) => ({
   names: item.names || {},
   description: item.description || "",
   domain: item.domain || "CLINICAL",
+  requireTrackedMedia: !!item.requireTrackedMedia,
+  gramStainTestId: item.gramStainTestId || "",
   active: item.isActive !== undefined ? item.isActive : true,
   testCount: item.testCount || 0,
   sortOrder: item.sortOrder || 0,
+  lastupdated: item.lastupdated || null,
 });
 
 function LabUnitManagement({ intl }) {
@@ -167,6 +172,7 @@ function LabUnitManagement({ intl }) {
 
   // Form validation and state
   const [formErrors, setFormErrors] = useState({});
+  const [staleSave, setStaleSave] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const nameInputRef = useRef(null);
@@ -180,7 +186,21 @@ function LabUnitManagement({ intl }) {
 
   // Tests assigned to the lab unit currently being edited (drives the
   // deactivate-in-use warning).
+  // Supplies the configured Gram stain choices; deactivation uses live counts.
   const [assignedTests, setAssignedTests] = useState([]);
+
+  // OGC-189 M3 — guarded deactivation. Switching a lab unit off opens an
+  // impact summary with three options behind a typed confirmation, instead of
+  // saving silently with tests still attached.
+  const [deactivationOpen, setDeactivationOpen] = useState(false);
+  const [deactivationImpact, setDeactivationImpact] = useState(null);
+  const [deactivationOption, setDeactivationOption] = useState("");
+  const [deactivationDestination, setDeactivationDestination] = useState("");
+  const [deactivationConfirmText, setDeactivationConfirmText] = useState("");
+  const [deactivationBusy, setDeactivationBusy] = useState(false);
+  // The server's reason when it refuses the deactivation (OGC-1459).
+  const [deactivationError, setDeactivationError] = useState(null);
+  const [deactivationStale, setDeactivationStale] = useState(false);
 
   const refreshLabUnits = useCallback(async () => {
     return await new Promise((resolve, reject) => {
@@ -309,11 +329,39 @@ function LabUnitManagement({ intl }) {
       return;
     }
     setEditingUnit({ ...unit });
+    setStaleSave(false);
     setFormErrors({});
     setShowSuccess(false);
     setPendingDomain(null);
     setAssignedTests([]);
   }, [view, labUnitId, labUnits, editingUnit]);
+
+  // Other sections of this page (Display Order) change the unit too, so coming
+  // back to Basic Info takes the stored version; otherwise the next save here
+  // would be refused as stale (OGC-1463).
+  const editingUnitId = editingUnit ? editingUnit.id : null;
+  useEffect(() => {
+    if (
+      view !== "editor" ||
+      activeSection !== "basic-info" ||
+      !editingUnitId ||
+      String(editingUnitId) !== String(labUnitId)
+    ) {
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/lab-units-management/${editingUnitId}`,
+      (res) => {
+        if (res && res.success && res.data) {
+          setEditingUnit((prev) =>
+            prev && String(prev.id) === String(res.data.id)
+              ? { ...prev, lastupdated: res.data.lastupdated || null }
+              : prev,
+          );
+        }
+      },
+    );
+  }, [view, activeSection, editingUnitId, labUnitId]);
 
   // Seed the "add" form once when we land on /LabUnitManagement/new.
   useEffect(() => {
@@ -339,6 +387,16 @@ function LabUnitManagement({ intl }) {
     setShowSuccess(false);
     setPendingDomain(null);
   }, [view, labUnits.length, editingUnit]);
+
+  useEffect(() => {
+    if (editingUnit?.id)
+      getFromOpenElisServer(
+        `/rest/lab-units-management/${editingUnit.id}/tests`,
+        (data) => {
+          if (Array.isArray(data)) setAssignedTests(data);
+        },
+      );
+  }, [editingUnit?.id]);
 
   // Clear editor state when returning to the list URL.
   useEffect(() => {
@@ -381,7 +439,10 @@ function LabUnitManagement({ intl }) {
         errors[nameErrorKey] = intl.formatMessage({
           id: "error.labUnit.name.required",
         });
-      } else if (view === "add" && name.length > NAME_MAX_LENGTH) {
+      } else if (name.length > NAME_MAX_LENGTH) {
+        // The cap applies on edit as well as add — it was gated behind
+        // `view === "add"`, so a longer name saved and persisted (OGC-189, QA
+        // LU-W-3).
         errors[nameErrorKey] = intl.formatMessage(
           { id: "error.labUnit.name.maxLength" },
           { max: NAME_MAX_LENGTH },
@@ -397,6 +458,20 @@ function LabUnitManagement({ intl }) {
           id: "error.labUnit.name.duplicate",
         });
       }
+
+      // Every translated name lands in the same name column, so the cap is
+      // per-locale — the server rejects any locale over it (OGC-189).
+      Object.entries(formData.names || {}).forEach(([localeCode, value]) => {
+        if (localeCode === fallbackLocaleCode) {
+          return;
+        }
+        if ((value || "").trim().length > NAME_MAX_LENGTH) {
+          errors[`name-${localeCode}`] = intl.formatMessage(
+            { id: "error.labUnit.name.maxLength" },
+            { max: NAME_MAX_LENGTH },
+          );
+        }
+      });
 
       if (
         formData.description &&
@@ -439,6 +514,8 @@ function LabUnitManagement({ intl }) {
           names: trimmedNames(editingUnit.names),
           description: editingUnit.description?.trim() || undefined,
           domain: editingUnit.domain || "CLINICAL",
+          requireTrackedMedia: !!editingUnit.requireTrackedMedia,
+          gramStainTestId: editingUnit.gramStainTestId || "",
         };
         const created = await new Promise((resolve, reject) => {
           postToOpenElisServerJsonResponse(
@@ -469,19 +546,32 @@ function LabUnitManagement({ intl }) {
           names: trimmedNames(editingUnit.names),
           description: editingUnit.description?.trim(),
           domain: editingUnit.domain || "CLINICAL",
+          requireTrackedMedia: !!editingUnit.requireTrackedMedia,
+          gramStainTestId: editingUnit.gramStainTestId || "",
           isActive:
             editingUnit.active !== undefined ? editingUnit.active : true,
+          lastupdated: editingUnit.lastupdated || null,
         };
         await new Promise((resolve, reject) => {
-          putToOpenElisServer(
+          putToOpenElisServerFullResponse(
             `/rest/lab-units-management/${editingUnit.id}`,
             JSON.stringify(updateData),
-            (status) => {
+            async (response) => {
+              const status = response ? response.status : 0;
               if (status === 200) {
                 resolve(status);
-              } else {
-                reject(new Error(`Update failed (HTTP ${status})`));
+                return;
               }
+              const body = response
+                ? await response.json().catch(() => null)
+                : null;
+              const refusal = new Error(
+                status === 409 && !isStaleConflict(status, body)
+                  ? intl.formatMessage({ id: "error.labUnit.name.duplicate" })
+                  : `Update failed (HTTP ${status})`,
+              );
+              refusal.stale = isStaleConflict(status, body);
+              reject(refusal);
             },
           );
         });
@@ -504,6 +594,10 @@ function LabUnitManagement({ intl }) {
         setFormErrors({});
       }
     } catch (error) {
+      if (error.stale) {
+        setStaleSave(true);
+        return;
+      }
       const operation = view === "add" ? "create" : "update";
       setFormErrors({
         submit: `Failed to ${operation} lab unit: ${error.message}`,
@@ -519,6 +613,7 @@ function LabUnitManagement({ intl }) {
     listUrl,
     labUnits,
     refreshLabUnits,
+    intl,
   ]);
 
   // Domain radio handler: in the editor an actual change is staged behind the
@@ -585,9 +680,87 @@ function LabUnitManagement({ intl }) {
     [labUnitId],
   );
 
-  const activeAssignedTestCount = assignedTests.filter(
-    (test) => test.active,
-  ).length;
+  const openDeactivationFlow = useCallback(() => {
+    setDeactivationImpact(null);
+    setDeactivationOption("");
+    setDeactivationDestination("");
+    setDeactivationConfirmText("");
+    setDeactivationError(null);
+    setDeactivationStale(false);
+    setDeactivationOpen(true);
+    getFromOpenElisServer(
+      `/rest/lab-units-management/${labUnitId}/deactivation-impact`,
+      (response) => {
+        const impact = response?.data || null;
+        setDeactivationImpact(impact);
+        // The server recommends reassign wherever reflex/calculation targets
+        // are present (D2) — "keep" would silently break a clinical rule.
+        setDeactivationOption(impact?.recommendedOption || "keep");
+      },
+    );
+  }, [labUnitId]);
+
+  /**
+   * After a stale refusal, load the unit as it is now so the deactivation can be
+   * confirmed against the current version (OGC-1463).
+   */
+  const refreshAfterStaleDeactivation = useCallback(() => {
+    getFromOpenElisServer(`/rest/lab-units-management/${labUnitId}`, (res) => {
+      if (res && res.success && res.data) {
+        setEditingUnit(mapLabUnit(res.data));
+        setDeactivationStale(false);
+      }
+    });
+  }, [labUnitId]);
+
+  const confirmDeactivation = useCallback(() => {
+    setDeactivationBusy(true);
+    setDeactivationError(null);
+    setDeactivationStale(false);
+    postToOpenElisServerJsonResponse(
+      `/rest/lab-units-management/${labUnitId}/deactivate`,
+      JSON.stringify({
+        option: deactivationOption,
+        destinationLabUnitId: deactivationDestination,
+        confirmation: deactivationConfirmText,
+        lastupdated: editingUnit?.lastupdated || null,
+      }),
+      (response) => {
+        setDeactivationBusy(false);
+        if (response?.success) {
+          setDeactivationOpen(false);
+          setEditingUnit((prev) => ({ ...prev, active: false }));
+          setShowSuccess(true);
+          getFromOpenElisServer(
+            `/rest/lab-units-management/${labUnitId}`,
+            (res) => {
+              if (res && res.success && res.data) {
+                setEditingUnit(mapLabUnit(res.data));
+              }
+            },
+          );
+        } else if (isStaleConflict(response?.status, response)) {
+          setDeactivationStale(true);
+        } else {
+          setDeactivationError(
+            response?.refusal === "destination.inactive"
+              ? intl.formatMessage({
+                  id: "error.labUnit.deactivate.destinationInactive",
+                })
+              : response?.message ||
+                  intl.formatMessage({ id: "error.labUnit.deactivate.failed" }),
+          );
+        }
+      },
+    );
+  }, [
+    labUnitId,
+    deactivationOption,
+    deactivationDestination,
+    deactivationConfirmText,
+    editingUnit,
+    intl,
+  ]);
 
   // ─── LIST VIEW ────────────────────────────────────────────────
   if (view === "list") {
@@ -933,7 +1106,12 @@ function LabUnitManagement({ intl }) {
                       { current: current, total: total },
                     )
                   }
-                  pageText={intl.formatMessage({ id: "pagination.page" })}
+                  pageText={(page, pagesUnknown) =>
+                    intl.formatMessage(
+                      { id: "pagination.page" },
+                      { page: pagesUnknown ? "" : page },
+                    )
+                  }
                   size="md"
                 />
               </div>
@@ -1026,7 +1204,21 @@ function LabUnitManagement({ intl }) {
                 Toggle) would mount with undefined and not reflect the saved
                 status. */}
             {view === "editor" &&
-            !(editingUnit && String(editingUnit.id) === String(labUnitId)) ? (
+            !isLoading &&
+            !labUnits.some((item) => String(item.id) === String(labUnitId)) ? (
+              <InlineNotification
+                kind="error"
+                lowContrast
+                hideCloseButton
+                data-testid="lab-unit-not-found"
+                title={intl.formatMessage({
+                  id: loadError
+                    ? "label.labUnit.editorLoadError"
+                    : "label.labUnit.notFound",
+                })}
+              />
+            ) : view === "editor" &&
+              !(editingUnit && String(editingUnit.id) === String(labUnitId)) ? (
               <div
                 style={{
                   display: "flex",
@@ -1042,6 +1234,11 @@ function LabUnitManagement({ intl }) {
               <>
                 {activeSection === "basic-info" && (
                   <div>
+                    {staleSave && (
+                      <div style={{ marginBottom: "var(--cds-spacing-06)" }}>
+                        <StaleSaveNotice testId="lab-unit-stale-save" />
+                      </div>
+                    )}
                     {(showSuccess || formErrors.submit) && (
                       <div style={{ marginBottom: "var(--cds-spacing-06)" }}>
                         <Stack gap={5}>
@@ -1143,6 +1340,8 @@ function LabUnitManagement({ intl }) {
                                       }));
                                     }
                                   }}
+                                  maxCount={NAME_MAX_LENGTH}
+                                  enableCounter
                                   invalid={!!formErrors[errorKey]}
                                   invalidText={formErrors[errorKey]}
                                   helperText={
@@ -1215,6 +1414,65 @@ function LabUnitManagement({ intl }) {
                             {view === "editor" && (
                               <>
                                 <Toggle
+                                  id="lu-tracked-media"
+                                  labelText={intl.formatMessage({
+                                    id: "microbiology.culture.requireTrackedMedia",
+                                  })}
+                                  labelA={intl.formatMessage({
+                                    id: "label.inactive",
+                                  })}
+                                  labelB={intl.formatMessage({
+                                    id: "label.active",
+                                  })}
+                                  toggled={!!editingUnit?.requireTrackedMedia}
+                                  onToggle={(requireTrackedMedia) =>
+                                    setEditingUnit((prev) => ({
+                                      ...prev,
+                                      requireTrackedMedia,
+                                    }))
+                                  }
+                                />
+                                <Dropdown
+                                  id="lu-gram-stain-test"
+                                  titleText={intl.formatMessage({
+                                    id: "microbiology.culture.gramTest",
+                                  })}
+                                  label={intl.formatMessage({
+                                    id: "microbiology.culture.choose",
+                                  })}
+                                  items={[
+                                    {
+                                      id: "",
+                                      name: intl.formatMessage({
+                                        id: "microbiology.culture.noGramTest",
+                                      }),
+                                    },
+                                    ...assignedTests.filter(
+                                      (test) => test.active && test.orderable,
+                                    ),
+                                  ]}
+                                  itemToString={(item) =>
+                                    item?.name || item?.testName || ""
+                                  }
+                                  selectedItem={
+                                    assignedTests.find(
+                                      (test) =>
+                                        test.id ===
+                                        editingUnit?.gramStainTestId,
+                                    ) || null
+                                  }
+                                  onChange={({ selectedItem }) =>
+                                    setEditingUnit((prev) => ({
+                                      ...prev,
+                                      gramStainTestId: selectedItem?.id || "",
+                                    }))
+                                  }
+                                />
+                              </>
+                            )}
+                            {view === "editor" && (
+                              <>
+                                <Toggle
                                   id="lu-active"
                                   labelText={intl.formatMessage({
                                     id: "label.labUnit.active",
@@ -1226,32 +1484,22 @@ function LabUnitManagement({ intl }) {
                                     id: "label.active",
                                   })}
                                   toggled={editingUnit?.active}
-                                  onToggle={(checked) =>
+                                  onToggle={(checked) => {
+                                    // OGC-189 M3: switching a unit OFF opens
+                                    // the guarded flow (impact summary + three
+                                    // options + typed confirmation) instead of
+                                    // saving silently. Switching it back ON is
+                                    // not destructive and needs no guard.
+                                    if (!checked) {
+                                      openDeactivationFlow();
+                                      return;
+                                    }
                                     setEditingUnit((prev) => ({
                                       ...prev,
-                                      active: checked,
-                                    }))
-                                  }
+                                      active: true,
+                                    }));
+                                  }}
                                 />
-
-                                {/* Deactivating a unit in use warns but
-                                    proceeds — no cascade, reversible. The
-                                    cascade/impact flow lands in a later
-                                    increment of OGC-189. */}
-                                {!editingUnit?.active &&
-                                  activeAssignedTestCount > 0 && (
-                                    <InlineNotification
-                                      kind="warning"
-                                      lowContrast
-                                      hideCloseButton
-                                      title={intl.formatMessage(
-                                        {
-                                          id: "warning.labUnit.deactivateInUse",
-                                        },
-                                        { count: activeAssignedTestCount },
-                                      )}
-                                    />
-                                  )}
 
                                 <TextArea
                                   id="lu-description"
@@ -1302,6 +1550,7 @@ function LabUnitManagement({ intl }) {
                             onClick={saveEditor}
                             disabled={
                               isSubmitting ||
+                              staleSave ||
                               !!Object.keys(formErrors).filter(
                                 (key) => formErrors[key],
                               ).length ||
@@ -1353,6 +1602,197 @@ function LabUnitManagement({ intl }) {
                       <p>
                         <FormattedMessage id="admin.labUnit.domain.confirm.body" />
                       </p>
+                    </Modal>
+
+                    {/* Guarded deactivation (OGC-189 M3): impact summary,
+                        three options, typed confirmation. Replaces the
+                        silent save the Active toggle used to do. */}
+                    <Modal
+                      open={deactivationOpen}
+                      modalHeading={intl.formatMessage({
+                        id: "heading.labUnit.deactivate",
+                      })}
+                      primaryButtonText={intl.formatMessage({
+                        id: "button.labUnit.deactivate.confirm",
+                      })}
+                      secondaryButtonText={intl.formatMessage({
+                        id: "button.cancel",
+                      })}
+                      primaryButtonDisabled={
+                        deactivationBusy ||
+                        deactivationConfirmText !== "DEACTIVATE" ||
+                        !deactivationOption ||
+                        (deactivationOption === "reassign" &&
+                          !deactivationDestination)
+                      }
+                      danger
+                      onRequestClose={() => setDeactivationOpen(false)}
+                      onRequestSubmit={confirmDeactivation}
+                    >
+                      <Stack gap={5}>
+                        {deactivationError && (
+                          <InlineNotification
+                            kind="error"
+                            lowContrast
+                            hideCloseButton
+                            title={intl.formatMessage({ id: "error.title" })}
+                            subtitle={deactivationError}
+                          />
+                        )}
+                        {deactivationStale && (
+                          <StaleSaveNotice
+                            testId="lab-unit-deactivate-stale"
+                            onRefresh={refreshAfterStaleDeactivation}
+                          />
+                        )}
+                        {!deactivationImpact ? (
+                          <p>
+                            <FormattedMessage id="label.labUnit.deactivate.loading" />
+                          </p>
+                        ) : (
+                          <>
+                            {/* Impact summary. Reflex/calculation targets get
+                                their own line: they are the dangerous ones and
+                                a flat test count hides them entirely. */}
+                            <div>
+                              <p style={{ fontWeight: 600, margin: 0 }}>
+                                <FormattedMessage id="label.labUnit.deactivate.impact" />
+                              </p>
+                              <ul
+                                style={{
+                                  margin: "var(--cds-spacing-03) 0 0 0",
+                                  paddingLeft: "1.25rem",
+                                }}
+                              >
+                                <li>
+                                  <FormattedMessage
+                                    id="label.labUnit.deactivate.impact.tests"
+                                    values={{
+                                      count: deactivationImpact.testCount,
+                                      active:
+                                        deactivationImpact.activeTestCount,
+                                    }}
+                                  />
+                                </li>
+                                <li>
+                                  <FormattedMessage
+                                    id="label.labUnit.deactivate.impact.pending"
+                                    values={{
+                                      count:
+                                        deactivationImpact.pendingAnalysisCount,
+                                    }}
+                                  />
+                                </li>
+                                <li>
+                                  <FormattedMessage
+                                    id="label.labUnit.deactivate.impact.historical"
+                                    values={{
+                                      count:
+                                        deactivationImpact.historicalAnalysisCount,
+                                    }}
+                                  />
+                                </li>
+                              </ul>
+                            </div>
+
+                            {/* An inactive unit stays on the worklists until
+                                its pending work is finished — it is never
+                                stranded (M2). */}
+                            {deactivationImpact.pendingAnalysisCount > 0 && (
+                              <InlineNotification
+                                kind="info"
+                                lowContrast
+                                hideCloseButton
+                                title={intl.formatMessage(
+                                  { id: "info.labUnit.deactivate.pending" },
+                                  {
+                                    count:
+                                      deactivationImpact.pendingAnalysisCount,
+                                  },
+                                )}
+                              />
+                            )}
+
+                            <RadioButtonGroup
+                              legendText={intl.formatMessage({
+                                id: "label.labUnit.deactivate.option",
+                              })}
+                              name="lu-deactivate-option"
+                              orientation="vertical"
+                              valueSelected={deactivationOption}
+                              onChange={(value) => setDeactivationOption(value)}
+                            >
+                              <RadioButton
+                                labelText={intl.formatMessage({
+                                  id: "label.labUnit.deactivate.option.keep",
+                                })}
+                                value="keep"
+                                id="lu-deactivate-keep"
+                              />
+                              <RadioButton
+                                labelText={intl.formatMessage({
+                                  id: "label.labUnit.deactivate.option.deactivateAll",
+                                })}
+                                value="deactivate_all"
+                                id="lu-deactivate-all"
+                              />
+                              <RadioButton
+                                labelText={intl.formatMessage({
+                                  id: "label.labUnit.deactivate.option.reassign",
+                                })}
+                                value="reassign"
+                                id="lu-deactivate-reassign"
+                              />
+                            </RadioButtonGroup>
+
+                            {deactivationOption === "reassign" && (
+                              <Select
+                                id="lu-deactivate-destination"
+                                labelText={intl.formatMessage({
+                                  id: "label.labUnit.tests.reassign.destination",
+                                })}
+                                value={deactivationDestination}
+                                onChange={(e) =>
+                                  setDeactivationDestination(e.target.value)
+                                }
+                              >
+                                <SelectItem
+                                  value=""
+                                  text={intl.formatMessage({
+                                    id: "placeholder.labUnit.tests.reassign.destination",
+                                  })}
+                                />
+                                {labUnits
+                                  .filter(
+                                    (unit) =>
+                                      String(unit.id) !== String(labUnitId) &&
+                                      unit.active !== false,
+                                  )
+                                  .map((unit) => (
+                                    <SelectItem
+                                      key={unit.id}
+                                      value={unit.id}
+                                      text={unit.name}
+                                    />
+                                  ))}
+                              </Select>
+                            )}
+
+                            <TextInput
+                              id="lu-deactivate-confirm"
+                              labelText={intl.formatMessage({
+                                id: "label.labUnit.deactivate.confirm",
+                              })}
+                              placeholder="DEACTIVATE"
+                              value={deactivationConfirmText}
+                              onChange={(e) =>
+                                setDeactivationConfirmText(e.target.value)
+                              }
+                              autoComplete="off"
+                            />
+                          </>
+                        )}
+                      </Stack>
                     </Modal>
                   </div>
                 )}

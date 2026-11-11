@@ -16,11 +16,17 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import { hasRole, Roles } from "../../utils/Utils";
 
 function TemperatureThresholds() {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  // PUT /devices/{id}/thresholds requires ADMIN, so a non-admin who clicks
+  // Save gets a failed request back.
+  const canManageThresholds = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
@@ -42,11 +48,14 @@ function TemperatureThresholds() {
     try {
       setLoading(true);
       const response = await fetchDevices("");
-      setDevices(response || []);
+      // An error body arrives here parsed, and a non-array would throw in
+      // devices.map during render.
+      const deviceList = Array.isArray(response) ? response : [];
+      setDevices(deviceList);
 
       // Initialize thresholds from devices
       const initialThresholds = {};
-      (response || []).forEach((device) => {
+      deviceList.forEach((device) => {
         initialThresholds[device.id] = {
           targetTemperature: device.targetTemperature || -20,
           warningThreshold: device.warningThreshold || -18,
@@ -262,18 +271,20 @@ function TemperatureThresholds() {
                 );
               })}
 
-              <Button
-                kind="primary"
-                onClick={handleSave}
-                disabled={saving || devices.length === 0}
-                style={{ width: "100%", maxWidth: "none" }}
-              >
-                {saving
-                  ? intl.formatMessage({ id: "coldStorage.saving" })
-                  : intl.formatMessage({
-                      id: "coldStorage.saveThresholdConfig",
-                    })}
-              </Button>
+              {canManageThresholds && (
+                <Button
+                  kind="primary"
+                  onClick={handleSave}
+                  disabled={saving || devices.length === 0}
+                  style={{ width: "100%", maxWidth: "none" }}
+                >
+                  {saving
+                    ? intl.formatMessage({ id: "coldStorage.saving" })
+                    : intl.formatMessage({
+                        id: "coldStorage.saveThresholdConfig",
+                      })}
+                </Button>
+              )}
             </Stack>
           </Form>
         )}

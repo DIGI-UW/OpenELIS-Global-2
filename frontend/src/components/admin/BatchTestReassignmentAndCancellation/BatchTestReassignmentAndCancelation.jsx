@@ -6,8 +6,6 @@ import {
   Heading,
   Button,
   Loading,
-  Select,
-  SelectItem,
   Checkbox,
   Tag,
 } from "@carbon/react";
@@ -22,6 +20,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import SearchableSelect from "../../common/SearchableSelect";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -39,6 +38,7 @@ function BatchTestReassignmentAndCancelation() {
   const componentMounted = useRef(false);
   const intl = useIntl();
   const resetToDefault = () => {
+    setChangesToShow(false);
     setSaveButton(true);
     setIsLoading(true);
     setCurrentTest(true);
@@ -64,7 +64,6 @@ function BatchTestReassignmentAndCancelation() {
       noChangeBioReject: [],
       noChangeNotValidated: [],
     });
-    setChangesToShow(false);
 
     getFromOpenElisServer(
       `/rest/BatchTestReassignment`,
@@ -104,6 +103,13 @@ function BatchTestReassignmentAndCancelation() {
     noChangeNotValidated: [],
   });
   const [changesToShow, setChangesToShow] = useState(false);
+  const [replacePicks, setReplacePicks] = useState(0);
+
+  useEffect(() => {
+    if (replacePicks > 0) {
+      document.getElementById("selectSampleType0")?.focus();
+    }
+  }, [replacePicks]);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -127,38 +133,34 @@ function BatchTestReassignmentAndCancelation() {
   };
 
   useEffect(() => {
+    if (!sampleTypeToGetId) {
+      return;
+    }
     const handleBatchTestReassignmentSampleTypeHandle = (res) => {
       if (!res) {
         setIsLoading(true);
       } else {
-        const extraCurrentTestObject = {
-          name: "Select Current Test",
-          id: "",
-          isActive: "",
-        };
         setSampleTypeToGetIdData((prevSampleTypeToGetIdData) => ({
           ...prevSampleTypeToGetIdData,
-          tests: [extraCurrentTestObject, ...(res.tests || [])],
+          tests: res.tests || [],
         }));
-        const extraObject = {
-          name: "Select Multi Tests",
-          id: "",
-          isActive: "",
-        };
         setSampleTypeToGetIdDataTag((prevSampleTypeToGetIdDataTag) => ({
           ...prevSampleTypeToGetIdDataTag,
-          tests: [extraObject, ...(res.tests || [])],
+          tests: res.tests || [],
         }));
       }
     };
 
     getFromOpenElisServer(
-      `/rest/AllTestsForSampleTypeProvider?sampleTypeId=${sampleTypeToGetId}`,
+      `/rest/AllTestsForSampleTypeProvider?sampleTypeId=${encodeURIComponent(sampleTypeToGetId)}`,
       handleBatchTestReassignmentSampleTypeHandle,
     );
   }, [sampleTypeToGetId]);
 
   useEffect(() => {
+    if (!sampleTypeTestIdToGetIdPending) {
+      return;
+    }
     const handleBatchTestReassignmentSampleTypeTestHandle = (res) => {
       if (!res) {
         setIsLoading(true);
@@ -168,7 +170,7 @@ function BatchTestReassignmentAndCancelation() {
     };
 
     getFromOpenElisServer(
-      `/rest/getPendingAnalysisForTestProvider?testId=${sampleTypeTestIdToGetIdPending}`,
+      `/rest/getPendingAnalysisForTestProvider?testId=${encodeURIComponent(sampleTypeTestIdToGetIdPending)}`,
       handleBatchTestReassignmentSampleTypeTestHandle,
     );
   }, [sampleTypeTestIdToGetIdPending]);
@@ -217,11 +219,7 @@ function BatchTestReassignmentAndCancelation() {
         jsonWad: batchTestGet.jsonWad,
       };
       setBatchTestPost(BatchTestReassignmentInfoToPost);
-      setSampleTypeListShow((prevSampleTypeListShow) => [
-        ...prevSampleTypeListShow,
-        { id: "0", value: "Select SampleType" },
-        ...batchTestGet.sampleList,
-      ]);
+      setSampleTypeListShow(batchTestGet.sampleList || []);
     }
   }, [batchTestGet]);
 
@@ -237,31 +235,28 @@ function BatchTestReassignmentAndCancelation() {
   }
 
   function sampleTypeListPostCallback(res) {
-    if (res) {
+    if (res && !res.error) {
       setIsLoading(false);
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "notification.user.post.save.success",
+          id: "save.success",
         }),
         kind: NotificationKinds.success,
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
+      resetToDefault();
     } else {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: intl.formatMessage({
+          id: res ? "error.save.msg" : "server.error.msg",
+        }),
       });
       setNotificationVisible(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 200);
     }
   }
   const capitalizeFirstLetter = (string) => {
@@ -327,26 +322,44 @@ function BatchTestReassignmentAndCancelation() {
     });
   };
 
-  function handleSampleTypeListSelectId(e) {
-    setSampleTypeToGetId(e.target.value);
+  function handleSampleTypeListSelectId(sampleTypeId) {
+    setSampleTypeToGetId(sampleTypeId || null);
+    setSampleTypeToGetIdData({});
+    setSampleTypeToGetIdDataTag({});
+    handleSampleTypeListSelectIdTest("");
+    setSampleTestTypeToGetTagList([]);
+    setJsonWad((prevJsonWad) => ({ ...prevJsonWad, replace: [] }));
     setBatchTestPost((prevUserDataPost) => ({
       ...prevUserDataPost,
-      statusChangedSampleType: e.target.value,
+      statusChangedSampleType: sampleTypeId,
     }));
   }
 
-  function handleSampleTypeListSelectIdTest(e) {
-    setSaveButton(false);
-    setSampleTestTypeToGetPending(e.target.value);
+  function handleSampleTypeListSelectIdTest(testId) {
+    setSaveButton(!testId);
+    setSampleTestTypeToGetPending(testId || null);
+    if (!testId) {
+      setSampleTypeTestIdToGetIdPendingData({});
+    }
     setBatchTestPost((prevUserDataPost) => ({
       ...prevUserDataPost,
-      statusChangedCurrentTest: e.target.value,
+      statusChangedCurrentTest: testId,
     }));
   }
 
-  const handleSampleTypeListSelectIdTestTag = (e) => {
-    const selectedTestId = e.target.value;
-    const testName = e.target.options[e.target.selectedIndex].text;
+  const testOptions = (tests, includeInactive) =>
+    (tests || [])
+      .filter((test) => includeInactive || test.isActive === "Y")
+      .map((test) => ({ id: test.id, value: test.name }));
+
+  const handleSampleTypeListSelectIdTestTag = (selectedTestId) => {
+    if (!selectedTestId) {
+      return;
+    }
+    setReplacePicks((picks) => picks + 1);
+    const testName = (sampleTypeToGetIdDataTag.tests || []).find(
+      (test) => test.id === selectedTestId,
+    )?.name;
 
     const existingIndex = sampleTestTypeToGetTagList.findIndex(
       (item) => item.id === selectedTestId,
@@ -457,31 +470,31 @@ function BatchTestReassignmentAndCancelation() {
           <br />
           <Grid fullWidth={true}>
             <Column lg={4} md={4} sm={4}>
-              <Select
-                id={`selectSampleType`}
+              <SearchableSelect
+                id="selectSampleType"
                 labelText={intl.formatMessage({ id: "sample.type" })}
-                defaultValue={sampleTypeListShow ? sampleTypeListShow[0] : ""}
-                onChange={(e) => handleSampleTypeListSelectId(e)}
-              >
-                {sampleTypeListShow && sampleTypeListShow.length > 0 ? (
-                  sampleTypeListShow.map((section) => (
-                    <SelectItem
-                      key={section.id}
-                      value={section.id}
-                      text={section.value}
-                    />
-                  ))
-                ) : (
-                  <SelectItem key={``} value="" text="No options available" />
-                )}
-              </Select>
+                placeholder={intl.formatMessage({
+                  id: "configuration.batch.test.reassignment.search.sampleType",
+                })}
+                options={sampleTypeListShow}
+                value={sampleTypeToGetId ?? ""}
+                onChange={handleSampleTypeListSelectId}
+              />
             </Column>
           </Grid>
           <br />
           <Grid fullWidth={true}>
             <Column lg={8} md={4} sm={4}>
-              <FormattedMessage id="label.currentTest" />
-              <br />
+              <SearchableSelect
+                id="selectSampleType1"
+                labelText={intl.formatMessage({ id: "label.currentTest" })}
+                placeholder={intl.formatMessage({
+                  id: "configuration.batch.test.reassignment.search.currentTest",
+                })}
+                options={testOptions(sampleTypeToGetIdData.tests, currentTest)}
+                value={sampleTypeTestIdToGetIdPending ?? ""}
+                onChange={handleSampleTypeListSelectIdTest}
+              />
               <Checkbox
                 id={`currentTest`}
                 labelText={intl.formatMessage({
@@ -492,40 +505,25 @@ function BatchTestReassignmentAndCancelation() {
                   setCurrentTest(!currentTest);
                 }}
               />
-              <br />
-              <Select
-                key={`selectSampleType1`}
-                id={`selectSampleType1`}
-                hideLabel={true}
-                defaultValue={
-                  sampleTypeToGetIdData && sampleTypeToGetIdData.tests
-                    ? sampleTypeToGetIdData.tests[0]
-                    : ""
-                }
-                onChange={(e) => handleSampleTypeListSelectIdTest(e)}
-              >
-                {sampleTypeToGetIdData &&
-                sampleTypeToGetIdData.tests &&
-                sampleTypeToGetIdData.tests.length > 0 ? (
-                  sampleTypeToGetIdData.tests.map((section) => (
-                    <SelectItem
-                      key={section.id}
-                      value={section.id}
-                      text={section.name}
-                    />
-                  ))
-                ) : (
-                  <SelectItem
-                    key="no-option-available-selectSampleType"
-                    value=""
-                    text="No options available"
-                  />
-                )}
-              </Select>
             </Column>
             <Column lg={8} md={4} sm={4}>
-              <FormattedMessage id="label.replaceWith" />
-              <br />
+              <SearchableSelect
+                key={`replaceWith-${replacePicks}`}
+                id="selectSampleType0"
+                labelText={intl.formatMessage({ id: "label.replaceWith" })}
+                placeholder={intl.formatMessage({
+                  id: "configuration.batch.test.reassignment.search.replaceWith",
+                })}
+                options={testOptions(sampleTypeToGetIdDataTag.tests).filter(
+                  (option) =>
+                    !sampleTestTypeToGetTagList.some(
+                      (tag) => tag.id === option.id,
+                    ),
+                )}
+                value=""
+                disabled={replaceWith}
+                onChange={handleSampleTypeListSelectIdTestTag}
+              />
               <Checkbox
                 id={`replaceWith`}
                 labelText={intl.formatMessage({
@@ -534,53 +532,14 @@ function BatchTestReassignmentAndCancelation() {
                 checked={replaceWith}
                 onChange={() => {
                   setReplaceWith(!replaceWith);
-                  if (replaceWith) {
-                    setJsonWad((prevJsonWad) => ({
-                      ...prevJsonWad,
-                      replace: [],
-                    }));
-                  } else {
-                    const selectedTestIds = sampleTestTypeToGetTagList
-                      .map((item) => item.id)
-                      .join(",");
-                    setJsonWad((prevJsonWad) => ({
-                      ...prevJsonWad,
-                      replace: selectedTestIds,
-                    }));
-                  }
+                  setSampleTestTypeToGetTagList([]);
+                  setJsonWad((prevJsonWad) => ({
+                    ...prevJsonWad,
+                    replace: [],
+                  }));
                 }}
               />
-              <br />
-              <Select
-                key={`selectSampleType0`}
-                id={`selectSampleType0`}
-                hideLabel={true}
-                defaultValue={
-                  sampleTypeToGetIdDataTag && sampleTypeToGetIdDataTag.tests
-                    ? sampleTypeToGetIdDataTag.tests[0]
-                    : ""
-                }
-                disabled={replaceWith}
-                onChange={(e) => handleSampleTypeListSelectIdTestTag(e)}
-              >
-                {sampleTypeToGetIdDataTag &&
-                sampleTypeToGetIdDataTag.tests &&
-                sampleTypeToGetIdDataTag.tests.length > 0 ? (
-                  sampleTypeToGetIdDataTag.tests.map((section) => (
-                    <SelectItem
-                      key={section.id}
-                      value={section.id}
-                      text={section.name}
-                    />
-                  ))
-                ) : (
-                  <SelectItem
-                    key="no-option-available-selectSampleType0"
-                    value=""
-                    text="No options available"
-                  />
-                )}
-              </Select>
+
               <div
                 className={"searchTestText"}
                 style={{ marginBottom: "1.188rem" }}
@@ -802,12 +761,7 @@ function BatchTestReassignmentAndCancelation() {
               </Button>{" "}
               <Button
                 data-cy="cancelButton"
-                onClick={() => {
-                  resetToDefault();
-                  window.location.assign(
-                    "/MasterListsPage/batchTestReassignment",
-                  );
-                }}
+                onClick={resetToDefault}
                 kind="tertiary"
                 type="button"
               >
@@ -826,8 +780,22 @@ function BatchTestReassignmentAndCancelation() {
                   {jsonWad.sampleType}
                   <br />
                   <br />
-                  <FormattedMessage id="label.test.batch.cancel.start" />{" "}
-                  {jsonWad.current}{" "}
+                  {sampleTestTypeToGetTagList.length ? (
+                    <FormattedMessage
+                      id="label.test.batch.replace.with"
+                      values={{
+                        current: jsonWad.current,
+                        replacements: sampleTestTypeToGetTagList
+                          .map((tag) => tag.name)
+                          .join(", "),
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <FormattedMessage id="label.test.batch.cancel.start" />{" "}
+                      {jsonWad.current}
+                    </>
+                  )}{" "}
                   <FormattedMessage id="label.test.batch.cancel.finish" />
                   <br />
                   <br />
@@ -1012,11 +980,7 @@ function BatchTestReassignmentAndCancelation() {
                     <FormattedMessage id="column.name.accept" />
                   </Button>{" "}
                   <Button
-                    onClick={() =>
-                      window.location.assign(
-                        "/MasterListsPage/batchTestReassignment",
-                      )
-                    }
+                    onClick={resetToDefault}
                     kind="tertiary"
                     type="button"
                   >

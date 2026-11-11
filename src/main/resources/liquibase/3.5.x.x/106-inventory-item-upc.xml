@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-item-upc.xml">
+
+    <!-- OGC-438: the manufacturer's product barcode (UPC or GTIN) on the item -->
+    <changeSet author="OGC" id="OGC-438-add-upc-to-inventory-item">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_item" columnName="upc" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="upc" type="VARCHAR(64)"/>
+        </addColumn>
+
+        <sql>
+            CREATE UNIQUE INDEX uq_inventory_item_upc
+            ON clinlims.inventory_item (upc)
+            WHERE upc IS NOT NULL;
+        </sql>
+
+        <rollback>
+            <sql>DROP INDEX IF EXISTS clinlims.uq_inventory_item_upc</sql>
+            <dropColumn tableName="inventory_item" columnName="upc" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

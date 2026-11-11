@@ -21,16 +21,32 @@ const REASON_CODES = [
   "other",
 ];
 
+// The peer laboratory writes free text, so match it to our vocabulary only when
+// it is unambiguous: the code itself, or the English label with spacing and case
+// ignored. Anything else keeps the existing default rather than guessing, since
+// a wrong non-conformity is worse than an unset one.
+const matchPeerReason = (peerReason) => {
+  if (!peerReason) return REASON_CODES[0];
+  const normalized = peerReason.toLowerCase().replace(/[\s_-]/g, "");
+  return (
+    REASON_CODES.find((code) => code.toLowerCase() === normalized) ||
+    REASON_CODES.find((code) => normalized.includes(code.toLowerCase())) ||
+    REASON_CODES[0]
+  );
+};
+
 const RejectModal = ({ open, referral, onClose, onSuccess }) => {
   const intl = useIntl();
   const { addNotification } = useContext(NotificationContext);
-  const [reasonCode, setReasonCode] = useState(REASON_CODES[0]);
+  const [reasonCode, setReasonCode] = useState(
+    matchPeerReason(referral?.peerReason),
+  );
   const [reasonText, setReasonText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showError, setShowError] = useState(false);
 
   const close = () => {
-    setReasonCode(REASON_CODES[0]);
+    setReasonCode(matchPeerReason(referral?.peerReason));
     setReasonText("");
     setShowError(false);
     setSubmitting(false);
@@ -127,6 +143,10 @@ const RejectModal = ({ open, referral, onClose, onSuccess }) => {
           id: "referral.reject.reasonTextRequired",
         })}
         rows={4}
+        // Carbon sets maxLength and renders the counter only when enableCounter
+        // is on. Without it maxCount is inert, and the audit note silently loses
+        // whatever ran past 500 characters.
+        enableCounter
         maxCount={500}
         style={{ marginTop: "1rem" }}
       />

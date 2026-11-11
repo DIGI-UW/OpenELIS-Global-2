@@ -1,6 +1,7 @@
 package org.openelisglobal.externalconnection.controller.rest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
@@ -46,14 +47,26 @@ public class ExternalConnectionRestControllerTest extends BaseWebContextSensitiv
         assertTrue(authTypes.contains("BASIC"));
         assertTrue(authTypes.contains("NONE"));
 
+        // Email, SMS and WhatsApp are set up on the Channels page (FR-H2): a new
+        // row no longer offers their types.
         @SuppressWarnings("unchecked")
         List<String> programmedConnections = (List<String>) response.get("programmedConnections");
-        assertEquals(5, programmedConnections.size());
-        assertTrue(programmedConnections.contains("SMPP_SERVER"));
-        assertTrue(programmedConnections.contains("BMP_SMS_SERVER"));
         assertTrue(programmedConnections.contains("INFO_HIGHWAY"));
-        assertTrue(programmedConnections.contains("SMTP_SERVER"));
-        assertTrue(programmedConnections.contains("WHATSAPP_SERVER"));
+        assertTrue("SMS gateways keep their connection rows until their own story",
+                programmedConnections.contains("SMPP_SERVER") && programmedConnections.contains("BMP_SMS_SERVER"));
+        assertFalse(programmedConnections.contains("SMTP_SERVER"));
+        assertFalse(programmedConnections.contains("WHATSAPP_SERVER"));
+    }
+
+    @Test
+    public void aNewConnectionOfAChannelTypeIsRefused() throws Exception {
+        MvcResult result = super.mockMvc
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/rest/ExternalConnection").contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content("{\"externalConnection\":{\"programmedConnection\":\"SMTP_SERVER\","
+                                + "\"activeAuthenticationType\":\"BASIC\",\"uri\":\"smtp://mail.example.org:587\"}}"))
+                .andReturn();
+        assertEquals(400, result.getResponse().getStatus());
     }
 
     @SuppressWarnings("unchecked")
@@ -79,6 +92,16 @@ public class ExternalConnectionRestControllerTest extends BaseWebContextSensitiv
         assertEquals("Test Description 1", descriptionLocalization.get("description"));
         assertEquals("SMTP_SERVER", externalConnection.get("programmedConnection"));
         assertEquals("BASIC", externalConnection.get("activeAuthenticationType"));
+        // The stored secret never reaches the browser (FR-A5); the form only says
+        // whether one is set.
+        Map<String, Object> basicAuth = (Map<String, Object>) connectionInfo.get("basicAuthenticationData");
+        if (basicAuth != null) {
+            assertEquals(null, basicAuth.get("password"));
+        }
+        assertTrue(connectionInfo.containsKey("passwordSet"));
+        // An existing row keeps every type on offer so its own type stays selectable.
+        List<String> programmedConnections = (List<String>) connectionInfo.get("programmedConnections");
+        assertTrue(programmedConnections.contains("SMTP_SERVER"));
 
         List<Map<String, Object>> contacts = (List<Map<String, Object>>) connectionInfo
                 .get("externalConnectionContacts");

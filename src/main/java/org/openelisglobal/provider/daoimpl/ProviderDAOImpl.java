@@ -36,6 +36,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements ProviderDAO {
 
+    /**
+     * Provider search matches names only, never the title: typing "Dr" must not
+     * return every doctor (OGC-1223, FR-9). The title is a separate filter.
+     */
+    private static final String NAME_MATCH = "lower(p.person.firstName) like concat('%', lower(:searchValue), '%')"
+            + " or lower(p.person.lastName) like concat('%', lower(:searchValue), '%')"
+            + " or lower(concat(p.person.firstName, ' ', p.person.lastName)) like concat('%', lower(:searchValue), '%')";
+
+    private static final String TITLE_MATCH = " and upper(p.person.titleCode) = :titleCode";
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
     public ProviderDAOImpl() {
         super(Provider.class);
     }
@@ -136,13 +150,19 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
 
     @Override
     public int getTotalSearchedProviderCount(String parameter) {
+        return getTotalSearchedProviderCount(parameter, null);
+    }
+
+    @Override
+    public int getTotalSearchedProviderCount(String parameter, String titleCode) {
         try {
-            String sql = "select count(p) from Provider p where lower(p.person.firstName) like concat('%', lower(:searchValue),"
-                    + " '%') or lower(p.person.lastName) like concat('%', lower(:searchValue), '%') or"
-                    + " lower(concat(p.person.firstName, ' ', p.person.lastName)) like concat('%',"
-                    + " lower(:searchValue), '%')";
+            String sql = "select count(p) from Provider p where (" + NAME_MATCH + ")"
+                    + (isBlank(titleCode) ? "" : TITLE_MATCH);
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
             query.setParameter("searchValue", parameter);
+            if (!isBlank(titleCode)) {
+                query.setParameter("titleCode", titleCode.toUpperCase());
+            }
             return query.uniqueResult().intValue();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
@@ -152,21 +172,37 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
 
     @Override
     public List<Provider> getPagesOfSearchedProviders(int startingRecNo, String parameter) {
+        return getPagesOfSearchedProviders(startingRecNo, parameter, null);
+    }
+
+    @Override
+    public List<Provider> getPagesOfSearchedProviders(int startingRecNo, String parameter, String titleCode) {
+        return getPagesOfSearchedProviders(startingRecNo, defaultPageSize(), parameter, titleCode);
+    }
+
+    private static int defaultPageSize() {
+        return Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
+    }
+
+    /**
+     * One page of the providers whose name matches, plus one more row so the caller
+     * can tell whether a next page exists. Rows are ordered by id after the name so
+     * providers sharing a name page without gaps or repeats.
+     */
+    @Override
+    public List<Provider> getPagesOfSearchedProviders(int startingRecNo, int pageSize, String parameter,
+            String titleCode) {
         List<Provider> list = new Vector<>();
         try {
-            // calculate maxRow to be one more than the page size
-            int endingRecNo = startingRecNo
-                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
-                            + 1);
-
-            String sql = "from Provider p where lower(p.person.firstName) like concat('%', lower(:searchValue),"
-                    + " '%') or lower(p.person.lastName) like concat('%', lower(:searchValue), '%') or"
-                    + " lower(concat(p.person.firstName, ' ', p.person.lastName)) like concat('%',"
-                    + " lower(:searchValue), '%') ORDER BY p.active DESC, p.person.lastName";
+            String sql = "from Provider p where (" + NAME_MATCH + ")" + (isBlank(titleCode) ? "" : TITLE_MATCH)
+                    + " ORDER BY p.active DESC, p.person.lastName, p.id";
             Query<Provider> query = entityManager.unwrap(Session.class).createQuery(sql, Provider.class);
             query.setParameter("searchValue", parameter);
+            if (!isBlank(titleCode)) {
+                query.setParameter("titleCode", titleCode.toUpperCase());
+            }
             query.setFirstResult(startingRecNo - 1);
-            query.setMaxResults(endingRecNo - 1);
+            query.setMaxResults(pageSize + 1);
 
             list = query.list();
         } catch (RuntimeException e) {
@@ -180,6 +216,12 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
     @Override
     @Transactional(readOnly = true)
     public List<Provider> getPagesOfSearchedProvidersByPhone(int startingRecNo, String phone) {
+        return getPagesOfSearchedProvidersByPhone(startingRecNo, defaultPageSize(), phone);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Provider> getPagesOfSearchedProvidersByPhone(int startingRecNo, int pageSize, String phone) {
         List<Provider> list = new Vector<>();
         try {
             // Strip non-numeric characters from search value
@@ -188,22 +230,17 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
                 return list;
             }
 
-            // calculate maxRow to be one more than the page size
-            int endingRecNo = startingRecNo
-                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
-                            + 1);
-
             // Search by primary phone, work phone, or fax - strip non-numeric characters
             // for comparison
             String sql = "from Provider p where "
                     + "replace(replace(replace(replace(p.person.primaryPhone, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%') or "
                     + "replace(replace(replace(replace(p.person.workPhone, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%') or "
                     + "replace(replace(replace(replace(p.person.fax, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%') "
-                    + "ORDER BY p.active DESC, p.person.lastName";
+                    + "ORDER BY p.active DESC, p.person.lastName, p.id";
             Query<Provider> query = entityManager.unwrap(Session.class).createQuery(sql, Provider.class);
             query.setParameter("phoneValue", phoneValue);
             query.setFirstResult(startingRecNo - 1);
-            query.setMaxResults(endingRecNo - 1);
+            query.setMaxResults(pageSize + 1);
 
             list = query.list();
         } catch (RuntimeException e) {

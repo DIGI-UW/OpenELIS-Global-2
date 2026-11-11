@@ -1,0 +1,910 @@
+/**
+ * The single description of the case view's eleven sections and how each one
+ * maps onto the bench stages in pathologyStages.js. The accordion, the
+ * progress rail and the summary panel all read this one list instead of each
+ * keeping its own copy of the section order, so a section can never appear in
+ * one place and be missing, reordered or differently gated in another.
+ *
+ * No React, no I/O: everything here is a plain function of its arguments.
+ * The functions that produce a localized string take an intl object and
+ * require one; the rest need nothing, so every rule is testable without
+ * mounting anything.
+ */
+
+import { deriveSectionState, SECTION_STATE } from "../caseView/sectionState";
+import {
+  PATHOLOGY_STAGES,
+  stageDisplayKey,
+  stageLabel,
+} from "./pathologyStages";
+import {
+  countedRows,
+  embeddingSummary,
+  hasVerifiableLabel,
+  isDeactivatedRow,
+  isEmbeddedRow,
+  isLabelVerified,
+  unverifiedSlides,
+} from "./pathologyRows";
+
+// The embedding section's id, which the case view also needs to reach the
+// section's header.
+export const EMBEDDING_SECTION_ID = "pathology-section-embedding";
+
+export const PROCESSING_SECTION_ID = "pathology-section-processing";
+
+export const MICROTOMY_SECTION_ID = "pathology-section-microtomy";
+
+// A section's own header, where focus lands once nothing left to do in the
+// section can take it.
+export const sectionHeader = (sectionId) =>
+  "#" + sectionId + " button.cds--accordion__heading";
+
+// The single-stage sections are titled by the stage's own key, so the rail,
+// the header and the locked hint can never call one stage two things.
+// i18n-keys: pathology.section.*
+export const PATHOLOGY_SECTIONS = Object.freeze([
+  Object.freeze({
+    id: "pathology-section-case-info",
+    number: 1,
+    titleKey: "pathology.section.caseInfo",
+    stages: Object.freeze(["ACCESSIONED"]),
+    gate: null,
+    displayOnly: true,
+    placeholder: false,
+    pathologistOnly: false,
+  }),
+  Object.freeze({
+    id: "pathology-section-grossing",
+    number: 2,
+    titleKey: stageDisplayKey("GROSSING"),
+    stages: Object.freeze(["GROSSING"]),
+    gate: "GROSSING",
+    displayOnly: false,
+    placeholder: false,
+    pathologistOnly: false,
+  }),
+  Object.freeze({
+    id: "pathology-section-decalcification",
+    number: 3,
+    titleKey: stageDisplayKey("DECALCIFICATION"),
+    stages: Object.freeze(["DECALCIFICATION"]),
+    gate: "DECALCIFICATION",
+    displayOnly: false,
+    placeholder: true,
+    pathologistOnly: false,
+  }),
+  Object.freeze({
+    id: PROCESSING_SECTION_ID,
+    number: 4,
+    titleKey: stageDisplayKey("PROCESSING"),
+    stages: Object.freeze(["PROCESSING"]),
+    gate: "PROCESSING",
+    displayOnly: false,
+    placeholder: false,
+    pathologistOnly: false,
+  }),
+  Object.freeze({
+    id: EMBEDDING_SECTION_ID,
+    number: 5,
+    titleKey: stageDisplayKey("EMBEDDING"),
+    stages: Object.freeze(["EMBEDDING"]),
+    gate: "EMBEDDING",
+    displayOnly: false,
+    placeholder: false,
+    pathologistOnly: false,
+  }),
+  Object.freeze({
+    id: MICROTOMY_SECTION_ID,
+    number: 6,
+    titleKey: stageDisplayKey("MICROTOMY"),
+    stages: Object.freeze(["MICROTOMY"]),
+    gate: "MICROTOMY",
+    displayOnly: false,
+    placeholder: false,
+    pathologistOnly: false,
+  }),
+  Object.freeze({
+    id: "pathology-section-staining",
+    number: 7,
+    titleKey: stageDisplayKey("STAINING"),
+    stages: Object.freeze(["STAINING"]),
+    gate: "STAINING",
+    displayOnly: false,
+    placeholder: true,
+    pathologistOnly: false,
+  }),
+  Object.freeze({
+    id: "pathology-section-coverslipping",
+    number: 8,
+    titleKey: stageDisplayKey("COVERSLIPPING"),
+    stages: Object.freeze(["COVERSLIPPING"]),
+    gate: "COVERSLIPPING",
+    displayOnly: false,
+    placeholder: true,
+    pathologistOnly: false,
+  }),
+  Object.freeze({
+    id: "pathology-section-review",
+    number: 9,
+    titleKey: "pathology.section.review",
+    stages: Object.freeze(["READY_PATHOLOGIST", "UNDER_REVIEW"]),
+    gate: "READY_PATHOLOGIST",
+    displayOnly: false,
+    placeholder: false,
+    pathologistOnly: true,
+  }),
+  Object.freeze({
+    id: "pathology-section-findings",
+    number: 10,
+    titleKey: "pathology.section.findings",
+    stages: Object.freeze(["READY_PATHOLOGIST", "UNDER_REVIEW"]),
+    gate: "READY_PATHOLOGIST",
+    displayOnly: false,
+    placeholder: false,
+    pathologistOnly: true,
+  }),
+  Object.freeze({
+    id: "pathology-section-reports",
+    number: 11,
+    titleKey: "common.reports",
+    stages: Object.freeze(["COMPLETED"]),
+    gate: null,
+    displayOnly: false,
+    placeholder: false,
+    pathologistOnly: false,
+  }),
+]);
+
+/**
+ * The configuration key a laboratory flips to stop tracking a stage.
+ */
+export function stageEnablementProperty(stageId) {
+  return "PATHOLOGY_STAGE_" + stageId + "_ENABLED";
+}
+
+/**
+ * Whether a laboratory tracks the given stage. A stage defaults to enabled,
+ * matching the server's own default, so a browser that has not yet fetched
+ * configuration never locks a section out by accident; it is disabled only
+ * when the server has explicitly said so.
+ *
+ * The switch is read the way the server reads it when it picks the next and
+ * previous stage: trimmed and ignoring case, so a value stored as " FALSE "
+ * cannot make the server skip a stage whose section this screen still tracks.
+ */
+export function isStageEnabled(stageId, configurationProperties) {
+  // The server never serves a switch for a stage every deployment tracks, so
+  // an absent property is what "cannot be disabled" looks like from here.
+  return switchedOn(
+    configurationProperties?.[stageEnablementProperty(stageId)],
+  );
+}
+
+/**
+ * Whether a served on/off setting is on: anything but an explicit "false",
+ * trimmed and ignoring case, as the server reads its switches, so an absent
+ * or unreadable value leaves the default on.
+ */
+export function switchedOn(value) {
+  return (
+    String(value ?? "")
+      .trim()
+      .toLowerCase() !== "false"
+  );
+}
+
+/**
+ * Whether the bench scans a slide's label against its block, or, where the
+ * laboratory has no scanner, types both as printed (FR-7.5). Scanning is the
+ * default; only the setting switched off turns it into the typed confirmation.
+ */
+export function scanVerificationRequired(configurationProperties) {
+  return switchedOn(
+    configurationProperties?.PATHOLOGY_SCAN_VERIFICATION_REQUIRED,
+  );
+}
+
+/**
+ * Whether a stage applies to this case: the laboratory tracks it, and for
+ * decalcification grossing also flagged the specimen as needing it (FR-4.1).
+ * The stage control and the sections both ask this one question, so what the
+ * bench can move a case to and what the case view calls not applicable
+ * cannot disagree.
+ */
+export function stageApplies(
+  stageId,
+  { configurationProperties, decalcificationRequired } = {},
+) {
+  if (!isStageEnabled(stageId, configurationProperties)) {
+    return false;
+  }
+  return stageId !== "DECALCIFICATION" || Boolean(decalcificationRequired);
+}
+
+// i18n-keys: pathology.action.*
+const ADVANCE_LABEL_KEYS = Object.freeze({
+  GROSSING: "pathology.action.beginGrossing",
+  DECALCIFICATION: "pathology.action.sendForDecalc",
+  PROCESSING: "pathology.action.sendForProcessing",
+  EMBEDDING: "pathology.action.sendForEmbedding",
+  MICROTOMY: "pathology.action.sendToMicrotomy",
+  STAINING: "pathology.action.sendForStaining",
+  COVERSLIPPING: "pathology.action.sendForCoverslip",
+  READY_PATHOLOGIST: "pathology.action.sendToPathologist",
+});
+
+/**
+ * What the action bar's primary says for a move to the given stage, or null
+ * for a stage no advance reaches.
+ */
+export function advanceLabelKey(stageId) {
+  return ADVANCE_LABEL_KEYS[stageId] ?? null;
+}
+
+/**
+ * Why the case cannot be sent on yet, as the hint the disabled primary
+ * carries, or null when it can. A request still in flight is said first,
+ * since its answer may change the stage; then unsaved work, since saving it
+ * may be what completes the stage; then the stage's own rule, judged on the
+ * stored stage as the server judges it: grossing done under FR-3.4, every
+ * cassette embedded, at least one slide cut at microtomy and every slide's
+ * label checked against its block (FR-7.5). The outstanding
+ * cassettes and the unchecked slides are named the way the rail names
+ * cassettes, the first two and a count of the rest.
+ */
+export function advanceBlockedReason(
+  intl,
+  caseInfo,
+  { storedStatus, dirty, saving, moving } = {},
+) {
+  if (saving || moving) {
+    return { key: "pathology.locked.requestInFlight" };
+  }
+  if (dirty) {
+    return { key: "pathology.locked.saveBeforeTransition" };
+  }
+  if (storedStatus === "GROSSING" && !grossingComplete(caseInfo)) {
+    return { key: "pathology.locked.grossingIncomplete" };
+  }
+  if (
+    storedStatus === "MICROTOMY" &&
+    countedRows(caseInfo?.slides).length === 0
+  ) {
+    return { key: "pathology.locked.microtomyIncomplete" };
+  }
+  if (storedStatus === "MICROTOMY") {
+    const unverified = unverifiedSlides(
+      caseInfo?.blocks,
+      caseInfo?.slides,
+      caseInfo?.labelVerifications,
+    );
+    if (unverified.length > 0) {
+      return {
+        key: "pathology.locked.slidesUnverified",
+        values: {
+          outstanding: outstandingLabel(
+            intl,
+            unverified.map((entry) => entry.name),
+          ).visible,
+        },
+      };
+    }
+  }
+  if (storedStatus === "EMBEDDING") {
+    const summary = embeddingSummary(caseInfo?.blocks);
+    if (summary.total === 0) {
+      return { key: "pathology.locked.embeddingNoCassettes" };
+    }
+    if (!summary.complete) {
+      return {
+        key: "pathology.locked.embeddingIncomplete",
+        values: {
+          outstanding: outstandingLabel(intl, summary.outstanding).visible,
+        },
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Why the case cannot be returned, as the hint the disabled control carries,
+ * or null when it can. The lasting reasons come first, since neither saving
+ * nor waiting changes them.
+ */
+export function returnBlockedReason({
+  storedStatus,
+  previousStage,
+  dirty,
+  saving,
+  moving,
+} = {}) {
+  if (storedStatus === "COMPLETED") {
+    return { key: "pathology.locked.caseCompleted" };
+  }
+  if (!previousStage) {
+    return { key: "pathology.locked.nothingToReturnTo" };
+  }
+  if (saving || moving) {
+    return { key: "pathology.locked.requestInFlight" };
+  }
+  if (dirty) {
+    return { key: "pathology.locked.saveBeforeTransition" };
+  }
+  return null;
+}
+
+/**
+ * Whether a row action (Embed, Deactivate) can be pressed, and if not, the
+ * hint that says why. A signed-out case holds it until it is reopened;
+ * a save, a move or an embed still unanswered holds it until the answer is
+ * read back; unsaved work holds it until it is saved or discarded, in the
+ * words of `saveFirstKey`, because the action re-reads the case.
+ */
+export function rowActionLock({
+  status,
+  dirty = false,
+  saving = false,
+  moving = false,
+  embedding = false,
+  saveFirstKey,
+} = {}) {
+  if (status === "COMPLETED") {
+    return { disabled: true, reasonKey: "pathology.locked.caseCompleted" };
+  }
+  if (saving || moving || embedding) {
+    return { disabled: true, reasonKey: "pathology.locked.requestInFlight" };
+  }
+  if (dirty) {
+    return { disabled: true, reasonKey: saveFirstKey };
+  }
+  return { disabled: false, reasonKey: null };
+}
+
+/**
+ * Whether a slide can be added under the given block, and if not, the hint
+ * that says why. A signed-out case takes no new slide until it is reopened;
+ * where the laboratory tracks embedding a slide is cut from a block, so a
+ * cassette not yet embedded offers none (with the stage switched off no row
+ * ever becomes a block, so every row in use qualifies). Unsaved work and a
+ * request in flight do not hold it: adding a slide re-reads nothing.
+ */
+export function addSlideLock({ status, block, configurationProperties } = {}) {
+  const signedOut = rowActionLock({ status });
+  if (signedOut.disabled) {
+    return signedOut;
+  }
+  if (
+    !isEmbeddedRow(block) &&
+    isStageEnabled("EMBEDDING", configurationProperties)
+  ) {
+    return { disabled: true, reasonKey: "pathology.locked.embedBeforeSlides" };
+  }
+  return { disabled: false, reasonKey: null };
+}
+
+/**
+ * Whether a slide's label check is offered on its row, and if so whether it
+ * can be pressed, with the hint that says why not (FR-7.3 to FR-7.5). It is
+ * offered on a saved slide in use that names its block and is not yet
+ * verified, until the case is signed out, and only where the section can be
+ * worked in. Like Embed and Deactivate it is held while a save, a move or
+ * the row's own check is unanswered, since a check landing during the save
+ * races the same slide; unsaved work does not hold it, because a check
+ * changes nothing the save posts.
+ */
+export function verifyLabelLock({
+  slide,
+  labelVerifications,
+  status,
+  readOnly = false,
+  untracked = false,
+  saving = false,
+  moving = false,
+  verifying = false,
+} = {}) {
+  const offered =
+    hasVerifiableLabel(slide) &&
+    !isDeactivatedRow(slide) &&
+    !isLabelVerified(slide, labelVerifications) &&
+    !rowActionLock({ status }).disabled &&
+    !readOnly &&
+    !untracked;
+  if (!offered) {
+    return { offered: false, disabled: true, reasonKey: null };
+  }
+  const lock = rowActionLock({ status, saving, moving });
+  if (lock.disabled) {
+    return { offered, ...lock };
+  }
+  if (verifying) {
+    return {
+      offered,
+      disabled: true,
+      reasonKey: "pathology.locked.requestInFlight",
+    };
+  }
+  return { offered, disabled: false, reasonKey: null };
+}
+
+/**
+ * The id of the section a case standing at the given stage is worked in, or
+ * null for a stage this build does not know.
+ */
+export function sectionIdOfStage(stageId) {
+  return (
+    PATHOLOGY_SECTIONS.find((section) => section.stages.includes(stageId))
+      ?.id ?? null
+  );
+}
+
+/**
+ * Whether the decalcification flag is past changing, judged by the stage the
+ * case is stored at, as the server judges it, never by a stage picked but not
+ * yet saved. Once the case has gone past decalcification the flag records
+ * what was done to the specimen, and unticking it would make the case say the
+ * stage never applied. PATHOLOGY_STAGES is in bench order, the order the
+ * server's own stage list is declared in (FR-2.6); a stage this build does
+ * not know freezes nothing, and the server still has the last word.
+ */
+export function decalcificationFlagFrozen(storedStatus) {
+  return (
+    PATHOLOGY_STAGES.indexOf(storedStatus) >
+    PATHOLOGY_STAGES.indexOf("DECALCIFICATION")
+  );
+}
+
+/**
+ * The shared badge vocabulary (see caseView/StatusBadge.jsx) that best
+ * describes a case sitting at the given stage.
+ */
+export function stageBadgeKind(stageId) {
+  switch (stageId) {
+    case "ACCESSIONED":
+      return "none";
+    case "GROSSING":
+    case "DECALCIFICATION":
+    case "PROCESSING":
+    case "EMBEDDING":
+    case "MICROTOMY":
+    case "STAINING":
+    case "COVERSLIPPING":
+    case "UNDER_REVIEW":
+      return "inProgress";
+    case "READY_PATHOLOGIST":
+      return "pending";
+    case "COMPLETED":
+      return "complete";
+    default:
+      return "none";
+  }
+}
+
+/**
+ * FR-3.4: grossing is done when the specimen has been described and cut, so
+ * both the macroscopic description and at least one saved cassette in use
+ * are required. A description of only whitespace is not a description.
+ */
+export function grossingComplete(caseInfo) {
+  const described = (caseInfo?.grossExam ?? "").trim() !== "";
+  const cut = countedRows(caseInfo?.blocks).length > 0;
+
+  return described && cut;
+}
+
+/**
+ * The badge a section header carries, derived from the rows the case holds
+ * and never from where the case stands: grossing is Complete under FR-3.4,
+ * embedding is Complete once every saved cassette is a block and otherwise
+ * says how many are, the other sections that record rows name how many, and
+ * an outstanding request outranks all of it. A read-only section leaves the
+ * slot to the shell's own marker, except a stage the laboratory does not
+ * track, which says so.
+ */
+export function sectionBadge(section, { openRequestCount, caseInfo } = {}) {
+  if (section.readOnlyBecauseUntracked) {
+    return { kind: "none", textKey: "pathology.locked.stageDisabled" };
+  }
+  if (section.state === SECTION_STATE.READ_ONLY) {
+    return null;
+  }
+
+  if (section.id === "pathology-section-review" && openRequestCount > 0) {
+    return {
+      kind: "pending",
+      textKey: "pathology.badge.openRequestCount",
+      values: { count: openRequestCount },
+    };
+  }
+
+  if (section.id === "pathology-section-grossing") {
+    if (grossingComplete(caseInfo)) {
+      return { kind: "complete", textKey: "common.complete" };
+    }
+    return countBadge("pathology.badge.cassetteCount", caseInfo?.blocks);
+  }
+
+  if (section.id === EMBEDDING_SECTION_ID) {
+    return embeddingBadge(embeddingSummary(caseInfo?.blocks));
+  }
+
+  if (section.id === MICROTOMY_SECTION_ID) {
+    return countBadge("pathology.badge.slideCount", caseInfo?.slides);
+  }
+
+  return null;
+}
+
+function embeddingBadge({ embedded, total, complete }) {
+  if (total === 0) {
+    return null;
+  }
+  if (complete) {
+    return { kind: "complete", textKey: "common.complete" };
+  }
+  return {
+    kind: "partial",
+    textKey: "pathology.badge.embeddedOf",
+    values: { embedded, total },
+  };
+}
+
+/**
+ * The sentence that names what is still outstanding, the cassettes waiting
+ * for embedding or the slides whose label is unchecked, so the rail, the
+ * section, the summary and the disabled primary agree: `visible` names the
+ * first few and counts the rest, `full` names them all.
+ */
+export function outstandingLabel(intl, outstanding) {
+  return namedListLabel(intl, outstanding, {
+    allKey: "pathology.badge.outstanding",
+    moreKey: "pathology.badge.outstandingMore",
+    placeholder: "designations",
+  });
+}
+
+/**
+ * The summary's line about embedding, under the rail's rule: not applicable
+ * where the laboratory does not track the stage, nothing before a cassette is
+ * saved, otherwise how many are embedded, with the outstanding ones named in
+ * the hover title once the case has reached the stage.
+ */
+export function embeddingStatement(
+  intl,
+  { summary, status, configurationProperties } = {},
+) {
+  if (!isStageEnabled("EMBEDDING", configurationProperties)) {
+    return {
+      value: intl.formatMessage({ id: "caseView.badge.notApplicable" }),
+    };
+  }
+  if (summary.total === 0) {
+    return { value: null };
+  }
+  return {
+    value: intl.formatMessage(
+      { id: "pathology.badge.embeddedOf" },
+      { embedded: summary.embedded, total: summary.total },
+    ),
+    title: embeddingAwaitsBench(summary, status, false)
+      ? outstandingLabel(intl, summary.outstanding).full
+      : undefined,
+  };
+}
+
+// i18n-keys: pathology.badge.*
+function countBadge(textKey, rows) {
+  const count = countedRows(rows).length;
+  return count > 0 ? { kind: "inProgress", textKey, values: { count } } : null;
+}
+
+/**
+ * The names of the requests still open on a case, in the order the case
+ * holds them. Open means the status the server calls open, and nothing else:
+ * the dashboard tile is counted with exactly that status, so reading a
+ * status-less row as open here would make this screen count requests the rest
+ * of the application does not.
+ * Nothing on the screen can produce such a row any more either, since a
+ * request is stamped open the moment it is raised.
+ */
+export function openRequestNames(requests) {
+  if (!requests) {
+    return [];
+  }
+  return requests
+    .filter((request) => request.status === "OPENED")
+    .map((request) => request.value);
+}
+
+/**
+ * How many names a rail step shows before counting the rest; the two-line
+ * clamp in caseView.scss is the actual bound on the step.
+ */
+const NAMED_LIST_LIMIT = 2;
+
+/**
+ * A sentence naming a list of things: `visible` names the first few and
+ * counts the rest, `full` names them all, for the hover title. `placeholder`
+ * is the argument the two messages name the list by.
+ */
+export function namedListLabel(
+  intl,
+  names,
+  { allKey, moreKey, limit = NAMED_LIST_LIMIT, placeholder = "names" },
+) {
+  const named = names.slice(0, limit);
+  const remaining = names.length - named.length;
+  const full = intl.formatMessage(
+    { id: allKey },
+    { [placeholder]: names.join(", ") },
+  );
+
+  if (remaining <= 0) {
+    return { visible: full, full };
+  }
+
+  return {
+    visible: intl.formatMessage(
+      { id: moreKey },
+      { [placeholder]: named.join(", "), count: remaining },
+    ),
+    full,
+  };
+}
+
+/**
+ * The rail's sentence about the requests still open.
+ */
+export function openRequestsLabel(intl, names) {
+  return namedListLabel(intl, names, {
+    allKey: "pathology.badge.openRequests",
+    moreKey: "pathology.badge.openRequestsMore",
+  });
+}
+
+/**
+ * Whether a section starts expanded, or undefined to leave that to the
+ * section itself, which opens when its own state says it holds the work in
+ * hand.
+ *
+ * The case view is an accordion rather than a set of tabs because the
+ * pathologist has to read the macroscopic description and their own
+ * microscopic description together to sign a case out, and tabs would put one
+ * of the two behind a click. Grossing derives as complete by the time a case
+ * reaches the pathologist, though, so under the ordinary rule it would
+ * collapse at exactly the moment the reading sections open, which is the
+ * arrangement the accordion was chosen to avoid.
+ */
+function sectionOpensByDefault(section, status) {
+  if (section.displayOnly) {
+    return false;
+  }
+
+  if (
+    section.id === "pathology-section-grossing" &&
+    (status === "READY_PATHOLOGIST" || status === "UNDER_REVIEW")
+  ) {
+    return true;
+  }
+
+  return undefined;
+}
+
+/**
+ * Why a section does not apply to this case, or null when it does: the hint
+ * that says so, and whether the reason is that the laboratory does not track
+ * the stage at all. That reason is said first, since it holds for every case;
+ * past that, the only way stageApplies turns a stage down is FR-3.2's flag on
+ * decalcification.
+ * A case standing at the stage is never told it does not apply, so a case
+ * moved there by hand can still say where it is.
+ */
+function notApplicableReason(
+  section,
+  { isCurrent, configurationProperties, decalcificationRequired },
+) {
+  if (section.gate === null || isCurrent) {
+    return null;
+  }
+  if (!isStageEnabled(section.gate, configurationProperties)) {
+    return { key: "pathology.locked.stageDisabled", untracked: true };
+  }
+  if (
+    !stageApplies(section.gate, {
+      configurationProperties,
+      decalcificationRequired,
+    })
+  ) {
+    return { key: "pathology.locked.decalcNotRequired", untracked: false };
+  }
+  return null;
+}
+
+/**
+ * One case view section, derived fresh from the case's status, the caller's
+ * role, the laboratory's stage configuration, the grossing bench's
+ * decalcification flag and whether the section holds rows of its own.
+ * Nothing here is stored: the same inputs always produce the same eleven
+ * results.
+ *
+ * A stage the laboratory does not track locks its section, except one that
+ * already holds rows: those are on record, and a locked section cannot show
+ * its body, so it is read-only instead and still not applicable.
+ */
+function deriveOneSection(
+  section,
+  {
+    intl,
+    status,
+    isPathologist,
+    configurationProperties,
+    decalcificationRequired,
+    sectionHasRows,
+  },
+) {
+  const isCurrent = section.stages.includes(status);
+  const reason = notApplicableReason(section, {
+    isCurrent,
+    configurationProperties,
+    decalcificationRequired,
+  });
+
+  if (reason?.untracked && sectionHasRows(section)) {
+    return {
+      ...section,
+      state: SECTION_STATE.READ_ONLY,
+      lockedHintKey: undefined,
+      lockedHintValues: undefined,
+      isCurrent,
+      notApplicable: true,
+      readOnlyBecauseUntracked: true,
+    };
+  }
+
+  if (reason) {
+    return {
+      ...section,
+      state: SECTION_STATE.DISABLED,
+      lockedHintKey: reason.key,
+      lockedHintValues: undefined,
+      isCurrent,
+      notApplicable: true,
+    };
+  }
+
+  if (section.gate === null) {
+    const derived = section.displayOnly
+      ? deriveSectionState({ sectionStage: null, readOnly: true })
+      : deriveSectionState({ sectionStage: null });
+    return { ...section, ...derived, isCurrent, notApplicable: false };
+  }
+
+  const derived = deriveSectionState({
+    status,
+    stageOrder: PATHOLOGY_STAGES,
+    sectionStage: section.gate,
+    stageLabel: stageLabel(intl, section.gate),
+    roleCanEdit: section.pathologistOnly ? Boolean(isPathologist) : true,
+  });
+
+  // A case at UNDER_REVIEW sits past the READY_PATHOLOGIST gate that the
+  // review and findings sections open at, so the ordinary stage-order rule
+  // reads them as already complete. The case is still being reviewed, so the
+  // pathologist needs them open for work, not merely revisable.
+  const state =
+    derived.state === SECTION_STATE.COMPLETE && isCurrent
+      ? SECTION_STATE.OPEN
+      : derived.state;
+
+  return {
+    ...section,
+    ...derived,
+    state,
+    isCurrent,
+    notApplicable: false,
+  };
+}
+
+/**
+ * All eleven sections, each carrying its derived state alongside the static
+ * description in PATHOLOGY_SECTIONS. Every status, known or not, yields
+ * exactly eleven results: nothing is ever hidden, only locked, read-only or
+ * marked not applicable. `sectionHasRows` says whether a section holds rows
+ * on record; a section it is not asked about holds none.
+ */
+export function deriveCaseSections({
+  intl,
+  status,
+  isPathologist,
+  configurationProperties,
+  decalcificationRequired,
+  sectionHasRows = () => false,
+} = {}) {
+  return PATHOLOGY_SECTIONS.map((section) => ({
+    ...deriveOneSection(section, {
+      intl,
+      status,
+      isPathologist,
+      configurationProperties,
+      decalcificationRequired,
+      sectionHasRows,
+    }),
+    openByDefault: sectionOpensByDefault(section, status),
+  }));
+}
+
+/**
+ * The index of the section the case is currently sitting at, for the
+ * progress rail's current-step marker, or -1 when the status is not one this
+ * build recognizes.
+ */
+export function railCurrentIndex(sections, status) {
+  return sections.findIndex((section) => section.stages.includes(status));
+}
+
+// A cassette is named as outstanding, on the rail and in the summary, only
+// once the case has reached embedding: before that nothing awaits the bench
+// there, and the section itself is still locked.
+function embeddingAwaitsBench(embedding, status, notApplicable) {
+  return (
+    embedding.outstanding.length > 0 &&
+    !notApplicable &&
+    PATHOLOGY_STAGES.indexOf(status) >= PATHOLOGY_STAGES.indexOf("EMBEDDING")
+  );
+}
+
+/**
+ * The progress rail's item for each derived section. A step is complete on
+ * the record where a rule exists (grossing under FR-3.4, microtomy holding a
+ * slide, a report existing) and on the case having passed the stage where
+ * none does. A step the laboratory does not track, or one this specimen does
+ * not need, is marked not applicable and never complete. The review step
+ * names the outstanding requests and the embedding step the outstanding
+ * cassettes.
+ */
+export function deriveRailItems(
+  sections,
+  { intl, status, reportCount, openRequestNames: names, caseInfo } = {},
+) {
+  const caseIndex = PATHOLOGY_STAGES.indexOf(status);
+  const embedding = embeddingSummary(caseInfo?.blocks);
+
+  return sections.map((section) => {
+    const isReportsSection = section.id === "pathology-section-reports";
+    const lastStage = section.stages[section.stages.length - 1];
+    const lastStageIndex = PATHOLOGY_STAGES.indexOf(lastStage);
+    const notApplicable = section.notApplicable;
+    const passed = !notApplicable && caseIndex > lastStageIndex;
+
+    let complete = passed;
+    if (isReportsSection) {
+      complete = reportCount > 0;
+    } else if (section.id === "pathology-section-grossing") {
+      complete = passed && grossingComplete(caseInfo);
+    } else if (section.id === EMBEDDING_SECTION_ID) {
+      complete = passed && embedding.complete;
+    } else if (section.id === MICROTOMY_SECTION_ID) {
+      complete = passed && countedRows(caseInfo?.slides).length > 0;
+    }
+
+    let pending;
+    if (section.id === "pathology-section-review" && names?.length > 0) {
+      pending = openRequestsLabel(intl, names);
+    } else if (
+      section.id === EMBEDDING_SECTION_ID &&
+      embeddingAwaitsBench(embedding, status, notApplicable)
+    ) {
+      pending = outstandingLabel(intl, embedding.outstanding);
+    }
+
+    return {
+      id: section.id,
+      labelKey: section.titleKey,
+      complete,
+      notApplicable,
+      pendingLabel: pending?.visible,
+      pendingTitle: pending?.full,
+    };
+  });
+}

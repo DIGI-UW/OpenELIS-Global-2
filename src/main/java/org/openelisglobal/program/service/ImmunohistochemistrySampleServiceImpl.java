@@ -95,6 +95,14 @@ public class ImmunohistochemistrySampleServiceImpl
     @Override
     public void updateWithFormValues(Integer immunohistochemistrySampleId, ImmunohistochemistrySampleForm form) {
         ImmunohistochemistrySample immunohistochemistrySample = get(immunohistochemistrySampleId);
+        if (form.getReports() != null) {
+            form.getReports().forEach(upload -> {
+                if (!immunohistochemistrySample.getReports().stream().anyMatch(stored -> ClinicalAttachmentService
+                        .isUnchanged(upload, stored.getId(), stored.getImage(), stored.getFileType()))) {
+                    ClinicalAttachmentService.validate(upload);
+                }
+            });
+        }
         if (!GenericValidator.isBlankOrNull(form.getAssignedPathologistId())) {
             immunohistochemistrySample.setPathologist(systemUserService.get(form.getAssignedPathologistId()));
         }
@@ -126,7 +134,7 @@ public class ImmunohistochemistrySampleServiceImpl
                 if (ResultType.isTextOnlyVariant(testResultItem.getResultType())) {
                     testResultItem.setResultValue(MessageUtil.getMessage("result.immunochemistry.seereport"));
                 }
-                Analysis analysis = analysisService.get(sample.getId());
+                Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
                 ResultSaveBean bean = ResultSaveBeanAdapter.fromTestResultItem(testResultItem);
                 ResultSaveService resultSaveService = new ResultSaveService(analysis, form.getSystemUserId());
                 List<Result> results = resultSaveService.createResultsFromTestResultItem(bean, new ArrayList<>());

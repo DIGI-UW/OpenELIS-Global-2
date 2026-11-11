@@ -52,4 +52,22 @@ public class SampleStorageMovementDAOImpl extends BaseDAOImpl<SampleStorageMovem
             throw new LIMSRuntimeException("Error finding SampleStorageMovements by SampleItem ID: " + sampleItemId, e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleStorageMovement> findByInventoryLotId(Long inventoryLotId) {
+        if (inventoryLotId == null) {
+            return new java.util.ArrayList<>();
+        }
+        try {
+            String hql = "FROM SampleStorageMovement ssm WHERE ssm.inventoryLotId = :inventoryLotId ORDER BY ssm.movementDate DESC";
+            Query<SampleStorageMovement> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleStorageMovement.class);
+            query.setParameter("inventoryLotId", inventoryLotId);
+            return query.list();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error finding SampleStorageMovements by InventoryLot ID: " + inventoryLotId,
+                    e);
+        }
+    }
 }

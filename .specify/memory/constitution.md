@@ -1,6 +1,121 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Clarify schema and configuration ownership
+Version Change: 1.12.0 → 1.12.1
+Change Type: PATCH - Clarify Principle VI in line with configuration-driven variation
+Date: 2026-10-14
+Modified Sections: Principle VI; compliance checklist
+Synchronized Guidance: AGENTS.md; .specify/templates/plan-template.md;
+  docs/configuration/README.md
+Rationale: "All database changes" incorrectly suggested that concepts and
+  defaults belong in schema migrations. Configuration loaders own that content.
+-->
+
+<!--
+SYNC IMPACT REPORT - Test isolation becomes a MUST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.11.2 → 1.12.0
+Change Type: MINOR - New section V.7 (Test Isolation); materially expanded guidance
+Date: 2026-09-29
+
+Modified Sections:
+  - Principle V > V.5 > Debugging and Maintenance > Test Isolation
+    * "Prefer isolated tests" replaced by a pointer to V.7. The only isolation
+      mechanism named was shared authentication state, and nothing addressed
+      data shared through the database.
+  - Principle V > V.6 > Universal
+    * Added U4, pointing at V.7.
+
+Added Sections:
+  - Principle V > V.7 Test Isolation (MANDATORY)
+    * One invariant for every test level: a test's result depends only on the
+      code under test and the data the test itself created.
+    * Rules for owning data, scoping reads, never widening an assertion, and
+      pinning time.
+
+Rationale:
+  The Playwright suites share one database per stack. workers: 1 and CI
+  sharding stop concurrent writers from colliding, but neither stops a spec
+  from reading another spec's rows, and sharding makes which specs share a
+  database depend on how the shards happen to split. Specs that read "everything
+  from today" passed for weeks and failed when an unrelated spec was added.
+
+Templates Requiring Updates:
+  ✅ .specify/guides/testing-roadmap.md - U4, E5, E6 and checklist item
+  ✅ .specify/guides/playwright-best-practices.md - "Keep Tests Isolated"
+  ✅ .ai/skills/playwright/SKILL.md - non-negotiables
+  ✅ .specify/templates/plan-template.md - Constitution Check and Test Data Management
+
+Follow-up TODOs:
+  - Scheduled unsharded and shuffled-order guard runs (separate PR).
+  - Backend counterpart is tracked in OGC-1391.
+-->
+
+<!--
+SYNC IMPACT REPORT - Branch strategy: main and release branches
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.11.1 → 1.11.2
+Change Type: PATCH - Correct the description of the primary branches
+Date: 2026-09-25
+
+Modified Sections:
+  - Development Workflow > Branch Strategy
+    * `main` was described as "Production releases only (reviewers backport
+      from develop)". It now holds the latest release and changes only
+      through a reviewed release pull request from a release branch, merged
+      with a merge commit; each release is tagged on `main`.
+    * Added `release/<X.Y>.x` branches, which receive fixes cherry-picked from
+      `develop`.
+  - Pull Request Requirements > Target Branch
+    * Hotfixes also target `develop`; released lines receive them by
+      cherry-pick onto their release branch.
+
+Rationale:
+  No `main` branch existed when the old text was written, and releases were
+  tagged on `develop`. `master` was renamed to `main` and set to release
+  3.2.3.0 on 2026-09-25. RELEASES.md is the operational reference.
+
+Templates Requiring Updates:
+  ✅ AGENTS.md - branch strategy and target branch corrected in this change
+  ✅ SECURITY.md, PULL_REQUEST_TIPS.md - same correction
+
+Follow-up TODOs:
+  - None.
+-->
+
+<!--
+SYNC IMPACT REPORT - Frontend tech stack: data fetching
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.11.0 → 1.11.1
+Change Type: PATCH - Correct a factual error in the frontend stack list
+Date: 2026-09-07
+
+Modified Sections:
+  - Technology Stack > Frontend (React)
+    * "SWR 2.0.3 for data fetching + caching" removed: SWR is not in
+      package.json, not in node_modules, and imported by no file. All 735
+      getFromOpenElisServer calls (273 files) hand-roll fetch in useEffect.
+    * Replaced with the actual state and the adopted target, TanStack Query v4,
+      tracked in docs/planning/query-layer-adoption.md.
+
+Rationale:
+  The false entry misled work on OGC-782 #4196 into assuming a cache existed to
+  invalidate. The absence of any refetch primitive is why 84 screens reload the
+  document after a save and 13 navigate to their own URL to the same end.
+  TanStack Query v4 over SWR: hierarchical keys refresh every panel of a
+  microbiology case from one invalidateQueries call, and useMutation replaces
+  the hand-rolled saving/.finally state that has already produced bugs.
+
+Templates Requiring Updates:
+  ✅ AGENTS.md - same line corrected in this change
+
+Follow-up TODOs:
+  - Land the adoption PR (feat/query-layer-tanstack); then update this entry to
+    the installed version and remove the "not installed yet" wording.
+-->
+
+<!--
 SYNC IMPACT REPORT - Principle VII: i18n Key Reuse & Hygiene
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.10.0 → 1.11.0
@@ -699,7 +814,6 @@ direct database access from controllers, NO business logic in DAOs.
 **Layers**:
 
 1. **Valueholders** (JPA Entities): `org.openelisglobal.{module}.valueholder`
-
    - Extend `BaseObject<String>` (provides id, sys_user_id, lastupdated)
    - Include `fhir_uuid UUID` for FHIR-mapped entities
    - **MANDATORY**: Use JPA/Hibernate annotations on entity classes (`@Entity`,
@@ -710,7 +824,6 @@ direct database access from controllers, NO business logic in DAOs.
      extended or integrated with when required for backward compatibility. This
      exception is intended to support incremental modernization in a large,
      mission-critical codebase.
-
      - New entities SHOULD be annotation-based.
      - If a change requires introducing or extending XML mappings, the PR MUST
        document why, list the impacted entities, and include an explicit
@@ -721,14 +834,12 @@ direct database access from controllers, NO business logic in DAOs.
    - `@PrePersist` hook for fhir_uuid generation
 
 2. **DAOs** (Data Access): `org.openelisglobal.{module}.dao`
-
    - Interface + Implementation (extends `BaseDAOImpl<Entity, String>`)
    - Annotate with `@Component` + `@Transactional`
    - Methods: get, insert, update, delete, custom queries
    - Use HQL (Hibernate Query Language) ONLY - NO native SQL in code
 
 3. **Services** (Business Logic): `org.openelisglobal.{module}.service`
-
    - Interface + Implementation (annotate with `@Service` + `@Transactional`)
    - **Transactions start here (NOT in controllers)** - `@Transactional`
      annotations MUST NOT appear on controller methods. DAOs retain
@@ -750,7 +861,6 @@ direct database access from controllers, NO business logic in DAOs.
      use `JOIN FETCH` in HQL queries to eagerly load all required relationships.
 
 4. **Controllers** (REST Endpoints): `org.openelisglobal.{module}.controller`
-
    - Extend `BaseRestController`
    - Annotate with `@RestController` + `@RequestMapping("/rest/{module}")`
    - Methods: `@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`
@@ -908,7 +1018,6 @@ implementation details.
 **Test Execution Workflow**:
 
 1. **During Development (Fast Iteration):**
-
    - Run tests individually or in small chunks (5-10 tests)
    - Playwright: `npm run pw:test -- {spec}.spec.ts`
    - Cypress: `npm run cy:spec "cypress/e2e/{feature}.cy.js"`
@@ -917,7 +1026,6 @@ implementation details.
      debugging, and prevents cascading failures from masking root causes.
 
 2. **Before Pushing (Pre-Push Validation) - MANDATORY:**
-
    - MUST validate full suite locally with fail-fast enabled
    - Cypress: `npm run cy:failfast`
    - Playwright: `npm run pw:test`
@@ -1013,11 +1121,9 @@ npm run cy:failfast:spec "cypress/e2e/AdminE2E/*.cy.js"
 
 **Debugging and Maintenance**:
 
-- **Test Isolation**: Prefer isolated tests that can run independently
+- **Test Isolation**: Tests MUST be isolated as defined in Section V.7
   - Use setup projects (Playwright) or cy.session() (Cypress) for shared
     authentication state
-  - If shared state needed beyond authentication, document rationale in test
-    file header
 - **Performance Monitoring**: Track test execution time and optimize as needed
   - Individual tests should complete without user-perceived delay
   - Full suite should complete in reasonable time for CI/CD context
@@ -1097,21 +1203,72 @@ catch-and-continue in @Transactional. HQL/SQL param tests required.
 fetch() in components. Use waitFor (not deprecated wait). i18n assertions for
 user-visible text.
 
-**E2E (E1–E4):** Every test step must have an assertion. No deprecated
+**E2E (E1–E6):** Every test step must have an assertion. No deprecated
 isVisible({timeout}). No .catch(() => false) on locators. API-first data setup.
+Read only your own data. No clock or time zone dependence (V.7).
 
-**Universal (U1–U3):** Inversion Test mandatory. One bug = one regression test.
-No any() without justification.
+**Universal (U1–U4):** Inversion Test mandatory. One bug = one regression test.
+No any() without justification. Tests are isolated (V.7).
+
+### V.7 Test Isolation (MANDATORY)
+
+**Invariant, for every test at every level**: a test's result MUST depend only
+on the code under test and on data that test created. It MUST NOT depend on data
+created by other tests, on test order, on how tests are sharded or parallelized,
+or on the wall clock.
+
+Rules:
+
+- **Write only data you own.** Create the records a test needs, with unique
+  identifiers, through the API or seed helpers.
+- **Read only data you own.** Every list, count, total, rate, or state derived
+  from one (for example an enabled button) MUST be scoped to the test's own
+  records, or measured as a before and after difference. A date window alone is
+  not a scope.
+- **Never widen an assertion because other data might be present.** Narrow the
+  read instead.
+- **Pin time.** Use explicit dates and freeze or inject the clock used by the
+  code under test when it reads the current time, including the server clock
+  when applicable. A live server's "today" is not pinned time. Tests of
+  current-date behavior MUST set that clock to the dates or boundaries being
+  exercised. A test MUST NOT pass or fail depending on the wall clock or the
+  browser's time zone.
+- **Exempt: shared read-only reference data**, such as the configured test
+  catalog and authentication state. A test that changes reference data MUST
+  restore it or run against its own copy.
+
+**Rationale**: A test is evidence only if nothing outside the code under test can
+change its result. Tests that read shared state pass or fail by scheduling luck,
+and sharding makes that luck depend on how the suite happens to split. Each
+failure of this kind costs a CI investigation that finds no defect.
+
+**Verification**: Scheduled runs of each lane, unsharded in one database and in
+shuffled order, report tests that pass in CI but fail there.
 
 ---
 
 ### VI. Database Schema Management
 
-**MANDATE**: All database changes MUST go through Liquibase. NO direct DDL/DML
-in production.
+**MANDATE**: Database schema changes and conversions of existing historical
+records MUST go through Liquibase. Concepts, catalogs, and configuration defaults
+MUST use configuration files and application configuration loaders, consistent
+with Principle I.
 
 **Rules**:
 
+- Liquibase owns tables, columns, indexes, constraints, and conversions of
+  existing records to a new schema. Historical-data conversion must preserve
+  existing records and is not permission to seed new vocabulary.
+- Configuration loaders own dictionary categories and entries, test catalogs,
+  reporting tracks, label presets, and settings defaults. Inspect existing
+  handlers and [configuration guidance](../../docs/configuration/README.md)
+  before adding a domain; extend the loader if needed.
+- Do not seed or manage concepts through Liquibase `insert`, SQL inserts,
+  `loadData`, or `loadUpdateData`. Existing seed migrations are legacy code,
+  not implementation precedent.
+- Imports must be repeatable and preserve referenced IDs and local
+  customizations. Test fresh installation, reload, and upgrade behavior.
+  Moving an existing catalog must not delete or recreate referenced concepts.
 - Schema migrations in `src/main/resources/liquibase/{version}/` (e.g.,
   `3.3.x.x/`)
 - Changesets MUST have unique IDs: `{sequence}-{description}` (e.g.,
@@ -1329,7 +1486,6 @@ additional slashes) for sub-scoping like milestones.
 **Workflow**:
 
 1. **Specification Phase** (on `spec/{issue-id}-{name}` branch):
-
    - Create spec branch from `develop`
    - Complete `spec.md` (user stories, requirements)
    - Complete `plan.md` (architecture, milestone plan)
@@ -1450,7 +1606,11 @@ require architecture review + documented justification.
 - **Carbon Design System v1.15** (@carbon/react v1.15.0) - OFFICIAL UI FRAMEWORK
 - **Carbon Icons** (@carbon/icons-react v11.17.0)
 - **Carbon Charts** (@carbon/charts-react v1.5.2) for data visualization
-- **SWR 2.0.3** for data fetching + caching
+- **Data fetching**: no query/cache layer is installed yet; data is fetched by
+  hand through `getFromOpenElisServer` callbacks inside `useEffect`.
+  **TanStack Query v4** is the adopted target (v4 is the React 17 line); see
+  `docs/planning/query-layer-adoption.md`. SWR was listed here for years but
+  was never installed or used.
 - **React Router DOM 5.2.0** for routing
 - **React Intl 5.20.12** for i18n (MANDATORY)
 - **Formik 2.2.9** + **Yup 0.29.2** for forms/validation
@@ -1501,8 +1661,14 @@ naming conventions and milestone workflow.
 
 **Primary Branches**:
 
-- **`develop`** - Main development branch (all PRs target this)
-- **`main`** - Production releases only (reviewers backport from develop)
+- **`develop`** - Integration and default branch (development PRs target this)
+- **`main`** - The latest release. It changes only through a reviewed release
+  pull request from a `release/<X.Y>.x` branch, merged with a merge commit;
+  each release is tagged on `main`.
+- **`release/<X.Y>.x`** - One branch per supported release line. It receives
+  only fixes already merged to `develop`.
+
+Supported lines and versioning rules: [RELEASES.md](../../RELEASES.md).
 
 **Feature Development Branches** (per Principle IX):
 
@@ -1529,7 +1695,8 @@ naming conventions and milestone workflow.
    - Spec PRs: `spec/{NNN}[-{jira}]-{name}`
    - Milestone PRs: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
    - Bugfix PRs: `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
-3. **Target Branch**: Always `develop` (unless hotfix)
+3. **Target Branch**: Development PRs target `develop`, including hotfixes.
+   Release PRs from a release branch target `main`.
 4. **Code Formatting** (MANDATORY - MUST run before each commit):
    - Backend: `mvn spotless:apply` - MUST run before committing
    - Frontend: `npm run format` (Prettier) - MUST run before committing
@@ -1583,34 +1750,21 @@ All checks MUST pass before merge.
 **Quick Start** (from [README.md](README.md)):
 
 ```bash
-# Clone + submodules
 git clone https://github.com/DIGI-UW/OpenELIS-Global-2.git
 cd OpenELIS-Global-2
-git submodule update --init --recursive
-
-# Build DataExport submodule
-cd dataexport && mvn clean install -DskipTests && cd ..
-
-# Build OpenELIS WAR
-mvn clean install -DskipTests
-
-# Start development containers
-docker compose -f dev.docker-compose.yml up -d
+bash scripts/setup-workspace.sh
+scripts/dev-stack doctor
+scripts/dev-stack up
+scripts/dev-stack url
 ```
 
-**Access Points**:
-
-- React UI: https://localhost/
-- Legacy UI: https://localhost/api/OpenELIS-Global/
-- FHIR Server: https://fhir.openelis.org:8443/fhir/
-
-**Hot Reload**:
-
-- Frontend: Changes in `frontend/src/` auto-reload (Webpack HMR)
-- Backend: Rebuild WAR (`mvn clean install -DskipTests`) + recreate container:
-  ```bash
-  docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
-  ```
+Use the endpoints printed by the launcher. Frontend source changes hot reload;
+re-run `scripts/dev-stack up` after backend changes, and
+`scripts/dev-stack up --build` after dependency or image changes. Run
+`scripts/run-ci-checks.sh` for the committed candidate while GitHub CI runs.
+Native builds and published-image deployments remain separate modes described
+in the setup guide. These operational commands do not alter the constitutional
+principles above.
 
 **Reference**: [dev_setup.md](docs/dev_setup.md)
 
@@ -1661,6 +1815,8 @@ documenting:
 - [ ] Internationalization complete (Principle VII)
 - [ ] Tests included (Principle V)
 - [ ] Liquibase for schema changes (Principle VI)
+- [ ] Concepts, catalogs, and defaults use configuration loaders, with no
+      Liquibase seeds (Principles I and VI)
 - [ ] Security/compliance requirements met (Principle VIII)
 - [ ] Milestone scope appropriate (Principle IX) - for features >3 days
 
@@ -1701,7 +1857,7 @@ sync.
 
 ---
 
-**Version**: 1.11.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-07-15
+**Version**: 1.12.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-10-14
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team

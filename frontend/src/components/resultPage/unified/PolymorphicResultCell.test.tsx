@@ -1,12 +1,12 @@
 import React from "react";
-import { render as rtlRender, screen } from "@testing-library/react";
+import { fireEvent, render as rtlRender, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import PolymorphicResultCell, {
-  blocksSaveOnPrecision,
+  warnsOnReportingFormat,
   enteredDecimalPlaces,
-  exceedsConfiguredPrecision,
-  precisionStep,
+  exceedsReportingDecimalPlaces,
   worklistRowKey,
 } from "./PolymorphicResultCell";
 
@@ -31,7 +31,7 @@ const baseRow = {
 };
 
 describe("PolymorphicResultCell", () => {
-  it("numeric rows render a number input", () => {
+  it("numeric rows render a text input so scientific notation can be typed", () => {
     const { container } = render(
       <PolymorphicResultCell
         row={{ ...baseRow, resultType: "N", resultValue: "42" }}
@@ -39,9 +39,48 @@ describe("PolymorphicResultCell", () => {
         onValueChange={() => {}}
       />,
     );
-    const input = container.querySelector('input[type="number"]');
-    expect(input).not.toBeNull();
-    expect(input).toHaveValue(42);
+    const input = container.querySelector("input");
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).toHaveValue("42");
+  });
+
+  it("a numeric row finer than the test reports to warns and stays valid (OGC-1544)", () => {
+    const { container } = render(
+      <PolymorphicResultCell
+        row={{
+          ...baseRow,
+          resultType: "N",
+          reportingDecimalPlaces: 0,
+          resultValue: "0.9",
+          rawResultValue: "",
+        }}
+        editable
+        onValueChange={() => {}}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "This test reports to 0 decimal place(s). The full entered value is retained for clinical decisions.",
+      ),
+    ).toBeInTheDocument();
+    expect(container.querySelector("input")).not.toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+  });
+
+  it("numeric rows report scientific notation as typed", () => {
+    const onValueChange = vi.fn();
+    const { container } = render(
+      <PolymorphicResultCell
+        row={{ ...baseRow, resultType: "N" }}
+        editable
+        onValueChange={onValueChange}
+      />,
+    );
+    const input = container.querySelector("input") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "1.5×10⁵" } });
+    expect(onValueChange).toHaveBeenCalledWith("resultValue", "1.5×10⁵");
   });
 
   it("dictionary rows render a select with readable options", () => {
@@ -102,6 +141,76 @@ describe("PolymorphicResultCell", () => {
 });
 
 /**
+ * OGC-1185 — a test configured as Titer (T) could be ordered but never
+ * resulted: the cell had no case for it and fell through to a bare span, so
+ * the row offered no control and no Save.
+ */
+describe("titer rows", () => {
+  it("render a text input holding the dilution ratio as stored", () => {
+    const { container } = render(
+      <PolymorphicResultCell
+        row={{ ...baseRow, resultType: "T", resultValue: "1:10" }}
+        editable
+        onValueChange={() => {}}
+      />,
+    );
+    const input = container.querySelector("input");
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).toHaveValue("1:10");
+    expect(input).toHaveAttribute("placeholder", "e.g. 1:10");
+  });
+
+  it("report what was typed as the result value", () => {
+    const onValueChange = vi.fn();
+    const { container } = render(
+      <PolymorphicResultCell
+        row={{ ...baseRow, resultType: "T" }}
+        editable
+        onValueChange={onValueChange}
+      />,
+    );
+    fireEvent.change(container.querySelector("input") as HTMLInputElement, {
+      target: { value: "1:20" },
+    });
+    expect(onValueChange).toHaveBeenCalledWith("resultValue", "1:20");
+  });
+
+  it("show the stored ratio as plain text once saved", () => {
+    render(
+      <PolymorphicResultCell
+        row={{ ...baseRow, resultType: "T", resultValue: "1:40" }}
+        editable={false}
+        onValueChange={() => {}}
+      />,
+    );
+    expect(screen.getByText("1:40")).toBeInTheDocument();
+  });
+});
+
+/**
+ * Every result type the platform declares (TypeOfTestResultServiceImpl
+ * .ResultType, and the set the Test Catalogue Editor offers) has to reach a
+ * control here. A type that falls through to the fallback span is a test that
+ * can be ordered but never resulted — the OGC-1185 shape, for any future type.
+ */
+describe("result type coverage", () => {
+  it.each(["R", "D", "T", "N", "A", "M", "C"])(
+    "renders an entry control for result type %s",
+    (resultType) => {
+      const { container } = render(
+        <PolymorphicResultCell
+          row={{ ...baseRow, resultType, dictionaryResults: [] }}
+          editable
+          onValueChange={() => {}}
+        />,
+      );
+      expect(container.innerHTML).not.toBe("<span></span>");
+      expect(container.firstElementChild).not.toBeNull();
+    },
+  );
+});
+
+/**
  * OGC-1179 #7 — the result cell is the worklist's primary control and carries
  * no visible label; the column header names it for a sighted reader, but a
  * screen-reader user tabbing the page landed on an unnamed combobox.
@@ -121,7 +230,7 @@ describe("PolymorphicResultCell accessible names", () => {
     />
   );
 
-  it.each(["N", "D", "A", "R"])("names the %s control", (resultType) => {
+  it.each(["N", "D", "A", "R", "T"])("names the %s control", (resultType) => {
     render(named(resultType));
     expect(
       screen.getByLabelText("Result for COVID-19 PCR — N2 (Ct)"),
@@ -142,28 +251,33 @@ describe("configured precision", () => {
   });
 
   it("flags a value finer than the test reports to", () => {
-    expect(exceedsConfiguredPrecision("23.7", 0)).toBe(true);
-    expect(exceedsConfiguredPrecision("23", 0)).toBe(false);
-    expect(exceedsConfiguredPrecision("5.1234", 2)).toBe(true);
-    expect(exceedsConfiguredPrecision("5.12", 2)).toBe(false);
-    expect(exceedsConfiguredPrecision("5.1", 2)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("23.7", 0)).toBe(true);
+    expect(exceedsReportingDecimalPlaces("23", 0)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("5.1234", 2)).toBe(true);
+    expect(exceedsReportingDecimalPlaces("5.12", 2)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("5.1", 2)).toBe(false);
   });
 
   it("says nothing when the test declares no precision", () => {
-    expect(exceedsConfiguredPrecision("23.7", undefined)).toBe(false);
-    expect(exceedsConfiguredPrecision("23.7", -1)).toBe(false);
-    expect(exceedsConfiguredPrecision("", 0)).toBe(false);
-    expect(exceedsConfiguredPrecision("not a number", 0)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("23.7", undefined)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("23.7", -1)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("", 0)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("not a number", 0)).toBe(false);
   });
 
-  it("offers a step matching the configured precision", () => {
-    expect(precisionStep(0)).toBe("1");
-    expect(precisionStep(1)).toBe("0.1");
-    expect(precisionStep(2)).toBe("0.01");
-    expect(precisionStep(undefined)).toBe("any");
+  it("preserves scientific notation without applying a mantissa precision", () => {
+    expect(enteredDecimalPlaces("1.5e5")).toBe(1);
+    expect(enteredDecimalPlaces("1.5×10⁵")).toBe(1);
+    expect(enteredDecimalPlaces("3e2")).toBe(0);
+    expect(exceedsReportingDecimalPlaces("1.5e1", 1)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("1.5e-7", 2)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("1.55e1", 1)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("1.234e5", 2)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("1.5 x 10^5", 0)).toBe(false);
+    expect(exceedsReportingDecimalPlaces("3²", 2)).toBe(false);
   });
 
-  it("marks the entry field invalid rather than accepting the divergence", () => {
+  it("warns about the divergence instead of marking the field invalid (OGC-1544)", () => {
     const { container } = render(
       <PolymorphicResultCell
         row={{
@@ -171,16 +285,18 @@ describe("configured precision", () => {
           resultType: "N",
           resultValue: "23.7",
           rawResultValue: "22",
-          significantDigits: 0,
+          reportingDecimalPlaces: 0,
           testName: "E (Ct)",
         }}
         editable
         onValueChange={() => {}}
       />,
     );
-    const input = container.querySelector('input[type="number"]');
-    expect(input).toHaveAttribute("step", "1");
-    expect(input).toHaveAttribute("data-invalid");
+    const input = container.querySelector('input[type="text"]');
+    expect(input).not.toHaveAttribute("data-invalid");
+    expect(
+      screen.getByText(/full entered value is retained/),
+    ).toBeInTheDocument();
   });
 
   it("leaves a value within the configured precision alone", () => {
@@ -190,52 +306,52 @@ describe("configured precision", () => {
           ...baseRow,
           resultType: "N",
           resultValue: "5.1234",
-          significantDigits: 4,
+          reportingDecimalPlaces: 4,
           testName: "RBC",
         }}
         editable
         onValueChange={() => {}}
       />,
     );
-    const input = container.querySelector('input[type="number"]');
+    const input = container.querySelector('input[type="text"]');
     expect(input).not.toHaveAttribute("data-invalid");
   });
 });
 
 /**
- * A value already stored at a finer precision than the test reports to is a
- * record that exists. Refusing to save its row would strand it — the reader
- * could not add a note to say so. What is refused is entering a new one.
+ * A newly typed value finer than the test reports to is saved as typed and
+ * reported rounded (OGC-1544); the field warns about it. A value already stored
+ * at that precision is a record that exists and raises no warning.
  */
-describe("what the precision guard refuses", () => {
+describe("what the precision guard warns about", () => {
   const numeric = (resultValue: string, rawResultValue: string) => ({
     ...baseRow,
     resultType: "N",
-    significantDigits: 0,
+    reportingDecimalPlaces: 0,
     resultValue,
     rawResultValue,
   });
 
-  it("refuses a newly typed out-of-precision value", () => {
-    expect(blocksSaveOnPrecision(numeric("23.7", "22"))).toBe(true);
-    expect(blocksSaveOnPrecision(numeric("23.7", ""))).toBe(true);
+  it("warns about a newly typed out-of-precision value", () => {
+    expect(warnsOnReportingFormat(numeric("23.7", "22"))).toBe(true);
+    expect(warnsOnReportingFormat(numeric("23.7", ""))).toBe(true);
   });
 
-  it("leaves a stored out-of-precision value saveable", () => {
-    expect(blocksSaveOnPrecision(numeric("23.7", "23.7"))).toBe(false);
+  it("says nothing about a stored out-of-precision value", () => {
+    expect(warnsOnReportingFormat(numeric("23.7", "23.7"))).toBe(false);
   });
 
   it("says nothing about a value within the configured precision", () => {
-    expect(blocksSaveOnPrecision(numeric("24", "22"))).toBe(false);
+    expect(warnsOnReportingFormat(numeric("24", "22"))).toBe(false);
   });
 
   it("says nothing about a non-numeric result", () => {
     expect(
-      blocksSaveOnPrecision({
+      warnsOnReportingFormat({
         resultType: "D",
         resultValue: "1578",
         rawResultValue: "1334",
-        significantDigits: 0,
+        reportingDecimalPlaces: 0,
       }),
     ).toBe(false);
   });

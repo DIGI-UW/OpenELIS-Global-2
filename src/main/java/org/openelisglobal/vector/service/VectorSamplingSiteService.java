@@ -14,5 +14,9 @@ public interface VectorSamplingSiteService extends BaseObjectService<VectorSampl
 
     List<VectorSamplingSite> search(String searchTerm);
 
+    VectorSamplingSite getByOrganizationId(Integer organizationId);
+
+    List<VectorSamplingSite> getByOrganizationIds(List<Integer> organizationIds);
+
     VectorSamplingSite patchUpdate(Integer id, VectorSamplingSite patch, String sysUserId);
 }

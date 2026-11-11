@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-allow-unassigned-microbiology-workflow" author="OGC">
+        <comment>
+            Permit a visible UNASSIGNED classification when a manual Microbiology
+            Program fallback cannot safely infer a bacteriology or TB workflow.
+        </comment>
+        <sql>
+            ALTER TABLE clinlims.micro_case
+            DROP CONSTRAINT micro_case_workflow_type_chk;
+            ALTER TABLE clinlims.micro_case
+            ADD CONSTRAINT micro_case_workflow_type_chk
+            CHECK (workflow_type IN ('BACTERIOLOGY', 'MYCOBACTERIOLOGY_TB', 'MYCOLOGY', 'UNASSIGNED'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.micro_case
+                DROP CONSTRAINT micro_case_workflow_type_chk;
+                ALTER TABLE clinlims.micro_case
+                ADD CONSTRAINT micro_case_workflow_type_chk
+                CHECK (workflow_type IN ('BACTERIOLOGY', 'MYCOBACTERIOLOGY_TB', 'MYCOLOGY'));
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

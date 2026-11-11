@@ -16,7 +16,9 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.LazyCollection;
 import org.hibernate.annotations.LazyCollectionOption;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
@@ -28,10 +30,24 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 @Table(name = "pathology_sample")
 public class PathologySample extends ProgramSample {
 
+    /**
+     * These are the histopathology bench stages a case passes through, in the order
+     * they happen (FR-2.1 of the pathology case view FRS).
+     *
+     * Declaration order is the bench order and is the single source for the
+     * Pathology Dashboard stage filter and the PATHOLOGY_STATUS display list
+     * (FR-2.6), so constants must stay in bench order.
+     *
+     * Hibernate stores the constant name, so a name must never be removed without a
+     * changeset that maps stored rows onto its replacement: CUTTING was absorbed
+     * into GROSSING, SLICING became MICROTOMY, and ADDITIONAL_REQUEST was retired
+     * because an outstanding request is a fact about pathology_request rows, not a
+     * stage.
+     */
     public enum PathologyStatus {
-        GROSSING("Grossing"), CUTTING("Cutting"), PROCESSING("Processing"), SLICING("Slicing for Slides"),
-        STAINING("Staining"), READY_PATHOLOGIST("Ready for Pathologist"),
-        ADDITIONAL_REQUEST("Additional Pathologist Request"), COMPLETED("Completed");
+        ACCESSIONED("Accessioned"), GROSSING("Grossing"), DECALCIFICATION("Decalcification"), PROCESSING("Processing"),
+        EMBEDDING("Embedding"), MICROTOMY("Microtomy"), STAINING("Staining"), COVERSLIPPING("Coverslipping & QC"),
+        READY_PATHOLOGIST("Ready for Pathologist"), UNDER_REVIEW("Under Pathologist Review"), COMPLETED("Completed");
 
         private String display;
 
@@ -56,17 +72,19 @@ public class PathologySample extends ProgramSample {
 
     @Enumerated(EnumType.STRING)
     @NotNull
-    private PathologyStatus status = PathologyStatus.GROSSING;
+    private PathologyStatus status = PathologyStatus.ACCESSIONED;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "pathology_sample_id")
     @LazyCollection(LazyCollectionOption.FALSE)
     private List<PathologyBlock> blocks;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "pathology_sample_id")
     private List<PathologySlide> slides;
 
+    // Rebuilt on every save; keeps orphan removal until these rows carry a
+    // lifecycle of their own.
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "pathology_sample_id")
     private List<PathologyRequest> requests;
@@ -88,6 +106,13 @@ public class PathologySample extends ProgramSample {
 
     @Column(name = "microscopy_exam")
     private String microscopyExam;
+
+    /**
+     * Whether the specimen needs decalcifying before processing, which is what
+     * makes the DECALCIFICATION stage apply to this case.
+     */
+    @Column(name = "decalcification_required", nullable = false)
+    private boolean decalcificationRequired;
 
     public List<PathologyRequest> getRequests() {
         return requests;
@@ -194,15 +219,28 @@ public class PathologySample extends ProgramSample {
         return blocks;
     }
 
+    /** Names each block by the identifier written on it and the tissue it holds. */
     public String getBlocks_Audit() {
         if (blocks == null) {
             return null;
         } else {
-            return StringUtils.join(
-                    blocks.stream().map(e -> "Block Number: " + e.getBlockNumber() + ", Location: " + e.getLocation())
-                            .collect(Collectors.toList()),
-                    "; ");
+            return StringUtils.join(blocks.stream()
+                    .map(e -> "Block: " + e.displayIdentifier() + ", Cassette State: "
+                            + (e.getCassetteState() == null ? "" : e.getCassetteState().name()) + ", Location: "
+                            + StringUtils.defaultString(e.getLocation()) + ", Tissue: "
+                            + dictionaryName(e.getTissueTypeId()) + ", Active: " + e.isActive())
+                    .collect(Collectors.toList()), "; ");
         }
+    }
+
+    /**
+     * A dictionary entry by its name, so a history row says what a cassette held or
+     * how a slide was stained rather than a bare id; the id stands in for a missing
+     * entry.
+     */
+    private static String dictionaryName(String dictionaryId) {
+        return DictionaryEntryNames.localizedNameOf(SpringContext.getBean(DictionaryService.class), dictionaryId)
+                .orElse(StringUtils.defaultString(dictionaryId));
     }
 
     public void setBlocks(List<PathologyBlock> blocks) {
@@ -213,13 +251,22 @@ public class PathologySample extends ProgramSample {
         return slides;
     }
 
+    /**
+     * Names each slide by the identifier written on it and by its parent block,
+     * with the level it was cut at and the stain it carries.
+     */
     public String getSlides_Audit() {
         if (slides == null) {
             return null;
         } else {
-            return StringUtils
-                    .join(slides.stream().map(e -> "File Type: " + e.getFileType() + ", Location: " + e.getLocation())
-                            .collect(Collectors.toList()), "; ");
+            return StringUtils.join(slides.stream().map(e -> "Slide: " + e.displayIdentifier() + ", Block: "
+                    + (e.getBlockId() == null ? "" : e.getBlockId()) + ", Location: "
+                    + StringUtils.defaultString(e.getLocation()) + ", Level: " + StringUtils.defaultString(e.getLevel())
+                    + ", Stain: " + dictionaryName(e.getStainId()) + ", Active: " + e.isActive() + ", File Type: "
+                    + StringUtils.defaultString(e.getFileType()) + ", Label verified: "
+                    + (e.getLabelVerifiedAt() == null ? ""
+                            : DateUtil.convertTimestampToStringDateAndConfiguredHourTime(e.getLabelVerifiedAt())))
+                    .collect(Collectors.toList()), "; ");
         }
     }
 
@@ -241,6 +288,14 @@ public class PathologySample extends ProgramSample {
 
     public void setMicroscopyExam(String microscopyExam) {
         this.microscopyExam = microscopyExam;
+    }
+
+    public boolean isDecalcificationRequired() {
+        return decalcificationRequired;
+    }
+
+    public void setDecalcificationRequired(boolean decalcificationRequired) {
+        this.decalcificationRequired = decalcificationRequired;
     }
 
     public List<PathologyReport> getReports() {

@@ -283,6 +283,23 @@ const PanelsList = () => {
                               defaultMessage: panel.domain,
                             })}
                           </Tag>
+                          {(panel.sampleTypesOutsideDomain || []).length >
+                            0 && (
+                            <span
+                              data-cy={`panel-mixed-domain-${panel.id}`}
+                              title={intl.formatMessage(
+                                { id: "label.panel.list.mixedDomain.detail" },
+                                {
+                                  sampleTypes:
+                                    panel.sampleTypesOutsideDomain.join(", "),
+                                },
+                              )}
+                            >
+                              <Tag type="warm-gray" size="sm">
+                                <FormattedMessage id="label.panel.list.mixedDomain" />
+                              </Tag>
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {(panel.sampleTypes || []).length

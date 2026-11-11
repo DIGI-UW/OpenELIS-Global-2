@@ -4,21 +4,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import java.io.InputStream;
 import java.util.UUID;
-import liquibase.repackaged.org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
-import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.fhir.springserialization.QuestionnaireDeserializer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+/**
+ * Loads the {@code questionnaires/*.json} configuration files into OpenELIS
+ * (and into the FHIR store when one is configured).
+ */
 @Component
 public class QuestionnaireConfigurationHandler implements DomainConfigurationHandler {
 
     @Autowired
-    private FhirPersistanceService fhirPersistanceService;
+    private QuestionnaireStorageService questionnaireStorageService;
 
     @Autowired
     private FhirConfig fhirConfig;
@@ -40,10 +42,6 @@ public class QuestionnaireConfigurationHandler implements DomainConfigurationHan
 
     @Override
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
-        if (StringUtils.isBlank(fhirConfig.getLocalFhirStorePath())) {
-            throw new IllegalStateException("FHIR store path is not configured. Cannot load questionnaires.");
-        }
-
         Questionnaire questionnaire = parseQuestionnaire(inputStream);
 
         if (questionnaire.getId() == null || questionnaire.getId().isEmpty()) {
@@ -56,8 +54,7 @@ public class QuestionnaireConfigurationHandler implements DomainConfigurationHan
                         : questionnaire.getName() != null ? questionnaire.getName()
                                 : questionnaire.getIdElement().getIdPart()));
 
-        // Save to FHIR store
-        fhirPersistanceService.updateFhirResourceInFhirStore(questionnaire);
+        questionnaireStorageService.saveQuestionnaire(questionnaire);
     }
 
     private Questionnaire parseQuestionnaire(InputStream inputStream) throws Exception {

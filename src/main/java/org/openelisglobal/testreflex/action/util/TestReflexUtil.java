@@ -332,7 +332,7 @@ public class TestReflexUtil {
         if (reflexBean.getResult().getTestResult() == null) {
             return new ArrayList<>();
         }
-        String resultType = testService.getResultType(reflexBean.getResult().getTestResult().getTest());
+        String resultType = resultTypeOf(reflexBean.getResult());
         List<TestReflex> reflexesForResult;
         if (resultType.equals("D")) {
             reflexesForResult = reflexResolver.getTestReflexsByAnalyteAndTest(reflexBean.getResult());
@@ -374,9 +374,8 @@ public class TestReflexUtil {
                     reflex.setActionScriptletId(splitActionId[1]);
                 }
 
-                Optional<Analysis> newAnalysis = addReflexTest(reflex, reflexBean.getResult(),
-                        reflexBean.getPatient().getId(), reflexBean.getSample(), true, true, addedActionId, false,
-                        sysUserId);
+                Optional<Analysis> newAnalysis = addReflexTest(reflex, reflexBean.getResult(), patientIdOf(reflexBean),
+                        reflexBean.getSample(), true, true, addedActionId, false, sysUserId);
                 if (newAnalysis.isPresent()) {
                     reflexAnalysises.add(newAnalysis.get());
                 }
@@ -424,8 +423,8 @@ public class TestReflexUtil {
                 boolean allSibAnalysisCausedReflex = doAllAnalysisHaveReflex(parentAnalysisList, reflexBean);
 
                 Optional<Analysis> newAnalysis = addReflexTest(reflexForResult, reflexBean.getResult(),
-                        reflexBean.getPatient().getId(), reflexBean.getSample(), true, true, null,
-                        allSibAnalysisCausedReflex, sysUserId);
+                        patientIdOf(reflexBean), reflexBean.getSample(), true, true, null, allSibAnalysisCausedReflex,
+                        sysUserId);
                 if (newAnalysis.isPresent()) {
                     reflexAnalysises.add(newAnalysis.get());
                 }
@@ -438,7 +437,7 @@ public class TestReflexUtil {
                     boolean handleAction = siblingReflex.getActionScriptletId() != null
                             && !siblingReflex.getActionScriptletId().equals(reflexForResult.getActionScriptletId());
 
-                    newAnalysis = addReflexTest(siblingReflex, reflexBean.getResult(), reflexBean.getPatient().getId(),
+                    newAnalysis = addReflexTest(siblingReflex, reflexBean.getResult(), patientIdOf(reflexBean),
                             reflexBean.getSample(), addTest, handleAction, null, allSibAnalysisCausedReflex, sysUserId);
                     if (newAnalysis.isPresent()) {
                         reflexAnalysises.add(newAnalysis.get());
@@ -556,6 +555,15 @@ public class TestReflexUtil {
         return handledReflexIdList;
     }
 
+    /**
+     * The patient id a reflex action is recorded against, or {@code null} for a
+     * sample without a patient (environmental and vector orders), which the
+     * observation history accepts (OGC-356).
+     */
+    public static String patientIdOf(TestReflexBean reflexBean) {
+        return reflexBean.getPatient() == null ? null : reflexBean.getPatient().getId();
+    }
+
     private Optional<Analysis> addReflexTest(TestReflex reflex, Result result, String patientId, Sample sample,
             boolean addTest, boolean handleAction, String actionSelectionId, boolean failOnDuplicateTest,
             String sysUserId) {
@@ -569,10 +577,20 @@ public class TestReflexUtil {
             return Optional.empty();
         }
 
+        String requestedTestId = reflex.getAddedTestId();
+        if (!GenericValidator.isBlankOrNull(reflex.getFlags())) {
+            requestedTestId = isUserChoiceReflex(reflex) && actionSelectionId != null
+                    && actionSelectionId.startsWith("test_") ? actionSelectionId.substring("test_".length()) : null;
+        }
+        if (addTest && requestedTestId != null
+                && SpringContext.getBean(org.openelisglobal.microbiology.service.MicroIncomingReflexPolicy.class)
+                        .alreadyOnCaseOrWaiting(result.getAnalysis().getId(), requestedTestId))
+            return Optional.empty();
+
         if (addTest || handleAction) {
 
             ReflexAction reflexAction = reflexResolver.getReflexAction();
-            reflexAction.handleReflex(reflex, result, actionSelectionId);
+            reflexAction.handleReflex(reflex, result, actionSelectionId, sysUserId);
 
             ObservationHistory observation = reflexAction.getObservation();
 
@@ -585,6 +603,17 @@ public class TestReflexUtil {
 
             Analysis newAnalysis = reflexAction.getNewAnalysis();
             Result finalResult = reflexAction.getFinalResult();
+
+            ReflexAction.CaseWork caseWork = reflexAction.getCaseWork();
+            if (caseWork != null && addTest) {
+                SpringContext.getBean(org.openelisglobal.microbiology.service.MicroOrderRoutingService.class)
+                        .routeCaseTest(caseWork.order(), caseWork.sampleTypeId(), caseWork.sample(), caseWork.test(),
+                                sysUserId);
+                Analysis trigger = result.getAnalysis();
+                trigger.setSysUserId(sysUserId);
+                trigger.setTriggeredReflex(Boolean.TRUE);
+                analysisService.update(trigger);
+            }
 
             /*******
              * This is allowing duplicate tests to be added for CD4 absolute. If the
@@ -810,8 +839,19 @@ public class TestReflexUtil {
                 && (CONCLUSION_ANAYLETE_ID.equals(analyte.getId()) || CD4_ANAYLETE.getId().equals(analyte.getId()));
     }
 
+    /**
+     * The type of the measurement a result records. On a multi-component test the
+     * component owns it: a numeric Ct beside a coded primary is numeric, whatever
+     * type the test lists first.
+     */
+    private String resultTypeOf(Result result) {
+        Test test = result.getTestResult().getTest();
+        return ruleResultScope.resultTypeForComponent(test.getId(), ruleResultScope.componentIdOf(result),
+                testService.getResultType(test));
+    }
+
     public boolean isTestTriggeredByResult(Test potentialReflexTest, Result potentialTriggerResult) {
-        String resultType = testService.getResultType(potentialTriggerResult.getTestResult().getTest());
+        String resultType = resultTypeOf(potentialTriggerResult);
         if (resultType.equals("D")) {
             return doesDictionaryRelationRulesForReflexApply(potentialReflexTest, potentialTriggerResult);
         } else if (!resultType.equals("D")) {

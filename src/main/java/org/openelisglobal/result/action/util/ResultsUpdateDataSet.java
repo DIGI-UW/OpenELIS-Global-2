@@ -17,7 +17,9 @@
 package org.openelisglobal.result.action.util;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IResultSaveService;
 import org.openelisglobal.note.valueholder.Note;
@@ -34,7 +36,9 @@ public class ResultsUpdateDataSet implements IResultSaveService {
     private List<TestResultItem> analysisOnlyChangeResults = new ArrayList<>();
     private List<ResultSet> newResults = new ArrayList<>();
     private List<Analysis> modifiedAnalysis = new ArrayList<>();
+    private final Set<String> finalizedBeforeSave = new HashSet<>();
     private List<Result> deletableResults = new ArrayList<>();
+    private List<Result> calculatedResults = new ArrayList<>();
     private List<ReferralSet> savableReferralSets = new ArrayList<>();
     private List<String> referredAnalysisIds = new ArrayList<>();
     private Analysis previousAnalysis = new Analysis();
@@ -78,6 +82,10 @@ public class ResultsUpdateDataSet implements IResultSaveService {
         return modifiedAnalysis;
     }
 
+    public Set<String> getFinalizedBeforeSave() {
+        return finalizedBeforeSave;
+    }
+
     public Analysis findModifiedAnalysis(String analysisId) {
         for (Analysis analysis : modifiedAnalysis) {
             if (analysis.getId() != null && analysis.getId().equals(analysisId)) {
@@ -85,6 +93,11 @@ public class ResultsUpdateDataSet implements IResultSaveService {
             }
         }
         return null;
+    }
+
+    /** Results the calculated-value rules wrote while this data set was saved. */
+    public List<Result> getCalculatedResults() {
+        return calculatedResults;
     }
 
     public List<Result> getDeletableResults() {

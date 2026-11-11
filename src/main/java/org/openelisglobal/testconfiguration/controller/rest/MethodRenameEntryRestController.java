@@ -1,10 +1,14 @@
 package org.openelisglobal.testconfiguration.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 import javax.validation.Valid;
 import org.hibernate.HibernateException;
+import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.controller.BaseController;
-import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -12,6 +16,8 @@ import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.testconfiguration.form.MethodRenameEntryForm;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -62,45 +68,72 @@ public class MethodRenameEntryRestController extends BaseController {
     }
 
     @PostMapping(value = "/MethodRenameEntry")
-    public MethodRenameEntryForm updateMethodRenameEntry(HttpServletRequest request,
+    public ResponseEntity<?> updateMethodRenameEntry(HttpServletRequest request,
             @RequestBody @Valid MethodRenameEntryForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             form.setMethodList(DisplayListService.getInstance().getList(DisplayListService.ListType.METHODS));
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         String methodId = form.getMethodId();
-        String nameEnglish = form.getNameEnglish();
-        String nameFrench = form.getNameFrench();
-        String userId = getSysUserId(request);
+        String nameEnglish = form.getNameEnglish().trim();
+        String nameFrench = form.getNameFrench().trim();
 
-        updateMethodNames(methodId, nameEnglish, nameFrench, userId);
-
-        // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
-    }
-
-    private void updateMethodNames(String methodId, String nameEnglish, String nameFrench, String userId) {
-        Method method = methodService.get(methodId);
-
-        if (method != null) {
-
-            Localization name = method.getLocalization();
-            name.setEnglish(nameEnglish.trim());
-            name.setFrench(nameFrench.trim());
-            name.setSysUserId(userId);
-
-            try {
-                localizationService.update(name);
-            } catch (HibernateException e) {
-                LogEvent.logDebug(e);
-            }
+        Method method;
+        try {
+            method = methodService.get(methodId);
+        } catch (ObjectNotFoundException e) {
+            return refusal(HttpStatus.NOT_FOUND, "notFound", "No method with this id.");
+        }
+        if (nameTakenByAnotherMethod(methodId, nameEnglish, nameFrench)) {
+            return refusal(HttpStatus.CONFLICT, "duplicate", "A method with this name already exists.");
         }
 
-        // Refresh method names
+        Localization name = method.getLocalization();
+        name.setEnglish(nameEnglish);
+        name.setFrench(nameFrench);
+        name.setSysUserId(getSysUserId(request));
+        try {
+            localizationService.update(name);
+        } catch (LIMSRuntimeException | HibernateException e) {
+            return saveFailure(e);
+        }
+
         DisplayListService.getInstance().getFreshList(DisplayListService.ListType.METHODS);
+        DisplayListService.getInstance().getFreshList(DisplayListService.ListType.METHODS_INACTIVE);
+        return ResponseEntity.ok(form);
+    }
+
+    /**
+     * A rename may not give a method a name another method already shows, in either
+     * language; method names are compared trimmed and case-insensitively.
+     */
+    private boolean nameTakenByAnotherMethod(String methodId, String nameEnglish, String nameFrench) {
+        for (Method other : methodService.getAll()) {
+            if (other.getId().equals(methodId)) {
+                continue;
+            }
+            Localization otherName = other.getLocalization();
+            if (sameName(other.getMethodName(), nameEnglish)
+                    || (otherName != null && (sameName(otherName.getLocalizedValue(Locale.ENGLISH), nameEnglish)
+                            || sameName(otherName.getLocalizedValue(Locale.FRENCH), nameFrench)))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean sameName(String existing, String candidate) {
+        return existing != null && existing.trim().equalsIgnoreCase(candidate);
+    }
+
+    private static ResponseEntity<Map<String, Object>> refusal(HttpStatus status, String error, String message) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", error);
+        body.put("message", message);
+        return ResponseEntity.status(status).body(body);
     }
 
     @Override

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    The unified Results Entry worklist becomes the default: the site flag seeded
+    off by 059-results-r1-unified-worklist.xml is switched on. Sites can still
+    turn it off under Admin → Result configuration.
+    -->
+    <changeSet id="results-unified-route-default-on" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">select count(*) from clinlims.site_information where name = 'resultsEntryUnifiedRoute';</sqlCheck>
+        </preConditions>
+        <comment>Unified Results Entry route on by default</comment>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="value" value="true" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <where>name = 'resultsEntryUnifiedRoute'</where>
+        </update>
+        <rollback>
+            <update schemaName="clinlims" tableName="site_information">
+                <column name="value" value="false" />
+                <where>name = 'resultsEntryUnifiedRoute'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

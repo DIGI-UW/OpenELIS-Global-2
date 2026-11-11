@@ -1,0 +1,196 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Test data for SampleManagementRestController integration tests. Feature:
+    001-sample-management -->
+<dataset>
+
+    <!-- ===== Localization ===== -->
+    <localization id="1" description="Serum" />
+    <localization id="2" description="Whole Blood" />
+    <localization id="3" description="Plasma" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Serum" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="Sérum" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Whole Blood" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Sang total" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="Plasma" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="Plasma" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
+
+    <!-- ===== Status of sample: analysis statuses ===== -->
+    <!-- NotStarted - analysis can be cancelled -->
+    <status_of_sample id="10" name="Not Tested" code="10"
+        status_type="ANALYSIS" description="Analysis not started"
+        is_active="Y" lastupdated="2023-11-01 12:00:00" />
+    <!-- Test Canceled -->
+    <status_of_sample id="11" name="Test Canceled"
+        code="11" status_type="ANALYSIS" description="Analysis canceled"
+        is_active="Y" lastupdated="2023-11-01 12:00:00" />
+    <!-- Finalized - analysis cannot be cancelled -->
+    <status_of_sample id="12" name="Finalized" code="12"
+        status_type="ANALYSIS" description="Analysis finalized" is_active="Y"
+        lastupdated="2023-11-01 12:00:00" />
+    <!-- SampleEntered -->
+    <status_of_sample id="13" name="SampleEntered"
+        code="13" status_type="SAMPLE" description="Sample entered"
+        is_active="Y" lastupdated="2023-11-01 12:00:00" />
+    <!-- TechnicalAcceptance - also cancellable -->
+    <status_of_sample id="14" name="Technical Acceptance"
+        code="14" status_type="ANALYSIS" description="Technical acceptance"
+        is_active="Y" lastupdated="2023-11-01 12:00:00" />
+
+    <!-- ===== Type of Sample ===== -->
+    <type_of_sample id="1" description="Serum" domain="H"
+        lastupdated="2023-11-01 12:00:00" local_abbrev="serum"
+        is_active="true" sort_order="1" name_localization_id="1"
+        display_key="sample.type.Serum" />
+    <type_of_sample id="2" description="Whole Blood"
+        domain="H" lastupdated="2023-11-01 12:00:00" local_abbrev="wblood"
+        is_active="true" sort_order="2" name_localization_id="2"
+        display_key="sample.type.WholeBlood" />
+
+    <!-- ===== Person (required for provider/patient/sample_human) ===== -->
+    <person id="1" last_name="Doe" first_name="John"
+        lastupdated="2023-11-01 12:00:00" />
+    <person id="2" last_name="Smith" first_name="Jane"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- ===== Patient ===== -->
+    <patient id="1" person_id="2" gender="F"
+        birth_date="1990-01-01 00:00:00" entered_birth_date="1990-01-01"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- ===== Provider ===== -->
+    <provider id="1" person_id="1" provider_type="P"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- ===== System User ===== -->
+    <system_user id="1" external_id="EXT001" login_name="admin"
+        last_name="Admin" first_name="Test" initials="TA" is_active="Y"
+        is_employee="Y" lastupdated="2023-11-01 12:00:00" />
+
+    <!-- ===== Sample ===== -->
+    <!-- Sample with accession_number that will be searched -->
+    <sample id="10001" accession_number="SM-TEST-001"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- ===== Sample Human ===== -->
+    <sample_human id="10001" provider_id="1" samp_id="10001"
+        patient_id="1" lastupdated="2023-11-01 12:00:00" />
+
+    <!-- ===== Unit of Measure (needed for test) ===== -->
+    <unit_of_measure id="1" name="mL"
+        description="Milliliters" />
+
+    <!-- ===== Test scaffold: organization > test_section > method > test_formats
+        > test ===== -->
+    <organization id="3" lastupdated="2024-06-03 12:00:00.0"
+        name="Test Health Lab" short_name="THL" city="Test City"
+        zip_code="00000" street_address="1 Lab Lane" state="TS"
+        clia_num="CLIA00001" pws_id="PWS001" local_abbrev="THL" code="THL001" />
+
+    <method id="1" name="Standard Method"
+        description="Standard method" name_localization_id="1"
+        reporting_description="" is_active="Y" active_begin="2012-11-01"
+        lastupdated="2023-10-01 12:00:00" />
+
+    <test_section id="1" name="Hematology"
+        description="Hematology section" org_id="3" is_external="N"
+        lastupdated="2024-01-01 00:00:00" sort_order="1" is_active="Y"
+        name_localization_id="1" display_key="section.hematology"
+        domain="CLINICAL" />
+
+    <scriptlet id="1" name="Scriptlet 1" code_type="T"
+        code_source="Source1" lastupdated="2025-03-13 12:00:00" />
+
+    <test_trailer id="1" name="Trailer 1"
+        description="Trailer description" text="Trailer text"
+        lastupdated="2025-03-13 12:00:00" />
+
+    <label id="1" name="Patient Label"
+        description="Label for patient samples" printer_type="T"
+        scriptlet_id="1" lastupdated="2025-03-20 12:00:00" />
+
+    <test_formats id="1" lastupdated="2025-03-21 12:00:00" />
+
+    <!-- Test 1: used to add tests to sample items in addTests tests -->
+    <test id="1" method_id="1" uom_id="1" description="CBC Test"
+        loinc="12345-6" reporting_description="Complete Blood Count"
+        active_begin="2025-01-01 12:00:00" active_end="2030-12-31 12:00:00"
+        time_holding="30" time_wait="15" time_ta_average="60"
+        time_ta_warning="90" time_ta_max="120" label_qty="1"
+        lastupdated="2025-03-20 12:00:00" label_id="1" test_trailer_id="1"
+        test_section_id="1" scriptlet_id="1" test_format_id="1"
+        local_code="CBC" sort_order="1" name="Complete Blood Count"
+        orderable="true" guid="test-guid-001" name_localization_id="1"
+        antimicrobial_resistance="false" is_active="Y" is_reportable="N"
+        sticker_req_flag="N" />
+
+    <!-- Test 2: used in duplicate-test skip test -->
+    <test id="2" method_id="1" uom_id="1" description="Glucose Test"
+        loinc="67890-1" reporting_description="Blood Glucose"
+        active_begin="2025-01-01 12:00:00" active_end="2030-12-31 12:00:00"
+        time_holding="30" time_wait="15" time_ta_average="60"
+        time_ta_warning="90" time_ta_max="120" label_qty="1"
+        lastupdated="2025-03-20 12:00:00" label_id="1" test_trailer_id="1"
+        test_section_id="1" scriptlet_id="1" test_format_id="1"
+        local_code="GLU" sort_order="2" name="Blood Glucose" orderable="true"
+        guid="test-guid-002" name_localization_id="2"
+        antimicrobial_resistance="false" is_active="Y" is_reportable="N"
+        sticker_req_flag="N" />
+
+    <!-- ===== Sample Items ===== id=10001 parent item with remaining quantity
+        — used for aliquot + add-tests + cancel-test id=10002 second sample item
+        used in add-tests duplicate test id=10003 already-existing aliquot of item
+        10001 (external_id 13333-1.1) -->
+    <sample_item id="10001" samp_id="10001" sort_order="1"
+        status_id="13" typeosamp_id="1" external_id="SM-TEST-001-1"
+        collection_date="2024-06-03 00:00:00.0" quantity="10.0"
+        remaining_quantity="10.0" lastupdated="2023-11-01 12:00:00" />
+
+    <sample_item id="10002" samp_id="10001" sort_order="2"
+        status_id="13" typeosamp_id="2" external_id="SM-TEST-001-2"
+        collection_date="2024-06-03 00:00:00.0" quantity="5.0"
+        remaining_quantity="5.0" lastupdated="2023-11-01 12:00:00" />
+
+    <!-- ===== Analysis ===== id=10001 NotStarted (status_id=10) on item 10001+test
+        10001 — used in cancelTest happy-path id=10002 Finalized (status_id=12) on
+        item 10002+test 10002 — used in cancelTest negative-path id=10003 NotStarted
+        (status_id=10) on item 10002+test 10002 — used in addTests duplicate-skip -->
+    <analysis id="10001" sampitem_id="10001" test_sect_id="1"
+        test_id="1" revision="0" started_date="2024-06-03 10:00:00"
+        analysis_type="ROUTINE" lastupdated="2024-06-03 12:00:00"
+        status_id="10" entry_date="2024-06-03 10:00:00" reflex_trigger="false"
+        corrected="false" referred_out="false" result_calculated="false"
+        type_of_sample_name="Serum"
+        fhir_uuid="a1b2c3d4-0001-0001-0001-000000000001" />
+
+    <analysis id="10002" sampitem_id="10002" test_sect_id="1"
+        test_id="2" revision="0" started_date="2024-06-03 10:00:00"
+        analysis_type="ROUTINE" lastupdated="2024-06-03 12:00:00"
+        status_id="12" entry_date="2024-06-03 10:00:00" reflex_trigger="false"
+        corrected="false" referred_out="false" result_calculated="false"
+        type_of_sample_name="Whole Blood"
+        fhir_uuid="a1b2c3d4-0002-0002-0002-000000000002" />
+
+    <analysis id="10003" sampitem_id="10002" test_sect_id="1"
+        test_id="1" revision="0" started_date="2024-06-03 10:00:00"
+        analysis_type="ROUTINE" lastupdated="2024-06-03 12:00:00"
+        status_id="10" entry_date="2024-06-03 10:00:00" reflex_trigger="false"
+        corrected="false" referred_out="false" result_calculated="false"
+        type_of_sample_name="Whole Blood"
+        fhir_uuid="a1b2c3d4-0003-0003-0003-000000000003" />
+
+</dataset>

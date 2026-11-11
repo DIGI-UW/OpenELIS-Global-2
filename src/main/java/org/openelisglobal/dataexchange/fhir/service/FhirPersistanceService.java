@@ -29,6 +29,13 @@ public interface FhirPersistanceService {
 
     Optional<Organization> getFhirOrganizationByName(String orgName);
 
+    /**
+     * The organization as its own uuid identifies it. A peer addresses this
+     * installation's organizations by that uuid, so it is the identity to resolve
+     * on; the name is only a fallback for rows that predate one.
+     */
+    Optional<Organization> getFhirOrganizationByUuid(String uuid);
+
     Optional<Patient> getPatientByUuid(String guid);
 
     Optional<ServiceRequest> getServiceRequestByAnalysisUuid(String uuid);

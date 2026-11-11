@@ -17,7 +17,12 @@ import React, {
   useRef,
   useEffect,
 } from "react";
-import { useHistory, useLocation, useParams } from "react-router-dom";
+import {
+  Link as RouterLink,
+  useHistory,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 import {
   Grid,
   Column,
@@ -40,6 +45,7 @@ import {
   Tile,
   Loading,
   Pagination,
+  Link as CarbonLink,
 } from "@carbon/react";
 import {
   DEFAULT_SAMPLE_TYPE_SECTION,
@@ -56,14 +62,16 @@ import {
   Save,
   CheckmarkFilled,
   WarningFilled,
+  ArrowLeft,
 } from "@carbon/react/icons";
 import { injectIntl, FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import useDomains from "../../common/useDomains";
+import StaleSaveNotice, { isStaleConflict } from "../../common/StaleSaveNotice";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 
 // Breadcrumbs
@@ -72,7 +80,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "configuration.sampleType.manage",
-    link: "/MasterListsPage/SampleTypeManagement",
+    link: "/MasterListsPage/SampleTypeEditor",
   },
 ];
 
@@ -80,6 +88,9 @@ let breadcrumbs = [
 // Domain values come from the single /rest/domains source (useDomains); only
 // the tag color palette is presentational and assigned by list position.
 const DOMAIN_TAG_COLORS = ["green", "purple", "teal", "cyan", "magenta"];
+
+/** type_of_sample.description is varchar(40); a new type's name becomes its key. */
+const SAMPLE_TYPE_DESCRIPTION_MAX = 40;
 
 // ─── Main Component ───────────────────────────────────────────────
 
@@ -138,10 +149,30 @@ function SampleTypeManagement({ intl }) {
 
   // Form validation and state
   const [formErrors, setFormErrors] = useState({});
+  const [staleSave, setStaleSave] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showEditSuccess, setShowEditSuccess] = useState(false);
+  const [whonetCodeSaved, setWhonetCodeSaved] = useState(false);
   const nameInputRef = useRef(null);
+  const whonetCodeInputRef = useRef(null);
+
+  const whonetRepair = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const requestedReturn = params.get("returnTo") || "";
+    const returnTo =
+      requestedReturn === "/Microbiology/whonet" ||
+      requestedReturn.startsWith("/Microbiology/whonet?")
+        ? requestedReturn
+        : "";
+    return { focus: params.get("focus") === "whonet", returnTo };
+  }, [location.search]);
+
+  useEffect(() => {
+    if (!showSuccess) return undefined;
+    const timerId = setTimeout(() => setShowSuccess(false), 3000);
+    return () => clearTimeout(timerId);
+  }, [showSuccess]);
 
   // Associated tests for the sample type currently being edited
   const [associatedTests, setAssociatedTests] = useState([]);
@@ -179,11 +210,15 @@ function SampleTypeManagement({ intl }) {
             const sampleTypeData = sampleTypeList.map((item, index) => ({
               id: item.id || index + 1,
               name: item.name || item.description || "Unknown Sample Type",
-              description:
-                item.description || item.name || "Sample type from database",
-              domain: item.domain || "CLINICAL", // Use the domain directly from the new endpoint
+              description: item.description || "",
+              domain: item.domain || "CLINICAL",
+              microbiologyIsolate: !!item.microbiologyIsolate,
               active: item.isActive !== undefined ? item.isActive : true,
               testCount: item.testCount || 0, // Use actual test count from backend
+              abbreviation: item.abbreviation || "",
+              sortOrder: item.sortOrder || 0,
+              whonetCode: item.whonetCode || "",
+              lastUpdated: item.lastUpdated || null,
             }));
             setSampleTypes(sampleTypeData);
           } else {
@@ -303,14 +338,47 @@ function SampleTypeManagement({ intl }) {
       description: st.description,
       active: st.active,
       domain: st.domain,
+      microbiologyIsolate: !!st.microbiologyIsolate,
       testCount: st.testCount,
       abbreviation: st.abbreviation || "",
       sortOrder: st.sortOrder || 0,
+      whonetCode: st.whonetCode || "",
+      lastUpdated: st.lastUpdated || null,
     });
+    setWhonetCodeSaved(false);
+    setStaleSave(false);
     setFormErrors({});
     setShowSuccess(false);
     loadAssociatedTests(st.id);
   }, [view, sampleTypeId, sampleTypes, editingType, loadAssociatedTests]);
+
+  // Other sections of this page (Display Order) change the sample type too, so
+  // coming back to Basic Info takes the stored version and sort order; otherwise
+  // the next save here would be refused as stale (OGC-1463).
+  const editingTypeId = editingType ? editingType.id : null;
+  useEffect(() => {
+    if (
+      view !== "editor" ||
+      activeSection !== "basic-info" ||
+      !editingTypeId ||
+      String(editingTypeId) !== String(sampleTypeId)
+    ) {
+      return;
+    }
+    getFromOpenElisServer(`/rest/sample-types/${editingTypeId}`, (res) => {
+      if (res && res.success && res.data) {
+        setEditingType((prev) =>
+          prev && String(prev.id) === String(res.data.id)
+            ? {
+                ...prev,
+                sortOrder: res.data.sortOrder || 0,
+                lastUpdated: res.data.lastUpdated || null,
+              }
+            : prev,
+        );
+      }
+    });
+  }, [view, activeSection, editingTypeId, sampleTypeId]);
 
   // Seed the "add" form once when we land on /SampleTypeManagement/new.
   useEffect(() => {
@@ -332,10 +400,23 @@ function SampleTypeManagement({ intl }) {
       testCount: 0,
       abbreviation: "",
       sortOrder: sampleTypes.length + 1,
+      whonetCode: "",
     });
     setFormErrors({});
     setShowSuccess(false);
   }, [view, sampleTypes.length, editingType]);
+
+  useEffect(() => {
+    if (
+      whonetRepair.focus &&
+      view === "editor" &&
+      activeSection === DEFAULT_SAMPLE_TYPE_SECTION &&
+      editingType?.id &&
+      whonetCodeInputRef.current
+    ) {
+      whonetCodeInputRef.current.focus();
+    }
+  }, [activeSection, editingType?.id, view, whonetRepair.focus]);
 
   // Clear editor state when returning to the list URL.
   useEffect(() => {
@@ -382,7 +463,8 @@ function SampleTypeManagement({ intl }) {
         sampleTypes.some(
           (st) =>
             st.name.toLowerCase() === formData.name.trim().toLowerCase() &&
-            st.id !== formData.id,
+            st.id !== formData.id &&
+            st.domain === (formData.domain || "CLINICAL"),
         )
       ) {
         errors.name = "This sample type name already exists";
@@ -401,9 +483,27 @@ function SampleTypeManagement({ intl }) {
         errors.abbreviation = "Abbreviation must be 10 characters or less";
       }
 
+      if (
+        !errors.name &&
+        view === "add" &&
+        formData.name.trim().length > SAMPLE_TYPE_DESCRIPTION_MAX
+      ) {
+        errors.name = intl.formatMessage({
+          id: "error.sampleType.nameTooLong",
+        });
+      }
+      if (
+        !errors.description &&
+        formData.description.trim().length > SAMPLE_TYPE_DESCRIPTION_MAX
+      ) {
+        errors.description = intl.formatMessage({
+          id: "error.sampleType.update.description.400",
+        });
+      }
+
       return errors;
     },
-    [sampleTypes],
+    [sampleTypes, view, intl],
   );
 
   const refreshSampleTypes = useCallback(async () => {
@@ -423,12 +523,15 @@ function SampleTypeManagement({ intl }) {
       const mapped = sampleTypeList.map((item, index) => ({
         id: item.id || index + 1,
         name: item.name || item.description || "",
-        description: item.description || item.name || "",
+        description: item.description || "",
         domain: item.domain || "CLINICAL",
+        microbiologyIsolate: !!item.microbiologyIsolate,
         active: item.isActive !== undefined ? item.isActive : true,
         testCount: item.testCount || 0,
         abbreviation: item.abbreviation || "",
         sortOrder: item.sortOrder || 0,
+        whonetCode: item.whonetCode || "",
+        lastUpdated: item.lastUpdated || null,
       }));
       setSampleTypes(mapped);
       return mapped;
@@ -449,22 +552,72 @@ function SampleTypeManagement({ intl }) {
       if (view === "add") {
         // Snapshot existing ids so we can identify the newly-created row after
         // refresh regardless of how its name is stored/localized.
-        const existingIds = new Set(sampleTypes.map((t) => String(t.id)));
+        const before = await refreshSampleTypes();
+        const existingIds = new Set(
+          (Array.isArray(before) ? before : sampleTypes).map((t) =>
+            String(t.id),
+          ),
+        );
         // The legacy create flow also wires the workplan/results/validation
         // role modules for the new type, so creation goes through it.
         const sampleTypeData = {
           formName: "sampleTypeCreateForm",
           sampleTypeEnglishName: editingType.name.trim(),
           sampleTypeFrenchName: editingType.name.trim(),
+          description: editingType.description?.trim() || "",
           domain: editingType.domain || "CLINICAL",
           active: !!editingType.active,
+          microbiologyIsolate: !!editingType.microbiologyIsolate,
         };
         await new Promise((resolve, reject) => {
           postToOpenElisServerJsonResponse(
             "/rest/SampleTypeCreate",
             JSON.stringify(sampleTypeData),
             (result) => {
-              if (result && result.error) {
+              if (result && result.status === 409) {
+                const onDescription = result.field === "description";
+                const duplicate = new Error(
+                  intl.formatMessage({
+                    id: onDescription
+                      ? "error.sampleType.create.duplicateDescription"
+                      : "error.sampleType.create.duplicateName",
+                  }),
+                );
+                duplicate.fieldErrors = onDescription
+                  ? { description: duplicate.message }
+                  : { name: duplicate.message };
+                reject(duplicate);
+              } else if (result && result.status === 400) {
+                const descriptionRefused = (result.fieldErrors || []).some(
+                  (fe) => fe.field === "description",
+                );
+                if (descriptionRefused) {
+                  const refusal = new Error(
+                    intl.formatMessage({
+                      id: "error.sampleType.update.description.400",
+                    }),
+                  );
+                  refusal.fieldErrors = { description: refusal.message };
+                  reject(refusal);
+                  return;
+                }
+                const nameRefused = (result.fieldErrors || []).some(
+                  (fe) =>
+                    fe.field === "sampleTypeEnglishName" ||
+                    fe.field === "sampleTypeFrenchName",
+                );
+                const refusal = new Error(
+                  intl.formatMessage({
+                    id: nameRefused
+                      ? "error.sampleType.create.invalidName"
+                      : "error.sampleType.create.invalid",
+                  }),
+                );
+                refusal.fieldErrors = nameRefused
+                  ? { name: refusal.message }
+                  : {};
+                reject(refusal);
+              } else if (result && result.error) {
                 reject(new Error(result.message || result.error));
               } else if (result && result.status && result.status !== 200) {
                 reject(new Error(result.message || "Save failed"));
@@ -492,7 +645,6 @@ function SampleTypeManagement({ intl }) {
           );
         } else {
           setShowSuccess(true);
-          setTimeout(() => setShowSuccess(false), 3000);
           setEditingType(null);
           history.push(listUrl);
         }
@@ -500,24 +652,50 @@ function SampleTypeManagement({ intl }) {
         const updateData = {
           id: editingType.id,
           name: editingType.name?.trim() || editingType.name,
-          description:
-            editingType.description?.trim() || editingType.name?.trim(),
+          description: editingType.description?.trim() || "",
           domain: editingType.domain || "CLINICAL",
           abbreviation: editingType.abbreviation?.trim() || "",
           isActive:
             editingType.active !== undefined ? editingType.active : true,
+          microbiologyIsolate: !!editingType.microbiologyIsolate,
           sortOrder: editingType.sortOrder || 0,
+          whonetCode: editingType.whonetCode?.trim() || "",
+          lastUpdated: editingType.lastUpdated || null,
         };
         await new Promise((resolve, reject) => {
-          putToOpenElisServer(
+          putToOpenElisServerFullResponse(
             `/rest/sample-types/${editingType.id}`,
             JSON.stringify(updateData),
-            (status) => {
-              if (status === 200) {
-                resolve(status);
-              } else {
-                reject(new Error(`Update failed (HTTP ${status})`));
+            async (response) => {
+              if (response && response.ok) {
+                resolve(response.status);
+                return;
               }
+              let body = null;
+              try {
+                body = response ? await response.json() : null;
+              } catch (e) {
+                body = null;
+              }
+              if (isStaleConflict(response ? response.status : 0, body)) {
+                const stale = new Error("stale");
+                stale.stale = true;
+                reject(stale);
+                return;
+              }
+              const messageId = body?.field
+                ? `error.sampleType.update.${body.field}.${response.status}`
+                : null;
+              const refusal = new Error(
+                messageId && intl.messages[messageId]
+                  ? intl.formatMessage({ id: messageId })
+                  : body?.message ||
+                      `Update failed (HTTP ${response ? response.status : 0})`,
+              );
+              refusal.fieldErrors = body?.field
+                ? { [body.field]: refusal.message }
+                : {};
+              reject(refusal);
             },
           );
         });
@@ -537,9 +715,12 @@ function SampleTypeManagement({ intl }) {
                   description: d.description,
                   active: d.isActive,
                   domain: d.domain,
+                  microbiologyIsolate: !!d.microbiologyIsolate,
                   testCount: d.testCount,
                   abbreviation: d.abbreviation || "",
                   sortOrder: d.sortOrder || 0,
+                  whonetCode: d.whonetCode || "",
+                  lastUpdated: d.lastUpdated || null,
                 });
               }
               resolve();
@@ -547,18 +728,32 @@ function SampleTypeManagement({ intl }) {
           );
         });
         setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
+        setWhonetCodeSaved(Boolean(whonetRepair.returnTo));
         setFormErrors({});
       }
     } catch (error) {
+      if (error.stale) {
+        setStaleSave(true);
+        return;
+      }
       const operation = view === "add" ? "create" : "update";
       setFormErrors({
+        ...(error.fieldErrors || {}),
         submit: `Failed to ${operation} sample type: ${error.message}`,
       });
     } finally {
       setIsSubmitting(false);
     }
-  }, [editingType, view, validateForm, history, listUrl, refreshSampleTypes]);
+  }, [
+    editingType,
+    view,
+    validateForm,
+    history,
+    listUrl,
+    refreshSampleTypes,
+    whonetRepair.returnTo,
+    intl,
+  ]);
 
   // ─── LIST VIEW ────────────────────────────────────────────────
   if (view === "list") {
@@ -963,9 +1158,12 @@ function SampleTypeManagement({ intl }) {
                       { current: current, total: total },
                     )
                   }
-                  pageText={intl.formatMessage({
-                    id: "pagination.page",
-                  })}
+                  pageText={(page, pagesUnknown) =>
+                    intl.formatMessage(
+                      { id: "pagination.page" },
+                      { page: pagesUnknown ? "" : page },
+                    )
+                  }
                   size="md"
                 />
               </div>
@@ -1080,9 +1278,25 @@ function SampleTypeManagement({ intl }) {
                 reflect the saved status, mirroring the Test Catalog editor's
                 load-then-render pattern. */}
             {view === "editor" &&
-            !(
-              editingType && String(editingType.id) === String(sampleTypeId)
+            !isLoading &&
+            !sampleTypes.some(
+              (item) => String(item.id) === String(sampleTypeId),
             ) ? (
+              <InlineNotification
+                kind="error"
+                lowContrast
+                hideCloseButton
+                data-testid="sample-type-not-found"
+                title={intl.formatMessage({
+                  id: loadError
+                    ? "label.sampleType.editorLoadError"
+                    : "label.sampleType.notFound",
+                })}
+              />
+            ) : view === "editor" &&
+              !(
+                editingType && String(editingType.id) === String(sampleTypeId)
+              ) ? (
               <div
                 style={{
                   display: "flex",
@@ -1101,6 +1315,11 @@ function SampleTypeManagement({ intl }) {
               <>
                 {activeSection === "basic-info" && (
                   <div>
+                    {staleSave && (
+                      <div style={{ marginBottom: "var(--cds-spacing-06)" }}>
+                        <StaleSaveNotice testId="sample-type-stale-save" />
+                      </div>
+                    )}
                     {(showSuccess || formErrors.submit) && (
                       <div style={{ marginBottom: "var(--cds-spacing-06)" }}>
                         <Stack gap={5}>
@@ -1220,9 +1439,9 @@ function SampleTypeManagement({ intl }) {
                                 }))
                               }
                               helperText={intl.formatMessage({
-                                id: "label.sampleType.domain.helper",
+                                id: "label.sampleType.domain.helperAllDomains",
                                 defaultMessage:
-                                  "Determines which workflow mode (Clinical or Environmental) this sample type appears in.",
+                                  "Determines which workflow mode (Clinical, Environmental or Vector) this sample type appears in.",
                               })}
                             >
                               {domains.map((d) => (
@@ -1248,7 +1467,7 @@ function SampleTypeManagement({ intl }) {
                                 id: "label.active",
                                 defaultMessage: "Active",
                               })}
-                              toggled={editingType?.active}
+                              toggled={!!editingType?.active}
                               onToggle={(checked) =>
                                 setEditingType((prev) => ({
                                   ...prev,
@@ -1256,6 +1475,44 @@ function SampleTypeManagement({ intl }) {
                                 }))
                               }
                             />
+
+                            <Toggle
+                              id="st-microbiology-isolate"
+                              labelText={intl.formatMessage({
+                                id: "microbiology.isolateWorkspace.sampleTypeFlag",
+                              })}
+                              labelA={intl.formatMessage({ id: "label.no" })}
+                              labelB={intl.formatMessage({ id: "label.yes" })}
+                              toggled={!!editingType?.microbiologyIsolate}
+                              onToggle={(checked) =>
+                                setEditingType((prev) => ({
+                                  ...prev,
+                                  microbiologyIsolate: checked,
+                                }))
+                              }
+                            />
+                            {view === "editor" && (
+                              <TextInput
+                                ref={whonetCodeInputRef}
+                                id="sample-type-whonet-code"
+                                labelText={intl.formatMessage({
+                                  id: "label.sampleType.whonetCode",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "helper.sampleType.whonetCode",
+                                })}
+                                value={editingType?.whonetCode || ""}
+                                maxLength={5}
+                                onChange={(event) => {
+                                  setEditingType((previous) => ({
+                                    ...previous,
+                                    whonetCode: event.target.value,
+                                  }));
+                                  setWhonetCodeSaved(false);
+                                }}
+                                autoComplete="off"
+                              />
+                            )}
 
                             {/* FRS v2.1 Basic Info: deactivating a type in use
                             warns but proceeds — no cascade, reversible. */}
@@ -1340,7 +1597,11 @@ function SampleTypeManagement({ intl }) {
                             onClick={saveEditor}
                             disabled={
                               isSubmitting ||
-                              !!Object.keys(formErrors).length ||
+                              staleSave ||
+                              Object.entries(formErrors).some(
+                                ([field, message]) =>
+                                  field !== "submit" && !!message,
+                              ) ||
                               !editingType?.name?.trim() ||
                               !editingType?.description?.trim()
                             }
@@ -1378,6 +1639,17 @@ function SampleTypeManagement({ intl }) {
                               defaultMessage="Cancel"
                             />
                           </Button>
+                          {whonetRepair.returnTo && whonetCodeSaved && (
+                            <CarbonLink
+                              as={RouterLink}
+                              to={whonetRepair.returnTo}
+                              renderIcon={ArrowLeft}
+                            >
+                              {intl.formatMessage({
+                                id: "label.sampleType.whonetReturn",
+                              })}
+                            </CarbonLink>
+                          )}
                         </Stack>
                       </div>
                     </Tile>

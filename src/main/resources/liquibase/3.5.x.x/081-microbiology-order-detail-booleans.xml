@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-order-detail-booleans" author="OGC">
+        <sql>
+            ALTER TABLE clinlims.micro_case_order_detail
+            ALTER COLUMN antibiotic_exposure TYPE BOOLEAN
+            USING CASE
+                WHEN antibiotic_exposure IS NULL OR trim(antibiotic_exposure) = '' THEN NULL
+                WHEN lower(trim(antibiotic_exposure)) IN ('false', 'f', 'no', 'n', '0') THEN FALSE
+                ELSE TRUE
+            END
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.micro_case_order_detail
+            ALTER COLUMN critical_notification_preference TYPE BOOLEAN
+            USING CASE
+                WHEN critical_notification_preference IS NULL OR trim(critical_notification_preference) = '' THEN NULL
+                WHEN lower(trim(critical_notification_preference)) IN ('false', 'f', 'no', 'n', '0') THEN FALSE
+                ELSE TRUE
+            END
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.micro_case_order_detail
+                ALTER COLUMN antibiotic_exposure TYPE TEXT
+                USING CASE
+                    WHEN antibiotic_exposure IS NULL THEN NULL
+                    WHEN antibiotic_exposure THEN 'true'
+                    ELSE 'false'
+                END
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.micro_case_order_detail
+                ALTER COLUMN critical_notification_preference TYPE VARCHAR(255)
+                USING CASE
+                    WHEN critical_notification_preference IS NULL THEN NULL
+                    WHEN critical_notification_preference THEN 'true'
+                    ELSE 'false'
+                END
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

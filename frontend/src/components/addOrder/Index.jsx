@@ -11,9 +11,16 @@ import {
 } from "@carbon/react";
 import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
+import { newSampleKey, rejectedWithoutReason } from "./sampleTypeUpdate";
+import {
+  missingTestsTitle,
+  samplesMissingTests,
+  samplesWithTests,
+} from "./orderSamples";
+import useSampleTypeNames from "./useSampleTypeNames";
 import AddOrder from "./AddOrder";
 import "./add-order.scss";
-import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
+import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import {
@@ -24,8 +31,13 @@ import {
 } from "../utils/Utils";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
+import OrderEntryMissingFieldsNotice from "./OrderEntryMissingFieldsNotice";
 import EQASampleEntry from "../eqa/EQASampleEntry";
-import EQAOrderForm from "../eqa/EQAOrderForm";
+import EQAOrderForm, {
+  eqaReceiptNoteMissing,
+  eqaSchemeMissing,
+} from "../eqa/EQAOrderForm";
+import EQAEnrollmentCoverageNotice from "../eqa/EQAEnrollmentCoverageNotice";
 import { FormattedMessage, useIntl } from "react-intl";
 import { createOrderEntryValidationSchema } from "../formModel/validationSchema/OrderEntryValidationSchema";
 import config from "../../config.json";
@@ -72,7 +84,9 @@ const Index = () => {
   const [isLoadingReferral, setIsLoadingReferral] = useState(false);
   const isEQAFromUrl =
     new URLSearchParams(window.location.search).get("isEQA") === "true";
-  const [orderFormValues, setOrderFormValues] = useState(SampleOrderFormValues);
+  const [orderFormValues, setOrderFormValues] = useState(
+    createSampleOrderFormValues,
+  );
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -565,6 +579,7 @@ const Index = () => {
 
   const newSampleType = (id, name, index) => {
     return {
+      key: newSampleKey(),
       index: index,
       sampleRejected: true,
       rejectionReason: "",
@@ -749,12 +764,12 @@ const Index = () => {
     let sampleXmlString = "";
     let referralItems = [];
     if (samples.length > 0) {
-      if (samples[0].tests.length > 0) {
+      if (samplesWithTests(samples).length > 0) {
         sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
         sampleXmlString += "<samples>";
-        let tests = null;
-        let panels = "";
         samples.map((sampleItem) => {
+          let tests = null;
+          let panels = "";
           if (sampleItem.tests.length > 0) {
             tests = Object.keys(sampleItem.tests)
               .map(function (i) {
@@ -837,6 +852,9 @@ const Index = () => {
     });
   };
 
+  const missingTestSamples = samplesMissingTests(samples);
+  const sampleTypeNames = useSampleTypeNames();
+
   const navigateForward = () => {
     if (currentStepIndex < visibleSteps.length - 1) {
       setCurrentStep(visibleSteps[currentStepIndex + 1]);
@@ -870,9 +888,9 @@ const Index = () => {
         <div className="pageContent">
           {notificationVisible === true ? <AlertDialog /> : ""}
           <div className="orderWorkFlowDiv">
-            <h2>
+            <h1 className="page-heading-05">
               <FormattedMessage id="order.test.request.heading" />
-            </h2>
+            </h1>
 
             {isLoadingReferral && (
               <div style={{ padding: "1rem" }}>
@@ -993,12 +1011,22 @@ const Index = () => {
                     />
                   ))}
                 {currentStep === STEP_ADD_SAMPLE && (
-                  <AddSample
-                    error={elementError}
-                    setSamples={setSamples}
-                    samples={samples}
-                    domain={domain}
-                  />
+                  <>
+                    {orderFormValues?.sampleOrderItems?.isEQASample && (
+                      <EQAEnrollmentCoverageNotice
+                        enrollmentId={
+                          orderFormValues?.sampleOrderItems?.eqaProgramId
+                        }
+                        samples={samples}
+                      />
+                    )}
+                    <AddSample
+                      error={elementError}
+                      setSamples={setSamples}
+                      samples={samples}
+                      domain={domain}
+                    />
+                  </>
                 )}
                 {currentStep === STEP_ADD_ORDER && (
                   <AddOrder
@@ -1023,6 +1051,26 @@ const Index = () => {
                     saveResponse={saveResponse}
                   />
                 )}
+                {isLastStep &&
+                  !isOnSuccess &&
+                  missingTestSamples.map((sampleNumber) => (
+                    <InlineNotification
+                      key={sampleNumber}
+                      kind="error"
+                      lowContrast
+                      hideCloseButton
+                      title={missingTestsTitle(
+                        intl,
+                        samples,
+                        sampleNumber,
+                        sampleTypeNames,
+                      )}
+                      data-testid="order-sample-missing-tests"
+                    />
+                  ))}
+                {isLastStep && !isOnSuccess && (
+                  <OrderEntryMissingFieldsNotice errors={errors} />
+                )}
                 <div className="navigationButtonsLayout">
                   {!isFirstStep && !isOnSuccess && (
                     <Button kind="tertiary" onClick={navigateBackward}>
@@ -1034,6 +1082,11 @@ const Index = () => {
                     <Button
                       kind="primary"
                       className="forwardButton"
+                      disabled={
+                        currentStep === STEP_PROGRAM &&
+                        (eqaReceiptNoteMissing(orderFormValues) ||
+                          eqaSchemeMissing(orderFormValues))
+                      }
                       onClick={navigateForward}
                     >
                       <FormattedMessage id="next.action.button" />
@@ -1049,7 +1102,9 @@ const Index = () => {
                         Object.values(phoneValidation).some(
                           (item) => item.status === false,
                         ) ||
-                        errors?.errors?.length > 0
+                        errors?.errors?.length > 0 ||
+                        missingTestSamples.length > 0 ||
+                        rejectedWithoutReason(samples)
                       }
                       onClick={handleSubmitOrderForm}
                     >

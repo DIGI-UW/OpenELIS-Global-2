@@ -21,7 +21,7 @@ public class FreezerDAOImpl extends BaseDAOImpl<Freezer, Long> implements Freeze
 
     @Override
     public Optional<Freezer> findByName(String name) {
-        String hql = "FROM Freezer f WHERE lower(f.name) = lower(:name)";
+        String hql = "FROM Freezer f WHERE lower(f.name) = lower(:name) AND f.deleted = false";
         Query<Freezer> query = entityManager.unwrap(Session.class).createQuery(hql, Freezer.class);
         query.setParameter("name", name);
         query.setMaxResults(1);
@@ -30,12 +30,23 @@ public class FreezerDAOImpl extends BaseDAOImpl<Freezer, Long> implements Freeze
 
     @Override
     public List<Freezer> findActiveFreezers() {
-        String hql = "SELECT DISTINCT f FROM Freezer f LEFT JOIN FETCH f.storageDevice WHERE f.active = true ORDER BY f.name";
+        String hql = "SELECT DISTINCT f FROM Freezer f LEFT JOIN FETCH f.storageDevice WHERE f.active = true AND f.deleted = false ORDER BY f.name";
         return entityManager.unwrap(Session.class).createQuery(hql, Freezer.class).list();
     }
 
     @Override
     public List<Freezer> getAllFreezers() {
+        String hql = "SELECT DISTINCT f FROM Freezer f LEFT JOIN FETCH f.storageDevice WHERE f.deleted = false ORDER BY f.name";
+        return entityManager.unwrap(Session.class).createQuery(hql, Freezer.class).list();
+    }
+
+    /**
+     * Includes soft-deleted devices: a report covering a period when a device was
+     * in service must still show its readings after someone tidies it out of the
+     * settings list.
+     */
+    @Override
+    public List<Freezer> getAllFreezersIncludingDeleted() {
         String hql = "SELECT DISTINCT f FROM Freezer f LEFT JOIN FETCH f.storageDevice ORDER BY f.name";
         return entityManager.unwrap(Session.class).createQuery(hql, Freezer.class).list();
     }
@@ -43,7 +54,7 @@ public class FreezerDAOImpl extends BaseDAOImpl<Freezer, Long> implements Freeze
     @Override
     public List<Freezer> searchFreezers(String search) {
         String hql = "SELECT DISTINCT f FROM Freezer f LEFT JOIN FETCH f.storageDevice "
-                + "WHERE lower(f.name) LIKE lower(:search) " + "ORDER BY f.name";
+                + "WHERE lower(f.name) LIKE lower(:search) AND f.deleted = false " + "ORDER BY f.name";
         Query<Freezer> query = entityManager.unwrap(Session.class).createQuery(hql, Freezer.class);
         query.setParameter("search", "%" + search + "%");
         return query.list();

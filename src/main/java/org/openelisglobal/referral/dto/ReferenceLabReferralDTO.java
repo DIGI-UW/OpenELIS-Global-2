@@ -15,6 +15,7 @@ public class ReferenceLabReferralDTO {
     private String referenceLabId;
     private String referenceLabName;
     private String boxId;
+    private Integer boxKey;
     private String sentDate;
     private String boxReceivedDate;
     private String fhirTaskUuid;
@@ -31,6 +32,10 @@ public class ReferenceLabReferralDTO {
     // OGC-802: result cards read live from DiagnosticReport.Observation for the
     // Returned view. Null/empty for Outstanding and History.
     private List<ResultCard> results;
+    // The reason the peer laboratory gave on its Task, so the Reject modal can
+    // open on what they actually said instead of the first item in the list.
+    // Free text from another system: a hint for the operator, never a decision.
+    private String peerReason;
 
     public String getId() {
         return id;
@@ -120,6 +125,19 @@ public class ReferenceLabReferralDTO {
         this.boxId = boxId;
     }
 
+    /**
+     * The box's primary key, which is what the shipping-box endpoint takes. The
+     * label in {@link #getBoxId()} is for people to read; linking with it gave a
+     * "Box not found" page.
+     */
+    public Integer getBoxKey() {
+        return boxKey;
+    }
+
+    public void setBoxKey(Integer boxKey) {
+        this.boxKey = boxKey;
+    }
+
     public String getSentDate() {
         return sentDate;
     }
@@ -190,6 +208,14 @@ public class ReferenceLabReferralDTO {
 
     public void setClosedDate(String closedDate) {
         this.closedDate = closedDate;
+    }
+
+    public String getPeerReason() {
+        return peerReason;
+    }
+
+    public void setPeerReason(String peerReason) {
+        this.peerReason = peerReason;
     }
 
     public String getOutcome() {

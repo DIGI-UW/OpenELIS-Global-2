@@ -119,6 +119,21 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
 
     @Override
     @Transactional(readOnly = true)
+    public List<Sample> getSamplesNewestFirst(int startingRecNo, int pageSize) throws LIMSRuntimeException {
+        try {
+            Query<Sample> query = entityManager.unwrap(Session.class).createQuery("from Sample s order by s.id desc",
+                    Sample.class);
+            query.setFirstResult(Math.max(startingRecNo, 1) - 1);
+            query.setMaxResults(Math.max(pageSize, 1));
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Sample getSamplesNewestFirst()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public void getSampleByAccessionNumber(Sample sample) throws LIMSRuntimeException {
         try {
             String sql = "from Sample s where s.accessionNumber = :param";
@@ -579,6 +594,22 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
 
     @Override
     @Transactional(readOnly = true)
+    public List<Sample> getEnvironmentalSamplesWithAccessionNumberStartingWith(String prefix, int max) {
+        try {
+            String escaped = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+            return entityManager.createQuery(
+                    "from Sample s where s.domain = 'E' and upper(s.accessionNumber) like upper(:prefix) escape '\\'"
+                            + " order by s.accessionNumber",
+                    Sample.class).setParameter("prefix", escaped + "%").setMaxResults(max).getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Sample getEnvironmentalSamplesWithAccessionNumberStartingWith()",
+                    e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public String getLargestAccessionNumberMatchingPattern(String startingWith, int accessionSize)
             throws LIMSRuntimeException {
         String greatestAccessionNumber = null;
@@ -756,6 +787,25 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
             return query.list();
         } catch (HibernateException e) {
             handleException(e, "findSamplesWithRequiredByBefore");
+        }
+        return new java.util.ArrayList<>();
+    }
+
+    @Override
+    public List<Sample> getStatSamplesReceivedBetweenWithAnalysisIn(java.sql.Timestamp since, java.sql.Timestamp cutoff,
+            List<String> analysisStatusIds) {
+        String sql = "from Sample s where s.priority = :stat and s.receivedTimestamp > :since and"
+                + " s.receivedTimestamp <= :cutoff and exists (from Analysis a where a.sampleItem.sample.id = s.id"
+                + " and a.statusId in (:statusIds))";
+        try {
+            Query<Sample> query = entityManager.unwrap(Session.class).createQuery(sql, Sample.class);
+            query.setParameter("stat", OrderPriority.STAT);
+            query.setParameter("since", since);
+            query.setParameter("cutoff", cutoff);
+            query.setParameterList("statusIds", analysisStatusIds);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getStatSamplesReceivedBetweenWithAnalysisIn");
         }
         return new java.util.ArrayList<>();
     }

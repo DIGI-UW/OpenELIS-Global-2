@@ -1,0 +1,244 @@
+package org.openelisglobal.microbiology.service;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.form.MicroCaseActivityForm;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
+import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
+import org.openelisglobal.note.service.NoteObject;
+import org.openelisglobal.note.service.NoteService;
+import org.openelisglobal.note.service.NoteServiceImpl;
+import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
+
+    @Autowired
+    private MicrobiologyCaseAccessService access;
+
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseInoculationDAO cultures;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroIsolateDAO isolates;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO analyses;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroAstReadingDAO readings;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroAstRunDAO runs;
+    private static final String NOTE_SUBJECT_PREFIX = "MICROBIOLOGY_CASE:";
+
+    private final MicroCaseDAO caseDAO;
+    private final MicroCaseActivityDAO activityDAO;
+    private final NoteService noteService;
+    private final ReferenceTablesService referenceTablesService;
+    private final SystemUserService systemUserService;
+    private final String configuredSampleItemTableId;
+
+    @Autowired
+    public MicroCaseTimelineServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, NoteService noteService,
+            ReferenceTablesService referenceTablesService, SystemUserService systemUserService) {
+        this.caseDAO = caseDAO;
+        this.activityDAO = activityDAO;
+        this.noteService = noteService;
+        this.referenceTablesService = referenceTablesService;
+        this.systemUserService = systemUserService;
+        this.configuredSampleItemTableId = null;
+    }
+
+    MicroCaseTimelineServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, NoteService noteService,
+            SystemUserService systemUserService, String sampleItemTableId) {
+        this.caseDAO = caseDAO;
+        this.activityDAO = activityDAO;
+        this.noteService = noteService;
+        this.referenceTablesService = null;
+        this.systemUserService = systemUserService;
+        this.configuredSampleItemTableId = sampleItemTableId;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroCaseActivityForm> getTimeline(String caseId) {
+        MicroCase microCase = requireCase(caseId);
+        List<MicroCaseActivityForm> timeline = new ArrayList<>();
+        Map<String, String> userDisplayById = new HashMap<>();
+        for (MicroCaseActivity activity : activityDAO.getByCaseId(caseId)) {
+            timeline.add(toForm(activity, userDisplayById));
+        }
+        for (Note note : microCase.getSampleItemId() == null ? List.<Note>of()
+                : noteService.getNotesChronologicallyByRefIdAndRefTableAndType(microCase.getSampleItemId(),
+                        sampleItemTableId(), List.of(Note.INTERNAL, Note.EXTERNAL))) {
+            if (subject(caseId).equals(note.getSubject())) {
+                timeline.add(toForm(note, caseId, userDisplayById));
+            }
+        }
+        timeline.sort(Comparator.comparing(form -> form.occurredAt, Comparator.nullsLast(Comparator.naturalOrder())));
+        return timeline;
+    }
+
+    @Override
+    @Transactional
+    public MicroCaseActivityForm addNote(String caseId, String text, String performedBy) {
+        return addNote(caseId, text, false, performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroCaseActivityForm addNote(String caseId, String text, boolean sendWithResult, String performedBy) {
+        return addNote(caseId, text, sendWithResult, null, null, performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroCaseActivityForm addNote(String caseId, String text, boolean sendWithResult, String targetType,
+            String targetId, String performedBy) {
+        MicroCaseServiceImpl.requireText(text, "text");
+        MicroCaseServiceImpl.requireText(performedBy, "performedBy");
+        MicroCase microCase = caseDAO.getForUpdate(caseId);
+        if (microCase == null)
+            throw new IllegalArgumentException("Case not found");
+        if (!access.hasLabUnitRole(performedBy, microCase.getLabUnitId(),
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS))
+            throw new org.springframework.security.access.AccessDeniedException("Case lab unit access required");
+        MicroCaseMutationGuard.requireMutable(microCase);
+        validateTarget(caseId, targetType, targetId);
+        if (text.trim().length() > 4000)
+            throw new IllegalArgumentException("MICROBIOLOGY_NOTE_TOO_LONG");
+        // Attached notes use case activity metadata; NOTE.SUBJECT is limited to 60
+        // characters.
+        if (microCase.getSampleItemId() == null || targetType != null) {
+            var activity = new MicroCaseActivity();
+            activity.setCaseId(caseId);
+            activity.setActivityType(MicroCaseActivityType.MANUAL_NOTE.name());
+            activity.setNote(text.trim());
+            activity.setStructuredData((sendWithResult ? "SEND_RESULT" : "IN_LAB_ONLY")
+                    + (targetType == null ? "" : ":" + targetType + ":" + targetId));
+            activity.setOccurredAt(MicroCaseServiceImpl.now());
+            activity.setPerformedBy(performedBy);
+            activity.setSysUserId(performedBy);
+            activityDAO.insert(activity);
+            return toForm(activity, new HashMap<>());
+        }
+        Note note = noteService.createSavableNote(binding(microCase),
+                sendWithResult ? NoteServiceImpl.NoteType.EXTERNAL : NoteServiceImpl.NoteType.INTERNAL, text.trim(),
+                subject(caseId), performedBy);
+        if (note == null) {
+            throw new IllegalArgumentException("MICROBIOLOGY_NOTE_TEXT_REQUIRED");
+        }
+        noteService.insert(note);
+        return toForm(note, caseId, new HashMap<>());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroCaseActivityForm> getReportNotes(String caseId) {
+        return getTimeline(caseId).stream()
+                .filter(f -> "MANUAL_NOTE".equals(f.activityType) && "SEND_RESULT".equals(f.structuredData)).toList();
+    }
+
+    private void validateTarget(String caseId, String type, String id) {
+        if (type == null && id == null)
+            return;
+        if (type == null || id == null || id.isBlank())
+            throw new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID");
+        String owner = switch (type) {
+        case "CULTURE" -> cultures.get(id)
+                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID")).getCaseId();
+        case "ISOLATE" -> isolates.get(id)
+                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID")).getCaseId();
+        case "RESULT" -> analyses.getByCaseAndAnalysis(caseId, id) == null ? null : caseId;
+        case "DRUG" -> isolates
+                .get(runs
+                        .get(readings.get(id)
+                                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID"))
+                                .getAstRunId())
+                        .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID"))
+                        .getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID")).getCaseId();
+        default -> null;
+        };
+        if (!caseId.equals(owner))
+            throw new IllegalArgumentException("MICROBIOLOGY_NOTE_TARGET_INVALID");
+    }
+
+    private MicroCase requireCase(String caseId) {
+        MicroCaseServiceImpl.requireText(caseId, "caseId");
+        return caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
+    }
+
+    private NoteObject binding(MicroCase microCase) {
+        return new NoteObject() {
+            @Override
+            public String getTableId() {
+                return sampleItemTableId();
+            }
+
+            @Override
+            public String getObjectId() {
+                return microCase.getSampleItemId();
+            }
+
+            @Override
+            public NoteServiceImpl.BoundTo getBoundTo() {
+                return NoteServiceImpl.BoundTo.SAMPLE_ITEM;
+            }
+        };
+    }
+
+    private MicroCaseActivityForm toForm(MicroCaseActivity activity, Map<String, String> userDisplayById) {
+        MicroCaseActivityForm form = new MicroCaseActivityForm();
+        form.id = activity.getId();
+        form.caseId = activity.getCaseId();
+        form.activityType = activity.getActivityType();
+        form.occurredAt = activity.getOccurredAt();
+        form.performedBy = activity.getPerformedBy();
+        form.performedByDisplay = MicrobiologyUserDisplayResolver.resolve(systemUserService, activity.getPerformedBy(),
+                userDisplayById);
+        form.note = activity.getNote();
+        form.structuredData = activity.getStructuredData();
+        if ("MANUAL_NOTE".equals(form.activityType) && form.structuredData != null) {
+            var parts = form.structuredData.split(":", 3);
+            form.structuredData = parts[0];
+            if (parts.length == 3) {
+                form.targetType = parts[1];
+                form.targetId = parts[2];
+            }
+        }
+        return form;
+    }
+
+    private MicroCaseActivityForm toForm(Note note, String caseId, Map<String, String> userDisplayById) {
+        MicroCaseActivityForm form = new MicroCaseActivityForm();
+        form.id = "note-" + note.getId();
+        form.caseId = caseId;
+        form.activityType = MicroCaseActivityType.MANUAL_NOTE.name();
+        form.occurredAt = note.getLastupdated();
+        form.performedBy = note.getSystemUser() == null ? note.getSysUserId() : note.getSystemUser().getId();
+        form.performedByDisplay = MicrobiologyUserDisplayResolver.resolve(systemUserService, form.performedBy,
+                userDisplayById);
+        form.note = note.getText();
+        form.structuredData = Note.EXTERNAL.equals(note.getNoteType()) ? "SEND_RESULT" : "IN_LAB_ONLY";
+        return form;
+    }
+
+    private String subject(String caseId) {
+        return NOTE_SUBJECT_PREFIX + caseId;
+    }
+
+    private String sampleItemTableId() {
+        return configuredSampleItemTableId == null
+                ? referenceTablesService.getReferenceTableByName("SAMPLE_ITEM").getId()
+                : configuredSampleItemTableId;
+    }
+}

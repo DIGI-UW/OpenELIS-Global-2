@@ -159,11 +159,70 @@ const PanelsSection = ({ testId, testDomain }) => {
             }
           });
         } else {
-          addNotification({
-            kind: "error",
-            title: intl.formatMessage({ id: "error.title" }),
-            message: intl.formatMessage({ id: "server.error.msg" }),
-          });
+          const genericFailure = () =>
+            addNotification({
+              kind: "error",
+              title: intl.formatMessage({ id: "error.title" }),
+              message: intl.formatMessage({ id: "server.error.msg" }),
+            });
+          // OGC-1232 — the domain guard names the panel that refused this test
+          const domainLabel = (value) =>
+            intl.formatMessage({
+              id: `label.domain.${value}`,
+              defaultMessage: value,
+            });
+          if (response && response.status === 422) {
+            response
+              .json()
+              .then((body) => {
+                if (body && body.refusal === "panel.activeNeedsTest") {
+                  getFromOpenElisServer(
+                    `/rest/test-catalog/tests/${testId}/panels`,
+                    (stored) => {
+                      if (stored && Array.isArray(stored.memberships)) {
+                        setMemberships(stored.memberships);
+                      }
+                    },
+                  );
+                  addNotification({
+                    kind: "error",
+                    title: intl.formatMessage({ id: "error.title" }),
+                    message: intl.formatMessage(
+                      { id: "error.testCatalog.panels.activeNeedsTest" },
+                      {
+                        count: (body.refusedPanels || []).length,
+                        panels: (body.refusedPanels || [])
+                          .map((p) => p.panelName)
+                          .join(", "),
+                      },
+                    ),
+                  });
+                  return;
+                }
+                const conflict = body && body.domainConflict;
+                if (!conflict) {
+                  genericFailure();
+                  return;
+                }
+                addNotification({
+                  kind: "error",
+                  title: intl.formatMessage({ id: "error.title" }),
+                  message: intl.formatMessage(
+                    { id: "error.testCatalog.panels.domainConflict" },
+                    {
+                      panelName: conflict.panelName,
+                      panelDomain: domainLabel(conflict.domain),
+                      testDomain: domainLabel(
+                        (conflict.tests && conflict.tests[0]?.domain) || "",
+                      ),
+                    },
+                  ),
+                });
+              })
+              .catch(genericFailure);
+          } else {
+            genericFailure();
+          }
           if (onDone) {
             onDone(false);
           }
@@ -190,7 +249,7 @@ const PanelsSection = ({ testId, testDomain }) => {
       return;
     }
     setCreating(true);
-    const assignAndPersist = (panel) => {
+    const assignAndPersist = (panel, activateOnceMember) => {
       setPanels((prev) =>
         prev.some((p) => p.id === panel.id) ? prev : [...prev, panel],
       );
@@ -207,10 +266,33 @@ const PanelsSection = ({ testId, testDomain }) => {
           { name: panel.name },
         ),
         (ok) => {
-          setCreating(false);
-          if (ok) {
-            setNewPanelName("");
+          if (!ok || !activateOnceMember) {
+            setCreating(false);
+            if (ok) {
+              setNewPanelName("");
+            }
+            return;
           }
+          setNewPanelName("");
+          // The create is not done until the panel is switched on: leaving the
+          // page earlier used to cancel this call and leave the panel inactive.
+          putToOpenElisServerFullResponse(
+            `/rest/test-catalog/panels/${panel.id}/basic-info`,
+            JSON.stringify({ active: true }),
+            (response) => {
+              setCreating(false);
+              if (!response || response.status !== 200) {
+                addNotification({
+                  kind: "error",
+                  title: intl.formatMessage({ id: "error.title" }),
+                  message: intl.formatMessage(
+                    { id: "error.testCatalog.panels.activateFailed" },
+                    { name: panel.name },
+                  ),
+                });
+              }
+            },
+          );
         },
       );
     };
@@ -220,21 +302,31 @@ const PanelsSection = ({ testId, testDomain }) => {
     }
     postToOpenElisServerFullResponse(
       "/rest/test-catalog/panels",
-      // OGC-1140: the new panel inherits this test's domain (the membership
-      // write below makes the test its first member, so it starts Active)
-      JSON.stringify({ name, domain: testDomain || "CLINICAL" }),
-      (response) => {
+      // OGC-1140: the new panel inherits this test's domain. It is created
+      // inactive and switched on once this test is its first member, so a failed
+      // membership write never leaves an active panel with no tests (OGC-1456).
+      JSON.stringify({ name, domain: testDomain || "CLINICAL", active: false }),
+      async (response) => {
         if (response && (response.status === 201 || response.status === 200)) {
-          response.json().then(assignAndPersist);
-        } else {
-          setCreating(false);
-          setNotificationVisible(true);
-          addNotification({
-            kind: "error",
-            title: intl.formatMessage({ id: "error.title" }),
-            message: intl.formatMessage({ id: "server.error.msg" }),
-          });
+          response.json().then((panel) => assignAndPersist(panel, true));
+          return;
         }
+        setCreating(false);
+        let body = null;
+        if (response && response.status === 422) {
+          body = await response.json().catch(() => null);
+        }
+        setNotificationVisible(true);
+        addNotification({
+          kind: "error",
+          title: intl.formatMessage({ id: "error.title" }),
+          message: intl.formatMessage({
+            id:
+              body && body.refusal === "name.tooLong"
+                ? "error.panel.nameTooLong"
+                : "server.error.msg",
+          }),
+        });
       },
     );
   };
@@ -413,6 +505,7 @@ const PanelsSection = ({ testId, testDomain }) => {
               id: "label.testCatalog.panels.createPanel",
             })}
             value={newPanelName}
+            maxLength={20}
             onChange={(e) => setNewPanelName(e.target.value)}
           />
           <Button

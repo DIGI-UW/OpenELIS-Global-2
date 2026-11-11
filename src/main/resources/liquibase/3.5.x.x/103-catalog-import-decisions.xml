@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- OGC-1194: every pass of the catalog loader is an import run; the names a
+       run could not match wait in unresolved_reference until someone points
+       them at a record or skips them; a spelling resolved once can be kept as a
+       reference_alias so the next import resolves it by itself. -->
+  <changeSet author="oe" id="103-catalog-import-decisions-1">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="configuration_import_run" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+
+    <createTable tableName="configuration_import_run" schemaName="clinlims">
+      <column name="id" type="VARCHAR(36)">
+        <constraints primaryKey="true" primaryKeyName="configuration_import_run_pkey" nullable="false"/>
+      </column>
+      <column name="source" type="VARCHAR(20)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="status" type="VARCHAR(20)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="started_at" type="TIMESTAMP">
+        <constraints nullable="false"/>
+      </column>
+      <column name="finished_at" type="TIMESTAMP"/>
+      <column name="summary" type="TEXT"/>
+      <column name="sys_user_id" type="NUMERIC(10,0)"/>
+      <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet author="oe" id="103-catalog-import-decisions-2">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="unresolved_reference" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+
+    <createTable tableName="unresolved_reference" schemaName="clinlims">
+      <column name="id" type="VARCHAR(36)">
+        <constraints primaryKey="true" primaryKeyName="unresolved_reference_pkey" nullable="false"/>
+      </column>
+      <column name="import_run_id" type="VARCHAR(36)"/>
+      <column name="domain" type="VARCHAR(40)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="file_name" type="VARCHAR(255)"/>
+      <column name="line_number" type="INTEGER"/>
+      <column name="reference_type" type="VARCHAR(30)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="reference_value" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="context" type="VARCHAR(1000)"/>
+      <column name="status" type="VARCHAR(20)" defaultValue="OPEN">
+        <constraints nullable="false"/>
+      </column>
+      <column name="resolution" type="VARCHAR(20)"/>
+      <column name="resolved_target_id" type="VARCHAR(36)"/>
+      <column name="resolved_at" type="TIMESTAMP"/>
+      <column name="occurrences" type="INTEGER" defaultValueNumeric="1">
+        <constraints nullable="false"/>
+      </column>
+      <column name="sys_user_id" type="NUMERIC(10,0)"/>
+      <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+
+    <createIndex tableName="unresolved_reference" schemaName="clinlims" indexName="idx_unresolved_reference_status">
+      <column name="status"/>
+      <column name="reference_type"/>
+      <column name="reference_value"/>
+    </createIndex>
+  </changeSet>
+
+  <changeSet author="oe" id="103-catalog-import-decisions-3">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="reference_alias" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+
+    <createTable tableName="reference_alias" schemaName="clinlims">
+      <column name="id" type="VARCHAR(36)">
+        <constraints primaryKey="true" primaryKeyName="reference_alias_pkey" nullable="false"/>
+      </column>
+      <column name="reference_type" type="VARCHAR(30)">
+        <constraints nullable="false"/>
+      </column>
+      <!-- letters and digits only, lower case: the same normalisation as test descriptions -->
+      <column name="alias" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="target_id" type="VARCHAR(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="sys_user_id" type="NUMERIC(10,0)"/>
+      <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+
+    <addUniqueConstraint tableName="reference_alias" schemaName="clinlims" columnNames="reference_type, alias"
+      constraintName="reference_alias_type_alias_uk"/>
+  </changeSet>
+
+</databaseChangeLog>

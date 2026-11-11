@@ -84,9 +84,22 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
 
         options.removeIf(o -> !TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(o.getTestResultType()));
         // SORT_ORDER is a numeric column mapped as String; sort numerically, nulls
-        // last.
-        options.sort(Comparator.comparingInt(o -> parseSortOrder(o.getSortOrder())));
+        // last. Equal or missing sort orders fall back to creation order (id), so
+        // the list never depends on the order the database happens to return.
+        options.sort(Comparator.comparingInt((TestResult o) -> parseSortOrder(o.getSortOrder()))
+                .thenComparingLong(o -> parseId(o.getId())));
         return options;
+    }
+
+    private static long parseId(String id) {
+        if (id == null || id.isBlank()) {
+            return Long.MAX_VALUE;
+        }
+        try {
+            return Long.parseLong(id.trim());
+        } catch (NumberFormatException e) {
+            return Long.MAX_VALUE;
+        }
     }
 
     private static int parseSortOrder(String s) {
@@ -117,6 +130,7 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
                 match.setValue(d.getValue());
                 match.setSortOrder(d.getSortOrder());
                 match.setIsNormal(d.getIsNormal());
+                match.setIsQuantifiable(d.getIsQuantifiable());
                 match.setTestResultType(d.getTestResultType());
                 match.setSysUserId(sysUserId);
                 update(match);
@@ -147,8 +161,9 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
      * materialized into the dictionary master list under the "Test Result" category
      * (reusing an active entry with the same name if one exists) and the row
      * repointed at the entry's id. A numeric value that already resolves to an
-     * entry is kept as-is; a numeric value that resolves to nothing is treated as
-     * free text too.
+     * entry is kept as-is unless the option is marked as typed text (OGC-1458: a
+     * typed "1" is the grade 1, not dictionary entry 1); a numeric value that
+     * resolves to nothing is treated as free text too.
      */
     private void resolveDictionaryValue(TestResult option, String sysUserId) {
         if (!TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(option.getTestResultType())) {
@@ -158,7 +173,8 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         if (value.isEmpty()) {
             return;
         }
-        if (StringUtils.isNumeric(value) && dictionaryService.getDictionaryById(value) != null) {
+        if (!option.isFreeText() && StringUtils.isNumeric(value)
+                && dictionaryService.getDictionaryById(value) != null) {
             return;
         }
         // Scoped to the result-option category. Matching on the name alone reused
@@ -190,6 +206,12 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
     @Transactional(readOnly = true)
     public TestResult getTestResultsByTestAndDictonaryResult(String id, String value) {
         return baseObjectDAO.getTestResultsByTestAndDictonaryResult(id, value);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TestResult getTestResultsByTestAndDictonaryResult(String id, String value, String componentId) {
+        return baseObjectDAO.getTestResultsByTestAndDictonaryResult(id, value, componentId);
     }
 
     @Override

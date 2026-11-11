@@ -46,7 +46,7 @@ jobs:
           echo "BRANCH_IMAGE_NAME=${image_name}" >> $GITHUB_ENV
           echo "image_name=${image_name}" >> $GITHUB_OUTPUT
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
         # Add support for more platforms with QEMU (optional)
@@ -68,7 +68,7 @@ jobs:
           images: ${{ env.BRANCH_IMAGE_NAME }}
       - name: Build and push Docker image
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile.dev
@@ -100,7 +100,7 @@ jobs:
       - build-and-push-image-backend-dev
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: /tmp/digests/backend
           pattern: digests-*

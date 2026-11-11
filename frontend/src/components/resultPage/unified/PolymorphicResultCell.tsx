@@ -3,6 +3,11 @@ import { Select, SelectItem, TextArea, TextInput } from "@carbon/react";
 import { useIntl } from "react-intl";
 import ResultMultiSelect from "../../common/multiSelect";
 import CascadingMultiSelect from "../../common/cascadingMultiSelect";
+import {
+  decimalPlaces,
+  exceedsDecimalPlaces,
+  normalizeScientificNotation,
+} from "../scientificNotation";
 
 /**
  * OGC-1020 (R1) — FR-A1 polymorphic result cell.
@@ -10,8 +15,10 @@ import CascadingMultiSelect from "../../common/cascadingMultiSelect";
  * Renders the result input by the test's result type — numeric (N),
  * dictionary (D), multi-checkbox (M) — matching the legacy widgets one for
  * one so stored values stay compatible. Cascading (C), remark (R) and
- * alphanumeric (A) reuse the legacy behavior. When the row is read-only
- * (FR-A2: saved until Edit) the stored display value renders as plain text.
+ * alphanumeric (A) reuse the legacy behavior. Titer (T) is a free-text
+ * dilution ratio such as 1:10, stored as typed (OGC-1185). When the row is
+ * read-only (FR-A2: saved until Edit) the stored display value renders as
+ * plain text.
  *
  * A multi-component test yields one row PER COMPONENT sharing an analysisId
  * (FR-A′1), so widget identity and change events are keyed by the composite
@@ -36,64 +43,58 @@ export interface ResultCellRow {
   unitsOfMeasure?: string;
   testName?: string;
   /** decimal places this test is configured to report to */
-  significantDigits?: number;
+  reportingDecimalPlaces?: number;
 }
 
 /**
- * The decimal places entered, or 0 when the value carries no fraction.
+ * The decimal places entered, or 0 when the value carries no fraction. A value
+ * in scientific notation (1.5e5, 1.5×10⁵) is judged by its mantissa: 1.5e5
+ * carries one place, not three.
  *
  * <p>A value entered to more places than the test reports to is stored in full
  * and shown rounded, so the record and the screen stop agreeing and the next
  * edit saves the rounded form over the stored one (OGC-1179). The entry field
- * says so rather than accepting it silently.
+ * says so rather than accepting it silently. A whole-number test does not
+ * constrain a mantissa: 1.5e5 is a whole number.
  */
 export function enteredDecimalPlaces(value: string): number {
-  const dot = value.indexOf(".");
-  return dot === -1 ? 0 : value.length - dot - 1;
+  return decimalPlaces(value);
 }
 
-export function exceedsConfiguredPrecision(
+export function exceedsReportingDecimalPlaces(
   value: string | undefined,
-  significantDigits: number | undefined,
+  reportingDecimalPlaces: number | undefined,
 ): boolean {
-  if (!value || significantDigits === undefined || significantDigits < 0) {
+  if (!value || reportingDecimalPlaces == null || reportingDecimalPlaces < 0) {
     return false;
   }
   return (
+    normalizeScientificNotation(value) === value &&
+    !/[eE]/.test(value) &&
     Number.isFinite(Number(value)) &&
-    enteredDecimalPlaces(value) > significantDigits
+    exceedsDecimalPlaces(value, reportingDecimalPlaces)
   );
 }
 
 /**
  * Whether the row is holding a newly typed value finer than the test reports
- * to.
+ * to, which the entry field warns about. The value is saved as typed and
+ * reported rounded to the test's places (OGC-1544), so it is not refused.
  *
- * <p>A value already stored at that precision is left alone: it is a record
- * that exists, and refusing to save the row would strand it — the reader could
- * not so much as add a note to say so. What is refused is entering a new one.
+ * <p>A value already stored at that precision raises no warning: it is a
+ * record that exists.
  */
-export function blocksSaveOnPrecision(row: {
+export function warnsOnReportingFormat(row: {
   resultType?: string;
   resultValue?: string;
   rawResultValue?: string;
-  significantDigits?: number;
+  reportingDecimalPlaces?: number;
 }): boolean {
   return (
     row.resultType === "N" &&
     row.resultValue !== row.rawResultValue &&
-    exceedsConfiguredPrecision(row.resultValue, row.significantDigits)
+    exceedsReportingDecimalPlaces(row.resultValue, row.reportingDecimalPlaces)
   );
-}
-
-/** The `step` a number input of this precision accepts. */
-export function precisionStep(significantDigits: number | undefined): string {
-  if (significantDigits === undefined || significantDigits < 0) {
-    return "any";
-  }
-  return significantDigits === 0
-    ? "1"
-    : `0.${"0".repeat(significantDigits - 1)}1`;
 }
 
 /** Unique identity for a worklist row: one analysis may render N component rows. */
@@ -111,6 +112,8 @@ interface PolymorphicResultCellProps {
     field: "resultValue" | "multiSelectResultValues",
     value: string,
   ) => void;
+  /** OGC-1417: the numeric field was left, so its value can be judged */
+  onValueBlur?: (nextFocus: EventTarget | null) => void;
 }
 
 function readOnlyDisplay(row: ResultCellRow): string {
@@ -141,6 +144,7 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
   row,
   editable,
   onValueChange,
+  onValueBlur,
 }) => {
   const intl = useIntl();
   const rowKey = worklistRowKey(row);
@@ -156,6 +160,16 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
     return (
       <span className="unifiedResultsReadOnlyValue">
         {readOnlyDisplay(row)}
+        {row.resultType === "N" &&
+          row.rawResultValue != null &&
+          row.rawResultValue !== row.resultValue && (
+            <span className="cds--label">
+              {intl.formatMessage(
+                { id: "label.results.clinicalValue" },
+                { value: row.rawResultValue },
+              )}
+            </span>
+          )}
       </span>
     );
   }
@@ -207,26 +221,46 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
       );
 
     case "N": {
-      const tooPrecise = blocksSaveOnPrecision(row);
+      const formatWillChange = warnsOnReportingFormat(row);
       return (
         <TextInput
           id={`unifiedResultValue-${rowKey}`}
           labelText={accessibleName}
           hideLabel
-          type="number"
-          step={precisionStep(row.significantDigits)}
-          invalid={tooPrecise}
-          invalidText={intl.formatMessage(
-            { id: "error.results.precision" },
-            { 0: row.significantDigits ?? 0 },
+          type="text"
+          inputMode="text"
+          warn={formatWillChange}
+          warnText={intl.formatMessage(
+            { id: "warning.results.reportingFormat" },
+            { 0: row.reportingDecimalPlaces ?? 0 },
           )}
+          value={row.resultValue || ""}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            onValueChange("resultValue", e.target.value)
+          }
+          onBlur={(e: React.FocusEvent<HTMLInputElement>) =>
+            onValueBlur?.(e.relatedTarget)
+          }
+        />
+      );
+    }
+
+    case "T":
+      return (
+        <TextInput
+          id={`unifiedResultValue-${rowKey}`}
+          labelText={accessibleName}
+          hideLabel
+          type="text"
+          placeholder={intl.formatMessage({
+            id: "label.results.titer.placeholder",
+          })}
           value={row.resultValue || ""}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             onValueChange("resultValue", e.target.value)
           }
         />
       );
-    }
 
     case "R":
     case "A":

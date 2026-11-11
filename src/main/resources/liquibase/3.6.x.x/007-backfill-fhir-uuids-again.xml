@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+  <!-- OGC-1266: providers and organizations inserted after the 3.5 backfill still
+       got no fhir_uuid (the placeholder provider orders fall back to among them),
+       so every order naming one failed its FHIR sync. Inserts now assign one;
+       this gives the rows created in between theirs. -->
+  <changeSet id="OGC-1266-backfill-provider-fhir-uuid" author="mozzy11">
+    <sql>update clinlims.provider set fhir_uuid = gen_random_uuid() where fhir_uuid is null;</sql>
+    <rollback/>
+  </changeSet>
+  <changeSet id="OGC-1266-backfill-organization-fhir-uuid" author="mozzy11">
+    <sql>update clinlims.organization set fhir_uuid = gen_random_uuid() where fhir_uuid is null;</sql>
+    <rollback/>
+  </changeSet>
+</databaseChangeLog>

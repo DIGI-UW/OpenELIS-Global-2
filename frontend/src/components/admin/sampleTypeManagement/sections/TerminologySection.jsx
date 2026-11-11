@@ -20,18 +20,19 @@ import {
   getFromOpenElisServer,
   putToOpenElisServer,
 } from "../../../utils/Utils";
+import TerminologySourceInput, {
+  sourceTooLong,
+} from "../../testCatalog/sections/TerminologySourceInput";
 
 // Mirrors the Test Catalogue Editor's Terminology UX (Source/Code/Relationship,
 // inline edit, draft-row add). Persists through
 // `GET/PUT /rest/sample-types/{id}/terminology`.
-const SOURCES = ["LOINC", "SNOMED", "CIEL", "OCL", "WHONET"];
 const RELATIONSHIPS = ["SAME_AS", "BROADER_THAN", "NARROWER_THAN"];
 const SOURCE_TAG = {
   LOINC: "blue",
   SNOMED: "teal",
   CIEL: "purple",
   OCL: "cyan",
-  WHONET: "magenta",
 };
 
 const emptyDraft = () => ({ source: "", code: "", relationship: "" });
@@ -228,6 +229,9 @@ const TerminologySection = ({ sampleTypeId }) => {
           <TableBody>
             {mappings.map((m, i) => {
               const editing = editingRows.has(i);
+              // A sample type's WHONET code is its own field; a legacy WHONET
+              // mapping is kept as it is.
+              const sourceEditable = m.source !== "WHONET";
               return (
                 <TableRow
                   key={m.id || `new-${i}`}
@@ -235,19 +239,11 @@ const TerminologySection = ({ sampleTypeId }) => {
                 >
                   <TableCell>
                     {editing ? (
-                      <Select
+                      <TerminologySourceInput
                         id={`sampleType-mapping-source-${i}`}
-                        labelText=""
                         value={m.source || ""}
-                        onChange={(e) =>
-                          updateMapping(i, { source: e.target.value })
-                        }
-                      >
-                        <SelectItem value="" text="" />
-                        {SOURCES.map((s) => (
-                          <SelectItem key={s} value={s} text={s} />
-                        ))}
-                      </Select>
+                        onChange={(source) => updateMapping(i, { source })}
+                      />
                     ) : (
                       <Tag type={SOURCE_TAG[m.source] || "gray"}>
                         {m.source}
@@ -305,19 +301,21 @@ const TerminologySection = ({ sampleTypeId }) => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      kind="ghost"
-                      size="sm"
-                      hasIconOnly
-                      renderIcon={editing ? Checkmark : Edit}
-                      data-testid={`sampleType-edit-mapping-${i}`}
-                      iconDescription={intl.formatMessage({
-                        id: editing
-                          ? "label.button.close"
-                          : "label.button.edit",
-                      })}
-                      onClick={() => toggleEdit(i)}
-                    />
+                    {sourceEditable && (
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        hasIconOnly
+                        renderIcon={editing ? Checkmark : Edit}
+                        data-testid={`sampleType-edit-mapping-${i}`}
+                        iconDescription={intl.formatMessage({
+                          id: editing
+                            ? "label.button.close"
+                            : "label.button.edit",
+                        })}
+                        onClick={() => toggleEdit(i)}
+                      />
+                    )}
                     <Button
                       kind="ghost"
                       size="sm"
@@ -337,19 +335,14 @@ const TerminologySection = ({ sampleTypeId }) => {
       )}
 
       <Stack gap={4} orientation="horizontal">
-        <Select
+        <TerminologySourceInput
           id="sampleType-terminology-source"
-          labelText={intl.formatMessage({
+          titleText={intl.formatMessage({
             id: "label.testCatalog.terminology.source",
           })}
           value={draft.source}
-          onChange={(e) => setDraft({ ...draft, source: e.target.value })}
-        >
-          <SelectItem value="" text="" />
-          {SOURCES.map((s) => (
-            <SelectItem key={s} value={s} text={s} />
-          ))}
-        </Select>
+          onChange={(source) => setDraft({ ...draft, source })}
+        />
         <TextInput
           id="sampleType-terminology-code"
           labelText={intl.formatMessage({
@@ -387,7 +380,15 @@ const TerminologySection = ({ sampleTypeId }) => {
         </Button>
       </Stack>
 
-      <Button kind="primary" onClick={handleSave} disabled={saving}>
+      <Button
+        kind="primary"
+        onClick={handleSave}
+        disabled={
+          saving ||
+          sourceTooLong(draft.source) ||
+          mappings.some((m) => sourceTooLong(m.source))
+        }
+      >
         <FormattedMessage id="label.button.save" />
       </Button>
     </Stack>
