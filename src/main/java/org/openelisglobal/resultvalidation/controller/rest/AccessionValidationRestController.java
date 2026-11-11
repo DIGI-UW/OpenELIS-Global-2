@@ -329,7 +329,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
     @PostMapping(value = "AccessionValidation", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public org.springframework.http.ResponseEntity<Object> showAccessionValidationRangeSave(HttpServletRequest request,
+    public org.springframework.http.ResponseEntity<?> showAccessionValidationRangeSave(HttpServletRequest request,
             @Validated(ResultValidationForm.ResultValidation.class) @RequestBody ResultValidationForm form,
             BindingResult result) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
@@ -425,7 +425,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                 LogEvent.logError(e);
             }
         } catch (LIMSRuntimeException e) {
-            LogEvent.logError(e);
+            return saveFailure(e);
         }
 
         for (IResultUpdate updater : updaters) {
