@@ -74,6 +74,8 @@ services:
     image: ${E2E_STACK_PROJECT:-oe2-e2e}-frontend
 
   proxy:
+    networks: !override
+      default: {}
     container_name: !reset null
     image: ${E2E_STACK_PROJECT:-oe2-e2e}-proxy
     ports: !override

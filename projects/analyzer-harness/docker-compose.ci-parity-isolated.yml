@@ -45,6 +45,8 @@ services:
     image: ${CI_PARITY_IMAGE_PREFIX}-frontend:ci
 
   proxy:
+    networks: !override
+      default: {}
     container_name: !reset null
     image: ${CI_PARITY_IMAGE_PREFIX}-proxy:ci
     ports: !override

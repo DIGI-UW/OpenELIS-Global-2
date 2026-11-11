@@ -107,6 +107,28 @@ public class LoginThrottleFilterTest extends SecuritySliceMockMvcTest {
         assertNotNull(signedIn.getRequest().getSession().getAttribute("SPRING_SECURITY_CONTEXT"));
     }
 
+    @Test
+    public void bundledProxy_keepsTwoClientsSeparate_andIgnoresForgedPrefixes() throws Exception {
+        for (int i = 0; i < LIMIT; i++) {
+            proxiedLogin("unknown" + i, "wrong-password", "203.0.113." + (i + 1) + ", 192.0.2.10");
+        }
+        MvcResult blocked = proxiedLogin("admin", "password", "203.0.113.99, 192.0.2.10");
+        assertEquals(401, blocked.getResponse().getStatus());
+        assertEquals("{\"error\":\"error.throttled\"}", blocked.getResponse().getContentAsString());
+        assertNull(blocked.getRequest().getSession().getAttribute("SPRING_SECURITY_CONTEXT"));
+        MvcResult otherClient = proxiedLogin("admin", "password", "192.0.2.11");
+        assertEquals("/", otherClient.getResponse().getRedirectedUrl());
+        assertNotNull(otherClient.getRequest().getSession().getAttribute("SPRING_SECURITY_CONTEXT"));
+    }
+
+    private MvcResult proxiedLogin(String loginName, String password, String forwarded) throws Exception {
+        return mockMvc.perform(post("/ValidateLogin?apiCall=true").param("loginName", loginName)
+                .param("password", password).header("X-Forwarded-For", forwarded).with(request -> {
+                    request.setRemoteAddr("172.20.1.122");
+                    return request;
+                }).session(new MockHttpSession())).andReturn();
+    }
+
     private MvcResult login(String loginName, String password, boolean apiCall) throws Exception {
         return mockMvc.perform(post("/ValidateLogin" + (apiCall ? "?apiCall=true" : "")).param("loginName", loginName)
                 .param("password", password).session(new MockHttpSession())).andReturn();
@@ -118,8 +140,14 @@ public class LoginThrottleFilterTest extends SecuritySliceMockMvcTest {
     static class TestConfig {
 
         @Bean
-        LoginAttemptTracker loginAttemptTracker() {
-            return new LoginAttemptTracker(LIMIT, Duration.ofMinutes(15), Clock.systemUTC());
+        LoginAttemptTracker loginAttemptTracker() throws java.io.IOException {
+            java.util.Properties shipped = new java.util.Properties();
+            try (var input = java.nio.file.Files
+                    .newInputStream(java.nio.file.Path.of("volume/properties/common.properties"))) {
+                shipped.load(input);
+            }
+            return new LoginAttemptTracker(LIMIT, Duration.ofMinutes(15), Clock.systemUTC(),
+                    shipped.getProperty("org.openelisglobal.login.throttle.trustedProxies"));
         }
 
         @Bean
