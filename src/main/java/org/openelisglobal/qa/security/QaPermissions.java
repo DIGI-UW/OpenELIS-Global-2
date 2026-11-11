@@ -28,6 +28,13 @@ public final class QaPermissions {
 
     public static final String KEY_MANAGE_ACCREDITATION = "qa.manage.accreditation";
 
+    /**
+     * Release a batch workplan whose QC is not current, raising an NCE (OGC-427).
+     * Checked inside the release rather than on the endpoint: a user without it may
+     * still release a batch whose QC passes.
+     */
+    public static final String KEY_QC_OVERRIDE = "qa.qc.override";
+
     private static final String OR_GLOBAL_ADMIN = " or hasRole('GLOBAL_ADMIN')";
 
     private static final String AUTHORITY = "hasAuthority('";

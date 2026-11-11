@@ -40,6 +40,7 @@ import {
   LANE_CLEAR,
   bulkOutcomeKey,
   bulkReleaseRequest,
+  bulkSuccessMessages,
   bulkUnavailableReasons,
   clearRows,
   countByFilter,
@@ -55,6 +56,14 @@ import {
 import { flagFor } from "./validationReview";
 import { FlagChip, accentClass } from "../resultPage/unified/flags";
 import "../resultPage/unified/unified-results.scss";
+
+/**
+ * OGC-1608: a part validated on a test that stays open (another part still to
+ * be resulted or validated) has its own message.
+ */
+const ROW_OUTCOME_MESSAGES = {
+  accepted: "label.validation.review.success.partValidated",
+};
 
 const Validation = (props) => {
   const componentMounted = useRef(false);
@@ -316,7 +325,11 @@ const Validation = (props) => {
   const handleRowActionDone = (outcome) =>
     notifyAndRefresh(
       NotificationKinds.success,
-      intl.formatMessage({ id: `label.validation.review.success.${outcome}` }),
+      intl.formatMessage({
+        id:
+          ROW_OUTCOME_MESSAGES[outcome] ||
+          `label.validation.review.success.${outcome}`,
+      }),
     );
 
   /**
@@ -440,8 +453,8 @@ const Validation = (props) => {
       (response) => {
         setBulkBusy(false);
         const released = response?.released?.length || 0;
-        const skipped = response?.skipped?.length || 0;
-        if (response?.error || released === 0) {
+        const accepted = response?.accepted?.length || 0;
+        if (response?.error || (released === 0 && accepted === 0)) {
           addNotification({
             kind: NotificationKinds.error,
             title: intl.formatMessage({ id: "notification.title" }),
@@ -453,15 +466,9 @@ const Validation = (props) => {
         addNotification({
           kind: NotificationKinds.success,
           title: intl.formatMessage({ id: "notification.title" }),
-          message: skipped
-            ? intl.formatMessage(
-                { id: "label.validation.bulk.partial" },
-                { released, skipped },
-              )
-            : intl.formatMessage(
-                { id: "label.validation.bulk.success" },
-                { count: released },
-              ),
+          message: bulkSuccessMessages(response)
+            .map((part) => intl.formatMessage({ id: part.id }, part.values))
+            .join(" "),
         });
         setNotificationVisible(true);
         setBulkOpen(false);
@@ -745,7 +752,7 @@ const Validation = (props) => {
                   style={{ whiteSpace: "nowrap" }}
                   data-testid={`validation-result-value-${row.id}`}
                 >
-                  {row.result}
+                  {row.displayResult ?? row.result}
                 </span>
                 <FlagChip flag={flag === "NORMAL" ? undefined : flag} />
               </div>
@@ -897,7 +904,7 @@ const Validation = (props) => {
                         : row.accessionNumber}
                     </td>
                     <td>{row.testName}</td>
-                    <td>{row.result}</td>
+                    <td>{row.displayResult ?? row.result}</td>
                     <td>{row.normalRange}</td>
                   </tr>
                 ))}
@@ -1215,7 +1222,7 @@ const Validation = (props) => {
                               : row.accessionNumber}
                           </td>
                           <td>{row.testName}</td>
-                          <td>{row.result}</td>
+                          <td>{row.displayResult ?? row.result}</td>
                           <td>{row.normalRange}</td>
                           <td>{row.resultDate}</td>
                           <td>

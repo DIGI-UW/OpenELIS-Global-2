@@ -39,6 +39,7 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
     private static String REPORTS_ATTRIBUTE = "reports";
     private static String GROSS_EXAM_ATTRIBUTE = "grossExam";
     private static String MICROSCOPY_EXAM_ATTRIBUTE = "microscopyExam";
+    private static String DECALCIFICATION_REQUIRED_ATTRIBUTE = "decalcificationRequired";
     private static String REFERRED_ATTRIBUTE = "reffered";
     private static String CYTO_PATHOLOGIST_ATTRIBUTE = "cytoPathologist";
     private static String SPECIMEN_ADEQUACY_ATTRIBUTE = "specimenAdequacy";
@@ -89,6 +90,7 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
             attributeToIdentifierMap.put(REPORTS_ATTRIBUTE, REPORTS_ATTRIBUTE);
             attributeToIdentifierMap.put(GROSS_EXAM_ATTRIBUTE, GROSS_EXAM_ATTRIBUTE);
             attributeToIdentifierMap.put(MICROSCOPY_EXAM_ATTRIBUTE, MICROSCOPY_EXAM_ATTRIBUTE);
+            attributeToIdentifierMap.put(DECALCIFICATION_REQUIRED_ATTRIBUTE, DECALCIFICATION_REQUIRED_ATTRIBUTE);
             newValueMap.put(TECHNICIAN_ATTRIBUTE, pathology.getTechnician_Audit());
             newValueMap.put(PATHOLOGIST_ATTRIBUTE, pathology.getPathologist_Audit());
             newValueMap.put(STATUS_ATTRIBUTE, pathology.getStatus() == null ? "" : pathology.getStatus().getDisplay());
@@ -100,6 +102,7 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
             newValueMap.put(REPORTS_ATTRIBUTE, pathology.getReports_Audit());
             newValueMap.put(GROSS_EXAM_ATTRIBUTE, pathology.getGrossExam());
             newValueMap.put(MICROSCOPY_EXAM_ATTRIBUTE, pathology.getMicroscopyExam());
+            newValueMap.put(DECALCIFICATION_REQUIRED_ATTRIBUTE, String.valueOf(pathology.isDecalcificationRequired()));
         } else if (programSample instanceof ImmunohistochemistrySample) {
             ImmunohistochemistrySample immunohistochemitry = (ImmunohistochemistrySample) programSample;
             attributeToIdentifierMap.put(TECHNICIAN_ATTRIBUTE, TECHNICIAN_ATTRIBUTE);
@@ -203,32 +206,29 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
     }
 
     private void getObservablePathologyChanges(Map<String, String> changeMap, String changes) {
-        // blank values first inserted so there is a value to compare against
-        // otherwise the update value is discarded
-        changeMap.put(STATUS_ATTRIBUTE, "");
+        // The case's own diff rows are XML. Rows of named events (stage moves,
+        // sign-out) under the same reference table carry a JSON payload whose free
+        // text could hold a tag; read as a diff, they would blank every attribute.
+        // They leave the map empty, so the row is skipped.
+        if (!changes.trim().startsWith("<")) {
+            return;
+        }
+        // Since May 2026 the writer records every changed attribute, a blank old value
+        // included, so only the tags present are read: a seeded blank would show an
+        // unchanged value as changed from nothing. Rows written before then have no
+        // tag for a first-time value, so such a change shows no line.
         simpleChange(changeMap, changes, STATUS_ATTRIBUTE);
-        changeMap.put(TECHNICIAN_ATTRIBUTE, "");
         simpleChange(changeMap, changes, TECHNICIAN_ATTRIBUTE);
-        changeMap.put(PATHOLOGIST_ATTRIBUTE, "");
         simpleChange(changeMap, changes, PATHOLOGIST_ATTRIBUTE);
-        changeMap.put(BLOCKS_ATTRIBUTE, "");
         simpleChange(changeMap, changes, BLOCKS_ATTRIBUTE);
-        changeMap.put(BLOCKS_ATTRIBUTE, "");
-        simpleChange(changeMap, changes, BLOCKS_ATTRIBUTE);
-        changeMap.put(SLIDES_ATTRIBUTE, "");
         simpleChange(changeMap, changes, SLIDES_ATTRIBUTE);
-        changeMap.put(REQUESTS_ATTRIBUTE, "");
         simpleChange(changeMap, changes, REQUESTS_ATTRIBUTE);
-        changeMap.put(TECHNIQUES_ATTRIBUTE, "");
         simpleChange(changeMap, changes, TECHNIQUES_ATTRIBUTE);
-        changeMap.put(CONCLUSIONS_ATTRIBUTE, "");
         simpleChange(changeMap, changes, CONCLUSIONS_ATTRIBUTE);
-        changeMap.put(REPORTS_ATTRIBUTE, "");
         simpleChange(changeMap, changes, REPORTS_ATTRIBUTE);
-        changeMap.put(GROSS_EXAM_ATTRIBUTE, "");
         simpleChange(changeMap, changes, GROSS_EXAM_ATTRIBUTE);
-        changeMap.put(MICROSCOPY_EXAM_ATTRIBUTE, "");
         simpleChange(changeMap, changes, MICROSCOPY_EXAM_ATTRIBUTE);
+        simpleChange(changeMap, changes, DECALCIFICATION_REQUIRED_ATTRIBUTE);
     }
 
     @Override

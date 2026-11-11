@@ -163,6 +163,32 @@ public class CatalogImportServiceImplTest {
     }
 
     @Test
+    public void apply_leavesNoTraceOfAFileThatFailedToLoad() throws Exception {
+        Path replaced = stored("tests", "tests-bad.csv");
+        Files.createDirectories(replaced.getParent());
+        Files.writeString(replaced, "name\nearlier\n");
+        doAnswer(invocation -> {
+            ConfigurationReloadOptions options = invocation.getArgument(0);
+            String domain = options.domains().iterator().next();
+            String fileName = options.forcedFiles().iterator().next();
+            return fileName.contains("bad")
+                    ? new ConfigurationReloadResult(
+                            List.of(ConfigurationReloadFileResult.error(domain, fileName, "bad rule")))
+                    : loadStoredFile(options);
+        }).when(initializationService).reload(any(ConfigurationReloadOptions.class));
+
+        ImportPlan plan = service.apply(
+                List.of(csv("test-sections-bad.csv", 1), csv("tests-bad.csv", 2), csv("test-sections-ok.csv", 1)), null,
+                "7");
+
+        assertEquals(List.of("test-sections-bad.csv", "tests-bad.csv"),
+                plan.files().stream().filter(file -> file.error() != null).map(FilePlan::fileName).sorted().toList());
+        assertFalse(Files.exists(stored("test-sections", "test-sections-bad.csv")));
+        assertEquals("name\nearlier\n", Files.readString(replaced));
+        assertTrue(Files.exists(stored("test-sections", "test-sections-ok.csv")));
+    }
+
+    @Test
     public void apply_reportsAFileTheLoaderNeverSawAsAnError() {
         when(initializationService.reload(any(ConfigurationReloadOptions.class)))
                 .thenReturn(new ConfigurationReloadResult(List.of()));

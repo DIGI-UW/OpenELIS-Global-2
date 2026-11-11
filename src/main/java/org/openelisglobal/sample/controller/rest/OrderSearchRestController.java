@@ -885,7 +885,8 @@ public class OrderSearchRestController extends BaseRestController {
                 Map<String, List<String>> panelTestIdsMap = new LinkedHashMap<>();
                 Map<String, String> panelNameMap = new HashMap<>();
                 for (Analysis analysis : analyses) {
-                    if (analysis.getTest() == null) {
+                    if (analysis.getTest() == null
+                            || statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
                         continue;
                     }
                     testsData.add(buildSelectedTestData(analysis.getTest()));

@@ -124,7 +124,7 @@ describe("ReagentsQcSection (R5/R6)", () => {
   it("analyzer-loaded row is read-only and shows configured control lots", () => {
     respondWith({
       "/rest/results-entry/test/6/reagents": LINKS,
-      "/rest/qc/controlLots": [
+      "/rest/qc/results/control-lots": [
         {
           id: "cl-1",
           productName: "Liquichek L1",
@@ -173,7 +173,7 @@ describe("ReagentsQcSection (R5/R6)", () => {
     );
     // RDT capture needs no lot record — no bench-lot fetch
     expect(getMock).not.toHaveBeenCalledWith(
-      expect.stringContaining("/rest/qc/controlLots"),
+      expect.stringContaining("/rest/qc/results/control-lots"),
       expect.any(Function),
     );
     fireEvent.change(screen.getByLabelText("Control line"), {
@@ -205,7 +205,7 @@ describe("ReagentsQcSection (R5/R6)", () => {
   it("manual quantitative row records measured/expected/uncertainty against a bench lot", () => {
     respondWith({
       "/rest/results-entry/test/6/reagents": [],
-      "/rest/qc/controlLots?testId=6": [
+      "/rest/qc/results/control-lots?testId=6": [
         {
           id: "cl-9",
           productName: "Liquichek L1",
@@ -391,7 +391,7 @@ describe("ReagentsQcSection (R5/R6)", () => {
   it("a quantitative row with no bench lot says so instead of offering an empty picker", () => {
     respondWith({
       "/rest/results-entry/test/6/reagents": [],
-      "/rest/qc/controlLots?testId=6": [],
+      "/rest/qc/results/control-lots?testId=6": [],
     });
     wrap(
       <ReagentsQcSection

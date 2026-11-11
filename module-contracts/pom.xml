@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        Aggregator for the artifacts a module compiles against. Each child keeps its own version and has no
+        parent, because openelis-spi and openelis-module-api are released on their own cadence; this file only
+        lets the build hooks install both with one command:
+
+            mvn -f module-contracts/pom.xml install
+
+        The application WAR (../pom.xml) depends on both, so this runs before the WAR build, like dataexport.
+    -->
+    <groupId>org.openelisglobal</groupId>
+    <artifactId>openelis-module-contracts</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>OpenELIS module contracts</name>
+
+    <modules>
+        <module>openelis-spi</module>
+        <module>openelis-module-api</module>
+    </modules>
+</project>

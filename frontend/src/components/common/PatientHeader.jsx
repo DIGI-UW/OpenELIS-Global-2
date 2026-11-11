@@ -1,4 +1,5 @@
 import React from "react";
+import ExtensionSlot from "../../modules/ExtensionSlot";
 import { Grid, Column, Section, Stack, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
@@ -95,6 +96,10 @@ const PatientHeader = (props) => {
                     </div>
                     <br />
                     <div className="patient-id patient-header__ids">
+                      <ExtensionSlot
+                        name="patient.header.actions"
+                        context={{ patientId: String(id) }}
+                      />
                       {patientId && (
                         <Tag size="lg" type="blue" style={tagStyle}>
                           <FormattedMessage id="patient.id" /> :{" "}

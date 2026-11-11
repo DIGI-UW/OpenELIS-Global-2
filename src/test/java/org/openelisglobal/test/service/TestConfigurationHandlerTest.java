@@ -160,6 +160,43 @@ public class TestConfigurationHandlerTest {
         verify(testService, never()).getTestByLocalizedName(anyString());
     }
 
+    @Test
+    public void routing_configuresCultureAndPreservesItOnOrdinaryCatalogReload() {
+        org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
+        TestConfigurationHandler.applyMicrobiologyRouting(test, "Y", "CULTURE", "Y");
+        TestConfigurationHandler.applyMicrobiologyRouting(test, "", "", "");
+        assertEquals(true, test.isOpensMicrobiologyCase());
+        assertEquals("CULTURE", test.getMicrobiologyCaseRole());
+        assertEquals(true, test.isCollectedInSets());
+        TestConfigurationHandler.applyMicrobiologyRouting(test, "N", "DIRECT", "N");
+        assertEquals(false, test.isOpensMicrobiologyCase());
+        assertEquals(false, test.isCollectedInSets());
+    }
+
+    @Test
+    public void routing_rejectsSetsOnDirectTestsBeforeChangingRouting() {
+        org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("collectedInSets requires");
+        TestConfigurationHandler.applyMicrobiologyRouting(test, "Y", "DIRECT", "Y");
+    }
+
+    @Test
+    public void routing_rejectsUnknownRole() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("microbiologyCaseRole must be");
+        TestConfigurationHandler.applyMicrobiologyRouting(new org.openelisglobal.test.valueholder.Test(), "Y",
+                "UNKNOWN", "N");
+    }
+
+    @Test
+    public void routing_rejectsMistypedBooleanInsteadOfSilentlyDisablingCases() {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("Microbiology routing flags");
+        TestConfigurationHandler.applyMicrobiologyRouting(new org.openelisglobal.test.valueholder.Test(), "YES",
+                "CULTURE", "N");
+    }
+
     private org.openelisglobal.test.valueholder.Test findTestByPlainName(String testName) throws Exception {
         Method method = TestConfigurationHandler.class.getDeclaredMethod("findTestByPlainName", String.class);
         method.setAccessible(true);

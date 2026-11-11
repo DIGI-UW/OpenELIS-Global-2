@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import java.sql.Timestamp;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
@@ -18,6 +19,9 @@ import org.openelisglobal.common.valueholder.BaseObject;
 @Entity
 @Table(name = "pathology_slide")
 public class PathologySlide extends BaseObject<Integer> {
+
+    /** Width of the level column. */
+    public static final int LEVEL_MAX_LENGTH = 16;
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "pathology_slide_generator")
@@ -40,7 +44,7 @@ public class PathologySlide extends BaseObject<Integer> {
     private String barcode;
 
     /** Depth into the block the section was taken at, such as L1. */
-    @Column(name = "level", length = 16)
+    @Column(name = "level", length = LEVEL_MAX_LENGTH)
     private String level;
 
     /** Dictionary id of the stain applied to this section. */
@@ -63,6 +67,21 @@ public class PathologySlide extends BaseObject<Integer> {
     private String fileType;
 
     private String location;
+
+    /**
+     * When the slide's printed label was checked against its block, by the server
+     * clock; null means it never was.
+     */
+    @Column(name = "label_verified_at")
+    private Timestamp labelVerifiedAt;
+
+    /**
+     * The signed-in user who checked the label, as a system user id; null means it
+     * was never checked.
+     */
+    @Column(name = "label_verified_by", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String labelVerifiedBy;
 
     /**
      * The identifier written on the slide, falling back to its legacy number and
@@ -174,5 +193,21 @@ public class PathologySlide extends BaseObject<Integer> {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public Timestamp getLabelVerifiedAt() {
+        return labelVerifiedAt;
+    }
+
+    public void setLabelVerifiedAt(Timestamp labelVerifiedAt) {
+        this.labelVerifiedAt = labelVerifiedAt;
+    }
+
+    public String getLabelVerifiedBy() {
+        return labelVerifiedBy;
+    }
+
+    public void setLabelVerifiedBy(String labelVerifiedBy) {
+        this.labelVerifiedBy = labelVerifiedBy;
     }
 }

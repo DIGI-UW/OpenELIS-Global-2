@@ -31,6 +31,40 @@ const baseService = () => ({
 });
 
 describe("AmendmentHistoryPanel", () => {
+  it("renders the structured issued snapshot in amendment history", async () => {
+    const service = baseService();
+    service.getCaseReportVersions.mockResolvedValue([
+      {
+        id: "version-1",
+        versionNumber: 1,
+        releaseType: "FINAL",
+        content: null,
+        report: {
+          labUnitName: "Culture unit",
+          classification: "NOT_APPLICABLE",
+          initial: [],
+          cultures: [
+            {
+              id: "row-1",
+              label: "Bottle 1",
+              outcome: "NO_GROWTH",
+              incubationHours: 48,
+            },
+          ],
+          isolates: [],
+          additional: [],
+          notes: [],
+        },
+      },
+    ]);
+    renderPanel({ service });
+    expect(await screen.findByText(/Bottle 1: No growth/)).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Culture findings" }),
+    ).toBeVisible();
+    expect(screen.getByText("Version 1")).toBeVisible();
+  });
+
   it("requires a reason, opens an amendment, and restores focus", async () => {
     const user = userEvent.setup();
     const service = baseService();

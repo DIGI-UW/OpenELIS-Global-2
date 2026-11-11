@@ -2,23 +2,27 @@ import React, { useContext, useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import {
   Accordion,
+  Button,
   Column,
-  Dropdown,
   Grid,
   Heading,
   Loading,
   Section,
   Stack,
+  TextInput,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
+  postToOpenElisServerJsonResponse,
   postToOpenElisServerForPDF,
   hasRole,
 } from "../utils/Utils";
+import { requestFailed } from "../utils/requestOutcome";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext, ConfigurationContext } from "../layout/contexts";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 import { FormattedMessage, useIntl } from "react-intl";
 import PatientHeader from "../common/PatientHeader";
 import "./PathologyDashboard.css";
@@ -38,23 +42,39 @@ import {
   stageLabel,
 } from "./pathologyStages";
 import {
+  advanceBlockedReason,
+  advanceLabelKey,
+  decalcificationFlagFrozen,
   deriveCaseSections,
   deriveRailItems,
-  isStageEnabled,
+  EMBEDDING_SECTION_ID,
+  embeddingStatement,
+  MICROTOMY_SECTION_ID,
   openRequestNames,
+  PROCESSING_SECTION_ID,
   railCurrentIndex,
+  returnBlockedReason,
   sectionBadge,
+  sectionHeader,
+  sectionIdOfStage,
   stageBadgeKind,
 } from "./pathologySections";
 import {
+  blockIdentifier,
   countedRows,
-  needsParentBlock,
+  embeddingSummary,
+  isEmbeddedRow,
+  nextOutstandingCassette,
   objectNaming,
+  slideOnBlockName,
   stripClientKeys,
 } from "./pathologyRows";
 import DeactivateRowDialog from "./DeactivateRowDialog";
+import { focusFirstOf } from "./focus";
 import CaseInformationSection from "./sections/CaseInformationSection";
 import GrossingSection from "./sections/GrossingSection";
+import EmbeddingSection from "./sections/EmbeddingSection";
+import ProcessingSection from "./sections/ProcessingSection";
 import StagePlaceholderSection from "./sections/StagePlaceholderSection";
 import MicrotomySection from "./sections/MicrotomySection";
 import ReviewSection from "./sections/ReviewSection";
@@ -64,9 +84,33 @@ import ReportsSection from "./sections/ReportsSection";
 // The switch that shows a list's deactivated rows, where focus lands once
 // the row it was on has left the list.
 const SHOW_DEACTIVATED_SWITCH = {
-  block: "showDeactivatedCassettes",
-  slide: "showDeactivatedSlides",
+  block: "#showDeactivatedCassettes",
+  slide: "#showDeactivatedSlides",
 };
+
+// The embedding section's own header, where focus lands once no Embed
+// button it could go to is left.
+const EMBEDDING_SECTION_HEADER = sectionHeader(EMBEDDING_SECTION_ID);
+
+const embedButton = (block) => "#embedCassette-" + block.id;
+
+// The return control, where focus goes back to once the reason row closes,
+// and the reason field it opens.
+const RETURN_STAGE_BUTTON = "#returnStage";
+const RETURN_REASON_ID = "returnStageReason";
+
+// The column a return's reason is stored in.
+const RETURN_REASON_MAX_LENGTH = 255;
+
+// The ids of the sentences that say why a return control cannot be pressed,
+// for the controls' aria-describedby. One case view is on a page at a time.
+const RETURN_BLOCKED_HINT_ID = "returnStageBlockedReason";
+const RETURN_CONFIRM_HINT_ID = "returnStageConfirmReason";
+
+const TISSUE_TYPES_URL = "/rest/dictionary/category/pathology_tissue_types";
+
+const STAINS_URL =
+  "/rest/dictionary/category/" + encodeURIComponent("Pathology Stains");
 
 /**
  * The anatomic-pathology case, on the shared case-view shell.
@@ -105,7 +149,6 @@ function PathologyCaseView() {
   // at mount, are remounted and really show what the server just returned.
   const [formVersion, setFormVersion] = useState(0);
 
-  const [statuses, setStatuses] = useState([]);
   const [techniques, setTechniques] = useState([]);
   const [requests, setRequests] = useState([]);
   const [requestStatuses, setRequestStatuses] = useState([]);
@@ -115,6 +158,10 @@ function PathologyCaseView() {
   );
   const [technicianUsers, setTechnicianUsers] = useState([]);
   const [pathologistUsers, setPathologistUsers] = useState([]);
+  // Null until the list has arrived, so an empty list can only ever mean the
+  // laboratory has configured none.
+  const [tissueTypes, setTissueTypes] = useState(null);
+  const [stains, setStains] = useState(null);
   const [loadingConclusions, setLoadingConclusions] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
   const [nextPage, setNextPage] = useState(null);
@@ -125,8 +172,27 @@ function PathologyCaseView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postSavePrintModel, setPostSavePrintModel] = useState(null);
   const [pendingDeactivation, setPendingDeactivation] = useState(null);
+  // The id of the cassette whose embedding is in flight, so no second one
+  // starts before the first has been read back.
+  const [embeddingId, setEmbeddingId] = useState(null);
+  // True while a move of the case to another stage is unanswered. The ref is
+  // the guard, so a second click in the same tick cannot start a second move
+  // from a stage the first may already have left; the state is what renders
+  // the form read-only meanwhile, so nothing typed can be lost to the re-read.
+  const transitioningRef = useRef(false);
+  const [transitioning, setTransitioning] = useState(false);
+  // The inline return row: whether it is open, and the reason typed into it.
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [returnReason, setReturnReason] = useState("");
+  // The selectors, in order of preference, for the control that takes focus
+  // once the case is read back, and, when set, the only controls focus may be
+  // taken from (see focusFirstOf).
   const focusAfterLoad = useRef(null);
-  const [saveRefusedForBlock, setSaveRefusedForBlock] = useState(false);
+  const focusOnlyFrom = useRef(null);
+  const releaseAfterLoad = useRef(null);
+  // Mirrors `dirty` for a server answer that arrives after the render that
+  // sent the request, so it can tell whether there is unsaved work to keep.
+  const dirtyRef = useRef(false);
   const [reportParams, setReportParams] = useState({
     0: {
       submited: false,
@@ -135,12 +201,19 @@ function PathologyCaseView() {
   });
 
   const isPathologist = hasRole(userSessionDetails, "Pathologist");
+  // The stage the case is stored at. Nothing on this screen edits it: it
+  // changes only by a move, and every move reads the case back, so it is
+  // always the stage the server judges a save or a move by.
+  const stage = caseInfo.status ?? null;
+  const decalcificationRequired = Boolean(caseInfo.decalcificationRequired);
+  const flagFrozen = decalcificationFlagFrozen(stage);
 
   const updateCase = (patch) => {
     setCaseInfo((prev) => ({
       ...prev,
       ...(typeof patch === "function" ? patch(prev) : patch),
     }));
+    dirtyRef.current = true;
     setDirty(true);
   };
 
@@ -165,6 +238,12 @@ function PathologyCaseView() {
     if (!componentMounted.current) {
       return;
     }
+    const release = releaseAfterLoad.current;
+    releaseAfterLoad.current = null;
+    if (!loaded) {
+      release?.();
+      return;
+    }
     // The case arrives unassigned when nobody has picked it up yet: the person
     // who opened it is the one doing the work, so record them rather than
     // asking them to say so. The pathologist half only applies once the case
@@ -184,19 +263,37 @@ function PathologyCaseView() {
         userSessionDetails.lastName + "," + userSessionDetails.firstName;
     }
     setCaseInfo(loaded);
+    release?.();
+    dirtyRef.current = false;
     setDirty(false);
-    // A load drops every unsaved slide, so an earlier refusal marks nothing.
-    setSaveRefusedForBlock(false);
-    const focusId = focusAfterLoad.current;
+    const focusTargets = focusAfterLoad.current;
+    const onlyFrom = focusOnlyFrom.current;
     focusAfterLoad.current = null;
-    if (focusId) {
-      setTimeout(() => document.getElementById(focusId)?.focus());
+    focusOnlyFrom.current = null;
+    if (focusTargets) {
+      focusFirstOf(focusTargets, { onlyFrom });
     }
     setCaseLoaded(true);
     setFormVersion((version) => version + 1);
   };
 
-  const reloadCase = () => getFromOpenElisServer(caseUrl, loadCase);
+  // The tissue types and stains are read again with the case because a
+  // refused save can mean one was retired since the page loaded, and
+  // reloading is what the bench is told to do about it. A failed read keeps
+  // the list it had.
+  const reloadCase = () => {
+    getFromOpenElisServer(TISSUE_TYPES_URL, (list) => {
+      if (componentMounted.current && Array.isArray(list)) {
+        setTissueTypes(list);
+      }
+    });
+    getFromOpenElisServer(STAINS_URL, (list) => {
+      if (componentMounted.current && Array.isArray(list)) {
+        setStains(list);
+      }
+    });
+    getFromOpenElisServer(caseUrl, loadCase);
+  };
 
   const loadConclusionData = (res) => {
     if (res && res.displayItems && res.displayItems.length > 0) {
@@ -236,6 +333,15 @@ function PathologyCaseView() {
     );
   };
 
+  // The sentence for a refusal the server names by a message id, in the
+  // reader's language, or null when it names none this build knows; the
+  // server's own words are English and are never shown.
+  // i18n-keys: pathology.error.*
+  const translatedRefusal = (body) =>
+    body?.messageKey && intl.messages[body.messageKey]
+      ? intl.formatMessage({ id: body.messageKey }, body.messageArgs ?? {})
+      : null;
+
   // A network failure never reaches this as a response at all: the post
   // helper catches it and calls back with nothing. A response whose body is
   // not the JSON this endpoint promises is no more of a save than that,
@@ -269,17 +375,19 @@ function PathologyCaseView() {
       // read back rather than assumed.
       reloadCase();
     } else {
-      // The server's own sentence is English and names internal ids, so only
-      // a refusal the bench can act on gets words of its own.
+      let messageId = "error.save.msg";
+      if (body?.messageKey === "clinicalAttachment.uploadHint") {
+        messageId = "clinicalAttachment.uploadHint";
+      } else if (response?.status === 400) {
+        messageId = "pathology.error.reloadCase";
+      } else if (body?.conflict === "designation") {
+        messageId = "pathology.error.designationConflict";
+      }
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id:
-            body?.conflict === "designation"
-              ? "pathology.error.designationConflict"
-              : "error.save.msg",
-        }),
+        message:
+          translatedRefusal(body) ?? intl.formatMessage({ id: messageId }),
       });
     }
   }
@@ -297,6 +405,263 @@ function PathologyCaseView() {
       message: intl.formatMessage({ id: naming.toastKey }, naming.values),
     });
     reloadCase();
+  };
+
+  // Embed cannot be pressed while the form is dirty or saving, but the bench
+  // can type while the request is out. The answer re-reads the case only when
+  // nothing is waiting to be saved; otherwise it marks the one row as a block
+  // and keeps the rest of the form as it stands. The save copies fields onto
+  // the stored rows by id and reads no version from the screen, so the row's
+  // older stamp does no harm. The transition is not destructive, so it asks
+  // for no confirmation.
+  const embedCassette = (block) => {
+    if (embeddingId !== null) {
+      return;
+    }
+    setEmbeddingId(block.id);
+    const designation = blockIdentifier(block);
+    const next = nextOutstandingCassette(caseInfo.blocks, block);
+    postToOpenElisServerJsonResponse(
+      "/rest/pathology/block/" + block.id + "/embed",
+      JSON.stringify({}),
+      (response) => {
+        if (!componentMounted.current) {
+          return;
+        }
+        setEmbeddingId(null);
+        setNotificationVisible(true);
+        if (isEmbeddedRow(response)) {
+          const targets = next
+            ? [embedButton(next), EMBEDDING_SECTION_HEADER]
+            : EMBEDDING_SECTION_HEADER;
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage(
+              { id: "pathology.toast.embedded" },
+              { designation },
+            ),
+          });
+          if (dirtyRef.current) {
+            updateCase((prev) => ({
+              blocks: (prev.blocks ?? []).map((row) =>
+                String(row.id) === String(block.id)
+                  ? { ...row, cassetteState: response.cassetteState }
+                  : row,
+              ),
+            }));
+            focusFirstOf(targets, { unlessHeld: true });
+          } else {
+            focusAfterLoad.current = targets;
+            reloadCase();
+          }
+        } else {
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message:
+              translatedRefusal(response) ??
+              intl.formatMessage(
+                { id: "pathology.toast.embedFailed" },
+                { designation },
+              ),
+          });
+          // A refusal can mean another change landed on the row, so a clean
+          // form is read again to show the row as it is stored.
+          const targets = [embedButton(block), EMBEDDING_SECTION_HEADER];
+          if (dirtyRef.current) {
+            focusFirstOf(targets, { unlessHeld: true });
+          } else {
+            focusAfterLoad.current = targets;
+            reloadCase();
+          }
+        }
+      },
+    );
+  };
+
+  // Checks one slide's label against its block (FR-7.3 to FR-7.5) and
+  // resolves what came of it: `{ ok: true, verification }`, `{ ok: false,
+  // mismatch: { slideBarcode, blockBarcode } }` when the label belongs to
+  // another block, or `{ ok: false }` for any other refusal, which is told
+  // here. A check changes nothing the save posts, so a verified slide is
+  // written into the case without marking the form dirty and without reading
+  // the case again, and nothing typed meanwhile is lost. Where focus goes
+  // next, and whether a check is in flight, the section keeps for itself.
+  // Answered after the case view has gone, it resolves nothing, so nothing
+  // is written into a section that went with it.
+  const verifySlideLabel = (slideId, block, slideLabel) =>
+    new Promise((resolve) => {
+      const slide = (caseInfo.slides ?? []).find(
+        (row) => String(row.id) === String(slideId),
+      );
+      const name = slide ? slideOnBlockName(slide, caseInfo.blocks) : "";
+      postToOpenElisServerJsonResponse(
+        "/rest/pathology/slide/" + slideId + "/verify-label",
+        JSON.stringify({ block, slide: slideLabel }),
+        (response) => {
+          if (!componentMounted.current) {
+            return;
+          }
+          if (!requestFailed(response)) {
+            setCaseInfo((prev) => ({
+              ...prev,
+              labelVerifications: {
+                ...(prev.labelVerifications ?? {}),
+                [String(slideId)]: response.labelVerification,
+              },
+            }));
+            setNotificationVisible(true);
+            addNotification({
+              kind: NotificationKinds.success,
+              title: intl.formatMessage({ id: "notification.title" }),
+              message: intl.formatMessage(
+                { id: "pathology.toast.labelVerified" },
+                { slide: name },
+              ),
+            });
+            resolve({ ok: true, verification: response.labelVerification });
+            return;
+          }
+          if (response?.conflict === "label") {
+            resolve({
+              ok: false,
+              mismatch: {
+                slideBarcode: response.messageArgs?.slideBarcode,
+                blockBarcode: response.messageArgs?.blockBarcode,
+              },
+            });
+            return;
+          }
+          setNotificationVisible(true);
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message:
+              translatedRefusal(response) ??
+              intl.formatMessage({ id: "pathology.toast.verifyFailed" }),
+          });
+          // A refusal can mean another change landed on the slide, so a
+          // clean form is read again to show the slide as it is stored.
+          if (!dirtyRef.current) {
+            reloadCase();
+          }
+          resolve({ ok: false });
+        },
+      );
+    });
+
+  // Moves the case to another stage as its own request, naming the stage the
+  // page shows so a page someone else has overtaken is refused rather than
+  // moving the case twice. While the request is out the form is read-only and
+  // Save is held, so the form is clean when the answer lands and reading the
+  // case back loses nothing typed; should it not be, the form is left as it
+  // stands and the next save or discard reads the case. A refusal the server
+  // names is shown in its own words, and the case is read again, since a
+  // refusal can mean another change landed after the page was read.
+  //
+  // Focus follows the case to the section of the stage it now stands at, or
+  // to the return control where that section is not this person's to open,
+  // but only away from the control that started the move: a person who has
+  // gone on to another control meanwhile keeps it.
+  const moveCase = (direction, payload, toastKey, startedBy) => {
+    if (transitioningRef.current) {
+      return;
+    }
+    transitioningRef.current = true;
+    setTransitioning(true);
+    postToOpenElisServerJsonResponse(
+      caseUrl + "/" + direction,
+      JSON.stringify({ from: stage, ...payload }),
+      (response) => {
+        if (!componentMounted.current) {
+          return;
+        }
+        const release = () => {
+          transitioningRef.current = false;
+          setTransitioning(false);
+        };
+        setNotificationVisible(true);
+        const readBack = (targets) => {
+          if (dirtyRef.current) {
+            release();
+            return;
+          }
+          focusAfterLoad.current = targets;
+          focusOnlyFrom.current = startedBy ? [startedBy] : [];
+          releaseAfterLoad.current = release;
+          reloadCase();
+        };
+        if (!requestFailed(response)) {
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage(
+              { id: toastKey },
+              { stage: stageLabel(intl, response.status) },
+            ),
+          });
+          setReturnOpen(false);
+          setReturnReason("");
+          const sectionId = sectionIdOfStage(response.status);
+          readBack(
+            sectionId
+              ? [sectionHeader(sectionId), RETURN_STAGE_BUTTON]
+              : [RETURN_STAGE_BUTTON],
+          );
+          return;
+        }
+        const conflict =
+          response?.conflict === "stage" || response?.conflict === "version";
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message:
+            translatedRefusal(response) ??
+            intl.formatMessage({
+              id: conflict ? "pathology.error.stageConflict" : "error.save.msg",
+            }),
+        });
+        if (conflict) {
+          // The stage the reason was typed against has gone, so the row is
+          // closed rather than left naming a different target.
+          setReturnOpen(false);
+          setReturnReason("");
+          readBack(direction === "return" ? [RETURN_STAGE_BUTTON] : null);
+        } else if (response?.status === 400) {
+          readBack(null);
+        } else {
+          release();
+        }
+      },
+    );
+  };
+
+  const advanceCase = (event) =>
+    moveCase(
+      "advance",
+      {},
+      "pathology.toast.stageAdvanced",
+      event?.currentTarget,
+    );
+
+  const returnCase = (event) =>
+    moveCase(
+      "return",
+      { reason: returnReason.trim() },
+      "pathology.toast.stageReturned",
+      event?.currentTarget,
+    );
+
+  const openReturn = () => {
+    setReturnOpen(true);
+    focusFirstOf("#" + RETURN_REASON_ID);
+  };
+
+  const cancelReturn = () => {
+    setReturnOpen(false);
+    setReturnReason("");
+    focusFirstOf(RETURN_STAGE_BUTTON);
   };
 
   const reportStatus = async (pdfGenerated, blob, index) => {
@@ -349,33 +714,26 @@ function PathologyCaseView() {
     if (isSubmitting) {
       return;
     }
-    // The server would refuse it anyway, in a sentence naming no row.
-    const refused = (caseInfo.slides ?? []).some(needsParentBlock);
-    setSaveRefusedForBlock(refused);
-    if (refused) {
-      setNotificationVisible(true);
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "pathology.locked.slideNeedsBlock" }),
-      });
-      return;
-    }
     setIsSubmitting(true);
     setPostSavePrintModel(null);
     let submitValues = {
       assignedTechnicianId: caseInfo.assignedTechnicianId,
       assignedPathologistId: caseInfo.assignedPathologistId,
-      status: caseInfo.status,
       blocks: stripClientKeys(caseInfo.blocks),
       slides: stripClientKeys(caseInfo.slides),
       reports: caseInfo.reports,
       grossExam: caseInfo.grossExam,
+      decalcificationRequired,
       microscopyExam: caseInfo.microscopyExam,
       conclusionText: caseInfo.conclusionText,
       release: caseInfo.release != undefined ? caseInfo.release : false,
       referToImmunoHistoChemistry: caseInfo.referToImmunoHistoChemistry,
     };
+    // The run reference is written once per processing entry, so it is sent
+    // only while the server says it can still be recorded.
+    if (caseInfo.runReferenceEditable) {
+      submitValues = { ...submitValues, runReference: caseInfo.runReference };
+    }
     if (caseInfo.immunoHistoChemistryTestIds) {
       submitValues = {
         ...submitValues,
@@ -417,7 +775,6 @@ function PathologyCaseView() {
     setNextPage(null);
     setPreviousPage(null);
     setPagination(false);
-    getFromOpenElisServer("/rest/displayList/PATHOLOGY_STATUS", setStatuses);
     getFromOpenElisServer(
       "/rest/displayList/PATHOLOGY_TECHNIQUES",
       setTechniques,
@@ -440,7 +797,7 @@ function PathologyCaseView() {
     );
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
     getFromOpenElisServer("/rest/users/Pathologist", setPathologistUsers);
-    getFromOpenElisServer(caseUrl, loadCase);
+    reloadCase();
 
     return () => {
       componentMounted.current = false;
@@ -453,12 +810,18 @@ function PathologyCaseView() {
     { label: "breadcrumb.caseView", link: "" },
   ];
 
-  const knownStage = PATHOLOGY_STAGES.includes(caseInfo.status);
+  const knownStage = PATHOLOGY_STAGES.includes(stage);
   const sections = deriveCaseSections({
     intl,
-    status: caseInfo.status,
+    status: stage,
     isPathologist,
     configurationProperties,
+    decalcificationRequired,
+    // Retired slides count: they are on record, and a stage switched off
+    // must still show them.
+    sectionHasRows: (candidate) =>
+      candidate.id === MICROTOMY_SECTION_ID &&
+      (caseInfo.slides ?? []).length > 0,
   });
   const openNames = openRequestNames(caseInfo.requests);
 
@@ -473,22 +836,50 @@ function PathologyCaseView() {
             updateCase={updateCase}
             readOnly={readOnly}
             technicianUsers={technicianUsers}
+            tissueTypes={tissueTypes}
+            decalcificationFlagFrozen={flagFrozen}
             dirty={dirty}
             saving={isSubmitting}
+            moving={transitioning}
             onDeactivate={setPendingDeactivation}
           />
         );
-      case "pathology-section-microtomy":
+      case PROCESSING_SECTION_ID:
+        return (
+          <ProcessingSection
+            caseInfo={caseInfo}
+            updateCase={updateCase}
+            readOnly={readOnly}
+          />
+        );
+      case EMBEDDING_SECTION_ID:
+        return (
+          <EmbeddingSection
+            caseInfo={caseInfo}
+            updateCase={updateCase}
+            readOnly={readOnly}
+            dirty={dirty}
+            saving={isSubmitting}
+            moving={transitioning}
+            embeddingId={embeddingId}
+            onEmbed={embedCassette}
+          />
+        );
+      case MICROTOMY_SECTION_ID:
         return (
           <MicrotomySection
             caseInfo={caseInfo}
             updateCase={updateCase}
             readOnly={readOnly}
+            untracked={Boolean(section.readOnlyBecauseUntracked)}
+            stains={stains}
+            configurationProperties={configurationProperties}
             onSlideFile={(index, file) => attachFile("slides", index, file)}
             dirty={dirty}
             saving={isSubmitting}
-            saveRefusedForBlock={saveRefusedForBlock}
+            moving={transitioning}
             onDeactivate={setPendingDeactivation}
+            onVerifyLabel={verifySlideLabel}
           />
         );
       case "pathology-section-review":
@@ -539,68 +930,176 @@ function PathologyCaseView() {
     }
   };
 
-  // Every stage this laboratory tracks, plus the one the case already stands
-  // at even when the laboratory has since stopped tracking it, because a case
-  // must never be unable to say where it is. The list arrives from the server
-  // in bench order (FR-2.1) carrying an English value; the label is localized
-  // here while the item's id stays the raw enum name the save payload and the
-  // backend expect.
-  const stageItems = statuses.filter(
-    (status) =>
-      isStageEnabled(status.id, configurationProperties) ||
-      status.id === caseInfo.status,
-  );
+  // Where the case can be sent on to and back to, as the server computes it
+  // from the stored case with the rule its own move endpoints apply: a stage
+  // the laboratory does not track, or a decalcification grossing did not
+  // flag, is skipped there. The case is read again after every save and
+  // move, and neither move can be pressed with unsaved work, so the stored
+  // case is the one these describe.
+  const nextStage = caseInfo.nextStage ?? null;
+  const previousStage = caseInfo.previousStage ?? null;
+  const advanceBlocked = advanceBlockedReason(intl, caseInfo, {
+    storedStatus: stage,
+    dirty,
+    saving: isSubmitting,
+    moving: transitioning,
+  });
+  const returnBlocked = returnBlockedReason({
+    storedStatus: stage,
+    previousStage,
+    dirty,
+    saving: isSubmitting,
+    moving: transitioning,
+  });
+  // The confirm button's own reason: the return control's first, since a
+  // reason typed into a page that cannot move the case changes nothing.
+  const returnConfirmBlocked =
+    returnBlocked ??
+    (returnReason.trim() === ""
+      ? { key: "pathology.locked.returnReasonRequired" }
+      : null);
+  const blockedText = (blocked) =>
+    blocked ? intl.formatMessage({ id: blocked.key }, blocked.values) : null;
 
-  // A Carbon Dropdown rather than a Select: the bar sits at the foot of a long
-  // page, where a native select opens its menu below itself and the browser
-  // clips it against the window. direction="top" opens upward, in the page's
-  // own markup.
-  //
-  // The hint is the control's own helperText rather than a span beside it, so
-  // that Carbon wires it to the button with aria-describedby and it is
-  // announced with the control it belongs to.
+  // One primary whose label names where the case goes next (S-7.2). From
+  // Ready for Pathologist on there is none: the pathologist's own actions
+  // move the case from there. A next stage this build has no label for gets
+  // no primary either, rather than a button with no words.
+  const advanceKey = advanceLabelKey(nextStage);
+  const primary = advanceKey
+    ? {
+        labelKey: advanceKey,
+        disabledReasonKey: advanceBlocked?.key,
+        disabledReasonValues: advanceBlocked?.values,
+        onClick: advanceCase,
+      }
+    : undefined;
+
+  // The stage as text, and the return beside it. A return is not
+  // destructive, so its reason is asked for inline rather than in a modal,
+  // and it stays out of the action group, which holds three buttons at most.
   const statusControl = (
-    // Bounded, because a Carbon dropdown's wrapper is a block whose helper
-    // text has no width of its own: as a flex item in the action bar the
-    // group would otherwise take the width of the whole hint sentence and
-    // push the buttons onto a line of their own.
     <div className="pathology-case-view__stage-control">
-      <Dropdown
-        id="status"
-        size="sm"
-        direction="top"
-        // The same word the bar shows beside it, so what a sighted user reads
-        // as the label is what assistive technology is told it is.
-        titleText={intl.formatMessage({ id: "common.status" })}
-        hideLabel
-        helperText={intl.formatMessage({
-          id: "pathology.banner.transitionsLater",
-        })}
-        label={intl.formatMessage({ id: "label.button.select.status" })}
-        items={stageItems}
-        itemToString={(item) =>
-          item ? stageLabel(intl, item.id, item.value) : ""
-        }
-        selectedItem={
-          stageItems.find((status) => status.id === caseInfo.status) ?? null
-        }
-        onChange={({ selectedItem }) =>
-          selectedItem && updateCase({ status: selectedItem.id })
-        }
-      />
+      <span id="caseStage" className="pathology-case-view__stage-readout">
+        <span className="cds--visually-hidden">
+          <FormattedMessage id="common.status" />{" "}
+        </span>
+        {knownStage ? (
+          stageLabel(intl, stage)
+        ) : (
+          <FormattedMessage id="caseView.label.notRecorded" />
+        )}
+      </span>
+      {!returnOpen && (
+        <>
+          <Button
+            kind="ghost"
+            size="sm"
+            id="returnStage"
+            disabled={Boolean(returnBlocked)}
+            title={blockedText(returnBlocked) ?? undefined}
+            aria-describedby={
+              returnBlocked ? RETURN_BLOCKED_HINT_ID : undefined
+            }
+            onClick={openReturn}
+          >
+            <FormattedMessage id="pathology.action.returnStage" />
+          </Button>
+          {returnBlocked && (
+            <span id={RETURN_BLOCKED_HINT_ID} className="cds--visually-hidden">
+              {blockedText(returnBlocked)}
+            </span>
+          )}
+        </>
+      )}
+      {returnOpen && (
+        <div className="pathology-case-view__return-row">
+          <TextInput
+            id={RETURN_REASON_ID}
+            size="sm"
+            labelText={
+              <>
+                {intl.formatMessage({ id: "common.reason" })}
+                <RequiredMarker />
+              </>
+            }
+            {...requiredProps()}
+            helperText={intl.formatMessage({
+              id: "pathology.label.returnReasonHelper",
+            })}
+            maxLength={RETURN_REASON_MAX_LENGTH}
+            value={returnReason}
+            onChange={(e) => setReturnReason(e.target.value)}
+          />
+          <Button
+            kind="secondary"
+            size="sm"
+            id="returnStageConfirm"
+            disabled={Boolean(returnConfirmBlocked)}
+            title={blockedText(returnConfirmBlocked) ?? undefined}
+            aria-describedby={
+              returnConfirmBlocked ? RETURN_CONFIRM_HINT_ID : undefined
+            }
+            onClick={returnCase}
+          >
+            <FormattedMessage
+              id="pathology.action.returnTo"
+              values={{
+                stage: previousStage ? stageLabel(intl, previousStage) : "",
+              }}
+            />
+          </Button>
+          {/* Held while the return is out: closing the row then would
+              drop focus on the page while the case still moves. */}
+          <Button
+            kind="ghost"
+            size="sm"
+            id="returnStageCancel"
+            disabled={transitioning}
+            onClick={cancelReturn}
+          >
+            <FormattedMessage id="common.cancel" />
+          </Button>
+          {returnConfirmBlocked && (
+            <span
+              id={RETURN_CONFIRM_HINT_ID}
+              className="case-view__locked-hint"
+            >
+              {blockedText(returnConfirmBlocked)}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
+
+  const embedding = embeddingStatement(intl, {
+    summary: embeddingSummary(caseInfo.blocks),
+    status: stage,
+    configurationProperties,
+  });
 
   const summaryRows = [
     {
       id: "stage",
       labelKey: "pathology.label.stage",
-      value: knownStage ? stageLabel(intl, caseInfo.status) : null,
+      value: knownStage ? stageLabel(intl, stage) : null,
+    },
+    {
+      id: "decalcification",
+      labelKey: "pathology.label.decalcificationRequired",
+      value: decalcificationRequired,
     },
     {
       id: "blocks",
       labelKey: "pathology.label.cassettes",
       value: countedRows(caseInfo.blocks).length,
+    },
+    {
+      id: "embedding",
+      labelKey: "pathology.stage.embedding",
+      value: embedding.value,
+      title: embedding.title,
     },
     {
       id: "slides",
@@ -682,8 +1181,8 @@ function PathologyCaseView() {
             statusTag={
               knownStage ? (
                 <StatusBadge
-                  kind={stageBadgeKind(caseInfo.status)}
-                  textKey={stageDisplayKey(caseInfo.status)}
+                  kind={stageBadgeKind(stage)}
+                  textKey={stageDisplayKey(stage)}
                 />
               ) : null
             }
@@ -721,12 +1220,12 @@ function PathologyCaseView() {
                   <ProgressRail
                     items={deriveRailItems(sections, {
                       intl,
-                      status: caseInfo.status,
+                      status: stage,
                       reportCount: (caseInfo.reports ?? []).length,
                       openRequestNames: openNames,
                       caseInfo,
                     })}
-                    currentIndex={railCurrentIndex(sections, caseInfo.status)}
+                    currentIndex={railCurrentIndex(sections, stage)}
                     onNavigate={(id) =>
                       document
                         .getElementById(id)
@@ -739,9 +1238,10 @@ function PathologyCaseView() {
                   <CaseActionBar
                     status={statusControl}
                     dirty={dirty}
-                    saving={isSubmitting}
+                    saving={isSubmitting || transitioning}
                     onDiscard={reloadCase}
                     onSaveDraft={save}
+                    primary={primary}
                   />
                 }
               >
@@ -761,9 +1261,12 @@ function PathologyCaseView() {
                       })}
                       defaultOpen={section.openByDefault}
                     >
+                      {/* Read-only while a move is out, so nothing typed can
+                          be lost to the read-back that follows it. */}
                       {sectionBody(
                         section,
-                        section.state === SECTION_STATE.READ_ONLY,
+                        section.state === SECTION_STATE.READ_ONLY ||
+                          transitioning,
                       )}
                     </CaseSection>
                   ))}

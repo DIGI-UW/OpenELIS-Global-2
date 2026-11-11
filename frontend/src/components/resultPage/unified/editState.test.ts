@@ -168,3 +168,25 @@ describe("editState machine", () => {
     expect(nextRowState("DIRTY", { type: "EDIT_CLICKED" })).toBe("DIRTY");
   });
 });
+
+describe("OGC-1200 WAITING: a pending test whose analyzer value waits in a run", () => {
+  it("starts WAITING only when nothing is saved and a run holds its value", () => {
+    expect(initialRowState(false, true)).toBe("WAITING");
+    expect(initialRowState(true, true)).toBe("SAVED");
+    expect(initialRowState(false, false)).toBe("EMPTY");
+  });
+
+  it("is neither editable nor savable, and no event moves it", () => {
+    expect(isRowEditable("WAITING")).toBe(false);
+    expect(showSave("WAITING")).toBe(false);
+    expect(showEdit("WAITING")).toBe(false);
+    for (const type of [
+      "VALUE_CHANGED",
+      "DISPOSITION_CHANGED",
+      "EDIT_CLICKED",
+      "SAVE_SUCCEEDED",
+    ] as const) {
+      expect(nextRowState("WAITING", { type })).toBe("WAITING");
+    }
+  });
+});

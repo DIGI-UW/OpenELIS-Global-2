@@ -5,3 +5,6 @@ analyzer-window-schema
 pathology-stage-descriptions
 analyzer-unpinned-mapping
 pathology-block-slide-identity
+pathology-grossing
+pathology-stage-event
+pathology-slide-label-verification

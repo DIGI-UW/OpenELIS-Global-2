@@ -4,6 +4,11 @@
 # silently mis-serves HTTPS).
 
 services:
+  # The proxy links the shared proxy identity to these certificates, and the
+  # initializer validates that identity on every start.
+  certs:
+    volumes:
+      - ../../volume/letsencrypt:/etc/letsencrypt:ro
   proxy:
     volumes:
       - certs-vol:/etc/nginx/certs/

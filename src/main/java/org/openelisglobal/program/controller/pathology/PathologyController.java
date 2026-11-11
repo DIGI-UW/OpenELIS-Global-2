@@ -10,15 +10,17 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.StaleStateException;
-import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.rest.util.DashboardPage;
 import org.openelisglobal.common.rest.util.DashboardPaging;
 import org.openelisglobal.program.bean.PathologyDashBoardCount;
 import org.openelisglobal.program.service.PathologyCaseRuleException;
 import org.openelisglobal.program.service.PathologyDisplayService;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.service.PathologySampleService.LabelVerification;
 import org.openelisglobal.program.service.ProgramSampleLabUnitScope;
 import org.openelisglobal.program.util.PathologyStages;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
@@ -43,7 +45,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-public class PathologyController extends BaseRestController {
+public class PathologyController extends PathologyRestController {
 
     @Autowired
     private PathologySampleService pathologySampleService;
@@ -220,6 +222,85 @@ public class PathologyController extends BaseRestController {
                         .status(HttpStatus.NOT_FOUND).body(Map.of("error", "No pathology block with id " + blockId)));
     }
 
+    /**
+     * Embeds a cassette; a retired one is refused with the sentence the service
+     * raised, and a row another change reached first is a conflict.
+     */
+    @PostMapping(value = "/rest/pathology/block/{blockId}/embed", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> embedBlock(@PathVariable("blockId") Integer blockId, HttpServletRequest request) {
+        PathologySample owner = pathologySampleService.getCaseOfBlock(blockId);
+        if (owner != null) {
+            programSampleLabUnitScope.requireVisible(getSysUserId(request), owner);
+        }
+        try {
+            return pathologySampleService.embedBlock(blockId, getSysUserId(request))
+                    .<ResponseEntity<?>>map(block -> ResponseEntity.ok(toMap(block)))
+                    .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(Map.of("error", "No pathology block with id " + blockId)));
+        } catch (PathologyCaseRuleException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            // Two embeds of one cassette race on its version check, and the one
+            // that loses has to say so rather than fail.
+            if (concurrentSaveConflict(e)) {
+                return versionConflict("cassette");
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Checks a slide's printed label against its block (FR-7.3 to FR-7.5). A match
+     * answers 200 with the slide and who verified it when; a mismatch answers 409
+     * {@code conflict: "label"} naming both identifiers as they were given, and is
+     * recorded all the same; a blank field, a retired or blockless slide and a
+     * signed-out case answer 400 with the message id; an unknown slide, or one on a
+     * case outside the user's units, 404; and a verification that lost the slide's
+     * version check to another 409 {@code conflict: "version"}.
+     */
+    @PostMapping(value = "/rest/pathology/slide/{slideId}/verify-label", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> verifySlideLabel(@PathVariable("slideId") Integer slideId,
+            @RequestBody(required = false) LabelVerificationRequest body, HttpServletRequest request) {
+        PathologySample owner = pathologySampleService.getCaseOfSlide(slideId);
+        if (owner != null) {
+            programSampleLabUnitScope.requireVisible(getSysUserId(request), owner);
+        }
+        String block = body == null ? null : StringUtils.trimToNull(body.block);
+        String slide = body == null ? null : StringUtils.trimToNull(body.slide);
+        Optional<LabelVerification> outcome;
+        try {
+            outcome = pathologySampleService.verifySlideLabel(slideId, block, slide, getSysUserId(request));
+        } catch (RuntimeException e) {
+            // Two checks of one slide race on its version check, and the one that
+            // loses has to say so rather than fail.
+            if (concurrentSaveConflict(e)) {
+                return versionConflict("slide");
+            }
+            throw e;
+        }
+        if (outcome.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "No pathology slide with id " + slideId));
+        }
+        LabelVerification verification = outcome.get();
+        if (!verification.match()) {
+            // No status key: the screen's request helper overwrites one with the HTTP
+            // status.
+            Map<String, Object> mismatch = new LinkedHashMap<>();
+            mismatch.put("conflict", "label");
+            mismatch.put("messageKey", "pathology.banner.labelMismatch");
+            mismatch.put("messageArgs", Map.of("slideBarcode", slide, "blockBarcode", block));
+            mismatch.put("error",
+                    "Slide label " + slide + " does not match block " + block + ". The slide stays unverified.");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(mismatch);
+        }
+        Map<String, Object> row = toMap(verification.slide());
+        row.put("labelVerification", pathologyDisplayService.labelVerificationOf(verification.slide()));
+        return ResponseEntity.ok(row);
+    }
+
     @PostMapping(value = "/rest/pathology/slide/{slideId}/deactivate", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<?> deactivateSlide(@PathVariable("slideId") Integer slideId,
@@ -255,6 +336,14 @@ public class PathologyController extends BaseRestController {
         row.put("blockId", slide.getBlockId());
         row.put("active", slide.isActive());
         return row;
+    }
+
+    /**
+     * The block and the slide label as scanned, or typed where there is no scanner.
+     */
+    public static class LabelVerificationRequest {
+        public String block;
+        public String slide;
     }
 
     /**
