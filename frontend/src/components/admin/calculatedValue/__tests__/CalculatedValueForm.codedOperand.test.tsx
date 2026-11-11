@@ -187,6 +187,9 @@ describe("Calculated Value compares coded results with answers", () => {
       screen.getByText("Detected", { selector: "div" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("101", { selector: "div" })).toBeNull();
+    expect(
+      screen.getByText(/Target call/, { selector: "div" }),
+    ).toBeInTheDocument();
     expect(select("0_2_answer").value).toBe("101");
 
     fireEvent.submit(select("0_2_answer").closest("form") as HTMLFormElement);
