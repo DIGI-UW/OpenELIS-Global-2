@@ -354,8 +354,21 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     list[index].operations[operationIndex].value = id;
     // Changing the test invalidates the component chosen under the old one.
     list[index].operations[operationIndex].componentId = null;
+    clearAnswersAfter(list[index].operations, operationIndex);
     setCalculationList(list);
   }
+
+  // An answer belongs to the operand before it; a new operand voids it.
+  const clearAnswersAfter = (operations: any[], operandIndex: number) => {
+    for (let i = operandIndex + 1; i < operations.length; i++) {
+      if (operations[i].type === "TEST_RESULT") {
+        break;
+      }
+      if (operations[i].type === "ANSWER") {
+        operations[i].value = "";
+      }
+    }
+  };
 
   /**
    * The components the final result may be written to, read from the test the
@@ -364,8 +377,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
    * a test.
    *
    * <p>Every component, not just the numeric ones: a calculation may set a coded
-   * interpretation, and restricting this list to numbers - the rule the operands
-   * follow - left those components unselectable.
+   * interpretation.
    */
   const destinationComponentsFor = (index: number) => {
     const tests = sampleTestList["FINAL_RESULT"][index] || [];
@@ -449,6 +461,9 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     const { name, value } = e.target;
     const list = [...calculationList];
     list[index]["operations"][operationIndex][name] = value;
+    if (name === "componentId") {
+      clearAnswersAfter(list[index].operations, operationIndex);
+    }
     setCalculationList(list);
   };
 
