@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.dictionary.service.DictionaryService;
@@ -102,6 +103,9 @@ public class VectorDeconvolutionRestController extends BaseRestController {
         try {
             DeconvolutionResult result = deconvolutionService.initiate(request, getSysUserId(http));
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
+        } catch (LocalizedValidationException e) {
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("messageKey", e.getErrorCode(), "messageArgs", e.getParams()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(errorBody(e.getMessage()));
         } catch (IllegalStateException e) {

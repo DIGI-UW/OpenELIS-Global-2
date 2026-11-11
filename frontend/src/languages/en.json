@@ -7509,6 +7509,7 @@
   "vectorDec.col.results": "Results",
   "vectorDec.col.status": "Status",
   "vectorDec.empty": "No deconvolution tasks.",
+  "vectorDec.error.poolCountExceedsMembers": "You requested {requested} sub-pools, but this pool has only {max} specimens. Reduce the number of sub-pools.",
   "vectorDec.error.initiateFailed": "Could not initiate deconvolution.",
   "vectorDec.error.loadWorklist": "Could not load deconvolution worklist.",
   "vectorDec.error.minPoolCount": "Number of pools must be at least 2.",

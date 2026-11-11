@@ -15,6 +15,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
+import { resolveApiErrorMessage } from "../utils/Utils";
 import {
   VectorDeconvolutionAPI,
   VectorSamplingSiteAPI,
@@ -470,9 +471,11 @@ const VectorInlineDeconPanel = ({
         addNotification({
           kind: NotificationKinds.error,
           title: intl.formatMessage({ id: "notification.title" }),
-          message:
-            err.message ||
-            intl.formatMessage({ id: "vectorDec.error.initiateFailed" }),
+          message: resolveApiErrorMessage(
+            intl,
+            err.payload,
+            "vectorDec.error.initiateFailed",
+          ),
         });
         setNotificationVisible(true);
       })

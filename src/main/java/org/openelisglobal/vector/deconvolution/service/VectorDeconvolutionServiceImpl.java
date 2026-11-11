@@ -3,9 +3,11 @@ package org.openelisglobal.vector.deconvolution.service;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -113,9 +115,11 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         List<SampleItem> originalMembers = vectorPoolService.getMembersByPoolId(originalPool.getId());
         // Every sub-pool takes at least one member, so the pool count is bounded by
         // the members; the loops below run once per sub-pool.
-        if (request.getPoolCount() < 1 || request.getPoolCount() > originalMembers.size()) {
-            throw new IllegalArgumentException("poolCount must be between 1 and the pool's " + originalMembers.size()
-                    + " members, not " + request.getPoolCount());
+        if (request.getPoolCount() > originalMembers.size()) {
+            throw new LocalizedValidationException("vectorDec.error.poolCountExceedsMembers",
+                    "The number of sub-pools exceeds the available specimens.",
+                    Map.of("max", String.valueOf(originalMembers.size()), "requested",
+                            String.valueOf(request.getPoolCount())));
         }
         if (request.getOrganismsPerPool() < 1
                 && (request.getMemberAssignments() == null || request.getMemberAssignments().isEmpty())) {

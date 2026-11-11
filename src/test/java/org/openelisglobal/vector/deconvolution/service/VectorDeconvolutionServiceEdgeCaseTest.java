@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionInitiateRequest;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionOutcome;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionResult;
@@ -72,8 +73,9 @@ public class VectorDeconvolutionServiceEdgeCaseTest extends BaseWebContextSensit
         try {
             deconvolutionService.initiate(request, SYS_USER_ID);
             fail("a million sub-pools were accepted");
-        } catch (IllegalArgumentException refused) {
-            assertTrue(refused.getMessage(), refused.getMessage().contains("poolCount"));
+        } catch (LocalizedValidationException refused) {
+            assertEquals("vectorDec.error.poolCountExceedsMembers", refused.getErrorCode());
+            assertEquals(Map.of("max", "6", "requested", "1000000"), refused.getParams());
         }
 
         assertEquals(poolsBefore,
