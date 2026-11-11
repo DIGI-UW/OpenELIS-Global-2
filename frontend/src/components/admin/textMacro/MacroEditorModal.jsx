@@ -116,7 +116,7 @@ const MacroEditorModal = ({
         <TextArea
           id="text-macro-expansion"
           labelText={intl.formatMessage({ id: "textMacro.text" })}
-          maxLength={500}
+          maxCount={500}
           enableCounter
           value={draft.expansionText}
           onChange={(event) =>

@@ -99,6 +99,20 @@ describe("MacroEditorModal", () => {
     expect(save).toBeEnabled();
   });
 
+  it("stops phrase text at 500 characters and shows the count", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    const text = screen.getByLabelText("Phrase text");
+
+    expect(text).toHaveAttribute("maxlength", "500");
+    expect(screen.getByText("0/500")).toBeInTheDocument();
+    await user.click(text);
+    await user.paste("x".repeat(600));
+
+    expect(text.value).toHaveLength(500);
+    expect(screen.getByText("500/500")).toBeInTheDocument();
+  });
+
   it("shows a reserved-code rejection on the code field", () => {
     renderEditor({
       error: {
