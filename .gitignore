@@ -32,6 +32,10 @@ yarn-error.log*
 #Developer specific docker-compose
 /docker-compose.yml
 dev/
+# Track only the explicit test login fixture; other local dev files stay ignored.
+!/dev/
+/dev/*
+!/dev/initial-admin-password
 # Additional build files
 src/main/resources/adminPassword.txt
 /OEInstaller/
@@ -95,6 +99,8 @@ projects/*/volume/
 !src/main/resources/configuration/test-results/**
 !projects/analyzer-harness/dictionary/test-results/
 !projects/analyzer-harness/dictionary/test-results/**
+!volume/configuration/backend/test-results/
+!volume/configuration/backend/test-results/**
 # Note: frontend/playwright/ test sources are tracked (not ignored)
 *.pyc
 __pycache__/
@@ -170,3 +176,6 @@ volume/nce-attachments/
 # Installed module JARs (volume/modules/README.md stays)
 /volume/modules/*.jar
 /volume/modules/*.disabled
+
+# Local installation credentials
+/secrets/

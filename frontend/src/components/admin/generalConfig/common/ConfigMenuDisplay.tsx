@@ -26,6 +26,9 @@ import { AlertDialog } from "../../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import GenericConfigEdit from "../../generalConfig/common/GenericConfigEdit";
+import ValidationPolicySection, {
+  VALIDATION_POLICY_API,
+} from "./ValidationPolicySection";
 import { settingDescription, settingName } from "./settingLabels";
 import { matchesSearch } from "../../../common/searchText";
 
@@ -36,6 +39,13 @@ interface ConfigMenuDisplayProps {
 
 interface ConfigLocalization {
   localesAndValuesOfLocalesWithValues?: string;
+}
+
+const RESULT_CONFIGURATION_MENU = "ResultConfigurationMenu";
+const REPLACED_BY_VALIDATION_POLICY = "validate all results";
+
+interface ValidationPolicy {
+  enabled: boolean;
 }
 
 interface ConfigMenuItem {
@@ -144,6 +154,10 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
   const { data: formEntryConfigMenuList } = useServerData<ConfigMenuResponse>(
     `/rest/${props.menuType}`,
   );
+  const { data: validationPolicy } = useServerData<ValidationPolicy>(
+    props.menuType === RESULT_CONFIGURATION_MENU ? VALIDATION_POLICY_API : null,
+  );
+  const validationPolicyEnabled = Boolean(validationPolicy?.enabled);
 
   useEffect(() => {
     const updateConfigList = () => {
@@ -188,15 +202,22 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
   }, [formEntryConfigMenuList]);
 
   const shownSettings = orderEntryConfigurationList
+    .filter(
+      (item) =>
+        !(
+          validationPolicyEnabled && item.name === REPLACED_BY_VALIDATION_POLICY
+        ),
+    )
     .map((item) => ({
       ...item,
       name: settingName(intl, item.name),
       description: settingDescription(intl, item.name, item.description),
     }))
-    .filter((item, index) =>
+    .filter((item) =>
       [
         item.name,
-        orderEntryConfigurationList[index].name,
+        orderEntryConfigurationList.find((setting) => setting.id === item.id)
+          ?.name,
         item.description,
         item.value,
       ].some((text) => matchesSearch(text, query)),
@@ -217,7 +238,7 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
           id={cell.id}
           checked={selectedRowId === row.id}
           name="selectRowRadio"
-          ariaLabel="selectRow"
+          aria-label="selectRow"
           onSelect={() => {
             setModifyButton(false);
             setSelectedRowId(row.id);
@@ -263,6 +284,12 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
                   </Heading>
                 </Section>
                 <br />
+                {validationPolicyEnabled && (
+                  <Section>
+                    <ValidationPolicySection policy={validationPolicy} />
+                    <br />
+                  </Section>
+                )}
                 <Section>
                   <Form onSubmit={handleModify}>
                     <Column lg={16} md={8} sm={4}>

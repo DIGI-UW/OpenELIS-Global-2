@@ -21,9 +21,11 @@ import liquibase.database.jvm.JdbcConnection;
 import liquibase.exception.LiquibaseException;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.Test;
+import org.openelisglobal.IsolatedDatabase;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
+@IsolatedDatabase
 public class MicrobiologyV2CaseStructureLiquibaseRollbackTest {
     @Test
     public void realApplicationChangelogPreservesHistoryAndEnforcesActiveOwnership() throws Exception {

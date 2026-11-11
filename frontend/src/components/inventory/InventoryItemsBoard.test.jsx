@@ -1302,6 +1302,33 @@ describe("InventoryItemsBoard", () => {
       expect(within(dialog).queryByText(/Syphilis/)).not.toBeInTheDocument();
     });
 
+    it("banners only critical items that carry the selected tag", async () => {
+      await renderBoard();
+      expect(
+        document.querySelector(".board-critical-banner"),
+      ).toHaveTextContent(CARTRIDGE.name);
+
+      openTagFilter();
+      await selectTag("Malaria");
+
+      await waitFor(() => expect(bodyRows()).toHaveLength(1));
+      expect(document.querySelector(".board-critical-banner")).toBeNull();
+    });
+
+    it("suggests only items that carry the selected tag", async () => {
+      await renderBoard();
+      openTagFilter();
+      await selectTag("Malaria");
+      await waitFor(() => expect(bodyRows()).toHaveLength(1));
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Reorder suggestions (1)" }),
+      );
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getByText(/Malaria RDT/)).toBeInTheDocument();
+      expect(within(dialog).queryByText(/GeneXpert/)).not.toBeInTheDocument();
+    });
+
     it("marks the whole selection in one call and refreshes the board", async () => {
       InventoryItemAPI.markOrdered.mockResolvedValue({ changed: 2 });
       await openSuggestions();

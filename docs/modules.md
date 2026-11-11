@@ -2,9 +2,12 @@
 
 A module is one JAR that OpenELIS discovers at start-up. It can bring its own
 database tables, Spring services, REST endpoints, permissions, menu entries,
-pages and dashboard cards, and it reuses the core's services and UI components
-instead of copying them. A site installs it by copying the JAR into a folder and
-restarting the webapp.
+pages and dashboard cards. A site installs it by copying the JAR into a folder
+and restarting the webapp.
+
+**A module reuses the core, on the backend and the frontend: anything the core
+already has, a module uses instead of duplicating.** See
+[Reusing the core's services and components](#3-reusing-the-cores-services-and-components).
 
 **Example module:**
 [DIGI-UW/openelis-module-specimen-followup](https://github.com/DIGI-UW/openelis-module-specimen-followup),
@@ -20,14 +23,15 @@ the decisions are in [ADR 0001](adr/0001-module-system.md).
 
 1. [Quick start: run the example module](#1-quick-start-run-the-example-module)
 2. [What a module can contribute](#2-what-a-module-can-contribute)
-3. [Create a module step by step](#3-create-a-module-step-by-step)
-4. [Extension slots](#4-extension-slots)
-5. [Configuration, events and backend extension points](#5-configuration-events-and-backend-extension-points)
-6. [Develop on the dev stack](#6-develop-on-the-dev-stack)
-7. [Test, build and CI](#7-test-build-and-ci)
-8. [Deploy and operate](#8-deploy-and-operate)
-9. [Reference](#9-reference)
-10. [Troubleshooting](#10-troubleshooting)
+3. [Reusing the core's services and components](#3-reusing-the-cores-services-and-components)
+4. [Create a module step by step](#4-create-a-module-step-by-step)
+5. [Extension slots](#5-extension-slots)
+6. [Configuration, events and backend extension points](#6-configuration-events-and-backend-extension-points)
+7. [Develop on the dev stack](#7-develop-on-the-dev-stack)
+8. [Test, build and CI](#8-test-build-and-ci)
+9. [Deploy and operate](#9-deploy-and-operate)
+10. [Reference](#10-reference)
+11. [Troubleshooting](#11-troubleshooting)
 
 ## 1. Quick start: run the example module
 
@@ -47,7 +51,7 @@ Log in as `admin` / `adminADMIN!`. You now see:
 
 | Where                    | What the module added                                                                |
 | ------------------------ | ------------------------------------------------------------------------------------ |
-| Home dashboard           | An "Open follow-ups" card (an [extension slot](#4-extension-slots) contribution)     |
+| Home dashboard           | An "Open follow-ups" card (an [extension slot](#5-extension-slots) contribution)     |
 | Menu, Order              | Specimen Follow-up, with Create Follow-up and View Follow-ups                        |
 | `/m/specimen-followup/…` | The module's pages, loaded from its own Vite dev server with hot reload              |
 | Admin, Modules           | The module, its version and its state (`STARTED`)                                    |
@@ -56,7 +60,7 @@ Log in as `admin` / `adminADMIN!`. You now see:
 Edit a file under the module's `frontend/src` and the browser updates at once.
 After a Java, Liquibase or manifest change, run the same `up --module` command
 again: it rebuilds the JAR and restarts the webapp. See
-[Develop on the dev stack](#6-develop-on-the-dev-stack) for every command.
+[Develop on the dev stack](#7-develop-on-the-dev-stack) for every command.
 
 ## 2. What a module can contribute
 
@@ -87,10 +91,220 @@ What a full module can add, where it is declared, and where the example does it:
 
 A module never changes a core table, a core page or a core bean. It references
 core data by id, reads it through core services, and adds UI only through its
-own pages, its menu entries and the [extension slots](#4-extension-slots) the
+own pages, its menu entries and the [extension slots](#5-extension-slots) the
 core offers.
 
-## 3. Create a module step by step
+## 3. Reusing the core's services and components
+
+> **Rule:** if the core already has a service, component, hook or helper for
+> what your module needs, use the core's. Never copy core code into a module,
+> and never re-implement something the core already does.
+
+A module runs inside OpenELIS, so it calls the core's own code directly, on the
+backend and on the frontend:
+
+| Side     | What a module reuses                                                                                                                                                                | How                                                                                                                     |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Backend  | Every core Spring service (patients, samples, sample items, results, users, statuses, reference data, ...), the core database and its transactions, security, roles and permissions | Inject the service through the constructor, as any core class does; or `context.coreService(...)` from the activator    |
+| Frontend | The core's UI components, its API client, hooks, contexts and the module SDK (session, permissions, notifications, configuration)                                                   | `import ... from "openelis_core/components"` (and `/api`, `/hooks`, `/contexts`, `/sdk`), loaded from the running shell |
+
+### Backend: use the core's services
+
+The module's Spring context is a child of the core's, so any core service can be
+injected. The example module never reads a core table: it asks the core's
+services for patients, specimens, statuses and users
+(`service/CoreLookupService.java`, shortened):
+
+```java
+@Service
+@Transactional(readOnly = true)
+public class CoreLookupService {
+
+    private final PatientService patientService;
+    private final SampleHumanService sampleHumanService;
+    private final SampleItemService sampleItemService;
+    private final TypeOfSampleService typeOfSampleService;
+    private final SystemUserService systemUserService;
+    private final IStatusService statusService;
+
+    public CoreLookupService(PatientService patientService, SampleHumanService sampleHumanService,
+            SampleItemService sampleItemService, TypeOfSampleService typeOfSampleService,
+            SystemUserService systemUserService, IStatusService statusService) {
+        this.patientService = patientService;
+        this.sampleHumanService = sampleHumanService;
+        this.sampleItemService = sampleItemService;
+        this.typeOfSampleService = typeOfSampleService;
+        this.systemUserService = systemUserService;
+        this.statusService = statusService;
+    }
+
+    /** A patient as the core shows it: names, gender, birth date and ids come from PatientService. */
+    public Optional<PatientSummary> patient(String patientId) {
+        Patient patient = patientService.getData(patientId);
+        if (patient == null || patient.getId() == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new PatientSummary(patient.getId(), patientService.getFirstName(patient),
+                patientService.getLastName(patient), patientService.getGender(patient),
+                patientService.getBirthdayForDisplay(patient), patientService.getNationalId(patient),
+                patientService.getSubjectNumber(patient)));
+    }
+
+    /** A patient's specimens, with their sample types and status, from the core's sample services. */
+    public List<SpecimenSummary> specimensOfPatient(String patientId) {
+        List<SpecimenSummary> specimens = new ArrayList<>();
+        for (Sample sample : sampleHumanService.getSamplesForPatient(patientId)) {
+            List<String> types = new ArrayList<>();
+            for (SampleItem item : sampleItemService.getSampleItemsBySampleId(sample.getId())) {
+                types.add(typeOfSampleService.getNameForTypeOfSampleId(sampleItemService.getTypeOfSampleId(item)));
+            }
+            String status = statusService.getStatusNameFromId(sample.getStatusId());
+            specimens.add(new SpecimenSummary(sample.getId(), sample.getAccessionNumber(), status, types));
+        }
+        return specimens;
+    }
+
+    /** Active staff for the assignee list, from SystemUserService. */
+    public List<UserSummary> activeUsers() {
+        List<UserSummary> users = new ArrayList<>();
+        for (SystemUser user : systemUserService.getAllSystemUsers()) {
+            if ("Y".equalsIgnoreCase(user.getIsActive())) {
+                users.add(new UserSummary(user.getId(), user.getLoginName(), user.getDisplayName()));
+            }
+        }
+        return users;
+    }
+}
+```
+
+The module's own tables hold only what the module adds: a follow-up stores the
+core patient's and sample's **ids** and reads everything else from the core when
+it shows them. Outside Spring-managed classes, the activator reaches a core
+service through its context:
+
+```java
+@Override
+public void onStart(ModuleContext context) {
+    SystemUserService users = context.coreService(SystemUserService.class);
+    context.log().info("active users: " + users.getAllSystemUsers().size());
+}
+```
+
+The core's security applies too: a module's REST handlers are guarded by
+`@PreAuthorize("hasAuthority('mod.<id>.<key>')")`, its permissions appear in
+Role Management next to the core's, and `@Transactional` joins the core's
+transactions.
+
+### Frontend: use the core's components and SDK
+
+The module's pages import the core's own components through the `openelis_core`
+remote, so they look and behave exactly like core pages. The example's create
+page (`frontend/src/pages/CreateFollowUpPage.jsx`, shortened) uses the core's
+patient search, breadcrumb, date picker, notifications and API client:
+
+```jsx
+import { PageBreadCrumb, SearchPatientForm } from "openelis_core/components";
+import {
+  AlertDialog,
+  CustomDatePicker,
+  NotificationKinds,
+} from "openelis_core/components";
+import {
+  useModuleConfig,
+  useNotifications,
+  useOpenElisApi,
+} from "openelis_core/sdk";
+
+export default function CreateFollowUpPage() {
+  const api = useOpenElisApi(); // the core's API client: base path, session, CSRF
+  const notifications = useNotifications(); // the core's notification system
+  const config = useModuleConfig("specimen-followup"); // the module's own settings
+
+  const save = async (payload) => {
+    const response = await api.post(
+      "/rest/modules/specimen-followup/followups",
+      payload
+    );
+    notifications.addNotification({
+      kind: NotificationKinds.success,
+      title: "Follow-up saved",
+    });
+    notifications.setNotificationVisible(true);
+  };
+
+  return (
+    <>
+      {notifications.notificationVisible && <AlertDialog />}
+      <PageBreadCrumb
+        breadcrumbs={[
+          { label: "home.label", link: "/" },
+          {
+            label: "mod.specimen-followup.create.title",
+            link: "/m/specimen-followup/create",
+          },
+        ]}
+      />
+      {/* The core's patient search, the same one order entry uses */}
+      <SearchPatientForm
+        getSelectedPatient={selectPatient}
+        idPrefix="followup"
+      />
+      {/* The core's date picker, in the site's date format */}
+      <CustomDatePicker
+        id="followup-due-date"
+        labelText="Due date"
+        onChange={setDueDate}
+      />
+    </>
+  );
+}
+```
+
+Other pages reuse the rest of the surface the same way:
+
+```jsx
+import {
+  usePermission,
+  useSession,
+  useConfigurationProperties,
+} from "openelis_core/sdk";
+
+const canManage = usePermission("mod.specimen-followup.manage"); // the core's permission check
+const { userSessionDetails } = useSession(); // the signed-in user
+const siteConfig = useConfigurationProperties(); // the site's settings, e.g. date format
+```
+
+The full list of what `openelis_core` exposes is in the
+[frontend reference](#frontend-reference).
+
+### What reuse gives you
+
+- **Same look and behaviour:** module pages render the very components the core
+  renders, with the same session, translations and theme.
+- **Core fixes reach modules without a rebuild:** a module runs the services and
+  renders the components of the OpenELIS version it is installed in.
+- **Nothing to keep in sync:** there is no second copy of patient search, sample
+  lookups or date pickers to maintain.
+
+### When something is not reusable yet
+
+| Need                                                 | Do                                                                                                                                                                                                        |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A core service exists but lacks the method you need  | Add the method to the core service in a core pull request. Do not call the core's DAOs or query its tables from the module                                                                                |
+| A core component exists but `openelis_core` lacks it | Add one export line to `frontend/src/module-exports/components.js` (or `hooks.js`, `api.js`, ...) in a core pull request, then import it in the module. Do not copy the component's files into the module |
+| Nothing in the core does it                          | Build it in the module. If other modules or the core will need it too, propose it to the core instead                                                                                                     |
+
+Adding to the frontend surface is a frontend contract minor version.
+
+**The boundaries that keep the core in charge:** a module uses core services but
+cannot replace them (the core never sees module beans, even `@Primary` ones); it
+references core data by id and reads it through services, never changing a core
+table; and it imports only what `frontend/src/module-exports/` exposes, not
+arbitrary core frontend files.
+
+<a id="3-create-a-module-step-by-step"></a>
+
+## 4. Create a module step by step
 
 ### Step 1: copy the example and choose an id
 
@@ -645,7 +859,9 @@ from `openelis_core/*`; the full list is in the
 [frontend reference](#frontend-reference). Everything there runs the shell's own
 instance, so module pages look and behave like core pages.
 
-## 4. Extension slots
+<a id="4-extension-slots"></a>
+
+## 5. Extension slots
 
 An extension slot is a place in a **core** page where modules may add UI. The
 core page renders `<ExtensionSlot name="…" context={…} />`; every started module
@@ -817,7 +1033,9 @@ Modules then contribute as described in
 "slots": [{ "slot": "results.toolbar.actions", "expose": "./MyAction", "permission": "view" }]
 ```
 
-## 5. Configuration, events and backend extension points
+<a id="5-configuration-events-and-backend-extension-points"></a>
+
+## 6. Configuration, events and backend extension points
 
 ### Configuration
 
@@ -974,7 +1192,9 @@ example. Modules then implement it and declare it:
 screen, and a backend extension point when they should change or extend what the
 core computes or produces.
 
-## 6. Develop on the dev stack
+<a id="6-develop-on-the-dev-stack"></a>
+
+## 7. Develop on the dev stack
 
 Run every command from the **core checkout**. `--module` takes the module's
 source folder (any folder with a `pom.xml` and the manifest); repeat it for
@@ -1007,7 +1227,9 @@ Outside the dev stack,
 `localStorage["oe.module-override.<id>"] = "http://localhost:5174/remoteEntry.js"`
 points a development shell at a module's dev server.
 
-## 7. Test, build and CI
+<a id="7-test-build-and-ci"></a>
+
+## 8. Test, build and CI
 
 **Contract test.** Extend `ModuleContractTest` from
 `org.openelisglobal:openelis-module-test`. It runs the core's own checks at
@@ -1058,7 +1280,9 @@ the `CORE_REPOSITORY` and `CORE_REF` repository variables, installs the core
 artifacts (cached per core commit), runs `mvn -B verify` and uploads the JAR as
 a build artifact. Copy it as it is.
 
-## 8. Deploy and operate
+<a id="8-deploy-and-operate"></a>
+
+## 9. Deploy and operate
 
 Install a module on a site by copying its JAR into the modules directory and
 restarting the webapp:
@@ -1081,7 +1305,9 @@ grant the module's permissions in Role Management.
 | Strict mode | Put a `modules.lock` in the modules directory with one `id@version sha256` line per allowed JAR; any other JAR is `INVALID`                                                                  |
 | Inspect     | Admin, Modules; `GET /rest/module-registry` (every user) lists modules with state and reason; `GET /rest/module-registry/{id}` (administrators) adds the JAR, digest, libraries and warnings |
 
-## 9. Reference
+<a id="9-reference"></a>
+
+## 10. Reference
 
 ### Manifest reference
 
@@ -1251,7 +1477,9 @@ a restart.
 | `INCOMPATIBLE` | Its `requires` do not match this core, or a dependency is missing or conflicting |
 | `FAILED`       | Failed after validation; the core stopped (see above)                            |
 
-## 10. Troubleshooting
+<a id="10-troubleshooting"></a>
+
+## 11. Troubleshooting
 
 | Symptom                                        | Cause and fix                                                                                                                                   |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1264,4 +1492,4 @@ a restart.
 | A REST call answers 403                        | The user's role does not hold the handler's permission; grant it in Role Management                                                             |
 | A REST call answers 404                        | The controller is not under `backend.basePackages`, or the path lacks `/rest/modules/<id>/`                                                     |
 | The log refuses a changeset of the module      | Every changeset id must start with `<id>-` and its author must be `<id>`                                                                        |
-| `mvn` cannot find `openelisglobal:classes`     | The core artifacts are not installed; run `scripts/dev-stack up --module …` or the four install commands in [Build](#7-test-build-and-ci)       |
+| `mvn` cannot find `openelisglobal:classes`     | The core artifacts are not installed; run `scripts/dev-stack up --module …` or the four install commands in [Build](#8-test-build-and-ci)       |

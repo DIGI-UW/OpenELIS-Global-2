@@ -350,6 +350,7 @@ test.describe("Print Bar Code Labels", () => {
             .replace("quantity=2", `quantity=${max + 1}`),
       );
       expect(tooMany.status()).toBe(422);
+      // One above the preset's own maximum is the preset refusal, not the safety limit.
       expect(await tooMany.text()).toContain("error.labels.quantity.max");
     });
   });

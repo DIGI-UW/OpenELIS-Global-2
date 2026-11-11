@@ -32,6 +32,7 @@ vi.mock("./OrderContext", () => ({
   useOrderContext: () => ({ loadOrder, resetOrder: vi.fn() }),
 }));
 vi.mock("../layout/Layout", () => ({
+  ConfigurationContext: React.createContext({}),
   NotificationContext: React.createContext({
     notificationVisible: false,
     setNotificationVisible: vi.fn(),

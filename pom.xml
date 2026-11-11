@@ -27,6 +27,7 @@
         <openelis-spi.version>1.0.0-SNAPSHOT</openelis-spi.version>
         <openelis-module-api.version>1.0.0-SNAPSHOT</openelis-module-api.version>
         <testContainersVersion>1.19.8</testContainersVersion>
+        <surefire.runOrder>alphabetical</surefire.runOrder>
     </properties>
 
     <dependencyManagement>
@@ -856,11 +857,7 @@
             <artifactId>javase</artifactId>
             <version>3.5.2</version>
         </dependency>
-        <dependency>
-            <groupId>org.openjdk.nashorn</groupId>
-            <artifactId>nashorn-core</artifactId>
-            <version>15.4</version>
-        </dependency>
+
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>
@@ -906,6 +903,9 @@
             </resource>
             <resource>
                 <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>adminPassword.txt</exclude>
+                </excludes>
             </resource>
             <!-- The interface's translation catalogue, which server-rendered reports
                 print their labels from (UiMessages), so a report reads in the screens' language
@@ -1013,6 +1013,7 @@
                                 <exclude>.idea/**</exclude>
                                 <exclude>.cursor/**</exclude>
                                 <exclude>.claude/**</exclude>
+                                <exclude>.worktrees/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -1047,6 +1048,7 @@
                                 <exclude>.idea/**</exclude>
                                 <exclude>.cursor/**</exclude>
                                 <exclude>.claude/**</exclude>
+                                <exclude>.worktrees/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -1073,6 +1075,7 @@
                                 <exclude>**/target/**</exclude>
                                 <exclude>.cursor/**</exclude>
                                 <exclude>.claude/**</exclude>
+                                <exclude>.worktrees/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
                                 <exclude>tools/openelis-analyzer-bridge/**</exclude>
                                 <exclude>tools/analyzer-mock-server/**</exclude>
@@ -1131,8 +1134,8 @@
                         does not roll back, so results depend on class order. Surefire's default
                         "filesystem" order differs per runner VM, which made the same commit pass
                         on one runner and fail on another. Alphabetical is deterministic and stable
-                        as classes are added. -->
-                    <runOrder>alphabetical</runOrder>
+                        as classes are added. The nightly order check overrides it with -Dsurefire.runOrder=reversealphabetical. -->
+                    <runOrder>${surefire.runOrder}</runOrder>
                 </configuration>
             </plugin>
             <plugin>

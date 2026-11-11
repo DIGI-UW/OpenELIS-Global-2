@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%@ page language="java"
 	contentType="text/html; charset=UTF-8"
 	import="org.openelisglobal.common.action.IActionConstants,
@@ -92,15 +93,15 @@ function search(){
 					</thead>
 					<tbody>
 					<c:forEach items="${form.log}" var="log" varStatus="iter">
-						<tr class="${log.item}">
-							<td>${iter.index}</td>
-							<td class="time-stamp">${log.date} ${log.time}</td>
-							<td class="item-cell">${log.item}</td>
-							<td>${log.attribute}</td>
-							<td class="id-number">${log.identifier}</td>
-							<td>${log.user}</td>
-							<td>${log.oldValue}</td>
-							<td>${log.newValue}</td>
+                        <tr class="${enc:attribute(log.item)}">
+                            <td>${enc:html(iter.index)}</td>
+                            <td class="time-stamp">${enc:html(log.date)} ${enc:html(log.time)}</td>
+                            <td class="item-cell">${enc:html(log.item)}</td>
+                            <td>${enc:html(log.attribute)}</td>
+                            <td class="id-number">${enc:html(log.identifier)}</td>
+                            <td>${enc:html(log.user)}</td>
+                            <td>${enc:html(log.oldValue)}</td>
+                            <td>${enc:html(log.newValue)}</td>
 						</tr>
 					</c:forEach>
 					</tbody>

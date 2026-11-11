@@ -1,6 +1,7 @@
 package org.openelisglobal.testresultcomponent.service;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -97,6 +98,14 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<TestResultComponent> getRequiredComponentsWithoutResult(String testId,
+            Collection<String> componentIdsWithResult) {
+        return baseObjectDAO.getActiveComponentsByTestId(testId).stream()
+                .filter(c -> c.getIsRequired() && !componentIdsWithResult.contains(c.getId())).toList();
+    }
+
+    @Override
     @Transactional
     public List<TestResultComponent> saveComponentsForTest(String testId, List<TestResultComponent> desired,
             String sysUserId) {
@@ -163,6 +172,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 match.setAllowMultipleReadings(d.getAllowMultipleReadings());
                 match.setIsPrimary(d.getIsPrimary());
                 match.setShowOnReport(d.getShowOnReport());
+                match.setIsRequired(d.getIsRequired());
                 match.setDisplayLog10(d.getDisplayLog10());
                 match.setLog10SourceComponentCode(d.getLog10SourceComponentCode());
                 match.setLod(d.getLod());
@@ -186,6 +196,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                     slot.setAllowMultipleReadings(d.getAllowMultipleReadings());
                     slot.setIsPrimary(d.getIsPrimary());
                     slot.setShowOnReport(d.getShowOnReport());
+                    slot.setIsRequired(d.getIsRequired());
                     slot.setDisplayLog10(d.getDisplayLog10());
                     slot.setLog10SourceComponentCode(d.getLog10SourceComponentCode());
                     slot.setLod(d.getLod());
@@ -605,6 +616,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             primary.setReportingDecimalPlaces(reportingDecimalPlaces);
             primary.setIsActive("Y");
             primary.setIsPrimary(true);
+            primary.setIsRequired(true);
             primary.setSysUserId(sysUserId);
             insert(primary);
         } else {
@@ -750,7 +762,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     @Transactional
     public void copyComponentsFromTest(String sourceTestId, String targetTestId, String sysUserId) {
         Test target = testService.getTestById(targetTestId);
-        for (TestResultComponent src : baseObjectDAO.getActiveComponentsByTestId(sourceTestId)) {
+        List<TestResultComponent> sources = baseObjectDAO.getActiveComponentsByTestId(sourceTestId);
+        for (TestResultComponent src : sources) {
             TestResultComponent existing = getByTestIdAndCode(targetTestId, src.getCode());
             // A configured component (it has a result type) is never clobbered.
             // A blank row (the FR-56 pre-seeded PRIMARY) is reconciled from the
@@ -774,6 +787,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             copy.setLoq(src.getLoq());
             copy.setIsPrimary(src.getIsPrimary());
             copy.setShowOnReport(src.getShowOnReport());
+            copy.setIsRequired(src.getIsRequired());
             copy.setDisplayLog10(src.getDisplayLog10());
             copy.setLog10SourceComponentCode(src.getLog10SourceComponentCode());
             copy.setIsActive("Y");
@@ -826,6 +840,30 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 testResultService.insert(placeholder);
             }
         }
+        retireBlankRowsTheCopyReplaced(targetTestId, sources, sysUserId);
         ensureSinglePrimary(targetTestId, sysUserId);
+    }
+
+    /**
+     * OGC-1608: a test created as a copy starts with a blank pre-seeded PRIMARY.
+     * When the source's primary has another code, that blank row is not filled by
+     * the copy; left in place it would stay the primary (and required), so the
+     * copied primary would be demoted and every order would wait on a component
+     * nobody configured. A blank row whose code the source does not have is retired
+     * once the source brings its own primary.
+     */
+    private void retireBlankRowsTheCopyReplaced(String targetTestId, List<TestResultComponent> sources,
+            String sysUserId) {
+        if (sources.stream().noneMatch(TestResultComponent::getIsPrimary)) {
+            return;
+        }
+        Set<String> sourceCodes = new HashSet<>();
+        sources.forEach(src -> sourceCodes.add(src.getCode()));
+        for (TestResultComponent row : baseObjectDAO.getActiveComponentsByTestId(targetTestId)) {
+            boolean blank = row.getResultType() == null || row.getResultType().isBlank();
+            if (blank && !sourceCodes.contains(row.getCode())) {
+                retireComponent(targetTestId, row.getId(), sysUserId);
+            }
+        }
     }
 }
