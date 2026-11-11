@@ -119,8 +119,11 @@ describe("LaporanHasilReport", () => {
     expect(screen.getByText(/Generate compliance certificates for validated environmental orders/i)).toBeInTheDocument();
   });
 
-  it("renders all 5 filter controls", () => {
+  it("renders all 6 filter controls", () => {
     renderWithIntl(<LaporanHasilReport />);
+    expect(
+      screen.getByRole("textbox", { name: "Lab number" }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/Date From/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Date To/i)).toBeInTheDocument();
     expect(screen.getByText(/Compliance Status/i)).toBeInTheDocument();
@@ -324,6 +327,9 @@ describe("LaporanHasilReport", () => {
     );
     global.URL.createObjectURL = vi.fn(() => "blob:x");
     global.URL.revokeObjectURL = vi.fn();
+    const linkClick = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
     renderWithIntl(<LaporanHasilReport />);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /Search/i }));
@@ -342,6 +348,8 @@ describe("LaporanHasilReport", () => {
         .find(Boolean).textContent;
     expect(tile("Not Yet Generated")).toBe("1Not Yet Generated");
     expect(tile("Generated")).toBe("1Generated");
+    expect(linkClick).toHaveBeenCalledOnce();
+    linkClick.mockRestore();
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url.includes("compliance-statuses")) {
         callback(MOCK_STATUSES);
@@ -349,6 +357,101 @@ describe("LaporanHasilReport", () => {
         callback(MOCK_REPORT);
       }
     });
+  });
+
+  it("finds an order by lab number, typed or scanned, without dates (OGC-1619)", async () => {
+    const { getFromOpenElisServer } = await import("../../../utils/Utils");
+    const urls = [];
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+        return;
+      }
+      urls.push(url);
+      callback(
+        url.includes("labNumber=NOPE")
+          ? {
+              ineligibleCount: 0,
+              generatedCount: 0,
+              notYetGeneratedCount: 0,
+              orders: [],
+              labNumberMatches: 0,
+            }
+          : MOCK_REPORT,
+      );
+    });
+    renderWithIntl(<LaporanHasilReport />);
+
+    const field = screen.getByRole("textbox", { name: "Lab number" });
+    fireEvent.change(field, { target: { value: "ENV-2026-001" } });
+    await act(async () => {
+      fireEvent.keyDown(field, { key: "Enter" });
+    });
+    expect(urls.at(-1)).toBe("/rest/complianceReport?labNumber=ENV-2026-001");
+
+    fireEvent.change(field, { target: { value: "NOPE" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+    });
+    expect(screen.getByTestId("laporan-hasil-empty")).toHaveTextContent(
+      "No environmental order with lab number NOPE",
+    );
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback(MOCK_REPORT);
+      }
+    });
+  });
+
+  it("says a lab number matches when the filters hide its order, and when the list is cut", async () => {
+    const { getFromOpenElisServer } = await import("../../../utils/Utils");
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else if (url.includes("labNumber=ENV-2026-001")) {
+        callback({
+          ineligibleCount: 1,
+          generatedCount: 0,
+          notYetGeneratedCount: 0,
+          orders: [],
+          labNumberMatches: 1,
+        });
+      } else {
+        callback({ ...MOCK_REPORT, labNumberMatches: 200, labNumberLimited: true });
+      }
+    });
+    try {
+      renderWithIntl(<LaporanHasilReport />);
+      const field = screen.getByRole("textbox", { name: "Lab number" });
+
+      fireEvent.change(field, { target: { value: "ENV-2026-001" } });
+      await act(async () => {
+        fireEvent.keyDown(field, { key: "Enter" });
+      });
+      const empty = screen.getByTestId("laporan-hasil-empty");
+      expect(empty).toHaveTextContent(
+        "Lab number ENV-2026-001: 1 order matches, but the other filters hide it.",
+      );
+      expect(empty).not.toHaveTextContent("No environmental order");
+
+      fireEvent.change(field, { target: { value: "ENV" } });
+      await act(async () => {
+        fireEvent.keyDown(field, { key: "Enter" });
+      });
+      expect(
+        screen.getByText(
+          "More orders start with ENV than can be listed. Type more of the number to narrow the list.",
+        ),
+      ).toBeInTheDocument();
+    } finally {
+      getFromOpenElisServer.mockImplementation((url, callback) =>
+        callback(
+          url.includes("compliance-statuses") ? MOCK_STATUSES : MOCK_REPORT,
+        ),
+      );
+    }
   });
 
   it("shows empty state when no orders", async () => {

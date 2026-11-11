@@ -120,16 +120,30 @@ public class ComplianceReportRestController {
         return ResponseEntity.ok(statuses);
     }
 
+    /**
+     * The most orders a lab number search returns; a full lab number finds one, a
+     * short prefix is narrowed by typing more.
+     */
+    private static final int LAB_NUMBER_MATCHES = 200;
+
+    /**
+     * The orders for the Compliance Report. A lab number (OGC-1619) finds the
+     * orders whose lab number starts with it, whatever their date; the other
+     * filters still apply.
+     */
     @GetMapping
     public ResponseEntity<ComplianceReportDTO> getReport(@RequestParam(required = false) String dateFrom,
             @RequestParam(required = false) String dateTo, @RequestParam(required = false) String siteId,
             @RequestParam(required = false) String standardId, @RequestParam(required = false) String complianceStatus,
-            @RequestParam(required = false) String generationStatus) {
+            @RequestParam(required = false) String generationStatus, @RequestParam(required = false) String labNumber) {
 
         List<Sample> samples;
         String from = toSystemDateFormat(dateFrom);
         String to = toSystemDateFormat(dateTo);
-        if (from != null && to != null) {
+        if (labNumber != null && !labNumber.isBlank()) {
+            samples = sampleService.getEnvironmentalSamplesWithAccessionNumberStartingWith(labNumber.trim(),
+                    LAB_NUMBER_MATCHES);
+        } else if (from != null && to != null) {
             samples = sampleService.getSamplesReceivedInDateRange(from, to);
         } else {
             java.time.LocalDate today = java.time.LocalDate.now();
@@ -141,6 +155,7 @@ public class ComplianceReportRestController {
         int ineligibleCount = 0;
         int generatedCount = 0;
         int notYetGeneratedCount = 0;
+        int labNumberMatches = 0;
 
         for (Sample sample : samples) {
             String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
@@ -148,6 +163,7 @@ public class ComplianceReportRestController {
             if (!"environmental".equalsIgnoreCase(workflowType)) {
                 continue;
             }
+            labNumberMatches++;
 
             // Exclude orders not yet collected (e.g. a fresh resample draft awaiting
             // re-collection): no specimen has a collection date.
@@ -227,6 +243,10 @@ public class ComplianceReportRestController {
         response.setGeneratedCount(generatedCount);
         response.setNotYetGeneratedCount(notYetGeneratedCount);
         response.setOrders(orders);
+        if (labNumber != null && !labNumber.isBlank()) {
+            response.setLabNumberMatches(labNumberMatches);
+            response.setLabNumberLimited(samples.size() >= LAB_NUMBER_MATCHES);
+        }
         return ResponseEntity.ok(response);
     }
 
