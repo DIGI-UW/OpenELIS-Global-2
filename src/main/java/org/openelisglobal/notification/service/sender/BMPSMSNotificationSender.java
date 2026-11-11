@@ -1,6 +1,7 @@
 package org.openelisglobal.notification.service.sender;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -15,11 +16,20 @@ import org.apache.http.util.EntityUtils;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.delivery.service.sender.DeliveryException;
+import org.openelisglobal.delivery.service.sender.DeliveryException.Code;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.valueholder.SMSNotification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+/**
+ * Sends an SMS through the BMP_SMS_SERVER connection (Twilio, Africa's Talking
+ * or the legacy BMP gateway). A send the gateway does not accept throws a
+ * {@link DeliveryException} saying why, so the delivery outbox records it as
+ * failed.
+ */
 @Component
 public class BMPSMSNotificationSender {
 
@@ -85,12 +95,13 @@ public class BMPSMSNotificationSender {
                 if (statusCode < 200 || statusCode >= 300) {
                     LogEvent.logError(this.getClass().getSimpleName(), "sendViaTwilio",
                             "Twilio SMS failed: status=" + statusCode + " body=" + responseBody);
+                    throw gatewayRefused("Twilio", statusCode, responseBody);
                 }
             }
         } catch (IOException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "sendViaTwilio",
                     "failed to communicate with Twilio API at " + address);
-            LogEvent.logError(e);
+            throw unreachable(address, e);
         }
     }
 
@@ -123,17 +134,21 @@ public class BMPSMSNotificationSender {
                 if (statusCode < 200 || statusCode >= 300) {
                     LogEvent.logError(this.getClass().getSimpleName(), "sendViaAfricasTalking",
                             "Africa's Talking SMS failed: status=" + statusCode + " body=" + responseBody);
+                    throw gatewayRefused("Africa's Talking", statusCode, responseBody);
                 }
             }
         } catch (IOException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "sendViaAfricasTalking",
                     "failed to communicate with Africa's Talking API at " + address);
-            LogEvent.logError(e);
+            throw unreachable(address, e);
         }
     }
 
     private void sendViaLegacyBMP(SMSNotification notification, String address, String username, String password,
             String phonePrefix) {
+        if (GenericValidator.isBlankOrNull(address)) {
+            throw new DeliveryException(Code.NOT_SET_UP, MessageUtil.getMessage("delivery.error.notSetUp", "BMP"));
+        }
 
         String getString = address + "?UserName=" + URLEncoder.encode(username, StandardCharsets.UTF_8) + "&PassWord="
                 + URLEncoder.encode(password, StandardCharsets.UTF_8) + "&UserData="
@@ -153,7 +168,7 @@ public class BMPSMSNotificationSender {
         } catch (IOException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "sendViaLegacyBMP",
                     "failed to communicate with " + address + " for sending SMS");
-            LogEvent.logError(e);
+            throw unreachable(address, e);
         }
 
         if (!GenericValidator.isBlankOrNull(statusReturned) && statusReturned.contains("-")) {
@@ -165,12 +180,40 @@ public class BMPSMSNotificationSender {
                     int code = Integer.parseInt(returnedCode);
                     if (code == 91 && !"00".equals(phonePrefix)) {
                         this.sendViaLegacyBMP(notification, address, username, password, "00");
+                        return;
                     }
                 } catch (NumberFormatException e) {
                     LogEvent.logError(this.getClass().getSimpleName(), "sendViaLegacyBMP",
                             "failed to parse error response from SMS server");
                 }
+                throw new DeliveryException(Code.REJECTED, MessageUtil.getMessage("delivery.error.gatewayRefused",
+                        new Object[] { "BMP", statusReturned.strip() }));
             }
         }
+    }
+
+    private static DeliveryException gatewayRefused(String gateway, int statusCode, String body) {
+        Code code = statusCode == 401 || statusCode == 403 ? Code.AUTHENTICATION : Code.REJECTED;
+        String reason = GenericValidator.isBlankOrNull(body) ? String.valueOf(statusCode) : statusCode + " " + body;
+        return new DeliveryException(code,
+                MessageUtil.getMessage("delivery.error.gatewayRefused", new Object[] { gateway, reason }));
+    }
+
+    private static DeliveryException unreachable(String address, IOException e) {
+        String host = address;
+        String port = "";
+        try {
+            URI uri = URI.create(address);
+            if (uri.getHost() != null) {
+                host = uri.getHost();
+                port = String.valueOf(
+                        uri.getPort() != -1 ? uri.getPort() : "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80);
+            }
+        } catch (IllegalArgumentException ignored) {
+            LogEvent.logDebug(BMPSMSNotificationSender.class.getSimpleName(), "unreachable",
+                    "address is not a URI: " + address);
+        }
+        return new DeliveryException(Code.UNREACHABLE,
+                MessageUtil.getMessage("delivery.error.unreachable", new Object[] { host, port }), e);
     }
 }

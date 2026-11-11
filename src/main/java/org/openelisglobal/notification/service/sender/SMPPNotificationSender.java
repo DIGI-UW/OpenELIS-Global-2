@@ -1,11 +1,15 @@
 package org.openelisglobal.notification.service.sender;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.URI;
-import java.net.URISyntaxException;
+import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import org.apache.commons.validator.GenericValidator;
 import org.jsmpp.InvalidResponseException;
 import org.jsmpp.PDUException;
+import org.jsmpp.PDUStringException;
 import org.jsmpp.bean.Alphabet;
 import org.jsmpp.bean.BindType;
 import org.jsmpp.bean.ESMClass;
@@ -24,12 +28,23 @@ import org.jsmpp.util.TimeFormatter;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.delivery.service.sender.DeliveryException;
+import org.openelisglobal.delivery.service.sender.DeliveryException.Code;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.valueholder.SMSNotification;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+/**
+ * Sends an SMS through the SMPP server set up under External Connections
+ * (SMPP_SERVER). A send that does not reach the SMSC throws a
+ * {@link DeliveryException} saying why, so the delivery outbox records it as
+ * failed and retries it.
+ */
 @Component
 public class SMPPNotificationSender {
+
+    static final int DEFAULT_SMPP_PORT = 2775;
 
     @Value("${org.openelisglobal.smsc.serviceType:CMT}")
     private String serviceType;
@@ -40,43 +55,74 @@ public class SMPPNotificationSender {
     private static final TimeFormatter TIME_FORMATTER = new AbsoluteTimeFormatter();
 
     public void send(SMSNotification notification) {
-        SMPPSession session;
+        ConfigurationProperties properties = ConfigurationProperties.getInstance();
+        URI smsc = smscAddress(properties.getPropertyValue(Property.PATIENT_RESULTS_SMPP_SMS_ADDRESS));
+        int port = smsc.getPort() == -1 ? DEFAULT_SMPP_PORT : smsc.getPort();
+        SMPPSession session = new SMPPSession();
         try {
-            session = initSession();
-
-            try {
-                String messageId = session.submitShortMessage(serviceType, TypeOfNumber.UNKNOWN,
-                        NumberingPlanIndicator.UNKNOWN, "OpenELIS", TypeOfNumber.UNKNOWN,
-                        NumberingPlanIndicator.UNKNOWN, notification.getReceiverPhoneNumber(), new ESMClass(), (byte) 0,
-                        (byte) 1, TIME_FORMATTER.format(new Date()), null,
-                        new RegisteredDelivery(SMSCDeliveryReceipt.DEFAULT), (byte) 0,
-                        new GeneralDataCoding(Alphabet.ALPHA_DEFAULT, MessageClass.CLASS1, false), (byte) 0,
-                        notification.getMessage().getBytes());
-
-                LogEvent.logDebug(this.getClass().getSimpleName(), "send", "sms messageId: " + messageId);
-            } catch (IllegalArgumentException | PDUException | ResponseTimeoutException | InvalidResponseException
-                    | NegativeResponseException | IOException e) {
-                LogEvent.logError(e);
-            }
-
+            String systemId = session.connectAndBind(smsc.getHost(), port,
+                    new BindParameter(BindType.BIND_TX,
+                            properties.getPropertyValue(Property.PATIENT_RESULTS_SMPP_SMS_USERNAME),
+                            properties.getPropertyValue(Property.PATIENT_RESULTS_SMPP_SMS_PASSWORD),
+                            bindParamSystemType, TypeOfNumber.UNKNOWN, NumberingPlanIndicator.UNKNOWN, null));
+            LogEvent.logDebug(this.getClass().getSimpleName(), "send",
+                    "Connected with SMPP with system id {" + systemId + "}");
+        } catch (IOException e) {
             session.unbindAndClose();
-        } catch (IOException | URISyntaxException e) {
-            LogEvent.logError(e);
+            throw bindFailure(e, smsc.getHost(), port);
+        }
+        try {
+            String messageId = session.submitShortMessage(serviceType, TypeOfNumber.UNKNOWN,
+                    NumberingPlanIndicator.UNKNOWN, "OpenELIS", TypeOfNumber.UNKNOWN, NumberingPlanIndicator.UNKNOWN,
+                    notification.getReceiverPhoneNumber(), new ESMClass(), (byte) 0, (byte) 1,
+                    TIME_FORMATTER.format(new Date()), null, new RegisteredDelivery(SMSCDeliveryReceipt.DEFAULT),
+                    (byte) 0, new GeneralDataCoding(Alphabet.ALPHA_DEFAULT, MessageClass.CLASS1, false), (byte) 0,
+                    notification.getMessage().getBytes(StandardCharsets.UTF_8));
+            LogEvent.logDebug(this.getClass().getSimpleName(), "send", "sms messageId: " + messageId);
+        } catch (NegativeResponseException e) {
+            throw new DeliveryException(Code.REJECTED,
+                    MessageUtil.getMessage("delivery.error.gatewayRefused", new Object[] { "SMPP", e.getMessage() }),
+                    e);
+        } catch (PDUException | ResponseTimeoutException | InvalidResponseException | IOException
+                | IllegalArgumentException e) {
+            throw new DeliveryException(Code.OTHER,
+                    e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage(), e);
+        } finally {
+            session.unbindAndClose();
         }
     }
 
-    private SMPPSession initSession() throws IOException, URISyntaxException {
-        ConfigurationProperties configurationProperties = ConfigurationProperties.getInstance();
-        SMPPSession session = new SMPPSession();
+    static URI smscAddress(String address) {
+        if (GenericValidator.isBlankOrNull(address)) {
+            throw new DeliveryException(Code.NOT_SET_UP, MessageUtil.getMessage("delivery.error.notSetUp", "SMPP"));
+        }
+        String trimmed = address.trim();
+        URI uri;
+        try {
+            uri = URI.create(trimmed.contains("://") ? trimmed : "smpp://" + trimmed);
+        } catch (IllegalArgumentException e) {
+            throw new DeliveryException(Code.NOT_SET_UP, MessageUtil.getMessage("delivery.error.notSetUp", "SMPP"), e);
+        }
+        if (GenericValidator.isBlankOrNull(uri.getHost())) {
+            throw new DeliveryException(Code.NOT_SET_UP, MessageUtil.getMessage("delivery.error.notSetUp", "SMPP"));
+        }
+        return uri;
+    }
 
-        String address = configurationProperties.getPropertyValue(Property.PATIENT_RESULTS_BMP_SMS_ADDRESS);
-        String username = configurationProperties.getPropertyValue(Property.PATIENT_RESULTS_BMP_SMS_USERNAME);
-        String password = configurationProperties.getPropertyValue(Property.PATIENT_RESULTS_BMP_SMS_PASSWORD);
-        URI uri = new URI(address);
-        String systemId = session.connectAndBind(uri.getHost(), uri.getPort(), new BindParameter(BindType.BIND_TX,
-                username, password, bindParamSystemType, TypeOfNumber.UNKNOWN, NumberingPlanIndicator.UNKNOWN, null));
-        LogEvent.logDebug(this.getClass().getSimpleName(), "initSession",
-                "Connected with SMPP with system id {" + systemId + "}");
-        return session;
+    private static DeliveryException bindFailure(IOException e, String host, int port) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof NegativeResponseException || cause instanceof PDUStringException) {
+                return new DeliveryException(Code.AUTHENTICATION, MessageUtil.getMessage("delivery.error.auth"), e);
+            }
+            if (cause instanceof ConnectException || cause instanceof UnknownHostException) {
+                return new DeliveryException(Code.UNREACHABLE, MessageUtil.getMessage("delivery.error.unreachable",
+                        new Object[] { host, String.valueOf(port) }), e);
+            }
+        }
+        String reason = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+        if (reason.toLowerCase().contains("negative bind response")) {
+            return new DeliveryException(Code.AUTHENTICATION, MessageUtil.getMessage("delivery.error.auth"), e);
+        }
+        return new DeliveryException(Code.OTHER, reason, e);
     }
 }
