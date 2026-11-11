@@ -7,21 +7,19 @@
 # Usage: ./load-test-fixtures.sh [--reset] [--no-verify] [--profile=PROFILE]
 #
 # Fixture profiles (--profile=PROFILE):
-#   harness  - Core fixtures + HARN-* analyzer result lane fixtures (default)
+#   harness  - Core fixtures; analyzer orders are created through the OE2 API
 #   core     - Foundational + storage fixtures + core demo patient
 #
 # Files loaded (in order):
 #   1. e2e-foundational-data.sql - Providers, Organizations (base data for ALL tests)
 #   2. storage-e2e.xml (DBUnit XML) - Storage hierarchy + E2E test data
 #      Converted to SQL on-demand (*.generated.sql files never committed)
-#   3. fixtures/analyzer-harness-lane-data.sql - Only for --profile=harness (HARN-* demo accessions)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
-ANALYZER_HARNESS_LANE_SQL_FILE="$SCRIPT_DIR/fixtures/analyzer-harness-lane-data.sql"
 STORAGE_IN_PROGRESS_ORDER_SQL="$SCRIPT_DIR/fixtures/storage-in-progress-order.sql"
 REPORTING_RESULTS_SQL="$SCRIPT_DIR/fixtures/reporting-repeated-results.sql"
 REPORTING_FIELDS_SQL="$SCRIPT_DIR/fixtures/reporting-field-values.sql"
@@ -53,16 +51,6 @@ while [[ $# -gt 0 ]]; do
                 echo "Valid profiles: core, harness"
                 exit 1
             fi
-            shift
-            ;;
-        --analyzers=*)
-            # TRANSITIONAL COMPAT — remove in follow-up PR after develop's YAML
-            # is updated to use --profile. GitHub workflow_run resolves YAML
-            # against the default branch, so during the prereq PR's own CI
-            # run the stale develop YAML still invokes this script with the
-            # old flag. Accept it for one merge cycle, then drop.
-            echo "WARNING: --analyzers is deprecated; mapping to --profile=harness for transition."
-            PROFILE="harness"
             shift
             ;;
         *)
@@ -337,9 +325,6 @@ load_profile_lane_fixtures() {
     load_sql_file "$REPORTING_REFERRALS_SQL" "synthetic reporting referral fixture" "fatal"
     load_sql_file "$REPORTING_RECOVERY_SQL" "synthetic reporting queue fixtures" "fatal" \
         -v "source_definition=$(cat "$REPORTING_SOURCE_JSON")"
-    if [ "$PROFILE" = "harness" ]; then
-        load_sql_file "$ANALYZER_HARNESS_LANE_SQL_FILE" "analyzer harness lane fixtures (HARN-* accessions)" "fatal"
-    fi
 
     # Seed one Not-Tested analysis linked to sample_item 10001 (from storage-e2e.xml)
     # so ORDERS_IN_PROGRESS returns a labNumber for the storage-assign-order-label spec.

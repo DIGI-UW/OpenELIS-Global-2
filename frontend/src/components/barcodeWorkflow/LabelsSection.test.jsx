@@ -8,6 +8,7 @@ import LabelsSection, {
   calculateRunningTotal,
   calculateAggregateTotal,
   buildPersistPayload,
+  seedPersistPayload,
 } from "./LabelsSection";
 
 const renderWithIntl = (ui) =>
@@ -322,5 +323,78 @@ describe("LabelsSection — legacy count mode", () => {
     expect(last.orderRow.quantities.order).toBe(3);
     expect(last.sampleRows[0].quantities.specimen).toBe(1);
     expect(last.runningTotal).toBe(4);
+  });
+
+  test("seedPersistPayload carries every cell's clamped default", () => {
+    const payload = seedPersistPayload(labelRequestFixture());
+
+    expect(payload.order_cells).toEqual([{ preset_id: 1, qty: 2 }]);
+    expect(payload.sample_rows[0].sample_id_local).toBe("S1");
+    expect(payload.sample_rows[0].cells).toEqual(
+      expect.arrayContaining([
+        { preset_id: 17, qty: 1 },
+        { preset_id: 24, qty: 3 },
+      ]),
+    );
+  });
+});
+
+describe("print actions (OGC-1422)", () => {
+  test("renders row, column and print-all actions and reports scope, preset and sample", () => {
+    const onPrintRow = vi.fn();
+    const onPrintColumn = vi.fn();
+    const onPrintAll = vi.fn();
+    renderWithIntl(
+      <LabelsSection
+        labelRequest={labelRequestFixture()}
+        onPrintRow={onPrintRow}
+        onPrintColumn={onPrintColumn}
+        onPrintAll={onPrintAll}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("sample-label-print-row-S1"));
+    expect(onPrintRow).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: "sample", sampleIdLocal: "S1" }),
+    );
+    fireEvent.click(screen.getByTestId("order-label-print-row-order"));
+    expect(onPrintRow).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: "order" }),
+    );
+    fireEvent.click(screen.getByTestId("sample-label-print-col-17"));
+    expect(onPrintColumn).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: "sample", presetId: 17 }),
+    );
+    fireEvent.click(screen.getByTestId("order-label-print-col-1"));
+    expect(onPrintColumn).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: "order", presetId: 1 }),
+    );
+    fireEvent.click(screen.getByTestId("labels-print-all"));
+    expect(onPrintAll).toHaveBeenCalledTimes(1);
+  });
+
+  test("renders no print control without handlers, and disables them while printing", () => {
+    const { rerender } = renderWithIntl(
+      <LabelsSection labelRequest={labelRequestFixture()} />,
+    );
+    expect(screen.queryByTestId("labels-print-all")).toBeNull();
+    expect(screen.queryByTestId("sample-label-print-row-S1")).toBeNull();
+
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <LabelsSection
+          labelRequest={labelRequestFixture()}
+          onPrintAll={vi.fn()}
+          onPrintRow={vi.fn()}
+          printDisabled
+          pendingSave
+        />
+      </IntlProvider>,
+    );
+    expect(screen.getByTestId("labels-print-all")).toBeDisabled();
+    expect(screen.getByTestId("sample-label-print-row-S1")).toBeDisabled();
+    expect(screen.getByTestId("labels-pending-save")).toHaveTextContent(
+      messages["orderEntry.labels.pendingSave"],
+    );
   });
 });

@@ -14,10 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.reports.dataexport.dao.SampleTestingExportDAO;
@@ -28,6 +30,7 @@ import org.openelisglobal.reports.dataexport.form.ReportingVariable;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -148,6 +151,9 @@ public class SampleTestingSource implements ReportingSource {
         // value into the overall test measurement.
         var components = dao.allComponents().stream()
                 .collect(Collectors.toMap(TestResultComponent::getId, Function.identity()));
+        Set<String> multiComponentTests = components.values().stream()
+                .collect(Collectors.groupingBy(TestResultComponent::getTestId, Collectors.counting())).entrySet()
+                .stream().filter(entry -> entry.getValue() > 1).map(Map.Entry::getKey).collect(Collectors.toSet());
         Map<String, String> dictionaryCache = new HashMap<>();
         var units = dao.unitsOfMeasure().stream().collect(
                 Collectors.toMap(UnitOfMeasure::getId, UnitOfMeasure::getUnitOfMeasureName, (first, second) -> first));
@@ -180,8 +186,8 @@ public class SampleTestingSource implements ReportingSource {
                             sampleId = specimen.getSample().getId();
                             analysisCount = dao.analysisCount(sampleId);
                         }
-                        Normalized value = normalize(result, request, components, units, dictionaryCache, patientFields,
-                                observationFields, analysisCount, zone);
+                        Normalized value = normalize(result, request, components, multiComponentTests, units,
+                                dictionaryCache, patientFields, observationFields, analysisCount, zone);
                         if (++count % 250 == 0)
                             dao.clearReadBatch();
                         return value;
@@ -227,6 +233,20 @@ public class SampleTestingSource implements ReportingSource {
     }
 
     /**
+     * The sample type as the application shows it (its localized name), not the
+     * catalog description: an environmental sample exported as "Air Minum" while
+     * every screen said "Drinking Water".
+     */
+    static String sampleTypeName(TypeOfSample type) {
+        if (type == null) {
+            return null;
+        }
+        Localization localization = type.getLocalization();
+        String localized = localization == null ? null : localization.getLocalizedValue();
+        return localized == null || localized.isBlank() ? type.getDescription() : localized;
+    }
+
+    /**
      * The unit configured on the matched component, falling back to the test's.
      *
      * <p>
@@ -246,8 +266,8 @@ public class SampleTestingSource implements ReportingSource {
     }
 
     private Normalized normalize(Result r, ExportSnapshot request, Map<String, TestResultComponent> components,
-            Map<String, String> units, Map<String, String> dictionaryCache, Map<String, String> patientFields,
-            Map<String, String> observationFields, long analysisCount, ZoneId zone) {
+            Set<String> multiComponentTests, Map<String, String> units, Map<String, String> dictionaryCache,
+            Map<String, String> patientFields, Map<String, String> observationFields, long analysisCount, ZoneId zone) {
         var analysis = r.getAnalysis();
         var specimen = analysis.getSampleItem();
         var sample = specimen.getSample();
@@ -264,13 +284,14 @@ public class SampleTestingSource implements ReportingSource {
         a.put("receivedDate", date(specimen.getReceivedDate(), zone));
         a.put("receivedTime", time(specimen.getReceivedDate(), zone));
         a.put("orderDate", sample.getEnteredDate() == null ? null : sample.getEnteredDate().toLocalDate().toString());
-        a.put("sampleType", specimen.getTypeOfSample() == null ? null : specimen.getTypeOfSample().getDescription());
+        a.put("sampleType", sampleTypeName(specimen.getTypeOfSample()));
         a.put("sampleStatus", statuses.getStatusNameFromId(specimen.getStatusId()));
         a.put("priority", sample.getPriority() == null ? null : sample.getPriority().toString());
         a.put("numberOfTests", Long.toString(analysisCount));
         a.put("resultId", r.getId());
-        a.put("testName", test.getDescription());
-        a.put("component", component == null ? null : component.getLabel());
+        a.put("testName", test.getName());
+        a.put("component", component == null || !multiComponentTests.contains(component.getTestId()) ? null
+                : component.getLabel());
         a.put("loincCode", test.getLoinc());
         a.put("resultUnit", resultUnit(component, test, units));
         a.put("resultStatus", analysis.isCorrectedSincePatientReport() ? "Corrected"

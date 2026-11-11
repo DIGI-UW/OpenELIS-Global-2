@@ -25,9 +25,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
@@ -40,8 +38,10 @@ import org.openelisglobal.statusofsample.service.StatusOfSampleService;
 import org.openelisglobal.statusofsample.valueholder.StatusOfSample;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.testmethod.valueholder.TestMethod;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -61,6 +61,7 @@ public class MicrobiologyTestFixtures {
     private final SampleItemService sampleItemService;
     private final AnalysisService analysisService;
     private final TestService testService;
+    private final TestSectionService testSectionService;
     private final TypeOfSampleService typeOfSampleService;
     private final LocalizationService localizationService;
     private final TestMethodService testMethodService;
@@ -77,12 +78,13 @@ public class MicrobiologyTestFixtures {
             TestMethodService testMethodService, IStatusService statusService,
             StatusOfSampleService statusOfSampleService, SystemUserService systemUserService,
             MicrobiologyConfigurationService configurationService, PersonService personService,
-            PatientService patientService) {
+            PatientService patientService, TestSectionService testSectionService) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
         this.analysisService = analysisService;
         this.testService = testService;
+        this.testSectionService = testSectionService;
         this.typeOfSampleService = typeOfSampleService;
         this.localizationService = localizationService;
         this.testMethodService = testMethodService;
@@ -94,12 +96,119 @@ public class MicrobiologyTestFixtures {
         this.patientService = patientService;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.dictionarycategory.service.DictionaryCategoryService cultureCategories;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.dictionary.service.DictionaryService cultureDictionary;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.dictionary.service.DictionaryConfigurationHandler dictionaryConfiguration;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.service.MicroPatientOriginConfigurationHandler patientOriginConfiguration;
+
+    public void ensureReportingTracks() {
+        try (var input = getClass().getResourceAsStream("/configuration/microbiology-patient-origins/default.csv")) {
+            patientOriginConfiguration.processConfiguration(input, "default.csv");
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not load patient origin configuration", e);
+        }
+        if (cultureDictionary.getDictionaryEntryByNameAndCategoryName("Bacterial", "Reporting track") != null)
+            return;
+        try (var input = getClass().getResourceAsStream("/configuration/microbiology-reporting-tracks/default.csv")) {
+            dictionaryConfiguration.processConfiguration(input, "microbiology-reporting-tracks.csv");
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not load reporting track configuration", e);
+        }
+    }
+
+    @Transactional
+    public void ensureCultureAtmosphere() {
+        ensureReportingTracks();
+        String name = "Culture atmosphere";
+        var category = cultureCategories.getDictionaryCategoryByName(name);
+        if (category == null) {
+            category = new org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory();
+            category.setCategoryName(name);
+            category.setDescription(name);
+            category.setLocalAbbreviation("M6" + UUID.randomUUID().toString().substring(0, 8));
+            category.setSysUserId(defaultUserId());
+            cultureCategories.insert(category);
+        }
+        if (cultureDictionary.getActiveSortedEntriesByCategoryName(name).isEmpty()) {
+            var entry = new org.openelisglobal.dictionary.valueholder.Dictionary();
+            entry.setDictionaryCategory(category);
+            entry.setDictEntry("Synthetic aerobic atmosphere");
+            entry.setIsActive("Y");
+            entry.setSortOrder(1);
+            entry.setSysUserId(defaultUserId());
+            cultureDictionary.insert(entry);
+        }
+    }
+
     public String defaultUserId() {
         return systemUserService.getAllSystemUsers().stream().filter(user -> "Y".equalsIgnoreCase(user.getIsActive()))
                 .sorted(Comparator.comparing(SystemUser::getId)).findFirst()
                 .orElseThrow(
                         () -> new IllegalStateException("No active system user is available for microbiology tests"))
                 .getId();
+    }
+
+    /**
+     * Owns the permissions needed by scenarios that create their lab unit
+     * dynamically.
+     */
+    @Transactional
+    public String createScenarioActor() {
+        var user = new SystemUser();
+        user.setLoginName("Micro" + uniqueSuffix());
+        user.setFirstName("Scenario " + uniqueSuffix());
+        user.setLastName("Operator");
+        user.setIsActive("Y");
+        user.setIsEmployee("Y");
+        user.setSysUserId(defaultUserId());
+        String id = systemUserService.insert(user);
+        var roleIds = new HashSet<String>();
+        for (String name : List.of(org.openelisglobal.common.constants.Constants.ROLE_RESULTS,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION,
+                org.openelisglobal.common.constants.Constants.ROLE_REPORTS)) {
+            var role = fixtureRoles.getRoleByName(name);
+            if ("-1".equals(role.getId())) {
+                role = new org.openelisglobal.role.valueholder.Role();
+                role.setName(name);
+                role.setDescription("Microbiology scenario " + name);
+                role.setSysUserId(id);
+                fixtureRoles.insert(role);
+            }
+            roleIds.add(role.getId());
+        }
+        var assignment = new org.openelisglobal.userrole.valueholder.UserLabUnitRoles();
+        assignment.setId(Integer.valueOf(id));
+        var mapping = new org.openelisglobal.userrole.valueholder.LabUnitRoleMap();
+        mapping.setLabUnit(org.openelisglobal.systemuser.controller.UnifiedSystemUserController.ALL_LAB_UNITS);
+        mapping.setRoles(roleIds);
+        assignment.setLabUnitRoleMap(Set.of(mapping));
+        fixtureEntityManager.persist(assignment);
+        fixtureEntityManager.flush();
+        return id;
+    }
+
+    @Transactional
+    public TestSection createLabUnit() {
+        String name = "Micro unit " + uniqueSuffix().substring(0, 8);
+        String actor = defaultUserId();
+        Localization localization = new Localization();
+        localization.setDescription("Microbiology integration test lab unit");
+        localization.setLocalizedValue("en", name);
+        localization.setSysUserId(actor);
+        localizationService.insert(localization);
+        TestSection unit = new TestSection();
+        unit.setTestSectionName(name);
+        unit.setDescription(name);
+        unit.setLocalization(localization);
+        unit.setIsActive(IActionConstants.YES);
+        unit.setSysUserId(actor);
+        unit.setId(testSectionService.insert(unit));
+        return unit;
     }
 
     public String createMethodId() {
@@ -209,6 +318,110 @@ public class MicrobiologyTestFixtures {
         return sampleType;
     }
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager fixtureEntityManager;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.role.service.RoleService fixtureRoles;
+
+    @Transactional
+    public org.openelisglobal.microbiology.valueholder.MicroCase prepareAstCase(
+            org.openelisglobal.microbiology.valueholder.MicroCase value, String actor) {
+        var c = fixtureEntityManager.find(org.openelisglobal.microbiology.valueholder.MicroCase.class, value.getId());
+        if (c.getLabUnitId() == null)
+            c.setLabUnitId(createLabUnit().getId());
+        var source = sampleItemService.get(c.getSampleItemId());
+        if (source.getTypeOfSample() == null) {
+            source.setTypeOfSample(createTypeOfSample());
+            sampleItemService.update(source);
+        }
+        c.setSampleId(source.getSample().getId());
+        c.setSampleTypeId(source.getTypeOfSample().getId());
+        var assignment = fixtureEntityManager.find(org.openelisglobal.userrole.valueholder.UserLabUnitRoles.class,
+                Integer.valueOf(actor));
+        boolean fresh = assignment == null;
+        if (fresh) {
+            assignment = new org.openelisglobal.userrole.valueholder.UserLabUnitRoles();
+            assignment.setId(Integer.valueOf(actor));
+        }
+        var mappings = new HashSet<>(assignment.getLabUnitRoleMap() == null
+                ? Set.<org.openelisglobal.userrole.valueholder.LabUnitRoleMap>of()
+                : assignment.getLabUnitRoleMap());
+        var unit = new org.openelisglobal.userrole.valueholder.LabUnitRoleMap();
+        unit.setLabUnit(c.getLabUnitId());
+        unit.setRoles(java.util.stream.Stream
+                .of(org.openelisglobal.common.constants.Constants.ROLE_RESULTS,
+                        org.openelisglobal.common.constants.Constants.ROLE_VALIDATION,
+                        org.openelisglobal.common.constants.Constants.ROLE_REPORTS)
+                .map(name -> fixtureRoles.getRoleByName(name).getId()).collect(java.util.stream.Collectors.toSet()));
+        mappings.removeIf(m -> c.getLabUnitId().equals(m.getLabUnit()));
+        mappings.add(unit);
+        assignment.setLabUnitRoleMap(mappings);
+        if (fresh)
+            fixtureEntityManager.persist(assignment);
+        fixtureEntityManager.flush();
+        return c;
+    }
+
+    @Transactional
+    public void prepareFinalCase(org.openelisglobal.microbiology.valueholder.MicroCase value, String actor) {
+        var c = prepareAstCase(value, actor);
+        var detail = fixtureEntityManager
+                .createQuery("from MicroCaseOrderDetail d where d.caseId=:id",
+                        org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail.class)
+                .setParameter("id", c.getId()).getResultStream().findFirst().orElse(null);
+        if (detail == null) {
+            detail = new org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail();
+            detail.setCaseId(c.getId());
+            detail.setCreatedBy(actor);
+            fixtureEntityManager.persist(detail);
+        }
+        detail.setPatientOrigin("OUTPATIENT");
+        var program = new org.openelisglobal.program.valueholder.Program();
+        program.setCode("M6_" + uniqueSuffix());
+        program.setProgramName("M6 release fixture");
+        ensureReportingTracks();
+        program.setReportingTrackId(
+                cultureDictionary.getDictionaryEntryByNameAndCategoryName("Bacterial", "Reporting track").getId());
+        program.setShowOnMicroCase(true);
+        program.setManuallyChanged(true);
+        fixtureEntityManager.persist(program);
+        c.setProgramId(program.getId());
+        value.setProgramId(program.getId());
+        var association = new org.openelisglobal.program.valueholder.ProgramSample();
+        association.setProgram(program);
+        association.setSample(sampleItemService.get(c.getSampleItemId()).getSample());
+        fixtureEntityManager.persist(association);
+        var event = new org.openelisglobal.microbiology.valueholder.MicroCaseActivity();
+        event.setCaseId(c.getId());
+        event.setActivityType("CULTURE_INOCULATED");
+        event.setPerformedBy(actor);
+        event.setOccurredAt(new Timestamp(System.currentTimeMillis()));
+        fixtureEntityManager.persist(event);
+        var row = new org.openelisglobal.microbiology.valueholder.MicroCaseInoculation();
+        row.setCaseId(c.getId());
+        row.setActivityId(event.getId());
+        row.setSourceSampleItemId(c.getSampleItemId());
+        row.setContainerIdentifier("M6-FINAL-" + uniqueSuffix());
+        row.setMedia("Release fixture medium");
+        row.setNotTracked(true);
+        row.setAtmosphere("Aerobic");
+        row.setTemperature(new BigDecimal("37"));
+        row.setDuration(new BigDecimal("48"));
+        row.setDurationUnit("HOURS");
+        row.setOccurredAt(new Timestamp(System.currentTimeMillis() - 172800000));
+        row.setPerformedBy(actor);
+        row.setOutcome("GROWTH");
+        row.setOutcomeBy(actor);
+        row.setOutcomeAt(new Timestamp(System.currentTimeMillis()));
+        fixtureEntityManager.persist(row);
+        for (var link : fixtureEntityManager
+                .createQuery("from MicroCaseAnalysis a where a.caseId=:id",
+                        org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis.class)
+                .setParameter("id", c.getId()).getResultList())
+            link.setSelectedForReport(false);
+        fixtureEntityManager.flush();
+    }
+
     public ReferenceData createReferenceData(String methodId) {
         String suffix = uniqueSuffix();
 
@@ -220,8 +433,9 @@ public class MicrobiologyTestFixtures {
 
         MicroAstPanel panel = new MicroAstPanel();
         panel.setName("Enterobacterales panel " + suffix);
-        panel.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
         panel.setOrganismGroup("Enterobacterales");
+        panel.setPublishedAt(new Timestamp(System.currentTimeMillis()));
+        panel.setPublishedBy(defaultUserId());
         configurationService.createAstPanel(panel);
 
         MicroOrganism organism = new MicroOrganism();
@@ -244,16 +458,7 @@ public class MicrobiologyTestFixtures {
                 new BigDecimal("8.0000"), new BigDecimal("32.0000"));
         configurationService.createBreakpointRule(rule);
 
-        MicroCultureSetup setup = new MicroCultureSetup();
-        setup.setMethodId(methodId);
-        setup.setName("Urine culture " + suffix);
-        setup.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
-        setup.setMediaDefaults("Blood agar");
-        setup.setIncubationDefaults("18-24h");
-        setup.setAtmosphereDefaults("Ambient");
-        setup = configurationService.getOrCreateCultureSetup(setup);
-
-        return new ReferenceData(organism, antibiotic, panel, panelAntibiotic, standard, rule, setup);
+        return new ReferenceData(organism, antibiotic, panel, panelAntibiotic, standard, rule);
     }
 
     public AlternativeBreakpointData createAlternativeBreakpoint(ReferenceData referenceData) {
@@ -275,27 +480,16 @@ public class MicrobiologyTestFixtures {
         return configurationService.createOrganism(organism);
     }
 
-    public MicroCultureSetup createTbCultureSetup(String methodId) {
-        MicroCultureSetup setup = new MicroCultureSetup();
-        setup.setMethodId(methodId);
-        setup.setName("TB culture " + uniqueSuffix());
-        setup.setWorkflowType(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name());
-        setup.setMediaDefaults("MGIT");
-        setup.setIncubationDefaults("up to 42 days");
-        setup.setAtmosphereDefaults("Ambient");
-        return configurationService.getOrCreateCultureSetup(setup);
-    }
-
     public org.openelisglobal.test.valueholder.Test createCatalogTest() {
-        return createCatalogTest(null, null);
+        return createCatalogTest((Method) null);
     }
 
-    public Test createCatalogCultureTest(String methodId, MicroWorkflowType workflowType) {
+    public Test createCatalogCultureTest(String methodId) {
         Method method = methodService.findById(methodId);
         if (method == null) {
             throw new IllegalArgumentException("Method not found: " + methodId);
         }
-        Test test = createCatalogTest(workflowType, method);
+        Test test = createCatalogTest(method);
 
         TestMethod link = new TestMethod();
         link.setTestId(test.getId());
@@ -324,7 +518,7 @@ public class MicrobiologyTestFixtures {
         return analysis;
     }
 
-    private Test createCatalogTest(MicroWorkflowType workflowType, Method method) {
+    private Test createCatalogTest(Method method) {
         String suffix = uniqueSuffix();
         Test test = new Test();
         test.setName("MicroCatalogIT " + suffix);
@@ -334,7 +528,6 @@ public class MicrobiologyTestFixtures {
         test.setDomain("CLINICAL");
         test.setAntimicrobialResistance(true);
         test.setOrderable(true);
-        test.setCultureWorkflowType(workflowType == null ? null : workflowType.name());
         if (method != null) {
             test.setMethod(method);
         }
@@ -401,10 +594,75 @@ public class MicrobiologyTestFixtures {
         throw new IllegalStateException("Unable to provision SampleStatus.Entered for microbiology tests");
     }
 
+    /**
+     * The status a cancelled order's sample takes (OGC-1266). Fixtures that
+     * truncate and re-seed the status table leave the status cache pointing at ids
+     * that no longer exist, so the cache is refreshed against the row.
+     */
+    public String ensureSampleCanceledStatus() {
+        String statusId = statusService.getStatusID(SampleStatus.Canceled);
+        if (!"-1".equals(statusId) && statusOfSampleService.getMatch("id", statusId).isPresent()) {
+            return statusId;
+        }
+
+        StatusOfSample existing = statusOfSampleService.getAllStatusOfSamples().stream()
+                .filter(status -> "SAMPLE".equals(status.getStatusType()))
+                .filter(status -> "SampleCanceled".equals(status.getStatusOfSampleName())).findFirst().orElse(null);
+        if (existing == null) {
+            StatusOfSample canceled = new StatusOfSample();
+            canceled.setStatusOfSampleName("SampleCanceled");
+            canceled.setDescription("The sample has been canceled by the user");
+            canceled.setCode(nextAvailableStatusCode("SAMPLE"));
+            canceled.setStatusType("SAMPLE");
+            canceled.setNameKey("status.sample.canceled");
+            canceled.setIsActive(IActionConstants.YES);
+            canceled.setSysUserId(defaultUserId());
+            statusOfSampleService.insert(canceled);
+        }
+        statusService.refreshCache();
+        statusId = statusService.getStatusID(SampleStatus.Canceled);
+        if ("-1".equals(statusId)) {
+            throw new IllegalStateException("Unable to provision SampleStatus.Canceled");
+        }
+        return statusId;
+    }
+
     public void ensureRequiredWorkflowStatuses() {
         ensureSampleEnteredStatus();
+        ensureOrderEnteredStatus();
         ensureAnalysisNotStartedStatus();
         ensureAnalysisFinalizedStatus();
+        ensureAnalysisCanceledStatus();
+    }
+
+    public String ensureOrderEnteredStatus() {
+        String statusId = statusService
+                .getStatusID(org.openelisglobal.common.services.StatusService.OrderStatus.Entered);
+        if (!"-1".equals(statusId) && statusOfSampleService.getMatch("id", statusId).isPresent()) {
+            return statusId;
+        }
+
+        StatusOfSample existing = statusOfSampleService.getAllStatusOfSamples().stream()
+                .filter(status -> "ORDER".equals(status.getStatusType()))
+                .filter(status -> "Test Entered".equals(status.getStatusOfSampleName())).findFirst().orElse(null);
+        if (existing == null) {
+            StatusOfSample entered = new StatusOfSample();
+            entered.setStatusOfSampleName("Test Entered");
+            entered.setDescription("No tests have been run for this order");
+            entered.setCode(nextAvailableStatusCode("ORDER"));
+            entered.setStatusType("ORDER");
+            entered.setNameKey("status.sample.notStarted");
+            entered.setIsActive(IActionConstants.YES);
+            entered.setSysUserId(defaultUserId());
+            statusOfSampleService.insert(entered);
+        }
+        statusService.refreshCache();
+
+        statusId = statusService.getStatusID(org.openelisglobal.common.services.StatusService.OrderStatus.Entered);
+        if ("-1".equals(statusId)) {
+            throw new IllegalStateException("Unable to provision OrderStatus.Entered for microbiology tests");
+        }
+        return statusId;
     }
 
     public String ensureAnalysisNotStartedStatus() {
@@ -453,6 +711,89 @@ public class MicrobiologyTestFixtures {
         return statusId;
     }
 
+    public String ensureAnalysisCanceledStatus() {
+        String statusId = statusService.getStatusID(AnalysisStatus.Canceled);
+        if (!"-1".equals(statusId) && statusOfSampleService.getMatch("id", statusId).isPresent()) {
+            return statusId;
+        }
+
+        StatusOfSample canceled = new StatusOfSample();
+        canceled.setStatusOfSampleName("Test Canceled");
+        canceled.setDescription("Test was requested but then canceled");
+        canceled.setCode(nextAvailableStatusCode("ANALYSIS"));
+        canceled.setStatusType("ANALYSIS");
+        canceled.setNameKey("status.test.canceled");
+        canceled.setIsActive(IActionConstants.YES);
+        statusOfSampleService.insert(canceled);
+        statusService.refreshCache();
+
+        statusId = statusService.getStatusID(AnalysisStatus.Canceled);
+        if ("-1".equals(statusId)) {
+            throw new IllegalStateException("Unable to provision AnalysisStatus.Canceled for microbiology tests");
+        }
+        return statusId;
+    }
+
+    public String ensureExternalOrderEnteredStatus() {
+        String statusId = statusService
+                .getStatusID(org.openelisglobal.common.services.StatusService.ExternalOrderStatus.Entered);
+        if (!"-1".equals(statusId) && statusOfSampleService.getMatch("id", statusId).isPresent()) {
+            return statusId;
+        }
+
+        StatusOfSample existing = statusOfSampleService.getAllStatusOfSamples().stream()
+                .filter(status -> "EXTERNAL_ORDER".equals(status.getStatusType()))
+                .filter(status -> "Entered".equals(status.getStatusOfSampleName())).findFirst().orElse(null);
+        if (existing == null) {
+            StatusOfSample entered = new StatusOfSample();
+            entered.setStatusOfSampleName("Entered");
+            entered.setDescription("External order entered");
+            entered.setCode(nextAvailableStatusCode("EXTERNAL_ORDER"));
+            entered.setStatusType("EXTERNAL_ORDER");
+            entered.setIsActive(IActionConstants.YES);
+            entered.setSysUserId(defaultUserId());
+            statusOfSampleService.insert(entered);
+        }
+        statusService.refreshCache();
+
+        statusId = statusService
+                .getStatusID(org.openelisglobal.common.services.StatusService.ExternalOrderStatus.Entered);
+        if ("-1".equals(statusId)) {
+            throw new IllegalStateException("Unable to provision ExternalOrderStatus.Entered");
+        }
+        return statusId;
+    }
+
+    public String ensureExternalOrderRealizedStatus() {
+        String statusId = statusService
+                .getStatusID(org.openelisglobal.common.services.StatusService.ExternalOrderStatus.Realized);
+        if (!"-1".equals(statusId) && statusOfSampleService.getMatch("id", statusId).isPresent()) {
+            return statusId;
+        }
+
+        StatusOfSample existing = statusOfSampleService.getAllStatusOfSamples().stream()
+                .filter(status -> "EXTERNAL_ORDER".equals(status.getStatusType()))
+                .filter(status -> "Realized".equals(status.getStatusOfSampleName())).findFirst().orElse(null);
+        if (existing == null) {
+            StatusOfSample realized = new StatusOfSample();
+            realized.setStatusOfSampleName("Realized");
+            realized.setDescription("External order realized");
+            realized.setCode(nextAvailableStatusCode("EXTERNAL_ORDER"));
+            realized.setStatusType("EXTERNAL_ORDER");
+            realized.setIsActive(IActionConstants.YES);
+            realized.setSysUserId(defaultUserId());
+            statusOfSampleService.insert(realized);
+        }
+        statusService.refreshCache();
+
+        statusId = statusService
+                .getStatusID(org.openelisglobal.common.services.StatusService.ExternalOrderStatus.Realized);
+        if ("-1".equals(statusId)) {
+            throw new IllegalStateException("Unable to provision ExternalOrderStatus.Realized");
+        }
+        return statusId;
+    }
+
     private String nextAvailableStatusCode(String statusType) {
         Set<String> usedCodes = new HashSet<>();
         for (StatusOfSample status : statusOfSampleService.getAllStatusOfSamples()) {
@@ -477,8 +818,7 @@ public class MicrobiologyTestFixtures {
     }
 
     public record ReferenceData(MicroOrganism organism, MicroAntibiotic antibiotic, MicroAstPanel panel,
-            MicroAstPanelAntibiotic panelAntibiotic, MicroBreakpointStandard standard, MicroBreakpointRule rule,
-            MicroCultureSetup cultureSetup) {
+            MicroAstPanelAntibiotic panelAntibiotic, MicroBreakpointStandard standard, MicroBreakpointRule rule) {
     }
 
     public record AlternativeBreakpointData(MicroBreakpointStandard standard, MicroBreakpointRule rule) {

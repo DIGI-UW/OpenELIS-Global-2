@@ -10,9 +10,8 @@ import { LONG_TIMEOUT } from "../../../helpers/timeouts";
  * regression smoke.
  *
  * What this spec verifies:
- *   - The legacy /result route still resolves: the unified worklist is the
- *     default (resultsEntryUnifiedRoute on), so /result forwards to /Results
- *     (catches accidental route removal)
+ *   - The legacy /result address still resolves: it redirects to /Results,
+ *     the only results page (catches accidental route removal)
  *   - The worklist shell renders (catches accidental unmount)
  *
  * What this spec deliberately does NOT verify:
@@ -35,9 +34,11 @@ test.describe("Result Entry — worklist entry point", () => {
     await expect(
       main.getByRole("heading", { name: /result/i }).first(),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(main.getByLabel(/lab unit/i)).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
+    await expect(main.getByRole("combobox", { name: /lab unit/i })).toBeVisible(
+      {
+        timeout: LONG_TIMEOUT,
+      },
+    );
     await expect(
       main.getByRole("button", { name: /^load results$/i }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });

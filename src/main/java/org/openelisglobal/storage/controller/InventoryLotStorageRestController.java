@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,10 +27,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * InventoryLot assign/move/movements over the occupant-generalized
- * {@link SampleStorageService} (OGC-657).
+ * {@link SampleStorageService} (OGC-657). The role guard matches the /Storage
+ * route in App.jsx.
  */
 @RestController
 @RequestMapping("/rest/storage/inventory-lots")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'ADMIN')")
 public class InventoryLotStorageRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(InventoryLotStorageRestController.class);

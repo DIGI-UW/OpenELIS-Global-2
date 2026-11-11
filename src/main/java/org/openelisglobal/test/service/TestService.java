@@ -33,6 +33,9 @@ public interface TestService extends BaseObjectService<Test, String> {
 
     List<Test> getTestsByTestSectionIds(List<String> ids);
 
+    /** OGC-189: unfiltered by active status, for viewer paths. See TestDAO. */
+    List<Test> getAllTestsByTestSectionIds(List<String> ids);
+
     List<Test> getPageOfTestsBySysUserId(int startingRecNo, int sysUserId);
 
     Integer getTotalSearchedTestCount(String searchString);
@@ -56,6 +59,8 @@ public interface TestService extends BaseObjectService<Test, String> {
     Test getTestByNormalizedDescription(String description);
 
     Test getTestByLocalCode(String localCode);
+
+    List<Test> getTestsByLocalCode(String localCode);
 
     List<Test> getTestsByNormalizedDescriptionPrefix(String plainName);
 
@@ -156,6 +161,13 @@ public interface TestService extends BaseObjectService<Test, String> {
     Optional<TestQcThreshold> getQcThreshold(String testId);
 
     /**
+     * Stores the test's environmental QC thresholds, removing its threshold row
+     * when all three are null so the test no longer counts as QC-configured.
+     */
+    void saveQcThreshold(String testId, java.math.BigDecimal blankThreshold, java.math.BigDecimal rpdThreshold,
+            java.math.BigDecimal recoveryWindowPct, String sysUserId);
+
+    /**
      * The tests carrying these ids, in one query. For views that decorate many rows
      * with a test name and would otherwise look one up per row.
      */
@@ -183,4 +195,10 @@ public interface TestService extends BaseObjectService<Test, String> {
      * test has no localization link for it.
      */
     Map<String, String> getNameLocalizationIds(String testId);
+
+    /**
+     * True when the localization is some test's name or reporting name, so a change
+     * to its translations must refresh the cached test-name lists.
+     */
+    boolean isNameLocalization(String localizationId);
 }

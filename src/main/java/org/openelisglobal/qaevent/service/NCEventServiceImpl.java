@@ -77,6 +77,12 @@ public class NCEventServiceImpl extends AuditableBaseObjectServiceImpl<NcEvent, 
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public NcEvent findByTriggerSource(String triggerSourceType, String triggerSourceId) {
+        return baseObjectDAO.findByTriggerSource(triggerSourceType, triggerSourceId);
+    }
+
+    @Override
     protected NCEventDAO getBaseObjectDAO() {
         return baseObjectDAO;
     }

@@ -13,6 +13,7 @@ import {
 import { useIntl } from "react-intl";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyService from "./MicrobiologyService";
+import { MicrobiologyReportBlock } from "./CaseReportWorkspace";
 
 const isErrorResponse = (response) =>
   response?.status === 0 || response?.status >= 400;
@@ -23,6 +24,7 @@ const AmendmentHistoryPanel = ({
   service = MicrobiologyService,
   onCaseUpdated,
   active = true,
+  canAmend = true,
 }) => {
   const intl = useIntl();
   const headingRef = useRef(null);
@@ -153,7 +155,7 @@ const AmendmentHistoryPanel = ({
         />
       )}
 
-      {(finalReleased || amendmentOpen) && (
+      {canAmend && (finalReleased || amendmentOpen) && (
         <div className="microbiology-amendment-actions">
           <TextArea
             id="microbiology-amendment-reason"
@@ -315,7 +317,11 @@ const AmendmentHistoryPanel = ({
                       {formatMicrobiologyEnum(version.releaseType, intl)}
                     </Tag>
                   </div>
-                  <p>{version.content}</p>
+                  {version.report ? (
+                    <MicrobiologyReportBlock report={version.report} />
+                  ) : (
+                    <p>{version.content}</p>
+                  )}
                   {version.correctsVersionId && (
                     <div className="microbiology-list__meta">
                       {intl.formatMessage(

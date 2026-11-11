@@ -200,6 +200,21 @@ Navigate: **Administration → Master Lists → Label Presets**.
       `site_information.barcode.preprinted.*` keys (verify with
       `psql clinlims -c "SELECT * FROM clinlims.site_information WHERE name LIKE 'barcode.preprinted.%';"`).
 
+### Print job quantities
+
+The per-quantity setting `numMaxRequestLabelQuantity` defaults to 100 copies.
+The separate `numMaxRequestLabelTotal` setting defaults to 1,000 total labels
+in one print job. Pre-print totals are sets multiplied by order plus specimen
+copies per set; reprints sum the selected label copies. Print larger workloads
+as smaller jobs. Business-limit overrides still work within these safety limits.
+Missing, invalid or nonpositive safety settings use their defaults.
+
+Quantity rejection happens before PDF rendering; pre-print rejection also happens
+before accession allocation. Invalid saved-request quantities are rejected before
+clinical order persistence or replacement of existing label requests. A pre-print
+job may omit one label type by requesting zero copies, but must print at least
+one label per set.
+
 ### Legacy URL redirect
 
 - [ ] Visit `http://localhost:8080/OpenELIS-Global/MasterListsPage#barcodeConfiguration` —

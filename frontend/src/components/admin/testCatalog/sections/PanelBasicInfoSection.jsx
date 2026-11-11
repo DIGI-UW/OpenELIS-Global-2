@@ -34,6 +34,7 @@ import { NotificationKinds } from "../../../common/CustomNotification";
 const REFUSAL_MESSAGES = {
   "name.required": "error.panel.nameRequired",
   "name.tooLong": "error.panel.nameTooLong",
+  "name.duplicate": "error.panel.nameDuplicate",
   "description.tooLong": "error.panel.descriptionTooLong",
   "activation.needsTest": "helper.panel.needsTest",
 };
@@ -147,7 +148,10 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
             saveExisting(created.id);
           } else {
             setSaving(false);
-            notify(NotificationKinds.error, "error.panel.save");
+            notify(
+              NotificationKinds.error,
+              REFUSAL_MESSAGES[created?.refusal] || "error.panel.save",
+            );
           }
         },
       );
@@ -167,7 +171,8 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
             ? intl.formatMessage({ id: "placeholder.panel.name" })
             : undefined
         }
-        maxLength={20}
+        maxCount={20}
+        enableCounter
         onChange={(e) => setName(e.target.value)}
       />
       <div>

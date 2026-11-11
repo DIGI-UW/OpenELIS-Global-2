@@ -7,20 +7,15 @@ import static org.junit.Assert.assertTrue;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
+import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
 import org.openelisglobal.history.service.HistoryService;
-import org.openelisglobal.referencetables.service.ReferenceTablesService;
-import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.util.AopTestUtils;
-import org.springframework.test.util.ReflectionTestUtils;
 
-public class SystemAuditTrailIntegrationTest extends BaseWebContextSensitiveTest {
+public class SystemAuditTrailIntegrationTest extends AuditTrailIntegrationTestSupport {
 
     @Autowired
     private DictionaryService dictionaryService;
@@ -31,31 +26,33 @@ public class SystemAuditTrailIntegrationTest extends BaseWebContextSensitiveTest
     @Autowired
     private HistoryService historyService;
 
-    @Autowired
-    private ReferenceTablesService referenceTablesService;
-
     private String dictionaryRefTableId;
+    private DictionaryCategory category;
+    private String originalDictionaryId;
 
     @Before
     public void setUp() throws Exception {
-        // Replace the mocked AuditTrailService with a real one for this test
-        AuditTrailServiceImpl realAuditTrailService = new AuditTrailServiceImpl();
-        ReflectionTestUtils.setField(realAuditTrailService, "referenceTablesService", referenceTablesService);
-        ReflectionTestUtils.setField(realAuditTrailService, "historyService", historyService);
-        Object target = AopTestUtils.getUltimateTargetObject(dictionaryService);
-        ReflectionTestUtils.setField(target, "auditTrailService", realAuditTrailService);
-
-        executeDataSetWithStateManagement("testdata/dictionary.xml");
-        ReferenceTables rt = referenceTablesService.getReferenceTableByName("DICTIONARY");
-        assertNotNull("DICTIONARY must be in reference_tables", rt);
-        dictionaryRefTableId = rt.getId();
+        dictionaryRefTableId = requiredReferenceTable("DICTIONARY");
+        category = new DictionaryCategory();
+        category.setCategoryName("Audit test category");
+        category.setDescription("Owned by the current test transaction");
+        category.setLocalAbbreviation("AUDIT");
+        category.setSysUserId(TEST_SYS_USER_ID);
+        dictionaryCategoryService.insert(category);
+        Dictionary original = new Dictionary();
+        original.setDictionaryCategory(category);
+        original.setDictEntry("Original audit entry");
+        original.setIsActive("Y");
+        original.setSysUserId(TEST_SYS_USER_ID);
+        originalDictionaryId = dictionaryService.insert(original);
+        detachSavedRecords();
     }
 
     @Test
     public void testInsert_shouldCreateHistoryRecord() {
         Dictionary dict = new Dictionary();
         dict.setSortOrder(10);
-        dict.setDictionaryCategory(dictionaryCategoryService.getDictionaryCategoryByName("CA3"));
+        dict.setDictionaryCategory(category);
         dict.setDictEntry("Audit Test Entry");
         dict.setIsActive("Y");
         dict.setLocalAbbreviation("ATE");
@@ -76,14 +73,16 @@ public class SystemAuditTrailIntegrationTest extends BaseWebContextSensitiveTest
 
     @Test
     public void testUpdate_shouldCreateHistoryRecordWithChanges() {
-        Dictionary dict = dictionaryService.get("1");
+        Dictionary dict = dictionaryService.get(originalDictionaryId);
+        detachSavedRecords();
         String originalEntry = dict.getDictEntry();
         dict.setDictEntry("Updated Audit Entry");
         dict.setSysUserId("1");
 
         dictionaryService.update(dict);
 
-        List<History> historyRecords = historyService.getHistoryByRefIdAndRefTableId("1", dictionaryRefTableId);
+        List<History> historyRecords = historyService.getHistoryByRefIdAndRefTableId(originalDictionaryId,
+                dictionaryRefTableId);
         boolean foundUpdate = false;
         for (History h : historyRecords) {
             if ("U".equals(h.getActivity())) {
@@ -99,12 +98,13 @@ public class SystemAuditTrailIntegrationTest extends BaseWebContextSensitiveTest
 
     @Test
     public void testDelete_shouldCreateHistoryRecord() {
-        Dictionary dict = dictionaryService.get("1");
+        Dictionary dict = dictionaryService.get(originalDictionaryId);
         dict.setSysUserId("1");
 
         dictionaryService.delete(dict);
 
-        List<History> historyRecords = historyService.getHistoryByRefIdAndRefTableId("1", dictionaryRefTableId);
+        List<History> historyRecords = historyService.getHistoryByRefIdAndRefTableId(originalDictionaryId,
+                dictionaryRefTableId);
         boolean foundDelete = false;
         for (History h : historyRecords) {
             if ("D".equals(h.getActivity())) {
@@ -120,7 +120,7 @@ public class SystemAuditTrailIntegrationTest extends BaseWebContextSensitiveTest
     public void testSystemEventsQuery_shouldFilterByEntityType() {
         Dictionary dict = new Dictionary();
         dict.setSortOrder(20);
-        dict.setDictionaryCategory(dictionaryCategoryService.getDictionaryCategoryByName("CA3"));
+        dict.setDictionaryCategory(category);
         dict.setDictEntry("Filter Test Entry");
         dict.setIsActive("Y");
         dict.setLocalAbbreviation("FTE");
@@ -143,7 +143,7 @@ public class SystemAuditTrailIntegrationTest extends BaseWebContextSensitiveTest
     public void testSystemEventsQuery_shouldFilterBySysUserId() {
         Dictionary dict = new Dictionary();
         dict.setSortOrder(25);
-        dict.setDictionaryCategory(dictionaryCategoryService.getDictionaryCategoryByName("CA3"));
+        dict.setDictionaryCategory(category);
         dict.setDictEntry("User Filter Entry");
         dict.setIsActive("Y");
         dict.setLocalAbbreviation("UFE");
@@ -172,7 +172,7 @@ public class SystemAuditTrailIntegrationTest extends BaseWebContextSensitiveTest
         for (int i = 0; i < 5; i++) {
             Dictionary dict = new Dictionary();
             dict.setSortOrder(30 + i);
-            dict.setDictionaryCategory(dictionaryCategoryService.getDictionaryCategoryByName("CA3"));
+            dict.setDictionaryCategory(category);
             dict.setDictEntry("Page Test " + i);
             dict.setIsActive("Y");
             dict.setLocalAbbreviation("PT" + i);

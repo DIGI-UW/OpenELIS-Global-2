@@ -59,6 +59,12 @@ interface SearchPatientFormProps {
   idPrefix?: string;
   /** Patients (by patientID) left out of the results, e.g. one already chosen elsewhere on the page. */
   excludePatientIds?: string[];
+  /** False when the host page already renders the notification toasts. */
+  renderNotifications?: boolean;
+  /** False when the page's own `labNumber` URL parameter names the order it loads, not a patient search. */
+  followUrlLabNumber?: boolean;
+  /** "prefix" matches names exactly or by their first letters only (order entry, FR-B6a); otherwise names also match by contained text and close spelling. */
+  nameMatch?: "prefix";
   [key: string]: unknown;
 }
 
@@ -207,6 +213,9 @@ function SearchPatientForm(props: SearchPatientFormProps) {
     if (values.crSearch === true) {
       searchEndPoint += "&crSearch=true";
     }
+    if (props.nameMatch) {
+      searchEndPoint += "&nameMatch=" + props.nameMatch;
+    }
 
     getFromOpenElisServer(searchEndPoint, fetchPatientResults);
     setUrl(searchEndPoint);
@@ -347,7 +356,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
     // Deep link from elsewhere (e.g. the Validation page) — prefill the lab
     // number and run the search so the matching patient surfaces immediately.
     const labNumber = params.get("labNumber");
-    if (labNumber) {
+    if (labNumber && props.followUrlLabNumber !== false) {
       autoSelectOnResults.current = true;
       setSearchFormValues({ ...SearchPatientFormValues, labNumber });
       handleSubmit({ ...SearchPatientFormValues, labNumber });
@@ -355,7 +364,11 @@ function SearchPatientForm(props: SearchPatientFormProps) {
   }, []);
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true && props.renderNotifications !== false ? (
+        <AlertDialog />
+      ) : (
+        ""
+      )}
       {loading && <Loading />}
       <Formik
         key={formInstance}
@@ -501,7 +514,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                       defaultSelected=""
                       legendText={intl.formatMessage({
                         id: "patient.gender",
-                        defaultMessage: "Gender",
+                        defaultMessage: "Sex",
                       })}
                       name={field.name}
                       id={fieldId("search_patient_gender")}
@@ -595,7 +608,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
       {arrows.show && <ServerPageArrows {...arrows} />}
       <DataTable
         rows={visibleResults}
-        headers={patientSearchHeaderData}
+        headers={patientSearchHeaderData(intl)}
         isSortable
       >
         {({ rows, headers, getHeaderProps, getTableProps }) => (
@@ -658,21 +671,31 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                               patientName={patientName}
                             />
                             {isMerged && (
-                              <Tag
-                                type="magenta"
-                                size="sm"
+                              <span
                                 title={
                                   mergedIntoLabel
-                                    ? `Merged into ${mergedIntoLabel}`
-                                    : "Merged"
+                                    ? intl.formatMessage(
+                                        {
+                                          id: "patient.merged.banner.subtitle",
+                                        },
+                                        { target: mergedIntoLabel },
+                                      )
+                                    : intl.formatMessage({
+                                        id: "patient.merged.banner.subtitle.noTarget",
+                                      })
                                 }
-                                style={{ marginLeft: "0.5rem" }}
                               >
-                                <FormattedMessage
-                                  id="patient.search.merged.tag"
-                                  defaultMessage="Merged"
-                                />
-                              </Tag>
+                                <Tag
+                                  type="magenta"
+                                  size="sm"
+                                  style={{ marginLeft: "0.5rem" }}
+                                >
+                                  <FormattedMessage
+                                    id="patient.search.merged.tag"
+                                    defaultMessage="Merged"
+                                  />
+                                </Tag>
+                              </span>
                             )}
                           </div>
                         ) : (

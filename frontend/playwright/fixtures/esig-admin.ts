@@ -12,11 +12,15 @@ import { UI_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
  * Each shows one site_information domain: Site Information holds the identity
  * settings (electronic signature), Result Entry Configuration the result ones.
  */
-export type SettingsMenu = "SiteInformationMenu" | "ResultConfigurationMenu";
+export type SettingsMenu =
+  | "SiteInformationMenu"
+  | "ResultConfigurationMenu"
+  | "SampleEntryConfigurationMenu";
 
 const SETTINGS_MENU_HEADING: Record<SettingsMenu, RegExp> = {
   SiteInformationMenu: /site information/i,
   ResultConfigurationMenu: /result entry configuration/i,
+  SampleEntryConfigurationMenu: /order entry configuration/i,
 };
 
 export class SiteInformationPage {
@@ -82,6 +86,27 @@ export class SiteInformationPage {
     ).toBeVisible({ timeout: NAV_TIMEOUT });
   }
 
+  /**
+   * Set a text site_information setting via the admin UI: select its row,
+   * Modify, replace the value, Save.
+   */
+  async setTextSetting(settingName: string, value: string) {
+    const row = this.page.locator("tr", { hasText: settingName });
+    await expect(row).toBeVisible({ timeout: UI_TIMEOUT });
+    await row.locator("label").first().click();
+    await this.page
+      .getByRole("button", { name: "Modify", exact: true })
+      .click();
+    const field = this.page.getByRole("textbox", { name: "Value" });
+    await expect(field).toBeVisible({ timeout: UI_TIMEOUT });
+    await field.fill(value);
+    await this.page.getByRole("button", { name: "Save", exact: true }).click();
+    await this.page.waitForLoadState("domcontentloaded");
+    await expect(
+      this.page.getByRole("button", { name: "Modify", exact: true }),
+    ).toBeVisible({ timeout: NAV_TIMEOUT });
+  }
+
   /** Read the current value of a setting from the table. */
   async getSettingValue(settingName: string): Promise<string> {
     const row = this.page.locator("tr", { hasText: settingName });
@@ -94,13 +119,13 @@ export class SiteInformationPage {
 }
 
 /**
- * Which admin menu each boolean setting is edited on: the unified-route flag
- * lives in the result configuration domain, the e-signature flag in site
- * identity.
+ * Which admin menu each boolean setting is edited on: the e-signature flag
+ * lives in site identity, the patient sex and age rules in sample entry.
  */
 const SETTING_MENU: Record<string, SettingsMenu> = {
-  resultsEntryUnifiedRoute: "ResultConfigurationMenu",
   electronicSignatureEnabled: "SiteInformationMenu",
+  "Patient sex required": "SampleEntryConfigurationMenu",
+  "Patient age required": "SampleEntryConfigurationMenu",
 };
 
 /** Read a boolean site_information setting off its admin menu. */

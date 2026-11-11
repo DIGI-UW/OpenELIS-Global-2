@@ -56,22 +56,24 @@ const Index = () => {
           </Section>
         </Column>
       </Grid>
-      <div className="orderLegendBody">
-        {notificationVisible === true ? <AlertDialog /> : ""}
-        <SearchForm
-          setParams={setParams}
-          setResults={receiveResults}
-          registerRefresh={registerRefresh}
-          registerPageLoader={registerPageLoader}
-        />
-        <Validation
-          params={params}
-          results={results}
-          refreshResults={refreshResults}
-          serverPageSize={serverPageSize}
-          loadPage={loadPage}
-        />
-      </div>
+      {notificationVisible === true ? <AlertDialog /> : ""}
+      <SearchForm
+        setParams={setParams}
+        setResults={receiveResults}
+        registerRefresh={registerRefresh}
+        registerPageLoader={registerPageLoader}
+      />
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <Validation
+            params={params}
+            results={results}
+            refreshResults={refreshResults}
+            serverPageSize={serverPageSize}
+            loadPage={loadPage}
+          />
+        </Column>
+      </Grid>
     </>
   );
 };

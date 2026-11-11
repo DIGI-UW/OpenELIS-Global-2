@@ -150,4 +150,46 @@ describe("createOrderEntryValidationSchema", () => {
 
     await expect(schema.isValid(valuesWithoutRequester)).resolves.toBe(false);
   });
+
+  test("accepts an EQA order with neither referring site nor requester", async () => {
+    const schema = createOrderEntryValidationSchema({
+      PATIENT_NATIONAL_ID_REQUIRED: "false",
+      REQUESTER_REQUIRED: "true",
+    });
+
+    const eqaOrder = {
+      ...minimalOrderValues,
+      sampleOrderItems: {
+        ...minimalOrderValues.sampleOrderItems,
+        isEQASample: true,
+        referringSiteName: "",
+        referringSiteId: "",
+        providerFirstName: "",
+        providerLastName: "",
+      },
+    };
+
+    await expect(schema.isValid(eqaOrder)).resolves.toBe(true);
+  });
+
+  test("accepts an EQA order with no patient even where patient fields are required", async () => {
+    const schema = createOrderEntryValidationSchema({});
+
+    const eqaOrder = {
+      ...minimalOrderValues,
+      patientProperties: createSampleOrderFormValues().patientProperties,
+      sampleOrderItems: {
+        ...minimalOrderValues.sampleOrderItems,
+        isEQASample: true,
+      },
+    };
+
+    await expect(schema.isValid(eqaOrder)).resolves.toBe(true);
+    await expect(
+      schema.isValid({
+        ...eqaOrder,
+        sampleOrderItems: { ...eqaOrder.sampleOrderItems, isEQASample: false },
+      }),
+    ).resolves.toBe(false);
+  });
 });

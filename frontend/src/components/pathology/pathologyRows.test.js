@@ -1,0 +1,698 @@
+import { createIntl } from "react-intl";
+import messages from "../../languages/en.json";
+import {
+  activeRows,
+  blockIdentifier,
+  cassetteStateBadge,
+  countedRows,
+  deactivatedCount,
+  embeddingSummary,
+  hasVerifiableLabel,
+  isDeactivatedRow,
+  isEmbeddedRow,
+  isLabelVerified,
+  isUnsavedRow,
+  heldOrServedItems,
+  labelStreamUrl,
+  microtomyGroups,
+  nextAfter,
+  nextOutstandingCassette,
+  nextUnverifiedSlide,
+  newRowName,
+  objectNaming,
+  parentBlockOf,
+  rowListEditors,
+  rowObjectName,
+  slideIdentifier,
+  slideOnBlockName,
+  stripClientKeys,
+  unsavedPosition,
+  unverifiedSlides,
+  withClientKey,
+} from "./pathologyRows";
+
+const intl = createIntl({ locale: "en", messages });
+
+// A deactivated cassette or slide is kept for the record, so every rule that
+// counts work has to see past it; a row without the flag is one in use.
+describe("activeRows and isDeactivatedRow", () => {
+  it("treats a missing list as empty", () => {
+    expect(activeRows(undefined)).toEqual([]);
+    expect(activeRows([])).toEqual([]);
+  });
+
+  it("keeps a row that carries no active flag and drops one marked inactive", () => {
+    const inUse = { id: "1" };
+    const flagged = { id: "2", active: true };
+    const deactivated = { id: "3", active: false };
+
+    expect(activeRows([inUse, deactivated, flagged])).toEqual([inUse, flagged]);
+    expect(isDeactivatedRow(deactivated)).toBe(true);
+    expect(isDeactivatedRow(inUse)).toBe(false);
+    expect(isDeactivatedRow(undefined)).toBe(false);
+  });
+});
+
+// Showing a row and counting it are different questions: a cassette added on
+// the screen is shown at once but is not work recorded until it is saved.
+describe("countedRows against activeRows", () => {
+  const saved = { id: "1" };
+  const unsaved = { location: "" };
+  const deactivated = { id: "2", active: false };
+
+  it("shows the unsaved row but counts only the saved row in use", () => {
+    const rows = [saved, unsaved, deactivated];
+
+    expect(activeRows(rows)).toEqual([saved, unsaved]);
+    expect(countedRows(rows)).toEqual([saved]);
+    expect(countedRows(undefined)).toEqual([]);
+  });
+
+  it("counts the deactivated rows apart, for the switch that shows them", () => {
+    expect(deactivatedCount([saved, unsaved, deactivated])).toBe(1);
+    expect(deactivatedCount([saved])).toBe(0);
+    expect(deactivatedCount(undefined)).toBe(0);
+  });
+});
+
+describe("isUnsavedRow", () => {
+  it.each([
+    ["a null id", { id: null }],
+    ["no id at all", {}],
+  ])("reads a row with %s as unsaved", (_, row) => {
+    expect(isUnsavedRow(row)).toBe(true);
+  });
+
+  it.each([
+    ["the number zero", { id: 0 }],
+    ["a string id", { id: "7" }],
+  ])("reads a row whose id is %s as saved", (_, row) => {
+    expect(isUnsavedRow(row)).toBe(false);
+  });
+});
+
+describe("blockIdentifier and slideIdentifier", () => {
+  it("prefer the designation the server assigned, trimmed as the server trims it", () => {
+    expect(
+      blockIdentifier({ id: "4", designation: "A1", blockNumber: 3 }),
+    ).toBe("A1");
+    expect(blockIdentifier({ id: "4", designation: " A1 " })).toBe("A1");
+    expect(slideIdentifier({ id: "4", designation: "2", slideNumber: 9 })).toBe(
+      "2",
+    );
+  });
+
+  it("fall back to a legacy number, then to the row id, then to nothing", () => {
+    expect(blockIdentifier({ id: "4", blockNumber: 3 })).toBe("3");
+    expect(blockIdentifier({ id: "4", blockNumber: 0 })).toBe("0");
+    expect(blockIdentifier({ id: "4", designation: "  " })).toBe("B4");
+    expect(blockIdentifier({ id: "4" })).toBe("B4");
+    expect(blockIdentifier({ location: "" })).toBe("");
+
+    expect(slideIdentifier({ id: "6", slideNumber: 2 })).toBe("2");
+    expect(slideIdentifier({ id: "6" })).toBe("S6");
+    expect(slideIdentifier({ blockId: null, location: "" })).toBe("");
+  });
+});
+
+describe("parentBlockOf", () => {
+  const blocks = [
+    { id: 1, designation: "A1" },
+    { id: "2", designation: "A2" },
+  ];
+
+  it("finds the parent whether the ids arrive as numbers or strings", () => {
+    expect(parentBlockOf({ blockId: "1" }, blocks)).toBe(blocks[0]);
+    expect(parentBlockOf({ blockId: 2 }, blocks)).toBe(blocks[1]);
+  });
+
+  it("finds nothing for a legacy slide with no recorded parent, or an unknown one", () => {
+    expect(parentBlockOf({ blockId: null }, blocks)).toBeUndefined();
+    expect(parentBlockOf({ blockId: "9" }, blocks)).toBeUndefined();
+    expect(parentBlockOf({ blockId: "1" }, undefined)).toBeUndefined();
+  });
+});
+
+describe("slideOnBlockName", () => {
+  const blocks = [{ id: 1, designation: "A1" }];
+
+  it("names a slide under the block it was cut from, since its own designation repeats under every block", () => {
+    expect(slideOnBlockName({ blockId: 1, designation: "1" }, blocks)).toBe(
+      "A1.1",
+    );
+  });
+
+  it("names a legacy slide with no recorded parent by itself alone", () => {
+    expect(
+      slideOnBlockName({ id: 7, blockId: null, slideNumber: 2 }, blocks),
+    ).toBe("2");
+    expect(
+      slideOnBlockName({ id: 7, blockId: 9, designation: "3" }, blocks),
+    ).toBe("3");
+  });
+});
+
+describe("cassetteStateBadge", () => {
+  it("names an embedded block as verified and a cassette as still pending", () => {
+    expect(cassetteStateBadge({ cassetteState: "BLOCK" })).toEqual({
+      kind: "verified",
+      textKey: "pathology.label.block",
+    });
+    expect(cassetteStateBadge({ cassetteState: "CASSETTE" })).toEqual({
+      kind: "pending",
+      textKey: "pathology.label.cassette",
+    });
+    expect(cassetteStateBadge({ location: "" })).toEqual({
+      kind: "pending",
+      textKey: "pathology.label.cassette",
+    });
+  });
+});
+
+describe("labelStreamUrl", () => {
+  it("asks the servlet for the case's labels by its accession number, encoded", () => {
+    expect(labelStreamUrl("https://lab/api", "block", "AC C&9")).toBe(
+      "https://lab/api/LabelMakerServlet?labelType=block&code=AC%20C%269",
+    );
+  });
+});
+
+// The sentence a reader hears names the object as the bench knows it: a
+// cassette or block by its designation, a slide by its barcode.
+describe("objectNaming", () => {
+  it("names a cassette by its designation", () => {
+    expect(objectNaming("block", { id: "1", designation: "A1" })).toEqual({
+      actionKey: "pathology.action.deactivateCassette",
+      headingKey: "pathology.modal.deactivateCassetteHeading",
+      toastKey: "pathology.toast.cassetteDeactivated",
+      values: { designation: "A1" },
+    });
+  });
+
+  it("names an embedded block as a block", () => {
+    expect(
+      objectNaming("block", {
+        id: "1",
+        designation: "A1",
+        cassetteState: "BLOCK",
+      }),
+    ).toEqual({
+      actionKey: "pathology.action.deactivateBlock",
+      headingKey: "pathology.modal.deactivateBlockHeading",
+      toastKey: "pathology.toast.blockDeactivated",
+      values: { designation: "A1" },
+    });
+  });
+
+  it("names a slide by its barcode, and by its identifier when it has none", () => {
+    expect(
+      objectNaming("slide", {
+        id: "5",
+        designation: "1",
+        barcode: "ACC9.A1.1",
+      }),
+    ).toEqual({
+      actionKey: "pathology.action.deactivateSlide",
+      headingKey: "pathology.modal.deactivateSlideHeading",
+      toastKey: "pathology.toast.slideDeactivated",
+      values: { barcode: "ACC9.A1.1" },
+    });
+    expect(objectNaming("slide", { id: "6", slideNumber: 2 }).values).toEqual({
+      barcode: "2",
+    });
+  });
+});
+
+describe("newRowName", () => {
+  it("names an unsaved row by kind and position", () => {
+    expect(newRowName(intl, "block", 2)).toBe(
+      messages["pathology.label.newCassette"].replace("{position}", "2"),
+    );
+    expect(newRowName(intl, "slide", 1)).toBe(
+      messages["pathology.label.newSlide"].replace("{position}", "1"),
+    );
+  });
+});
+
+// A React key taken from the position would hand an unsaved row's controls
+// to its neighbour once an earlier row is removed.
+describe("withClientKey and stripClientKeys", () => {
+  it("gives every added row its own key", () => {
+    const first = withClientKey({ location: "" });
+    const second = withClientKey({ location: "" });
+
+    expect(first.clientKey).toBeTruthy();
+    expect(second.clientKey).toBeTruthy();
+    expect(first.clientKey).not.toBe(second.clientKey);
+    expect(first.location).toBe("");
+  });
+
+  it("posts nothing of the key and leaves every other field as it was", () => {
+    const saved = { id: "1", designation: "A1", location: "Tray 1" };
+    const added = withClientKey({ blockId: "1", location: "Tray 2" });
+
+    expect(stripClientKeys([saved, added])).toEqual([
+      { id: "1", designation: "A1", location: "Tray 1" },
+      { blockId: "1", location: "Tray 2" },
+    ]);
+    expect(stripClientKeys(undefined)).toBeUndefined();
+  });
+});
+
+describe("microtomyGroups", () => {
+  const a1 = { id: 1, designation: "A1", cassetteState: "BLOCK" };
+  const a2 = { id: "2", designation: "A2", cassetteState: "CASSETTE" };
+  const retiredA3 = {
+    id: 3,
+    designation: "A3",
+    cassetteState: "BLOCK",
+    active: false,
+  };
+  const designations = (groups) =>
+    groups.map((group) => (group.legacy ? "legacy" : group.block.designation));
+
+  it("lists every saved block in use, cassettes included, in list order, and no block added since the last save", () => {
+    const groups = microtomyGroups(
+      [a2, { designation: "", location: "" }, a1],
+      [],
+      false,
+    );
+
+    expect(designations(groups)).toEqual(["A2", "A1"]);
+    expect(groups.every((group) => group.slides.length === 0)).toBe(true);
+    expect(groups.map((group) => group.retired)).toEqual([false, false]);
+  });
+
+  it("puts each slide under the block it was cut from, an unsaved one under the block it was added to", () => {
+    const saved = { id: 5, designation: "1", blockId: "1" };
+    const underA2 = { id: 6, designation: "1", blockId: 2 };
+    const unsaved = { blockId: 1, level: "", stainId: null, location: "" };
+
+    const groups = microtomyGroups([a1, a2], [saved, underA2, unsaved], false);
+
+    expect(groups[0].slides).toEqual([saved, unsaved]);
+    expect(groups[1].slides).toEqual([underA2]);
+  });
+
+  it("keeps a retired block that still holds a slide in use, whatever the switch says", () => {
+    const slide = { id: 5, designation: "1", blockId: 3 };
+
+    const groups = microtomyGroups([a1, retiredA3], [slide], false);
+
+    expect(designations(groups)).toEqual(["A1", "A3"]);
+    expect(groups[1]).toEqual({
+      block: retiredA3,
+      slides: [slide],
+      retired: true,
+      legacy: false,
+    });
+  });
+
+  it("lists a retired block with no slide in use only when retired rows are asked for", () => {
+    const retiredSlide = { id: 5, designation: "1", blockId: 3, active: false };
+
+    expect(
+      designations(microtomyGroups([a1, retiredA3], [retiredSlide], false)),
+    ).toEqual(["A1"]);
+    expect(
+      designations(microtomyGroups([a1, retiredA3], [retiredSlide], true)),
+    ).toEqual(["A1", "A3"]);
+  });
+
+  it("lists a retired slide only when retired rows are asked for", () => {
+    const inUse = { id: 5, designation: "1", blockId: 1 };
+    const retired = { id: 6, designation: "2", blockId: 1, active: false };
+
+    expect(microtomyGroups([a1], [inUse, retired], false)[0].slides).toEqual([
+      inUse,
+    ]);
+    expect(microtomyGroups([a1], [inUse, retired], true)[0].slides).toEqual([
+      inUse,
+      retired,
+    ]);
+  });
+
+  it("gathers last the slides with no block recorded and those naming a block not on the case", () => {
+    const noBlock = { id: 5, designation: "7", blockId: null };
+    const elsewhere = { id: 6, designation: "2", blockId: 99 };
+
+    const groups = microtomyGroups([a1], [noBlock, elsewhere], false);
+
+    expect(designations(groups)).toEqual(["A1", "legacy"]);
+    expect(groups[1]).toEqual({
+      block: null,
+      slides: [noBlock, elsewhere],
+      retired: false,
+      legacy: true,
+    });
+  });
+
+  it("adds no group for slides without a block when there are none to show", () => {
+    const retiredLegacy = { id: 5, designation: "7", active: false };
+
+    expect(
+      designations(microtomyGroups([a1], [{ id: 6, blockId: 1 }], false)),
+    ).toEqual(["A1"]);
+    expect(designations(microtomyGroups([a1], [retiredLegacy], false))).toEqual(
+      ["A1"],
+    );
+    expect(microtomyGroups(undefined, undefined, false)).toEqual([]);
+  });
+});
+
+describe("unsavedPosition and rowObjectName", () => {
+  const rows = [
+    { id: "1", designation: "A1" },
+    { location: "" },
+    { id: "2", designation: "A2", active: false },
+    { location: "" },
+  ];
+
+  it("numbers an unsaved row among the unsaved rows only", () => {
+    expect(unsavedPosition(rows, 1)).toBe(1);
+    expect(unsavedPosition(rows, 3)).toBe(2);
+  });
+
+  it("names a saved cassette by its designation, a saved slide by its barcode and a new row by its place", () => {
+    expect(rowObjectName(intl, "block", rows[0], undefined)).toBe("A1");
+    expect(
+      rowObjectName(
+        intl,
+        "slide",
+        { id: "5", designation: "1", barcode: "ACC9.A1.1" },
+        undefined,
+      ),
+    ).toBe("ACC9.A1.1");
+    expect(rowObjectName(intl, "block", rows[3], 2)).toBe(
+      messages["pathology.label.newCassette"].replace("{position}", "2"),
+    );
+  });
+});
+
+describe("rowListEditors", () => {
+  // Applies each update the way the screen's updateCase does.
+  const editorsOver = (initial) => {
+    let state = initial;
+    const updateCase = (updater) => {
+      state = { ...state, ...updater(state) };
+    };
+    return { editors: rowListEditors("slides", updateCase), read: () => state };
+  };
+
+  it("replaces the edited row, drops only the removed one and keys the added one", () => {
+    const first = { id: "5", location: "" };
+    const second = { blockId: "1", location: "" };
+    const { editors, read } = editorsOver({ slides: [first, second] });
+
+    editors.patchRow(0, { location: "Tray 1" });
+    expect(read().slides[0]).toEqual({ id: "5", location: "Tray 1" });
+    expect(first.location).toBe("");
+
+    editors.removeRow(1);
+    expect(read().slides).toEqual([{ id: "5", location: "Tray 1" }]);
+
+    editors.addRow({ blockId: null, location: "" });
+    expect(read().slides).toHaveLength(2);
+    expect(read().slides[1]).toMatchObject({ blockId: null, location: "" });
+    expect(read().slides[1].clientKey).toBeTruthy();
+    expect(read().slides[1]).not.toHaveProperty("id");
+  });
+});
+
+// The served entries are the active ones only, so a row holding a tissue type
+// or a stain retired after it was recorded has to bring its own entry.
+describe("heldOrServedItems", () => {
+  const served = [
+    { id: "21", value: "Skin" },
+    { id: "22", value: "Bone" },
+  ];
+
+  it("offers the served list as it is when the row holds nothing, or holds one of them", () => {
+    expect(heldOrServedItems(served, null, {})).toEqual(served);
+    expect(heldOrServedItems(served, "", {})).toEqual(served);
+    expect(heldOrServedItems(served, undefined, undefined)).toEqual(served);
+    expect(heldOrServedItems(served, 22, {})).toEqual(served);
+  });
+
+  it("adds the held type the list no longer serves, under the name the case carries for it", () => {
+    expect(heldOrServedItems(served, "23", { 23: "Cartilage" })).toEqual([
+      ...served,
+      { id: "23", value: "Cartilage" },
+    ]);
+  });
+
+  it("falls back to the id when the case carries no name for it, rather than showing nothing", () => {
+    expect(heldOrServedItems(served, "23", {})).toEqual([
+      ...served,
+      { id: "23", value: "23" },
+    ]);
+  });
+
+  it("still names the held type while the served list has not arrived", () => {
+    expect(heldOrServedItems(null, "23", { 23: "Cartilage" })).toEqual([
+      { id: "23", value: "Cartilage" },
+    ]);
+    expect(heldOrServedItems(null, null, {})).toEqual([]);
+  });
+});
+
+// The same four cases the server's summary is tested on, so the screen and the
+// audit trail cannot reconcile a case differently.
+describe("embeddingSummary", () => {
+  const cassette = (id, designation, overrides = {}) => ({
+    id,
+    designation,
+    cassetteState: "CASSETTE",
+    active: true,
+    ...overrides,
+  });
+  const block = (id, designation, overrides = {}) =>
+    cassette(id, designation, { cassetteState: "BLOCK", ...overrides });
+
+  it("finds nothing to embed on a case with no rows", () => {
+    expect(embeddingSummary(undefined)).toEqual({
+      embedded: 0,
+      total: 0,
+      outstanding: [],
+      complete: false,
+    });
+    expect(embeddingSummary([])).toEqual({
+      embedded: 0,
+      total: 0,
+      outstanding: [],
+      complete: false,
+    });
+  });
+
+  it("names every cassette as outstanding before any is embedded", () => {
+    expect(embeddingSummary([cassette(1, "A1"), cassette(2, "A2")])).toEqual({
+      embedded: 0,
+      total: 2,
+      outstanding: ["A1", "A2"],
+      complete: false,
+    });
+  });
+
+  it("counts three of four embedded and names the fourth", () => {
+    expect(
+      embeddingSummary([
+        block(1, "A1"),
+        block(2, "A2"),
+        block(3, "A3"),
+        cassette(4, "A4"),
+      ]),
+    ).toEqual({
+      embedded: 3,
+      total: 4,
+      outstanding: ["A4"],
+      complete: false,
+    });
+  });
+
+  it("is complete once every cassette in use is a block", () => {
+    expect(
+      embeddingSummary([
+        block(1, "A1"),
+        block(2, "A2"),
+        cassette(3, "A3", { active: false }),
+      ]),
+    ).toEqual({ embedded: 2, total: 2, outstanding: [], complete: true });
+  });
+
+  // A retired cassette is kept for the record and a row added on this screen
+  // is not cut until it is saved, so neither is work waiting at the bench.
+  it("counts neither a deactivated cassette nor an unsaved row either way", () => {
+    expect(
+      embeddingSummary([
+        block(1, "A1"),
+        cassette(2, "A2", { active: false }),
+        block(3, "A3", { active: false }),
+        { designation: null, location: "" },
+        cassette(4, "A4"),
+      ]),
+    ).toEqual({
+      embedded: 1,
+      total: 2,
+      outstanding: ["A4"],
+      complete: false,
+    });
+  });
+
+  it("names a legacy cassette without a designation as the server does", () => {
+    expect(
+      embeddingSummary([{ id: 7, blockNumber: 3, active: true }]).outstanding,
+    ).toEqual(["3"]);
+  });
+});
+
+describe("nextAfter", () => {
+  const rows = [{ id: 1 }, { id: "2" }, { id: 3 }];
+
+  it("moves to the row after the given one, matching ids as strings", () => {
+    expect(nextAfter(rows, { id: "1" })).toBe(rows[1]);
+    expect(nextAfter(rows, { id: 2 })).toBe(rows[2]);
+  });
+
+  it("wraps to the first after the last, and finds none once the given row is the only one left", () => {
+    expect(nextAfter(rows, rows[2])).toBe(rows[0]);
+    expect(nextAfter([rows[1]], rows[1])).toBeUndefined();
+  });
+
+  it("starts from the first when the given row is no longer on the list", () => {
+    expect(nextAfter(rows, { id: 9 })).toBe(rows[0]);
+    expect(nextAfter([], { id: 9 })).toBeUndefined();
+  });
+});
+
+describe("nextOutstandingCassette", () => {
+  const cassette = (id, designation, overrides = {}) => ({
+    id,
+    designation,
+    cassetteState: "CASSETTE",
+    active: true,
+    ...overrides,
+  });
+
+  it("moves to the next cassette still waiting, in list order", () => {
+    const blocks = [
+      cassette(1, "A1"),
+      cassette(2, "A2", { cassetteState: "BLOCK" }),
+      cassette(3, "A3"),
+    ];
+    expect(nextOutstandingCassette(blocks, blocks[0])).toBe(blocks[2]);
+  });
+
+  it("wraps to the first cassette waiting after the last in the list", () => {
+    const blocks = [cassette(1, "A1"), cassette(2, "A2"), cassette(3, "A3")];
+    expect(nextOutstandingCassette(blocks, blocks[2])).toBe(blocks[0]);
+  });
+
+  it("finds none when the given cassette is the last one waiting", () => {
+    const blocks = [
+      cassette(1, "A1", { cassetteState: "BLOCK" }),
+      cassette(2, "A2"),
+    ];
+    expect(nextOutstandingCassette(blocks, blocks[1])).toBeUndefined();
+  });
+
+  it("skips a deactivated cassette", () => {
+    const blocks = [
+      cassette(1, "A1"),
+      cassette(2, "A2", { active: false }),
+      cassette(3, "A3"),
+    ];
+    expect(nextOutstandingCassette(blocks, blocks[0])).toBe(blocks[2]);
+  });
+});
+
+describe("isEmbeddedRow", () => {
+  it("reads only a block as embedded, and a row with no state as a cassette", () => {
+    expect(isEmbeddedRow({ cassetteState: "BLOCK" })).toBe(true);
+    expect(isEmbeddedRow({ cassetteState: "CASSETTE" })).toBe(false);
+    expect(isEmbeddedRow({})).toBe(false);
+    expect(isEmbeddedRow(undefined)).toBe(false);
+  });
+});
+
+describe("slide label verification", () => {
+  const blocks = [
+    { id: 1, designation: "A1", cassetteState: "BLOCK" },
+    { id: 2, designation: "A2", cassetteState: "BLOCK" },
+  ];
+  const stamp = { verifiedAt: "09/11/2026 10:00", verifiedBy: "Tech, Tina" };
+
+  // The case read keys the map by slide id as JSON does, as a string; a row's
+  // id arrives as a number or a string depending on the path.
+  it.each([
+    [
+      "a numeric id against a string key",
+      { id: 5, blockId: 1 },
+      { 5: stamp },
+      true,
+    ],
+    ["a string id", { id: "5", blockId: 1 }, { 5: stamp }, true],
+    [
+      "a slide missing from the map",
+      { id: 6, blockId: 1 },
+      { 5: stamp },
+      false,
+    ],
+    ["no map at all", { id: 5, blockId: 1 }, undefined, false],
+    ["an unsaved slide", { blockId: 1 }, { undefined: stamp }, false],
+  ])("isLabelVerified reads %s", (_, slide, map, expected) => {
+    expect(isLabelVerified(slide, map)).toBe(expected);
+  });
+
+  it.each([
+    ["a saved slide with a block", { id: 5, blockId: 1 }, true],
+    ["a slide whose block id is a string", { id: 5, blockId: "1" }, true],
+    ["an unsaved slide", { blockId: 1 }, false],
+    ["a slide with no block recorded", { id: 5, blockId: null }, false],
+    ["a slide whose row has no block id", { id: 5 }, false],
+  ])("hasVerifiableLabel says %s can be checked: %s", (_, slide, expected) => {
+    expect(hasVerifiableLabel(slide)).toBe(expected);
+  });
+
+  it("lists the unchecked slides in use in list order, named under their block", () => {
+    const slides = [
+      { id: 5, designation: "1", blockId: 1, active: true },
+      { id: 6, designation: "2", blockId: 1, active: true },
+      { id: 7, designation: "1", blockId: 2, active: true },
+      { id: 8, designation: "3", blockId: 1, active: false },
+      { designation: "", blockId: 2 },
+      { id: 9, designation: "4", blockId: null, active: true },
+    ];
+
+    expect(
+      unverifiedSlides(blocks, slides, { 6: stamp }).map((entry) => [
+        entry.slide.id,
+        entry.name,
+      ]),
+    ).toEqual([
+      [5, "A1.1"],
+      [7, "A2.1"],
+    ]);
+    expect(
+      unverifiedSlides(blocks, slides, { 5: stamp, 6: stamp, 7: stamp }),
+    ).toEqual([]);
+    expect(unverifiedSlides(blocks, undefined, undefined)).toEqual([]);
+  });
+
+  it("finds the unchecked slide after the given one, wrapping to the first, and none once it is the last", () => {
+    const slides = [
+      { id: 5, designation: "1", blockId: 1, active: true },
+      { id: 6, designation: "2", blockId: 1, active: true },
+      { id: 7, designation: "1", blockId: 2, active: true },
+    ];
+
+    expect(nextUnverifiedSlide(blocks, slides, {}, slides[0])?.id).toBe(6);
+    expect(nextUnverifiedSlide(blocks, slides, {}, slides[2])?.id).toBe(5);
+    expect(
+      nextUnverifiedSlide(blocks, slides, { 5: stamp, 7: stamp }, slides[1]),
+    ).toBeUndefined();
+    // A slide no longer among the unchecked ones still has a next.
+    expect(
+      nextUnverifiedSlide(blocks, slides, { 6: stamp }, slides[1])?.id,
+    ).toBe(5);
+  });
+});

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+  <!-- A component of a multi-component test is validated on its own: the time it
+       was accepted is kept on its result, and the test is released once every
+       component that has a result is accepted. Existing rows stay NULL. -->
+
+  <changeSet id="019-result-validated-date" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <not><columnExists schemaName="clinlims" tableName="result" columnName="validated_date"/></not>
+    </preConditions>
+    <addColumn schemaName="clinlims" tableName="result">
+      <column name="validated_date" type="TIMESTAMP"/>
+    </addColumn>
+    <rollback>
+      <dropColumn schemaName="clinlims" tableName="result" columnName="validated_date"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

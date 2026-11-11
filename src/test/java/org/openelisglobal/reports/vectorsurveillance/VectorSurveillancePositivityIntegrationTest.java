@@ -574,4 +574,11 @@ public class VectorSurveillancePositivityIntegrationTest extends BaseWebContextS
                     catalogNames.get(sid));
         }
     }
+
+    @Test
+    public void collectionWindow_includesItsFirstMidnight_andExcludesTheNextDaysMidnight() {
+        LocalDate collected = LocalDate.of(2026, 7, 6);
+        assertEquals(29L, anophelesSpecimens(dao.getSpeciesDistribution(collected, collected, null)));
+        assertEquals(0L, anophelesSpecimens(dao.getSpeciesDistribution(FROM, collected.minusDays(1), null)));
+    }
 }

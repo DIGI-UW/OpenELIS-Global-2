@@ -37,12 +37,14 @@ export const formatRecognitionCondition = (intl, condition = {}) => {
   }
 };
 
-export const formatRecognitionMode = (intl, mode) =>
+export const formatRecognitionMode = (intl, mode, conditions) =>
   intl.formatMessage({
     id:
-      mode === "RULES"
-        ? "analyzerType.recognition.mode.rules.short"
-        : mode === "NONE"
-          ? "analyzerType.recognition.mode.none.short"
-          : "analyzerType.recognition.condition.summary.unknown",
+      mode === "RULES" && Array.isArray(conditions) && conditions.length === 0
+        ? "analyzerType.recognition.mode.unconfigured.short"
+        : mode === "RULES"
+          ? "analyzerType.recognition.mode.rules.short"
+          : mode === "NONE"
+            ? "analyzerType.recognition.mode.none.short"
+            : "analyzerType.recognition.condition.summary.unknown",
   });

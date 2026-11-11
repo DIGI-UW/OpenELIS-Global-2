@@ -170,16 +170,18 @@ public class ElectronicOrdersController extends BaseController {
                     displayItem.setTestName(test.getLocalizedTestName().getLocalizedValue());
                 }
 
-                String patientUuid = serviceRequest.getSubject().getReferenceElement().getIdPart();
-                org.hl7.fhir.r4.model.Patient fhirPatient = fhirClient.read()
-                        .resource(org.hl7.fhir.r4.model.Patient.class).withId(patientUuid).execute();
+                if (FhirUtil.refersToPatient(serviceRequest.getSubject())) {
+                    String patientUuid = serviceRequest.getSubject().getReferenceElement().getIdPart();
+                    org.hl7.fhir.r4.model.Patient fhirPatient = fhirClient.read()
+                            .resource(org.hl7.fhir.r4.model.Patient.class).withId(patientUuid).execute();
 
-                for (Identifier identifier : fhirPatient.getIdentifier()) {
-                    if ("passport".equals(identifier.getSystem())) {
-                        displayItem.setPassportNumber(identifier.getId());
-                    }
-                    if ((fhirConfig.getOeFhirSystem() + "/pat_subjectNumber").equals(identifier.getSystem())) {
-                        displayItem.setSubjectNumber(identifier.getId());
+                    for (Identifier identifier : fhirPatient.getIdentifier()) {
+                        if ("passport".equals(identifier.getSystem())) {
+                            displayItem.setPassportNumber(identifier.getId());
+                        }
+                        if ((fhirConfig.getOeFhirSystem() + "/pat_subjectNumber").equals(identifier.getSystem())) {
+                            displayItem.setSubjectNumber(identifier.getId());
+                        }
                     }
                 }
             }

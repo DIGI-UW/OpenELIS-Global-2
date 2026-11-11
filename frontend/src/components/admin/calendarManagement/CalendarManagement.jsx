@@ -26,20 +26,25 @@ import {
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
   deleteFromOpenElisServer,
+  toLocalIsoDate,
+  parseIsoDate,
 } from "../../utils/Utils";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 import WeekendConfig from "./WeekendConfig";
 import CsvImportPreview from "./CsvImportPreview";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { labNow } from "../../utils/labClock";
 
-const currentYear = new Date().getFullYear();
-const yearOptions = Array.from({ length: 5 }, (_, i) => ({
-  id: String(currentYear - 1 + i),
-  text: String(currentYear - 1 + i),
-}));
+const yearOptionsAround = (currentYear) =>
+  Array.from({ length: 5 }, (_, i) => ({
+    id: String(currentYear - 1 + i),
+    text: String(currentYear - 1 + i),
+  }));
 
 function CalendarManagement() {
+  const [currentYear] = useState(() => labNow().getFullYear());
+  const yearOptions = yearOptionsAround(currentYear);
   const intl = useIntl();
 
   const headers = [
@@ -259,6 +264,7 @@ function CalendarManagement() {
             titleText={intl.formatMessage({ id: "calendar.management.year" })}
             items={yearOptions}
             selectedItem={yearOptions.find((y) => y.id === year)}
+            itemToString={(item) => item?.text ?? ""}
             onChange={({ selectedItem }) => setYear(selectedItem.id)}
             style={{ width: "120px" }}
           />
@@ -324,12 +330,12 @@ function CalendarManagement() {
                         <TableCell>
                           <DatePicker
                             datePickerType="single"
+                            dateFormat="Y-m-d"
+                            parseDate={parseIsoDate}
                             onChange={([date]) =>
                               setEditForm((f) => ({
                                 ...f,
-                                date: date
-                                  ? date.toISOString().split("T")[0]
-                                  : "",
+                                date: date ? toLocalIsoDate(date) : "",
                               }))
                             }
                           >
@@ -413,13 +419,13 @@ function CalendarManagement() {
                             <TableCell>
                               <DatePicker
                                 datePickerType="single"
+                                dateFormat="Y-m-d"
+                                parseDate={parseIsoDate}
                                 value={editForm.date}
                                 onChange={([date]) =>
                                   setEditForm((f) => ({
                                     ...f,
-                                    date: date
-                                      ? date.toISOString().split("T")[0]
-                                      : "",
+                                    date: date ? toLocalIsoDate(date) : "",
                                   }))
                                 }
                               >

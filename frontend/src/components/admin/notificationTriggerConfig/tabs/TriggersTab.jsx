@@ -24,15 +24,12 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../../common/CustomNotification";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import { TRIGGER_DESCRIPTORS } from "../descriptors";
 
 export default function TriggersTab() {
   const intl = useIntl();
-  const { notificationVisible, setNotificationVisible, addNotification } =
+  const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
   const [triggers, setTriggers] = useState([]);
@@ -104,7 +101,7 @@ export default function TriggersTab() {
 
   const triggerStatusLabel = (eventCode) => {
     const descriptor = TRIGGER_DESCRIPTORS[eventCode];
-    return descriptor
+    return descriptor && descriptor.statusKey
       ? intl.formatMessage({ id: descriptor.statusKey, defaultMessage: "" })
       : "";
   };
@@ -231,7 +228,6 @@ export default function TriggersTab() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
       {(loading || saving) && <Loading />}
       <Grid fullWidth={true} style={{ marginTop: "1rem" }}>
         <Column lg={16} md={8} sm={4}>

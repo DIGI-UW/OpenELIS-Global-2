@@ -109,7 +109,7 @@ public class CatalogAttributeCsvLoaderIntegrationTest extends BaseWebContextSens
     @Test
     public void resultComponents_areCreatedThenMergedByCode() throws Exception {
         load(componentHandler,
-                "testName,code,label,resultType,significantDigits,displayOrder,isPrimary,showOnReport\n" + GLUCOSE
+                "testName,code,label,resultType,reportingDecimalPlaces,displayOrder,isPrimary,showOnReport\n" + GLUCOSE
                         + ",PRIMARY," + PREFIX + "Glucose,N,2,0,Y,Y\n" + GLUCOSE
                         + ",FASTING,Fasting glucose,N,1,1,N,Y\n",
                 "components.csv");
@@ -121,27 +121,28 @@ public class CatalogAttributeCsvLoaderIntegrationTest extends BaseWebContextSens
                 count("test_result_component", "test_id = " + testId + " AND is_active = 'Y'"));
         Map<String, Object> primary = component(testId, "PRIMARY");
         assertEquals("N", primary.get("result_type"));
-        assertEquals(2, ((Number) primary.get("significant_digits")).intValue());
+        assertEquals(2, ((Number) primary.get("reporting_decimal_places")).intValue());
         assertEquals(Boolean.TRUE, primary.get("is_primary"));
-        assertEquals(1, ((Number) component(testId, "FASTING").get("significant_digits")).intValue());
+        assertEquals(1, ((Number) component(testId, "FASTING").get("reporting_decimal_places")).intValue());
 
         // A second load of the same codes keeps two components and takes the new
-        // label; a blank cell leaves what is stored alone.
-        load(componentHandler, "testName,code,label,significantDigits\n" + GLUCOSE + ",FASTING,Fasting,\n",
-                "components.csv");
+        // label; both an omitted setting and a blank cell preserve the authored policy.
+        load(componentHandler, "testName,code,label\n" + GLUCOSE + ",FASTING,Fasting\n", "components.csv");
         assertEquals("SUMMARY file=components.csv domain=result-components created=0 updated=1 skipped=0",
                 componentHandler.getLastSummary().toLine());
         assertEquals(Integer.valueOf(2),
                 count("test_result_component", "test_id = " + testId + " AND is_active = 'Y'"));
         assertEquals("Fasting", component(testId, "FASTING").get("label"));
-        assertEquals(1, ((Number) component(testId, "FASTING").get("significant_digits")).intValue());
+        assertEquals(1, ((Number) component(testId, "FASTING").get("reporting_decimal_places")).intValue());
+        load(componentHandler, "testName,code,label,reportingDecimalPlaces\n" + GLUCOSE + ",FASTING,Fasting,\n",
+                "components.csv");
+        assertEquals(1, ((Number) component(testId, "FASTING").get("reporting_decimal_places")).intValue());
     }
 
     @Test
     public void ranges_terminologyAndSampleHandling_loadThroughTheEditorServices() throws Exception {
-        load(componentHandler,
-                "testName,code,label,resultType,significantDigits,isPrimary\n" + GLUCOSE + ",PRIMARY,Glucose,N,2,Y\n",
-                "components.csv");
+        load(componentHandler, "testName,code,label,resultType,reportingDecimalPlaces,isPrimary\n" + GLUCOSE
+                + ",PRIMARY,Glucose,N,2,Y\n", "components.csv");
         long testId = testId(GLUCOSE);
 
         load(rangeHandler,
@@ -158,6 +159,12 @@ public class CatalogAttributeCsvLoaderIntegrationTest extends BaseWebContextSens
         assertEquals(3.9d, ((Number) maleRange.get("low_normal")).doubleValue(), 0.0001d);
         assertNotNull("the range is scoped to the specimen the row names", maleRange.get("sample_type_id"));
         assertNotNull("and to the component it names", maleRange.get("component_id"));
+        // The file says 0 to 120 years; the limit holds days, the unit a patient's
+        // age is compared in, so a 30-year-old still falls inside the band.
+        Map<String, Object> ages = jdbc.queryForMap(
+                "SELECT min_age, max_age FROM clinlims.result_limits WHERE test_id = ? AND gender = 'M'", testId);
+        assertEquals(0d, ((Number) ages.get("min_age")).doubleValue(), 0.0001d);
+        assertEquals(120d * 365d, ((Number) ages.get("max_age")).doubleValue(), 0.0001d);
 
         // The file is the test's complete set of numeric ranges: dropping a row
         // drops its range.
@@ -166,15 +173,16 @@ public class CatalogAttributeCsvLoaderIntegrationTest extends BaseWebContextSens
         assertEquals(Integer.valueOf(1), count("result_limits", "test_id = " + testId));
 
         // The tests.csv row already bridged LOINC 2345-7 as a test-level mapping;
-        // naming it again updates that one, and the SNOMED row is new.
+        // naming it again updates that one, and the SNOMED and distro rows are new.
         load(terminologyHandler,
                 "testName,componentCode,source,code,relationship,displayName\n" + GLUCOSE
-                        + ",,LOINC,2345-7,SAME_AS,Glucose [Mass/volume]\n" + GLUCOSE + ",PRIMARY,SNOMED,33747003,,\n",
+                        + ",,LOINC,2345-7,SAME_AS,Glucose [Mass/volume]\n" + GLUCOSE + ",PRIMARY,SNOMED,33747003,,\n"
+                        + GLUCOSE + ",,CPHL,GLU,,\n",
                 "terminology.csv");
-        assertEquals("SUMMARY file=terminology.csv domain=terminology created=1 updated=1 skipped=0",
+        assertEquals("SUMMARY file=terminology.csv domain=terminology created=2 updated=1 skipped=0",
                 terminologyHandler.getLastSummary().toLine());
-        assertEquals("the LOINC the tests.csv row already bridged is updated, the SNOMED code added",
-                Integer.valueOf(2), count("test_terminology_mapping", "test_id = " + testId + " AND is_active = 'Y'"));
+        assertEquals("the LOINC the tests.csv row already bridged is updated, the SNOMED and CPHL codes added",
+                Integer.valueOf(3), count("test_terminology_mapping", "test_id = " + testId + " AND is_active = 'Y'"));
         assertEquals("Glucose [Mass/volume]", jdbc.queryForObject(
                 "SELECT display_name FROM clinlims.test_terminology_mapping WHERE test_id = ? AND source = 'LOINC'"
                         + " AND is_active = 'Y'",
@@ -236,7 +244,7 @@ public class CatalogAttributeCsvLoaderIntegrationTest extends BaseWebContextSens
 
     @Test
     public void aPreviewComputesTheSameOutcomesAndKeepsNothing() throws Exception {
-        String csv = "testName,code,label,resultType,significantDigits,isPrimary\n" + GLUCOSE
+        String csv = "testName,code,label,resultType,reportingDecimalPlaces,isPrimary\n" + GLUCOSE
                 + ",PRIMARY,Glucose,N,2,Y\n" + "No Such Test IT1194,PRIMARY,Nope,N,2,Y\n";
 
         componentHandler.processConfiguration(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)),
@@ -316,7 +324,7 @@ public class CatalogAttributeCsvLoaderIntegrationTest extends BaseWebContextSens
         String newTest = PREFIX + "Amylase";
         String tests = "testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder\n" + newTest + ","
                 + SECTION + "," + PREFIX + "Serum,1798-8,Y,Y,942\n";
-        String components = "testName,code,label,resultType,significantDigits,isPrimary\n" + newTest
+        String components = "testName,code,label,resultType,reportingDecimalPlaces,isPrimary\n" + newTest
                 + ",PRIMARY,Amylase,N,1,Y\n";
 
         testHandler.processConfiguration(stream(tests), "tests.csv", true);
@@ -365,7 +373,7 @@ public class CatalogAttributeCsvLoaderIntegrationTest extends BaseWebContextSens
     }
 
     private Map<String, Object> component(long testId, String code) {
-        return jdbc.queryForMap("SELECT id, code, label, result_type, significant_digits, is_primary"
+        return jdbc.queryForMap("SELECT id, code, label, result_type, reporting_decimal_places, is_primary"
                 + " FROM clinlims.test_result_component WHERE test_id = ? AND code = ?", testId, code);
     }
 

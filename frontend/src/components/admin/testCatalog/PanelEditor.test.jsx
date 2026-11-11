@@ -107,6 +107,15 @@ describe("PanelEditor shell (OGC-224 C2)", () => {
     );
   });
 
+  it("a panel that does not exist says so instead of offering an empty form (OGC-1461)", async () => {
+    mockParams = { panelId: "99999999", section: "basic-info" };
+    wrap();
+    expect(await screen.findByTestId("panel-not-found")).toHaveTextContent(
+      messages["label.panel.notFound"],
+    );
+    expect(screen.queryByRole("button", { name: /^save$/i })).toBeNull();
+  });
+
   it("create mode titles New panel and skips the envelope fetch", async () => {
     mockParams = { panelId: "new", section: "basic-info" };
     wrap();
@@ -173,6 +182,14 @@ describe("PanelBasicInfoSection (FRS rules)", () => {
     expect(screen.getByLabelText("Clinical")).toBeEnabled();
     expect(screen.getByLabelText("Environmental")).toBeEnabled();
     expect(screen.getByLabelText("Vector")).toBeEnabled();
+  });
+
+  it("shows how much of the 20-character name limit is used, so a longer name is not cut without notice", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    const name = document.querySelector("#panel-name");
+    expect(name).toHaveAttribute("maxlength", "20");
+    expect(screen.getByText(`${name.value.length}/20`)).toBeInTheDocument();
   });
 
   it("derived sample types render read-only", async () => {
@@ -282,6 +299,27 @@ describe("PanelBasicInfoSection (FRS rules)", () => {
       ),
     );
     expect(screen.queryByTestId("panel-domain-conflict")).toBeNull();
+  });
+
+  it("a rename onto another panel's name is refused by name, not a blank failure (OGC-1234)", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        json: () => Promise.resolve({ ...PANEL, refusal: "name.duplicate" }),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(notification.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["error.panel.nameDuplicate"],
+        }),
+      ),
+    );
   });
 
   it("a refusal without a domain conflict keeps the generic message", async () => {

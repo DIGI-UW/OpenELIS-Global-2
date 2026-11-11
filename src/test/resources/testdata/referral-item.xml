@@ -30,12 +30,12 @@
 
     <result id="300" sort_order="1" result_type="N" value="85.0"
         is_reportable="Y" lastupdated="2025-04-04 14:00:00" min_normal="70.0"
-        max_normal="100.0" significant_digits="1" grouping="0"
+        max_normal="100.0" reporting_decimal_places="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
 
     <result id="301" sort_order="2" result_type="N" value="14.5"
         is_reportable="Y" lastupdated="2025-07-07 14:00:00" min_normal="12.0"
-        max_normal="16.0" significant_digits="1" grouping="0"
+        max_normal="16.0" reporting_decimal_places="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
     <sample id="1" accession_number="12345" status_id="1"

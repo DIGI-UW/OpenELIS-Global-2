@@ -114,6 +114,18 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
     long countSearchSignatures(Timestamp startDate, Timestamp endDate, Long signerId, SignatureMeaning meaning,
             String recordType);
 
+    /**
+     * The same search narrowed to the signatures whose signer, rejection reason,
+     * record type or record id contains the typed text, ignoring case and accents.
+     * A blank text narrows nothing.
+     */
+    List<ElectronicSignature> searchSignatures(Timestamp startDate, Timestamp endDate, Long signerId,
+            SignatureMeaning meaning, String recordType, String text, int page, int pageSize);
+
+    /** Count for the search with typed text. */
+    long countSearchSignatures(Timestamp startDate, Timestamp endDate, Long signerId, SignatureMeaning meaning,
+            String recordType, String text);
+
     // ========================
     // First-Use Certification
     // ========================

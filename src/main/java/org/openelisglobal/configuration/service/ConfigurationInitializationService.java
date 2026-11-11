@@ -22,6 +22,7 @@ import org.openelisglobal.configuration.valueholder.ConfigurationImportRun;
 import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.io.Resource;
@@ -64,6 +65,9 @@ public class ConfigurationInitializationService implements ApplicationListener<C
 
     @Autowired(required = false)
     private UnresolvedReferenceService unresolvedReferenceService;
+
+    @Autowired(required = false)
+    private ApplicationEventPublisher eventPublisher;
 
     private List<DomainConfigurationHandler> domainHandlers;
 
@@ -137,6 +141,9 @@ public class ConfigurationInitializationService implements ApplicationListener<C
             ConfigurationReloadResult result = loadDomains(options);
             if (unresolvedReferenceService != null) {
                 unresolvedReferenceService.closeResolvable();
+            }
+            if (eventPublisher != null) {
+                eventPublisher.publishEvent(new ConfigurationLoadedEvent(source));
             }
             return result;
         } finally {

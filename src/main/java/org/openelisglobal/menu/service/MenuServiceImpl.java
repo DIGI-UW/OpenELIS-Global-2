@@ -1,29 +1,55 @@
 package org.openelisglobal.menu.service;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.common.util.URLUtil;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.menu.dao.MenuDAO;
 import org.openelisglobal.menu.util.MenuItem;
 import org.openelisglobal.menu.util.MenuUtil;
 import org.openelisglobal.menu.valueholder.Menu;
+import org.openelisglobal.systemmodule.service.SystemModuleUrlService;
+import org.openelisglobal.systemmodule.valueholder.SystemModuleParam;
+import org.openelisglobal.systemmodule.valueholder.SystemModuleUrl;
+import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
 public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String> implements MenuService {
 
+    // The interceptor's admin bypass; some contexts grant only ROLE_ADMIN.
+    private static final Set<String> ADMIN_AUTHORITIES = Set.of("ROLE_GLOBAL_ADMIN", "ROLE_ADMIN");
+
     @Autowired
     protected MenuDAO baseObjectDAO;
+
+    @Autowired
+    private SystemModuleUrlService systemModuleUrlService;
+
+    @Autowired
+    private UserRoleService userRoleService;
+
+    @Autowired
+    private UserContextHolder userContextHolder;
 
     MenuServiceImpl() {
         super(Menu.class);
@@ -54,7 +80,7 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
     @Override
     @Transactional
     public MenuItem save(MenuItem menuItem) {
-        MenuItem item = saveMenuItem(menuItem, configuredMenus());
+        MenuItem item = saveMenuItem(menuItem);
         rebuildAfterCommit();
         return item;
     }
@@ -63,26 +89,12 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
     @Transactional
     public List<MenuItem> save(List<MenuItem> menuItems) {
         List<MenuItem> menuItemsNew = new ArrayList<>();
-        Map<String, Menu> configuration = configuredMenus();
         for (MenuItem menuItem : menuItems) {
-            MenuItem item = saveMenuItem(menuItem, configuration);
+            MenuItem item = saveMenuItem(menuItem);
             menuItemsNew.add(item);
         }
         rebuildAfterCommit();
         return menuItemsNew;
-    }
-
-    private Map<String, Menu> configuredMenus() {
-        Map<String, Menu> result = new HashMap<>();
-        collectMenus(MenuUtil.getUnfilteredMenuTree(), result);
-        return result;
-    }
-
-    private void collectMenus(List<MenuItem> items, Map<String, Menu> result) {
-        for (MenuItem item : items) {
-            result.put(item.getMenu().getElementId(), item.getMenu());
-            collectMenus(item.getChildMenus(), result);
-        }
     }
 
     private void rebuildAfterCommit() {
@@ -98,7 +110,7 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
         }
     }
 
-    private MenuItem saveMenuItem(MenuItem menuItem, Map<String, Menu> configuration) {
+    private MenuItem saveMenuItem(MenuItem menuItem) {
         Menu menu = menuItem.getMenu();
         Menu oldMenu;
         if (GenericValidator.isBlankOrNull(menu.getId())) {
@@ -107,14 +119,8 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
             oldMenu = get(menu.getId());
         }
 
-        Menu effective = configuration.get(menu.getElementId());
-        Set<String> controlled = effective == null ? Set.of() : effective.getConfigurationFields();
         if (oldMenu == null) {
-            if (effective == null || !effective.isConfigurationOnly()) {
-                MenuUtil.updateMenu(menu);
-            } else {
-                menuItem.setMenu(effective);
-            }
+            MenuUtil.updateMenu(menu);
         } else {
             // Detach before mutating. The audit trail in AuditableBaseObjectServiceImpl
             // reloads the row to diff old against new, and inside one persistence
@@ -123,25 +129,29 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
             // recorded. Detached, the reload reads the persisted state and the diff
             // is real; BaseDAOImpl.update merges, so the write itself is unaffected.
             getBaseObjectDAO().evict(oldMenu);
-            if (!controlled.contains("actionURL")) {
-                oldMenu.setActionURL(menu.getActionURL());
-            }
-            if (!controlled.contains("isActive")) {
-                oldMenu.setIsActive(menu.getIsActive());
-            }
-            if (menu.isPresentationStyleSpecified() && !controlled.contains("presentationStyle")) {
+            boolean edited = !Objects.equals(oldMenu.getActionURL(), menu.getActionURL())
+                    || oldMenu.getIsActive() != menu.getIsActive();
+            oldMenu.setActionURL(menu.getActionURL());
+            oldMenu.setIsActive(menu.getIsActive());
+            if (menu.isPresentationStyleSpecified()) {
                 String style = normalize(menu.getPresentationStyle());
                 if (style != null && !"section".equals(style)) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported menu presentation style");
                 }
+                edited |= !Objects.equals(oldMenu.getPresentationStyle(), style);
                 oldMenu.setPresentationStyle(style);
             }
-            if (menu.isIconSpecified() && !controlled.contains("icon")) {
+            if (menu.isIconSpecified()) {
                 String icon = normalize(menu.getIcon());
                 if (icon != null && !icon.matches("[a-z][a-z0-9-]{0,59}")) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid menu icon name");
                 }
+                edited |= !Objects.equals(oldMenu.getIcon(), icon);
                 oldMenu.setIcon(icon);
+            }
+            // The menu configuration file no longer changes a row someone edited here.
+            if (edited) {
+                oldMenu.setConfigSource(MenuConfigurationSeeder.FROM_ADMIN);
             }
             menuItem.setMenu(save(oldMenu));
         }
@@ -149,9 +159,78 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
         List<MenuItem> oldChildren = menuItem.getChildMenus();
         menuItem.setChildMenus(new ArrayList<>());
         for (MenuItem oldChild : oldChildren) {
-            menuItem.getChildMenus().add(saveMenuItem(oldChild, configuration));
+            menuItem.getChildMenus().add(saveMenuItem(oldChild));
         }
         return menuItem;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MenuItem> filterByPrivilege(List<MenuItem> menuTree) {
+        if (holdsAdminAuthority()) {
+            return menuTree;
+        }
+        String sysUserId = userContextHolder.getCurrentSysUserId();
+        if (GenericValidator.isBlankOrNull(sysUserId)) {
+            return menuTree;
+        }
+
+        Set<String> permittedModules = userRoleService.getAllPermittedPagesForUser(sysUserId);
+        Map<String, List<SystemModuleUrl>> urlsByPath = systemModuleUrlService.getAll().stream()
+                .collect(Collectors.groupingBy(SystemModuleUrl::getUrlPath));
+        Set<String> visibleElementIds = new HashSet<>();
+        collectIndependentlyVisible(menuTree, permittedModules, urlsByPath, visibleElementIds);
+
+        // filterByIncludes adds ancestors, so emptied folders drop out.
+        return MenuUtil.filterByIncludes(menuTree, visibleElementIds, Collections.emptySet());
+    }
+
+    private boolean holdsAdminAuthority() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority)
+                .anyMatch(ADMIN_AUTHORITIES::contains);
+    }
+
+    private void collectIndependentlyVisible(List<MenuItem> menuItems, Set<String> permittedModules,
+            Map<String, List<SystemModuleUrl>> urlsByPath, Set<String> visibleElementIds) {
+        for (MenuItem menuItem : menuItems) {
+            if (isIndependentlyVisible(menuItem, permittedModules, urlsByPath)) {
+                visibleElementIds.add(menuItem.getMenu().getElementId());
+            }
+            collectIndependentlyVisible(menuItem.getChildMenus(), permittedModules, urlsByPath, visibleElementIds);
+        }
+    }
+
+    private boolean isIndependentlyVisible(MenuItem menuItem, Set<String> permittedModules,
+            Map<String, List<SystemModuleUrl>> urlsByPath) {
+        String actionURL = menuItem.getMenu().getActionURL();
+        if (GenericValidator.isBlankOrNull(actionURL)) {
+            // A childless node with no URL is a placeholder (menu_billing).
+            return menuItem.getChildMenus().isEmpty();
+        }
+
+        List<SystemModuleUrl> candidates = urlsByPath.get(URLUtil.getResourcePath(actionURL));
+        if (candidates == null || candidates.isEmpty()) {
+            return true;
+        }
+
+        MultiValueMap<String, String> queryParams = UriComponentsBuilder.fromUriString(actionURL).build()
+                .getQueryParams();
+        boolean anyCandidateApplies = false;
+        for (SystemModuleUrl candidate : candidates) {
+            if (!paramMatches(candidate.getParam(), queryParams)) {
+                continue;
+            }
+            anyCandidateApplies = true;
+            if (permittedModules.contains(candidate.getSystemModule().getSystemModuleName())) {
+                return true;
+            }
+        }
+        return !anyCandidateApplies;
+    }
+
+    private boolean paramMatches(SystemModuleParam param, MultiValueMap<String, String> queryParams) {
+        return param == null || Objects.equals(param.getValue(), queryParams.getFirst(param.getName()));
     }
 
     private String normalize(String value) {

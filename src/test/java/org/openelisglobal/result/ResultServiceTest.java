@@ -60,21 +60,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/result.xml");
-
-        // Ensure TestService maps are initialized before tests that use static methods
-        // The TestServiceImpl constructor calls initializeGlobalVariables(), but in
-        // test context
-        // we need to ensure maps are refreshed after test data is loaded
-        org.openelisglobal.test.service.TestService testServiceBean = org.openelisglobal.spring.util.SpringContext
-                .getBean(org.openelisglobal.test.service.TestService.class);
-
-        // Force initialization by calling a static method that triggers
-        // ensureEntityMapInitialized
-        // This ensures entityToMap is created if it doesn't exist
-        org.openelisglobal.test.service.TestServiceImpl.getUserLocalizedReportingTestName("1");
-
-        // Now refresh the maps to include the test data we just loaded
-        testServiceBean.refreshTestNames();
+        testService.refreshTestNames();
     }
 
     @Test
@@ -98,28 +84,29 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getResultValue_padsTheMantissaOfScientificNotationToTheConfiguredPlaces() {
+    public void getResultValue_preservesScientificNotationInsteadOfReinterpretingDecimalPlaces() {
         Result result = numericResult("1.5e5", 2);
 
-        assertEquals("1.50e5", resultService.getResultValue(result, ",", false, false));
-        assertEquals("1.50e5", resultService.getResultValueForDisplay(result, ",", false, false));
-        assertEquals("1.50e5", resultService.getSimpleResultValue(result));
+        assertEquals("1.5e5", resultService.formatResultForDisplay(result, ",", false, false));
+        assertEquals("1.5e5", resultService.getResultValueForDisplay(result, ",", false, false));
+        assertEquals("1.5e5", resultService.formatSimpleResultForDisplay(result));
     }
 
     @Test
     public void getResultValue_keepsScientificNotationWhenNoPlacesAreConfigured() {
-        assertEquals("1.5e5", resultService.getResultValue(numericResult("1.5e5", 0), ",", false, false));
-        assertEquals("<2e-3", resultService.getResultValue(numericResult("<2e-3", -1), ",", false, false));
-        assertEquals("2.50e-3", resultService.getResultValue(numericResult("2.5e-3", 2), ",", false, false));
-        assertEquals("1.567e5", resultService.getResultValue(numericResult("1.567e5", 2), ",", false, false));
+        assertEquals("1.5e5", resultService.formatResultForDisplay(numericResult("1.5e5", 0), ",", false, false));
+        assertEquals("<2e-3", resultService.formatResultForDisplay(numericResult("<2e-3", -1), ",", false, false));
+        assertEquals("2.5e-3", resultService.formatResultForDisplay(numericResult("2.5e-3", 2), ",", false, false));
+        assertEquals("1.567e5", resultService.formatResultForDisplay(numericResult("1.567e5", 2), ",", false, false));
     }
 
     @Test
     public void getResultValue_showsTheNotationTheTechnologistWrote() {
-        assertEquals("1.50×10⁵", resultService.getResultValue(numericResult("1.5×10⁵", 2), ",", false, false));
-        assertEquals("1.50 x 10^5", resultService.getResultValue(numericResult("1.5 x 10^5", 2), ",", false, false));
-        assertEquals("1.50E+05", resultService.getResultValue(numericResult("1.5E+05", 2), ",", false, false));
-        assertEquals("10⁻³", resultService.getResultValue(numericResult("10⁻³", 2), ",", false, false));
+        assertEquals("1.5×10⁵", resultService.formatResultForDisplay(numericResult("1.5×10⁵", 2), ",", false, false));
+        assertEquals("1.5 x 10^5",
+                resultService.formatResultForDisplay(numericResult("1.5 x 10^5", 2), ",", false, false));
+        assertEquals("1.5E+05", resultService.formatResultForDisplay(numericResult("1.5E+05", 2), ",", false, false));
+        assertEquals("10⁻³", resultService.formatResultForDisplay(numericResult("10⁻³", 2), ",", false, false));
     }
 
     @Test
@@ -133,15 +120,75 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getResultValue_stillPadsPlainDecimals() {
-        assertEquals("12.50", resultService.getResultValue(numericResult("12.5", 2), ",", false, false));
-        assertEquals("12", resultService.getResultValue(numericResult("12.5", 0), ",", false, false));
+        assertEquals("12.50", resultService.formatResultForDisplay(numericResult("12.5", 2), ",", false, false));
     }
 
-    private Result numericResult(String value, int significantDigits) {
+    /**
+     * OGC-1544: a value is shown rounded half up to the test's decimal places, in
+     * every formatter, and the stored value is not changed by showing it.
+     */
+    @Test
+    public void getResultValue_roundsHalfUpToTheConfiguredPlaces() {
+        assertReported("1", "0.9", 0);
+        assertReported("1.0", "0.95", 1);
+        assertReported("70", "69.9", 0);
+        assertReported("13", "12.5", 0);
+        assertReported("12.35", "12.345", 2);
+        assertReported("-1", "-0.5", 0);
+        assertReported("0", "0.4", 0);
+    }
+
+    @Test
+    public void getResultValue_keepsTheStoredValue() {
+        Result result = numericResult("0.9", 0);
+
+        resultService.formatResultForDisplay(result, ",", false, false);
+
+        assertEquals("0.9", result.getValue());
+    }
+
+    @Test
+    public void getResultValue_padsButNeverRoundsAValueBehindAComparator() {
+        assertReported("<0.55", "<0.55", 0);
+        assertReported("<5.00", "<5", 2);
+        assertReported(">10.0", ">10", 1);
+    }
+
+    @Test
+    public void getResultValue_showsAValueWithNoPlacesConfiguredAsStored() {
+        assertReported("12", "12", -1);
+        assertReported("12.345", "12.345", -1);
+    }
+
+    @Test
+    public void printedRoundingNamesTheClinicalValueWithoutChangingIt() {
+        Result result = numericResult("1.176", 0);
+        assertEquals("1 (Value used for clinical decisions: 1.176)",
+                resultService.formatResultForDisplay(result, ",", true, false));
+        assertEquals("1.176", result.getValue());
+        assertEquals("12.50", resultService.formatResultForDisplay(numericResult("12.5", 2), ",", true, false));
+    }
+
+    @Test
+    public void printedWhitespaceValueStillExplainsItsClinicalBoundary() {
+        Result result = numericResult(" 6.004 ", 0);
+        assertEquals("6 (Value used for clinical decisions:  6.004 )",
+                resultService.formatResultForDisplay(result, ",", true, false));
+        assertEquals(" 6.004 ", result.getEnteredValue());
+    }
+
+    private void assertReported(String expected, String stored, int places) {
+        assertEquals(expected, resultService.formatResultForDisplay(numericResult(stored, places), ",", false, false));
+        assertEquals(expected,
+                resultService.getResultValueForDisplay(numericResult(stored, places), ",", false, false));
+        assertEquals(expected, resultService.formatSimpleResultForDisplay(numericResult(stored, places)));
+    }
+
+    private Result numericResult(String value, int reportingDecimalPlaces) {
         Result result = new Result();
         result.setResultType("N");
         result.setValue(value);
-        result.setSignificantDigits(significantDigits);
+        result.setReportingDecimalPlaces(reportingDecimalPlaces);
         return result;
     }
 
@@ -375,7 +422,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getSimpleResultValue_shouldReturnSimpleResultValue() {
         Result result = resultService.get("3");
-        String simpleResultValue = resultService.getSimpleResultValue(result);
+        String simpleResultValue = resultService.formatSimpleResultForDisplay(result);
         assertNotNull(simpleResultValue);
         assertEquals("85.0", simpleResultValue);
     }
@@ -383,7 +430,7 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getResultValueForDisplay_shouldReturnResultValueForDisplay() {
         Result result = resultService.get("3");
-        String resultValue = resultService.getResultValue(result, ", ", true, true);
+        String resultValue = resultService.formatResultForDisplay(result, ", ", true, true);
         assertNotNull(resultValue);
         assertEquals("85.0 mg/dL", resultValue);
     }

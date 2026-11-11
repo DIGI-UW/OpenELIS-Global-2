@@ -1,6 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page, TestInfo } from "@playwright/test";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 // src/test/resources/fixtures/reporting-repeated-results.sql is loaded by the
 // shared fixture loader. Its two equal readings have distinct result identities.
@@ -194,13 +195,10 @@ async function downloadReport(page: Page, count: number) {
   return { headers, records: rows.slice(1) };
 }
 async function detailedLayout(page: Page) {
-  await page.getByRole("combobox", { name: "CSV layout" }).click();
-  await page
-    .getByRole("option", {
-      name: "Detailed list — results in rows",
-      exact: true,
-    })
-    .click();
+  await chooseCarbonOption(
+    page.getByRole("combobox", { name: "CSV layout" }),
+    "Detailed list — results in rows",
+  );
   for (const label of ["Accession Number", "Result Value", "Result ID"])
     await addField(page, label);
 }
@@ -208,8 +206,10 @@ async function configuredReport(page: Page, name: string) {
   await page
     .getByRole("button", { name: "Change type and clear fields", exact: true })
     .click();
-  await page.getByRole("combobox", { name: "Configured reports" }).click();
-  await page.getByRole("option", { name, exact: true }).click();
+  await chooseCarbonOption(
+    page.getByRole("combobox", { name: "Configured reports" }),
+    name,
+  );
 }
 async function savedLibrary(page: Page) {
   await page
@@ -1416,7 +1416,7 @@ test("menu administration saves database icons and identifies instance-controlle
   });
   await expect(
     form.getByText(
-      "Update menu visibility, section headings and icons. Settings managed by this instance are read-only here.",
+      "Update menu visibility, section headings and icons. A change made here stays when the menu configuration file is applied again at the next start.",
     ),
   ).toBeVisible();
   await form
@@ -1480,13 +1480,14 @@ test("menu administration saves database icons and identifies instance-controlle
     .getByTestId("menu-settings-menu_reports")
     .getByRole("button", { name: "Reports", exact: true })
     .click();
+  // The instance file seeded this menu's icon; it can still be edited here.
   const managed = page.getByTestId("menu-fields-menu_reports");
-  await expect(
-    managed.getByRole("combobox", { name: "Icon", exact: true }),
-  ).toBeDisabled();
-  await expect(
-    managed.getByText("Managed by instance configuration"),
-  ).toHaveCount(2);
+  const seededIcon = managed.getByRole("combobox", {
+    name: "Icon",
+    exact: true,
+  });
+  await expect(seededIcon).toBeEnabled();
+  await expect(seededIcon).toHaveValue("reports");
 });
 
 for (const viewport of [

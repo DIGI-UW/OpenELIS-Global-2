@@ -2,6 +2,12 @@
 
 This directory contains detailed documentation for OpenELIS configuration files.
 
+Concepts, catalogs, and defaults belong in these configuration files and their
+application loaders. Liquibase handles schema changes and conversions of
+existing historical records; do not add concept seeds to migrations. Imports
+must be repeatable and preserve referenced identifiers and local customizations.
+Verify fresh installation, reload, and upgrade behavior when moving a catalog.
+
 ## Available Configurations
 
 ### [Roles Configuration](roles-configuration.md)
@@ -39,6 +45,34 @@ District → Sub-District → Village).
 - **Format:** CSV
 - **Features:** Configurable hierarchy levels, parent-child relationships,
   backward compatible with Health Region/District
+
+### [Microbiology Reference Configuration](microbiology-reference-packages.md)
+
+- **Locations:** `configuration/backend/microbiology-organisms/`,
+  `microbiology-antimicrobials/`, and `microbiology-breakpoints/`
+- **Format:** ordinary configuration CSVs, optionally installed from an
+  independently published, deployment-pinned metadata package
+- **Features:** shared catalog preview/apply/reload, source identities, local
+  customization preservation, immutable inactive editions and exact boundaries
+
+### Microbiology order routing
+
+The existing `tests` CSV loader accepts `opensMicrobiologyCase` (Y/N),
+`microbiologyCaseRole` (CULTURE, DIRECT or CASE), and `collectedInSets` (Y/N).
+These are the same choices as the Test Catalog editor. A culture collected in
+sets must also open a case and have the CULTURE role. Invalid combinations are
+rejected; omitted or blank columns preserve existing administrator choices.
+
+A deployment needs its specimen and test catalogs as well as the independently
+pinned organism/antimicrobial/breakpoint package. The reference package does not
+choose which tests a laboratory orders or which tests open cases. For example, a
+deployment can include this row in `configuration/backend/tests/`, after its
+Microbiology lab unit and Blood Culture specimen have been configured:
+
+```csv
+testName,testSection,sampleType,localCode,opensMicrobiologyCase,microbiologyCaseRole,collectedInSets
+Blood culture,Microbiology,Blood Culture,BCULT,Y,CULTURE,Y
+```
 
 ## How Configuration Loading Works
 
@@ -83,3 +117,91 @@ To add a new configuration domain:
 
 - [CONTRIBUTING.md](../../CONTRIBUTING.md) - Contributing guidelines
 - [README.md](../../README.md) - Project overview
+
+### Microbiology environmental and surveillance configuration
+
+Environmental observation types are packaged in
+`src/main/resources/configuration/observation-history-types/`. The existing
+observation-history-types loader imports them; installations can supply an
+instance-specific CSV through the configuration directory.
+
+Reporting track concepts use the existing dictionary loader and
+`configuration/microbiology-reporting-tracks/default.csv`. This catalog has its
+own configuration domain so an unrelated dictionary catalog cannot hide it.
+`configuration/program-reporting-tracks/*.csv` assigns those configured tracks
+to existing Programs, after dictionary and questionnaire loading. Its columns
+are `programCode,reportingTrack`; the track must be an active entry in the
+`Reporting track` category. Unmatched Program codes are left alone. Imports
+follow the normal configuration checksum and reload behavior. Program
+administrators can also select the track in Program management.
+
+These catalogs are configuration, not Liquibase seed data. The M8 migration only
+changes storage and converts existing legacy case data.
+
+Culture atmospheres, reading codes, quantities, and extension reasons are loaded
+from `configuration/microbiology-cultures/default.csv` through the dictionary
+importer. The former M4 concept seed changesets have been removed. Existing
+entries retain their identifiers when the configuration is imported, and
+site-specific entries are retained. Installations can override this catalog in
+the `microbiology-cultures` configuration directory.
+
+Container label presets now load from
+`configuration/label-presets/microbiology.csv`, and the self-validation default
+loads from `configuration/microbiology-settings/default.csv` through the
+site-information importer. Both catalogs use `createOnly=true` to retain
+existing administrator choices, including enabled self-validation protection. A
+site configuration can set `createOnly=false` to update existing values. Their
+former M3 and M7 seed changesets have been removed; upgrading does not delete
+existing settings or labels.
+
+The earlier patient-origin catalog also loads through configuration, from
+`configuration/microbiology-patient-origins/default.csv`. Matching codes retain
+their identifiers and existing WHONET mappings. The original migration checksum
+remains explicitly accepted so existing installations upgrade without clearing
+Liquibase checksums or recreating those concepts.
+
+### Default susceptibility breakpoint edition
+
+In **Admin → Microbiology reference data → Breakpoint standards**, open the
+approved edition, activate it if needed, and select **Use as default**. This
+preselects that edition for new susceptibility tests. Explicit selection of
+another active standard remains possible; existing runs and repeat runs keep the
+standard saved on the original run. Activation alone does not select a preferred
+publisher.
+
+The default uses existing site-information settings, loaded through
+`microbiology-settings/*.csv`:
+
+```csv
+name,value,domainName,valueType,description,instructionKey,group,encrypted,createOnly
+microbiologyDefaultBreakpointAuthority,EUCAST,resultConfiguration,text,Default breakpoint authority,,0,false,false
+microbiologyDefaultBreakpointVersion,2026-2026.1,resultConfiguration,text,Default breakpoint edition,,0,false,false
+```
+
+Use the **exact imported version**, including the package revision. The example
+selects the AMR reference package's 2026 EUCAST edition; it is a testing choice,
+not a clinical policy recommendation. Configuration stores portable publisher
+and edition names, not installation-specific identifiers. It does not activate
+an edition. An administrator must approve activation before it can be used.
+
+Built-in values are empty and `createOnly=true`, preserving administrator
+choices. A deployment override with `createOnly=false` sets both values when
+that file is imported; unchanged files are skipped on restart. If the pinned
+edition is missing or inactive, OpenELIS warns and does not substitute another
+publisher or year. Without a configured default, a single active edition is
+selected automatically; multiple active editions require an explicit selection.
+The older Java properties named `defaultBreakpointAuthority` and
+`defaultBreakpointVersion` only support legacy runs without a saved standard;
+they do not configure this default for new tests.
+
+### AMR breakpoint indications
+
+Breakpoint CSVs may include `clinical_context`. Blank retains unconditional
+lookup; `NON_MENINGITIS` is the supported explicit indication. AST setup records
+the indication selected from the clinical request and preserves it on the run,
+repeat attempts, and issued report. A blood specimen does not imply this value.
+Unknown indications are rejected. Context-specific rows never apply to an
+unspecified run. Older package editions remain immutable and reload unchanged; a
+new contextual dataset requires a new package version. New editions load
+inactive and require activation and default selection in laboratory
+administration.

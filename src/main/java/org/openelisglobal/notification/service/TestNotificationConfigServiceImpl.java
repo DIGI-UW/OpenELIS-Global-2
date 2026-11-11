@@ -137,8 +137,26 @@ public class TestNotificationConfigServiceImpl extends AuditableBaseObjectServic
         } else {
             oldConfig = newTestNotificationConfig;
             oldConfig.setTest(testService.get(newTestNotificationConfig.getTestId()));
+            validateAsTestResult(oldConfig.getDefaultPayloadTemplate());
+            for (NotificationConfigOption option : oldConfig.getOptions()) {
+                validateAsTestResult(option.getPayloadTemplate());
+            }
         }
         save(oldConfig);
+    }
+
+    /**
+     * A per-test template goes through the same merge-field check as the shared
+     * ones (FR-D1): nothing that names the patient is saved on this path either.
+     */
+    private static void validateAsTestResult(NotificationPayloadTemplate template) {
+        if (template == null) {
+            return;
+        }
+        if (template.getType() == null) {
+            template.setType(NotificationPayloadType.TEST_RESULT);
+        }
+        NotificationPayloadTemplateServiceImpl.validate(template);
     }
 
     /**
@@ -161,11 +179,13 @@ public class TestNotificationConfigServiceImpl extends AuditableBaseObjectServic
             fresh.setMessageTemplate(incoming.getMessageTemplate());
             fresh.setType(NotificationPayloadType.TEST_RESULT);
             fresh.setSysUserId(sysUserId);
+            NotificationPayloadTemplateServiceImpl.validate(fresh);
             setter.accept(fresh);
         } else {
             existing.setSubjectTemplate(incoming.getSubjectTemplate());
             existing.setMessageTemplate(incoming.getMessageTemplate());
             existing.setSysUserId(sysUserId);
+            NotificationPayloadTemplateServiceImpl.validate(existing);
         }
     }
 

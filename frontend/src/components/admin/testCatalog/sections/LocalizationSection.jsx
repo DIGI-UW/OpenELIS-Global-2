@@ -82,13 +82,18 @@ const LocalizationSection = ({
     refsUrl || `/rest/test-catalog/tests/${id}/localization`;
   // Only the strings that name the thing being translated differ between
   // entities; everything else here reads the same for all three.
-  const copy = (suffix) =>
-    intl.formatMessage({
-      id: `label.${entity}.localization.${suffix}`,
-      defaultMessage: intl.formatMessage({
-        id: `label.testCatalog.localization.${suffix}`,
-      }),
+  // A test's strings are the testCatalog ones, so it has no keys of its own.
+  const copy = (suffix) => {
+    const testCopy = intl.formatMessage({
+      id: `label.testCatalog.localization.${suffix}`,
     });
+    return entity === "test"
+      ? testCopy
+      : intl.formatMessage({
+          id: `label.${entity}.localization.${suffix}`,
+          defaultMessage: testCopy,
+        });
+  };
   const intl = useIntl();
 
   const [locales, setLocales] = useState([]);
@@ -187,7 +192,9 @@ const LocalizationSection = ({
 
   /**
    * Collapse the drafts into one PUT per localization record, dropping any that
-   * match what is already stored.
+   * match what is already stored. Only the locales the admin changed are sent,
+   * so a translation another admin saved after this page loaded stands
+   * (OGC-1463).
    */
   const pendingSaves = () => {
     const byId = new Map();
@@ -201,7 +208,7 @@ const LocalizationSection = ({
       }
       const batched = byId.get(entry.localizationId) || {
         entry,
-        translations: { ...entry.translations },
+        translations: {},
       };
       batched.translations[localeCode] = drafts[key];
       byId.set(entry.localizationId, batched);
@@ -213,6 +220,20 @@ const LocalizationSection = ({
 
   const handleSave = () => {
     if (unsaved.length === 0 || saving) {
+      return;
+    }
+    const blanksFallback = unsaved.some(
+      ({ translations }) =>
+        FALLBACK_LOCALE in translations &&
+        !String(translations[FALLBACK_LOCALE] || "").trim(),
+    );
+    if (blanksFallback) {
+      setNotification({
+        kind: "error",
+        text: intl.formatMessage({
+          id: "label.testCatalog.localization.fallbackRequired",
+        }),
+      });
       return;
     }
     setSaving(true);
@@ -350,19 +371,15 @@ const LocalizationSection = ({
               <div
                 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
               >
-                <span className="cds--label">
-                  {intl.formatMessage({
-                    id: `label.${entity}.localization.field.${entry.field}`,
-                    defaultMessage: intl.formatMessage({
-                      id: `label.testCatalog.localization.field.${entry.field}`,
-                    }),
-                  })}
+                <span className="cds--label" aria-hidden="true">
+                  {copy(`field.${entry.field}`)}
                 </span>
                 {fallbackTag(entry)}
               </div>
               <TextInput
                 id={`localization-input-${entry.field}`}
-                labelText=""
+                labelText={copy(`field.${entry.field}`)}
+                hideLabel
                 placeholder={entry.translations[FALLBACK_LOCALE] || ""}
                 value={valueFor(entry)}
                 onChange={(e) => {

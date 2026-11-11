@@ -87,10 +87,13 @@
           <Connector port="8443" protocol="org.apache.coyote.http11.Http11NioProtocol"
                maxThreads="150" SSLEnabled="true">
                <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
-               <SSLHostConfig truststoreFile="/etc/openelis-global/truststore"
-                    truststorePassword="tspass" truststoreType="PKCS12">
+               <!-- Client certificates are requested, never required. Any is accepted
+                    in the handshake; OpenELIS recognises the paired Analyzer Bridge
+                    by its certificate's fingerprint. -->
+               <SSLHostConfig certificateVerification="optional"
+                    trustManagerClassName="org.openelisglobal.tomcat.AnyClientCertificateTrustManager">
                     <Certificate certificateKeystoreFile="/etc/openelis-global/keystore"
-                         certificateKeystorePassword="kspass"
+                         certificateKeystorePassword="${oe.ssl.keystorepassword}"
                          certificateKeystoreType="PKCS12"
                          type="RSA" />
                </SSLHostConfig>
@@ -136,7 +139,7 @@
                </Realm>
 
                <Host name="localhost" appBase="webapps"
-                    unpackWARs="true" autoDeploy="true">
+                    unpackWARs="true" autoDeploy="false" deployOnStartup="false">
 
                     <Context docBase="ROOT" path="/api" />
                     <Context docBase="OpenELIS-Global"
@@ -144,7 +147,8 @@
                          <Resources cacheMaxSize="102400" />
                          <Resource auth="Container"
                               driverClassName="org.postgresql.Driver" maxTotal="20" maxIdle="10"
-                              maxWaitMillis="-1" name="jdbc/LimsDS" type="javax.sql.DataSource"
+                              maxWaitMillis="30000" removeAbandonedOnBorrow="true"
+                              removeAbandonedTimeout="300" logAbandoned="true" name="jdbc/LimsDS" type="javax.sql.DataSource"
                               url="${datasource.url}" username="${datasource.username}"
                               password="${datasource.password}" />
                     </Context>

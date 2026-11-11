@@ -37,5 +37,17 @@ public interface ServiceRequestTransformService {
     SampleOrderItem buildSampleOrderItemFromServiceRequest(ServiceRequest serviceRequest, String sysUserId)
             throws Exception;
 
+    /**
+     * The order details an update of {@code sample} saves: everything stored on the
+     * order, with priority, requester, referring site and request date taken from
+     * the ServiceRequest only where it differs from what a read publishes. Saving
+     * the order writes every order field, so building it from the ServiceRequest
+     * alone erased the program, payment status and next visit date the resource has
+     * no element for. The item is marked modified only when one of those four
+     * changed, because saving it also rewrites the received time to the minute.
+     */
+    SampleOrderItem buildSampleOrderItemForUpdate(ServiceRequest serviceRequest,
+            org.openelisglobal.sample.valueholder.Sample sample, String sysUserId) throws Exception;
+
     List<Test> resolveTestsFromCodeableConcept(CodeableConcept codeableConcept);
 }

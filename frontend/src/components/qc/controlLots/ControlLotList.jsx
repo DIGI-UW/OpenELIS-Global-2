@@ -48,7 +48,7 @@ const headers = [
   { key: "status", header: "qc.controlLot.field.status" },
   { key: "calculationMethod", header: "qc.controlLot.statistics.method" },
   { key: "expirationDate", header: "qc.controlLot.field.expiration" },
-  { key: "actions", header: "" },
+  { key: "actions", header: "", isSortable: false },
 ];
 
 const ControlLotList = () => {
@@ -141,7 +141,7 @@ const ControlLotList = () => {
   }));
 
   const translatedHeaders = headers.map((h) => ({
-    key: h.key,
+    ...h,
     header: h.header
       ? intl.formatMessage({ id: h.header, defaultMessage: h.header })
       : "",

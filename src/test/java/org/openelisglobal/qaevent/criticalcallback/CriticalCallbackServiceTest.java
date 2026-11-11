@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.time.LocalDate;
+import java.util.Locale;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,6 +15,7 @@ import org.openelisglobal.qaevent.criticalcallback.bean.CallbackEvent;
 import org.openelisglobal.qaevent.criticalcallback.bean.CallbackSummaryResponse;
 import org.openelisglobal.qaevent.criticalcallback.service.CriticalCallbackService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -229,6 +231,33 @@ public class CriticalCallbackServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(Long.valueOf(1), failures.get("unableToReach"));
         assertEquals(Long.valueOf(0), failures.get("noReadback"));
         assertEquals(Long.valueOf(1), failures.get("noCallback"));
+    }
+
+    @Test
+    public void getDetail_namesTheTestInTheReadersLanguageAndFollowsARename() {
+        jdbc.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, 'test name', NOW())",
+                TEST_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.localization_value (id, localization_id, locale, value) VALUES (?, ?, 'en', ?),"
+                        + " (?, ?, 'fr', ?)",
+                TEST_ID, TEST_ID, "Callback English", TEST_ID + 1, TEST_ID, "Rappel Français");
+        jdbc.update("UPDATE clinlims.test SET name_localization_id = ? WHERE id = ?", TEST_ID, TEST_ID);
+        try {
+            LocaleContextHolder.setLocale(Locale.FRENCH);
+            assertEquals("Rappel Français", callbackService.getDetail(FROM, TO, 0, 25).getItems().get(0).getTestName());
+
+            LocaleContextHolder.setLocale(Locale.ENGLISH);
+            jdbc.update("UPDATE clinlims.localization_value SET value = 'Callback Renamed' WHERE id = ?", TEST_ID);
+            assertEquals("Callback Renamed",
+                    callbackService.getDetail(FROM, TO, 0, 25).getItems().get(0).getTestName());
+            assertEquals("CallbackComputeIT",
+                    jdbc.queryForObject("SELECT name FROM clinlims.test WHERE id = ?", String.class, TEST_ID));
+        } finally {
+            LocaleContextHolder.resetLocaleContext();
+            jdbc.update("UPDATE clinlims.test SET name_localization_id = NULL WHERE id = ?", TEST_ID);
+            jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id = ?", TEST_ID);
+            jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", TEST_ID);
+        }
     }
 
     @Test

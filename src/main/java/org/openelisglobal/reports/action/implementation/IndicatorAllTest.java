@@ -13,18 +13,19 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import java.util.Objects;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.HaitiAggregateReportData;
 import org.openelisglobal.reports.form.ReportForm;
@@ -34,6 +35,12 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openpdf.text.Document;
+import org.openpdf.text.Font;
+import org.openpdf.text.Paragraph;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
 
 /**
  * The contents of this file are subject to the Mozilla Public License Version
@@ -68,21 +75,82 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
     }
 
     @Override
-    protected String reportFileName() {
-        return "LabAggregate";
+    protected byte[] renderReport() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Document document = startPdf(out, lowerDateRange + " - " + upperDateRange);
+        Paragraph title = new Paragraph(MessageUtil.getMessage("report.globalLabReport"),
+                new Font(Font.HELVETICA, 11, Font.BOLD));
+        title.setSpacingAfter(6);
+        document.add(title);
+
+        PdfPTable table = new PdfPTable(new float[] { 4, 1, 1, 1, 1 });
+        table.setWidthPercentage(100);
+        table.setHeaderRows(1);
+        PdfExportSupport.addHeaderRow(table, HEADER_FONT, 3, MessageUtil.getMessage("report.test"),
+                MessageUtil.getMessage("report.notStarted"), MessageUtil.getMessage("report.inProgress"),
+                MessageUtil.getMessage("report.complete"), MessageUtil.getMessage("report.total"));
+        String total = MessageUtil.getMessage("report.total");
+        int[] lab = new int[4];
+        int start = 0;
+        while (start < reportItems.size()) {
+            String section = reportItems.get(start).getSectionName();
+            int end = start;
+            int[] sectionTotals = new int[4];
+            PdfPCell sectionCell = new PdfPCell(new Phrase(section, LABEL_FONT));
+            sectionCell.setColspan(5);
+            table.addCell(sectionCell);
+            while (end < reportItems.size() && Objects.equals(reportItems.get(end).getSectionName(), section)) {
+                HaitiAggregateReportData item = reportItems.get(end);
+                if (item.getTestName() == null) {
+                    PdfPCell none = new PdfPCell(
+                            new Phrase(MessageUtil.getMessage("report.no.section.tests"), CELL_FONT));
+                    none.setColspan(5);
+                    table.addCell(none);
+                } else {
+                    int[] counts = { item.getNotStarted(), item.getInProgress(), item.getFinished(), item.getTotal() };
+                    table.addCell(new Phrase(item.getTestName(), CELL_FONT));
+                    for (int i = 0; i < counts.length; i++) {
+                        table.addCell(new Phrase(String.valueOf(counts[i]), CELL_FONT));
+                        sectionTotals[i] += counts[i];
+                        lab[i] += counts[i];
+                    }
+                }
+                end++;
+            }
+            if (sectionTotals[3] != 0) {
+                addTotalRow(table, total, sectionTotals);
+            }
+            start = end;
+        }
+        addTotalRow(table, MessageUtil.getMessage("report.labTotal"), lab);
+        document.add(table);
+
+        document.add(new Paragraph(MessageUtil.getMessage("report.footNote"), new Font(Font.HELVETICA, 8)));
+        document.close();
+        return out.toByteArray();
     }
 
-    @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
+    private static final Font HEADER_FONT = new Font(Font.HELVETICA, 8, Font.BOLD);
+    private static final Font LABEL_FONT = new Font(Font.HELVETICA, 9, Font.BOLD);
+    private static final Font CELL_FONT = new Font(Font.HELVETICA, 9);
+
+    /** A test configured without a sort order lists after the ones with one. */
+    private static int sortOrder(Test test) {
+        return GenericValidator.isBlankOrNull(test.getSortOrder()) ? Integer.MAX_VALUE
+                : Integer.parseInt(test.getSortOrder());
+    }
+
+    private static void addTotalRow(PdfPTable table, String label, int[] totals) {
+        table.addCell(new Phrase(label, LABEL_FONT));
+        for (int value : totals) {
+            table.addCell(new Phrase(String.valueOf(value), LABEL_FONT));
+        }
     }
 
     @Override
     public void initializeReport(ReportForm form) {
         super.initializeReport();
         setDateRange(form);
-
-        createReportParameters();
 
         setTestMapForAllTests();
 
@@ -105,7 +173,7 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
             TestBucket bucket = new TestBucket();
 
             bucket.testName = TestServiceImpl.getUserLocalizedReportingTestName(test);
-            bucket.testSort = Integer.parseInt(test.getSortOrder());
+            bucket.testSort = sortOrder(test);
             bucket.testSection = test.getTestSection().getLocalizedName();
             bucket.sectionSort = test.getTestSection().getSortOrderInt();
 
@@ -226,7 +294,7 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
                 if (testBucket == null) {
                     testBucket = new TestBucket();
                     testBucket.testName = TestServiceImpl.getUserLocalizedReportingTestName(test);
-                    testBucket.testSort = Integer.parseInt(test.getSortOrder());
+                    testBucket.testSort = sortOrder(test);
                     testBucket.testSection = analysis.getTestSection().getLocalizedName();
                     testBucket.sectionSort = analysis.getTestSection().getSortOrderInt();
                     concatSection_TestToBucketMap.put(concatedName, testBucket);
@@ -312,18 +380,7 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
             testBucketList.add(bucket);
         }
 
-        Collections.sort(testBucketList, new Comparator<TestBucket>() {
-            @Override
-            public int compare(TestBucket o1, TestBucket o2) {
-                int order = o1.sectionSort - o2.sectionSort;
-
-                if (order == 0) {
-                    order = o1.testSort - o2.testSort;
-                }
-
-                return order;
-            }
-        });
+        testBucketList.sort(BUCKET_ORDER);
     }
 
     private void addEmptySectionsToBucketList(Map<String, TestSection> testSectionMap, List<TestBucket> bucketList) {
@@ -369,7 +426,10 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
         }
     }
 
-    private class TestBucket {
+    static final Comparator<TestBucket> BUCKET_ORDER = Comparator
+            .comparingInt((TestBucket bucket) -> bucket.sectionSort).thenComparingInt(bucket -> bucket.testSort);
+
+    static class TestBucket {
         public String testName = "";
         public int testSort = 0;
         public String testSection = "";

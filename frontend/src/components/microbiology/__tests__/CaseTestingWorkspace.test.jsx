@@ -1,0 +1,823 @@
+import React from "react";
+import { vi } from "vitest";
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import { IntlProvider } from "react-intl";
+import CaseTestingWorkspace from "../CaseTestingWorkspace";
+import messages from "../../../languages/en.json";
+vi.mock("../../utils/Utils", async () => ({
+  ...(await vi.importActual("../../utils/Utils")),
+  getFromOpenElisServer: vi.fn((url, cb) =>
+    cb(
+      url === "/rest/users"
+        ? [{ id: "8", value: "Other technician" }]
+        : { tests: [{ id: "30", name: "Follow-up test" }], panels: [] },
+    ),
+  ),
+}));
+const detail = {
+  id: "case-1",
+  canWrite: true,
+  canValidate: true,
+  samples: [
+    {
+      sampleItemId: "sample-1",
+      sampleTypeId: "type-1",
+      specimenType: "Sputum",
+      label: "Sputum sample 1",
+    },
+  ],
+};
+const component = (id, name) => ({
+  analysisId: "20",
+  testResultComponentId: id,
+  testName: name,
+  resultType: "N",
+  resultValue: "",
+  rawResultValue: "",
+  reportingDecimalPlaces: 0,
+  dictionaryResults: [],
+});
+const assay = {
+  analysisId: "20",
+  testId: "10",
+  testName: "Two-component assay",
+  status: "NotStarted",
+  version: "123",
+  placement: "INITIAL",
+  canEdit: true,
+  canValidate: false,
+  testedElsewhere: false,
+  components: [component("primary", "MTB"), component("rif", "Rifampicin")],
+};
+const service = () => ({
+  getTests: vi.fn().mockResolvedValue([assay]),
+  getTimeline: vi.fn().mockResolvedValue([]),
+  saveResults: vi
+    .fn()
+    .mockResolvedValue([{ ...assay, status: "TechnicalAcceptance" }]),
+  setTestedElsewhere: vi.fn(),
+  addTests: vi.fn().mockResolvedValue([assay]),
+  addNote: vi.fn(),
+  validateResult: vi.fn(),
+});
+const show = (api, data = detail) =>
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace detail={data} service={api} />
+    </IntlProvider>,
+  );
+const openEditor = async () =>
+  fireEvent.click(await screen.findByRole("button", { name: "Enter or edit" }));
+const enter = (name, value) =>
+  fireEvent.change(
+    screen.getByRole("textbox", { name: `Result for ${name}` }),
+    { target: { value } },
+  );
+describe("case testing workspace", () => {
+  test("note errors stay visible while viewing the timeline", async () => {
+    const api = service();
+    api.addNote.mockRejectedValue(new Error("save failed"));
+    show(api);
+    await screen.findByText("Two-component assay");
+    fireEvent.change(screen.getByLabelText("Testing section"), {
+      target: { value: "HISTORY" },
+    });
+    fireEvent.change(screen.getByLabelText("New note"), {
+      target: { value: "Follow up" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save note" }));
+    expect(
+      await screen.findByText(messages["microbiology.testing.saveError"]),
+    ).toBeVisible();
+  });
+
+  test("rejected specimens are excluded from the test picker", async () => {
+    const api = service();
+    show(api, {
+      ...detail,
+      samples: [
+        ...detail.samples,
+        {
+          sampleItemId: "rejected",
+          sampleTypeId: "type-2",
+          specimenType: "Rejected urine",
+          sampleRejected: true,
+        },
+      ],
+    });
+    await screen.findByText("Two-component assay");
+    expect(screen.getByRole("button", { name: /Sputum/ })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Rejected urine/ }),
+    ).not.toBeInTheDocument();
+  });
+  test("incoming placement refreshes additional results without reopening the case", async () => {
+    const api = service();
+    api.getIncoming = vi.fn().mockResolvedValue([
+      {
+        id: "incoming-1",
+        testName: "Incoming assay",
+        state: "WAITING",
+        sampleItemId: "sample-1",
+        receivedAt: "2026-01-01T10:00:00Z",
+        result: { components: [{ value: "12" }] },
+      },
+    ]);
+    api.placeIncoming = vi.fn().mockResolvedValue({});
+    show(api);
+    await screen.findByText("Two-component assay");
+    for (const name of [
+      "Initial testing",
+      "Culture",
+      "Isolates",
+      "AST / DST",
+      "Report and release",
+    ]) {
+      expect(screen.getByRole("button", { name, exact: true })).toBeVisible();
+    }
+    fireEvent.click(
+      screen.getByRole("button", { name: "Incoming results", exact: true }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Review placement" }),
+    );
+    api.getTests.mockResolvedValue([
+      {
+        ...assay,
+        testName: "Placed assay",
+        placement: "ADDITIONAL",
+        status: "TechnicalAcceptance",
+        components: [{ ...component("primary", "MTB"), resultValue: "12" }],
+      },
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Place result" }));
+    await waitFor(() => expect(api.getTests).toHaveBeenCalledTimes(2));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Additional testing", exact: true }),
+    );
+    expect(await screen.findByText("Placed assay")).toBeVisible();
+    expect(screen.getByText("Awaiting validation")).toBeVisible();
+    expect(screen.getByText(/12/)).toBeVisible();
+  });
+
+  test("edits components independently and submits the current version", async () => {
+    const api = service();
+    show(api);
+    await openEditor();
+    enter("MTB", "12");
+    enter("Rifampicin", "34");
+    expect(screen.getByRole("textbox", { name: "Result for MTB" })).toHaveValue(
+      "12",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+    await waitFor(() =>
+      expect(api.saveResults).toHaveBeenCalledWith(
+        "case-1",
+        "20",
+        expect.objectContaining({
+          version: "123",
+          components: [
+            expect.objectContaining({ componentId: "primary", value: "12" }),
+            expect.objectContaining({ componentId: "rif", value: "34" }),
+          ],
+        }),
+      ),
+    );
+    await screen.findByText("Awaiting validation");
+  });
+  test.each(["M", "C"])(
+    "empty %s selections cannot be submitted",
+    async (type) => {
+      const api = service();
+      api.getTests.mockResolvedValue([
+        {
+          ...assay,
+          components: [
+            {
+              ...component("selection", "Selection"),
+              resultType: type,
+              multiSelectResultValues: "{}",
+            },
+          ],
+        },
+      ]);
+      show(api);
+      await openEditor();
+      expect(
+        screen.getByRole("button", { name: "Save results" }),
+      ).toBeDisabled();
+      expect(api.saveResults).not.toHaveBeenCalled();
+    },
+  );
+  test.each(["M", "C"])(
+    "a selected %s result remains saveable",
+    async (type) => {
+      const api = service();
+      api.getTests.mockResolvedValue([
+        {
+          ...assay,
+          components: [
+            {
+              ...component("selection", "Selection"),
+              resultType: type,
+              multiSelectResultValues: '{"1":"42"}',
+              dictionaryResults: [{ id: "42", value: "Selected option" }],
+            },
+          ],
+        },
+      ]);
+      show(api);
+      await openEditor();
+      expect(
+        screen.getByRole("button", { name: "Save results" }),
+      ).toBeEnabled();
+    },
+  );
+  test("blank selection groups cannot be submitted", async () => {
+    const api = service();
+    api.getTests.mockResolvedValue([
+      {
+        ...assay,
+        components: [
+          {
+            ...component("selection", "Selection"),
+            resultType: "M",
+            multiSelectResultValues: '{"1":" , "}',
+          },
+        ],
+      },
+    ]);
+    show(api);
+    await openEditor();
+    expect(screen.getByRole("button", { name: "Save results" })).toBeDisabled();
+  });
+  test.each(["<1.5×10⁵", ">10⁻³"])(
+    "accepts qualified scientific notation %s",
+    async (value) => {
+      const api = service();
+      show(api);
+      await openEditor();
+      enter("MTB", value);
+      expect(
+        screen.getByRole("button", { name: "Save results" }),
+      ).toBeEnabled();
+      fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+      await waitFor(() =>
+        expect(api.saveResults).toHaveBeenCalledWith(
+          "case-1",
+          "20",
+          expect.objectContaining({
+            components: expect.arrayContaining([
+              expect.objectContaining({ componentId: "primary", value }),
+            ]),
+          }),
+        ),
+      );
+    },
+  );
+  test("extra decimals warn without blocking the save, and failed saves preserve both fields", async () => {
+    const api = service();
+    api.saveResults.mockRejectedValue(new Error("stale"));
+    show(api);
+    await openEditor();
+    enter("MTB", "12.5");
+    expect(
+      await screen.findByText(/full entered value is retained/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save results" })).toBeEnabled();
+    enter("MTB", "12");
+    enter("Rifampicin", "34");
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+    await screen.findByText(messages["microbiology.testing.preservedDraft"]);
+    expect(screen.getByRole("textbox", { name: "Result for MTB" })).toHaveValue(
+      "12",
+    );
+    expect(
+      screen.getByRole("textbox", { name: "Result for Rifampicin" }),
+    ).toHaveValue("34");
+  });
+  test("out-of-unit readers cannot edit, validate, add tests, or append notes", async () => {
+    const api = service();
+    api.getTests.mockResolvedValue([
+      { ...assay, canEdit: true, canValidate: true },
+    ]);
+    show(api, { ...detail, canWrite: false, canValidate: false });
+    await screen.findByText("Two-component assay");
+    for (const name of [
+      "Enter or edit",
+      "Validate",
+      "Add selected tests",
+      "Save note",
+    ])
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    expect(screen.queryByLabelText("New note")).toBeNull();
+  });
+  test("switching scope shows additional analyses", async () => {
+    const api = service();
+    api.getTests.mockResolvedValue([
+      assay,
+      {
+        ...assay,
+        analysisId: "21",
+        testName: "Additional assay",
+        placement: "ADDITIONAL",
+      },
+    ]);
+    show(api);
+    await screen.findByText("Two-component assay");
+    expect(screen.queryByText("Additional assay")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Testing section"), {
+      target: { value: "ADDITIONAL" },
+    });
+    expect(screen.getByText("Additional assay")).toBeTruthy();
+    expect(screen.queryByText("Two-component assay")).toBeNull();
+  });
+  test("notes preserve a failed draft and display the attributed saved entry", async () => {
+    const api = service();
+    api.addNote.mockRejectedValueOnce(new Error("failed")).mockResolvedValue({
+      id: "n1",
+      activityType: "MANUAL_NOTE",
+      note: "Bench observation",
+      occurredAt: "2026-10-01T10:00:00Z",
+      performedByDisplay: "Technician",
+    });
+    show(api);
+    await screen.findByText("Two-component assay");
+    fireEvent.change(screen.getByLabelText("New note"), {
+      target: { value: "Bench observation" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save note" }));
+    await screen.findByText(messages["microbiology.testing.saveError"]);
+    expect(screen.getByLabelText("New note")).toHaveValue("Bench observation");
+    fireEvent.click(screen.getByRole("button", { name: "Save note" }));
+    await within(screen.getByRole("table", { name: "Case notes" })).findByText(
+      "Technician",
+    );
+    expect(screen.getByLabelText("New note")).toHaveValue("");
+    expect(api.addNote).toHaveBeenLastCalledWith(
+      "case-1",
+      "Bench observation",
+      false,
+    );
+  });
+  test("provenance saves preserve the result draft and refresh its version", async () => {
+    const api = service();
+    api.setTestedElsewhere.mockResolvedValue([
+      {
+        ...assay,
+        version: "124",
+        testedElsewhere: true,
+        performingUserId: "8",
+        performedAt: "2026-10-01",
+        performedByDisplay: "Other technician",
+      },
+    ]);
+    show(api);
+    await openEditor();
+    enter("MTB", "12");
+    fireEvent.click(screen.getByLabelText("Tested elsewhere"));
+    const picker = screen.getByRole("combobox", { name: "Performed by" });
+    fireEvent.click(picker);
+    fireEvent.keyDown(picker, { key: "ArrowDown" });
+    fireEvent.keyDown(picker, { key: "Enter" });
+    fireEvent.change(screen.getByLabelText("Date performed"), {
+      target: { value: "2026-10-01" },
+    });
+    expect(screen.getByRole("button", { name: "Save results" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Save provenance" }));
+    await waitFor(() =>
+      expect(api.setTestedElsewhere).toHaveBeenCalledWith(
+        "case-1",
+        "20",
+        expect.objectContaining({
+          performingUserId: "8",
+          testedElsewhere: true,
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Save results" }),
+      ).not.toBeDisabled(),
+    );
+    expect(screen.getByRole("textbox", { name: "Result for MTB" })).toHaveValue(
+      "12",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+    await waitFor(() =>
+      expect(api.saveResults).toHaveBeenCalledWith(
+        "case-1",
+        "20",
+        expect.objectContaining({ version: "124" }),
+      ),
+    );
+  });
+});
+
+test("critical acknowledgement applies only to the flagged component", async () => {
+  const api = service();
+  api.saveResults.mockRejectedValueOnce(
+    Object.assign(new Error("acknowledgement required"), {
+      response: {
+        status: 422,
+        code: "ACKNOWLEDGEMENT_REQUIRED",
+        acknowledgementRequired: [
+          {
+            analysisId: "20",
+            componentId: "primary",
+            kind: "CRITICAL",
+            value: "12",
+            testName: "MTB",
+          },
+        ],
+      },
+    }),
+  );
+  show(api);
+  await openEditor();
+  enter("MTB", "12");
+  enter("Rifampicin", "34");
+  fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+  const confirm = await screen.findByRole("button", {
+    name: /Acknowledge and save$/,
+  });
+  fireEvent.click(confirm);
+  await waitFor(() =>
+    expect(api.saveResults).toHaveBeenLastCalledWith(
+      "case-1",
+      "20",
+      expect.objectContaining({
+        components: [
+          expect.objectContaining({
+            componentId: "primary",
+            criticalAcknowledged: true,
+          }),
+          expect.objectContaining({
+            componentId: "rif",
+            criticalAcknowledged: false,
+          }),
+        ],
+      }),
+    ),
+  );
+});
+
+// Real workspace + picker + culture tree; HTTP collaborators are stubbed.
+// Guards the UI wiring and source selection, not persistence or access policy.
+describe("culture test chooser", () => {
+  const cultureApi = () => {
+    const api = service();
+    api.getCultures = vi.fn().mockResolvedValue([
+      {
+        id: "culture-1",
+        sourceSampleItemId: "sample-1",
+        containerIdentifier: "PLATE-1",
+        mediumName: "Blood agar",
+        readings: [],
+        extensions: [],
+        proposals: [],
+      },
+    ]);
+    api.getCultureOptions = vi.fn().mockResolvedValue({
+      sources: detail.samples,
+      media: [],
+      mediaLinks: [],
+      atmospheres: [],
+      readings: [],
+      quantities: [],
+      extensionReasons: [],
+      gramStainTest: { id: "30", value: "Follow-up test" },
+      gramStainSampleTypeIds: ["type-1"],
+    });
+    return api;
+  };
+  const openCulture = async (api) => {
+    show(api, {
+      ...detail,
+      samples: [
+        ...detail.samples,
+        {
+          sampleItemId: "sample-2",
+          sampleTypeId: "type-2",
+          specimenType: "Blood",
+        },
+      ],
+    });
+    await screen.findByText("Two-component assay");
+    fireEvent.change(
+      screen.getByLabelText(messages["microbiology.testing.scope"]),
+      { target: { value: "CULTURE" } },
+    );
+    await screen.findByRole("heading", { name: /PLATE-1/ });
+  };
+  test("Gram shortcut adds the test under its culture and opens its result editor", async () => {
+    const api = cultureApi();
+    api.addTests.mockResolvedValue([
+      assay,
+      {
+        ...assay,
+        analysisId: "21",
+        testId: "30",
+        testName: "Follow-up test",
+        placement: "CULTURE",
+        cultureId: "culture-1",
+        components: [
+          { ...component("gram", "Gram morphology"), analysisId: "21" },
+        ],
+      },
+    ]);
+    await openCulture(api);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["microbiology.culture.gramStain"],
+      }),
+    );
+    await waitFor(() =>
+      expect(api.addTests).toHaveBeenCalledWith("case-1", {
+        placement: "CULTURE",
+        cultureId: "culture-1",
+        sampleItemId: "sample-1",
+        testIds: ["30"],
+        panelIds: [],
+      }),
+    );
+    expect(await screen.findByLabelText(/Gram morphology/)).toBeInTheDocument();
+  });
+  test("manual selection updates the selected culture picker and becomes saveable", async () => {
+    const api = cultureApi();
+    await openCulture(api);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["microbiology.culture.testOnCulture"],
+      }),
+    );
+    const chooser = document.getElementById("culture-test-chooser");
+    fireEvent.click(within(chooser).getByRole("button", { name: /Sputum.*0/ }));
+    fireEvent.click(
+      await within(chooser).findByRole("button", { name: "Follow-up test" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Add selected tests" }));
+    await waitFor(() =>
+      expect(api.addTests).toHaveBeenCalledWith(
+        "case-1",
+        expect.objectContaining({
+          cultureId: "culture-1",
+          sampleItemId: "sample-1",
+          testIds: ["30"],
+        }),
+      ),
+    );
+  });
+});
+
+it("honors the worklist setup action through the shared chooser and records the selected row outcome", async () => {
+  const api = service();
+  const row = {
+    id: "culture-1",
+    sourceSampleItemId: "sample-1",
+    containerIdentifier: "PLATE-1",
+    inoculatedAt: "2026-01-01T10:00:00Z",
+    duration: 48,
+    durationUnit: "HOURS",
+    readings: [],
+    extensions: [],
+    proposals: [],
+  };
+  api.getCultures = vi.fn().mockResolvedValue([row]);
+  api.getCultureOptions = vi.fn().mockResolvedValue({
+    sources: detail.samples,
+    media: [],
+    mediaLinks: [],
+    atmospheres: [],
+    readings: [],
+    quantities: [],
+    extensionReasons: [],
+  });
+  api.cultureAction = vi
+    .fn()
+    .mockResolvedValue([{ ...row, outcome: "GROWTH" }]);
+  api.getTimeline.mockResolvedValueOnce([]).mockResolvedValue([
+    {
+      id: "culture-outcome",
+      activityType: "CULTURE_OUTCOME",
+      note: "Recorded growth",
+      occurredAt: "2026-01-01T12:00:00Z",
+      performedByDisplay: "Technician",
+    },
+  ]);
+  const changed = vi.fn();
+  const navigate = vi.fn();
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?section=setup&action=mark-positive"
+        onCaseChanged={changed}
+        onScopeChange={navigate}
+      />
+    </IntlProvider>,
+  );
+  const dialog = await screen.findByRole("dialog");
+  expect(screen.getByLabelText("Testing section")).toHaveValue("CULTURE");
+  expect(within(dialog).getByLabelText("Outcome")).toHaveValue("GROWTH");
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  await waitFor(() =>
+    expect(api.cultureAction).toHaveBeenCalledWith(
+      "case-1",
+      "culture-1",
+      "outcome",
+      expect.objectContaining({ outcome: "GROWTH" }),
+    ),
+  );
+  expect(changed).toHaveBeenCalledTimes(1);
+  expect(navigate).toHaveBeenCalledWith("CULTURE");
+  await waitFor(() => expect(api.getTimeline).toHaveBeenCalledTimes(2));
+  fireEvent.change(screen.getByLabelText("Testing section"), {
+    target: { value: "HISTORY" },
+  });
+  expect(await screen.findByText(/Recorded growth/)).toBeVisible();
+});
+
+test("reviewed AST entry remains read-only for a writer and validator", async () => {
+  const api = service();
+  api.getAstWorkspace = vi.fn().mockResolvedValue({
+    canEnter: true,
+    canValidate: true,
+    standards: [],
+    dst: { drugs: [] },
+    isolates: [
+      {
+        id: "i1",
+        label: "ISO-1",
+        assignments: [],
+        panels: [],
+        runs: [],
+        choices: [],
+      },
+    ],
+  });
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?section=ast&astView=reviewed"
+      />
+    </IntlProvider>,
+  );
+  expect(await screen.findByText(/ISO-1/)).toBeVisible();
+  expect(
+    screen.queryByRole("button", {
+      name: messages["microbiology.m6.action.start"],
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", {
+      name: messages["microbiology.m6.action.assign"],
+    }),
+  ).not.toBeInTheDocument();
+});
+
+test("cancelling an AST run refreshes the case timeline", async () => {
+  const api = service();
+  const ast = {
+    canEnter: true,
+    canValidate: true,
+    standards: [],
+    dst: { classification: "NOT_APPLICABLE", drugs: [] },
+    isolates: [
+      {
+        id: "i1",
+        label: "ISO-1",
+        assignments: [],
+        panels: [],
+        choices: [],
+        runs: [
+          {
+            id: "run",
+            status: "AWAITING_RESULTS",
+            technique: "BROTH_MICRODILUTION",
+            breakpointVersion: "2026",
+            orderedAntibiotics: [],
+            readings: [],
+          },
+        ],
+      },
+    ],
+  };
+  api.getAstWorkspace = vi.fn().mockResolvedValue(ast);
+  api.astAction = vi.fn().mockResolvedValue(ast);
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?section=ast"
+      />
+    </IntlProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: messages["microbiology.m6.action.cancel"],
+    }),
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.change(
+    within(modal).getByLabelText(messages["microbiology.m6.reason"]),
+    { target: { value: "Started on the wrong isolate" } },
+  );
+  const fetched = api.getTimeline.mock.calls.length;
+  fireEvent.click(
+    within(modal).getByRole("button", {
+      name: messages["microbiology.m6.save"],
+      exact: true,
+    }),
+  );
+  await waitFor(() => expect(api.astAction).toHaveBeenCalledTimes(1));
+  await waitFor(() =>
+    expect(api.getTimeline.mock.calls.length).toBeGreaterThan(fetched),
+  );
+});
+
+test("consumes a critical communication target after saving and unlocks the next entry", async () => {
+  const api = service();
+  api.getCriticalCommunications = vi.fn().mockResolvedValue([]);
+  api.logCriticalCommunication = vi
+    .fn()
+    .mockResolvedValue({ id: "communication-1" });
+  const navigate = vi.fn();
+  const view = (search) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch={search}
+        onScopeChange={navigate}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(
+    view(
+      "?scope=CRITICAL&action=log-critical&targetType=SAMPLE_ITEM&targetId=sample-1",
+    ),
+  );
+  expect(await screen.findByLabelText("Critical result target")).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Recipient"), {
+    target: { value: "Provider" },
+  });
+  fireEvent.change(screen.getByLabelText("Message"), {
+    target: { value: "Critical result called" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Log communication" }));
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith("CRITICAL"));
+  expect(api.logCriticalCommunication).toHaveBeenCalledWith(
+    "case-1",
+    expect.objectContaining({
+      targetType: "SAMPLE_ITEM",
+      targetId: "sample-1",
+    }),
+  );
+  rerender(view("?scope=CRITICAL"));
+  expect(await screen.findByLabelText("Critical result target")).toBeEnabled();
+  expect(screen.getByLabelText("Critical result target")).toHaveValue("CASE");
+});
+
+test("pending AST links focus the requested isolate after loading and navigation", async () => {
+  const api = service();
+  api.getAstWorkspace = vi.fn().mockResolvedValue({
+    canEnter: true,
+    canValidate: true,
+    standards: [],
+    dst: { drugs: [] },
+    isolates: ["i1", "i2"].map((id) => ({
+      id,
+      label: id,
+      assignments: [],
+      panels: [],
+      runs: [],
+      choices: [],
+    })),
+  });
+  const view = (id) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch={`?section=ast&astIsolateId=${id}`}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(view("i2"));
+  const target = await screen.findByTestId("ast-isolate-i2");
+  await waitFor(() => expect(target).toHaveFocus());
+  expect(screen.getByLabelText("Testing section")).toHaveValue("AST");
+  expect(screen.getByTestId("ast-isolate-i1")).not.toHaveFocus();
+  rerender(view("i1"));
+  await waitFor(() =>
+    expect(screen.getByTestId("ast-isolate-i1")).toHaveFocus(),
+  );
+});

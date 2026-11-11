@@ -212,6 +212,18 @@ public class AccreditationServiceIntegrationTest extends AccreditationIntegratio
         assertEquals(2, testAccreditationService.getEnrollmentViews(null, TEST_GLUCOSE).size());
     }
 
+    /** OGC-1465 (product ruling): an inactive body cannot take new enrollments. */
+    @Test
+    public void enroll_inactiveBodyRejected() {
+        AccreditingBody off = body("OFF", "Deactivated", LocalDate.now().plusYears(1));
+        off.setActive(false);
+        Long bodyId = accreditingBodyService.createBody(off, USER).getId();
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> testAccreditationService.enroll(TEST_GLUCOSE, bodyId, null, USER));
+        assertTrue(refused.getMessage().contains("inactive"));
+    }
+
     @Test
     public void enroll_unknownTestOrBodyRejected() {
         Long bodyId = accreditingBodyService.createBody(body("SANAS", "S", LocalDate.now().plusYears(1)), USER).getId();

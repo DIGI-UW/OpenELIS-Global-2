@@ -16,8 +16,20 @@ vi.mock("../../../utils/Utils", async (importOriginal) => {
   };
 });
 
-// Dates relative to the real clock so the week/24h predicates stay stable
-// whichever day the suite runs.
+// The page asks for three callback windows: the last 30 days, the last 24
+// hours and this week. On a Monday or a Tuesday the 24-hour and week windows
+// start on the same date, the page rightly makes one request for both, and
+// the "3 confirmed" count that renderPage waits for arrives early. Pin the
+// clock (Date only, timers stay real) to a Thursday midday so the windows
+// differ whichever day the suite runs.
+vi.hoisted(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 9, 1, 12, 0, 0));
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
+
 const isoDay = toLocalIsoDate;
 const TODAY = isoDay(new Date());
 const LAST_MONTH = isoDay(new Date(Date.now() - 10 * 864e5)); // before any Monday
@@ -133,7 +145,7 @@ beforeEach(() => {
   sessionStorage.clear();
   vi.clearAllMocks();
   // The TAT rollup asks for the 30-day window and the equal one before it.
-  const currentWindow = `fromDate=${isoDaysFromToday(-30)}`;
+  const currentWindow = `fromDate=${isoDaysFromToday(-29)}`;
   fetchFromOpenElisServer.mockImplementation((url) => {
     if (url.includes("/rest/nce/dashboard")) {
       return Promise.resolve({ nceList: NCE_LIST });
@@ -219,6 +231,84 @@ beforeEach(() => {
 });
 
 describe("QAOverview", () => {
+  test.each([
+    ["unconfigured inventory", 0, 0, 0, 2, null, "No QC data yet"],
+    [
+      "partially configured inventory",
+      1,
+      0,
+      0,
+      2,
+      null,
+      "1 of 2 instruments in control",
+    ],
+    [
+      "fully in-control inventory",
+      2,
+      0,
+      0,
+      2,
+      "green",
+      "2 of 2 instruments in control",
+    ],
+    [
+      "warning with an unconfigured instrument",
+      0,
+      1,
+      0,
+      2,
+      "amber",
+      "0 of 2 instruments in control",
+    ],
+    [
+      "rejection with an unconfigured instrument",
+      0,
+      0,
+      1,
+      2,
+      "red",
+      "0 of 2 instruments in control",
+    ],
+  ])(
+    "QC overview and inspector agree for %s",
+    async (_, compliant, warning, rejected, total, status, text) => {
+      const read = fetchFromOpenElisServer.getMockImplementation();
+      fetchFromOpenElisServer.mockImplementation((url) =>
+        url.includes("/rest/qa/overview/summary")
+          ? Promise.resolve({
+              ...SUMMARY,
+              qc: {
+                ...SUMMARY.qc,
+                compliantInstruments: compliant,
+                warningInstruments: warning,
+                nonCompliantInstruments: rejected,
+                totalInstruments: total,
+              },
+            })
+          : read(url),
+      );
+      await renderPage();
+      const pillars = screen.getByRole("region", { name: "Pillar Status" });
+      expect(
+        within(pillars).getByText(text).closest(".qa-pillar-chip"),
+      ).toHaveClass(`qa-pillar-${status || "none"}`);
+      fireEvent.click(
+        screen.getByRole("button", { name: /Inspector readiness/ }),
+      );
+      const inspector = screen.getByRole("region", {
+        name: /Inspector readiness/,
+      });
+      const answer = within(inspector)
+        .getByText(
+          compliant + warning + rejected === 0 ? text : `${text} (30d)`,
+        )
+        .closest("button");
+      const icon = answer.querySelector(".qa-pillar-icon");
+      if (status) expect(icon).toHaveClass(`qa-live-${status}`);
+      else expect(icon).toHaveTextContent("—");
+    },
+  );
+
   test("renders the six sections; remaining placeholders match the light-up plan", async () => {
     await renderPage();
 

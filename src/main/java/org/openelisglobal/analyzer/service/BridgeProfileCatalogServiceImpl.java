@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -20,7 +21,12 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
 
     private final BridgeHttpClient bridgeHttpClient;
     private final String bridgeUrl;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    // A field a newer Bridge adds within the same schema version is ignored; what
+    // OE2
+    // depends on is checked explicitly in validateContract, and a breaking change
+    // bumps schemaVersion.
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     public BridgeProfileCatalogServiceImpl(BridgeHttpClient bridgeHttpClient,
             @Value("${analyzer.bridge.url:}") String bridgeUrl) {
@@ -67,6 +73,11 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
         return profileRevision;
     }
 
+    @Override
+    public boolean isConfigured() {
+        return !bridgeUrl.isBlank();
+    }
+
     private BridgeHttpClient.BridgeResponse get(String url) {
         if (bridgeUrl.isBlank()) {
             throw new BridgeProfileCatalogException("Bridge URL is not configured");
@@ -78,6 +89,8 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
                         "Bridge profile catalog request failed with HTTP " + response.status);
             }
             return response;
+        } catch (BridgeHttpClient.BridgeNotPairedException e) {
+            throw BridgeProfileCatalogException.notPaired(e);
         } catch (IOException e) {
             throw new BridgeProfileCatalogException("Bridge profile catalog request failed", e);
         }
@@ -93,6 +106,11 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
         }
         for (BridgeProfileCatalog.ProfileRevision revision : catalog.profiles()) {
             validateRevision(revision);
+        }
+        for (BridgeProfileCatalog.CatalogIssue issue : catalog.issues()) {
+            if (isBlank(issue.source()) || isBlank(issue.reason())) {
+                throw new BridgeProfileCatalogException("Bridge profile catalog contains an invalid issue");
+            }
         }
     }
 
@@ -110,7 +128,7 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
     }
 
     private static void validateControlRecognitionSummary(BridgeProfileCatalog.ControlRecognitionSummary summary) {
-        if (summary == null || summary.recognitionFingerprint() == null
+        if (summary == null || summary.conditions() == null || summary.recognitionFingerprint() == null
                 || !summary.recognitionFingerprint().matches(FINGERPRINT_PATTERN) || isBlank(summary.description())) {
             throw invalidControlRecognitionSummary();
         }
@@ -120,12 +138,10 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
             }
             return;
         }
-        if (!"RULES".equals(summary.mode()) || summary.affirmedNoControlResults() || summary.conditions().isEmpty()
-                || summary.conditions().stream()
-                        .anyMatch(condition -> condition == null || isBlank(condition.key())
-                                || isBlank(condition.description()) || isBlank(condition.kind())
-                                || !RECOGNITION_CONDITION_KINDS.contains(condition.kind())
-                                || isBlank(condition.sourceLabel()) || invalidRecognitionValue(condition))) {
+        if (!"RULES".equals(summary.mode()) || summary.affirmedNoControlResults() || summary.conditions().stream()
+                .anyMatch(condition -> condition == null || isBlank(condition.key()) || isBlank(condition.description())
+                        || isBlank(condition.kind()) || !RECOGNITION_CONDITION_KINDS.contains(condition.kind())
+                        || isBlank(condition.sourceLabel()) || invalidRecognitionValue(condition))) {
             throw invalidControlRecognitionSummary();
         }
     }

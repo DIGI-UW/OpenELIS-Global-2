@@ -217,6 +217,17 @@
                 SELECT COUNT(*) FROM pg_indexes
                 WHERE schemaname = 'clinlims' AND indexname = 'uq_qc_control_lot_active'
             </sqlCheck>
+            <!-- Upgraded databases can hold one live row of the same lot per instrument,
+                 which older releases required; the index cannot be built over them, so it
+                 is skipped there and QCControlLotValidator keeps new lots unique. -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM (
+                    SELECT 1 FROM clinlims.qc_control_lot
+                    WHERE status &lt;&gt; 'EXPIRED'
+                    GROUP BY lot_number, test_id, COALESCE(control_level, '')
+                    HAVING COUNT(*) &gt; 1
+                ) duplicate_live_lots
+            </sqlCheck>
         </preConditions>
         <comment>Partial unique index: one live lot per (lot_number, test_id, control_level)</comment>
         <sql>

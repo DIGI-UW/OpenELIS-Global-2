@@ -11,7 +11,6 @@ import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.Test;
 import org.openelisglobal.inventory.service.InventoryItemService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.patient.service.PatientService;
@@ -134,7 +133,6 @@ public class FixtureLoaderProtectedSeedsTest extends BaseWebContextSensitiveTest
         item.setFhirUuid(UUID.randomUUID());
         item.setName("Sequence canary inventory item");
         item.setDescription("Verifies service inserts follow legacy fixture IDs");
-        item.setItemType(ItemType.REAGENT);
         item.setUnits("unit");
         item.setSysUserId(TEST_SYS_USER_ID);
         Long insertedId = inventoryItemService.insert(item);

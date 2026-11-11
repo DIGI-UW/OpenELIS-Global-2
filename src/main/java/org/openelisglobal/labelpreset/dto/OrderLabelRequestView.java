@@ -37,6 +37,14 @@ public class OrderLabelRequestView {
     @JsonProperty("preset_snapshot")
     private PresetSnapshotDto presetSnapshot;
 
+    /**
+     * The live preset's maximum for this label's scope (per order, or per sample
+     * for a tube label), or null when the preset sets none. Read here so every role
+     * sees the cap the reprint endpoint enforces (OGC-1169).
+     */
+    @JsonProperty("max_qty")
+    private Integer maxQty;
+
     public OrderLabelRequestView() {
     }
 
@@ -49,6 +57,10 @@ public class OrderLabelRequestView {
         view.presetId = row.getPreset() == null ? null : row.getPreset().getId();
         view.qty = row.getQty();
         view.presetSnapshot = row.getPresetSnapshot();
+        if (row.getPreset() != null) {
+            view.maxQty = row.getSampleItem() == null ? row.getPreset().getMaxPerOrder()
+                    : row.getPreset().getMaxPerSample();
+        }
         return view;
     }
 
@@ -98,5 +110,13 @@ public class OrderLabelRequestView {
 
     public void setPresetSnapshot(PresetSnapshotDto presetSnapshot) {
         this.presetSnapshot = presetSnapshot;
+    }
+
+    public Integer getMaxQty() {
+        return maxQty;
+    }
+
+    public void setMaxQty(Integer maxQty) {
+        this.maxQty = maxQty;
     }
 }

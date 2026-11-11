@@ -3,6 +3,7 @@ import { createIntl } from "react-intl";
 import messages from "../../languages/en.json";
 import {
   describeUnmetRequirements,
+  hasRequesterOrRequestor,
   unmetRequirements,
 } from "./saveRequirements";
 
@@ -39,5 +40,26 @@ describe("order save requirements", () => {
       describeUnmetRequirements(intl, requirements(true, true, true)),
     ).toBe("");
     expect(unmetRequirements(requirements(true, true, true))).toEqual([]);
+  });
+});
+
+describe("requesting organisation or requestor", () => {
+  it("is met by any one organisation or requestor field", () => {
+    expect(hasRequesterOrRequestor({ referringSiteId: "12" })).toBe(true);
+    expect(hasRequesterOrRequestor({ newRequesterName: "Dinas" })).toBe(true);
+    expect(hasRequesterOrRequestor({ requestorPersonId: 7 })).toBe(true);
+    expect(hasRequesterOrRequestor({ requestorLastName: "Sari" })).toBe(true);
+  });
+
+  it("is unmet when every field is empty or blank", () => {
+    expect(hasRequesterOrRequestor(undefined)).toBe(false);
+    expect(hasRequesterOrRequestor({})).toBe(false);
+    expect(
+      hasRequesterOrRequestor({
+        referringSiteId: "",
+        referringSiteName: "  ",
+        requestorFirstName: null,
+      }),
+    ).toBe(false);
   });
 });

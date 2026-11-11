@@ -34,6 +34,11 @@ describe("serverPageSizeOf", () => {
     expect(serverPageSizeOf(undefined, 0, undefined)).toBeUndefined();
     expect(serverPageSizeOf(undefined, 0, 100)).toBe(100);
   });
+
+  it("takes the rows on a single page over the size another search left", () => {
+    expect(serverPageSizeOf({ currentPage: 1, totalPages: 1 }, 21, 6)).toBe(21);
+    expect(serverPageSizeOf({ currentPage: 1, totalPages: 1 }, 6, 100)).toBe(6);
+  });
 });
 
 describe("hasServerPages", () => {

@@ -11,5 +11,53 @@
   <include relativeToChangelogFile="true" file="003-configurable-reporting.xml"/>
   <include relativeToChangelogFile="true" file="004-reporting-recovery.xml"/>
   <include relativeToChangelogFile="true" file="005-menu-presentation.xml"/>
+  <include relativeToChangelogFile="true" file="006-analysis-sample-type-name.xml"/>
+  <include relativeToChangelogFile="true" file="007-backfill-fhir-uuids-again.xml"/>
+  <!-- OGC-1219: repair system label presets seeded from fallbacks by the wrong site_information key names -->
+  <include relativeToChangelogFile="true" file="008-reseed-system-presets-from-legacy-keys.xml"/>
+  <!-- OGC-1218: content fields of the system label presets from the legacy element keys (the block 031 deferred) -->
+  <include relativeToChangelogFile="true" file="009-seed-system-preset-fields-from-legacy-keys.xml"/>
+  <!-- OGC-1424: receipt and arrival condition per sample, tested elsewhere, possible-match overrides, showFaxFields -->
+  <include relativeToChangelogFile="true" file="010-order-entry-cleanup.xml"/>
+  <!-- OGC-1383: retired V1 microbiology workflow columns become nullable (columns kept unread, spec D2) -->
+  <include relativeToChangelogFile="true" file="011-microbiology-v1-retired-columns-nullable.xml"/>
 
+  <include relativeToChangelogFile="true" file="012-microbiology-v2-case-structure.xml"/>
+  <include relativeToChangelogFile="true" file="013-microbiology-v2-routing.xml"/>
+  <include relativeToChangelogFile="true" file="014-sample-collection-set-details.xml"/>
+  <include relativeToChangelogFile="true" file="015-microbiology-program-visibility.xml"/>
+  <include relativeToChangelogFile="true" file="016-microbiology-environmental-site-routing.xml"/>
+  <!-- OGC-431: Report Print Queue V1, versions, archive, print events, per-user preferences, access and menu -->
+  <include relativeToChangelogFile="true" file="017-report-print-queue.xml"/>
+  <!-- OGC-439: Result Delivery foundation: channels, outbox on the notification log, delivery settings, Sent Messages -->
+  <include relativeToChangelogFile="true" file="018-result-delivery-foundation.xml"/>
+  <!-- A component of a multi-component test is validated on its own -->
+  <include relativeToChangelogFile="true" file="019-result-component-validation.xml"/>
+  <!-- Terminology mappings seeded by SQL backfills carry no @Version stamp: stamp them and default the column -->
+  <include relativeToChangelogFile="true" file="020-terminology-mapping-version-backfill.xml"/>
+  <!-- The workflow-type observation the vector and environmental dashboards read is seeded by Liquibase, not by an optional CSV -->
+  <include relativeToChangelogFile="true" file="021-env-workflow-type-observation.xml"/>
+  <!-- OGC-1517: every observation type the application writes is seeded by Liquibase, not by an optional CSV -->
+  <include relativeToChangelogFile="true" file="022-observation-types-seed.xml"/>
+  <!-- OGC-1507: shipped NCE and dictionary labels read through display keys; stored labels record who wrote them -->
+  <include relativeToChangelogFile="true" file="023-shipped-reference-data-labels.xml"/>
+  <include relativeToChangelogFile="true" file="024-sample-requester-sample-index.xml"/>
+  <!-- OGC-1599: panels an upgrade left on CLINICAL move to the domain their members share -->
+  <include relativeToChangelogFile="true" file="025-panel-domain-from-members.xml"/>
+  <!-- OGC-1200: runs; analyzer values and accepted results name their run -->
+  <include relativeToChangelogFile="true" file="026-result-run.xml"/>
+  <!-- OGC-1579: module system state table (numbered 030 to leave room for develop's next changesets) -->
+  <include relativeToChangelogFile="true" file="030-module-state.xml"/>
+  <include relativeToChangelogFile="true" file="031-container-types.xml"/>
+  <!-- OGC-1364: validation policy (lab-wide default replaces "validate all results" behind useMultiLevelValidation) -->
+  <include relativeToChangelogFile="true" file="032-validation-policy.xml"/>
+
+  <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
+  <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>
+  <!-- OGC-1608: a required component without a result keeps its test open -->
+  <include relativeToChangelogFile="true" file="028-component-is-required.xml"/>
+
+  <include relativeToChangelogFile="true" file="014-microbiology-case-result-entry.xml"/>
+  <!-- M8 consumes the case structure and site routing above, including on fresh installs. -->
+  <include file="liquibase/3.5.x.x/125-amr-v2-environmental-migration.xml"/>
 </databaseChangeLog>

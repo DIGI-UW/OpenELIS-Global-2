@@ -1,5 +1,6 @@
 package org.openelisglobal.qc.dao;
 
+import jakarta.persistence.FlushModeType;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
@@ -113,6 +114,30 @@ public class QCControlLotDAOImpl extends BaseDAOImpl<QCControlLot, String> imple
             return entityManager.createQuery(cq).getResultList();
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error retrieving duplicate control lots", e);
+        }
+    }
+
+    @Override
+    public boolean isStoredLiveUnderKey(String id, String lotNumber, String testId, String controlLevel)
+            throws LIMSRuntimeException {
+        if (id == null) {
+            return false;
+        }
+        try {
+            List<Object[]> rows = entityManager
+                    .createQuery("select l.lotNumber, l.testId, l.controlLevel, l.status from QCControlLot l"
+                            + " where l.id = :id", Object[].class)
+                    .setParameter("id", id).setFlushMode(FlushModeType.COMMIT).getResultList();
+            if (rows.isEmpty()) {
+                return false;
+            }
+            Object[] stored = rows.get(0);
+            String storedLevel = stored[2] == null ? "" : stored[2].toString();
+            String level = controlLevel == null ? "" : controlLevel;
+            return !"EXPIRED".equals(stored[3]) && lotNumber.equals(stored[0])
+                    && testId.equals(String.valueOf(stored[1])) && level.equals(storedLevel);
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error reading stored control lot key", e);
         }
     }
 

@@ -252,6 +252,8 @@
   border-left-color: #8a3ffc;
 }
 
+/* The modifiers are qualified with the base class so they outrank Carbon's
+   .cds--tag--gray, which loads later and otherwise paints every flag gray. */
 .unifiedFlagTag {
   font-weight: 700;
 
@@ -259,26 +261,26 @@
     margin-right: 0.25rem;
     vertical-align: -0.125rem;
   }
-}
 
-.unifiedFlagTag--normal {
-  background: #defbe6;
-  color: #0e6027;
-}
+  &.unifiedFlagTag--normal {
+    background: #defbe6;
+    color: #0e6027;
+  }
 
-.unifiedFlagTag--abnormal {
-  background: #fcf4d6;
-  color: #684e00;
-}
+  &.unifiedFlagTag--abnormal {
+    background: #fcf4d6;
+    color: #684e00;
+  }
 
-.unifiedFlagTag--critical {
-  background: #fff1f1;
-  color: #a2191f;
-}
+  &.unifiedFlagTag--critical {
+    background: #fff1f1;
+    color: #a2191f;
+  }
 
-.unifiedFlagTag--invalid {
-  background: #f6f2ff;
-  color: #6929c4;
+  &.unifiedFlagTag--invalid {
+    background: #f6f2ff;
+    color: #6929c4;
+  }
 }
 
 .unifiedCriticalRange {
@@ -728,6 +730,105 @@
 
 .unifiedContextSampleKind {
   display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+// OGC-1200: runs on the Results worklist
+.runsChip {
+  display: inline-block;
+  vertical-align: top;
+}
+
+.runsChipList {
+  margin: 0.5rem 0;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
+  background: var(--cds-layer, #f4f4f4);
+}
+
+.runsChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.runsChipNote {
+  padding: 0.5rem 0;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.runViewSubtitle {
+  margin-top: 0.25rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.runViewActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.runHeaderTile {
+  margin-bottom: 1rem;
+}
+
+.runSettings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.runHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.runRaw {
+  max-height: 24rem;
+  overflow: auto;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  background: var(--cds-layer-accent, #e0e0e0);
+  white-space: pre;
+}
+
+.runWaitingDetail {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.runChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.runSelectionBar {
+  margin-bottom: 1rem;
+
+  ul {
+    margin: 0.25rem 0 0.5rem 1rem;
+    list-style: disc;
+  }
+}
+
+.runSelectionActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.runSelectionFailed {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
 }

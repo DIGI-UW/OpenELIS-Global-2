@@ -1,0 +1,48 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+
+.microbiology-case-workspace {
+  min-width: 0;
+
+  .cds--css-grid-column {
+    min-width: 0;
+  }
+
+  .cds--stack-vertical {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  h1 {
+    @include type.type-style("heading-04");
+    overflow-wrap: anywhere;
+  }
+
+  h3 {
+    @include type.type-style("heading-compact-01");
+  }
+
+  .microbiology-case-workspace__views {
+    display: flex;
+    flex-wrap: wrap;
+    gap: spacing.$spacing-03;
+  }
+
+  .cds--accordion__content {
+    padding-inline-end: 0;
+  }
+
+  .cds--data-table-container {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+.microbiology-case-actions {
+  inline-size: max-content;
+
+  .cds--overflow-menu-options__btn {
+    max-inline-size: none;
+  }
+}

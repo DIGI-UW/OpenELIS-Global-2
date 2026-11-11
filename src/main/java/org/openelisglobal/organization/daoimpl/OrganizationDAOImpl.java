@@ -16,7 +16,10 @@ package org.openelisglobal.organization.daoimpl;
 import jakarta.persistence.TypedQuery;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.validator.GenericValidator;
@@ -563,6 +566,96 @@ public class OrganizationDAOImpl extends BaseDAOImpl<Organization, String> imple
         }
 
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Organization> getAllWithTypes() throws LIMSRuntimeException {
+        try {
+            return entityManager.createQuery(
+                    "select distinct o from Organization o left join fetch o.organizationTypes order by o.id",
+                    Organization.class).getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Organization getAllWithTypes()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Organization> getChildrenWithTypes(String parentId) throws LIMSRuntimeException {
+        if (GenericValidator.isBlankOrNull(parentId)) {
+            return new ArrayList<>();
+        }
+        try {
+            TypedQuery<Organization> query = entityManager.createQuery(
+                    "select distinct o from Organization o left join fetch o.organizationTypes where"
+                            + " o.organization.id = :parentId and o.id <> :parentId order by o.organizationName",
+                    Organization.class);
+            query.setParameter("parentId", parentId);
+            return query.getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Organization getChildrenWithTypes()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Organization> getByTypeIdWithTypes(String typeId) throws LIMSRuntimeException {
+        try {
+            TypedQuery<Organization> query = entityManager.createQuery(
+                    "select distinct o from Organization o left join fetch o.organizationTypes where o.id in"
+                            + " (select o2.id from Organization o2 join o2.organizationTypes t where t.id = :typeId)"
+                            + " order by o.organizationName",
+                    Organization.class);
+            query.setParameter("typeId", typeId);
+            return query.getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Organization getByTypeIdWithTypes()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> countActiveChildren(Collection<String> parentIds) throws LIMSRuntimeException {
+        Map<String, Long> counts = new HashMap<>();
+        if (parentIds == null || parentIds.isEmpty()) {
+            return counts;
+        }
+        try {
+            List<Object[]> rows = entityManager.createQuery(
+                    "select o.organization.id, count(o) from Organization o where o.organization.id in (:ids) and"
+                            + " o.id <> o.organization.id and o.isActive = 'Y' group by o.organization.id",
+                    Object[].class).setParameter("ids", new ArrayList<>(parentIds)).getResultList();
+            for (Object[] row : rows) {
+                counts.put(String.valueOf(row[0]), ((Number) row[1]).longValue());
+            }
+            return counts;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Organization countActiveChildren()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Organization> searchAreas(String text, int limit) throws LIMSRuntimeException {
+        try {
+            TypedQuery<Organization> query = entityManager.createQuery(
+                    "select distinct o from Organization o left join fetch o.organizationTypes where o.id in"
+                            + " (select o2.id from Organization o2 join o2.organizationTypes t where t.hierarchyLevel"
+                            + " > 0 and (lower(o2.organizationName) like :text or lower(o2.code) like :text))"
+                            + " order by o.organizationName",
+                    Organization.class);
+            query.setParameter("text", "%" + text.trim().toLowerCase() + "%");
+            query.setMaxResults(limit);
+            return query.getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Organization searchAreas()", e);
+        }
     }
 
     @Override

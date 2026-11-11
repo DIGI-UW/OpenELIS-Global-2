@@ -24,7 +24,6 @@ const editable = {
     actionURL: "/Patient",
     icon: null,
     presentationStyle: null,
-    configurationFields: [],
   },
   childMenus: [],
 };
@@ -36,7 +35,6 @@ const configured = {
     actionURL: "/reports/custom-data-export",
     icon: "reports",
     presentationStyle: "section",
-    configurationFields: ["icon", "presentationStyle", "isActive"],
   },
   childMenus: [],
 };
@@ -115,7 +113,10 @@ test("persists only edited entries and reloads the returned effective menu", asy
   ).toHaveValue("patient");
 });
 
-test("instance-controlled settings stay visible and cannot be edited", async () => {
+test("a menu the configuration file seeded can be edited here, so the edit stays", async () => {
+  postToOpenElisServerFullResponse.mockImplementation((url, body, done) => {
+    done({ ok: true, json: async () => [editable, JSON.parse(body)[0]] });
+  });
   mount();
   fireEvent.click(
     await screen.findByRole("button", { name: "Reports", exact: true }),
@@ -123,15 +124,22 @@ test("instance-controlled settings stay visible and cannot be edited", async () 
   const reports = screen
     .getByRole("button", { name: "Reports", exact: true })
     .closest("li");
-  expect(within(reports).getByLabelText("Icon")).toBeDisabled();
-  expect(within(reports).getByLabelText("Display as")).toBeDisabled();
-  expect(within(reports).getByRole("switch")).toBeDisabled();
+  expect(within(reports).getByLabelText("Display as")).toBeEnabled();
+  fireEvent.click(within(reports).getByRole("switch"));
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await screen.findByText("Menu settings saved.");
   expect(
-    within(reports).getAllByText("Managed by instance configuration").length,
-  ).toBeGreaterThan(0);
-  expect(
-    screen.getByRole("button", { name: "Save", exact: true }),
-  ).toBeDisabled();
+    JSON.parse(postToOpenElisServerFullResponse.mock.calls[0][1])[0].menu,
+  ).toMatchObject({ elementId: "managed", isActive: false });
+});
+
+test("offers the current menu as a configuration file to download", async () => {
+  mount();
+  const exportLink = await screen.findByTestId("menu-configuration-export");
+  expect(exportLink.getAttribute("href")).toMatch(
+    /\/rest\/admin\/menu\/configuration$/,
+  );
+  expect(exportLink.textContent).toBe("Export menu file");
 });
 
 test("a failed save retains edits and lets the user retry", async () => {
@@ -167,22 +175,78 @@ test("a failed save retains edits and lets the user retry", async () => {
   );
 });
 
-test("configuration-only groups stay compact while their database children remain editable", async () => {
-  fetchFromOpenElisServer.mockResolvedValue([
-    {
-      ...configured,
-      menu: { ...configured.menu, configurationOnly: true },
-      childMenus: [editable],
+test("OGC-1418: does not offer the retired Validation entries, so they cannot be switched back on", async () => {
+  const validation = {
+    menu: {
+      elementId: "menu_resultvalidation",
+      displayKey: "banner.menu.resultvalidation",
+      isActive: true,
+      actionURL: "/validation",
+      icon: null,
+      presentationStyle: null,
     },
-  ]);
+    childMenus: [
+      {
+        menu: {
+          elementId: "menu_resultvalidation_routine",
+          displayKey: "banner.menu.resultvalidation.routine",
+          isActive: false,
+          actionURL: "/ResultValidation?type=&test=",
+        },
+        childMenus: [],
+      },
+      {
+        menu: {
+          elementId: "menu_accession_validation",
+          displayKey: "banner.menu.accession.validation",
+          isActive: false,
+          actionURL: "/AccessionValidation",
+        },
+        childMenus: [],
+      },
+    ],
+  };
+  fetchFromOpenElisServer.mockResolvedValue([validation]);
   mount();
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Reports", exact: true }),
-  );
-  expect(screen.queryByTestId("menu-fields-managed")).toBeNull();
-  expect(screen.getByText("Managed by instance configuration")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Patient", exact: true }));
+
   expect(
-    within(screen.getByTestId("menu-fields-custom")).getByLabelText("Icon"),
-  ).toBeEnabled();
+    await screen.findByTestId("menu-settings-menu_resultvalidation"),
+  ).toBeTruthy();
+  expect(
+    screen.queryByTestId("menu-settings-menu_resultvalidation_routine"),
+  ).toBeNull();
+  expect(
+    screen.queryByTestId("menu-settings-menu_accession_validation"),
+  ).toBeNull();
+});
+
+test("a module's entry is shown read-only with a note pointing to User Management", async () => {
+  const contributed = {
+    menu: {
+      elementId: "menu_mod_alpha",
+      displayKey: "mod.alpha.menu.title",
+      isActive: true,
+      actionURL: "/m/alpha/home",
+      icon: null,
+      presentationStyle: null,
+    },
+    childMenus: [],
+  };
+  fetchFromOpenElisServer.mockResolvedValue([editable, contributed]);
+  mount();
+
+  const entry = await screen.findByTestId("menu-settings-menu_mod_alpha");
+  fireEvent.click(
+    within(entry).getByRole("button", { name: "mod.alpha.menu.title" }),
+  );
+
+  expect(within(entry).getByRole("switch")).toBeDisabled();
+  expect(
+    screen.getByTestId("menu-module-note-menu_mod_alpha"),
+  ).toHaveTextContent("User Management");
+  const patient = screen.getByTestId("menu-settings-custom");
+  fireEvent.click(
+    within(patient).getByRole("button", { name: "Patient", exact: true }),
+  );
+  expect(within(patient).getByRole("switch")).toBeEnabled();
 });

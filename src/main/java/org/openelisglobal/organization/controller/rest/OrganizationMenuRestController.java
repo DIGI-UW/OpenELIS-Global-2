@@ -10,6 +10,7 @@ import org.openelisglobal.common.controller.BaseMenuController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.AdminOptionMenuForm;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
@@ -192,6 +193,8 @@ public class OrganizationMenuRestController extends BaseMenuController<Organizat
             // delete
             // Organization");
             organizationService.deactivateOrganizations(organizations);
+            DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_PATIENT_REFERRING_CLINIC);
+            DisplayListService.getInstance().refreshList(DisplayListService.ListType.REFERRAL_ORGANIZATIONS);
             return ResponseEntity.ok(form);
             // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown", "Just
             // deleted

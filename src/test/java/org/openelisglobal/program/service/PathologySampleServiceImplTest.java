@@ -19,6 +19,7 @@ import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
 import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.barcode.service.BarcodeWorkflowPrintService;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
+import org.openelisglobal.program.dao.PathologySampleDAO;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -32,12 +33,16 @@ public class PathologySampleServiceImplTest {
     @Mock
     private BarcodeWorkflowPrintService barcodeWorkflowPrintService;
 
+    @Mock
+    private PathologySampleDAO pathologySampleDAO;
+
     private PathologySampleServiceImpl pathologySampleService;
     private PathologySample existingPathologySample;
 
     @Before
     public void setUp() {
         pathologySampleService = org.mockito.Mockito.spy(new PathologySampleServiceImpl());
+        ReflectionTestUtils.setField(pathologySampleService, "baseObjectDAO", pathologySampleDAO);
         ReflectionTestUtils.setField(pathologySampleService, "barcodeInfoService", barcodeInfoService);
         ReflectionTestUtils.setField(pathologySampleService, "barcodeWorkflowPrintService",
                 barcodeWorkflowPrintService);
@@ -56,7 +61,8 @@ public class PathologySampleServiceImplTest {
         existingPathologySample.setSample(sample);
 
         doReturn(existingPathologySample).when(pathologySampleService).get(eq(2));
-        doReturn(existingPathologySample).when(pathologySampleService).update(any(PathologySample.class));
+        doReturn(existingPathologySample).when(pathologySampleService).updateAgainst(any(PathologySample.class),
+                any(PathologySample.class));
     }
 
     @Test

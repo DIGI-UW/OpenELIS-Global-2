@@ -16,6 +16,8 @@
         <class>org.openelisglobal.security.converter.EncryptionConverter</class>
 
         <!-- entities -->
+        <class>org.openelisglobal.projectorganization.valueholder.ProjectOrganization</class>
+        <class>org.openelisglobal.patient.valueholder.PatientIdDocument</class>
         <class>org.openelisglobal.menu.valueholder.Menu</class>
         <class>org.openelisglobal.localization.valueholder.Localization</class>
         <class>org.openelisglobal.localization.valueholder.LocalizationValue</class>
@@ -63,6 +65,8 @@
         <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryOrderCycle</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryTag</class>
 
         <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
         <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>
@@ -81,18 +85,32 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointRule</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointActivationEvent</class>
-        <class>org.openelisglobal.microbiology.valueholder.MicroCultureSetup</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCase</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseSample</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseRequest</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseSplit</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseActivity</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseAmendment</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseInoculation</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCultureReading</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCultureExtension</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroIncomingItem</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroBenchAction</class>
+        <class>org.openelisglobal.workplan.valueholder.WorkplanPrintRecord</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCultureProposal</class>
+
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolate</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstRun</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstReading</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstPanelAssignment</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstReportChoice</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroMolecularDstBinding</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroDstResolution</class>
+
         <class>org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroReportVersion</class>
@@ -107,6 +125,23 @@
         <class>org.openelisglobal.eqa.valueholder.EQAResult</class>
         <class>org.openelisglobal.eqa.valueholder.SampleEQA</class>
 
+        <!-- EQA V2 cycle spine (OGC-609) -->
+        <class>org.openelisglobal.eqa.valueholder.EQACycle</class>
+        <class>org.openelisglobal.eqa.valueholder.EQARound</class>
+        <class>org.openelisglobal.eqa.valueholder.EQACycleStateTransition</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAParticipantResult</class>
+
+        <!-- EQA V2 panels, receipts, follow-ups, competency (OGC-609) -->
+        <class>org.openelisglobal.eqa.valueholder.EQAPanel</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAPanelSample</class>
+        <class>org.openelisglobal.eqa.valueholder.EQASchemeAnalyst</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAParticipantFollowup</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAPanelReceipt</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAAnalystCompetencyEvent</class>
+
+        <!-- EQA V2.5 — OGC-613: per-cycle participant roster -->
+        <class>org.openelisglobal.eqa.valueholder.EQACycleParticipant</class>
+
         <!-- Quality Control / Internal Control entities (005-eqa-module QC/IC) -->
         <class>org.openelisglobal.qc.valueholder.QCRuleConfig</class>
         <class>org.openelisglobal.qc.valueholder.QCFrequencyConfig</class>
@@ -120,17 +155,19 @@
         <class>org.openelisglobal.shipment.valueholder.Shipment</class>
         <class>org.openelisglobal.shipment.valueholder.BoxSampleItem</class>
 
-        <!-- Analyzer orchestration and site-binding entities -->
+        <!-- Analyzer orchestration and per-analyzer mapping entities -->
         <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerEvent</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerBridgePairing</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
+        <class>org.openelisglobal.resultrun.valueholder.ResultRun</class>
+        <class>org.openelisglobal.containertype.valueholder.ContainerType</class>
+        <class>org.openelisglobal.validationpolicy.valueholder.ValidationPolicy</class>
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt</class>
 
         <!-- Dictionary entities (migrated from HBM to JPA annotations) -->
@@ -169,9 +206,14 @@
 
         <!-- QI Configuration (OGC-709) -->
         <class>org.openelisglobal.qaevent.qiconfig.valueholder.QiConfig</class>
+        <class>org.openelisglobal.dashboard.management.quality.QiWeights</class>
+        <!-- Management dashboard surveillance (OGC-897) -->
+        <class>org.openelisglobal.dashboard.management.surveillance.valueholder.SurveillanceProgram</class>
+        <class>org.openelisglobal.dashboard.management.surveillance.valueholder.TestSurveillanceMapping</class>
 
         <!-- Critical Callback capture (OGC-714) -->
         <class>org.openelisglobal.qaevent.criticalcallback.valueholder.CriticalCallback</class>
+        <class>org.openelisglobal.result.valueholder.ResultEntryAcknowledgement</class>
 
         <!-- QC Westgard Rules entities (003-westgard-qc) -->
         <class>org.openelisglobal.qc.valueholder.QCControlLot</class>
@@ -187,6 +229,12 @@
         <class>org.openelisglobal.compliance.valueholder.ComplianceThresholdValueMap</class>
         <class>org.openelisglobal.compliance.valueholder.ComplianceReportArchive</class>
 
+        <!-- Report Print Queue (OGC-431) -->
+        <class>org.openelisglobal.reportqueue.valueholder.ReportVersion</class>
+        <class>org.openelisglobal.reportqueue.valueholder.ReportVersionItem</class>
+        <class>org.openelisglobal.reportqueue.valueholder.ReportPrintEvent</class>
+        <class>org.openelisglobal.reportqueue.valueholder.ReportQueuePreference</class>
+
         <!-- QC Result Evaluation entities (OGC-554 S-08) -->
         <class>org.openelisglobal.qc.valueholder.SampleItemQcProfile</class>
         <class>org.openelisglobal.qc.valueholder.TestQcThreshold</class>
@@ -194,6 +242,8 @@
         <class>org.openelisglobal.configuration.valueholder.ConfigurationImportRun</class>
         <class>org.openelisglobal.configuration.valueholder.UnresolvedReference</class>
         <class>org.openelisglobal.configuration.valueholder.ReferenceAlias</class>
+        <class>org.openelisglobal.organization.valueholder.OrganizationIdentifier</class>
+        <class>org.openelisglobal.organization.valueholder.OrganizationChange</class>
         <class>org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment</class>
 
         <!-- Barcode Label Presets (OGC-285 M2) -->
@@ -202,6 +252,8 @@
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelConfig</class>
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
         <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
+        <class>org.openelisglobal.orderentry.valueholder.OrderTestTestedElsewhere</class>
+        <class>org.openelisglobal.orderentry.valueholder.PossibleMatchOverride</class>
 
         <!-- Test Accreditation (OGC-686) -->
         <class>org.openelisglobal.accreditation.valueholder.AccreditingBody</class>
@@ -218,30 +270,13 @@
         <!-- Batch Workplan foundation (OGC-427 / OGC-811 M1) -->
         <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplan</class>
         <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplanItem</class>
+        <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplanQcRelease</class>
 
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />
-            <!--
-                Tomcat deploys this WAR twice into one JVM (/OpenELIS-Global and
-                /api/OpenELIS-Global, see conf/server.xml), and each context gets
-                its own classloader, EntityManagerFactory and Hibernate Search
-                backend over this one directory. A Lucene index allows a single
-                writer, so whichever context did not take the lock fails every
-                save with OverlappingFileLockException - after the row is
-                committed, so the caller sees a 500 for a patient that was
-                actually created. Patient search is served from the database, so
-                nothing reads this index; it is left unmaintained rather than
-                maintained unsafely. Rebuild it on demand with GET /rest/reindex,
-                and solve the double deployment before relying on it again.
-            -->
+            <!-- Patient search reads the database, so nothing reads this index. Rebuild it with GET /rest/reindex. -->
             <property name="hibernate.search.automatic_indexing.enabled" value="false" />
-            <!--
-                And do not create or validate that index at start-up either: both
-                contexts try it, one loses the writer lock and logs an
-                OverlappingFileLockException on every boot. Nothing reads the
-                index, so there is nothing to manage.
-            -->
             <property name="hibernate.search.schema_management.strategy" value="none" />
             <property name="hibernate.search.backend.directory.type" value="local-filesystem" />
             <property name="hibernate.search.backend.directory.root" value="/var/lib/lucene_index" />

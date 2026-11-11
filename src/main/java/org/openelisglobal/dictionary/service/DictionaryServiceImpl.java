@@ -178,6 +178,12 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Dictionary> findDuplicates(Dictionary dictionary) {
+        return getBaseObjectDAO().findDuplicates(dictionary);
+    }
+
+    @Override
     public boolean isDictionaryFrozen(Dictionary dictionary) {
         return getBaseObjectDAO().isDictionaryFrozen(dictionary);
     }

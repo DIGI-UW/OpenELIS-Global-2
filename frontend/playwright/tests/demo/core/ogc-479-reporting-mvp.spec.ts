@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import type { Locator, Page, TestInfo } from "@playwright/test";
 import { test, expect } from "../../../helpers/test-base";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 // OGC-479 / OGC-481 / OGC-483, openelis-work 5b2df7e34f.
 // The shared fixture loader supplies these public synthetic records. This is
@@ -110,13 +111,10 @@ for (const scenario of cases) {
         .getByRole("radio", { name: new RegExp(`^${scenario.source}`) })
         .click();
       if (scenario.detailed) {
-        await page.getByRole("combobox", { name: "CSV layout" }).click();
-        await page
-          .getByRole("option", {
-            name: "Detailed list — results in rows",
-            exact: true,
-          })
-          .click();
+        await chooseCarbonOption(
+          page.getByRole("combobox", { name: "CSV layout" }),
+          "Detailed list — results in rows",
+        );
       }
       for (const column of scenario.columns) {
         await page

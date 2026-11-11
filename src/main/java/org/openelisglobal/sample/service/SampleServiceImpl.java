@@ -454,6 +454,12 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
 
     @Override
     @Transactional(readOnly = true)
+    public List<Sample> getEnvironmentalSamplesWithAccessionNumberStartingWith(String prefix, int max) {
+        return getBaseObjectDAO().getEnvironmentalSamplesWithAccessionNumberStartingWith(prefix, max);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public String getLargestAccessionNumberMatchingPattern(String startingWith, int size) {
         return getBaseObjectDAO().getLargestAccessionNumberMatchingPattern(startingWith, size);
     }
@@ -621,5 +627,12 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     @Override
     public List<Sample> findSamplesWithRequiredByBefore(java.sql.Timestamp horizon) {
         return sampleDAO.findSamplesWithRequiredByBefore(horizon);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Sample> getStatSamplesReceivedBetweenWithAnalysisIn(java.sql.Timestamp since, java.sql.Timestamp cutoff,
+            List<String> analysisStatusIds) {
+        return sampleDAO.getStatSamplesReceivedBetweenWithAnalysisIn(since, cutoff, analysisStatusIds);
     }
 }

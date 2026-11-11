@@ -99,6 +99,29 @@ const handleSessionError = (response: Response): Response => {
   return response;
 };
 
+/**
+ * A write that "succeeds" with a page instead of an API answer: a redirect to
+ * the login page, or an HTML body from a REST endpoint (which only ever answers
+ * JSON or nothing). That is what a proxy or SSO layer hands back once the
+ * session has ended, and it means nothing was saved (OGC-1461).
+ */
+const answeredWithLoginPage = (
+  response: Response,
+  endPoint: string,
+): boolean => {
+  if (!response.ok) {
+    return false;
+  }
+  if (response.redirected && /login/i.test(response.url || "")) {
+    return true;
+  }
+  const contentType = response.headers?.get("content-type") || "";
+  return endPoint.includes("/rest/") && contentType.includes("text/html");
+};
+
+/** Reports an ended session as the 401 it really is. */
+const SESSION_ENDED_STATUS = 401;
+
 const DATE_FMT = "yyyy-MM-dd";
 
 /**
@@ -113,6 +136,25 @@ export const toLocalIsoDate = (d: Date | string | null | undefined): string =>
     : isNaN(d.getTime())
       ? ""
       : format(d, DATE_FMT);
+
+/**
+ * Strict parser for a date picker with dateFormat "Y-m-d": a real `yyyy-MM-dd`
+ * becomes that local date; anything else is refused (false). Flatpickr's own
+ * parser turns text in another shape into 1 January, which was then saved.
+ */
+export const parseIsoDate = (text: string | null | undefined): Date | false => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec((text || "").trim());
+  if (!match) {
+    return false;
+  }
+  const [year, month, day] = match.slice(1).map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+    ? date
+    : false;
+};
 
 /**
  * Turn a date string as CustomDatePicker renders it (`MM/dd/yyyy`, or
@@ -141,6 +183,27 @@ export const toLocalIsoDateTime = (
 ): string => {
   const d = value ? new Date(value) : null;
   return d && !isNaN(d.getTime()) ? format(d, `${DATE_FMT} HH:mm`) : "—";
+};
+
+/**
+ * Render a date-of-record (deadline, due date) as `dd/MM/yyyy`. Such values are
+ * stored as an end-of-day timestamp, so reading LOCAL components rolls them to
+ * the next day for any browser east of the server; the UTC components give the
+ * calendar date that was actually entered. Returns "" for absent values.
+ */
+export const formatDateOnly = (
+  value: Date | string | number | null | undefined,
+): string => {
+  if (!value) {
+    return "";
+  }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${day}/${month}/${d.getUTCFullYear()}`;
 };
 
 export const getFromOpenElisServer = <T = LegacyApiResponse>(
@@ -248,7 +311,11 @@ export const postToOpenElisServer = <TExtra = unknown>(
     },
   )
     .then(handleSessionError)
-    .then((response) => response.status)
+    .then((response) =>
+      answeredWithLoginPage(response, endPoint)
+        ? SESSION_ENDED_STATUS
+        : response.status,
+    )
     .then((status) => {
       callback(status, extraParams);
     })
@@ -258,34 +325,54 @@ export const postToOpenElisServer = <TExtra = unknown>(
     });
 };
 
-export const postToOpenElisServerFullResponse = <TExtra = unknown>(
+/**
+ * The one body shared by every *FullResponse helper. The callback gets the raw
+ * Response, so a 4xx body — a state-machine refusal, a validation message — can
+ * be read and shown instead of being flattened into "it failed".
+ */
+const sendForFullResponse = <TExtra = unknown>(
+  method: "POST" | "PUT" | "PATCH" | "DELETE",
   endPoint: string,
-  payLoad: RequestPayload,
+  payLoad: RequestPayload | undefined,
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
 ): void => {
-  fetch(
-    config.serverBaseUrl + endPoint,
-
-    {
-      //includes the browser sessionId in the Header for Authentication on the backend server
-      credentials: "include",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken(),
-        "Accept-Language": getAcceptLanguageHeader(),
-      },
-      body: payLoad as BodyInit,
+  fetch(config.serverBaseUrl + endPoint, {
+    //includes the browser sessionId in the Header for Authentication on the backend server
+    credentials: "include",
+    method: method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken(),
+      "Accept-Language": getAcceptLanguageHeader(),
     },
-  )
+    ...(payLoad === undefined ? {} : { body: payLoad as BodyInit }),
+  })
     .then(handleSessionError)
-    .then((response) => callback(response, extraParams))
+    .then((response) =>
+      callback(
+        answeredWithLoginPage(response, endPoint)
+          ? new Response(null, {
+              status: SESSION_ENDED_STATUS,
+              statusText: "Session ended",
+            })
+          : response,
+        extraParams,
+      ),
+    )
     .catch((error) => {
       console.error(error);
       callback(undefined, extraParams);
     });
 };
+
+export const postToOpenElisServerFullResponse = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (response: Response | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void =>
+  sendForFullResponse("POST", endPoint, payLoad, callback, extraParams);
 
 export const postToOpenElisServerFormData = <TExtra = unknown>(
   endPoint: string,
@@ -307,7 +394,11 @@ export const postToOpenElisServerFormData = <TExtra = unknown>(
     },
   )
     .then(handleSessionError)
-    .then((response) => response.status)
+    .then((response) =>
+      answeredWithLoginPage(response, endPoint)
+        ? SESSION_ENDED_STATUS
+        : response.status,
+    )
     .then((status) => {
       callback(status, extraParams);
     })
@@ -570,7 +661,11 @@ export const putToOpenElisServer = (
 
   fetch(config.serverBaseUrl + endPoint, options)
     .then(handleSessionError)
-    .then((response) => response.status)
+    .then((response) =>
+      answeredWithLoginPage(response, endPoint)
+        ? SESSION_ENDED_STATUS
+        : response.status,
+    )
     .then((status) => {
       callback(status);
     })
@@ -630,25 +725,19 @@ export const putToOpenElisServerFullResponse = <TExtra = unknown>(
   payLoad: RequestPayload,
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
-): void => {
-  fetch(config.serverBaseUrl + endPoint, {
-    //includes the browser sessionId in the Header for Authentication on the backend server
-    credentials: "include",
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken(),
-      "Accept-Language": getAcceptLanguageHeader(),
-    },
-    body: payLoad as BodyInit,
-  })
-    .then(handleSessionError)
-    .then((response) => callback(response, extraParams))
-    .catch((error) => {
-      console.error(error);
-      callback(undefined, extraParams);
-    });
-};
+): void => sendForFullResponse("PUT", endPoint, payLoad, callback, extraParams);
+
+/**
+ * PATCH counterpart. The JSON-only PATCH variant discards the body on !ok, which
+ * is exactly what a state-machine refusal must not do.
+ */
+export const patchToOpenElisServerFullResponse = <TExtra = unknown>(
+  endPoint: string,
+  payLoad: RequestPayload,
+  callback: (response: Response | undefined, extraParams?: TExtra) => void,
+  extraParams?: TExtra,
+): void =>
+  sendForFullResponse("PATCH", endPoint, payLoad, callback, extraParams);
 
 export const deleteFromOpenElisServer = (
   endPoint: string,
@@ -665,7 +754,11 @@ export const deleteFromOpenElisServer = (
     },
   })
     .then(handleSessionError)
-    .then((response) => response.status)
+    .then((response) =>
+      answeredWithLoginPage(response, endPoint)
+        ? SESSION_ENDED_STATUS
+        : response.status,
+    )
     .then((status) => {
       callback(status);
     })
@@ -679,24 +772,8 @@ export const deleteFromOpenElisServerFullResponse = <TExtra = unknown>(
   endPoint: string,
   callback: (response: Response | undefined, extraParams?: TExtra) => void,
   extraParams?: TExtra,
-): void => {
-  fetch(config.serverBaseUrl + endPoint, {
-    // includes the browser sessionId in the Header for Authentication on the backend server
-    credentials: "include",
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRF-Token": csrfToken(),
-      "Accept-Language": getAcceptLanguageHeader(),
-    },
-  })
-    .then(handleSessionError)
-    .then((response) => callback(response, extraParams))
-    .catch((error) => {
-      console.error(error);
-      callback(undefined, extraParams);
-    });
-};
+): void =>
+  sendForFullResponse("DELETE", endPoint, undefined, callback, extraParams);
 
 export const hasRole = (
   userSessionDetails: UserSessionDetails | null | undefined,
@@ -785,6 +862,11 @@ export const patchToOpenElisServerJsonResponse = <
     });
 };
 
+// Drops only a numeric analysis suffix (BASE-N), so IH-2-01 stays whole.
+export const labNumberForSearch = (
+  accessionNumber: string | null | undefined,
+): string => (accessionNumber ?? "").trim().replace(/^([^-]*)-\d+$/, "$1");
+
 export const convertAlphaNumLabNumForDisplay = (
   labNumber: string | null | undefined,
 ): string | null | undefined => {
@@ -831,9 +913,14 @@ export const convertAlphaNumLabNumForDisplay = (
       labNumberForDisplay +
       labNumberParts[0].slice(labNumberParts[0].length - 3);
   }
-  //re-add dash
+  // Re-add every remaining part, not just the first: keeping only one dropped
+  // the tail of anything with a second dash in it (an EQA blind code such as
+  // IH-2-04 rendered as IH-2, the same for every row on the page).
   if (isAnalysisLabNumber) {
-    labNumberForDisplay = labNumberForDisplay + "-" + labNumberParts[1];
+    labNumberForDisplay = [
+      labNumberForDisplay,
+      ...labNumberParts.slice(1),
+    ].join("-");
   }
   return labNumberForDisplay.toUpperCase();
 };
@@ -930,6 +1017,18 @@ export const Roles = {
   REPORTS: "Reports",
 } as const;
 
+/**
+ * True when the session holds a qa.* permission, with Global Administrator as
+ * the standing fallback. The real gate is @PreAuthorize on the endpoint; this
+ * only hides controls from callers who would get a 403 anyway.
+ */
+export const hasQaPermission = (
+  userSessionDetails: { permissions?: string[]; roles?: string[] } | undefined,
+  permission: string,
+): boolean =>
+  !!userSessionDetails?.permissions?.includes(permission) ||
+  !!userSessionDetails?.roles?.includes(Roles.GLOBAL_ADMIN);
+
 export const toBase64 = (file: Blob): Promise<string> =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -937,3 +1036,15 @@ export const toBase64 = (file: Blob): Promise<string> =>
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = reject;
   });
+
+export const csvCell = (value: unknown): string =>
+  `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+export const downloadBlob = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+};

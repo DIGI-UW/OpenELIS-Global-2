@@ -33,6 +33,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 public class QCControlLotServiceTest {
 
     @Mock
+    private org.openelisglobal.test.service.TestService testService;
+
+    @Mock
     private QCControlLotDAO controlLotDAO;
 
     @Mock
@@ -48,6 +51,20 @@ public class QCControlLotServiceTest {
     private QCControlLotServiceImpl controlLotService;
 
     private QCControlLot testControlLot;
+
+    @Test
+    public void instrumentLotsIncludeTheirMappedTestName() {
+        QCControlLot secondLot = QCControlLotBuilder.create().withId("second-lot").withTestId("1").build();
+        when(controlLotDAO.getActiveByInstrument("1")).thenReturn(List.of(testControlLot, secondLot));
+        org.openelisglobal.test.valueholder.Test test = mock(org.openelisglobal.test.valueholder.Test.class);
+        when(test.getId()).thenReturn("1");
+        when(test.getLocalizedName()).thenReturn("Hemoglobin");
+        when(testService.getTestsByIds(List.of("1"))).thenReturn(List.of(test));
+        assertEquals("Hemoglobin", controlLotService.getActiveControlLotsByInstrument("1").get(0).getTestName());
+        assertEquals("Hemoglobin", secondLot.getTestName());
+        verify(testService).getTestsByIds(List.of("1"));
+        verifyNoMoreInteractions(testService);
+    }
 
     @Before
     public void setUp() {
@@ -185,6 +202,65 @@ public class QCControlLotServiceTest {
         // The write going through is the claim; the returned lot is the one this
         // test handed the stubbed DAO, so it says nothing.
         verify(controlLotDAO, times(1)).insert(any(QCControlLot.class));
+    }
+
+    /**
+     * Releases before the uniqueness rule kept one live row of the same lot per
+     * instrument, and upgraded sites still hold those pairs. Editing one of them
+     * adds no live row to the key, so it must go through.
+     */
+    @Test
+    public void testUpdateControlLot_UpgradedDuplicateKeepsItsKey_ShouldNotThrow() {
+        QCControlLot lot = QCControlLotBuilder.create().withId("lot-analyzer-a").withLotNumber("QC-LOT-777")
+                .withTestId("5").withControlLevel("NORMAL").withInstrumentId("2").withStatus("ACTIVE").build();
+        QCControlLot twin = QCControlLotBuilder.create().withId("lot-analyzer-b").withLotNumber("QC-LOT-777")
+                .withTestId("5").withControlLevel("NORMAL").withInstrumentId("3").withStatus("ACTIVE").build();
+        when(controlLotDAO.isStoredLiveUnderKey("lot-analyzer-a", "QC-LOT-777", "5", "NORMAL")).thenReturn(true);
+        lenient().when(controlLotDAO.getNonExpiredByLotTestAndLevel("QC-LOT-777", "5", "NORMAL"))
+                .thenReturn(Arrays.asList(lot, twin));
+        when(statisticsDAO.findLatestByControlLot("lot-analyzer-a"))
+                .thenReturn(new org.openelisglobal.qc.valueholder.QCStatistics());
+
+        validator.validate(lot);
+    }
+
+    /**
+     * Retiring a lot never adds a live row, so it is allowed even while its twin is
+     * live — the duplicate message itself tells the user to retire one of them.
+     */
+    @Test
+    public void testUpdateControlLot_RetireUpgradedDuplicate_ShouldNotThrow() {
+        QCControlLot lot = QCControlLotBuilder.create().withId("lot-analyzer-a").withLotNumber("QC-LOT-777")
+                .withTestId("5").withControlLevel("NORMAL").withInstrumentId("2").withStatus("EXPIRED").build();
+        QCControlLot twin = QCControlLotBuilder.create().withId("lot-analyzer-b").withLotNumber("QC-LOT-777")
+                .withTestId("5").withControlLevel("NORMAL").withInstrumentId("3").withStatus("ACTIVE").build();
+        lenient().when(controlLotDAO.getNonExpiredByLotTestAndLevel("QC-LOT-777", "5", "NORMAL"))
+                .thenReturn(Arrays.asList(twin));
+
+        validator.validate(lot);
+    }
+
+    /**
+     * Moving a lot onto a key another live lot already holds adds a live row to
+     * that key, so it is still refused.
+     */
+    @Test
+    public void testUpdateControlLot_MovedOntoALiveKey_ShouldThrow() {
+        QCControlLot lot = QCControlLotBuilder.create().withId("lot-analyzer-a").withLotNumber("QC-LOT-888")
+                .withTestId("5").withControlLevel("NORMAL").withInstrumentId("2").withStatus("ACTIVE").build();
+        QCControlLot other = QCControlLotBuilder.create().withId("lot-other").withLotNumber("QC-LOT-888")
+                .withTestId("5").withControlLevel("NORMAL").withInstrumentId("3").withStatus("ACTIVE").build();
+        when(controlLotDAO.getNonExpiredByLotTestAndLevel("QC-LOT-888", "5", "NORMAL"))
+                .thenReturn(Arrays.asList(other));
+        when(statisticsDAO.findLatestByControlLot("lot-analyzer-a"))
+                .thenReturn(new org.openelisglobal.qc.valueholder.QCStatistics());
+
+        try {
+            validator.validate(lot);
+            fail("Expected IllegalArgumentException for a lot moved onto a live key");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("QC-LOT-888"));
+        }
     }
 
     /**

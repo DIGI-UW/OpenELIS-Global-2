@@ -16,7 +16,6 @@ import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCriticalCommunicationService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,8 +56,7 @@ public class MicroCriticalCommunicationAlertIntegrationTest extends BaseWebConte
 
     @Test
     public void loggingACriticalCommunicationSurfacesAnOpenAlertsDashboardRow() {
-        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                fixtures.defaultUserId());
+        MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
 
         MicroCriticalCommunication communication = communicationService.logCommunication(microCase.getId(),
                 "Provider on call", "Positive blood culture called", true, fixtures.defaultUserId());
@@ -74,8 +72,7 @@ public class MicroCriticalCommunicationAlertIntegrationTest extends BaseWebConte
 
     @Test
     public void acknowledgingTheCommunicationAcknowledgesTheDashboardRow() {
-        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                fixtures.defaultUserId());
+        MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
         MicroCriticalCommunication communication = communicationService.logCommunication(microCase.getId(),
                 "Provider on call", "Positive blood culture called", true, fixtures.defaultUserId());
 

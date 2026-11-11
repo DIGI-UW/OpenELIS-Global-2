@@ -82,6 +82,8 @@ public interface MicroAstService {
 
     MicroAstRun invalidateAndRepeat(String runId, String reason, String analyzerCardId, String performedBy);
 
+    MicroAstRun cancelRun(String runId, String reason, String performedBy);
+
     MicroAstRun selectReportableRun(String runId, String performedBy);
 
     List<MicroAstRun> getRunsForIsolate(String isolateId);

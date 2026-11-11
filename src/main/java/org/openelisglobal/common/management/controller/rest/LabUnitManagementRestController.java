@@ -8,12 +8,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.SupportedLocaleService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -85,6 +88,8 @@ public class LabUnitManagementRestController extends BaseRestController {
 
     @Autowired
     private RoleService roleService;
+    @Autowired
+    private AnalysisService analysisService;
 
     /** DTO for the unified Lab Units list and editor. */
     public static class LabUnitManagementDTO {
@@ -98,6 +103,18 @@ public class LabUnitManagementRestController extends BaseRestController {
         private Boolean isExternal;
         private int sortOrder;
         private int testCount;
+        /**
+         * The unit's version token; an update sent with an older one is stale
+         * (OGC-1463).
+         */
+        private String lastupdated;
+
+        @lombok.Getter
+        @lombok.Setter
+        private Boolean requireTrackedMedia;
+        @lombok.Getter
+        @lombok.Setter
+        private String gramStainTestId;
 
         public LabUnitManagementDTO() {
         }
@@ -118,9 +135,20 @@ public class LabUnitManagementRestController extends BaseRestController {
             this.name = nameValue;
             this.description = testSection.getDescription();
             this.domain = Domain.normalize(testSection.getDomain());
+            this.requireTrackedMedia = testSection.isRequireTrackedMedia();
+            this.gramStainTestId = testSection.getGramStainTestId();
             this.isActive = "Y".equals(testSection.getIsActive());
             this.isExternal = "Y".equals(testSection.getIsExternal());
             this.sortOrder = testSection.getSortOrderInt();
+            this.lastupdated = StaleSaveGuard.token(testSection.getLastupdated());
+        }
+
+        public String getLastupdated() {
+            return lastupdated;
+        }
+
+        public void setLastupdated(String lastupdated) {
+            this.lastupdated = lastupdated;
         }
 
         public String getId() {
@@ -201,11 +229,37 @@ public class LabUnitManagementRestController extends BaseRestController {
         private boolean success;
         private String message;
         private T data;
+        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        private String refusal;
+        /** Set only on a 409 for a stale save: "stale" (OGC-1463). */
+        private String conflict;
 
         public ApiResponse(boolean success, String message, T data) {
             this.success = success;
             this.message = message;
             this.data = data;
+        }
+
+        /** A refusal the screen can name in the user's language (OGC-1459). */
+        static <T> ApiResponse<T> refused(String refusal, String message) {
+            ApiResponse<T> response = new ApiResponse<>(false, message, null);
+            response.refusal = refusal;
+            return response;
+        }
+
+        public String getRefusal() {
+            return refusal;
+        }
+
+        static <T> ApiResponse<T> stale() {
+            ApiResponse<T> response = new ApiResponse<>(false,
+                    "Someone else changed this lab unit after it was opened.", null);
+            response.conflict = "stale";
+            return response;
+        }
+
+        public String getConflict() {
+            return conflict;
         }
 
         public boolean isSuccess() {
@@ -280,9 +334,12 @@ public class LabUnitManagementRestController extends BaseRestController {
             return ResponseEntity.unprocessableEntity().body(
                     new ApiResponse<>(false, "names." + fallbackCode + " (fallback locale name) is required", null));
         }
-        if (identifyingName.length() > NAME_MAX_LENGTH) {
-            return ResponseEntity.unprocessableEntity()
-                    .body(new ApiResponse<>(false, "name must be at most " + NAME_MAX_LENGTH + " characters", null));
+        // Checked across every supplied locale, not just the fallback, so create
+        // and update enforce the same rule (OGC-189).
+        String tooLongLocale = firstNameOverMaxLength(names);
+        if (tooLongLocale != null) {
+            return ResponseEntity.unprocessableEntity().body(new ApiResponse<>(false,
+                    "names." + tooLongLocale + " must be at most " + NAME_MAX_LENGTH + " characters", null));
         }
         String description = trimToNull(labUnitDTO.getDescription());
         if (description == null) {
@@ -314,6 +371,7 @@ public class LabUnitManagementRestController extends BaseRestController {
         testSection.setNameKey("testSection." + identifyingName.replaceAll(" ", "_"));
         testSection.setSortOrderInt(Integer.MAX_VALUE);
         testSection.setDomain(Domain.normalize(labUnitDTO.getDomain()));
+        testSection.setRequireTrackedMedia(Boolean.TRUE.equals(labUnitDTO.getRequireTrackedMedia()));
         testSection.setSysUserId(userId);
 
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, userId);
@@ -353,6 +411,9 @@ public class LabUnitManagementRestController extends BaseRestController {
             if (section == null) {
                 return ResponseEntity.notFound().build();
             }
+            if (StaleSaveGuard.isStale(labUnitDTO.getLastupdated(), section.getLastupdated())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.stale());
+            }
             if (labUnitDTO.getDescription() != null
                     && labUnitDTO.getDescription().trim().length() > DESCRIPTION_MAX_LENGTH) {
                 return ResponseEntity.unprocessableEntity().body(new ApiResponse<>(false,
@@ -369,6 +430,15 @@ public class LabUnitManagementRestController extends BaseRestController {
                 return ResponseEntity.unprocessableEntity().body(new ApiResponse<>(false,
                         "names." + fallbackCode + " (fallback locale name) cannot be blank", null));
             }
+            // The 20-character cap is a product rule create already enforced;
+            // update skipped it, so a longer name saved and persisted (OGC-189,
+            // QA LU-W-3). Applied to every supplied locale, not just the
+            // fallback: they all render in the same name column.
+            String tooLongLocale = firstNameOverMaxLength(names);
+            if (tooLongLocale != null) {
+                return ResponseEntity.unprocessableEntity().body(new ApiResponse<>(false,
+                        "names." + tooLongLocale + " must be at most " + NAME_MAX_LENGTH + " characters", null));
+            }
 
             String userId = getSysUserId(request);
 
@@ -376,6 +446,11 @@ public class LabUnitManagementRestController extends BaseRestController {
             // localization_value rows carry every language, so creating a fresh
             // Localization would orphan them. Locales absent from the map are
             // left untouched; a blank value clears that translation.
+            String takenName = nameUsedByAnotherUnit(names, section);
+            if (takenName != null) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ApiResponse<>(false, "A lab unit with this name already exists: " + takenName, null));
+            }
             if (names != null && !names.isEmpty()) {
                 Localization localization = section.getLocalization();
                 boolean isNew = localization == null;
@@ -417,6 +492,16 @@ public class LabUnitManagementRestController extends BaseRestController {
                 section.setIsActive(labUnitDTO.getIsActive() ? "Y" : "N");
             }
 
+            if (labUnitDTO.getRequireTrackedMedia() != null)
+                section.setRequireTrackedMedia(labUnitDTO.getRequireTrackedMedia());
+            if (labUnitDTO.getGramStainTestId() != null) {
+                String gram = labUnitDTO.getGramStainTestId();
+                if (!gram.isBlank() && testSectionService.getTestsInSection(labUnitId).stream().noneMatch(
+                        t -> t.getId().equals(gram) && t.isActive() && Boolean.TRUE.equals(t.getOrderable())))
+                    return ResponseEntity.unprocessableEntity()
+                            .body(new ApiResponse<>(false, "Select an active, orderable test in this lab unit", null));
+                section.setGramStainTestId(gram.isBlank() ? null : gram);
+            }
             section.setSysUserId(userId);
             testSectionService.update(section);
 
@@ -465,12 +550,14 @@ public class LabUnitManagementRestController extends BaseRestController {
         public String name;
         public String domain;
         public boolean active;
+        public boolean orderable;
 
         public AssignedTestDto(Test test) {
             this.id = test.getId();
             this.name = org.openelisglobal.test.service.TestServiceImpl.getLocalizedTestNameWithType(test);
             this.domain = Domain.normalize(test.getDomain());
             this.active = "Y".equals(test.getIsActive());
+            this.orderable = Boolean.TRUE.equals(test.getOrderable());
         }
     }
 
@@ -527,6 +614,14 @@ public class LabUnitManagementRestController extends BaseRestController {
         candidates.sort((a, b) -> a.name.compareToIgnoreCase(b.name));
         return ResponseEntity.ok(candidates);
     }
+
+    /**
+     * OGC-1459: deactivating a unit cannot hand its tests to an inactive one, which
+     * used to be switched back on without anyone deciding to. (A bulk reassign may
+     * still move tests into an inactive unit, decision D4; it no longer reactivates
+     * it.)
+     */
+    private static final String INACTIVE_DESTINATION_MESSAGE = "the destination lab unit is inactive; reactivate it first";
 
     /** Body for the bulk assign/reassign actions. */
     public static class BulkTestAssignmentRequest {
@@ -598,6 +693,191 @@ public class LabUnitManagementRestController extends BaseRestController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Tests reassigned successfully", assignedTestDtos(labUnitId)));
     }
 
+    // ── Deactivation impact summary + guarded deactivation (OGC-189 M3) ──────
+
+    /**
+     * What deactivating this lab unit would affect. Read-only; changes nothing.
+     *
+     * <p>
+     * Reflex and calculation targets are counted <em>separately</em> from the flat
+     * test count on purpose: those are the dangerous ones. A reflex whose target
+     * test sits in a switched-off unit stops firing with nobody present to notice
+     * (decision D5), and a bare "37 tests" hides that entirely.
+     */
+    public static class DeactivationImpactDto {
+        public int testCount;
+        public int activeTestCount;
+        public long pendingAnalysisCount;
+        public long historicalAnalysisCount;
+        /** Per D2: reassign is the default when reflex/calc targets are present. */
+        public String recommendedOption;
+    }
+
+    @GetMapping(value = "/lab-units-management/{labUnitId}/deactivation-impact", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<DeactivationImpactDto>> getDeactivationImpact(@PathVariable String labUnitId) {
+        if (getManagedSection(labUnitId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        DeactivationImpactDto dto = new DeactivationImpactDto();
+        List<Test> tests = testSectionService.getTestsInSection(labUnitId);
+        dto.testCount = tests.size();
+        for (Test test : tests) {
+            if ("Y".equals(test.getIsActive())) {
+                dto.activeTestCount++;
+            }
+        }
+
+        long[] analysisCounts = analysisService.countAnalysesForLabUnit(labUnitId);
+        dto.pendingAnalysisCount = analysisCounts[0];
+        dto.historicalAnalysisCount = analysisCounts[1];
+
+        // The reflex-target warning was removed (2026-09-07, user decision). It
+        // named the tests ASSIGNED to this unit that are reflex targets, which
+        // stopped matching reality once the reflex gate moved to the unit the
+        // work lands in (T159): it warned about reflexes that keep firing, and
+        // stayed silent on the ones that break. Recomputing it against trigger
+        // tests was possible; the warning was dropped instead.
+        //
+        // recommendedOption therefore no longer has a reflex-risk input. D6
+        // keeps all three options available regardless of the default.
+        dto.recommendedOption = dto.testCount == 0 ? "keep" : "deactivate_all";
+        return ResponseEntity.ok(new ApiResponse<>(true, "Deactivation impact", dto));
+    }
+
+    /**
+     * A changed name, in any language, that another lab unit already has (compared
+     * trimmed and without case), or null. Create refused duplicates; a rename did
+     * not (OGC-1465). A name the unit already holds is not a change.
+     */
+    private String nameUsedByAnotherUnit(Map<String, String> names, TestSection section) {
+        if (names == null || names.isEmpty()) {
+            return null;
+        }
+        Map<String, String> current = section.getLocalization() == null ? Map.of()
+                : section.getLocalization().getValuesAsMap();
+        for (TestSection other : testSectionService.getAllTestSections()) {
+            if (other.getId().equals(section.getId()) || other.getLocalization() == null) {
+                continue;
+            }
+            Map<String, String> otherNames = other.getLocalization().getValuesAsMap();
+            for (Map.Entry<String, String> entry : names.entrySet()) {
+                String wanted = entry.getValue() == null ? "" : entry.getValue().trim();
+                String theirs = otherNames.get(entry.getKey());
+                String mine = current.get(entry.getKey());
+                if (!wanted.isEmpty() && !(mine != null && wanted.equalsIgnoreCase(mine.trim())) && theirs != null
+                        && wanted.equalsIgnoreCase(theirs.trim())) {
+                    return wanted;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Body for the guarded deactivation. */
+    public static class DeactivationRequest {
+        /** "keep", "deactivate_all" or "reassign". */
+        public String option;
+        /** Required when option is "reassign". */
+        public String destinationLabUnitId;
+        /** Must be the literal "DEACTIVATE" — the typed confirmation. */
+        public String confirmation;
+        /** The unit's version token from the page that asks (OGC-1463). */
+        public String lastupdated;
+    }
+
+    /**
+     * Deactivates a lab unit through the guarded flow (OGC-189 M3): one of the
+     * three options, behind a typed confirmation.
+     *
+     * <p>
+     * "keep" leaves every test's own configuration untouched (D6). It is still an
+     * effective stop, because M4 derives
+     * {@code effectiveActive = test.active && labUnit.isActive} — the unit stops
+     * taking new work without anything being written to its tests, so reactivation
+     * is lossless.
+     */
+    @PostMapping(value = "/lab-units-management/{labUnitId}/deactivate")
+    public ResponseEntity<ApiResponse<DeactivationImpactDto>> deactivateLabUnit(HttpServletRequest request,
+            @PathVariable String labUnitId, @RequestBody DeactivationRequest body) {
+        TestSection section = getManagedSection(labUnitId);
+        if (section == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (body == null || !"DEACTIVATE".equals(body.confirmation)) {
+            return ResponseEntity.unprocessableEntity()
+                    .body(new ApiResponse<>(false, "confirmation must be the literal \"DEACTIVATE\"", null));
+        }
+        if (StaleSaveGuard.isStale(body.lastupdated, section.getLastupdated())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.stale());
+        }
+        String option = body.option == null ? "" : body.option.trim();
+        if (!"keep".equals(option) && !"deactivate_all".equals(option) && !"reassign".equals(option)) {
+            return ResponseEntity.unprocessableEntity()
+                    .body(new ApiResponse<>(false, "option must be one of: keep, deactivate_all, reassign", null));
+        }
+
+        // Every input is validated before any work is done or anything is
+        // written: a reassign with nowhere to go must not deactivate the unit
+        // and silently leave its tests behind.
+        if ("reassign".equals(option)) {
+            if (GenericValidator.isBlankOrNull(body.destinationLabUnitId)
+                    || getManagedSection(body.destinationLabUnitId) == null) {
+                return ResponseEntity.unprocessableEntity()
+                        .body(new ApiResponse<>(false, "a valid destinationLabUnitId is required to reassign", null));
+            }
+            if (labUnitId.equals(body.destinationLabUnitId)) {
+                return ResponseEntity.unprocessableEntity()
+                        .body(new ApiResponse<>(false, "destination must differ from the source lab unit", null));
+            }
+            if ("N".equals(getManagedSection(body.destinationLabUnitId).getIsActive())) {
+                return ResponseEntity.unprocessableEntity()
+                        .body(ApiResponse.refused("destination.inactive", INACTIVE_DESTINATION_MESSAGE));
+            }
+        }
+
+        String userId = getSysUserId(request);
+        List<Test> tests = testSectionService.getTestsInSection(labUnitId);
+
+        if ("reassign".equals(option)) {
+            if (!tests.isEmpty()) {
+                List<String> testIds = new ArrayList<>();
+                for (Test test : tests) {
+                    testIds.add(test.getId());
+                }
+                try {
+                    testSectionTestAssignService.assignTestsToSection(testIds, body.destinationLabUnitId, userId);
+                } catch (Exception e) {
+                    LogEvent.logError("LabUnitManagementRestController", "deactivateLabUnit", e.getMessage());
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(new ApiResponse<>(false, "Error reassigning tests: " + e.getMessage(), null));
+                }
+            }
+        } else if ("deactivate_all".equals(option)) {
+            // The one option that DOES write to the tests, because the admin
+            // asked for exactly that. Reactivating the unit will not bring
+            // these back on their own.
+            for (Test test : tests) {
+                if ("Y".equals(test.getIsActive())) {
+                    test.setIsActive("N");
+                    test.setSysUserId(userId);
+                    testService.update(test);
+                }
+            }
+        }
+
+        section.setIsActive("N");
+        section.setSysUserId(userId);
+        testSectionService.update(section);
+        refreshLabUnitLists();
+
+        LogEvent.logInfo("LabUnitManagementRestController", "deactivateLabUnit",
+                "Lab unit " + section.getTestSectionName() + " deactivated with option '" + option + "' by " + userId);
+
+        DeactivationImpactDto result = new DeactivationImpactDto();
+        result.testCount = tests.size();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Lab unit deactivated successfully", result));
+    }
+
     private List<AssignedTestDto> assignedTestDtos(String labUnitId) {
         List<AssignedTestDto> dtos = new ArrayList<>();
         for (Test test : testSectionService.getTestsInSection(labUnitId)) {
@@ -667,6 +947,24 @@ public class LabUnitManagementRestController extends BaseRestController {
         for (String code : names.keySet()) {
             if (!activeCodes.contains(code)) {
                 return code;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the first locale code whose name exceeds the 20-character cap, or
+     * null when every supplied name is within it. Blank/absent values are left to
+     * the required-name checks.
+     */
+    private String firstNameOverMaxLength(Map<String, String> names) {
+        if (names == null || names.isEmpty()) {
+            return null;
+        }
+        for (Map.Entry<String, String> entry : names.entrySet()) {
+            String value = trimToNull(entry.getValue());
+            if (value != null && value.length() > NAME_MAX_LENGTH) {
+                return entry.getKey();
             }
         }
         return null;

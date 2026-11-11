@@ -1,5 +1,16 @@
+import { createIntl } from "react-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchFromOpenElisServer, getFromOpenElisServer } from "./Utils";
+import messages from "../../languages/en.json";
+import {
+  deleteFromOpenElisServer,
+  fetchFromOpenElisServer,
+  getFromOpenElisServer,
+  labNumberForSearch,
+  parseIsoDate,
+  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
+  resolveApiErrorMessage,
+} from "./Utils";
 
 const settlePromiseChain = async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -148,5 +159,155 @@ describe("fetchFromOpenElisServer", () => {
       fetchFromOpenElisServer("/rest/TestActivation"),
     ).rejects.toThrow("Request failed (500): /rest/TestActivation");
     expect(json).not.toHaveBeenCalled();
+  });
+});
+
+describe("labNumberForSearch", () => {
+  it("drops a numeric analysis suffix and keeps every other accession whole", () => {
+    expect(labNumberForSearch("DEV01260000000001-2")).toBe("DEV01260000000001");
+    expect(labNumberForSearch(" DEV01260000000001 ")).toBe("DEV01260000000001");
+    expect(labNumberForSearch("IH-2-01")).toBe("IH-2-01");
+    expect(labNumberForSearch("HARN-QS7-2026-00001")).toBe(
+      "HARN-QS7-2026-00001",
+    );
+    expect(labNumberForSearch(undefined)).toBe("");
+  });
+});
+
+// Review of #4474: flatpickr's parser read a typed 10/20/2026 as 1 January of
+// the current year, and that date was saved without a warning.
+describe("parseIsoDate", () => {
+  it("reads a real yyyy-MM-dd as that local date", () => {
+    const date = parseIsoDate("2026-12-24");
+    expect(date).toBeInstanceOf(Date);
+    expect(
+      date && [date.getFullYear(), date.getMonth(), date.getDate()],
+    ).toEqual([2026, 11, 24]);
+  });
+
+  it("refuses text in any other shape", () => {
+    ["10/20/2026", "2026-1-5", "24-12-2026", "", "tomorrow"].forEach((text) =>
+      expect(parseIsoDate(text)).toBe(false),
+    );
+  });
+
+  it("refuses a day the month does not have", () => {
+    expect(parseIsoDate("2026-02-30")).toBe(false);
+    expect(parseIsoDate("2026-13-01")).toBe(false);
+  });
+});
+
+describe("a write answered by a login page is a failure, not a save (OGC-1461)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  const answer = (over: Record<string, unknown>) =>
+    vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      redirected: false,
+      url: "https://lims/api/OpenELIS-Global/rest/thing",
+      headers: { get: () => null },
+      ...over,
+    } as unknown as Response);
+
+  const loginPage = () =>
+    answer({ headers: { get: () => "text/html;charset=UTF-8" } });
+
+  it("a status-only PUT reports a 200 login page as an ended session", async () => {
+    vi.stubGlobal("fetch", loginPage());
+    const callback = vi.fn();
+
+    putToOpenElisServer("/rest/thing", "{}", callback);
+    await settlePromiseChain();
+
+    expect(callback).toHaveBeenCalledWith(401);
+  });
+
+  it("a PUT redirected to the login page is an ended session too", async () => {
+    vi.stubGlobal(
+      "fetch",
+      answer({
+        redirected: true,
+        url: "https://lims/api/OpenELIS-Global/LoginPage",
+      }),
+    );
+    const callback = vi.fn();
+
+    putToOpenElisServer("/rest/thing", "{}", callback);
+    await settlePromiseChain();
+
+    expect(callback).toHaveBeenCalledWith(401);
+  });
+
+  it("a real save (JSON or empty body) still reports 200", async () => {
+    vi.stubGlobal(
+      "fetch",
+      answer({ headers: { get: () => "application/json" } }),
+    );
+    const json = vi.fn();
+    putToOpenElisServer("/rest/thing", "{}", json);
+    await settlePromiseChain();
+    expect(json).toHaveBeenCalledWith(200);
+
+    vi.stubGlobal("fetch", answer({}));
+    const empty = vi.fn();
+    putToOpenElisServer("/rest/thing", "{}", empty);
+    await settlePromiseChain();
+    expect(empty).toHaveBeenCalledWith(200);
+  });
+
+  it("a DELETE answered by a login page is an ended session", async () => {
+    vi.stubGlobal("fetch", loginPage());
+    const callback = vi.fn();
+
+    deleteFromOpenElisServer("/rest/thing", callback);
+    await settlePromiseChain();
+
+    expect(callback).toHaveBeenCalledWith(401);
+  });
+
+  it("a full-response PUT hands back a 401 response for a login page", async () => {
+    vi.stubGlobal("fetch", loginPage());
+    const callback = vi.fn();
+
+    putToOpenElisServerFullResponse("/rest/thing", "{}", callback);
+    await settlePromiseChain();
+
+    const response = callback.mock.calls[0][0] as Response;
+    expect(response.ok).toBe(false);
+    expect(response.status).toBe(401);
+  });
+});
+
+describe("resolveApiErrorMessage", () => {
+  const intl = createIntl({ locale: "en", messages });
+
+  it("shows a refused label quantity from its translation key, not the server's English text", () => {
+    const totalRefusal = resolveApiErrorMessage(
+      intl,
+      {
+        error: "Print job exceeds the total limit of 1000 labels",
+        messageKey: "barcode.label.error.batch.limit",
+        messageArgs: { max: 1000 },
+      },
+      "server.error.msg",
+    );
+    const singleRefusal = resolveApiErrorMessage(
+      intl,
+      {
+        error: "Label quantity exceeds the request safety limit of 100",
+        messageKey: "barcode.label.error.quantity.limit",
+        messageArgs: { max: 100 },
+      },
+      "server.error.msg",
+    );
+
+    expect(totalRefusal).toBe(
+      "This print job has more than 1000 labels. Print fewer labels at a time.",
+    );
+    expect(singleRefusal).toBe("Each label quantity can be at most 100.");
   });
 });

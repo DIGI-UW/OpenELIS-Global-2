@@ -29,6 +29,7 @@ import {
   ListChecked,
   Chemistry,
   WarningAlt,
+  Plug,
 } from "@carbon/icons-react";
 import {
   SideNavItems,
@@ -135,6 +136,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   // "Click a test to edit its sections" would be an instruction the page
   // cannot honour. The menu itself stays as the reader left it.
   const inCatalogImport = /\/CatalogImport(\/|$)/.test(location.pathname);
+  const inLocationsArea = /\/locations(\/|$)/.test(location.pathname);
 
   // Keyed by id so the label never shows a prior test's name while the next loads.
   const [editorTest, setEditorTest] = useState({ id: null, name: null });
@@ -237,7 +239,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
     !!editorSampleTypeId ||
     !!editorPanelId ||
     !!editorLabUnitId ||
-    /\/(TestCatalogList|SampleTypeEditor|LabUnitManagement|CatalogImport)(\/|$)/.test(
+    /\/(TestCatalogList|SampleTypeEditor|ContainerTypes|LabUnitManagement|CatalogImport)(\/|$)/.test(
       location.pathname,
     );
 
@@ -367,6 +369,12 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
                 : "sidenav.label.admin.sampleTypeManagement"
             }
           />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="containerTypes"
+          {...navProps(`${path}/ContainerTypes`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.containerTypes" />
         </SideNavMenuItem>
         <SideNavMenuItem
           data-cy="testCatalogList"
@@ -616,7 +624,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         renderIcon={ChartBubble}
         {...navProps(`${path}/program`)}
       >
-        <FormattedMessage id="sidenav.label.admin.program" />
+        <FormattedMessage id="admin.programs.title" />
       </SideNavLink>
       <SideNavMenu
         renderIcon={CicsSystemGroup}
@@ -669,15 +677,6 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           />
         </SideNavMenuItem>
         <SideNavMenuItem
-          data-cy="vectorSamplingSites"
-          {...navProps(`${path}/vectorSurveillanceSetup/sampling-sites`)}
-        >
-          <FormattedMessage
-            id="vector.admin.samplingSites"
-            defaultMessage="Sampling Sites"
-          />
-        </SideNavMenuItem>
-        <SideNavMenuItem
           data-cy="vectorManualEntryFields"
           {...navProps(`${path}/vectorSurveillanceSetup/manual-entry-fields`)}
         >
@@ -687,13 +686,39 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           />
         </SideNavMenuItem>
       </SideNavMenu>
-      <SideNavLink
+      <SideNavMenu
         data-cy="orgMgmnt"
         renderIcon={ContainerSoftware}
-        {...navProps(`${path}/organizationManagement`)}
+        key={inLocationsArea ? "locations-area" : "locations"}
+        isActive={inLocationsArea}
+        defaultExpanded={inLocationsArea}
+        title={intl.formatMessage({ id: "sidenav.label.admin.locations" })}
       >
-        <FormattedMessage id="organization.main.title" />
-      </SideNavLink>
+        <SideNavMenuItem
+          data-cy="locationsOrganizations"
+          {...navProps(`${path}/locations`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.locations.organizations" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="locationsSites"
+          {...navProps(`${path}/locations/sites`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.locations.sites" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="locationsAreas"
+          {...navProps(`${path}/locations/areas`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.locations.areas" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="locationsImport"
+          {...navProps(`${path}/locations/import`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.locations.import" />
+        </SideNavMenuItem>
+      </SideNavMenu>
       <SideNavLink
         data-cy="resultReportingConfiguration"
         renderIcon={Report}
@@ -885,6 +910,36 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       >
         <FormattedMessage id="testnotificationconfig.browse.title" />
       </SideNavLink>
+      <SideNavMenu
+        title={intl.formatMessage({
+          id: "sidenav.label.admin.notifications",
+        })}
+        renderIcon={Bullhorn}
+        data-cy="notificationsMenu"
+      >
+        <SideNavMenuItem
+          {...navProps(`${path}/notificationTriggerConfig/triggers`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.notifications.triggers" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          {...navProps(`${path}/notificationTriggerConfig/templates`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.notifications.templates" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="notificationChannels"
+          {...navProps(`${path}/notificationTriggerConfig/channels`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.notifications.channels" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="deliverySettings"
+          {...navProps(`${path}/notificationTriggerConfig/delivery`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.notifications.delivery" />
+        </SideNavMenuItem>
+      </SideNavMenu>
       <SideNavLink
         data-cy="dictMenu"
         renderIcon={CharacterWholeNumber}
@@ -970,6 +1025,13 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         {...navProps(`${path}/calendarManagement`)}
       >
         <FormattedMessage id="calendar.management.title" />
+      </SideNavLink>
+      <SideNavLink
+        data-cy="modulesAdmin"
+        renderIcon={Plug}
+        {...navProps(`${path}/modules`)}
+      >
+        <FormattedMessage id="modules.admin.title" />
       </SideNavLink>
       <SideNavLink
         renderIcon={Catalog}

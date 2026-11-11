@@ -13,12 +13,13 @@ import {
   Stack,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Redirect, useLocation } from "react-router-dom";
+import { Redirect, useHistory, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { serverPageSizeOf } from "../utils/serverPaging";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import ImportIssuesPanel from "./ImportIssuesPanel";
+import { decisionKey, groupTestParts } from "./ResultParts";
 
 const importIssuesBreadcrumbs = [
   { label: "home.label", link: "/" },
@@ -27,6 +28,23 @@ const importIssuesBreadcrumbs = [
     label: "analyzer.importIssues.title",
     link: "/AnalyzerResults?view=import-issues",
   },
+];
+
+const testActionFields = ["isAccepted", "isRejected", "isDeleted"];
+
+// Held for a decision the reviewer can make on the page, not for a mapping fix.
+const reviewableHolds = ["awaiting_specimen", "awaiting_placement"];
+
+const restorableResultFields = [
+  "isAccepted",
+  "isRejected",
+  "isDeleted",
+  "typeOfSampleId",
+  "chosenAnalysisId",
+  "redirectAccession",
+  "redirectReason",
+  "note",
+  "result",
 ];
 
 /**
@@ -44,6 +62,7 @@ const Index = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const [results, setResults] = useState({ resultList: [] });
+  const [restoredEdits, setRestoredEdits] = useState({});
   // The analyzer's display name, resolved server-side from the id in the URL.
   const [analyzerName, setAnalyzerName] = useState("");
   const [queryValue, setQueryValue] = useState("");
@@ -56,7 +75,12 @@ const Index = () => {
   const [serverPageSize, setServerPageSize] = useState();
   const [labNumber, setLabNumber] = useState("");
   const location = useLocation();
+  const history = useHistory();
   const selectedAnalyzerId = new URLSearchParams(location.search).get("id");
+  const worklistDraft = location.state?.worklistDraft;
+  const restoringDraft =
+    worklistDraft &&
+    String(worklistDraft.analyzerId) === String(selectedAnalyzerId);
   const view = getAnalyzerResultsView(location.search);
   const intl = useIntl();
 
@@ -74,7 +98,11 @@ const Index = () => {
   useEffect(() => {
     if (url) {
       setIsLoading(true);
-      getFromOpenElisServer(url, handleResults);
+      const page = restoringDraft ? Number(worklistDraft.page) : 1;
+      getFromOpenElisServer(
+        url + (Number.isInteger(page) && page > 1 ? `&page=${page}` : ""),
+        handleResults,
+      );
     }
   }, [url]);
 
@@ -82,30 +110,37 @@ const Index = () => {
    * Rereads the worklist the address bar names, after a write changes it, and
    * reopens the page the user was on when the reread worklist still has it.
    */
-  const refreshResults = (pageToReopen) => {
+  const refreshResults = (pageToReopen, pendingEdits) => {
     if (!url) {
       return;
     }
     setIsLoading(true);
+    const applyResults = (data) => handleResults(data, pendingEdits);
     getFromOpenElisServer(url, (data) => {
       const totalPages = Number(data?.paging?.totalPages) || 1;
       if (pageToReopen > 1 && pageToReopen <= totalPages) {
-        getFromOpenElisServer(url + "&page=" + pageToReopen, handleResults);
+        getFromOpenElisServer(url + "&page=" + pageToReopen, applyResults);
       } else {
-        handleResults(data);
+        applyResults(data);
       }
     });
   };
 
   const extractUniqueGroups = (data) => {
-    const seenGroups = new Set();
-    return data.filter((item) => {
-      if (!seenGroups.has(item.sampleGroupingNumber)) {
-        seenGroups.add(item.sampleGroupingNumber);
-        return true;
+    const reviewPriority = (item) =>
+      !item.importIssueReason
+        ? 2
+        : reviewableHolds.includes(item.importIssueReason)
+          ? 1
+          : 0;
+    const groups = new Map();
+    data.forEach((item) => {
+      const current = groups.get(item.sampleGroupingNumber);
+      if (!current || reviewPriority(item) > reviewPriority(current)) {
+        groups.set(item.sampleGroupingNumber, item);
       }
-      return false;
     });
+    return Array.from(groups.values());
   };
 
   /** One server page, the same request for the arrows, the lab number search and Carbon. */
@@ -114,9 +149,93 @@ const Index = () => {
     getFromOpenElisServer(url + "&page=" + pageNumber, handleResults);
   };
 
-  const handleResults = (data) => {
+  // A test's action checkboxes are shown on its head row, which changes when a
+  // held row is recovered; a restored action moves with it.
+  const moveTestActionsToHeads = (rows, serverRows, applied) => {
+    const { headIdByKey } = groupTestParts(rows);
+    const serverById = new Map(serverRows.map((row) => [String(row.id), row]));
+    const actionsByTest = new Map();
+    rows.forEach((row) => {
+      const edits = applied[String(row.id)] ?? {};
+      testActionFields.forEach((field) => {
+        if (!Object.prototype.hasOwnProperty.call(edits, field)) return;
+        const actions = actionsByTest.get(decisionKey(row)) ?? {};
+        if (!Object.prototype.hasOwnProperty.call(actions, field)) {
+          actions[field] = edits[field];
+        }
+        actionsByTest.set(decisionKey(row), actions);
+      });
+    });
+    return rows.map((row) => {
+      const actions = actionsByTest.get(decisionKey(row));
+      if (!actions) return row;
+      const id = String(row.id);
+      const isHead = String(headIdByKey.get(decisionKey(row))) === id;
+      const moved = { ...row };
+      const edits = { ...applied[id] };
+      Object.entries(actions).forEach(([field, value]) => {
+        if (isHead) {
+          moved[field] = value;
+          edits[field] = value;
+        } else if (Object.prototype.hasOwnProperty.call(edits, field)) {
+          moved[field] = serverById.get(id)?.[field];
+          delete edits[field];
+        }
+      });
+      if (Object.keys(edits).length) {
+        applied[id] = edits;
+      } else {
+        delete applied[id];
+      }
+      return moved;
+    });
+  };
+
+  const handleResults = (data, pendingEdits) => {
     if (data) {
-      setResults(data);
+      const editsToRestore =
+        pendingEdits ?? (restoringDraft ? worklistDraft.edits : null);
+      const applied = {};
+      const restoredList = editsToRestore
+        ? data.resultList.map((row) => {
+            if (
+              row.importIssueReason &&
+              !reviewableHolds.includes(row.importIssueReason)
+            ) {
+              return row;
+            }
+            const edits = editsToRestore[String(row.id)];
+            if (!edits) return row;
+            const restored = { ...row };
+            restorableResultFields.forEach((field) => {
+              if (Object.prototype.hasOwnProperty.call(edits, field)) {
+                restored[field] = edits[field];
+                applied[String(row.id)] = {
+                  ...applied[String(row.id)],
+                  [field]: edits[field],
+                };
+              }
+            });
+            return restored;
+          })
+        : data.resultList;
+      const resultList = editsToRestore
+        ? moveTestActionsToHeads(restoredList, data.resultList, applied)
+        : restoredList;
+      setRestoredEdits(applied);
+      setResults({ ...data, resultList });
+      if (restoringDraft && pendingEdits === undefined) {
+        const remainingState = { ...location.state };
+        delete remainingState.worklistDraft;
+        history.replace({
+          pathname: location.pathname,
+          search: location.search,
+          hash: location.hash,
+          state: Object.keys(remainingState).length
+            ? remainingState
+            : undefined,
+        });
+      }
       setIsLoading(false);
       // the server echoes the analyzer's name in `type`, resolved from the id;
       // it comes back null for an id that matches no analyzer
@@ -132,7 +251,7 @@ const Index = () => {
           : [],
       );
 
-      if (data.resultList.length == 0) {
+      if (resultList.length == 0) {
         setSampleGroup([]);
         addNotification({
           kind: NotificationKinds.warning,
@@ -143,7 +262,7 @@ const Index = () => {
         });
         setNotificationVisible(true);
       } else {
-        setSampleGroup(extractUniqueGroups(data.resultList));
+        setSampleGroup(extractUniqueGroups(resultList));
       }
     }
   };
@@ -167,10 +286,9 @@ const Index = () => {
   const breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "analyzer.navigation.analyzers", link: "/analyzers" },
-    {
-      label: analyzerName || "banner.menu.results.analyzer",
-      isCurrentPage: true,
-    },
+    analyzerName
+      ? { text: analyzerName, isCurrentPage: true }
+      : { label: "banner.menu.results.analyzer", isCurrentPage: true },
   ];
 
   return (
@@ -225,6 +343,7 @@ const Index = () => {
         <AnalyserResults
           analyzerId={queryValue}
           results={results}
+          restoredEdits={restoredEdits}
           sampleGroup={sampleGroup}
           refreshResults={refreshResults}
           serverPageSize={serverPageSize}

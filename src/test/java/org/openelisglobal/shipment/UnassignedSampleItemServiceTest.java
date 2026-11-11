@@ -3,6 +3,8 @@ package org.openelisglobal.shipment;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.sql.Timestamp;
 import java.util.List;
@@ -17,6 +19,7 @@ import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.shipment.dao.ShippingBoxDAO;
 import org.openelisglobal.shipment.dto.SampleItemDTO;
 import org.openelisglobal.shipment.service.UnassignedSampleItemService;
+import org.openelisglobal.shipment.service.UnassignedSampleService;
 import org.openelisglobal.shipment.valueholder.BoxState;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +28,9 @@ public class UnassignedSampleItemServiceTest extends BaseWebContextSensitiveTest
 
     @Autowired
     private UnassignedSampleItemService unassignedSampleItemService;
+
+    @Autowired
+    private UnassignedSampleService unassignedSampleService;
 
     @Autowired
     private ReferralService referralService;
@@ -62,6 +68,26 @@ public class UnassignedSampleItemServiceTest extends BaseWebContextSensitiveTest
         assertEquals("2", item2.getDestinationFacilityId());
     }
 
+    /**
+     * OGC-1515: the shipment dashboard's facility filter on unassigned samples
+     * asked for a list the server did not offer and kept showing every sample.
+     */
+    @Test
+    public void getUnassignedByDestinationFacility_listsOnlyTheSampleItemsReferredThere() {
+        assertEquals(List.of("12345"), unassignedSampleItemService.getUnassignedByDestinationFacility("1").stream()
+                .map(SampleItemDTO::getAccessionNumber).toList());
+        assertEquals(List.of("13333"), unassignedSampleItemService.getUnassignedByDestinationFacility("2").stream()
+                .map(SampleItemDTO::getAccessionNumber).toList());
+        assertEquals(List.of(), unassignedSampleItemService.getUnassignedByDestinationFacility("999"));
+    }
+
+    @Test
+    public void theUnassignedItemsOfAFacilityAreServedByTheRouteTheDashboardCalls() throws Exception {
+        performGet("/rest/unassigned-sample/items/by-facility/2").andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].accessionNumber").value("13333"))
+                .andExpect(jsonPath("$[0].destinationFacilityId").value("2"));
+    }
+
     @Test
     public void getSampleItemById_shouldSetDestinationFacilityIdFromLinkedOrganization() {
         SampleItemDTO dto = unassignedSampleItemService.getSampleItemById("1");
@@ -85,6 +111,18 @@ public class UnassignedSampleItemServiceTest extends BaseWebContextSensitiveTest
         assertNotNull("Sample item should still be listed when its referral has no organization", item2);
         assertNull("destinationFacilityId must be null when the referral has no linked organization",
                 item2.getDestinationFacilityId());
+    }
+
+    @Test
+    public void cancelReferral_shouldDropTheSampleFromEveryUnassignedList() {
+        unassignedSampleService.cancelReferral("2", "Ordered in error", "1");
+
+        assertEquals(List.of("12345"), unassignedSampleItemService.getAllUnassigned().stream()
+                .map(SampleItemDTO::getAccessionNumber).toList());
+        assertEquals(List.of(), unassignedSampleItemService.searchUnassignedByAccessionNumber("13333"));
+        assertNull(unassignedSampleItemService.getSampleItemById("2"));
+        assertEquals(List.of("1"), unassignedSampleService.getUnassignedSamplesForDashboard().stream()
+                .map(sample -> sample.get("id")).toList());
     }
 
     /**
@@ -117,13 +155,25 @@ public class UnassignedSampleItemServiceTest extends BaseWebContextSensitiveTest
         assertNotNull(findByAccession(dtos, "13333"));
     }
 
+    /**
+     * Whether a box row may hold nothing at all. Dropping the non-null on the
+     * sample item is only half the answer: the external-quality-assessment work
+     * that dropped it also added a CHECK requiring exactly one of a sample item or
+     * panel material, which puts the contentless row this test is about back out of
+     * reach.
+     */
     private boolean sampleItemIsNullable() {
         String nullable = jdbcTemplate
                 .queryForObject(
                         "SELECT is_nullable FROM information_schema.columns WHERE table_schema = 'clinlims'"
                                 + " AND table_name = 'box_sample_item' AND column_name = 'sample_item_id'",
                         String.class);
-        return "YES".equalsIgnoreCase(nullable);
+        if (!"YES".equalsIgnoreCase(nullable)) {
+            return false;
+        }
+        Integer contentCheck = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM pg_constraint WHERE conname = 'box_sample_item_content_chk'", Integer.class);
+        return contentCheck != null && contentCheck == 0;
     }
 
     private Integer insertBox() {

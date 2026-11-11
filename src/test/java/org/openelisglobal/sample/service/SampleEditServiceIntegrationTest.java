@@ -1,27 +1,44 @@
 package org.openelisglobal.sample.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.audittrail.dao.AuditTrailService;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.services.TableIdService;
+import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sample.bean.SampleEditItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.form.SampleEditForm;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 
 public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
@@ -32,6 +49,7 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
     private static final String EXISTING_ANALYSIS_ID = "1";
     private static final String EXISTING_SAMPLE_ITEM_ID = "1";
     private static final String TEST_ID = "1";
+    private static final String SECOND_TEST_ID = "2";
     private static final String SECOND_ANALYSIS_ON_SAME_ITEM_ID = "2";
     private static final String OTHER_SAMPLE_ITEM_ID = "2";
     private static final String ANALYSIS_ON_OTHER_ITEM_ID = "3";
@@ -48,9 +66,28 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
     @Autowired
     private SampleItemService sampleItemService;
 
+    @Autowired
+    private SampleHumanService sampleHumanService;
+
+    private AuditTrailService auditTrailService;
+
+    private Object sampleServiceTarget;
+
+    private Object originalAuditTrailService;
+
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement(DATASET_XML);
+        jdbcTemplate.update("DELETE FROM clinlims.sample_requester WHERE sample_id = 1");
+        sampleServiceTarget = AopTestUtils.getUltimateTargetObject(sampleService);
+        originalAuditTrailService = ReflectionTestUtils.getField(sampleServiceTarget, "auditTrailService");
+        auditTrailService = Mockito.mock(AuditTrailService.class);
+        ReflectionTestUtils.setField(sampleServiceTarget, "auditTrailService", auditTrailService);
+    }
+
+    @After
+    public void restoreAuditTrailService() {
+        ReflectionTestUtils.setField(sampleServiceTarget, "auditTrailService", originalAuditTrailService);
     }
 
     private SampleEditForm createBaseForm() {
@@ -91,13 +128,203 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
                 updatedSample.getConsentRecordedAt().toString());
     }
 
+    /**
+     * OGC-1366: Modify Order passes sampleChanged=false unless the accession number
+     * changes, so a priority-only edit reached the database through the dirty flush
+     * and never went through the audited update: STAT to ROUTINE left no trace in
+     * the order's history.
+     */
+    @Test
+    public void editSample_changingOnlyThePriority_isRecordedInTheAuditTrail() {
+        sampleEditService.editSample(createBaseForm(), new MockHttpServletRequest(), null, false, SYS_USER_ID);
+        SampleEditForm toStat = createBaseForm();
+        toStat.getSampleOrderItems().setPriority(OrderPriority.STAT);
+        Mockito.clearInvocations(auditTrailService);
+
+        sampleEditService.editSample(toStat, new MockHttpServletRequest(), null, false, SYS_USER_ID);
+
+        assertEquals(OrderPriority.STAT, sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER).getPriority());
+        ArgumentCaptor<BaseObject> changed = ArgumentCaptor.forClass(BaseObject.class);
+        ArgumentCaptor<BaseObject> stored = ArgumentCaptor.forClass(BaseObject.class);
+        verify(auditTrailService).saveHistory(changed.capture(), stored.capture(), eq(SYS_USER_ID),
+                eq(IActionConstants.AUDIT_TRAIL_UPDATE), argThat("sample"::equalsIgnoreCase));
+        assertEquals(OrderPriority.STAT, ((Sample) changed.getValue()).getPriority());
+        assertEquals(OrderPriority.ROUTINE, ((Sample) stored.getValue()).getPriority());
+    }
+
+    @Test
+    public void editSample_withAnUnchangedPriority_writesNoSampleAuditRow() {
+        sampleEditService.editSample(createBaseForm(), new MockHttpServletRequest(), null, false, SYS_USER_ID);
+        Mockito.clearInvocations(auditTrailService);
+
+        sampleEditService.editSample(createBaseForm(), new MockHttpServletRequest(), null, false, SYS_USER_ID);
+
+        verify(auditTrailService, never()).saveHistory(any(), any(), any(), eq(IActionConstants.AUDIT_TRAIL_UPDATE),
+                argThat("sample"::equalsIgnoreCase));
+    }
+
+    /**
+     * OGC-1366 walk: with requester names optional, a Modify Order save that left
+     * the requester blank inserted an empty Person and Provider and linked them as
+     * the order's requester. Order entry treats a blank requester as none.
+     */
+    @Test
+    public void editSample_withABlankRequester_createsNoProviderAndNoRequesterLink() {
+        int people = count("clinlims.person");
+        int providers = count("clinlims.provider");
+
+        sampleEditService.editSample(modifiedForm(), new MockHttpServletRequest(), null, false, SYS_USER_ID);
+
+        assertEquals(people, count("clinlims.person"));
+        assertEquals(providers, count("clinlims.provider"));
+        assertEquals(0, personRequesterIds().size());
+    }
+
+    /**
+     * Review of #4469: picking an existing requester on an order with none linked
+     * created a copy of that person and provider, so the requester search then
+     * listed them twice.
+     */
+    @Test
+    public void editSample_pickingAnExistingRequester_linksItWithoutACopy() {
+        SampleEditForm picked = modifiedForm();
+        picked.getSampleOrderItems().setProviderPersonId("2");
+        picked.getSampleOrderItems().setProviderFirstName("Test");
+        picked.getSampleOrderItems().setProviderLastName("Clinician");
+        int people = count("clinlims.person");
+        int providers = count("clinlims.provider");
+
+        sampleEditService.editSample(picked, new MockHttpServletRequest(), null, false, SYS_USER_ID);
+
+        assertEquals(people, count("clinlims.person"));
+        assertEquals(providers, count("clinlims.provider"));
+        assertEquals(List.of("2"), personRequesterIds());
+    }
+
+    @Test
+    public void editSample_clearingTheRequester_unlinksItFromTheOrder() {
+        SampleEditForm withRequester = modifiedForm();
+        withRequester.getSampleOrderItems().setProviderFirstName("Grace");
+        withRequester.getSampleOrderItems().setProviderLastName("Nansubuga");
+        sampleEditService.editSample(withRequester, new MockHttpServletRequest(), null, false, SYS_USER_ID);
+        assertEquals(1, personRequesterIds().size());
+        SampleEditForm cleared = modifiedForm();
+        cleared.getSampleOrderItems().setProviderPersonId(personRequesterIds().get(0));
+        int people = count("clinlims.person");
+
+        sampleEditService.editSample(cleared, new MockHttpServletRequest(), null, false, SYS_USER_ID);
+
+        assertEquals(people, count("clinlims.person"));
+
+        assertEquals(0, personRequesterIds().size());
+        assertNull(jdbcTemplate.queryForObject("SELECT provider_id::text FROM clinlims.sample_human WHERE samp_id = 1",
+                String.class));
+    }
+
+    /**
+     * OGC-1366 walk: Modify Order sends the loaded site's name with its id
+     * (OGC-1191 keeps the name so the required field stays filled), and every save
+     * cloned the site into a new organization. The id wins, as in order entry; a
+     * name alone is a new site.
+     */
+    @Test
+    public void editSample_withAnExistingSite_linksItAndCreatesNoOrganization() {
+        SampleEditForm form = modifiedForm();
+        form.getSampleOrderItems().setReferringSiteId("1");
+        form.getSampleOrderItems().setReferringSiteName("Test Health Center");
+        jdbcTemplate.update("INSERT INTO clinlims.organization_organization_type (org_id, org_type_id) VALUES (1, ?)"
+                + " ON CONFLICT DO NOTHING", Long.valueOf(referringClinicTypeId()));
+        int organizations = count("clinlims.organization");
+
+        sampleEditService.editSample(form, new MockHttpServletRequest(), null, false, SYS_USER_ID);
+        sampleEditService.editSample(form, new MockHttpServletRequest(), null, false, SYS_USER_ID);
+
+        assertEquals(organizations, count("clinlims.organization"));
+        assertEquals(List.of("1"), siteRequesterIds());
+    }
+
+    @Test
+    public void editSample_withANewSiteName_createsThatSite() {
+        SampleEditForm form = modifiedForm();
+        form.getSampleOrderItems().setReferringSiteName("QA_AUTO New Referring Clinic");
+        referringClinicTypeId();
+        int organizations = count("clinlims.organization");
+
+        sampleEditService.editSample(form, new MockHttpServletRequest(), null, false, SYS_USER_ID);
+
+        assertEquals(organizations + 1, count("clinlims.organization"));
+        String newSiteId = jdbcTemplate.queryForObject(
+                "SELECT id::text FROM clinlims.organization WHERE name = 'QA_AUTO New Referring Clinic'", String.class);
+        assertEquals(List.of(newSiteId), siteRequesterIds());
+    }
+
+    /**
+     * The referring-clinic organization type, under the id TableIdService read at
+     * startup. Other fixtures truncate organization_type, which would leave that id
+     * dangling for the rest of the run.
+     */
+    private String referringClinicTypeId() {
+        String id = TableIdService.getInstance().REFERRING_ORG_TYPE_ID;
+        jdbcTemplate.update("INSERT INTO clinlims.organization_type (id, short_name, description, lastupdated)"
+                + " VALUES (?, 'referring clinic', 'Name of org who can order lab tests', now())"
+                + " ON CONFLICT (id) DO NOTHING", Long.valueOf(id));
+        return id;
+    }
+
+    private List<String> siteRequesterIds() {
+        return jdbcTemplate.queryForList("SELECT sr.requester_id::text FROM clinlims.sample_requester sr"
+                + " JOIN clinlims.requester_type rt ON rt.id = sr.requester_type_id"
+                + " WHERE sr.sample_id = 1 AND rt.requester_type = 'organization'", String.class);
+    }
+
+    private SampleEditForm modifiedForm() {
+        SampleEditForm form = createBaseForm();
+        form.getSampleOrderItems().setModified(true);
+        form.getSampleOrderItems().setSampleId("1");
+        form.getSampleOrderItems().setReceivedDateForDisplay("12/02/2024");
+        form.getSampleOrderItems().setReceivedTime("10:00");
+        return form;
+    }
+
+    private int count(String table) {
+        return jdbcTemplate.queryForObject("SELECT count(*) FROM " + table, Integer.class);
+    }
+
+    private List<String> personRequesterIds() {
+        return jdbcTemplate.queryForList("SELECT sr.requester_id::text FROM clinlims.sample_requester sr"
+                + " JOIN clinlims.requester_type rt ON rt.id = sr.requester_type_id"
+                + " WHERE sr.sample_id = 1 AND rt.requester_type = 'provider'", String.class);
+    }
+
+    /**
+     * OGC-1266: an order saved without a patient (EQA, environmental, a declared
+     * no-patient order) could not be modified at all; the save dereferenced the
+     * missing patient.
+     */
+    @Test
+    public void editSample_onAnOrderWithoutAPatient_shouldSaveTheChange() {
+        Sample sample = sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER);
+        SampleHuman lookup = new SampleHuman();
+        lookup.setSampleId(sample.getId());
+        SampleHuman link = sampleHumanService.getDataBySample(lookup);
+        link.setPatientId(null);
+        link.setSysUserId(SYS_USER_ID);
+        sampleHumanService.update(link);
+        SampleEditForm form = createBaseForm();
+        form.getSampleOrderItems().setPriority(OrderPriority.STAT);
+
+        sampleEditService.editSample(form, new MockHttpServletRequest(), sample, true, SYS_USER_ID);
+
+        assertEquals(OrderPriority.STAT, sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER).getPriority());
+    }
+
     @Test
     public void editSample_withAddedTests_shouldCreateNewAnalyses() {
         SampleEditForm form = createBaseForm();
 
         SampleEditItem addItem = new SampleEditItem();
         addItem.setAdd(true);
-        addItem.setTestId(TEST_ID);
+        addItem.setTestId(SECOND_TEST_ID);
         addItem.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
         form.getPossibleTests().add(addItem);
 
@@ -120,7 +347,7 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
                 Analysis freshAnalysis = analysisService.get(analysis.getId());
 
                 assertEquals("Status should be NotStarted", notStartedStatus, freshAnalysis.getStatusId());
-                assertEquals("Test ID should match", TEST_ID, freshAnalysis.getTest().getId());
+                assertEquals("Test ID should match", SECOND_TEST_ID, freshAnalysis.getTest().getId());
                 assertEquals("AnalysisType should be MANUAL", "MANUAL", freshAnalysis.getAnalysisType());
                 assertEquals("Revision should be 0", "0", freshAnalysis.getRevision());
                 assertEquals("Sample item ID should match", EXISTING_SAMPLE_ITEM_ID,
@@ -130,6 +357,105 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
         }
 
         assertTrue("Newly added analysis should be found in DB", foundNewAnalysis);
+    }
+
+    /**
+     * OGC-1514: Modify Order used to offer the tests already on a sample, and a
+     * second "add" of one created a duplicate analysis on the same specimen.
+     */
+    @Test
+    public void editSample_addingATestAlreadyLiveOnTheItem_createsNoSecondAnalysis() {
+        SampleEditForm form = createBaseForm();
+
+        SampleEditItem addItem = new SampleEditItem();
+        addItem.setAdd(true);
+        addItem.setTestId(TEST_ID);
+        addItem.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
+        form.getPossibleTests().add(addItem);
+
+        sampleEditService.editSample(form, new MockHttpServletRequest(),
+                sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER), true, SYS_USER_ID);
+
+        List<Analysis> analyses = analysisService
+                .getAnalysesBySampleItem(sampleItemService.get(EXISTING_SAMPLE_ITEM_ID));
+        assertEquals("the live Glucose analysis is not ordered twice", 1, analyses.size());
+        assertEquals(EXISTING_ANALYSIS_ID, analyses.get(0).getId());
+    }
+
+    @Test
+    public void editSample_addingATestTwiceInOneSave_createsOneAnalysis() {
+        SampleEditForm form = createBaseForm();
+
+        for (int i = 0; i < 2; i++) {
+            SampleEditItem addItem = new SampleEditItem();
+            addItem.setAdd(true);
+            addItem.setTestId(SECOND_TEST_ID);
+            addItem.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
+            form.getPossibleTests().add(addItem);
+        }
+
+        sampleEditService.editSample(form, new MockHttpServletRequest(),
+                sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER), true, SYS_USER_ID);
+
+        List<Analysis> analyses = analysisService
+                .getAnalysesBySampleItem(sampleItemService.get(EXISTING_SAMPLE_ITEM_ID));
+        assertEquals("Glucose plus one Urea", 2, analyses.size());
+    }
+
+    /**
+     * OGC-1514 review: an add that revived a cancelled analysis skipped the
+     * duplicate guard. A test cancelled and ordered afresh in one save leaves a
+     * cancelled row next to the live one; adding it again must not revive the
+     * cancelled row into a second live analysis of the same test.
+     */
+    @Test
+    public void editSample_addingATestWithACancelledAndALiveAnalysis_revivesNothing() {
+        SampleEditForm reorder = createBaseForm();
+        SampleEditItem cancelItem = new SampleEditItem();
+        cancelItem.setCanceled(true);
+        cancelItem.setAnalysisId(EXISTING_ANALYSIS_ID);
+        cancelItem.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
+        reorder.getExistingTests().add(cancelItem);
+        reorder.getPossibleTests().add(addOf(TEST_ID));
+        sampleEditService.editSample(reorder, new MockHttpServletRequest(),
+                sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER), true, SYS_USER_ID);
+
+        String canceledStatus = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled);
+        assertEquals("the cancelled Glucose stays cancelled", canceledStatus,
+                analysisService.get(EXISTING_ANALYSIS_ID).getStatusId());
+        List<Analysis> live = liveAnalysesOf(TEST_ID);
+        assertEquals("cancel and re-order in one save leaves one live Glucose", 1, live.size());
+        String reordered = live.get(0).getId();
+
+        SampleEditForm again = createBaseForm();
+        again.getPossibleTests().add(addOf(TEST_ID));
+        sampleEditService.editSample(again, new MockHttpServletRequest(),
+                sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER), true, SYS_USER_ID);
+
+        live = liveAnalysesOf(TEST_ID);
+        assertEquals("the cancelled Glucose is not revived next to the live one", 1, live.size());
+        assertEquals(reordered, live.get(0).getId());
+        assertEquals(canceledStatus, analysisService.get(EXISTING_ANALYSIS_ID).getStatusId());
+    }
+
+    private SampleEditItem addOf(String testId) {
+        SampleEditItem addItem = new SampleEditItem();
+        addItem.setAdd(true);
+        addItem.setTestId(testId);
+        addItem.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
+        return addItem;
+    }
+
+    private List<Analysis> liveAnalysesOf(String testId) {
+        String canceledStatus = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled);
+        List<Analysis> live = new ArrayList<>();
+        for (Analysis analysis : analysisService
+                .getAnalysesBySampleItem(sampleItemService.get(EXISTING_SAMPLE_ITEM_ID))) {
+            if (testId.equals(analysis.getTest().getId()) && !canceledStatus.equals(analysis.getStatusId())) {
+                live.add(analysis);
+            }
+        }
+        return live;
     }
 
     @Test

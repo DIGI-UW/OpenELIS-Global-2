@@ -10,12 +10,17 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
+import org.openelisglobal.inventory.valueholder.InventoryTransaction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.annotation.Rollback;
 
 @Rollback
 public class InventoryLotServiceIntegrationTest extends BaseWebContextSensitiveTest {
+
+    @Autowired
+    private InventoryTransactionService inventoryTransactionService;
 
     @Autowired
     InventoryLotService inventoryLotService;
@@ -214,15 +219,44 @@ public class InventoryLotServiceIntegrationTest extends BaseWebContextSensitiveT
 
     @Test
     public void getAvailableLotsByItemFEFO_shouldReturnLotsInFEFOOrder() {
-        // Lot 1001 expires 2025-06-30 (earlier), lot 1000 expires 2025-12-31 (later).
+        // The fixture's own lots have expired, so seed live ones.
+        InventoryLot later = newLot("LOT-FEFO-LATER", "LOT-BC-FEFO-LATER");
+        later.setExpirationDate(Timestamp.valueOf("2099-12-31 00:00:00"));
+        later.setQcStatus(QCStatus.PASSED);
+        inventoryLotService.insert(later);
+
+        InventoryLot sooner = newLot("LOT-FEFO-SOONER", "LOT-BC-FEFO-SOONER");
+        sooner.setExpirationDate(Timestamp.valueOf("2099-06-30 00:00:00"));
+        sooner.setQcStatus(QCStatus.PASSED);
+        inventoryLotService.insert(sooner);
+
         List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(1000L);
 
         assertNotNull("Lots should not be null", lots);
-        assertEquals("Should have 2 active lots", 2, lots.size());
+        assertEquals("Should have 2 available lots", 2, lots.size());
+        assertEquals("First lot should be earliest expiring", "LOT-FEFO-SOONER", lots.get(0).getLotNumber());
+        assertEquals("Second lot should expire later", "LOT-FEFO-LATER", lots.get(1).getLotNumber());
+    }
 
-        // First lot should expire earliest
-        assertEquals("First lot should be earliest expiring", "LOT-2025-002", lots.get(0).getLotNumber());
-        assertEquals("Second lot should expire later", "LOT-2025-001", lots.get(1).getLotNumber());
+    @Test
+    public void getAvailableLotsByItemFEFO_shouldOrderByTheEffectiveExpiryNotThePrintedOne() {
+        InventoryLot opened = newLot("LOT-2025-FEFO-OPENED", null);
+        opened.setQcStatus(QCStatus.PASSED);
+        opened.setExpirationDate(Timestamp.valueOf("2099-12-31 00:00:00"));
+        opened.setCalculatedExpiryAfterOpening(Timestamp.valueOf("2098-01-15 00:00:00"));
+        inventoryLotService.insert(opened);
+
+        InventoryLot sealed = newLot("LOT-2025-FEFO-SEALED", null);
+        sealed.setQcStatus(QCStatus.PASSED);
+        sealed.setExpirationDate(Timestamp.valueOf("2098-06-30 00:00:00"));
+        inventoryLotService.insert(sealed);
+
+        List<String> order = inventoryLotService.getAvailableLotsByItemFEFO(1000L).stream()
+                .map(InventoryLot::getLotNumber).filter(number -> number.startsWith("LOT-2025-FEFO-"))
+                .collect(java.util.stream.Collectors.toList());
+
+        assertEquals("the opened vial goes off first, whatever its label says",
+                List.of("LOT-2025-FEFO-OPENED", "LOT-2025-FEFO-SEALED"), order);
     }
 
     @Test
@@ -258,13 +292,39 @@ public class InventoryLotServiceIntegrationTest extends BaseWebContextSensitiveT
         InventoryLot lot = inventoryLotService.get(1000L);
         assertEquals(Double.valueOf(100.0), lot.getCurrentQuantity());
 
-        InventoryLot updatedLot = inventoryLotService.adjustLotQuantity(1000L, 75.0, "Test adjustment", "1");
+        InventoryLot updatedLot = inventoryLotService.adjustLotQuantity(1000L, 75.0, "Test adjustment", null, "1");
 
         assertNotNull("Updated lot should not be null", updatedLot);
         assertEquals(Double.valueOf(75.0), updatedLot.getCurrentQuantity());
 
         // Verify persisted
         assertEquals(Double.valueOf(75.0), inventoryLotService.get(1000L).getCurrentQuantity());
+    }
+
+    @Test
+    public void adjustLotQuantity_keepsTheNotesWithTheReason() {
+        inventoryLotService.adjustLotQuantity(1000L, 75.0, "DAMAGED", "One box crushed in transit", "1");
+
+        String notes = inventoryTransactionService.getByLotId(1000L).stream()
+                .filter(t -> t.getTransactionType() == TransactionType.ADJUSTMENT).map(InventoryTransaction::getNotes)
+                .findFirst().orElse(null);
+        assertEquals("Reason: DAMAGED. Notes: One box crushed in transit", notes);
+    }
+
+    @Test
+    public void updateLotStatus_refusesDisposed_whichOnlyDisposalMayRecord() {
+        assertThrows(IllegalStateException.class,
+                () -> inventoryLotService.updateLotStatus(1000L, LotStatus.DISPOSED, "1"));
+
+        assertEquals(LotStatus.ACTIVE, inventoryLotService.get(1000L).getStatus());
+    }
+
+    @Test
+    public void updateLotStatus_refusesConsumed_whileStockRemains() {
+        assertThrows(IllegalStateException.class,
+                () -> inventoryLotService.updateLotStatus(1000L, LotStatus.CONSUMED, "1"));
+
+        assertEquals(LotStatus.ACTIVE, inventoryLotService.get(1000L).getStatus());
     }
 
     @Test

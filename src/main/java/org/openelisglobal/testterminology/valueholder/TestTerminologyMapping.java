@@ -122,8 +122,12 @@ public class TestTerminologyMapping extends BaseObject<String> {
         return code;
     }
 
+    /**
+     * Stored trimmed: exact-match routing and the duplicate checks compare codes as
+     * stored (OGC-1465).
+     */
     public void setCode(String code) {
-        this.code = code;
+        this.code = code == null ? null : code.trim();
     }
 
     public String getRelationship() {

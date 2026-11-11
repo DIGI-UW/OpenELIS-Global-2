@@ -5,15 +5,19 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.qc.service.QCControlLotService;
 import org.openelisglobal.qc.service.QCResultService;
+import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.testsupport.SliceSecurityConfig;
@@ -46,6 +50,22 @@ public class BenchQCResultRestControllerSecurityTest extends SecuritySliceMockMv
         QCResultService service = webApplicationContext.getBean(QCResultService.class);
         org.mockito.Mockito.reset(service);
         when(service.createBenchQCResult(any(), anyInt())).thenReturn(new QCResult());
+        QCControlLotService lots = webApplicationContext.getBean(QCControlLotService.class);
+        org.mockito.Mockito.reset(lots);
+        when(lots.getActiveBenchControlLots("13")).thenReturn(List.of(new QCControlLot()));
+    }
+
+    @Test
+    public void controlLots_resultsRoleListsTheTestsBenchLots() throws Exception {
+        // OGC-427: the Results-page picker; the admin list refused this role
+        mockMvc.perform(get("/rest/qc/results/control-lots?testId=13").with(user("tech").roles("RESULTS")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    public void controlLots_nonResultsRoleReturns403() throws Exception {
+        mockMvc.perform(get("/rest/qc/results/control-lots?testId=13").with(user("front").roles("RECEPTION")))
+                .andExpect(status().isForbidden());
     }
 
     private UserSessionData sessionUser() {
@@ -118,9 +138,16 @@ public class BenchQCResultRestControllerSecurityTest extends SecuritySliceMockMv
         }
 
         @Bean
-        BenchQCResultRestController benchQCResultRestController(QCResultService qcResultService) {
+        QCControlLotService controlLotService() {
+            return mock(QCControlLotService.class);
+        }
+
+        @Bean
+        BenchQCResultRestController benchQCResultRestController(QCResultService qcResultService,
+                QCControlLotService controlLotService) {
             BenchQCResultRestController controller = new BenchQCResultRestController();
             ReflectionTestUtils.setField(controller, "qcResultService", qcResultService);
+            ReflectionTestUtils.setField(controller, "controlLotService", controlLotService);
             return controller;
         }
     }

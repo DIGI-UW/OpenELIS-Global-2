@@ -10,7 +10,6 @@ import {
   seedCriticalBand,
   CriticalBandSeed,
 } from "../../../helpers/seed-callback-data";
-import { isSettingOn, setSetting } from "../../../fixtures/esig-admin";
 import {
   NAV_TIMEOUT,
   UI_TIMEOUT,
@@ -35,14 +34,6 @@ const ORDERED_TEST_ID = 13;
 const CRITICAL_VALUE = "95"; // at/beyond the seeded high bound (10–90 band)
 const RECIPIENT = `E2E Dr. Callback ${Date.now().toString(36)}`;
 
-// The needs-callback banner, the Log-callback button and the modal live in the
-// legacy SearchResultForm; the unified worklist has no callback capture yet, so
-// this loop is only reachable with the unified route off. The route ships on by
-// default, so this spec turns it off for its own run and puts it back, the way
-// ogc-1121-critical-result-flag reaches the same screen. Drop this once the
-// banner and modal are ported to the unified page.
-const UNIFIED_ROUTE_SETTING = "resultsEntryUnifiedRoute";
-
 /** Toggle the CALLBACK indicator via the OGC-709 manage endpoint. */
 async function putCallbackConfig(page: Page, enabled: boolean): Promise<void> {
   const res = await page.request.put(
@@ -65,35 +56,34 @@ async function putCallbackConfig(page: Page, enabled: boolean): Promise<void> {
   expect(res.status(), "qi-config PUT should succeed for admin").toBe(204);
 }
 
-/** Search legacy Results Entry for one accession; answers with its main region. */
-async function searchResultsEntry(
+/**
+ * Opens Results Entry on one accession and expands its row: the callback
+ * action lives in the expanded panel of the saved critical result.
+ */
+async function openResultsEntryRow(
   page: Page,
   accessionNumber: string,
 ): Promise<Locator> {
-  await page.goto("/result?type=order&doRange=false", {
-    waitUntil: "domcontentloaded",
-  });
-  const main = page.getByRole("main");
-  const searchInput = main.getByPlaceholder(/accession/i);
-  await expect(searchInput).toBeVisible({ timeout: NAV_TIMEOUT });
-  await searchInput.fill(accessionNumber);
-  await main.getByRole("button", { name: /search/i }).click();
-  return main;
+  await page.goto(
+    `/Results?accessionNumber=${encodeURIComponent(accessionNumber)}`,
+    { waitUntil: "domcontentloaded" },
+  );
+  const row = page
+    .getByRole("main")
+    .getByRole("row")
+    .filter({ hasText: accessionNumber })
+    .first();
+  await expect(row).toBeVisible({ timeout: NAV_TIMEOUT });
+  await row.getByRole("button", { name: /expand row/i }).click();
+  return page.getByRole("main");
 }
 
 test.describe.serial("Critical Callback Compliance (OGC-714/715)", () => {
   let band: CriticalBandSeed;
   let accessionNumber: string;
-  let unifiedWasOn = false;
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeAll(() => {
     band = seedCriticalBand(ORDERED_TEST_ID, 10, 90);
-    await withAuthedPage(browser, async (page) => {
-      unifiedWasOn = await isSettingOn(page, UNIFIED_ROUTE_SETTING);
-      if (unifiedWasOn) {
-        await setSetting(page, UNIFIED_ROUTE_SETTING, false);
-      }
-    });
   });
 
   test.afterAll(async ({ browser }) => {
@@ -101,13 +91,11 @@ test.describe.serial("Critical Callback Compliance (OGC-714/715)", () => {
     await withAuthedPage(browser, async (page) => {
       // put the indicator back to its shipped opt-out default
       await putCallbackConfig(page, false);
-      if (unifiedWasOn) {
-        await setSetting(page, UNIFIED_ROUTE_SETTING, true);
-      }
     });
   });
 
   test("critical result → callback log → tile + detail", async ({ page }) => {
+    test.setTimeout(180_000);
     await test.step("Enable the CALLBACK indicator", async () => {
       await putCallbackConfig(page, true);
     });
@@ -122,20 +110,18 @@ test.describe.serial("Critical Callback Compliance (OGC-714/715)", () => {
       await enterResults(page, accessionNumber, CRITICAL_VALUE);
     });
 
-    await test.step("Results Entry flags the saved critical", async () => {
-      await searchResultsEntry(page, accessionNumber);
+    await test.step("Results Entry offers to log the callback for the saved critical", async () => {
+      const main = await openResultsEntryRow(page, accessionNumber);
 
-      await expect(page.getByTestId("callback-banner")).toBeVisible({
-        timeout: NAV_TIMEOUT,
-      });
-      await expect(page.getByTestId("log-callback-button")).toBeVisible({
-        timeout: UI_TIMEOUT,
-      });
+      await expect(main.getByTestId("unified-log-callback-button")).toBeVisible(
+        { timeout: UI_TIMEOUT },
+      );
+      await expect(main.getByTestId("unified-callback-logged")).toHaveCount(0);
     });
 
     await test.step("Log the callback via the modal", async () => {
-      await page.getByTestId("log-callback-button").click();
-      const modal = page.getByRole("dialog");
+      await page.getByTestId("unified-log-callback-button").click();
+      const modal = page.getByTestId("callback-modal");
       await expect(modal).toBeVisible({ timeout: UI_TIMEOUT });
       await expect(modal).toContainText(accessionNumber);
 
@@ -149,21 +135,19 @@ test.describe.serial("Critical Callback Compliance (OGC-714/715)", () => {
       await modal.getByRole("button", { name: /save/i }).click();
       await expect(modal).toBeHidden({ timeout: LONG_TIMEOUT });
 
-      // banner recomputes from the logged map — the page's criticals are covered
-      await expect(page.getByTestId("callback-banner")).toBeHidden({
+      // the row now says the call was logged
+      await expect(page.getByTestId("unified-callback-logged")).toBeVisible({
         timeout: UI_TIMEOUT,
       });
     });
 
-    await test.step("Banner stays cleared on reload (durable read side)", async () => {
-      const main = await searchResultsEntry(page, accessionNumber);
+    await test.step("The logged call survives a reload (durable read side)", async () => {
+      const main = await openResultsEntryRow(page, accessionNumber);
 
-      // the row renders (Save button present) but no banner: the durable
-      // logged-results check knows this critical was already called
-      await expect(main.getByRole("button", { name: "Save" })).toBeVisible({
+      // the durable logged-results check knows this critical was already called
+      await expect(main.getByTestId("unified-callback-logged")).toBeVisible({
         timeout: NAV_TIMEOUT,
       });
-      await expect(page.getByTestId("callback-banner")).toBeHidden();
     });
 
     await test.step("Validate/release the result", async () => {

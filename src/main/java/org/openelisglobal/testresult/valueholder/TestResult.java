@@ -30,7 +30,7 @@ public class TestResult extends BaseObject<String> {
     private String flags;
     private String testResultType;
     private String value;
-    private String significantDigits;
+    private String reportingDecimalPlaces;
     private String quantLimit;
     private String contLevel;
     private String scriptletName;
@@ -46,6 +46,9 @@ public class TestResult extends BaseObject<String> {
 
     // transient
     private Boolean isDefault = false;
+    // transient: a select-list option the admin typed rather than picked, stored
+    // as a dictionary entry with that text even when the text is a number
+    private boolean freeText = false;
 
     public TestResult() {
         super();
@@ -56,6 +59,14 @@ public class TestResult extends BaseObject<String> {
     @Override
     public String getId() {
         return this.id;
+    }
+
+    public boolean isFreeText() {
+        return freeText;
+    }
+
+    public void setFreeText(boolean freeText) {
+        this.freeText = freeText;
     }
 
     public Test getTest() {
@@ -119,12 +130,12 @@ public class TestResult extends BaseObject<String> {
         this.resultGroup = resultGroup;
     }
 
-    public String getSignificantDigits() {
-        return significantDigits;
+    public String getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(String significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(String reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public String getTestResultType() {

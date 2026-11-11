@@ -13,6 +13,9 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -23,6 +26,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
@@ -321,5 +325,24 @@ public abstract class RetroCIPatientReport extends RetroCIReport {
             projIDList.add(fields[i]);
         }
         return projIDList;
+    }
+
+    /**
+     * One of the report images the web application ships in its static images
+     * folder, or null when the folder or the file is missing.
+     */
+    protected byte[] reportImage(String fileName) {
+        Object imagesPath = reportParameters.get("imagesPath");
+        if (imagesPath == null) {
+            return null;
+        }
+        Path file = Path.of(imagesPath.toString(), fileName);
+        try {
+            return Files.isReadable(file) ? Files.readAllBytes(file) : null;
+        } catch (IOException e) {
+            LogEvent.logError(RetroCIPatientReport.class.getSimpleName(), "reportImage",
+                    "Unreadable report image " + file + ": " + e.getMessage());
+            return null;
+        }
     }
 }
