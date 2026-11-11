@@ -1206,7 +1206,6 @@ public class ResultsLoadUtility {
                 SampleEQA sampleEQA = sampleEQAService.findBySampleId(sampleId).orElse(null);
                 if (sampleEQA != null && Boolean.TRUE.equals(sampleEQA.getIsEqaSample())) {
                     testItem.setEqaSample(true);
-                    testItem.setEqaInHouse(sampleEQAService.isInHouse(sampleId));
                     if (sampleEQA.getEqaPriority() != null) {
                         testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
                     }
@@ -1216,7 +1215,6 @@ public class ResultsLoadUtility {
                 sampleEQAService.findPerAnalystSchemeId(sampleId).ifPresent(schemeId -> {
                     testItem.setEqaPerAnalyst(true);
                     testItem.setEqaSchemeId(String.valueOf(schemeId));
-                    // Preselect who the sample was sealed for; the bench can change it.
                     eqaParticipantResultService.findAssignedAnalystId(Long.valueOf(analysis.getId()))
                             .ifPresent(analystId -> testItem.setEqaAnalystId(String.valueOf(analystId)));
                 });

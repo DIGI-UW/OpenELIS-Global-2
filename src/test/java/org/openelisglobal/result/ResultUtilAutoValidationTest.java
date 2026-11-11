@@ -120,4 +120,83 @@ public class ResultUtilAutoValidationTest extends BaseWebContextSensitiveTest {
         }
     }
 
+    @Test
+    public void noReviewReleasesAValidResultAtEntryEvenWhenAbnormal() {
+        underPolicy("NONE", true, () -> {
+            assertEquals(status(AnalysisStatus.Finalized),
+                    ResultUtil.getStatusForTestResult(entered("100", "N", "25.0"), true, analysisService.get("100")));
+            TestResultItem invalid = entered("100", "N", "25.0");
+            invalid.setValid(false);
+            assertEquals("an entry the page marked invalid still waits", status(AnalysisStatus.TechnicalAcceptance),
+                    ResultUtil.getStatusForTestResult(invalid, false, analysisService.get("100")));
+        });
+    }
+
+    @Test
+    public void allResultsWaitsForReviewWhateverValidateAllResultsSays() {
+        underPolicy("ALL", true, () -> assertEquals(status(AnalysisStatus.TechnicalAcceptance),
+                ResultUtil.getStatusForTestResult(entered("100", "N", "10.5"), false, analysisService.get("100"))));
+    }
+
+    @Test
+    public void onlyResultsThatNeedReviewAppliesTheClearanceRuleWhateverValidateAllResultsSays() {
+        underPolicy("NEEDS_REVIEW", true, () -> {
+            assertEquals(status(AnalysisStatus.Finalized),
+                    ResultUtil.getStatusForTestResult(entered("100", "N", "10.5"), true, analysisService.get("100")));
+            assertEquals(status(AnalysisStatus.TechnicalAcceptance),
+                    ResultUtil.getStatusForTestResult(entered("100", "N", "25.0"), true, analysisService.get("100")));
+        });
+    }
+
+    @Test
+    public void withTheFlagOffThePolicyIsIgnored() {
+        underPolicy("NONE", false, () -> assertEquals(status(AnalysisStatus.TechnicalAcceptance),
+                ResultUtil.getStatusForTestResult(entered("100", "N", "25.0"), false, analysisService.get("100"))));
+    }
+
+    @Test
+    public void blockedSelfValidationKeepsNoReviewResultsWaiting() {
+        var configuration = org.openelisglobal.common.util.ConfigurationProperties.getInstance();
+        var property = org.openelisglobal.common.util.ConfigurationProperties.Property.BLOCK_SELF_VALIDATION;
+        String previous = configuration.getPropertyValue(property);
+        try {
+            configuration.setPropertyValue(property, "true");
+            underPolicy("NONE", true, () -> assertEquals(status(AnalysisStatus.TechnicalAcceptance),
+                    ResultUtil.getStatusForTestResult(entered("100", "N", "10.5"), false, analysisService.get("100"))));
+        } finally {
+            configuration.setPropertyValue(property, previous);
+        }
+    }
+
+    private void underPolicy(String trigger, boolean flagOn, Runnable check) {
+        var configuration = org.openelisglobal.common.util.ConfigurationProperties.getInstance();
+        var flag = org.openelisglobal.common.util.ConfigurationProperties.Property.USE_MULTI_LEVEL_VALIDATION;
+        String previousFlag = configuration.getPropertyValue(flag);
+        java.util.List<java.util.Map<String, Object>> before = jdbcTemplate.queryForList(
+                "SELECT review_trigger, review_levels FROM clinlims.validation_policy WHERE test_section_id IS NULL");
+        int levels = "NONE".equals(trigger) ? 0 : 1;
+        try {
+            configuration.setPropertyValue(flag, Boolean.toString(flagOn));
+            if (before.isEmpty()) {
+                jdbcTemplate.update("INSERT INTO clinlims.validation_policy (id, test_section_id, review_trigger,"
+                        + " review_levels, is_active) VALUES (nextval('clinlims.validation_policy_seq'), NULL, ?, ?,"
+                        + " true)", trigger, levels);
+            } else {
+                jdbcTemplate.update("UPDATE clinlims.validation_policy SET review_trigger = ?, review_levels = ?"
+                        + " WHERE test_section_id IS NULL", trigger, levels);
+            }
+            check.run();
+        } finally {
+            if (before.isEmpty()) {
+                jdbcTemplate.update("DELETE FROM clinlims.validation_policy WHERE test_section_id IS NULL");
+            } else {
+                jdbcTemplate.update(
+                        "UPDATE clinlims.validation_policy SET review_trigger = ?, review_levels = ?"
+                                + " WHERE test_section_id IS NULL",
+                        before.get(0).get("review_trigger"), before.get(0).get("review_levels"));
+            }
+            configuration.setPropertyValue(flag, previousFlag);
+        }
+    }
+
 }

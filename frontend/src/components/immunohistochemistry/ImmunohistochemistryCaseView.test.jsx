@@ -114,4 +114,118 @@ describe("the pathology reading a referred case carries", () => {
       screen.getByText(messages["pathology.label.grossExam"], { exact: false }),
     ).toBeInTheDocument();
   });
+
+  // A slide's level and stain are what the pathologist reads it by; the
+  // referred list showed only its name and location.
+  it("shows each referred slide's level and the name of its stain", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === CASE_URL) {
+        return callback({
+          labNumber: "ACC4",
+          reffered: true,
+          status: "IN_PROGRESS",
+          assignedTechnicianId: "1",
+          assignedPathologistId: "1",
+          grossExam: "",
+          microscopyExam: "",
+          blocks: [
+            { id: 1, designation: "A1", cassetteState: "BLOCK", active: true },
+          ],
+          slides: [
+            {
+              id: 5,
+              designation: "1",
+              blockId: 1,
+              level: "2",
+              stainId: "31",
+              active: true,
+              location: "Tray 4",
+            },
+          ],
+          stainNames: { 31: "PAS" },
+          reports: [],
+          requests: [],
+          techniques: [],
+          conclusions: [],
+        });
+      }
+      if (url.startsWith("/rest/paginatedDisplayList/")) {
+        return callback({
+          displayItems: [],
+          paging: { totalPages: 1, currentPage: 1 },
+        });
+      }
+      return callback([]);
+    });
+
+    renderCaseView();
+
+    const level = await waitFor(() =>
+      screen.getByLabelText(messages["pathology.label.level"]),
+    );
+    expect(level).toHaveValue("2");
+    expect(level).toBeDisabled();
+    expect(
+      screen.getByLabelText(messages["pathology.label.stain"]),
+    ).toHaveValue("PAS");
+    expect(screen.getByDisplayValue("A1.1")).toBeInTheDocument();
+  });
+  // Whether each referred slide's label was checked against its block at
+  // microtomy, read only here.
+  it("tags each referred slide Verified or Unverified, naming who checked it, and tags none with no block on record", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === CASE_URL) {
+        return callback({
+          labNumber: "ACC4",
+          reffered: true,
+          status: "IN_PROGRESS",
+          assignedTechnicianId: "1",
+          assignedPathologistId: "1",
+          grossExam: "",
+          microscopyExam: "",
+          blocks: [
+            { id: 1, designation: "A1", cassetteState: "BLOCK", active: true },
+          ],
+          slides: [
+            { id: 5, designation: "1", blockId: 1, active: true },
+            { id: 6, designation: "2", blockId: 1, active: true },
+            { id: 7, designation: "9", blockId: null, active: true },
+          ],
+          labelVerifications: {
+            5: { verifiedAt: "09/11/2026 10:05", verifiedBy: "Tech, Tina" },
+          },
+          reports: [],
+          requests: [],
+          techniques: [],
+          conclusions: [],
+        });
+      }
+      if (url.startsWith("/rest/paginatedDisplayList/")) {
+        return callback({
+          displayItems: [],
+          paging: { totalPages: 1, currentPage: 1 },
+        });
+      }
+      return callback([]);
+    });
+
+    renderCaseView();
+
+    const slideCell = (name) =>
+      screen.getByDisplayValue(name).closest(".cds--css-grid-column");
+    await waitFor(() => screen.getByDisplayValue("A1.1"));
+
+    expect(slideCell("A1.1")).toHaveTextContent(
+      messages["pathology.badge.verified"],
+    );
+    expect(
+      slideCell("A1.1").querySelector(
+        ".pathology-case-view__label-verification",
+      ),
+    ).toHaveAttribute("title", "Verified by Tech, Tina on 09/11/2026 10:05");
+    expect(slideCell("A1.2")).toHaveTextContent(
+      messages["pathology.badge.unverified"],
+    );
+    expect(slideCell("9").querySelector(".cds--tag")).toBeNull();
+  });
 });

@@ -48,6 +48,9 @@
   <include relativeToChangelogFile="true" file="026-result-run.xml"/>
   <!-- OGC-1579: module system state table (numbered 030 to leave room for develop's next changesets) -->
   <include relativeToChangelogFile="true" file="030-module-state.xml"/>
+  <include relativeToChangelogFile="true" file="031-container-types.xml"/>
+  <!-- OGC-1364: validation policy (lab-wide default replaces "validate all results" behind useMultiLevelValidation) -->
+  <include relativeToChangelogFile="true" file="032-validation-policy.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>

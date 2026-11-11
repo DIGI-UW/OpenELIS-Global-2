@@ -336,6 +336,9 @@ public abstract class ConfigurationProperties {
         // OGC-1147: does an open QC failure block release, or only warn
         QC_FAIL_BLOCKS_VALIDATION("qcFailBlocksValidation", "text"),
         BLOCK_SELF_VALIDATION("blockSelfValidation", "text"),
+        // OGC-1364: when true the validation policy decides which results wait
+        // for review instead of ALWAYS_VALIDATE_RESULTS.
+        USE_MULTI_LEVEL_VALIDATION("useMultiLevelValidation", "text"),
 
         // FR-2.3: per-deployment switches for the optional pathology bench
         // stages. The mandatory stages (ACCESSIONED, GROSSING, READY_PATHOLOGIST,
@@ -347,6 +350,9 @@ public abstract class ConfigurationProperties {
         PATHOLOGY_STAGE_STAINING_ENABLED("pathology.stage.STAINING.enabled", "text"),
         PATHOLOGY_STAGE_COVERSLIPPING_ENABLED("pathology.stage.COVERSLIPPING.enabled", "text"),
         PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED("pathology.stage.UNDER_REVIEW.enabled", "text"),
+
+        // Whether a slide label must be scanned against its block before sectioning.
+        PATHOLOGY_SCAN_VERIFICATION_REQUIRED("pathology.microtomy.scanVerificationRequired", "boolean"),
 
         // FR-9.3: how a deployment names and barcodes the cassettes, blocks and
         // slides cut from a case. A missing row means the scheme below.

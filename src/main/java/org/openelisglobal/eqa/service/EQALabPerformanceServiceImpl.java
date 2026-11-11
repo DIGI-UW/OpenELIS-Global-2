@@ -167,6 +167,15 @@ public class EQALabPerformanceServiceImpl implements EQALabPerformanceService {
         return Map.of("eqaNceCount", total, "eqaNceOpenCount", open);
     }
 
+    @Override
+    public int countOpenEqaNces() {
+        return (int) ncEventService.getAll().stream()
+                .filter(event -> event.getTriggerSourceType() != null
+                        && event.getTriggerSourceType().startsWith(EqaScoreNceService.TRIGGER_SOURCE_PREFIX)
+                        && !CLOSED_NCE_STATUSES.contains(event.getStatus()))
+                .count();
+    }
+
     /**
      * One row per section and scheme, its cells the scheme's last four cycles. A
      * section that reported nothing in one of those cycles reads as missing rather

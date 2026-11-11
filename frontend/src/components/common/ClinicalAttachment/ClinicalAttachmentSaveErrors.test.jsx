@@ -1,12 +1,6 @@
 import React from "react";
 import { vi, it, expect, afterEach } from "vitest";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
@@ -83,15 +77,21 @@ it.each([
     );
     renderCase(area, Component, notify);
     if (area === "pathology") {
-      fireEvent.click(
-        await screen.findByRole("combobox", {
-          name: messages["common.status"],
-        }),
-      );
-      fireEvent.click(
-        within(document.getElementById("status")).getByRole("option", {
-          name: messages["pathology.stage.staining"],
-        }),
+      // The stage moves through its own buttons, so the form is dirtied by
+      // editing a field; the grossing section loads folded past its stage.
+      const grossingHeader = await waitFor(() => {
+        const header = document.querySelector(
+          "#pathology-section-grossing button.cds--accordion__heading",
+        );
+        expect(header).not.toBeNull();
+        return header;
+      });
+      if (grossingHeader.getAttribute("aria-expanded") === "false") {
+        fireEvent.click(grossingHeader);
+      }
+      fireEvent.change(
+        await screen.findByLabelText(messages["pathology.label.grossExam"]),
+        { target: { value: "Edited clinical description" } },
       );
       fireEvent.click(
         screen.getByRole("button", {

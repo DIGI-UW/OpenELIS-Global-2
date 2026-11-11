@@ -26,6 +26,21 @@ public class ComplianceReportOrderDTO {
     private String collectionDate;
     private int testCount;
     private String complianceStatus;
+
+    /** Why an INELIGIBLE order cannot have a certificate. */
+    public static final String INELIGIBLE_NO_STANDARD = "NO_STANDARD";
+    public static final String INELIGIBLE_NOT_VALIDATED = "NOT_VALIDATED";
+
+    private String ineligibleReason;
+
+    public String getIneligibleReason() {
+        return ineligibleReason;
+    }
+
+    public void setIneligibleReason(String ineligibleReason) {
+        this.ineligibleReason = ineligibleReason;
+    }
+
     private static final DateTimeFormatter DISPLAY_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm xxx");
     private String lastGenerated;
 

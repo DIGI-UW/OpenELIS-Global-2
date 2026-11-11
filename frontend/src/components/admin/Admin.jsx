@@ -51,6 +51,7 @@ import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement
 import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu";
 import SampleTypeEditor from "./sampleTypeManagement/SampleTypeManagement.jsx";
+import ContainerTypes from "./containerTypes/ContainerTypes.jsx";
 import LabUnitManagement from "./labUnitManagement/LabUnitManagement.jsx";
 import ComplianceStandardsAdmin from "./complianceStandards/ComplianceStandardsAdmin";
 import {
@@ -217,6 +218,7 @@ function Admin() {
         path={`${path}/SampleTypeEditor/:sampleTypeId?/:section?`}
         component={SampleTypeEditor}
       />
+      <Route path={`${path}/ContainerTypes`} component={ContainerTypes} />
       <Route
         path={[
           `${path}/TestSectionManagement`,

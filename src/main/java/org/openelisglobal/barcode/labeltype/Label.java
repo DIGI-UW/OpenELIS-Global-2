@@ -1,6 +1,7 @@
 package org.openelisglobal.barcode.labeltype;
 
 import java.util.ArrayList;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.barcode.LabelField;
 import org.openelisglobal.barcode.service.BarcodeLabelInfoService;
 import org.openelisglobal.barcode.valueholder.BarcodeLabelInfo;
@@ -46,6 +47,7 @@ public abstract class Label {
     protected ArrayList<LabelField> belowFields;
     private String code;
     private String codeLabel;
+    private String orderLabNo;
 
     // information stored in/for database
     private BarcodeLabelInfo labelInfo;
@@ -227,6 +229,27 @@ public abstract class Label {
         this.code = code;
     }
 
+    /**
+     * Prints a row's own barcode as the symbol, so a scan tells one row from
+     * another and from its order, and keeps the order's lab number for the print
+     * count. A row with no barcode still scans to its order.
+     *
+     * @param rowBarcode the barcode stored on the row
+     * @param labNo      the lab number of the order the row belongs to
+     */
+    protected void setRowCode(String rowBarcode, String labNo) {
+        this.orderLabNo = labNo;
+        setCode(StringUtils.isNotBlank(rowBarcode) ? rowBarcode.trim() : labNo);
+    }
+
+    /**
+     * @return the lab number of the order a row label belongs to, as given to
+     *         {@link #setRowCode}
+     */
+    protected String orderLabNo() {
+        return orderLabNo;
+    }
+
     public String getCodeLabel() {
         return codeLabel == null ? code : codeLabel;
     }
@@ -319,9 +342,11 @@ public abstract class Label {
     }
 
     /**
-     * The key the print count is stored under. Defaults to the printed code; a
-     * label kind that prints the same code as another overrides it so each kind
-     * keeps its own count.
+     * The key the print count is stored under. Defaults to the printed code. A
+     * label kind overrides it when its limit is not per printed code: block and
+     * slide labels print each row's own barcode but count per order and per kind,
+     * so they key on the order's lab number with a suffix of their own, and neither
+     * uses up the order label's count.
      *
      * @return the code of this label's barcode_label_info row
      */

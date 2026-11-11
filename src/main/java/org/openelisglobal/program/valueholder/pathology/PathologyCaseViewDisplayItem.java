@@ -1,13 +1,16 @@
 package org.openelisglobal.program.valueholder.pathology;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
@@ -67,7 +70,43 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
      */
     private Map<String, String> tissueTypeNames;
 
+    /**
+     * The name of every stain the case's slides carry, by dictionary id, so a stain
+     * retired after a slide recorded it still reads as a name.
+     */
+    private Map<String, String> stainNames;
+
     private List<PathologyReport> reports;
+
+    /**
+     * Who checked each slide's label against its block, and when, by slide id; a
+     * slide never checked is absent.
+     */
+    private Map<Integer, LabelVerificationView> labelVerifications;
+
+    /** Every stage the case entered, oldest first, as recorded by the server. */
+    private List<StageEventView> stageEvents;
+
+    /** The processor run written on the case's latest Processing entry. */
+    private String runReference;
+
+    /** Whether a case save would write a processor run now. */
+    private boolean runReferenceEditable;
+
+    /**
+     * The stage the case would be sent on to, or null; worked out by the server so
+     * the screen and the move read the same rule.
+     */
+    private String nextStage;
+
+    /** The stage the case would be returned to, or null. */
+    private String previousStage;
+
+    /**
+     * Whether a release would be taken now, by the rule the release itself is
+     * refused on.
+     */
+    private boolean releasable;
 
     public LocalDate getReceivedDate() {
         return receivedDate;
@@ -189,6 +228,14 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
         this.tissueTypeNames = tissueTypeNames;
     }
 
+    public Map<String, String> getStainNames() {
+        return stainNames;
+    }
+
+    public void setStainNames(Map<String, String> stainNames) {
+        this.stainNames = stainNames;
+    }
+
     public String getConclusionText() {
         return conclusionText;
     }
@@ -243,6 +290,105 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
     public void setReports(List<PathologyReport> reports) {
         this.reports = reports;
+    }
+
+    public Map<Integer, LabelVerificationView> getLabelVerifications() {
+        return labelVerifications;
+    }
+
+    public void setLabelVerifications(Map<Integer, LabelVerificationView> labelVerifications) {
+        this.labelVerifications = labelVerifications;
+    }
+
+    public List<StageEventView> getStageEvents() {
+        return stageEvents;
+    }
+
+    public void setStageEvents(List<StageEventView> stageEvents) {
+        this.stageEvents = stageEvents;
+    }
+
+    public String getRunReference() {
+        return runReference;
+    }
+
+    public void setRunReference(String runReference) {
+        this.runReference = runReference;
+    }
+
+    public boolean isRunReferenceEditable() {
+        return runReferenceEditable;
+    }
+
+    public void setRunReferenceEditable(boolean runReferenceEditable) {
+        this.runReferenceEditable = runReferenceEditable;
+    }
+
+    public String getNextStage() {
+        return nextStage;
+    }
+
+    public void setNextStage(String nextStage) {
+        this.nextStage = nextStage;
+    }
+
+    public String getPreviousStage() {
+        return previousStage;
+    }
+
+    public void setPreviousStage(String previousStage) {
+        this.previousStage = previousStage;
+    }
+
+    public boolean isReleasable() {
+        return releasable;
+    }
+
+    public void setReleasable(boolean releasable) {
+        this.releasable = releasable;
+    }
+
+    /**
+     * One stage entry as the screen shows it: names and times already rendered, so
+     * nothing on the screen can offer the operator or a date as an input.
+     */
+    public record StageEventView(Integer id, String stage, String direction, String enteredAt, String enteredBy,
+            String completedAt, String completedBy, String reason, String runReference) {
+
+        /**
+         * Called inside the transaction that loaded the entry, since the operators are
+         * associations of the row.
+         */
+        public static StageEventView of(PathologyStageEvent event) {
+            return new StageEventView(event.getId(), event.getStage().name(), event.getDirection().name(),
+                    formatted(event.getEnteredAt()), nameOf(event.getEnteredBy()), formatted(event.getCompletedAt()),
+                    nameOf(event.getCompletedBy()), event.getReason(), event.getRunReference());
+        }
+
+        private static String formatted(Timestamp timestamp) {
+            return timestamp == null ? null : DateUtil.convertTimestampToStringDateAndConfiguredHourTime(timestamp);
+        }
+
+        private static String nameOf(SystemUser user) {
+            return user == null ? null : user.getDisplayName();
+        }
+    }
+
+    /**
+     * A slide label's check against its block: when, formatted as the stage entries
+     * are, and who, by name. The slide row itself carries only the user's id.
+     */
+    public record LabelVerificationView(String verifiedAt, String verifiedBy) {
+
+        /** The check on a slide, or null when its label was never checked. */
+        public static LabelVerificationView of(PathologySlide slide, SystemUser verifier) {
+            if (slide.getLabelVerifiedAt() == null) {
+                return null;
+            }
+            return new LabelVerificationView(
+                    DateUtil.convertTimestampToStringDateAndConfiguredHourTime(slide.getLabelVerifiedAt()),
+                    verifier == null ? null : verifier.getDisplayName());
+        }
     }
 
     public static class RequestDisplayBean extends IdValuePair {

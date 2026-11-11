@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang.StringUtils;
@@ -90,6 +91,8 @@ import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.userrole.service.UserRoleService;
+import org.openelisglobal.validationpolicy.service.ValidationPolicyService;
+import org.openelisglobal.validationpolicy.valueholder.ReviewTrigger;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -678,10 +681,22 @@ public class ResultUtil {
      * not asked to validate everything, the test's limit does not insist on it, and
      * {@link ValidationSignals#isClearAtEntry} says clear. Everything else waits
      * for a validator.
+     *
+     * <p>
+     * With useMultiLevelValidation on, the validation policy (OGC-1364) replaces
+     * "validate all results": All results waits for review, Only results that need
+     * review applies the clearance rule, and No review releases a valid result at
+     * entry unless the test's limit or blocked self-validation insists on review.
      */
     public static String getStatusForTestResult(TestResultItem testResult, boolean alwaysValidate, Analysis analysis) {
+        Optional<ReviewTrigger> policy = SpringContext.getBean(ValidationPolicyService.class).entryReviewTrigger();
+        boolean releaseWithoutReview = policy.isPresent() && policy.get() == ReviewTrigger.NONE;
+        if (policy.isPresent()) {
+            alwaysValidate = policy.get() == ReviewTrigger.ALL;
+        }
         if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.BLOCK_SELF_VALIDATION, "true")) {
             alwaysValidate = true;
+            releaseWithoutReview = false;
         }
         if (testResult.isShadowRejected() && ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.VALIDATE_REJECTED_TESTS, "true")) {
@@ -698,6 +713,9 @@ public class ResultUtil {
                     : resultLimitService.get(testResult.getResultLimitId());
             if (resultLimit != null && resultLimit.isAlwaysValidate()) {
                 return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
+            }
+            if (releaseWithoutReview) {
+                return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
             }
             if (rangeNotApplied(testResult, analysis) || !clearAtEntry(testResult, analysis, resultLimit)) {
                 return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
