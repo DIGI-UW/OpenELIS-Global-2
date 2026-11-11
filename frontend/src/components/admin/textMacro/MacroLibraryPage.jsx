@@ -590,6 +590,8 @@ const MacroLibraryPage = () => {
                           const source = page.items.find(
                             (item) => item.id === row.id,
                           );
+                          // DataTable hands back the previous rows for one render after they change.
+                          if (!source) return null;
                           return (
                             <TableRow {...getRowProps({ row })} key={row.id}>
                               <TableSelectRow

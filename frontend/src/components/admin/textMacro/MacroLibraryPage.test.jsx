@@ -88,7 +88,67 @@ beforeEach(() => {
   });
 });
 
+const phrase = (id, active = true) => ({
+  id,
+  code: `.${id}`,
+  expansionText: `Phrase ${id}`,
+  category: "CULTURE",
+  contexts: ["MICROBIOLOGY_CULTURE_READING"],
+  active,
+  provenance: "LOCAL",
+});
+const pageOf = (...items) => ({
+  items,
+  page: 1,
+  pageSize: 20,
+  total: items.length,
+});
+
 describe("MacroLibraryPage", () => {
+  it("keeps rendering when a filter leaves fewer rows", async () => {
+    const user = userEvent.setup();
+    getAdminMacroPage.mockImplementation((query) =>
+      Promise.resolve(
+        query.includes("category=AST")
+          ? pageOf(phrase("beta"))
+          : pageOf(phrase("alpha"), phrase("beta"), phrase("gamma")),
+      ),
+    );
+    renderPage();
+
+    expect(await screen.findByText(".gamma")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Category"), "AST");
+
+    expect(await screen.findByText(".beta")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(".alpha")).toBeNull());
+    expect(screen.queryByText(".gamma")).toBeNull();
+    expect(
+      screen.getByRole("checkbox", { name: "Select .beta" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps rendering after a bulk deactivation empties part of the Active view", async () => {
+    const user = userEvent.setup();
+    getAdminMacroPage
+      .mockResolvedValueOnce(pageOf(phrase("alpha"), phrase("beta")))
+      .mockResolvedValue(pageOf(phrase("beta")));
+    renderPage();
+
+    expect(await screen.findByText(".alpha")).toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox", { name: "Select .alpha" }));
+    await user.click(screen.getByRole("button", { name: "Deactivate" }));
+    await user.click(
+      screen.getByRole("button", { name: "Deactivate phrases" }),
+    );
+
+    await waitFor(() => expect(screen.queryByText(".alpha")).toBeNull());
+    expect(screen.getByText(".beta")).toBeInTheDocument();
+    expect(bulkAdminMacros).toHaveBeenCalledWith({
+      action: "DEACTIVATE",
+      ids: ["alpha"],
+    });
+  });
+
   it("renders a Carbon administration table and writes create state to the URL", async () => {
     const user = userEvent.setup();
     renderPage();
