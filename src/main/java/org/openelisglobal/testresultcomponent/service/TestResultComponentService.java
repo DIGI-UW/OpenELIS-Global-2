@@ -60,4 +60,6 @@ public interface TestResultComponentService extends BaseObjectService<TestResult
      * inverse of the new-editor save; mirrors the M1 backfill, scoped to one test.
      */
     void syncPrimaryComponentFromLegacy(String testId, String sysUserId);
+
+    void syncDictionaryNormals(String testId, String sysUserId);
 }

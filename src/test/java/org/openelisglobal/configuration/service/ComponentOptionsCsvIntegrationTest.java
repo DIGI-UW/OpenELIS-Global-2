@@ -181,6 +181,19 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
     }
 
     @Test
+    public void eachComponentsNormalAnswerBecomesItsReferenceValue() throws Exception {
+        load(testResultHandler, answers(), "test-results.csv");
+
+        assertEquals(List.of("IQS-H:PASS", "IQS-L:PASS", "call:Not detected"),
+                jdbc.queryForList(
+                        "SELECT c.code || ':' || d.dict_entry FROM clinlims.result_limits l"
+                                + " JOIN clinlims.test_result_component c ON c.id = l.component_id"
+                                + " JOIN clinlims.dictionary d ON d.id = l.normal_dictionary_id"
+                                + " WHERE l.test_id = (SELECT id FROM clinlims.test WHERE description = ?)",
+                        String.class, TEST).stream().sorted().toList());
+    }
+
+    @Test
     public void reimportingUpdatesEachComponentsAnswersInPlace() throws Exception {
         load(testResultHandler, answers(), "test-results.csv");
         Map<String, List<String>> first = optionsByComponent();
@@ -253,6 +266,7 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
         for (Long testId : jdbc.queryForList("SELECT id FROM clinlims.test WHERE description LIKE 'ITCO %'",
                 Long.class)) {
             jdbc.update("DELETE FROM clinlims.test_terminology_mapping WHERE test_id = ?", testId);
+            jdbc.update("DELETE FROM clinlims.result_limits WHERE test_id = ?", testId);
             jdbc.update("DELETE FROM clinlims.test_result WHERE test_id = ?", testId);
             jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", testId);
             jdbc.update("DELETE FROM clinlims.sampletype_test WHERE test_id = ?", testId);

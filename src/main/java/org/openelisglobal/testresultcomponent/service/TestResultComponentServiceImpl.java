@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
@@ -387,6 +388,13 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
      * stopped offering are left to {@link #dropUnreachableDictionaryRanges}. Legacy
      * limits without a component id belong to the primary.
      */
+    @Override
+    @Transactional
+    public void syncDictionaryNormals(String testId, String sysUserId) {
+        syncDictionaryNormals(testId, baseObjectDAO.getActiveComponentsByTestId(testId).stream()
+                .map(TestResultComponent::getId).collect(Collectors.toSet()), sysUserId);
+    }
+
     private void syncDictionaryNormals(String testId, Set<String> savedComponentIds, String sysUserId) {
         List<TestResultComponent> components = baseObjectDAO.getActiveComponentsByTestId(testId);
         TestResultComponent primary = pickPrimary(components);
