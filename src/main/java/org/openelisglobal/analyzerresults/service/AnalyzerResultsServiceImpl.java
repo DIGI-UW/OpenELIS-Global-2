@@ -17,6 +17,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
@@ -26,6 +27,7 @@ import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testcalculated.action.util.TestCalculatedUtil;
 import org.openelisglobal.testreflex.action.util.TestReflexBean;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -221,8 +223,22 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
 
         TestReflexUtil testReflexUtil = new TestReflexUtil();
         testReflexUtil.addNewTestsToDBForReflexTests(convertGroupListToTestReflexBeans(sampleGroupList), sysUserId);
+        new TestCalculatedUtil().addNewTestsToDBForCalculatedTests(acceptedResultSets(sampleGroupList), sysUserId);
 
         return true;
+    }
+
+    private List<ResultSet> acceptedResultSets(List<SampleGrouping> sampleGroupList) {
+        List<ResultSet> resultSets = new ArrayList<>();
+        for (SampleGrouping sampleGroup : sampleGroupList) {
+            if (sampleGroup.accepted) {
+                for (Result result : sampleGroup.resultList) {
+                    resultSets.add(new ResultSet(result, null, null, sampleGroup.patient, sampleGroup.sample,
+                            sampleGroup.triggersToSelectedReflexesMap, false));
+                }
+            }
+        }
+        return resultSets;
     }
 
     /**

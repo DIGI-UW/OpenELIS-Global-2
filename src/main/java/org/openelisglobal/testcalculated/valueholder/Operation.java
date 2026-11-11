@@ -149,7 +149,7 @@ public class Operation implements Comparable<Operation> {
 
     public enum OperationType {
         TEST_RESULT("Test Result"), MATH_FUNCTION("Math Function"), INTEGER("Integer"),
-        PATIENT_ATTRIBUTE("Patient Attribute");
+        PATIENT_ATTRIBUTE("Patient Attribute"), ANSWER("Answer");
 
         private String displayName;
 

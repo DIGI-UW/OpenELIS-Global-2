@@ -275,7 +275,8 @@ public class TestCalculatedUtil {
         String component = StringUtils.isNotBlank(calculation.getComponentId()) ? calculation.getComponentId()
                 : ruleResultScope.primaryComponentId(testId);
         for (Result recorded : resultService.getResultsByAnalysis(destination)) {
-            if (StringUtils.isNotBlank(recorded.getValue()) && ruleResultScope.matchesComponent(recorded, component)) {
+            if (StringUtils.isNotBlank(recorded.getValue()) && ruleResultScope.matchesComponent(recorded, component)
+                    && resultcalculationService.getResultCalculationsByResultId(recorded.getId()).isEmpty()) {
                 return recorded;
             }
         }
@@ -370,11 +371,13 @@ public class TestCalculatedUtil {
                 }
                 return analysis;
             }
+            if (isAnswerType(resultType) && "false".equals(value)
+                    && !holdsOwnAnswer(resultCalculation, resultSet, calculation)) {
+                return null;
+            }
             TestResult testResult = getTestResultForCalculation(calculation);
-            Result result = null;
-            if (resultCalculation.getResult() != null) {
-                result = resultCalculation.getResult();
-            } else {
+            Result result = storedResult(resultCalculation);
+            if (result == null) {
                 result = new Result();
             }
             result.setTestResult(testResult);
@@ -406,9 +409,8 @@ public class TestCalculatedUtil {
             } else {
                 result.setValue("");
             }
-            analysis = createCalculatedAnalysis(
-                    resultCalculation.getResult() == null ? null : resultCalculation.getResult().getAnalysis(), test,
-                    resultSet.result, value, calculation.getName(), systemUserId, resultCalculated,
+            analysis = createCalculatedAnalysis(resultCalculation.getResult() == null ? null : result.getAnalysis(),
+                    test, resultSet.result, value, calculation.getName(), systemUserId, resultCalculated,
                     calculation.getNote(),
                     calculation.getSampleId() == null ? null : calculation.getSampleId().toString());
             if (analysis == null) {
@@ -443,6 +445,29 @@ public class TestCalculatedUtil {
             }
         }
         return analysis;
+    }
+
+    // Another rule may have written the same row earlier in this save; the audit
+    // trail detaches the copy it updated, so read the row as it now stands.
+    private Result storedResult(ResultCalculation resultCalculation) {
+        return resultCalculation.getResult() == null ? null : resultService.get(resultCalculation.getResult().getId());
+    }
+
+    private static boolean isAnswerType(String resultType) {
+        return "D".equals(resultType) || "R".equals(resultType) || "A".equals(resultType);
+    }
+
+    // Rules share a coded result; one whose condition fails clears only its own
+    // answer.
+    private boolean holdsOwnAnswer(ResultCalculation resultCalculation, ResultSet resultSet, Calculation calculation) {
+        Result current = storedResult(resultCalculation);
+        if (current == null) {
+            Analysis destination = orderedDestination(resultSet.result, calculation);
+            current = destination == null || destination.getId() == null ? null
+                    : recordedResultFor(destination, getTestResultForCalculation(calculation));
+        }
+        return current != null && StringUtils.isNotBlank(current.getValue())
+                && current.getValue().equals(calculation.getResult());
     }
 
     private void createInternalNote(Analysis newAnalysis, Analysis currentAnalysis, String calculatioName,
@@ -507,10 +532,8 @@ public class TestCalculatedUtil {
         String resultType = ruleResultScope.resultTypeForComponent(test.getId(), destinationComponentId,
                 testService.getResultType(test));
         if ("D".equals(resultType)) {
-            TestResult testResult;
-            testResult = testResultService.getTestResultsByTestAndDictonaryResult(test.getId(),
-                    calculation.getResult());
-            return testResult;
+            return testResultService.getTestResultsByTestAndDictonaryResult(test.getId(), calculation.getResult(),
+                    destinationComponentId);
         } else {
             List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(test.getId());
             if (destinationComponentId != null) {
@@ -601,8 +624,8 @@ public class TestCalculatedUtil {
     }
 
     /**
-     * Whether a stored result can stand for a parameter. Its value is written into
-     * the script the calculation evaluates, so only a number qualifies.
+     * Whether a stored result can stand for a parameter: a number, or the id of the
+     * answer a coded result recorded.
      */
     static boolean isUsableOperandValue(String value) {
         return BoundedDecimal.isBoundedDecimal(value);
@@ -624,11 +647,15 @@ public class TestCalculatedUtil {
     private CalculationExpression.Operand calculationOperand(Operation operation, ResultCalculation calculation) {
         Integer resultId = calculation.getOperandResultMap().get(operation.getId());
         Result result = resultId == null ? null : resultService.get(resultId.toString());
-        if (result == null
-                || !"N".equals(ruleResultScope.resultTypeForComponent(result.getTestResult().getTest().getId(),
+        String resultType = result == null ? null
+                : ruleResultScope.resultTypeForComponent(result.getTestResult().getTest().getId(),
                         ruleResultScope.componentIdOf(result),
-                        testService.getResultType(result.getTestResult().getTest())))) {
-            throw new IllegalArgumentException("A numeric calculation operand is missing");
+                        testService.getResultType(result.getTestResult().getTest()));
+        if ("D".equals(resultType)) {
+            return CalculationExpression.Operand.answer(CalculationExpression.number(result.getValue()));
+        }
+        if (!"N".equals(resultType)) {
+            throw new IllegalArgumentException("A numeric or coded calculation operand is missing");
         }
         return new CalculationExpression.Operand(CalculationExpression.number(result.getValue()), result.getMinNormal(),
                 result.getMaxNormal());

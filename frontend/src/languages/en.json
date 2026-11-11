@@ -3566,7 +3566,7 @@
   "calculation.error.duplicateDestination": "{test} already gets its value from the active rule \"{other}\". Switch that rule off first.",
   "calculation.error.cycle": "These active rules would feed each other in a loop: {cycle}.",
   "calculation.error.destinationNotComponent": "The chosen result component is not an active component of the resulting test.",
-  "calculation.error.destinationNotNumeric": "A calculated value is a number, so it cannot be written to {component}, which does not report a number.",
+  "calculation.error.destinationNotNumeric": "{component} does not report a number, so the rule must name the answer it writes there.",
   "calculation.error.notFound": "This rule no longer exists. Reload the page.",
   "error.fetch.boxDetails": "Failed to fetch box details",
   "error.fetch.boxes": "Failed to fetch shipping boxes",
