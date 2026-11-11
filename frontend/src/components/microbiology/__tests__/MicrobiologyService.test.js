@@ -1,11 +1,15 @@
 import MicrobiologyService, {
+  getWorklistRows,
   logCriticalCommunication,
   releaseFinalReport,
   revertAstOverride,
   selectReportableAstRun,
   startRepeatAstRun,
 } from "../MicrobiologyService";
-import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../utils/Utils";
 
 vi.mock("../../utils/Utils", () => ({
   postToOpenElisServerJsonResponse: vi.fn(),
@@ -42,4 +46,11 @@ describe("MicrobiologyService", () => {
     );
     expect(MicrobiologyService.revertAstOverride).toBe(revertAstOverride);
   });
+});
+
+it("rejects a worklist page that could not be loaded instead of reporting an empty one", async () => {
+  getFromOpenElisServer.mockImplementationOnce((url, callback) =>
+    callback(undefined),
+  );
+  await expect(getWorklistRows({ grain: "cultures" })).rejects.toThrow();
 });

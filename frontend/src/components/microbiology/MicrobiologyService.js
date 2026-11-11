@@ -230,7 +230,7 @@ export const getCaseReadiness = (caseId) =>
   });
 
 export const getWorklistRows = (query = {}) =>
-  new Promise((resolve) => {
+  new Promise((resolve, reject) => {
     const params = new URLSearchParams();
     [
       "grain",
@@ -255,7 +255,10 @@ export const getWorklistRows = (query = {}) =>
     const search = params.toString();
     getFromOpenElisServer(
       `/rest/microbiology/worklist${search ? `?${search}` : ""}`,
-      resolve,
+      (response) =>
+        response === undefined
+          ? reject(new Error("Worklist could not be loaded"))
+          : resolve(response),
     );
   });
 

@@ -181,3 +181,19 @@ it("lets keyboard users focus and scroll each isolate's AST table", async () => 
     await screen.findByRole("table", { name: "ISO-1: E. coli" }),
   ).toHaveAttribute("tabindex", "0");
 });
+it("disables report release while the browser is offline", async () => {
+  const onLine = vi
+    .spyOn(window.navigator, "onLine", "get")
+    .mockReturnValue(false);
+  try {
+    show({ canWrite: true, canValidate: true }, { finalReleaseReady: true });
+    expect(
+      await screen.findByRole("button", { name: t("partialRelease") }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: t("finalRelease") }),
+    ).toBeDisabled();
+  } finally {
+    onLine.mockRestore();
+  }
+});

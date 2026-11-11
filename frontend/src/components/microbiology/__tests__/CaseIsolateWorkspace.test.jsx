@@ -430,3 +430,23 @@ it("lets keyboard users focus and scroll the referrals table", async () => {
     }),
   ).toHaveAttribute("tabindex", "0");
 });
+it("keeps the isolate Save disabled while the browser is offline", async () => {
+  const onLine = vi
+    .spyOn(window.navigator, "onLine", "get")
+    .mockReturnValue(false);
+  try {
+    show(api([]));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Pick isolate" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Source culture row"), {
+      target: { value: "r1" },
+    });
+    expect(
+      within(dialog).getByRole("button", { name: "Save", exact: true }),
+    ).toBeDisabled();
+  } finally {
+    onLine.mockRestore();
+  }
+});

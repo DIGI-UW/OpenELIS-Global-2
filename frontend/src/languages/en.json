@@ -11107,6 +11107,7 @@
   "microbiology.culturePurpose.label": "Culture purpose",
   "microbiology.culturePurpose.screening": "Active screening or carriage",
   "microbiology.culturePurpose.unspecified": "Unspecified",
+  "microbiology.offline.notice": "Working offline; refresh when network returns.",
   "microbiology.orderDetail.antibioticExposure": "Patient has recent antibiotic exposure (within 2 weeks)",
   "microbiology.orderDetail.admissionDate": "Date of admission",
   "microbiology.orderDetail.admissionDateFuture": "Date of admission cannot be in the future.",

@@ -19,6 +19,7 @@ import {
   Tile,
 } from "@carbon/react";
 import { returnFocus } from "./returnFocus";
+import { useOnline } from "./OfflineNotice";
 
 export function MicrobiologyReportBlock({ report }) {
   const intl = useIntl(),
@@ -147,6 +148,7 @@ export function MicrobiologyReportBlock({ report }) {
   );
 }
 export default function CaseReportWorkspace({ detail, service, onChanged }) {
+  const online = useOnline();
   const intl = useIntl(),
     t = (key) => intl.formatMessage({ id: `microbiology.m6.${key}` });
   const [state, setState] = useState(null),
@@ -354,7 +356,9 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
             {detail.canWrite && !detail.amendmentOpen && (
               <Button
                 kind="tertiary"
-                disabled={busy || state.report.validatedResults === 0}
+                disabled={
+                  busy || !online || state.report.validatedResults === 0
+                }
                 onClick={() => release("preliminary")}
               >
                 {t("partialRelease")}
@@ -364,6 +368,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
               <Button
                 disabled={
                   busy ||
+                  !online ||
                   !state.readiness.finalReleaseReady ||
                   ((state.readiness.pendingIncomingIds || []).length > 0 &&
                     !confirmIncoming)

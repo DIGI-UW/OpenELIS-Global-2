@@ -35,6 +35,7 @@ import {
 import ReferralStatusTag from "../order/steps/referOut/referralStatusTag";
 import OrderReferOutForm from "../order/steps/referOut/OrderReferOutForm";
 import { MODAL_FIRST_FIELD, useReturnFocus } from "./returnFocus";
+import { useOnline } from "./OfflineNotice";
 
 const labels = {
   referred: "label.results.history.event.REFERRAL",
@@ -73,6 +74,7 @@ function IsolateAction({
   onClose,
 }) {
   const intl = useIntl();
+  const online = useOnline();
   useReturnFocus();
   const t = (key, values) =>
     intl.formatMessage(
@@ -208,7 +210,7 @@ function IsolateAction({
       passiveModal={referral}
       primaryButtonText={t("save")}
       secondaryButtonText={t("cancel")}
-      primaryButtonDisabled={!valid || saving}
+      primaryButtonDisabled={!valid || saving || !online}
       selectorPrimaryFocus={MODAL_FIRST_FIELD}
       onRequestSubmit={submit}
       onRequestClose={() => {
