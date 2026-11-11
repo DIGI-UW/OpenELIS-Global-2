@@ -99,6 +99,11 @@ services:
       - default
       - analyzer-net
 
+  proxy:
+    networks:
+      - default
+      - analyzer-net
+
 networks:
   analyzer-net:
     driver: bridge

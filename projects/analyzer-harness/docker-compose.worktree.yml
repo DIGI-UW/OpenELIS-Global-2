@@ -57,8 +57,6 @@ services:
     container_name: !reset null
 
   proxy:
-    networks: !override
-      default: {}
     container_name: !reset null
     ports: !override
       - name: http
