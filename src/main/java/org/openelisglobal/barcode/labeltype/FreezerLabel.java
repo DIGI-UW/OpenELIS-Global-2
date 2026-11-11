@@ -1,12 +1,14 @@
 package org.openelisglobal.barcode.labeltype;
 
 import java.util.ArrayList;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.barcode.LabelField;
 import org.openelisglobal.barcode.util.BarcodeConfigUtil;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.labelpreset.valueholder.LabelFieldKey;
 
 public class FreezerLabel extends Label {
 
@@ -21,16 +23,17 @@ public class FreezerLabel extends Label {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.FREEZER_LABEL_BARCODE_WIDTH), 2.0f);
         height = BarcodeConfigUtil.parseFloatSafe(
                 ConfigurationProperties.getInstance().getPropertyValue(Property.FREEZER_LABEL_BARCODE_HEIGHT), 2.0f);
-        boolean usePatientId = "true".equals(
-                ConfigurationProperties.getInstance().getPropertyValue(Property.FREEZER_LABEL_FIELD_PATIENT_ID));
-        boolean useStorageLocation = "true".equals(
-                ConfigurationProperties.getInstance().getPropertyValue(Property.FREEZER_LABEL_FIELD_STORAGE_LOCATION));
-        boolean useSpecimenType = "true".equals(
-                ConfigurationProperties.getInstance().getPropertyValue(Property.FREEZER_LABEL_FIELD_SPECIMEN_TYPE));
-        boolean useCollectionDate = "true".equals(
-                ConfigurationProperties.getInstance().getPropertyValue(Property.FREEZER_LABEL_FIELD_COLLECTION_DATE));
-        boolean useExpiryDate = "true".equals(
-                ConfigurationProperties.getInstance().getPropertyValue(Property.FREEZER_LABEL_FIELD_EXPIRY_DATE));
+        Set<String> presetFields = LabelFieldPolicy.printedFields(LabelFieldPolicy.FREEZER);
+        boolean usePatientId = LabelFieldPolicy.prints(presetFields, LabelFieldKey.PATIENT_ID,
+                Property.FREEZER_LABEL_FIELD_PATIENT_ID);
+        boolean useStorageLocation = LabelFieldPolicy.prints(presetFields, LabelFieldKey.STORAGE_LOCATION,
+                Property.FREEZER_LABEL_FIELD_STORAGE_LOCATION);
+        boolean useSpecimenType = LabelFieldPolicy.prints(presetFields, LabelFieldKey.SPECIMEN_TYPE,
+                Property.FREEZER_LABEL_FIELD_SPECIMEN_TYPE);
+        boolean useCollectionDate = LabelFieldPolicy.prints(presetFields, LabelFieldKey.COLLECTION_DATETIME,
+                Property.FREEZER_LABEL_FIELD_COLLECTION_DATE);
+        boolean useExpiryDate = LabelFieldPolicy.prints(presetFields, LabelFieldKey.EXPIRY_DATE,
+                Property.FREEZER_LABEL_FIELD_EXPIRY_DATE);
 
         // adding fields above bar code
         aboveFields = new ArrayList<>();

@@ -5,6 +5,8 @@ export interface Notification {
   title: string;
   message: ReactNode;
   subtitle?: ReactNode;
+  /** Set when the notification is added; it is removed by this id. */
+  id?: number;
 }
 
 export interface NotificationContextValue {
@@ -12,7 +14,9 @@ export interface NotificationContextValue {
   setNotificationVisible: Dispatch<SetStateAction<boolean>>;
   notifications: Notification[];
   addNotification: (notification: Notification) => void;
-  removeNotification: (index: number) => void;
+  removeNotification: (id: number) => void;
+  /** Starts the time a shown notification has left in the queue. */
+  notificationShown?: (notification: Notification) => void;
 }
 
 export const NotificationContext: Context<NotificationContextValue | null>;

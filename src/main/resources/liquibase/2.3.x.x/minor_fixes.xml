@@ -30,6 +30,13 @@
               <column name="last_updated" valueComputed="${now}"/>
               <where>last_updated is null</where>
           </update>
+        <!--
+            No-op inverse, for the same reason as 2.8.x.x/panel_item_fix.xml: an
+            update has none, this changeset is runAlways so it sits above every
+            rollback that is ever attempted, and putting the timestamps back to
+            null would only have them stamped again on the next start.
+        -->
+        <rollback />
     </changeSet>
 
     <changeSet author="csteele" id="3">

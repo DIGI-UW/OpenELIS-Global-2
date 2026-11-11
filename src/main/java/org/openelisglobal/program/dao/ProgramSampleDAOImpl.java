@@ -51,4 +51,16 @@ public class ProgramSampleDAOImpl extends BaseDAOImpl<ProgramSample, Integer> im
         query.setParameter("filter", "%" + filter.toLowerCase() + "%");
         return query.list();
     }
+
+    @Override
+    public long countByProgramId(String programId) {
+        if (programId == null || programId.isBlank()) {
+            return 0L;
+        }
+        String sql = "select count(ps) from ProgramSample ps where ps.program.id = :programId";
+        Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+        query.setParameter("programId", programId);
+        Long result = query.uniqueResult();
+        return result == null ? 0L : result;
+    }
 }

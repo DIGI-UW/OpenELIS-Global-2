@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- The QI cohort queries range-scan analysis.started_date (rejection) and
+         analysis.released_date (amendment, TAT, critical callback), neither of
+         which the baseline indexes - it covers only the sampitem/test/test_sect
+         FKs. The released-date queries are the ones that matter most: the breach
+         evaluator re-runs them every two minutes. -->
+
+    <changeSet author="openelisglobal" id="qi-rejection-001-analysis-started-date-index">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists schemaName="clinlims" tableName="analysis" indexName="idx_analysis_started_date"/>
+            </not>
+        </preConditions>
+        <comment>Index analysis.started_date for the rejection cohort queries</comment>
+        <createIndex schemaName="clinlims" tableName="analysis" indexName="idx_analysis_started_date">
+            <column name="started_date" />
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qi-callback-001-analysis-released-date-index">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists schemaName="clinlims" tableName="analysis" indexName="idx_analysis_released_date"/>
+            </not>
+        </preConditions>
+        <comment>Index analysis.released_date for the released-cohort QI queries</comment>
+        <createIndex schemaName="clinlims" tableName="analysis" indexName="idx_analysis_released_date">
+            <column name="released_date" />
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

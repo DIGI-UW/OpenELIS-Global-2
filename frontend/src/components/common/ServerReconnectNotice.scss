@@ -1,0 +1,32 @@
+// Above Carbon's loading overlay (8000) and modals (9000): while the server is
+// unreachable the page behind is a spinner, and "Try now" must stay usable.
+.server-reconnect-notice {
+  position: fixed;
+  top: 3.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: 0.25rem 0.5rem;
+  background: var(--cds-background, #ffffff);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+
+  .cds--inline-notification {
+    margin: 0;
+    min-width: 0;
+  }
+
+  .cds--btn {
+    flex-shrink: 0;
+  }
+
+  &__countdown {
+    font-size: 0.875rem;
+    line-height: 1.28572;
+    letter-spacing: 0.16px;
+  }
+}

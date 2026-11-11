@@ -116,6 +116,28 @@ describe("CaseActionBar", () => {
     ).toBeEnabled();
   });
 
+  it("disables Save draft while a save is in flight", () => {
+    renderBar({ saving: true, dirty: true });
+
+    expect(
+      screen.getByText(messages["caseView.action.saveDraft"]).closest("button"),
+    ).toBeDisabled();
+    // Discard answers to the form being dirty and to nothing else: a save
+    // that has gone out and not come back is still work the user may want to
+    // throw away.
+    expect(
+      screen.getByText(messages["caseView.action.discard"]).closest("button"),
+    ).toBeEnabled();
+  });
+
+  it("leaves Save draft enabled when no save is in flight", () => {
+    renderBar();
+
+    expect(
+      screen.getByText(messages["caseView.action.saveDraft"]).closest("button"),
+    ).toBeEnabled();
+  });
+
   it("shows the unsaved-changes text when the form is dirty", () => {
     renderBar({ dirty: true });
 

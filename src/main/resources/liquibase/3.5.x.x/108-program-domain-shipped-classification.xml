@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Programs V2 (OGC-781) — classify the programmes OpenELIS ships.
+
+    105 backfills every existing programme to CLINICAL, which is the right
+    default for an unknown programme but wrong for the one bundled programme
+    whose domain is not in doubt: Vector Field Survey is a vector-surveillance
+    questionnaire (larval/pupal indices, trap counts). Leaving it CLINICAL means
+    that straight after an upgrade the Vector order-entry programme picker
+    offers nothing at all, because the picker now filters by the order's domain.
+
+    Only a row that is still sitting on the 105 default is touched, and the
+    changeset runs once, so an admin who re-classifies it later is never
+    overridden.
+    -->
+
+    <changeSet id="programs-v2-classify-vector-field-survey" author="mozzy11">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists schemaName="clinlims" tableName="program" columnName="domain"/>
+                <sqlCheck expectedResult="1">
+                    SELECT COUNT(*) FROM clinlims.program
+                     WHERE code = 'VFS' AND domain = 'CLINICAL'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <update schemaName="clinlims" tableName="program">
+            <column name="domain" value="VECTOR"/>
+            <where>code = 'VFS' AND domain = 'CLINICAL'</where>
+        </update>
+        <rollback>
+            <update schemaName="clinlims" tableName="program">
+                <column name="domain" value="CLINICAL"/>
+                <where>code = 'VFS' AND domain = 'VECTOR'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

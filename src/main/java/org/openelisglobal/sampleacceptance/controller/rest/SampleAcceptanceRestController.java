@@ -10,6 +10,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleacceptance.service.AdminChecklistView;
 import org.openelisglobal.sampleacceptance.service.ResampleResult;
@@ -70,6 +71,9 @@ public class SampleAcceptanceRestController extends BaseRestController {
 
     @Autowired
     private SampleItemService sampleItemService;
+
+    @Autowired
+    private SampleService sampleService;
 
     @Autowired
     private HttpServletRequest httpRequest;
@@ -294,9 +298,10 @@ public class SampleAcceptanceRestController extends BaseRestController {
     }
 
     /**
-     * Plainly reject a single (non-pooled vector) specimen — no replacement order.
-     * Body: {@code { "reason": "..." }} (optional). Returns
-     * {@code {rejected:true}}.
+     * Plainly reject a single specimen (a non-pooled vector catch, or an EQA
+     * sample) — no replacement order. Body: {@code { "rejectReasonId": "...",
+     * "reason": "..." }}: one of the lab's rejection reasons, required for an EQA
+     * sample, and an optional comment. Returns {@code {rejected:true}}.
      */
     @PostMapping("/sample-item/{sampleItemId}/reject")
     @PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'ADMIN')")
@@ -307,7 +312,10 @@ public class SampleAcceptanceRestController extends BaseRestController {
                 return error(HttpStatus.BAD_REQUEST, "Invalid sampleItemId: must be numeric");
             }
             String reason = body == null ? null : asString(body.get("reason"));
-            resampleService.reject(sampleItemId, reason == null ? null : reason.trim(), currentUserId());
+            String rejectReasonId = body == null ? null : asString(body.get("rejectReasonId"));
+            resampleService.reject(sampleItemId,
+                    rejectReasonId == null || rejectReasonId.isBlank() ? null : rejectReasonId.trim(),
+                    reason == null ? null : reason.trim(), currentUserId());
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("rejected", true);
             return ResponseEntity.ok(response);
@@ -526,8 +534,19 @@ public class SampleAcceptanceRestController extends BaseRestController {
         Map<String, Object> resample = new LinkedHashMap<>();
         resample.put("resampledToSampleId", sample == null ? null : sample.getResampledToSampleId());
         resample.put("resampledFromSampleId", sample == null ? null : sample.getResampledFromSampleId());
+        resample.put("resampledToAccession", sample == null ? null : accessionOf(sample.getResampledToSampleId()));
+        resample.put("resampledFromAccession", sample == null ? null : accessionOf(sample.getResampledFromSampleId()));
         response.put("resample", resample);
+        response.put("eqa", resampleService.isEqa(sample));
         return response;
+    }
+
+    private String accessionOf(String sampleId) {
+        if (sampleId == null || sampleId.isBlank()) {
+            return null;
+        }
+        Sample linked = sampleService.get(sampleId);
+        return linked == null ? null : linked.getAccessionNumber();
     }
 
     private Map<String, Object> toEvaluationMap(SampleAcceptanceEvaluation eval) {

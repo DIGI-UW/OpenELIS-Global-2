@@ -212,40 +212,6 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
     }
 
     @Override
-    public boolean duplicatePanelDescriptionExists(Panel panel) throws LIMSRuntimeException {
-        try {
-
-            List<Panel> list = new ArrayList<>();
-
-            // not case sensitive hemolysis and Hemolysis are considered
-            // duplicates
-            String sql = "from Panel t where trim(lower(t.description)) = :param and t.id != :panelId";
-            Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
-            query.setParameter("param", panel.getDescription().toLowerCase().trim());
-
-            // initialize with 0 (for new records where no id has been generated
-            // yet
-            String panelId = "0";
-            if (!StringUtil.isNullorNill(panel.getId())) {
-                panelId = panel.getId();
-            }
-            query.setParameter("panelId", panelId);
-
-            list = query.list();
-
-            if (list.size() > 0) {
-                return true;
-            } else {
-                return false;
-            }
-
-        } catch (RuntimeException e) {
-            LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in duplicatePanelDescriptionExists()", e);
-        }
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public String getNameForPanelId(String id) {
         if (ID_NAME_MAP == null) {

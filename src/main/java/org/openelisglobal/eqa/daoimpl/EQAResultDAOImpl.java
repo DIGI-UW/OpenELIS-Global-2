@@ -43,7 +43,8 @@ public class EQAResultDAOImpl extends BaseDAOImpl<EQAResult, Long> implements EQ
     public Optional<EQAResult> findByDistributionAndOrgAndTest(Long distributionId, Long organizationId, Long testId) {
         try {
             String hql = "FROM EQAResult r WHERE r.eqaDistribution.id = :distributionId "
-                    + "AND r.participantOrganizationId = :organizationId AND r.testId = :testId";
+                    + "AND r.participantOrganizationId = :organizationId AND r.testId = :testId "
+                    + "AND r.panelSampleId IS NULL";
             Query<EQAResult> query = entityManager.unwrap(Session.class).createQuery(hql, EQAResult.class);
             query.setParameter("distributionId", distributionId);
             query.setParameter("organizationId", organizationId);
@@ -53,6 +54,25 @@ public class EQAResultDAOImpl extends BaseDAOImpl<EQAResult, Long> implements EQ
             logger.error("Error retrieving result for distribution: {}, org: {}, test: {}", distributionId,
                     organizationId, testId, e);
             throw new LIMSRuntimeException("Error retrieving result by distribution/org/test", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<EQAResult> findByDistributionAndOrgAndPanelSample(Long distributionId, Long organizationId,
+            Long panelSampleId) {
+        try {
+            String hql = "FROM EQAResult r WHERE r.eqaDistribution.id = :distributionId "
+                    + "AND r.participantOrganizationId = :organizationId AND r.panelSampleId = :panelSampleId";
+            Query<EQAResult> query = entityManager.unwrap(Session.class).createQuery(hql, EQAResult.class);
+            query.setParameter("distributionId", distributionId);
+            query.setParameter("organizationId", organizationId);
+            query.setParameter("panelSampleId", panelSampleId);
+            return query.uniqueResultOptional();
+        } catch (Exception e) {
+            logger.error("Error retrieving result for distribution: {}, org: {}, panel sample: {}", distributionId,
+                    organizationId, panelSampleId, e);
+            throw new LIMSRuntimeException("Error retrieving result by distribution/org/panel sample", e);
         }
     }
 

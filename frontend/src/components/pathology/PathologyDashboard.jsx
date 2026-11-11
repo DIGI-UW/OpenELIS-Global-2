@@ -28,12 +28,23 @@ import {
   postToOpenElisServerFullResponse,
   hasRole,
 } from "../utils/Utils";
+import {
+  serverPageArrowsProps,
+  serverPageSizeOf,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { inProgressStageIds, stageLabel } from "./pathologyStages";
+import {
+  inProgressStageIds,
+  notCompletedStageIds,
+  stageLabel,
+} from "./pathologyStages";
+import { labNow } from "../utils/labClock";
 
 function PathologyDashboard() {
   const componentMounted = useRef(false);
@@ -46,8 +57,14 @@ function PathologyDashboard() {
 
   const [statuses, setStatuses] = useState([]);
   const [pathologyEntries, setPathologyEntries] = useState([]);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  // The server's page announcement for the list shown, and the rows a full
+  // server page holds; Carbon's items per page is pinned to the latter so
+  // Carbon's page is the server's page.
+  const [paging, setPaging] = useState();
+  const [serverPageSize, setServerPageSize] = useState();
+  // Identifies the load in flight: the search runs more than once while the
+  // filters settle, and a late answer must not pull the page back to 1.
+  const latestRequest = useRef(0);
   const [filters, setFilters] = useState({
     searchTerm: "",
     myCases: false,
@@ -71,12 +88,12 @@ function PathologyDashboard() {
       // Set all statuses
       setStatuses(statusList);
 
-      // Mirrors the backend dashboard tile grouping (everything except
-      // awaiting-review and complete counts as in progress) so the filter
-      // and the tiles never disagree about which cases are in progress.
-      const filteredStatuses = inProgressStageIds(
-        statusList.map((status) => status.id),
-      );
+      const servedStageIds = statusList.map((status) => status.id);
+
+      // The "In Progress" option mirrors the backend dashboard tile grouping
+      // (everything except awaiting-review and complete) so the option and
+      // the tile never disagree about which cases are in progress.
+      const filteredStatuses = inProgressStageIds(servedStageIds);
 
       setInProgressStatuses(filteredStatuses);
 
@@ -85,10 +102,14 @@ function PathologyDashboard() {
         filteredStatuses.map((statusId) => ({ id: statusId })),
       );
 
-      // Set filters using the updated state
+      // The landing worklist is wider than that grouping: every stage but
+      // COMPLETED, so a case waiting for a pathologist is listed, not only
+      // counted.
       setFilters((prev) => ({
         ...prev,
-        statuses: filteredStatuses.map((statusId) => ({ id: statusId })),
+        statuses: notCompletedStageIds(servedStageIds).map((statusId) => ({
+          id: statusId,
+        })),
       }));
     }
   };
@@ -97,7 +118,7 @@ function PathologyDashboard() {
     postToOpenElisServerFullResponse(
       "/rest/pathology/assignTechnician?pathologySampleId=" + pathologySampleId,
       {},
-      refreshItems,
+      () => refreshItems(Number(paging?.currentPage) || 1),
     );
   };
 
@@ -106,18 +127,8 @@ function PathologyDashboard() {
       "/rest/pathology/assignPathologist?pathologySampleId=" +
         pathologySampleId,
       {},
-      refreshItems,
+      () => refreshItems(Number(paging?.currentPage) || 1),
     );
-  };
-
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
   };
 
   const renderCell = (cell, row) => {
@@ -171,9 +182,11 @@ function PathologyDashboard() {
     return <TableCell key={cell.id}>{cell.value}</TableCell>;
   };
 
-  const setPathologyEntriesWithIds = (entries) => {
+  /** One server page of cases and the page announcement it came with. */
+  const setPathologyEntriesWithIds = (response) => {
     if (componentMounted.current) {
-      if (entries && entries.length > 0) {
+      const entries = response?.items || [];
+      if (entries.length > 0) {
         setPathologyEntries(
           entries.map((entry) => {
             return { ...entry, id: "" + entry.pathologySampleId };
@@ -182,6 +195,10 @@ function PathologyDashboard() {
       } else {
         setPathologyEntries([]);
       }
+      setPaging(response?.paging);
+      setServerPageSize((previous) =>
+        serverPageSizeOf(response?.paging, entries.length, previous),
+      );
       setLoading(false);
     }
   };
@@ -191,6 +208,13 @@ function PathologyDashboard() {
 
     if (value === "All") {
       setFilters({ ...filters, statuses: statuses });
+    } else if (value === "NOT_COMPLETED") {
+      setFilters({
+        ...filters,
+        statuses: notCompletedStageIds(statuses.map((status) => status.id)).map(
+          (statusId) => ({ id: statusId }),
+        ),
+      });
     } else if (value === "IN_PROGRESS") {
       setFilters({ ...filters, statuses: inProgressStatusObjects });
     } else {
@@ -198,16 +222,25 @@ function PathologyDashboard() {
     }
   };
 
-  const getSelectedValue = () => {
-    const selectedValue =
-      filters.statuses.length === inProgressStatuses.length &&
-      filters.statuses.every((status) => inProgressStatuses.includes(status.id))
-        ? "IN_PROGRESS"
-        : filters.statuses.length > 1
-          ? "All"
-          : filters.statuses[0].id;
+  const holdsExactly = (stageIds) =>
+    filters.statuses.length === stageIds.length &&
+    filters.statuses.every((status) => stageIds.includes(status.id));
 
-    return selectedValue;
+  const getSelectedValue = () => {
+    if (holdsExactly(inProgressStatuses)) {
+      return "IN_PROGRESS";
+    }
+    if (
+      holdsExactly(notCompletedStageIds(statuses.map((status) => status.id)))
+    ) {
+      return "NOT_COMPLETED";
+    }
+    if (filters.statuses.length > 1) {
+      return "All";
+    }
+    // Before the stage list arrives, name the set the landing load will ask
+    // for.
+    return filters.statuses[0]?.id || "NOT_COMPLETED";
   };
 
   const filtersToParameters = () => {
@@ -223,12 +256,44 @@ function PathologyDashboard() {
     );
   };
 
-  const refreshItems = () => {
+  /** One server page of the last search, the same request for the arrows and for Carbon. */
+  const loadPage = (pageNumber) => {
+    const requestId = ++latestRequest.current;
     getFromOpenElisServer(
-      "/rest/pathology/dashboard?" + filtersToParameters(),
-      setPathologyEntriesWithIds,
+      "/rest/pathology/dashboard?page=" + pageNumber,
+      (response) => {
+        if (requestId === latestRequest.current) {
+          setPathologyEntriesWithIds(response);
+        }
+      },
     );
   };
+
+  /**
+   * Runs the search again and, when asked, reopens the page that was showing
+   * (an assignment changes a row, not the list) as long as it still exists.
+   */
+  const refreshItems = (pageToReopen) => {
+    const requestId = ++latestRequest.current;
+    getFromOpenElisServer(
+      "/rest/pathology/dashboard?" + filtersToParameters(),
+      (response) => {
+        if (requestId !== latestRequest.current) {
+          return;
+        }
+        setPathologyEntriesWithIds(response);
+        const reopen = Number(pageToReopen) || 1;
+        if (
+          reopen > 1 &&
+          reopen <= (Number(response?.paging?.totalPages) || 1)
+        ) {
+          loadPage(reopen);
+        }
+      },
+    );
+  };
+
+  const arrows = serverPageArrowsProps({ paging, onPageRequest: loadPage });
 
   const openCaseView = (id) => {
     history.push("/PathologyCaseView/" + id);
@@ -264,7 +329,7 @@ function PathologyDashboard() {
 
   const getPastWeek = () => {
     // Get the current date
-    var currentDate = new Date();
+    var currentDate = labNow();
 
     // Calculate the date of the past week
     var pastWeekDate = new Date(currentDate);
@@ -321,12 +386,10 @@ function PathologyDashboard() {
 
       <Grid fullWidth={true}>
         <Column lg={16}>
-          <Section>
-            <Section>
-              <Heading>
-                <FormattedMessage id="pathology.label.title" />
-              </Heading>
-            </Section>
+          <Section level={1}>
+            <Heading className="page-heading-04">
+              <FormattedMessage id="pathology.label.title" />
+            </Heading>
           </Section>
         </Column>
       </Grid>
@@ -384,6 +447,10 @@ function PathologyDashboard() {
                   value="All"
                 />
                 <SelectItem
+                  text={intl.formatMessage({ id: "common.notCompleted" })}
+                  value="NOT_COMPLETED"
+                />
+                <SelectItem
                   text={intl.formatMessage({ id: "common.inProgress" })}
                   value="IN_PROGRESS"
                 />
@@ -399,39 +466,41 @@ function PathologyDashboard() {
           </Column>
 
           <Column lg={16} md={8} sm={4}>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
-              rows={pathologyEntries.slice(
-                (page - 1) * pageSize,
-                page * pageSize,
-              )}
+              rows={pathologyEntries}
               headers={[
                 {
                   key: "requestDate",
-                  header: <FormattedMessage id="sample.requestDate" />,
+                  header: intl.formatMessage({ id: "sample.requestDate" }),
                 },
                 {
                   key: "status",
-                  header: <FormattedMessage id="pathology.label.stage" />,
+                  header: intl.formatMessage({ id: "pathology.label.stage" }),
                 },
                 {
                   key: "lastName",
-                  header: <FormattedMessage id="patient.last.name" />,
+                  header: intl.formatMessage({ id: "patient.last.name" }),
                 },
                 {
                   key: "firstName",
-                  header: <FormattedMessage id="patient.first.name" />,
+                  header: intl.formatMessage({ id: "patient.first.name" }),
                 },
                 {
                   key: "assignedTechnician",
-                  header: <FormattedMessage id="assigned.technician.label" />,
+                  header: intl.formatMessage({
+                    id: "assigned.technician.label",
+                  }),
                 },
                 {
                   key: "assignedPathologist",
-                  header: <FormattedMessage id="assigned.pathologist.label" />,
+                  header: intl.formatMessage({
+                    id: "assigned.pathologist.label",
+                  }),
                 },
                 {
                   key: "labNumber",
-                  header: <FormattedMessage id="sample.label.labnumber" />,
+                  header: intl.formatMessage({ id: "sample.label.labnumber" }),
                 },
               ]}
               isSortable
@@ -470,43 +539,13 @@ function PathologyDashboard() {
               )}
             </DataTable>
             <Pagination
-              onChange={handlePageChange}
-              page={page}
-              pageSize={pageSize}
-              pageSizes={[10, 20, 30, 50, 100]}
-              totalItems={pathologyEntries.length}
-              forwardText={intl.formatMessage({ id: "pagination.forward" })}
-              backwardText={intl.formatMessage({ id: "pagination.backward" })}
-              itemRangeText={(min, max, total) =>
-                intl.formatMessage(
-                  { id: "pagination.item-range" },
-                  { min: min, max: max, total: total },
-                )
-              }
-              itemsPerPageText={intl.formatMessage({
-                id: "pagination.items-per-page",
+              {...serverPaginationProps({
+                paging,
+                rowsOnPage: pathologyEntries.length,
+                pageSize: serverPageSize,
+                onPageRequest: loadPage,
+                intl,
               })}
-              itemText={(min, max) =>
-                intl.formatMessage(
-                  { id: "pagination.item" },
-                  { min: min, max: max },
-                )
-              }
-              pageNumberText={intl.formatMessage({
-                id: "pagination.page-number",
-              })}
-              pageRangeText={(_current, total) =>
-                intl.formatMessage(
-                  { id: "pagination.page-range" },
-                  { total: total },
-                )
-              }
-              pageText={(page, pagesUnknown) =>
-                intl.formatMessage(
-                  { id: "pagination.page" },
-                  { page: pagesUnknown ? "" : page },
-                )
-              }
             />
           </Column>
         </Grid>

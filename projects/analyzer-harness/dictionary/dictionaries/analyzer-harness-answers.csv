@@ -1,0 +1,10 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode
+Analyzer harness answers,Positive,POS,Y,1,LA6576-8
+Analyzer harness answers,Negative,NEG,Y,2,LA6577-6
+Analyzer harness answers,Invalid,INV,Y,3,LA15841-2
+Analyzer harness answers,Detected,DET,Y,4,LA11882-0
+Analyzer harness answers,Not detected,ND,Y,5,LA11883-8
+Analyzer harness answers,Indeterminate,IND,Y,6,
+Analyzer harness answers,Pass,PASS,Y,7,LA10392-1
+Analyzer harness answers,Fail,FAIL,Y,8,LA25389-0
+Analyzer harness answers,Not applicable,NA,Y,9,

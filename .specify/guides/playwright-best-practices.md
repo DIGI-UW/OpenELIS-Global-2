@@ -60,7 +60,25 @@ await expect(page.getByRole("button", { name: "Submit" })).toBeVisible();
 
 ### 2. Keep Tests Isolated
 
-Each test runs in a fresh browser context. Don't rely on state from other tests.
+A spec's result depends only on the code under test and the data the spec
+created. Not on another spec's browser state, another spec's data, run order,
+sharding, or the clock (Constitution V.7).
+
+All specs in a run share one webapp and one database. `workers: 1` and CI
+sharding keep concurrent writers from colliding; they do not stop a spec from
+reading rows another spec wrote, and which specs share a database changes
+whenever a spec is added.
+
+- **Write only data you own.** Seed through the API with unique identifiers.
+- **Read only data you own.** Scope every list, count, rate, or state derived
+  from one to your seeded IDs, or assert a before and after delta. A date
+  window alone is not a scope.
+- **Never widen an assertion because other data might be present.** Narrow the
+  read: filter by your specimen, patient, or accession.
+- **Pin time.** Use explicit dates and freeze or inject the clock used by the
+  code under test when it reads the current time, including the server clock
+  when applicable. A live server's "today" is not pinned time. For current-date
+  behavior, set that clock to the dates or boundaries being exercised.
 
 ```typescript
 // ❌ BAD: Test depends on previous test's state
@@ -68,11 +86,14 @@ test("step 2", async ({ page }) => {
   // Assumes 'step 1' already ran
 });
 
-// ✅ GOOD: Test is self-contained
-test("complete workflow", async ({ page }) => {
-  await page.goto("/storage/samples");
-  // All setup within this test
-});
+// ❌ BAD: Counts everything in the window, including other specs' data
+await expect(rows).toHaveCount(2);
+await expect(rate).toHaveText(/\d+\.\d{2}%/); // widened because others exist
+
+// ✅ GOOD: Self-contained, reads only its own seeded records
+const seeded = await seedOrders(request, { count: 2 });
+await filterBy(page, { accession: seeded.accessions });
+await expect(rows).toHaveCount(2);
 ```
 
 ### 3. Use Auto-Retrying Assertions
@@ -277,8 +298,10 @@ page.getByRole("button", { name: "Save" });
 // Carbon Form Inputs
 page.getByLabel("Patient Name");
 
-// Carbon Dropdowns
-page.getByRole("combobox", { name: "Select Status" });
+// Carbon Dropdowns: locate by role; choose through helpers/carbon-select.ts,
+// which returns only once the control shows the choice
+const status = page.getByRole("combobox", { name: "Select Status" });
+await chooseCarbonOption(status, "Completed");
 
 // Carbon Tabs
 page.getByRole("tab", { name: "Details" });
@@ -506,16 +529,17 @@ python .ai/skills/playwright/scripts/validate-playwright-project.py playwright/t
 These patterns MUST NOT appear in Playwright tests. Apply as DO/DO NOT rules
 during code review.
 
-| DO NOT                                        | WHY                                                                         | DO INSTEAD                                                       |
-| --------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `response.ok()` as pass/fail                  | Backend 500 throws before UI renders error; CI screenshots show stale state | `waitForResponse` for sync only, then `expect(ui).toBeVisible()` |
-| `{ force: true }` on Carbon inputs            | Carbon uses `visually-hidden` on `<input>`; force bypasses actionability    | Click the `<label>`: `page.locator('label[for="id"]').click()`   |
-| `.catch(() => false)` on `isVisible()`        | `isVisible()` returns boolean — catch is dead code hiding real errors       | Call `isVisible()` directly                                      |
-| `isVisible({ timeout: N })`                   | Timeout param is deprecated and ignored                                     | Use `expect(el).toBeVisible({ timeout: N })` for auto-retry      |
-| `page.getByLabel("text").check()` on Carbon   | Targets the hidden `<input>` — fails actionability                          | Click the `<label>` element                                      |
-| `isChecked()` on optional elements (no guard) | Throws if element not in DOM                                                | `(await el.count()) > 0 && (await el.isChecked())`               |
-| Type + Tab to replace autocomplete selection  | `onSelect` sets server-side IDs that `onChange` does not                    | Wait for suggestion, click it; Tab only as fallback              |
-| Tests with zero `expect()` calls              | Pure navigation provides no regression protection                           | At least one `expect()` per test                                 |
+| DO NOT                                        | WHY                                                                          | DO INSTEAD                                                                   |
+| --------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `response.ok()` as pass/fail                  | Backend 500 throws before UI renders error; CI screenshots show stale state  | `waitForResponse` for sync only, then `expect(ui).toBeVisible()`             |
+| `{ force: true }` on Carbon inputs            | Carbon uses `visually-hidden` on `<input>`; force bypasses actionability     | Click the `<label>`: `page.locator('label[for="id"]').click()`               |
+| `.catch(() => false)` on `isVisible()`        | `isVisible()` returns boolean — catch is dead code hiding real errors        | Call `isVisible()` directly                                                  |
+| `isVisible({ timeout: N })`                   | Timeout param is deprecated and ignored                                      | Use `expect(el).toBeVisible({ timeout: N })` for auto-retry                  |
+| `page.getByLabel("text").check()` on Carbon   | Targets the hidden `<input>` — fails actionability                           | Click the `<label>` element                                                  |
+| `isChecked()` on optional elements (no guard) | Throws if element not in DOM                                                 | `(await el.count()) > 0 && (await el.isChecked())`                           |
+| Type + Tab to replace autocomplete selection  | `onSelect` sets server-side IDs that `onChange` does not                     | Wait for suggestion, click it; Tab only as fallback                          |
+| Tests with zero `expect()` calls              | Pure navigation provides no regression protection                            | At least one `expect()` per test                                             |
+| Click a Carbon select `option`, move on       | downshift calls `onChange` after the click returns; next step sees old state | `chooseCarbonOption` / `tickCarbonMultiSelectOption` (helpers/carbon-select) |
 
 ### Structural Anti-Patterns
 

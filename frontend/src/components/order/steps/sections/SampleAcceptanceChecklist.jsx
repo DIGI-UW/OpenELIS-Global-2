@@ -104,6 +104,8 @@ const SampleAcceptanceChecklist = ({
   // are terminal (no resample / re-collection).
   const poolMode = !!vectorPoolId;
   const isVector = domain === "VECTOR";
+  const isEqa = evaluation?.eqa === true;
+  const rejectsOnly = isVector || isEqa;
 
   const seedAnswers = useCallback((latest) => {
     const seeded = {};
@@ -272,6 +274,7 @@ const SampleAcceptanceChecklist = ({
     notify(NotificationKinds.success, "sampleAcceptance.resample.success", {
       accession: result?.newAccessionNumber || "",
     });
+    onRejected?.();
     load();
   };
 
@@ -355,6 +358,8 @@ const SampleAcceptanceChecklist = ({
 
   const resampledToSampleId = evaluation?.resample?.resampledToSampleId;
   const resampledFromSampleId = evaluation?.resample?.resampledFromSampleId;
+  const resampledToAccession = evaluation?.resample?.resampledToAccession;
+  const resampledFromAccession = evaluation?.resample?.resampledFromAccession;
 
   return (
     <Tile className="sac-tile">
@@ -374,6 +379,8 @@ const SampleAcceptanceChecklist = ({
                   id="sampleAcceptance.qa.subtitle.rejectedVector"
                   defaultMessage="This catch was rejected — read-only."
                 />
+              ) : isEqa ? (
+                <FormattedMessage id="sampleAcceptance.qa.subtitle.rejectedEqa" />
               ) : (
                 <FormattedMessage
                   id="sampleAcceptance.qa.subtitle.rejected"
@@ -411,7 +418,12 @@ const SampleAcceptanceChecklist = ({
               defaultMessage:
                 "This sample was rejected and resampled. Replacement order: {accession}.",
             },
-            { accession: newAccession || `#${resampledToSampleId}` },
+            {
+              accession:
+                newAccession ||
+                resampledToAccession ||
+                `#${resampledToSampleId}`,
+            },
           )}
         />
       )}
@@ -425,12 +437,18 @@ const SampleAcceptanceChecklist = ({
             defaultMessage: "Replacement sample",
           })}
           subtitle={intl.formatMessage(
-            {
-              id: "sampleAcceptance.banner.resampledFrom",
-              defaultMessage:
-                "This is a replacement created by a resample of sample #{id}.",
-            },
-            { id: resampledFromSampleId },
+            resampledFromAccession
+              ? {
+                  id: "sampleAcceptance.banner.resampledFrom.accession",
+                  defaultMessage:
+                    "This is a replacement created by a resample of sample {accession}.",
+                }
+              : {
+                  id: "sampleAcceptance.banner.resampledFrom",
+                  defaultMessage:
+                    "This is a replacement created by a resample of sample #{id}.",
+                },
+            { accession: resampledFromAccession, id: resampledFromSampleId },
           )}
         />
       )}
@@ -566,9 +584,9 @@ const SampleAcceptanceChecklist = ({
           hideCloseButton
           title=""
           subtitle={intl.formatMessage({
-            id: "sampleAcceptance.qa.failHint",
-            defaultMessage:
-              "This sample has failed checks — report an NCE or resample instead of accepting.",
+            id: rejectsOnly
+              ? "sampleAcceptance.qa.failHint.reject"
+              : "sampleAcceptance.qa.failHint",
           })}
         />
       )}
@@ -595,7 +613,7 @@ const SampleAcceptanceChecklist = ({
               defaultMessage="Report NCE"
             />
           </Button>
-          {canResample && !isVector && (
+          {canResample && !rejectsOnly && (
             <Button
               kind="tertiary"
               renderIcon={Renew}
@@ -607,7 +625,7 @@ const SampleAcceptanceChecklist = ({
               />
             </Button>
           )}
-          {canResample && isVector && (
+          {canResample && rejectsOnly && (
             <Button
               kind="danger--tertiary"
               renderIcon={Close}
@@ -662,6 +680,7 @@ const SampleAcceptanceChecklist = ({
       {showNce && (
         <InlineNceForm
           accessionNumber={labNumber}
+          sampleItemId={sampleItemId}
           initialDescription={buildFailureReason()}
           onClose={() => setShowNce(false)}
           onSubmitSuccess={() => setShowNce(false)}
@@ -684,6 +703,7 @@ const SampleAcceptanceChecklist = ({
           sampleItemId={sampleItemId}
           labNumber={labNumber}
           initialReason={buildFailureReason()}
+          eqa={isEqa}
           onClose={() => setShowReject(false)}
           onSuccess={handleRejectSuccess}
         />

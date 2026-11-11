@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Clears the eqa-v2-start tag from a database that recorded it without ever
+    applying it.
+
+    qa/040 tags the point the EQA V2 set begins, and skips itself on a database
+    that already carries the set, where a tag would name the wrong end. The first
+    version of that changeset skipped by marking itself ran, and Liquibase stamps
+    the tag column on a MARK_RAN row from the tagDatabase change even though the
+    change never executed. The result was a tag sitting above the whole V2 block:
+    "liquibase rollback eqa-v2-start" found the name, rolled back the two
+    housekeeping changesets that happened to sit above the row, reported
+    "Rollback has been successful", and removed no part of the V2 set.
+
+    qa/040 now skips with CONTINUE and records nothing, so no further database
+    acquires the tag that way. This clears the ones that already did. Editing a
+    precondition cannot reach a row that is already on file.
+
+    The WHERE clause is the guard: only the MARK_RAN row is cleared, so the real
+    tag on a database provisioned after this change stays where it belongs.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-080-clear-stale-eqa-v2-start-tag">
+        <comment>Clear an eqa-v2-start tag that was recorded without being applied</comment>
+        <sql>
+            UPDATE clinlims.databasechangelog
+               SET tag = NULL
+             WHERE id = 'qa-079-tag-eqa-v2-start'
+               AND exectype = 'MARK_RAN'
+               AND tag IS NOT NULL;
+        </sql>
+        <!-- Empty on purpose. Re-stamping a tag that rolls back nothing is not an
+             inverse worth having, and a changeset with no inverse sitting above the
+             V2 block is what stopped every counted rollback of this feature until
+             the two housekeeping changesets were given one. -->
+        <rollback />
+    </changeSet>
+</databaseChangeLog>

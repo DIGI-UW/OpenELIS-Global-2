@@ -11,12 +11,13 @@ RUN apt-get update \
 RUN groupadd tomcat \
     && groupadd -g 8443 tomcat-ssl-cert \
     && useradd -M -s /bin/bash -u 8443 -g tomcat -G tomcat-ssl-cert tomcat_admin \
-    && mkdir -p "$CATALINA_HOME/target" /opt/openelis/config \
-    && printf '\norg.apache.tomcat.util.digester.PROPERTY_SOURCE=org.apache.tomcat.util.digester.Digester$EnvironmentPropertySource\n' >> "$CATALINA_HOME/conf/catalina.properties"
+    && mkdir -p "$CATALINA_HOME/target" /opt/openelis/config
 
 COPY --from=hapi --chown=tomcat_admin:tomcat /opt/bitnami/tomcat/webapps/ROOT.war /usr/local/tomcat/webapps/ROOT.war
 COPY --chown=tomcat_admin:tomcat ./tomcat/hapi_server.xml /usr/local/tomcat/conf/server.xml
 COPY --chown=tomcat_admin:tomcat ./fhir/hapi_application.yaml /opt/openelis/config/hapi_application.yaml
+COPY ./tomcat/runtime-credentials.properties /tmp/runtime-credentials.properties
+RUN cat /tmp/runtime-credentials.properties >> "$CATALINA_HOME/conf/catalina.properties" && rm /tmp/runtime-credentials.properties
 COPY ./fhir/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN chown -R tomcat_admin:tomcat "$CATALINA_HOME" \

@@ -1,3 +1,4 @@
+import { labNow } from "../utils/labClock";
 export const MICROBIOLOGY_WHONET_PATH = "/Microbiology/whonet";
 export const WHONET_PAGE_SIZES = [20, 50, 100];
 
@@ -32,7 +33,7 @@ const previousCompleteMonth = (now) => {
   return { from: isoDate(from), to: isoDate(to) };
 };
 
-export const getWhonetDateRange = (preset, now = new Date()) => {
+export const getWhonetDateRange = (preset, now = labNow()) => {
   if (preset === "LAST_MONTH") return previousCompleteMonth(now);
   if (preset === "THIS_QUARTER") {
     const firstMonth = Math.floor(now.getMonth() / 3) * 3;
@@ -47,7 +48,7 @@ export const getWhonetDateRange = (preset, now = new Date()) => {
   };
 };
 
-export const getWhonetDatePreset = (state, now = new Date()) => {
+export const getWhonetDatePreset = (state, now = labNow()) => {
   for (const preset of ["THIS_MONTH", "LAST_MONTH", "THIS_QUARTER"]) {
     const range = getWhonetDateRange(preset, now);
     if (state.from === range.from && state.to === range.to) return preset;
@@ -93,7 +94,7 @@ const allowedValue = (params, key, allowed, fallback) => {
   return allowed.has(value) ? value : fallback;
 };
 
-export const parseWhonetSearch = (search = "", now = new Date()) => {
+export const parseWhonetSearch = (search = "", now = labNow()) => {
   const params = new URLSearchParams(search);
   const requestedSource = params.get("source");
   const source = SOURCES.has(requestedSource) ? requestedSource : "";
@@ -115,6 +116,11 @@ export const parseWhonetSearch = (search = "", now = new Date()) => {
     origin: repeatedValues(params, "origin"),
     significance:
       significance.length > 0 ? significance : ["CLINICALLY_SIGNIFICANT"],
+    surveyProgramIds: values(params.getAll("surveyProgramIds")),
+    includeEnvironmentalIsolates: enabled(
+      params,
+      "includeEnvironmentalIsolates",
+    ),
     includeScreening: enabled(params, "includeScreening"),
     includeUnspecified: enabled(params, "includeUnspecified"),
     dedup: DEDUP_POLICIES.has(dedup) ? dedup : "FIRST_ISOLATE_7_DAY",
@@ -141,7 +147,7 @@ export const parseWhonetSearch = (search = "", now = new Date()) => {
   };
 };
 
-export const buildWhonetSearch = (state, now = new Date()) => {
+export const buildWhonetSearch = (state, now = labNow()) => {
   const draft = new URLSearchParams();
   [
     "from",
@@ -157,21 +163,38 @@ export const buildWhonetSearch = (state, now = new Date()) => {
   ].forEach((key) => {
     if (state[key] != null) draft.set(key, String(state[key]));
   });
-  ["specimen", "organism", "origin", "significance"].forEach((key) =>
+  [
+    "specimen",
+    "organism",
+    "origin",
+    "significance",
+    "surveyProgramIds",
+  ].forEach((key) =>
     values(state[key]).forEach((value) => draft.append(key, value)),
   );
-  ["includeScreening", "includeUnspecified", "excludeContaminants"].forEach(
-    (key) => draft.set(key, String(Boolean(state[key]))),
-  );
+  [
+    "includeScreening",
+    "includeUnspecified",
+    "includeEnvironmentalIsolates",
+    "excludeContaminants",
+  ].forEach((key) => draft.set(key, String(Boolean(state[key]))));
   const normalized = parseWhonetSearch(draft.toString(), now);
   const params = new URLSearchParams();
   ["from", "to"].forEach((key) => params.set(key, String(normalized[key])));
-  ["specimen", "organism", "origin", "significance"].forEach((key) =>
+  [
+    "specimen",
+    "organism",
+    "origin",
+    "significance",
+    "surveyProgramIds",
+  ].forEach((key) =>
     normalized[key].forEach((value) => params.append(key, value)),
   );
-  ["includeScreening", "includeUnspecified"].forEach((key) =>
-    params.set(key, String(normalized[key])),
-  );
+  [
+    "includeScreening",
+    "includeUnspecified",
+    "includeEnvironmentalIsolates",
+  ].forEach((key) => params.set(key, String(normalized[key])));
   params.set("dedup", String(normalized.dedup));
   params.set("dedupBasis", String(normalized.dedupBasis));
   params.set("dedupScope", String(normalized.dedupScope));
@@ -186,7 +209,7 @@ export const buildWhonetSearch = (state, now = new Date()) => {
 
 export const getWhonetExportUrlFromWorklist = (
   worklistState,
-  now = new Date(),
+  now = labNow(),
 ) => {
   const currentMonth = getWhonetDateRange("THIS_MONTH", now);
   const state = {
@@ -211,7 +234,7 @@ export const getWhonetExportUrlFromWorklist = (
   return `${MICROBIOLOGY_WHONET_PATH}?${buildWhonetSearch(state, now)}`;
 };
 
-export const clearWhonetWorklistScope = (_state, now = new Date()) =>
+export const clearWhonetWorklistScope = (_state, now = labNow()) =>
   parseWhonetSearch("", now);
 
 export const getWhonetMappingRepairUrl = (
@@ -219,6 +242,8 @@ export const getWhonetMappingRepairUrl = (
   resourceId,
   returnTo = "",
 ) => {
+  if (resource === "patient-origins")
+    return "/MasterListsPage/MicrobiologyReference/patient-origins";
   if (!resourceId) {
     return "";
   }
@@ -246,6 +271,8 @@ export const toWhonetRequest = (state) => ({
   organism: [...state.organism],
   origin: [...state.origin],
   significance: [...state.significance],
+  includeEnvironmentalIsolates: state.includeEnvironmentalIsolates,
+  surveyProgramIds: [...(state.surveyProgramIds || [])],
   includeScreening: state.includeScreening,
   includeUnspecified: state.includeUnspecified,
   dedup: state.dedup,

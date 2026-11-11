@@ -1,0 +1,370 @@
+package org.openelisglobal.analyzer.service;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
+import java.nio.channels.UnresolvedAddressException;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import javax.net.ssl.SSLContext;
+import org.jasypt.exceptions.EncryptionOperationNotPossibleException;
+import org.jasypt.util.text.TextEncryptor;
+import org.openelisglobal.analyzer.dao.AnalyzerBridgePairingDAO;
+import org.openelisglobal.analyzer.valueholder.AnalyzerBridgePairing;
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.security.KeystoreUtil;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+@Service
+public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingService {
+
+    private static final Duration TIMEOUT = Duration.ofSeconds(15);
+    // The pin is checked whenever the Analyzers page loads; an unreachable Bridge
+    // must not hold the page for the full pairing timeout.
+    private static final Duration PIN_CHECK_TIMEOUT = Duration.ofSeconds(5);
+    private static final Set<String> REFUSALS = Set.of("analyzer.bridgePairing.error.wrongCode",
+            "analyzer.bridgePairing.error.closed");
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    private final AnalyzerBridgePairingDAO dao;
+    private final TextEncryptor encryptor;
+    private final String bridgeUrl;
+    private final String configuredCode;
+    private final String serverKeyStore;
+    private final String serverKeyStoreCredential;
+
+    // The WAR runs in two web contexts, each with its own copy of this service, and
+    // either may pair. The stored pairing is the only shared state, so the pin is
+    // read from it; only the TLS context built for a pin is kept.
+    private volatile PairedBridge pairedBridge;
+    private volatile String unreadablePairingLogged;
+    // A code the Bridge refused will be refused again; retrying it would use up the
+    // Bridge's attempts before the right code is entered on the Analyzers page.
+    private volatile boolean configuredCodeRefused;
+
+    public AnalyzerBridgePairingServiceImpl(AnalyzerBridgePairingDAO dao, TextEncryptor encryptor,
+            @Value("${analyzer.bridge.url:}") String bridgeUrl,
+            @Value("${analyzer.bridge.pairing-code:}") String configuredCode,
+            @Value("${server.ssl.key-store:}") String serverKeyStore,
+            @Value("${server.ssl.key-store-password:}") String serverKeyStoreCredential) {
+        this.dao = dao;
+        this.encryptor = encryptor;
+        this.bridgeUrl = bridgeUrl == null ? "" : bridgeUrl.trim().replaceAll("/+$", "");
+        this.configuredCode = configuredCode == null ? "" : configuredCode.trim();
+        this.serverKeyStore = serverKeyStore;
+        this.serverKeyStoreCredential = serverKeyStoreCredential;
+    }
+
+    @Override
+    public Status getStatus() {
+        Optional<AnalyzerBridgePairing> record = dao.findCurrent();
+        String clientFingerprint = record.map(this::clientFingerprint).orElse(null);
+        boolean keyReadable = record.map(r -> readableIdentity(r).isPresent()).orElse(true);
+        boolean paired = keyReadable && record.map(r -> r.getBridgeCertificateSha256() != null).orElse(false);
+        return new Status(bridgeUrl, paired, paired ? record.get().getBridgeCertificateSha256() : null,
+                clientFingerprint, paired ? record.get().getPairedAt().toInstant() : null,
+                !configuredCode.isEmpty() && !configuredCodeRefused && keyReadable,
+                paired && !bridgeUrl.isEmpty() ? checkPin(record.get()).orElse(null) : null, keyReadable);
+    }
+
+    @Override
+    public synchronized Status pair(String code, String sysUserId) {
+        if (bridgeUrl.isEmpty()) {
+            throw new BridgePairingException("analyzer.bridgePairing.error.notConfigured");
+        }
+        if (code == null || code.isBlank()) {
+            throw new BridgePairingException("analyzer.bridgePairing.error.codeRequired");
+        }
+        AnalyzerBridgePairing record = identity();
+        Optional<BridgeTls.Identity> readable = readableIdentity(record);
+        BridgeTls.Identity client = readable.isPresent() ? readable.get() : newIdentity();
+        BridgeTls.ObservingServerTrustManager observed = new BridgeTls.ObservingServerTrustManager();
+        JsonNode answer = requestPairing(client, code.trim(), observed);
+        String bridgeFingerprint = answer.path("bridgeCertificateSha256").asText("").toLowerCase();
+        try {
+            X509Certificate served = observed.observed();
+            if (served == null || !BridgeTls.sha256(served).equals(bridgeFingerprint)) {
+                throw new BridgePairingException("analyzer.bridgePairing.error.certificateMismatch");
+            }
+            record.setBridgeCertificate(BridgeTls.pem(served));
+        } catch (CertificateException e) {
+            throw new BridgePairingException("analyzer.bridgePairing.error.certificateMismatch", e);
+        }
+        if (readable.isEmpty()) {
+            store(record, client);
+            LogEvent.logWarn(getClass().getSimpleName(), "pair",
+                    "Replaced the Analyzer Bridge client key this installation could not read with a new one.");
+        }
+        record.setBridgeUrl(bridgeUrl);
+        record.setBridgeCertificateSha256(bridgeFingerprint);
+        record.setPairedAt(Timestamp.from(Instant.now()));
+        record.setPairedBy(sysUserId);
+        dao.update(record);
+        pairedBridge = null;
+        LogEvent.logInfo(getClass().getSimpleName(), "pair",
+                "Paired with the Analyzer Bridge at " + bridgeUrl + ", certificate " + bridgeFingerprint);
+        return getStatus();
+    }
+
+    @Override
+    public Optional<PairedBridge> getPairedBridge() {
+        Optional<AnalyzerBridgePairing> record = dao.findCurrent().filter(r -> r.getBridgeCertificateSha256() != null);
+        if (record.isEmpty()) {
+            pairedBridge = null;
+            return Optional.empty();
+        }
+        String fingerprint = record.get().getBridgeCertificateSha256();
+        PairedBridge cached = pairedBridge;
+        if (cached != null && cached.bridgeCertificateSha256().equals(fingerprint)) {
+            return Optional.of(cached);
+        }
+        try {
+            SSLContext context = BridgeTls.context(clientIdentity(record.get()),
+                    new BridgeTls.PinnedServerTrustManager(fingerprint));
+            cached = new PairedBridge(fingerprint, context);
+            pairedBridge = cached;
+            return Optional.of(cached);
+        } catch (GeneralSecurityException e) {
+            if (!fingerprint.equals(unreadablePairingLogged)) {
+                unreadablePairingLogged = fingerprint;
+                LogEvent.logError(getClass().getSimpleName(), "getPairedBridge",
+                        "The stored Analyzer Bridge pairing cannot be read (" + e.getMessage()
+                                + "); OpenELIS answers as not paired. A key stored before this installation's"
+                                + " encryption key is recovered by the encrypted secrets upgrade"
+                                + " (docs/upgrades/installation-encryption.md); otherwise set a new pairing code"
+                                + " on the Bridge and pair on the Analyzers page to replace the key.");
+            }
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public boolean isPairedBridge(X509Certificate certificate) {
+        if (certificate == null) {
+            return false;
+        }
+        String pinned = dao.findCurrent().map(AnalyzerBridgePairing::getBridgeCertificateSha256).orElse(null);
+        if (pinned == null) {
+            return false;
+        }
+        try {
+            return pinned.equalsIgnoreCase(BridgeTls.sha256(certificate));
+        } catch (CertificateException e) {
+            return false;
+        }
+    }
+
+    @Override
+    @Scheduled(initialDelay = 5_000, fixedDelay = 30_000)
+    public void pairWithConfiguredCode() {
+        if (configuredCode.isEmpty() || bridgeUrl.isEmpty() || configuredCodeRefused) {
+            return;
+        }
+        Optional<AnalyzerBridgePairing> pinned = dao.findCurrent().filter(r -> r.getBridgeCertificateSha256() != null);
+        if (pinned.isPresent()) {
+            Optional<PinCheck> check = checkPin(pinned.get());
+            if (check.isEmpty() || check.get() == PinCheck.MATCHES || check.get() == PinCheck.UNREACHABLE) {
+                return;
+            }
+            LogEvent.logWarn(getClass().getSimpleName(), "pairWithConfiguredCode",
+                    "The Analyzer Bridge at " + bridgeUrl + " no longer matches the pinned certificate "
+                            + pinned.get().getBridgeCertificateSha256() + " (" + check.get()
+                            + "); pairing again with the configured code.");
+        }
+        try {
+            pair(configuredCode, null);
+        } catch (BridgePairingException e) {
+            if (REFUSALS.contains(e.getMessage())) {
+                configuredCodeRefused = true;
+                LogEvent.logError(getClass().getSimpleName(), "pairWithConfiguredCode",
+                        "The Analyzer Bridge at " + bridgeUrl + " refused the configured pairing code ("
+                                + e.getMessage()
+                                + "); it is not tried again. Enter the Bridge's code on the Analyzers page.");
+                return;
+            }
+            LogEvent.logWarn(getClass().getSimpleName(), "pairWithConfiguredCode",
+                    "Could not pair with the Analyzer Bridge at " + bridgeUrl + " yet: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Asks the Bridge at the configured address for its pairing state, observing
+     * the certificate it presents. {@code UNREACHABLE} when nothing answers at the
+     * address in time (refused, unknown host, or no answer before the timeout),
+     * empty when the answer cannot be read.
+     */
+    private Optional<PinCheck> checkPin(AnalyzerBridgePairing record) {
+        BridgeTls.ObservingServerTrustManager observed = new BridgeTls.ObservingServerTrustManager();
+        try {
+            HttpClient client = HttpClient.newBuilder().connectTimeout(PIN_CHECK_TIMEOUT)
+                    .sslContext(BridgeTls.context(clientIdentity(record), observed)).build();
+            HttpResponse<String> response = client.send(
+                    HttpRequest.newBuilder(URI.create(bridgeUrl + "/pairing")).timeout(PIN_CHECK_TIMEOUT).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            X509Certificate served = observed.observed();
+            if (served == null) {
+                return Optional.empty();
+            }
+            if (!BridgeTls.sha256(served).equalsIgnoreCase(record.getBridgeCertificateSha256())) {
+                return Optional.of(PinCheck.OTHER_CERTIFICATE);
+            }
+            if (response.statusCode() != 200) {
+                return Optional.empty();
+            }
+            JsonNode answer = JSON.readTree(response.body());
+            JsonNode paired = answer == null ? null : answer.get("paired");
+            if (paired == null || !paired.isBoolean()) {
+                return Optional.empty();
+            }
+            return Optional.of(paired.booleanValue() ? PinCheck.MATCHES : PinCheck.BRIDGE_UNPAIRED);
+        } catch (ConnectException | HttpTimeoutException | UnresolvedAddressException e) {
+            return Optional.of(PinCheck.UNREACHABLE);
+        } catch (GeneralSecurityException | IOException e) {
+            return Optional.empty();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Optional.empty();
+        }
+    }
+
+    private JsonNode requestPairing(BridgeTls.Identity identity, String code,
+            BridgeTls.ObservingServerTrustManager observed) {
+        HttpResponse<String> response;
+        try {
+            HttpClient client = HttpClient.newBuilder().connectTimeout(TIMEOUT)
+                    .sslContext(BridgeTls.context(identity, observed)).build();
+            Map<String, String> body = new LinkedHashMap<>();
+            body.put("code", code);
+            servedCertificateFingerprint().ifPresent(fingerprint -> body.put("serverCertificateSha256", fingerprint));
+            response = client.send(
+                    HttpRequest.newBuilder(URI.create(bridgeUrl + "/pairing")).timeout(TIMEOUT)
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body))).build(),
+                    HttpResponse.BodyHandlers.ofString());
+        } catch (GeneralSecurityException e) {
+            throw new BridgePairingException("analyzer.bridgePairing.error.identity", e);
+        } catch (IOException e) {
+            throw new BridgePairingException("analyzer.bridgePairing.error.unreachable", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BridgePairingException("analyzer.bridgePairing.error.unreachable", e);
+        }
+        switch (response.statusCode()) {
+        case 200:
+            try {
+                return JSON.readTree(response.body());
+            } catch (IOException e) {
+                throw new BridgePairingException("analyzer.bridgePairing.error.invalidAnswer", e);
+            }
+        case 403:
+            throw new BridgePairingException("analyzer.bridgePairing.error.wrongCode");
+        case 409:
+            throw new BridgePairingException("analyzer.bridgePairing.error.closed");
+        default:
+            throw new BridgePairingException("analyzer.bridgePairing.error.refused");
+        }
+    }
+
+    /** The pairing record with OpenELIS's client identity, created on first use. */
+    private AnalyzerBridgePairing identity() {
+        Optional<AnalyzerBridgePairing> existing = dao.findCurrent();
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        AnalyzerBridgePairing record = new AnalyzerBridgePairing();
+        store(record, newIdentity());
+        dao.insert(record);
+        return record;
+    }
+
+    private BridgeTls.Identity newIdentity() {
+        try {
+            return BridgeTls.generateIdentity();
+        } catch (GeneralSecurityException e) {
+            throw new BridgePairingException("analyzer.bridgePairing.error.identity", e);
+        }
+    }
+
+    private void store(AnalyzerBridgePairing record, BridgeTls.Identity identity) {
+        try {
+            record.setClientPrivateKey(
+                    encryptor.encrypt(Base64.getEncoder().encodeToString(identity.privateKey().getEncoded())));
+            record.setClientCertificate(BridgeTls.pem(identity.certificate()));
+        } catch (GeneralSecurityException e) {
+            throw new BridgePairingException("analyzer.bridgePairing.error.identity", e);
+        }
+    }
+
+    /**
+     * The client identity of a pairing record. A key this installation cannot
+     * decrypt (stored under another key) is a security failure like any other, so
+     * callers handle it as one rather than letting it escape as a 500.
+     */
+    private BridgeTls.Identity clientIdentity(AnalyzerBridgePairing record) throws GeneralSecurityException {
+        byte[] privateKey;
+        try {
+            privateKey = Base64.getDecoder().decode(encryptor.decrypt(record.getClientPrivateKey()));
+        } catch (EncryptionOperationNotPossibleException | IllegalArgumentException e) {
+            throw new GeneralSecurityException("the client key cannot be decrypted with this installation's key", e);
+        }
+        return new BridgeTls.Identity(BridgeTls.privateKey(privateKey),
+                BridgeTls.certificate(record.getClientCertificate()));
+    }
+
+    private Optional<BridgeTls.Identity> readableIdentity(AnalyzerBridgePairing record) {
+        try {
+            return Optional.of(clientIdentity(record));
+        } catch (GeneralSecurityException e) {
+            return Optional.empty();
+        }
+    }
+
+    private String clientFingerprint(AnalyzerBridgePairing record) {
+        try {
+            return BridgeTls.sha256(BridgeTls.certificate(record.getClientCertificate()));
+        } catch (CertificateException e) {
+            return null;
+        }
+    }
+
+    /**
+     * The certificate OpenELIS serves HTTPS with, which the Bridge pins for its
+     * calls to OpenELIS. Without it the Bridge accepts only what its own trust
+     * store validates.
+     */
+    private Optional<String> servedCertificateFingerprint() {
+        if (serverKeyStore == null || serverKeyStore.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            char[] credential = serverKeyStoreCredential == null ? new char[0] : serverKeyStoreCredential.toCharArray();
+            KeyStore keyStore = KeystoreUtil.readKeyStoreFile(new DefaultResourceLoader().getResource(serverKeyStore),
+                    credential);
+            return Optional
+                    .of(BridgeTls.sha256((X509Certificate) KeystoreUtil.getCertFromKeyStore(keyStore, credential)));
+        } catch (Exception e) {
+            LogEvent.logWarn(getClass().getSimpleName(), "servedCertificateFingerprint",
+                    "Cannot read the HTTPS certificate from " + serverKeyStore + ": " + e.getMessage());
+            return Optional.empty();
+        }
+    }
+}

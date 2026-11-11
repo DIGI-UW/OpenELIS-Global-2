@@ -25,39 +25,41 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
 import SearchPatientForm from "../../patient/SearchPatientForm";
+import SearchableSelect from "../../common/SearchableSelect";
 import "../../Style.css";
 
 const PATIENT_ENTITY_NAME = "PATIENT";
 
-const headers = [
+const headersFor = (intl) => [
   {
     key: "timestamp",
-    header: <FormattedMessage id="systemAudit.table.heading.time" />,
+    header: intl.formatMessage({ id: "systemAudit.table.heading.time" }),
   },
   {
     key: "entityType",
-    header: <FormattedMessage id="systemAudit.table.heading.entityType" />,
+    header: intl.formatMessage({ id: "systemAudit.table.heading.entityType" }),
   },
   {
     key: "entityId",
-    header: <FormattedMessage id="systemAudit.table.heading.entityId" />,
+    header: intl.formatMessage({ id: "systemAudit.table.heading.entityId" }),
   },
   {
     key: "action",
-    header: <FormattedMessage id="systemAudit.table.heading.action" />,
+    header: intl.formatMessage({ id: "systemAudit.table.heading.action" }),
   },
   {
     key: "user",
-    header: <FormattedMessage id="systemAudit.table.heading.user" />,
+    header: intl.formatMessage({ id: "systemAudit.table.heading.user" }),
   },
   {
     key: "changes",
-    header: <FormattedMessage id="systemAudit.table.heading.changes" />,
+    header: intl.formatMessage({ id: "systemAudit.table.heading.changes" }),
   },
 ];
 
 const SystemAuditEvents = () => {
   const intl = useIntl();
+  const headers = headersFor(intl);
   const [events, setEvents] = useState([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -97,12 +99,12 @@ const SystemAuditEvents = () => {
   useEffect(() => {
     getFromOpenElisServer("/rest/systemAuditEvents/entityTypes", (data) => {
       if (data) {
-        setEntityTypes([{ id: "", name: allLabel }, ...data]);
+        setEntityTypes(data.map((type) => ({ id: type.name, value: type.name })));
       }
     });
     getFromOpenElisServer("/rest/users", (data) => {
       if (data) {
-        setUsers([{ id: "", value: allLabel }, ...data]);
+        setUsers(data);
       }
     });
   }, []);
@@ -227,8 +229,8 @@ const SystemAuditEvents = () => {
       <br />
       <Grid fullWidth={true}>
         <Column lg={16}>
-          <Section>
-            <Heading>
+          <Section level={1}>
+            <Heading className="page-heading-05">
               <FormattedMessage id="reports.systemAuditTrail" />
             </Heading>
           </Section>
@@ -267,27 +269,20 @@ const SystemAuditEvents = () => {
           </DatePicker>
         </Column>
         <Column lg={4} md={4} sm={4}>
-          <Dropdown
+          <SearchableSelect
             id="entityType"
-            titleText={intl.formatMessage({
+            labelText={intl.formatMessage({
               id: "systemAudit.filter.entityType",
             })}
-            items={entityTypes}
-            itemToString={(item) => (item ? item.name : "")}
-            onChange={({ selectedItem }) => {
-              const newType = selectedItem
-                ? selectedItem.name === allLabel
-                  ? ""
-                  : selectedItem.name
-                : "";
+            placeholder={allLabel}
+            options={entityTypes}
+            value={selectedEntityType}
+            onChange={(newType) => {
               setSelectedEntityType(newType);
-              // Switching away from PATIENT clears the selected patient so the
-              // next query is unconstrained.
               if (newType !== PATIENT_ENTITY_NAME) {
                 setSelectedPatient(null);
               }
             }}
-            label={intl.formatMessage({ id: "systemAudit.filter.entityType" })}
           />
         </Column>
         <Column lg={4} md={4} sm={4}>
@@ -306,15 +301,13 @@ const SystemAuditEvents = () => {
       <br />
       <Grid fullWidth={true}>
         <Column lg={4} md={4} sm={4}>
-          <Dropdown
+          <SearchableSelect
             id="user"
-            titleText={intl.formatMessage({ id: "systemAudit.filter.user" })}
-            items={users}
-            itemToString={(item) => (item ? item.value : "")}
-            onChange={({ selectedItem }) =>
-              setSelectedUser(selectedItem ? selectedItem.id : "")
-            }
-            label={intl.formatMessage({ id: "systemAudit.filter.user" })}
+            labelText={intl.formatMessage({ id: "systemAudit.filter.user" })}
+            placeholder={allLabel}
+            options={users}
+            value={selectedUser}
+            onChange={setSelectedUser}
           />
         </Column>
         <Column lg={4} md={4} sm={4}>

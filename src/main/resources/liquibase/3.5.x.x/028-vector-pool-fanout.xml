@@ -97,6 +97,40 @@
     <dropNotNullConstraint tableName="analysis" columnName="sampitem_id" schemaName="clinlims" columnDataType="NUMERIC(10,0)"/>
   </changeSet>
 
+  <!-- Upgrade path from older releases: sampitem_id was already nullable there and legacy
+       analyses without a sample item can exist, which the validated check below rejects.
+       Add the same check NOT VALID in that case so new and updated rows are enforced while
+       the legacy rows are kept; the next changeset then skips because the constraint exists. -->
+  <changeSet id="3.5.0-028-add-analysis-pool-or-item-check-legacy-rows" author="mozzy11">
+    <preConditions onFail="MARK_RAN">
+      <columnExists tableName="analysis" columnName="vector_pool_id" schemaName="clinlims"/>
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM pg_constraint c
+        JOIN pg_namespace n ON n.oid = c.connamespace
+        WHERE n.nspname = 'clinlims' AND c.conname = 'ck_analysis_pool_or_item'
+      </sqlCheck>
+      <not>
+        <sqlCheck expectedResult="0">
+          SELECT COUNT(*) FROM clinlims.analysis
+          WHERE NOT ((sampitem_id IS NOT NULL AND vector_pool_id IS NULL)
+                  OR (sampitem_id IS NULL AND vector_pool_id IS NOT NULL))
+        </sqlCheck>
+      </not>
+    </preConditions>
+    <sql>
+      ALTER TABLE clinlims.analysis
+        ADD CONSTRAINT ck_analysis_pool_or_item
+        CHECK (
+          (sampitem_id IS NOT NULL AND vector_pool_id IS NULL)
+          OR
+          (sampitem_id IS NULL AND vector_pool_id IS NOT NULL)
+        ) NOT VALID;
+    </sql>
+    <rollback>
+      <sql>ALTER TABLE clinlims.analysis DROP CONSTRAINT IF EXISTS ck_analysis_pool_or_item;</sql>
+    </rollback>
+  </changeSet>
+
   <changeSet id="3.5.0-028-add-analysis-pool-or-item-check" author="mherman22">
     <preConditions onFail="MARK_RAN">
       <columnExists tableName="analysis" columnName="vector_pool_id" schemaName="clinlims"/>

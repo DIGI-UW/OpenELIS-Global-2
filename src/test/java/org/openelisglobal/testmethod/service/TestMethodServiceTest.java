@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.sql.Date;
 import java.util.List;
+import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -14,6 +15,7 @@ import org.openelisglobal.testmethod.service.TestMethodService.InlineCreateData;
 import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
 import org.openelisglobal.testmethod.valueholder.TestMethod;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 public class TestMethodServiceTest extends BaseWebContextSensitiveTest {
 
@@ -22,6 +24,9 @@ public class TestMethodServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private MethodService methodService;
+
+    @Autowired
+    private DataSource dataSource;
 
     @Before
     public void init() throws Exception {
@@ -173,6 +178,61 @@ public class TestMethodServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(null, displayList);
     }
 
+    /**
+     * OGC-1614: a result's Method list offers the test's linked methods that are
+     * still active, A to Z.
+     */
+    @Test
+    public void getMethodDisplayListForTest_shouldLeaveOutInactiveMethodsAndSortByName() {
+        jdbcTemplate.update("UPDATE clinlims.test_method SET is_active = 'Y' WHERE id = '1002'");
+        jdbcTemplate.update("UPDATE clinlims.method SET is_active = 'N' WHERE id = 200");
+
+        List<IdValuePair> displayList = testMethodService.getMethodDisplayListForTest("10");
+
+        assertEquals(java.util.List.of("Culture", "Microscopy"),
+                displayList.stream().map(IdValuePair::getValue).toList());
+    }
+
+    /**
+     * OGC-1614: a test with no linked method offers every active method, A to Z.
+     */
+    @Test
+    public void getMethodChoicesForTest_shouldOfferEveryActiveMethodByNameWhenNoneIsLinked() {
+        jdbcTemplate.update("UPDATE clinlims.method SET is_active = 'N' WHERE id = 200");
+
+        List<IdValuePair> choices = testMethodService.getMethodChoicesForTest("999");
+
+        List<String> names = choices.stream().map(IdValuePair::getValue).toList();
+        assertEquals(names.stream().sorted(String.CASE_INSENSITIVE_ORDER).toList(), names);
+        assertEquals(false, choices.stream().anyMatch(pair -> "200".equals(pair.getId())));
+        assertEquals(true, names.contains("Microscopy"));
+    }
+
+    /**
+     * OGC-1614: a test whose only linked method was deactivated offers every active
+     * method and names no default.
+     */
+    @Test
+    public void aTestWhoseLinkedMethodsAreAllInactiveFallsBackWithNoDefault() {
+        jdbcTemplate.update("UPDATE clinlims.method SET is_active = 'N' WHERE id = 200");
+
+        assertEquals(null, testMethodService.getMethodDisplayListForTest("20"));
+        assertEquals(null, testMethodService.getDefaultMethodId("20"));
+        assertEquals(true, testMethodService.getMethodChoicesForTest("20").stream()
+                .anyMatch(pair -> "Microscopy".equals(pair.getValue())));
+    }
+
+    /**
+     * OGC-1614: a default method that was deactivated is not offered as the
+     * default.
+     */
+    @Test
+    public void getDefaultMethodId_shouldNotNameAnInactiveMethod() {
+        jdbcTemplate.update("UPDATE clinlims.method SET is_active = 'N' WHERE id = 100");
+
+        assertEquals(null, testMethodService.getDefaultMethodId("10"));
+    }
+
     @Test
     public void getLinkedMethodDtos_shouldReturnDtoListWithDetails() {
         List<TestMethodDto> dtos = testMethodService.getLinkedMethodDtos("10");
@@ -261,6 +321,42 @@ public class TestMethodServiceTest extends BaseWebContextSensitiveTest {
         // Verify active methods for test 10 increased to 3
         List<TestMethod> activeLinks = testMethodService.getActiveTestMethodsByTestId("10");
         assertEquals(3, activeLinks.size());
+    }
+
+    /**
+     * A method added on Manage Methods starts inactive and becomes active once a
+     * test uses it; linking it to a test is that moment.
+     */
+    @Test
+    public void linkMethod_activatesAnInactiveMethod() {
+        deactivate("300");
+
+        TestMethod link = new TestMethod();
+        link.setTestId("20");
+        link.setMethodId("300");
+        link.setIsDefaultMethod(false);
+        link.setEffectiveDate(Date.valueOf("2025-03-01"));
+        link.setIsActive("Y");
+        link.setSysUserId("1");
+        testMethodService.linkMethod(link);
+
+        assertEquals("Y", methodService.get("300").getIsActive());
+    }
+
+    @Test
+    public void copyMethodsFromTest_activatesAnInactiveMethodItCopies() {
+        deactivate("100");
+
+        testMethodService.copyMethodsFromTest("10", "20", "1");
+
+        assertEquals("Y", methodService.get("100").getIsActive());
+    }
+
+    private void deactivate(String methodId) {
+        new JdbcTemplate(dataSource).update(
+                "UPDATE clinlims.method SET is_active = 'N', lastupdated = NOW() WHERE id = CAST(? AS numeric)",
+                methodId);
+        assertEquals("N", methodService.get(methodId).getIsActive());
     }
 
     @Test

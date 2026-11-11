@@ -2,6 +2,8 @@ package org.openelisglobal.testsamplehandling.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +26,15 @@ public class TestSampleHandlingServiceImpl extends AuditableBaseObjectServiceImp
     @Autowired
     private TestSampleHandlingHistoryService historyService;
 
+    /**
+     * Advisory-lock namespace for one test's handling row: two first saves of the
+     * same test queue behind each other instead of both inserting (OGC-1467).
+     */
+    private static final int SAVE_LOCK_NAMESPACE = 730703;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     TestSampleHandlingServiceImpl() {
@@ -44,7 +55,17 @@ public class TestSampleHandlingServiceImpl extends AuditableBaseObjectServiceImp
 
     @Override
     @Transactional
+    public void saveForTests(Map<String, TestSampleHandling> desiredByTestId, String sysUserId) {
+        for (Map.Entry<String, TestSampleHandling> entry : desiredByTestId.entrySet()) {
+            saveForTest(entry.getKey(), entry.getValue(), sysUserId);
+        }
+    }
+
+    @Override
+    @Transactional
     public TestSampleHandling saveForTest(String testId, TestSampleHandling desired, String sysUserId) {
+        entityManager.createNativeQuery("SELECT 1 FROM pg_advisory_xact_lock(:namespace, hashtext(:testId))")
+                .setParameter("namespace", SAVE_LOCK_NAMESPACE).setParameter("testId", testId).getResultList();
         TestSampleHandling existing = getByTestId(testId);
         // Snapshot the prior business state BEFORE mutating (target == existing).
         String previousJson = existing != null ? snapshot(existing) : null;

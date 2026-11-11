@@ -40,8 +40,28 @@ public class EQALabProgramEnrollment extends BaseObject<Long> {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    /**
+     * Whether the laboratory is taking part. Follows {@link #status}: only an
+     * Active enrolment sets it. The cycle gate, the submission bridge and the order
+     * screens all read this flag rather than the status spelling.
+     */
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    @Column(name = "status", nullable = false, length = 20)
+    private String status = "Active";
+
+    @Column(name = "status_reason", columnDefinition = "TEXT")
+    private String statusReason;
+
+    @Column(name = "status_effective_date")
+    private Date statusEffectiveDate;
+
+    @Column(name = "status_changed_date")
+    private Date statusChangedDate;
+
+    @Column(name = "status_changed_by")
+    private Long statusChangedBy;
 
     @Column(name = "created_date", nullable = false)
     private Date createdDate;

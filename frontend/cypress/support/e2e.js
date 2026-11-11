@@ -20,13 +20,19 @@ import "./commands";
 // Controlled by FAIL_FAST_ENABLED env variable (set via E2E_FAIL_FAST=true)
 import "cypress-fail-fast";
 
-// Patient Merge test support (008-patient-merge feature)
-import "./patient-merge-setup";
-
 // Capture browser console logs and forward to terminal
 // This is especially important for Electron browser
 // Note: Electron console logs are automatically shown when ELECTRON_ENABLE_LOGGING=1
 // This handler captures console messages and logs them via Cypress commands when available
+// The app registers a service worker, which the Playwright config blocks
+// because of the self-signed certificate. Under Cypress its late
+// service-worker.js fetch crashed the proxy after every spec had passed
+// ("Cannot read properties of null (reading 'family')"), failing the run, so
+// the browser is told it has no service worker support.
+Cypress.on("window:before:load", (win) => {
+  delete Object.getPrototypeOf(win.navigator).serviceWorker;
+});
+
 Cypress.on("window:before:load", (win) => {
   // Store original console methods
   const originalLog = win.console.log;

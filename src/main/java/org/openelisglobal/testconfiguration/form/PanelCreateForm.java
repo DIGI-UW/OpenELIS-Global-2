@@ -47,6 +47,17 @@ public class PanelCreateForm extends BaseForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String panelLoinc;
 
+    /**
+     * OGC-1232 — the panel's domain (CLINICAL / ENVIRONMENTAL / VECTOR, any case).
+     * Optional: absent or blank creates a CLINICAL panel, as this screen always
+     * did. Validated against the {@code Domain} enum by the controller.
+     */
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String domain;
+
+    /** Response only: the id of the panel a successful create produced. */
+    private String createdPanelId;
+
     public PanelCreateForm() {
         setFormName("panelCreateForm");
     }
@@ -145,5 +156,21 @@ public class PanelCreateForm extends BaseForm {
 
     public void setPanelLoinc(String panelLoinc) {
         this.panelLoinc = panelLoinc;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
+    }
+
+    public String getCreatedPanelId() {
+        return createdPanelId;
+    }
+
+    public void setCreatedPanelId(String createdPanelId) {
+        this.createdPanelId = createdPanelId;
     }
 }

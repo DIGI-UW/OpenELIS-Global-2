@@ -17,4 +17,6 @@ public interface ResultCalculationDAO extends BaseDAO<ResultCalculation, Integer
 
     List<ResultCalculation> getResultCalculationByPatientAndCalculation(Patient patient, Calculation calculation)
             throws LIMSRuntimeException;
+
+    List<ResultCalculation> getResultCalculationsByResultId(String resultId) throws LIMSRuntimeException;
 }

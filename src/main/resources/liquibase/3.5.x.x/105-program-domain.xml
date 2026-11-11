@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Programs V2 (OGC follow-up to 748/361) - every program carries a single
+    required domain (CLINICAL / ENVIRONMENTAL / VECTOR), matching the domain
+    already carried by test / test_section / panel. Existing rows backfill to
+    CLINICAL and admins reassign from the Programs list. The Order-Entry
+    program picker filters to `domain = order.domain AND active = 'Y'` so
+    reception cannot cross-code an order.
+    -->
+
+    <changeSet id="programs-v2-domain-column" author="herbert">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="program" columnName="domain"/>
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="program">
+            <column name="domain" type="VARCHAR(20)" defaultValue="CLINICAL">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.program
+            ADD CONSTRAINT program_domain_chk
+            CHECK (domain IN ('CLINICAL', 'ENVIRONMENTAL', 'VECTOR'))
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.program DROP CONSTRAINT program_domain_chk</sql>
+            <dropColumn schemaName="clinlims" tableName="program" columnName="domain"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

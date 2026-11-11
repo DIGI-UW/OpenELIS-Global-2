@@ -11,6 +11,21 @@ export const unmetRequirements = (requirements) =>
   requirements.filter((requirement) => !requirement.met);
 
 /**
+ * The server refuses an environmental or vector order that names neither a
+ * requesting organisation nor a requestor contact; this is the same check, so
+ * Save is not offered for an order that would be refused.
+ */
+export const hasRequesterOrRequestor = (sampleOrderItems = {}) =>
+  [
+    "referringSiteId",
+    "referringSiteName",
+    "newRequesterName",
+    "requestorPersonId",
+    "requestorFirstName",
+    "requestorLastName",
+  ].some((field) => String(sampleOrderItems?.[field] ?? "").trim() !== "");
+
+/**
  * Renders the unmet requirements as one sentence, e.g.
  * "Add a lab number and at least one sample type before saving."
  */

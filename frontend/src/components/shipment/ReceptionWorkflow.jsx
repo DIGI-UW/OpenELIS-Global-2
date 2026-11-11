@@ -33,8 +33,10 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import ShipmentNavigation from "./ShipmentNavigation";
 import "./ReceptionWorkflow.css";
 
+import useInAppNavigation from "../common/useInAppNavigation";
 const ReceptionWorkflow = () => {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
   const { addNotification } = useContext(NotificationContext);
 
   const [boxId, setBoxId] = useState("");
@@ -217,9 +219,11 @@ const ReceptionWorkflow = () => {
 
   const handleAcceptSpecimen = (specimen) => {
     // Open the pre-filled sample-entry form; re-scanning after save links the sample to the box.
-    window.location.href = `/SamplePatientEntry?ID=${encodeURIComponent(
-      specimen.externalOrderNumber,
-    )}`;
+    navigate(
+      `/SamplePatientEntry?ID=${encodeURIComponent(
+        specimen.externalOrderNumber,
+      )}`,
+    )();
   };
 
   const handleSampleStatusChange = (sampleKey, status) => {

@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MicroAstPanelAdminForm {
+    public String susceptibilityProtocol = "GENERAL";
     public String id;
     public String logicalKey;
     public Integer versionNumber;
     public String supersedesPanelId;
     public String name;
-    public String workflowType;
     public String organismGroup;
     public String specimenTypeId;
     public boolean active = true;

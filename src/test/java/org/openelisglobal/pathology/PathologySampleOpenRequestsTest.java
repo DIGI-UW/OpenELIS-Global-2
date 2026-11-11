@@ -29,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * once however many of its requests are open, and a case whose requests have
  * all been closed is not counted at all.
  */
+@org.springframework.transaction.annotation.Transactional
 public class PathologySampleOpenRequestsTest extends BaseWebContextSensitiveTest {
 
     /**
@@ -38,6 +39,9 @@ public class PathologySampleOpenRequestsTest extends BaseWebContextSensitiveTest
 
     @Autowired
     private PathologySampleService pathologySampleService;
+
+    @Autowired
+    private org.openelisglobal.dictionary.service.DictionaryService dictionaryService;
 
     @Before
     public void init() throws Exception {
@@ -163,7 +167,12 @@ public class PathologySampleOpenRequestsTest extends BaseWebContextSensitiveTest
         form.setSlides(new ArrayList<>());
         form.setReports(new ArrayList<>());
         PathologySampleForm.PathologyRequestForm request = new PathologySampleForm.PathologyRequestForm();
-        request.setValue("a second opinion on the margins");
+        org.openelisglobal.dictionary.valueholder.Dictionary option = new org.openelisglobal.dictionary.valueholder.Dictionary();
+        option.setDictEntry("a second opinion on the margins");
+        option.setIsActive("Y");
+        option.setSysUserId(TEST_SYS_USER_ID);
+        String optionId = dictionaryService.insert(option);
+        request.setValue(optionId);
         form.setRequests(List.of(request));
 
         pathologySampleService.updateWithFormValues(pathologySampleId, form);

@@ -22,9 +22,6 @@ public class MicroAstPanel extends BaseObject<String> {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @Column(name = "workflow_type", nullable = false, length = 40)
-    private String workflowType;
-
     @Column(name = "organism_group", length = 100)
     private String organismGroup;
 
@@ -69,14 +66,6 @@ public class MicroAstPanel extends BaseObject<String> {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public String getWorkflowType() {
-        return workflowType;
-    }
-
-    public void setWorkflowType(String workflowType) {
-        this.workflowType = workflowType;
     }
 
     public String getOrganismGroup() {
@@ -149,5 +138,16 @@ public class MicroAstPanel extends BaseObject<String> {
 
     public void setIsActive(String isActive) {
         this.isActive = isActive;
+    }
+
+    @Column(name = "susceptibility_protocol", nullable = false, length = 24)
+    private String susceptibilityProtocol = "GENERAL";
+
+    public String getSusceptibilityProtocol() {
+        return susceptibilityProtocol;
+    }
+
+    public void setSusceptibilityProtocol(String value) {
+        susceptibilityProtocol = value;
     }
 }

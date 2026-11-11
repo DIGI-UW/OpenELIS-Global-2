@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.localization.dao.LocalizationDAO;
 import org.openelisglobal.localization.dao.LocalizationValueDAO;
@@ -168,8 +169,26 @@ public class LocalizationValueServiceImpl extends BaseObjectServiceImpl<Localiza
     @Override
     @Transactional
     public LocalizationValue setTranslation(String localizationId, String locale, String value, String sysUserId) {
+        LocalizationValue saved = saveTranslation(localizationId, locale, value, sysUserId,
+                LocalizationValue.ORIGIN_SITE, lv -> lv.writeSiteLabel(value));
+        localizationDAO.syncStoredTestNames(localizationId);
+        return saved;
+    }
+
+    @Override
+    @Transactional
+    public LocalizationValue setSystemTranslation(String localizationId, String locale, String value, String sysUserId,
+            boolean keepSiteLabel) {
+        LocalizationValue saved = saveTranslation(localizationId, locale, value, sysUserId,
+                LocalizationValue.ORIGIN_SYSTEM, lv -> lv.writeSystemLabel(value, keepSiteLabel));
+        localizationDAO.syncStoredTestNames(localizationId);
+        return saved;
+    }
+
+    private LocalizationValue saveTranslation(String localizationId, String locale, String value, String sysUserId,
+            String origin, Consumer<LocalizationValue> write) {
         return getByLocalizationIdAndLocale(localizationId, locale).map(lv -> {
-            lv.setValue(value);
+            write.accept(lv);
             lv.setSysUserId(sysUserId);
             return update(lv);
         }).orElseGet(() -> {
@@ -177,6 +196,7 @@ public class LocalizationValueServiceImpl extends BaseObjectServiceImpl<Localiza
                     .orElseThrow(() -> new IllegalArgumentException("Localization not found: " + localizationId));
             LocalizationValue lv = new LocalizationValue(locale, value);
             lv.setLocalization(localization);
+            lv.setOrigin(origin);
             lv.setSysUserId(sysUserId);
             insert(lv);
             return lv;

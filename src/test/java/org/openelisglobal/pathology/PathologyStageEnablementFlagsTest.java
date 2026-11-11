@@ -33,9 +33,12 @@ import org.springframework.test.util.ReflectionTestUtils;
  * {@code site_information_domain} (site-information.xml, site-info-domain.xml
  * and result-reporting-configuration.xml among them), and the base class
  * commits, so whether the seeded rows survive depends on which class ran before
- * this one. The changeset's own statements are therefore re-applied here, so
- * what these tests assert is what changeset 036 writes rather than what test
- * order happened to leave behind.
+ * this one. The seeding below is a no-op wherever they survived and restores
+ * them where they did not, which is what lets these tests state what a
+ * deployment's switches must look like whatever ran first. What changeset 037
+ * rewrites over those rows is checked by an upgrade fixture instead, under
+ * src/test/resources/database-upgrades, because only a database Liquibase alone
+ * has touched can say what a changeset wrote.
  */
 public class PathologyStageEnablementFlagsTest extends BaseWebContextSensitiveTest {
 
@@ -52,9 +55,8 @@ public class PathologyStageEnablementFlagsTest extends BaseWebContextSensitiveTe
             + " clinlims.site_information_domain WHERE name = 'resultConfiguration')";
 
     /**
-     * The insert changeset 036 writes for one stage, column for column. The guard
-     * makes it a no-op when the changeset's own row is still present, so a run in
-     * which nothing wiped the table asserts on the row Liquibase wrote.
+     * The insert changeset 036 writes for one stage, carrying the description 037
+     * corrects it to, so a table another fixture truncated still answers.
      */
     private static final String SEED_SWITCH = "INSERT INTO clinlims.site_information (id, name, lastupdated,"
             + " description, value, encrypted, domain_id, value_type, instruction_key, \"group\")"
@@ -71,9 +73,14 @@ public class PathologyStageEnablementFlagsTest extends BaseWebContextSensitiveTe
     @Before
     public void seedTheSwitchesTheWayTheChangesetDoes() {
         jdbcTemplate.update(SEED_RESULT_CONFIGURATION_DOMAIN);
-        optionalStageSwitches().forEach((status, property) -> jdbcTemplate.update(SEED_SWITCH, property.getDBName(),
-                "If true, cases pass through the " + status.getDisplay() + " stage; if false, it is skipped",
-                property.getDBName()));
+        // A no-op wherever the changesets' own rows are still there, so what the tests
+        // read is what the changesets wrote between them.
+        optionalStageSwitches()
+                .forEach(
+                        (status, property) -> jdbcTemplate.update(SEED_SWITCH, property.getDBName(),
+                                "If true, cases pass through the " + status.getDisplay()
+                                        + " stage; if false, it cannot be chosen and is not applicable",
+                                property.getDBName()));
     }
 
     @Test

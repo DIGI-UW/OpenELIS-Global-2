@@ -23,8 +23,9 @@ https://openelis-global.org/community/get-involved/
   authoritative principles all changes must respect.
 - **Feature specs and plans:** active feature work lives under [specs/](specs/)
   (numbered feature folders, plus `specs/plans/` for cross-cutting plans and
-  `specs/roadmaps/` for strategic documents). Historical / retired plans are
-  archived under [.specify/plan-archive/](.specify/plan-archive/).
+  `specs/roadmaps/` for strategic documents). These must match the current code
+  or direction; remove a document once it no longer does, since git history
+  keeps the old version.
 
 For code of conduct expectations, see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 

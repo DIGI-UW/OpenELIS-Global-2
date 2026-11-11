@@ -67,6 +67,14 @@ describe("classifyNumericResult", () => {
     expect(classifyNumericResult("1", highOnly).flag).toBe("ABNORMAL");
   });
 
+  it("a normal range open at the top flags only values below its floor", () => {
+    // The legacy bean collapses an unauthored upper bound to 0, so "20 and
+    // above is normal" arrives as the pair (20, 0), as the server judges it.
+    const openTop = row({ lowerNormalRange: 20, upperNormalRange: 0 });
+    expect(classifyNumericResult("50", openTop).flag).toBe("NORMAL");
+    expect(classifyNumericResult("10", openTop).flag).toBe("ABNORMAL");
+  });
+
   it("blank or non-numeric input carries no flag", () => {
     expect(classifyNumericResult("", row()).flag).toBeUndefined();
     expect(classifyNumericResult("abc", row()).flag).toBeUndefined();

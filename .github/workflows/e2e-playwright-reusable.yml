@@ -64,19 +64,21 @@ on:
 
 jobs:
   # ─── Pre-warm Playwright browser cache ─────────────────────────────────────
-  # Runs once per workflow invocation so the 4 parallel shards (2 here × 2
-  # callers — core and harness) don't all hammer the Playwright CDN on a cold
-  # cache. On a warm cache this job finishes in ~10s with no network I/O
+  # Runs once per suite invocation so its parallel shards do not all hammer
+  # the Playwright CDN on a cold cache. On a warm cache this job finishes in
+  # ~10s with no network I/O
   # beyond the cache backend. The shards' own `actions/cache` step restores
   # the key this job saves.
   pre-warm-playwright:
     name: Pre-warm Playwright cache
-    runs-on: ubuntu-latest
+    # Pinned: the Playwright release in package.json ships no browser build
+    # for ubuntu-latest's Ubuntu 26.04 image, so the install step fails there.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
@@ -88,7 +90,7 @@ jobs:
 
       - name: Restore Playwright browser cache
         id: pw-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
@@ -128,7 +130,9 @@ jobs:
   test-shards:
     name: ${{ inputs.artifact_prefix }} ${{ matrix.shard_index }}/${{ strategy.job-total }}
     needs: pre-warm-playwright
-    runs-on: ubuntu-latest
+    # Pinned: the Playwright release in package.json ships no browser build
+    # for ubuntu-latest's Ubuntu 26.04 image, so the install step fails there.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: read
@@ -139,7 +143,7 @@ jobs:
         shard_index: ${{ fromJSON(inputs.shard_indices) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           submodules: recursive
@@ -171,7 +175,7 @@ jobs:
         working-directory: frontend
 
       - name: Restore Playwright browser cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
@@ -181,6 +185,11 @@ jobs:
       - name: Install Playwright browsers
         timeout-minutes: 15
         run: |
+          # --with-deps runs apt-get update, which fails the whole install when
+          # any source fails; packages.microsoft.com answered 403 on a runner
+          # (2026-10-20). Chromium's dependencies come from the Ubuntu archive.
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list \
+            /etc/apt/sources.list.d/microsoft-prod.sources
           for attempt in 1 2 3; do
             echo "::group::Playwright install attempt $attempt"
             # A timed-out --with-deps attempt orphans apt-get still holding the
@@ -213,7 +222,7 @@ jobs:
 
       - name: Download image map (cross-run)
         if: inputs.artifact_source_mode == 'cross_run'
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
@@ -222,7 +231,7 @@ jobs:
 
       - name: Download image map (same-run)
         if: inputs.artifact_source_mode == 'same_run'
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
@@ -312,7 +321,7 @@ jobs:
 
       - name: Seed analyzers via REST API
         if: inputs.setup_analyzer_harness
-        run: bash projects/analyzer-harness/seed-analyzers.sh
+        run: bash projects/analyzer-harness/seed-analyzers.sh --ensure-connections
         env:
           BASE_URL: https://localhost
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
@@ -447,7 +456,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
@@ -464,7 +473,7 @@ jobs:
 
       - name: Download blob reports from shards
         continue-on-error: true
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: frontend/all-blob-reports
           pattern: ${{ inputs.artifact_prefix }}-blob-report-*

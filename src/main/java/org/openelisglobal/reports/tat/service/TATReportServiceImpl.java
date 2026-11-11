@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.time.temporal.IsoFields;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -16,6 +15,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.reports.qi.QiReportSupport;
 import org.openelisglobal.reports.tat.bean.TATCalculationMode;
 import org.openelisglobal.reports.tat.bean.TATDetailResponse;
 import org.openelisglobal.reports.tat.bean.TATResult;
@@ -26,10 +28,7 @@ import org.openelisglobal.reports.tat.bean.TATSummaryResponse.HistogramBin;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse.TrendDataPoint;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse.TrendSeries;
-import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
-import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,8 +37,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class TATReportServiceImpl implements TATReportService {
 
-    private static final Logger logger = LoggerFactory.getLogger(TATReportServiceImpl.class);
-
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -47,7 +44,7 @@ public class TATReportServiceImpl implements TATReportService {
     private TATCalculationService tatCalculationService;
 
     @Autowired
-    private SampleOrganizationService sampleOrganizationService;
+    private AnalysisService analysisService;
 
     // Fixed non-uniform histogram bins per requirements doc
     private static final double[][] HISTOGRAM_BINS = { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 4 }, { 4, 6 }, { 6, 8 },
@@ -55,6 +52,13 @@ public class TATReportServiceImpl implements TATReportService {
 
     private static final String[] HISTOGRAM_LABELS = { "0-1h", "1-2h", "2-3h", "3-4h", "4-6h", "6-8h", "8-12h",
             "12-24h", "24-48h", "48h+" };
+
+    // The site and its department are both organization requesters.
+    private static final String REFERRING_SITE = " FROM SampleRequester sr, Organization site"
+            + " WHERE sr.sampleId = s.id AND site.id = sr.requesterId"
+            + " AND sr.requesterTypeId = (SELECT rt.id FROM RequesterType rt WHERE rt.requesterType = 'organization')"
+            + " AND site.id NOT IN (SELECT dept.id FROM Organization dept JOIN dept.organizationTypes deptType"
+            + " WHERE deptType.name = 'dept')";
 
     @Override
     public TATSummaryResponse getSummary(LocalDate fromDate, LocalDate toDate, TATSegment segment,
@@ -118,17 +122,12 @@ public class TATReportServiceImpl implements TATReportService {
         Comparator<TATResult> comparator = getComparator(sortField, sortOrder);
         allResults.sort(comparator);
 
-        // Paginate
-        int total = allResults.size();
-        int fromIdx = Math.min(page * pageSize, total);
-        int toIdx = Math.min(fromIdx + pageSize, total);
-
         TATDetailResponse response = new TATDetailResponse();
-        response.setTotalCount(total);
+        response.setTotalCount(allResults.size());
         response.setPage(page);
         response.setPageSize(pageSize);
         response.setCalculationMode(mode.name());
-        response.setResults(allResults.subList(fromIdx, toIdx));
+        response.setResults(QiReportSupport.page(allResults, page, pageSize));
         return response;
     }
 
@@ -173,10 +172,12 @@ public class TATReportServiceImpl implements TATReportService {
             String sampleTypeId, String orderingSiteId, boolean includeCancelled) {
 
         StringBuilder hql = new StringBuilder();
-        hql.append("SELECT a, s, si FROM Analysis a ");
+        hql.append("SELECT a, s, si, COALESCE((SELECT min(site.organizationName)" + REFERRING_SITE + "),");
+        hql.append(" (SELECT min(o.organizationName) FROM SampleOrganization ordering");
+        hql.append(" JOIN ordering.organization o WHERE ordering.sample = s)) FROM Analysis a ");
         hql.append("JOIN a.sampleItem si ");
         hql.append("JOIN si.sample s ");
-        hql.append("WHERE s.receivedTimestamp BETWEEN :fromDate AND :toDate ");
+        hql.append("WHERE s.receivedTimestamp >= :fromDate AND s.receivedTimestamp < :toDate ");
 
         if (!includeCancelled) {
             hql.append(
@@ -200,13 +201,15 @@ public class TATReportServiceImpl implements TATReportService {
             hql.append("AND si.typeOfSample.id = :sampleTypeId ");
         }
         if (orderingSiteId != null && !orderingSiteId.isBlank()) {
+            hql.append("AND (EXISTS (SELECT 1" + REFERRING_SITE + " AND site.id = :orderingSiteId) ");
+            hql.append("OR (NOT EXISTS (SELECT 1" + REFERRING_SITE + ") ");
             hql.append("AND EXISTS (SELECT 1 FROM SampleOrganization so ");
-            hql.append("WHERE so.sample.id = s.id AND so.organization.id = :orderingSiteId) ");
+            hql.append("WHERE so.sample.id = s.id AND so.organization.id = :orderingSiteId))) ");
         }
 
         Query query = entityManager.unwrap(Session.class).createQuery(hql.toString());
-        query.setParameter("fromDate", Timestamp.valueOf(fromDate.atStartOfDay()));
-        query.setParameter("toDate", Timestamp.valueOf(toDate.plusDays(1).atStartOfDay()));
+        query.setParameter("fromDate", QiReportSupport.startOf(fromDate));
+        query.setParameter("toDate", QiReportSupport.endOf(toDate));
 
         if (priority != null && !priority.isEmpty()) {
             query.setParameter("priority", priority);
@@ -231,27 +234,19 @@ public class TATReportServiceImpl implements TATReportService {
         List<TATResult> results = new ArrayList<>();
 
         for (Object[] row : rows) {
-            org.openelisglobal.analysis.valueholder.Analysis analysis = (org.openelisglobal.analysis.valueholder.Analysis) row[0];
+            Analysis analysis = (Analysis) row[0];
             org.openelisglobal.sample.valueholder.Sample sample = (org.openelisglobal.sample.valueholder.Sample) row[1];
 
             TATResult result = new TATResult();
             result.setLabNumber(sample.getAccessionNumber());
             result.setTestName(analysis.getTest() != null ? analysis.getTest().getLocalizedName() : "");
-            result.setLabUnit(analysis.getTestSection() != null ? analysis.getTestSection().getLocalizedName() : "");
+            result.setLabUnit(labUnit(analysis));
             result.setPriority(sample.getPriority() != null ? sample.getPriority().name() : "Routine");
             result.setSampleType(analysis.getSampleItem() != null && analysis.getSampleItem().getTypeOfSample() != null
                     ? analysis.getSampleItem().getTypeOfSample().getLocalizedName()
                     : "");
 
-            // Ordering site via SampleOrganization lookup
-            try {
-                SampleOrganization sampleOrg = sampleOrganizationService.getDataBySample(sample);
-                if (sampleOrg != null && sampleOrg.getOrganization() != null) {
-                    result.setOrderingSite(sampleOrg.getOrganization().getOrganizationName());
-                }
-            } catch (Exception e) {
-                logger.debug("No organization found for sample {}: {}", sample.getId(), e.getMessage());
-            }
+            result.setOrderingSite((String) row[3]);
 
             // Timestamps
             result.setOrderCreated(
@@ -273,8 +268,25 @@ public class TATReportServiceImpl implements TATReportService {
 
             results.add(result);
         }
+        // Left in the session, every row would be flushed again by each later query in
+        // the caller's transaction.
+        for (Object[] row : rows) {
+            entityManager.detach(row[0]);
+            entityManager.detach(row[1]);
+            entityManager.detach(row[2]);
+        }
 
         return results;
+    }
+
+    /**
+     * An empty-string labUnit defeats the "Unknown" fallback in the LAB_UNIT
+     * breakdown, so an analysis with no section of its own falls back to the test's
+     * home section (the same fallback the rejection heatmap applies in SQL).
+     */
+    private String labUnit(Analysis analysis) {
+        TestSection section = analysisService.getTestSection(analysis);
+        return section == null ? "" : section.getLocalizedName();
     }
 
     private Timestamp[] getSegmentTimestamps(TATSegment segment, TATResult r) {
@@ -347,16 +359,22 @@ public class TATReportServiceImpl implements TATReportService {
     }
 
     private Map<String, List<TATResult>> groupByDimension(List<TATResult> results, String dimension) {
+        // the mapping layer emits "" (not null) for missing values, so treat
+        // blank and null alike — otherwise a phantom blank-named bucket forms
         return results.stream().collect(Collectors.groupingBy(r -> {
             return switch (dimension.toUpperCase()) {
-            case "LAB_UNIT" -> r.getLabUnit() != null ? r.getLabUnit() : "Unknown";
-            case "TEST" -> r.getTestName() != null ? r.getTestName() : "Unknown";
-            case "PRIORITY" -> r.getPriority() != null ? r.getPriority() : "Routine";
-            case "SAMPLE_TYPE" -> r.getSampleType() != null ? r.getSampleType() : "Unknown";
-            case "ORDERING_SITE" -> r.getOrderingSite() != null ? r.getOrderingSite() : "Unknown";
-            default -> r.getLabUnit() != null ? r.getLabUnit() : "Unknown";
+            case "LAB_UNIT" -> orUnknown(r.getLabUnit(), "Unknown");
+            case "TEST" -> orUnknown(r.getTestName(), "Unknown");
+            case "PRIORITY" -> orUnknown(r.getPriority(), "Routine");
+            case "SAMPLE_TYPE" -> orUnknown(r.getSampleType(), "Unknown");
+            case "ORDERING_SITE" -> orUnknown(r.getOrderingSite(), "Unknown");
+            default -> orUnknown(r.getLabUnit(), "Unknown");
             };
         }));
+    }
+
+    private static String orUnknown(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     // ========== Trend ==========
@@ -367,7 +385,7 @@ public class TATReportServiceImpl implements TATReportService {
         for (TATResult r : results) {
             if (r.getSelectedSegmentTat() == null || r.getReceived() == null)
                 continue;
-            String period = getPeriodKey(r.getReceived().toLocalDateTime().toLocalDate(), interval);
+            String period = QiReportSupport.periodKey(r.getReceived().toLocalDateTime().toLocalDate(), interval);
             periodValues.computeIfAbsent(period, k -> new ArrayList<>()).add(r.getSelectedSegmentTat());
         }
 
@@ -384,16 +402,6 @@ public class TATReportServiceImpl implements TATReportService {
                 }).collect(Collectors.toList());
 
         return new TrendSeries(label, dataPoints);
-    }
-
-    private String getPeriodKey(LocalDate date, String interval) {
-        if (interval == null)
-            interval = "DAILY";
-        return switch (interval.toUpperCase()) {
-        case "WEEKLY" -> date.getYear() + "-W" + String.format("%02d", date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
-        case "MONTHLY" -> date.getYear() + "-" + String.format("%02d", date.getMonthValue());
-        default -> date.toString(); // DAILY
-        };
     }
 
     private Comparator<TATResult> getComparator(String field, String order) {

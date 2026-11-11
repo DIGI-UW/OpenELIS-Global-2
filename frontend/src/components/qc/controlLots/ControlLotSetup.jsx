@@ -12,15 +12,13 @@
  * - Association with analyzer/test combinations
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Grid,
   Column,
   Form,
   FormGroup,
   TextInput,
-  DatePicker,
-  DatePickerInput,
   Dropdown,
   Button,
   Loading,
@@ -32,9 +30,12 @@ import { useHistory, useParams } from "react-router-dom";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import {
+  displayDateToIso,
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import CustomDatePicker from "../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../layout/Layout";
 import StatisticsConfigSection from "./StatisticsConfigSection";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -44,6 +45,20 @@ const ControlLotSetup = () => {
   const intl = useIntl();
   const history = useHistory();
   const { id: lotId } = useParams();
+  const { configurationProperties } = useContext(ConfigurationContext) || {};
+  // CustomDatePicker renders and returns the locale display format; the lot
+  // endpoint speaks ISO, so the expiration date is converted at both edges.
+  const dateLocale = configurationProperties?.DEFAULT_DATE_LOCALE;
+  const isoToDisplayDate = (value) => {
+    if (!value) return "";
+    const d = new Date(value);
+    const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(d.getUTCDate()).padStart(2, "0");
+    const yyyy = d.getUTCFullYear();
+    return dateLocale === "fr-FR"
+      ? `${dd}/${mm}/${yyyy}`
+      : `${mm}/${dd}/${yyyy}`;
+  };
 
   const isEditMode = !!lotId;
 
@@ -63,6 +78,18 @@ const ControlLotSetup = () => {
     standardDeviation: null,
   });
 
+  // A bench lot has no analyzer. Modelled as a first-class dropdown entry with an
+  // empty id so the field always shows what will actually be submitted, instead of
+  // reading as a required field the user forgot to fill in.
+  const BENCH_ANALYZER_ID = "";
+  const analyzerOptions = [
+    {
+      id: BENCH_ANALYZER_ID,
+      name: intl.formatMessage({ id: "qc.controlLot.analyzer.bench" }),
+    },
+    ...analyzers,
+  ];
+
   // Control level options (FR-002)
   const controlLevelOptions = [
     { id: "LOW", label: intl.formatMessage({ id: "qc.controlLot.level.low" }) },
@@ -75,6 +102,16 @@ const ControlLotSetup = () => {
       label: intl.formatMessage({ id: "qc.controlLot.level.high" }),
     },
   ];
+
+  const frequencyOptions = [
+    "DAILY",
+    "PER_SHIFT",
+    "CUSTOM_HOURS",
+    "PER_RUN",
+  ].map((id) => ({
+    id,
+    label: intl.formatMessage({ id: `qc.controlLot.frequency.${id}` }),
+  }));
 
   // Validation schema
   const validationSchema = Yup.object().shape({
@@ -92,12 +129,59 @@ const ControlLotSetup = () => {
         id: "qc.controlLot.validation.expirationRequired",
       }),
     ),
-    analyzerId: Yup.string().required(
-      intl.formatMessage({ id: "qc.controlLot.validation.analyzerRequired" }),
-    ),
+    // analyzerId is deliberately absent: a bench control lot for a manual method has
+    // no analyzer (OGC-1147), and the dropdown makes that an explicit choice
+    // rather than a blank field.
     testId: Yup.string().required(
       intl.formatMessage({ id: "qc.controlLot.validation.testRequired" }),
     ),
+    // OGC-427: a custom window needs its length; a shift needs a positive one.
+    qcFrequencyHours: Yup.number()
+      .transform((value, original) => (original === "" ? undefined : value))
+      .when("qcFrequencyType", {
+        is: "CUSTOM_HOURS",
+        then: (schema) =>
+          schema
+            .required(
+              intl.formatMessage({
+                id: "qc.controlLot.validation.frequencyHoursRequired",
+              }),
+            )
+            .positive(
+              intl.formatMessage({
+                id: "qc.controlLot.validation.frequencyHoursRequired",
+              }),
+            )
+            .integer(
+              intl.formatMessage({
+                id: "qc.controlLot.validation.frequencyHoursRequired",
+              }),
+            ),
+        otherwise: (schema) => schema.notRequired(),
+      }),
+    shiftDefinitionHours: Yup.number()
+      .transform((value, original) => (original === "" ? undefined : value))
+      .when("qcFrequencyType", {
+        is: "PER_SHIFT",
+        then: (schema) =>
+          schema
+            .required(
+              intl.formatMessage({
+                id: "qc.controlLot.validation.shiftHoursRequired",
+              }),
+            )
+            .positive(
+              intl.formatMessage({
+                id: "qc.controlLot.validation.shiftHoursRequired",
+              }),
+            )
+            .integer(
+              intl.formatMessage({
+                id: "qc.controlLot.validation.shiftHoursRequired",
+              }),
+            ),
+        otherwise: (schema) => schema.notRequired(),
+      }),
   });
 
   // Load existing lot for edit
@@ -155,21 +239,23 @@ const ControlLotSetup = () => {
         lotNumber: existingLot.lotNumber || "",
         controlMaterial: existingLot.productName || "",
         controlLevel: existingLot.controlLevel || "",
-        expirationDate: existingLot.expirationDate
-          ? (() => {
-              const d = new Date(existingLot.expirationDate);
-              const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-              const dd = String(d.getUTCDate()).padStart(2, "0");
-              const yyyy = d.getUTCFullYear();
-              return `${mm}/${dd}/${yyyy}`;
-            })()
-          : "",
+        expirationDate: isoToDisplayDate(existingLot.expirationDate),
         analyzerId:
           existingLot.instrumentId != null
             ? String(existingLot.instrumentId)
             : "",
         testId: existingLot.testId != null ? String(existingLot.testId) : "",
         isActive: existingLot.status === "ACTIVE",
+        qcFrequencyType: existingLot.qcFrequencyType || "DAILY",
+        qcFrequencyHours:
+          existingLot.qcFrequencyHours != null
+            ? String(existingLot.qcFrequencyHours)
+            : "",
+        shiftDefinitionHours:
+          existingLot.shiftDefinitionHours != null
+            ? String(existingLot.shiftDefinitionHours)
+            : "8",
+        qcRequired: existingLot.qcRequired !== false,
       };
     }
     return {
@@ -180,6 +266,10 @@ const ControlLotSetup = () => {
       analyzerId: "",
       testId: "",
       isActive: true,
+      qcFrequencyType: "DAILY",
+      qcFrequencyHours: "",
+      shiftDefinitionHours: "8",
+      qcRequired: true,
     };
   };
 
@@ -188,16 +278,43 @@ const ControlLotSetup = () => {
     setSubmitting(true);
     setError(null);
 
+    // Manufacturer-fixed lots need mean + SD, entered via "Configure". Catch it
+    // here so the user gets a clear pointer instead of an opaque backend 400.
+    if (
+      statisticsConfig.calculationMethod === "MANUFACTURER_FIXED" &&
+      (statisticsConfig.mean == null ||
+        statisticsConfig.standardDeviation == null)
+    ) {
+      setError(intl.formatMessage({ id: "qc.controlLot.error.statsRequired" }));
+      setSubmitting(false);
+      setFormSubmitting(false);
+      return;
+    }
+
+    // Same rule QCControlLotValidator enforces: with no analyzer there is nothing
+    // accumulating runs, so a run-derived method would leave the lot in
+    // ESTABLISHMENT forever. Caught here for a pointed message instead of a 400.
+    if (
+      !values.analyzerId &&
+      statisticsConfig.calculationMethod !== "MANUFACTURER_FIXED"
+    ) {
+      setError(
+        intl.formatMessage({ id: "qc.controlLot.error.benchNeedsFixedStats" }),
+      );
+      setSubmitting(false);
+      setFormSubmitting(false);
+      return;
+    }
+
     const payload = {
       id: isEditMode ? lotId : undefined,
       productName: values.controlMaterial,
       lotNumber: values.lotNumber,
       controlLevel: values.controlLevel,
       expirationDate: values.expirationDate
-        ? (() => {
-            const [mm, dd, yyyy] = values.expirationDate.split("/");
-            return new Date(`${yyyy}-${mm}-${dd}T12:00:00`).toISOString();
-          })()
+        ? new Date(
+            `${displayDateToIso(values.expirationDate, dateLocale)}T12:00:00`,
+          ).toISOString()
         : undefined,
       instrumentId: values.analyzerId
         ? parseInt(values.analyzerId, 10)
@@ -209,17 +326,33 @@ const ControlLotSetup = () => {
       manufacturerStdDev: statisticsConfig.standardDeviation,
       activationDate: new Date().toISOString(),
       status: values.isActive ? "ACTIVE" : "EXPIRED",
+      qcFrequencyType: values.qcFrequencyType,
+      qcFrequencyHours:
+        values.qcFrequencyType === "CUSTOM_HOURS" && values.qcFrequencyHours
+          ? parseInt(values.qcFrequencyHours, 10)
+          : null,
+      shiftDefinitionHours: values.shiftDefinitionHours
+        ? parseInt(values.shiftDefinitionHours, 10)
+        : 8,
+      qcRequired: values.qcRequired,
     };
 
     postToOpenElisServerFullResponse(
       "/rest/qc/controlLot",
       JSON.stringify(payload),
-      (response) => {
-        if (response.ok) {
+      async (response) => {
+        if (response && response.ok) {
           history.push("/analyzers/qc/control-lots");
+          return;
         } else {
+          // Surface the backend's specific message (it returns the validation
+          // reason as the 400 body) rather than a generic "save failed".
+          const backendMsg = response
+            ? await response.text().catch(() => "")
+            : "";
           setError(
-            intl.formatMessage({ id: "qc.controlLot.error.saveFailed" }),
+            backendMsg?.trim() ||
+              intl.formatMessage({ id: "qc.controlLot.error.saveFailed" }),
           );
         }
         setSubmitting(false);
@@ -285,7 +418,7 @@ const ControlLotSetup = () => {
             },
             {
               label: intl.formatMessage({ id: "qc.dashboard.title" }),
-              link: "/analyzers/qc/db",
+              link: "/qa/qc/dashboard",
             },
             {
               label: intl.formatMessage({ id: "qc.controlLots.title" }),
@@ -394,9 +527,11 @@ const ControlLotSetup = () => {
                     })}
                     items={controlLevelOptions}
                     itemToString={(item) => item?.label || ""}
-                    selectedItem={controlLevelOptions.find(
-                      (o) => o.id === values.controlLevel,
-                    )}
+                    selectedItem={
+                      controlLevelOptions.find(
+                        (o) => o.id === values.controlLevel,
+                      ) ?? null
+                    }
                     onChange={({ selectedItem }) =>
                       setFieldValue("controlLevel", selectedItem?.id || "")
                     }
@@ -410,35 +545,19 @@ const ControlLotSetup = () => {
               {/* Expiration Date */}
               <Column lg={8} md={4} sm={4}>
                 <FormGroup legendText="">
-                  <DatePicker
-                    datePickerType="single"
-                    dateFormat="m/d/Y"
+                  <CustomDatePicker
+                    id="expiration-date"
+                    labelText={intl.formatMessage({
+                      id: "qc.controlLot.field.expiration",
+                    })}
                     value={values.expirationDate}
-                    onChange={([date]) => {
-                      if (date) {
-                        const mm = String(date.getMonth() + 1).padStart(2, "0");
-                        const dd = String(date.getDate()).padStart(2, "0");
-                        const yyyy = date.getFullYear();
-                        setFieldValue("expirationDate", `${mm}/${dd}/${yyyy}`);
-                      } else {
-                        setFieldValue("expirationDate", "");
-                      }
-                    }}
-                  >
-                    <DatePickerInput
-                      id="expiration-date"
-                      placeholder="mm/dd/yyyy"
-                      labelText={intl.formatMessage({
-                        id: "qc.controlLot.field.expiration",
-                      })}
-                      onBlur={handleBlur("expirationDate")}
-                      invalid={
-                        touched.expirationDate && !!errors.expirationDate
-                      }
-                      invalidText={errors.expirationDate}
-                      data-testid="control-lot-expiration-input"
-                    />
-                  </DatePicker>
+                    updateStateValue
+                    onChange={(displayed) =>
+                      setFieldValue("expirationDate", displayed)
+                    }
+                    invalid={touched.expirationDate && !!errors.expirationDate}
+                    invalidText={errors.expirationDate}
+                  />
                 </FormGroup>
               </Column>
 
@@ -453,17 +572,22 @@ const ControlLotSetup = () => {
                     label={intl.formatMessage({
                       id: "qc.controlLot.field.selectAnalyzer",
                     })}
-                    items={analyzers}
+                    helperText={intl.formatMessage({
+                      id: "qc.controlLot.field.analyzerHelper",
+                    })}
+                    items={analyzerOptions}
                     itemToString={(item) => item?.name || ""}
-                    selectedItem={analyzers.find(
-                      (a) => a.id === values.analyzerId,
-                    )}
+                    selectedItem={
+                      analyzerOptions.find((a) => a.id === values.analyzerId) ??
+                      null
+                    }
                     onChange={({ selectedItem }) => {
-                      setFieldValue("analyzerId", selectedItem?.id || "");
+                      setFieldValue(
+                        "analyzerId",
+                        selectedItem?.id || BENCH_ANALYZER_ID,
+                      );
                       setFieldValue("testId", "");
                     }}
-                    invalid={touched.analyzerId && !!errors.analyzerId}
-                    invalidText={errors.analyzerId}
                     data-testid="control-lot-analyzer-dropdown"
                   />
                 </FormGroup>
@@ -482,13 +606,14 @@ const ControlLotSetup = () => {
                     })}
                     items={tests}
                     itemToString={(item) => item?.value || item?.name || ""}
-                    selectedItem={tests.find((t) => t.id === values.testId)}
+                    selectedItem={
+                      tests.find((t) => t.id === values.testId) ?? null
+                    }
                     onChange={({ selectedItem }) =>
                       setFieldValue("testId", selectedItem?.id || "")
                     }
                     invalid={touched.testId && !!errors.testId}
                     invalidText={errors.testId}
-                    disabled={!values.analyzerId}
                     data-testid="control-lot-test-dropdown"
                   />
                 </FormGroup>
@@ -511,6 +636,102 @@ const ControlLotSetup = () => {
                     toggled={values.isActive}
                     onToggle={(checked) => setFieldValue("isActive", checked)}
                     data-testid="control-lot-active-toggle"
+                  />
+                </FormGroup>
+              </Column>
+
+              {/* QC frequency rule (OGC-427 FR-QC-001) */}
+              <Column lg={8} md={4} sm={4}>
+                <FormGroup legendText="">
+                  <Dropdown
+                    id="qc-frequency-type"
+                    titleText={intl.formatMessage({
+                      id: "qc.controlLot.field.frequency",
+                    })}
+                    label={intl.formatMessage({
+                      id: "qc.controlLot.field.frequency",
+                    })}
+                    helperText={intl.formatMessage({
+                      id: "qc.controlLot.field.frequencyHelper",
+                    })}
+                    items={frequencyOptions}
+                    itemToString={(item) => item?.label || ""}
+                    selectedItem={frequencyOptions.find(
+                      (option) => option.id === values.qcFrequencyType,
+                    )}
+                    onChange={({ selectedItem }) =>
+                      setFieldValue(
+                        "qcFrequencyType",
+                        selectedItem?.id || "DAILY",
+                      )
+                    }
+                    data-testid="control-lot-frequency-dropdown"
+                  />
+                </FormGroup>
+              </Column>
+              {values.qcFrequencyType === "CUSTOM_HOURS" && (
+                <Column lg={8} md={4} sm={4}>
+                  <FormGroup legendText="">
+                    <TextInput
+                      id="qc-frequency-hours"
+                      name="qcFrequencyHours"
+                      type="number"
+                      min={1}
+                      labelText={intl.formatMessage({
+                        id: "qc.controlLot.field.frequencyHours",
+                      })}
+                      value={values.qcFrequencyHours}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      invalid={
+                        touched.qcFrequencyHours && !!errors.qcFrequencyHours
+                      }
+                      invalidText={errors.qcFrequencyHours}
+                      data-testid="control-lot-frequency-hours-input"
+                    />
+                  </FormGroup>
+                </Column>
+              )}
+              {values.qcFrequencyType === "PER_SHIFT" && (
+                <Column lg={8} md={4} sm={4}>
+                  <FormGroup legendText="">
+                    <TextInput
+                      id="qc-shift-hours"
+                      name="shiftDefinitionHours"
+                      type="number"
+                      min={1}
+                      labelText={intl.formatMessage({
+                        id: "qc.controlLot.field.shiftHours",
+                      })}
+                      value={values.shiftDefinitionHours}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      invalid={
+                        touched.shiftDefinitionHours &&
+                        !!errors.shiftDefinitionHours
+                      }
+                      invalidText={errors.shiftDefinitionHours}
+                      data-testid="control-lot-shift-hours-input"
+                    />
+                  </FormGroup>
+                </Column>
+              )}
+              <Column lg={8} md={4} sm={4}>
+                <FormGroup legendText="">
+                  <Toggle
+                    id="qc-required"
+                    labelText={intl.formatMessage({
+                      id: "qc.controlLot.field.qcRequired",
+                    })}
+                    labelA={intl.formatMessage({
+                      id: "qc.controlLot.field.qcRequired.off",
+                    })}
+                    labelB={intl.formatMessage({
+                      id: "qc.controlLot.field.qcRequired.on",
+                    })}
+                    toggled={values.qcRequired}
+                    onToggle={(checked) => setFieldValue("qcRequired", checked)}
+                    data-testid="control-lot-qc-required-toggle"
                   />
                 </FormGroup>
               </Column>

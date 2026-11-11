@@ -107,7 +107,7 @@ public class PatientReportServiceImpl implements PatientReportService {
         columns.add(new ReportColumn("accessionNumber", "Accession Number", "String"));
         columns.add(new ReportColumn("patientName", "Patient Name", "String"));
         columns.add(new ReportColumn("patientExternalId", "External ID", "String"));
-        columns.add(new ReportColumn("patientGender", "Gender", "String"));
+        columns.add(new ReportColumn("patientGender", "Sex", "String"));
         columns.add(new ReportColumn("patientDateOfBirth", "Date of Birth", "String"));
         columns.add(new ReportColumn("organizationName", "Organization Name", "String"));
         columns.add(new ReportColumn("sampleCollectionDate", "Collection Date", "String"));

@@ -100,7 +100,11 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
         try {
             String referenceId = newObject.getStringId();
-            hist.setReferenceId(referenceId);
+            if (isNumericKey(referenceId)) {
+                hist.setReferenceId(referenceId);
+            } else {
+                hist.setReferenceKey(referenceId);
+            }
             hist.setSysUserId(sysUserId);
 
             Timestamp timestamp = newObject.getLastupdated();
@@ -185,7 +189,11 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             if ((xml != null) && (xml.length() > 0)) {
                 History hist = new History();
 
-                hist.setReferenceId(referenceId);
+                if (isNumericKey(referenceId)) {
+                    hist.setReferenceId(referenceId);
+                } else {
+                    hist.setReferenceKey(referenceId);
+                }
                 hist.setSysUserId(sysUserId);
 
                 byte[] bytes = xml.getBytes();
@@ -218,6 +226,15 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in AuditTrail saveHistory()", e);
         }
+    }
+
+    /**
+     * history.reference_id is numeric; a table keyed by a UUID string
+     * (qc_control_lot) keeps its key in reference_key instead. A null key stays on
+     * reference_id so its existing behavior is unchanged.
+     */
+    private boolean isNumericKey(String referenceId) {
+        return referenceId == null || referenceId.matches("\\d+");
     }
 
     /**

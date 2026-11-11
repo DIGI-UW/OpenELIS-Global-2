@@ -1,0 +1,223 @@
+{
+  "$schema": "https://openelis-global.org/contracts/analyzer/v1/analyzer-profile.schema.json",
+  "schemaVersion": "1.0",
+  "profileMeta": {
+    "id": "genexpert-astm",
+    "version": "2.1.0",
+    "displayName": "Cepheid GeneXpert (ASTM Mode)",
+    "confidence": "HIGH"
+  },
+  "analyzer_name": "Cepheid GeneXpert (ASTM Mode)",
+  "manufacturer": "Cepheid",
+  "model": "GeneXpert",
+  "category": "MOLECULAR",
+  "protocol": {
+    "name": "ASTM",
+    "version": "E-1394-97",
+    "lowerLayerVersion": "LIS01_A"
+  },
+  "identifier_pattern": "GENEXPERT|CEPHEID",
+  "transport": ["RS-232", "TCP/IP"],
+  "transport_config": {
+    "RS-232": {
+      "default_baud_rate": 9600,
+      "data_bits": 8,
+      "stop_bits": 1,
+      "parity": "NONE",
+      "flow_control": "NONE",
+      "read_timeout_ms": 1000,
+      "message_timeout_ms": 30000,
+      "reconnect_interval_ms": 5000,
+      "max_reconnect_attempts": -1,
+      "rts_enabled": true,
+      "dtr_enabled": true
+    },
+    "TCP/IP": {}
+  },
+  "communication": {
+    "mode": "BOTH",
+    "supports_lis_initiated": true
+  },
+  "capabilities": {
+    "inboundResults": true,
+    "outboundOrders": true,
+    "connectionTest": true
+  },
+  "default_test_mappings": [
+    {
+      "test_code": "MTB-RIF",
+      "loinc": "85362-2",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": [
+        "MTB DETECTED",
+        "NOT DETECTED",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "VERY LOW",
+        "INDETERMINATE",
+        "ERROR",
+        "NO RESULT"
+      ]
+    },
+    {
+      "test_code": "RIF",
+      "loinc": "46244-0",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": ["DETECTED", "NOT DETECTED", "INDETERMINATE"]
+    },
+    {
+      "test_code": "HIV-VL",
+      "loinc": "20447-9",
+      "unit": "copies/mL",
+      "result_type": "quantitative"
+    },
+    {
+      "test_code": "COVID19",
+      "loinc": "94500-6",
+      "unit": "",
+      "result_type": "qualitative",
+      "values": ["POSITIVE", "NEGATIVE", "INDETERMINATE", "ERROR"]
+    }
+  ],
+  "configDefaults": {
+    "dataFlow": "RESULTS_ONLY",
+    "connectionRole": "SERVER",
+    "transport": "TCP/IP",
+    "aggregationMode": "PER_MESSAGE",
+    "extractionOverrides": {
+      "resultRecordSelection": {
+        "mode": "FIELD_NON_BLANK",
+        "targetField": "R.3.5"
+      }
+    },
+    "flagMappings": {},
+    "transforms": {}
+  },
+  "connectionFields": [
+    {
+      "key": "dataFlow",
+      "labelKey": "analyzer.setup.connect.dataFlow",
+      "inputKind": "SELECT",
+      "required": true,
+      "choices": [
+        {
+          "value": "RESULTS_ONLY",
+          "labelKey": "analyzer.setup.connect.dataFlow.resultsOnly"
+        },
+        {
+          "value": "TWO_WAY",
+          "labelKey": "analyzer.setup.connect.dataFlow.twoWay"
+        }
+      ]
+    },
+    {
+      "key": "transport",
+      "labelKey": "analyzer.connection.field.transport",
+      "inputKind": "SELECT",
+      "required": true,
+      "choices": [
+        {
+          "value": "RS-232",
+          "labelKey": "analyzer.connection.transport.RS-232"
+        },
+        {
+          "value": "TCP/IP",
+          "labelKey": "analyzer.connection.transport.TCP/IP"
+        }
+      ]
+    },
+    {
+      "key": "connectionRole",
+      "labelKey": "analyzer.connection.field.connectionRole",
+      "inputKind": "SELECT",
+      "required": true,
+      "choices": [
+        {
+          "value": "SERVER",
+          "labelKey": "analyzer.connection.role.server"
+        },
+        {
+          "value": "CLIENT",
+          "labelKey": "analyzer.connection.role.client"
+        }
+      ],
+      "visibleWhen": {
+        "fieldKey": "transport",
+        "operator": "NOT_EQUALS",
+        "value": "RS-232"
+      }
+    },
+    {
+      "key": "host",
+      "labelKey": "analyzer.connection.field.host",
+      "helpTextKey": "analyzer.connection.field.host.help",
+      "inputKind": "TEXT",
+      "required": false,
+      "choices": [],
+      "visibleWhen": {
+        "fieldKey": "transport",
+        "operator": "EQUALS",
+        "value": "TCP/IP"
+      }
+    },
+    {
+      "key": "senderId",
+      "labelKey": "analyzer.connection.field.senderId",
+      "helpTextKey": "analyzer.connection.field.senderId.help",
+      "inputKind": "TEXT",
+      "required": false,
+      "choices": [],
+      "visibleWhen": {
+        "fieldKey": "transport",
+        "operator": "EQUALS",
+        "value": "TCP/IP"
+      }
+    },
+    {
+      "key": "port",
+      "labelKey": "analyzer.connection.field.port",
+      "inputKind": "NUMBER",
+      "required": true,
+      "choices": [],
+      "visibleWhen": {
+        "fieldKey": "transport",
+        "operator": "EQUALS",
+        "value": "TCP/IP"
+      }
+    },
+    {
+      "key": "serialPort",
+      "labelKey": "analyzer.connection.field.serialPort",
+      "inputKind": "TEXT",
+      "required": true,
+      "choices": [],
+      "visibleWhen": {
+        "fieldKey": "transport",
+        "operator": "EQUALS",
+        "value": "RS-232"
+      }
+    }
+  ],
+  "controlResultRecognition": {
+    "mode": "RULES",
+    "rules": {
+      "astm-order-action-control": {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "O.12",
+        "operand": "Q"
+      }
+    }
+  },
+  "catalog": {
+    "revision": 5,
+    "revisionFingerprint": "sha256:3ea1cb123338481ee499a90168583d58369b8d3a6b7520b368324aa5bb8bc314",
+    "recognitionFingerprint": "sha256:68a4cf6c695d3a23662a7a5dc97983bbc78e38726f932517d09238d47aad701e",
+    "source": "SHIPPED",
+    "status": "ACTIVE",
+    "publishedAt": "2026-09-23T00:00:00Z",
+    "publishedBy": "distribution"
+  }
+}

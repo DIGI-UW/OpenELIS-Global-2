@@ -73,6 +73,16 @@ public class ReportSourceConfigTest {
     }
 
     @Test
+    public void emptyInitialSelectionIsValidButMissingOrNullLayoutDefaultsAreNot() throws Exception {
+        String json = config("X", "SAMPLE_TESTING", "Report").replace("\"RESULT_LIST\":[\"accessionNumber\"]",
+                "\"RESULT_LIST\":[]");
+        assertEquals(List.of(), parse(json).defaultColumns().get("RESULT_LIST"));
+        assertThrows(IllegalArgumentException.class, () -> parse(json.replaceAll(",\\s*\"RESULT_LIST\":\\[\\]", "")));
+        assertThrows(IllegalArgumentException.class,
+                () -> parse(json.replace("\"RESULT_LIST\":[]", "\"RESULT_LIST\":null")));
+    }
+
+    @Test
     public void duplicateDefaultsAreRejected() {
         assertThrows(IllegalArgumentException.class,
                 () -> parse(config("X", "SAMPLE_TESTING", "Report").replace("\"RESULT_LIST\":[\"accessionNumber\"]",

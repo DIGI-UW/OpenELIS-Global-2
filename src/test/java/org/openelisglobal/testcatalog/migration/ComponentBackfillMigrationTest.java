@@ -117,7 +117,7 @@ public class ComponentBackfillMigrationTest extends BaseWebContextSensitiveTest 
         // from TEST_RESULT) AND the new-component defaults (label = test name,
         // display_order 0, single-reading, active).
         List<java.util.Map<String, Object>> primary = jdbcTemplate.queryForList(
-                "SELECT label, uom_id, result_type, significant_digits, display_order, allow_multiple_readings,"
+                "SELECT label, uom_id, result_type, reporting_decimal_places, display_order, allow_multiple_readings,"
                         + " is_active FROM clinlims.test_result_component WHERE test_id = ? AND code = 'PRIMARY'",
                 NUMERIC_TEST_ID);
         assertEquals(1, primary.size());
@@ -125,7 +125,7 @@ public class ComponentBackfillMigrationTest extends BaseWebContextSensitiveTest 
         assertEquals("PRIMARY label is the test name", "BackfillNumeric", p.get("label"));
         assertEquals("PRIMARY copies TEST.UOM_ID exactly", uomId, ((Number) p.get("uom_id")).longValue());
         assertEquals("N", p.get("result_type"));
-        assertEquals(2L, ((Number) p.get("significant_digits")).longValue());
+        assertEquals(2L, ((Number) p.get("reporting_decimal_places")).longValue());
         assertEquals("PRIMARY display_order defaults to 0", 0L, ((Number) p.get("display_order")).longValue());
         assertEquals("PRIMARY defaults to single-reading", Boolean.FALSE, p.get("allow_multiple_readings"));
         assertEquals("Y", p.get("is_active"));
@@ -150,7 +150,9 @@ public class ComponentBackfillMigrationTest extends BaseWebContextSensitiveTest 
         String sql = FileCopyUtils.copyToString(new java.io.InputStreamReader(
                 new ClassPathResource(BACKFILL_SQL_PATH).getInputStream(), StandardCharsets.UTF_8));
         assertTrue("backfill SQL must not be empty", sql.trim().length() > 0);
-        jdbcTemplate.execute(sql);
+        // The historical backfill precedes the reporting-column rename. Replay
+        // its unchanged logic against the current schema's column spelling.
+        jdbcTemplate.execute(sql.replace("significant_digits", "reporting_decimal_places"));
     }
 
     private long count(String table) {
@@ -164,11 +166,11 @@ public class ComponentBackfillMigrationTest extends BaseWebContextSensitiveTest 
                 id, name, name + " (component backfill test)", UUID.randomUUID().toString(), uom);
     }
 
-    private void insertTestResult(long id, long testId, String type, String value, Long significantDigits) {
+    private void insertTestResult(long id, long testId, String type, String value, Long reportingDecimalPlaces) {
         jdbcTemplate.update(
-                "INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, significant_digits, lastupdated)"
+                "INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, reporting_decimal_places, lastupdated)"
                         + " VALUES (?, ?, ?, ?, ?, NOW())",
-                id, testId, type, value, significantDigits);
+                id, testId, type, value, reportingDecimalPlaces);
     }
 
     private void insertResultLimit(long id, long testId, double minAge, double maxAge) {

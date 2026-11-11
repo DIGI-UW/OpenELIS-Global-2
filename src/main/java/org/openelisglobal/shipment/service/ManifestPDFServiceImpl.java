@@ -1,18 +1,6 @@
 package org.openelisglobal.shipment.service;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Chunk;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.Font.FontFamily;
-import com.itextpdf.text.PageSize;
-import com.itextpdf.text.Paragraph;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfWriter;
+import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.List;
@@ -20,6 +8,17 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.shipment.valueholder.BoxSampleItem;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
+import org.openpdf.text.Chunk;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Element;
+import org.openpdf.text.Font;
+import org.openpdf.text.PageSize;
+import org.openpdf.text.Paragraph;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,10 +37,10 @@ public class ManifestPDFServiceImpl implements ManifestPDFService {
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
     // Fonts
-    private static final Font TITLE_FONT = new Font(FontFamily.HELVETICA, 18, Font.BOLD);
-    private static final Font HEADER_FONT = new Font(FontFamily.HELVETICA, 12, Font.BOLD);
-    private static final Font NORMAL_FONT = new Font(FontFamily.HELVETICA, 10, Font.NORMAL);
-    private static final Font SMALL_FONT = new Font(FontFamily.HELVETICA, 8, Font.NORMAL);
+    private static final Font TITLE_FONT = new Font(Font.HELVETICA, 18, Font.BOLD);
+    private static final Font HEADER_FONT = new Font(Font.HELVETICA, 12, Font.BOLD);
+    private static final Font NORMAL_FONT = new Font(Font.HELVETICA, 10, Font.NORMAL);
+    private static final Font SMALL_FONT = new Font(Font.HELVETICA, 8, Font.NORMAL);
 
     @Autowired
     private ShippingBoxService shippingBoxService;
@@ -251,7 +250,7 @@ public class ManifestPDFServiceImpl implements ManifestPDFService {
      */
     private void addHeaderCell(PdfPTable table, String text) {
         PdfPCell cell = new PdfPCell(new Phrase(text, HEADER_FONT));
-        cell.setBackgroundColor(new BaseColor(200, 200, 200));
+        cell.setBackgroundColor(new Color(200, 200, 200));
         cell.setPadding(8f);
         cell.setHorizontalAlignment(Element.ALIGN_CENTER);
         table.addCell(cell);

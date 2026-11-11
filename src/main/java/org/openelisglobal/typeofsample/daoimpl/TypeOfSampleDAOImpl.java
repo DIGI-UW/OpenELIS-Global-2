@@ -342,15 +342,20 @@ public class TypeOfSampleDAOImpl extends BaseDAOImpl<TypeOfSample, String> imple
             // duplicates
 
             // bugzilla 2432 add check for local abbreviation
+            boolean hasAbbreviation = !StringUtil.isNullorNill(typeOfSample.getLocalAbbreviation())
+                    && !typeOfSample.getLocalAbbreviation().trim().isEmpty();
             String sql = "from TypeOfSample t where (trim(lower(t.description)) = :description and"
-                    + " trim(lower(t.domain)) = :domain and t.id != :id) or"
-                    + " (trim(lower(t.localAbbreviation)) = :abbrev and trim(lower(t.domain)) = :domain"
-                    + " and t.id != :id)";
+                    + " trim(lower(t.domain)) = :domain and t.id != :id)"
+                    + (hasAbbreviation
+                            ? " or (trim(lower(t.localAbbreviation)) = :abbrev and"
+                                    + " trim(lower(t.domain)) = :domain and t.id != :id)"
+                            : "");
             Query<TypeOfSample> query = entityManager.unwrap(Session.class).createQuery(sql, TypeOfSample.class);
             query.setParameter("description", typeOfSample.getDescription().toLowerCase().trim());
             query.setParameter("domain", typeOfSample.getDomain().toLowerCase().trim());
-            // bugzila 2432
-            query.setParameter("abbrev", typeOfSample.getLocalAbbreviation().toLowerCase().trim());
+            if (hasAbbreviation) {
+                query.setParameter("abbrev", typeOfSample.getLocalAbbreviation().toLowerCase().trim());
+            }
 
             // initialize with 0 (for new records where no id has been generated
             // yet

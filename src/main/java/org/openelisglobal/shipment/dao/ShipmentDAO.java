@@ -1,5 +1,6 @@
 package org.openelisglobal.shipment.dao;
 
+import java.util.Collection;
 import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.shipment.valueholder.Shipment;
@@ -38,4 +39,13 @@ public interface ShipmentDAO extends BaseDAO<Shipment, Integer> {
      * @return List of shipments
      */
     List<Shipment> findByCourier(String courier);
+
+    /**
+     * Newest shipped date per EQA cycle, one aggregate row per cycle that has
+     * shipped at least once
+     *
+     * @param eqaCycleIds EQA cycle ids
+     * @return rows of (eqaCycleId, max shippedDate)
+     */
+    List<Object[]> findLatestShippedDatesByEqaCycleIds(Collection<Long> eqaCycleIds);
 }

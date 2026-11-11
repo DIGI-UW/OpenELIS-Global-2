@@ -1,0 +1,44 @@
+name: Validate trusted submodule pins
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        description: Pull request number to recheck using develop's validator
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  group: trusted-submodule-pins-${{ github.event.pull_request.number || inputs.pull_request }}
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  validate:
+    if: github.repository == 'DIGI-UW/OpenELIS-Global-2' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/develop')
+    runs-on: ubuntu-latest
+    steps:
+      # Only execute merged policy code. PR trees/blobs are read through the API as data.
+      - uses: actions/checkout@v7
+        with:
+          ref: develop
+          persist-credentials: false
+          sparse-checkout: |
+            .github/scripts
+            .gitmodules
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Validate PR pins and publish its commit status
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pull_request }}
+        run: python3 .github/scripts/submodule_pins.py --pull-request "$PR_NUMBER"

@@ -19,14 +19,19 @@ import {
   Link,
   Checkbox,
 } from "@carbon/react";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import { getFromOpenElisServer, toLocalIsoDate } from "../../../utils/Utils";
 import { providerDisplayName } from "../../../provider/providerDisplayName";
 import { ConfigurationContext } from "../../../layout/Layout";
+import { priorities } from "../../../data/orderOptions";
 import {
   forgetRequester,
   readRememberedRequester,
   rememberRequester,
 } from "../../rememberedRequester";
+import { labNow } from "../../../utils/labClock";
+import usePossibleMatchCheck from "../../possibleMatches/usePossibleMatchCheck";
+import { RECORD_KIND } from "../../api/orderEntryCleanupApi";
+import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
 
 /**
  * RequesterSection - Site/Requesting-Organization, Requestor contact, and
@@ -66,6 +71,15 @@ const RequesterSection = ({
     configurationProperties?.restrictFreeTextRequestorEntry === "true";
   const isProviderAddNewRestricted =
     configurationProperties?.restrictFreeTextProviderEntry === "true";
+  // FR-B7, FR-B9: fax is rarely used, so its fields show only when the
+  // laboratory switches them on; a fax already saved on the order is kept.
+  const showFaxFields = configurationProperties?.SHOW_FAX_FIELDS === "true";
+  const {
+    check: checkPossibleMatches,
+    checking: checkingPossibleMatches,
+    dialog: possibleMatchesDialog,
+  } = usePossibleMatchCheck();
+  const [providerTitles, setProviderTitles] = useState([]);
 
   // Site/Requesting Organization search state
   const [siteSearchTerm, setSiteSearchTerm] = useState("");
@@ -187,13 +201,22 @@ const RequesterSection = ({
       ? selectedProvider
       : savedProvider;
 
-  // Priority options - must match backend OrderPriority enum
-  const priorityOptions = [
-    { id: "ROUTINE", value: "Routine" },
-    { id: "STAT", value: "STAT (Urgent)" },
-    { id: "ASAP", value: "ASAP" },
-    { id: "TIMED", value: "Timed" },
-  ];
+  const priorityOptions = ["ROUTINE", "STAT", "ASAP", "TIMED"].map((code) =>
+    priorities.find((priority) => priority.value === code),
+  );
+
+  useEffect(() => {
+    let active = true;
+    getFromOpenElisServer(
+      "/rest/dictionary/categories/providerTitle/entries",
+      (entries) => {
+        if (active) setProviderTitles(Array.isArray(entries) ? entries : []);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Component mounted tracking
   useEffect(() => {
@@ -345,6 +368,7 @@ const RequesterSection = ({
     setSelectedSite(site);
     setIsSiteLocked(true);
     setSiteResults([]);
+    setSiteSearchTerm(site.organizationName || "");
 
     setOrderData((prev) => ({
       ...prev,
@@ -395,6 +419,7 @@ const RequesterSection = ({
     }
     setSelectedSite({ organizationName: trimmedName, isNew: true });
     setSiteResults([]);
+    setSiteSearchTerm(trimmedName);
 
     setOrderData((prev) => ({
       ...prev,
@@ -407,6 +432,39 @@ const RequesterSection = ({
         newRequesterName: trimmedName,
       },
     }));
+  };
+
+  // FR-B6a: Add new organization first asks the server for facilities that
+  // look like it; Use this one selects the existing record instead.
+  const handleAddNewOrganization = (name) => {
+    const trimmedName = (name || "").trim();
+    if (!trimmedName) {
+      return;
+    }
+    checkPossibleMatches(
+      RECORD_KIND.FACILITY,
+      { name: trimmedName },
+      { name: trimmedName },
+      {
+        onCreate: () => handleUseAsNewOrganization(trimmedName),
+        onUse: (match) =>
+          getFromOpenElisServer(
+            `/rest/organization/search?search=${encodeURIComponent(match.name)}`,
+            (response) => {
+              const site = (response?.organizations || []).find(
+                (org) => String(org.id) === String(match.id),
+              );
+              handleSelectSite(
+                site || {
+                  id: match.id,
+                  organizationName: match.name,
+                  city: match.city,
+                },
+              );
+            },
+          ),
+      },
+    );
   };
 
   // Unlock an existing (search-selected/loaded) org's
@@ -487,6 +545,9 @@ const RequesterSection = ({
     setSelectedRequestor(requestor);
     setIsRequestorLocked(true);
     setRequestorResults([]);
+    setRequestorSearchTerm(
+      [requestor.lastName, requestor.firstName].filter(Boolean).join(", "),
+    );
 
     setOrderData((prev) => ({
       ...prev,
@@ -666,6 +727,12 @@ const RequesterSection = ({
     setSelectedProvider(provider);
     setIsProviderLocked(true);
     setProviderResults([]);
+    setProviderSearch((prev) => ({
+      ...prev,
+      name:
+        provider.name ||
+        [provider.lastName, provider.firstName].filter(Boolean).join(", "),
+    }));
 
     // If personId is already in the search results (after backend rebuild), use it directly
     if (provider.personId) {
@@ -781,6 +848,55 @@ const RequesterSection = ({
     }));
   };
 
+  // FR-B6a: Add new provider first asks the server for providers with a
+  // similar name; Use this one selects the existing provider instead.
+  const handleAddNewProvider = (name) => {
+    const trimmedName = (name || "").trim();
+    if (!trimmedName) {
+      return;
+    }
+    const lastSpaceIndex = trimmedName.lastIndexOf(" ");
+    const firstName =
+      lastSpaceIndex === -1 ? "" : trimmedName.slice(0, lastSpaceIndex);
+    const lastName =
+      lastSpaceIndex === -1
+        ? trimmedName
+        : trimmedName.slice(lastSpaceIndex + 1);
+    checkPossibleMatches(
+      RECORD_KIND.PROVIDER,
+      { firstName, lastName },
+      { firstName, lastName },
+      {
+        onCreate: () => handleUseAsNewProvider(trimmedName),
+        onUse: (match) =>
+          getFromOpenElisServer(
+            `/rest/provider/search?search=${encodeURIComponent(match.lastName || "")}`,
+            (response) => {
+              const provider = (response?.providers || []).find(
+                (row) => String(row.id) === String(match.id),
+              );
+              if (provider) {
+                handleSelectProvider(provider);
+              }
+            },
+          ),
+      },
+    );
+  };
+
+  const handleNewProviderTitleChange = (event) => {
+    const code = event.target.value;
+    const title = providerTitles.find((entry) => entry.code === code);
+    setOrderData((prev) => ({
+      ...prev,
+      sampleOrderItems: {
+        ...prev.sampleOrderItems,
+        providerTitleCode: code,
+        providerTitleAbbreviation: title ? title.code : "",
+      },
+    }));
+  };
+
   // Unlock an existing (search-selected/loaded) provider's
   // contact info for editing in place, instead of clearing and re-searching.
   const handleUnlockProvider = () => {
@@ -850,13 +966,17 @@ const RequesterSection = ({
         defaultMessage: "Phone",
       }),
     },
-    {
-      key: "fax",
-      header: intl.formatMessage({
-        id: "provider.fax",
-        defaultMessage: "Fax",
-      }),
-    },
+    ...(showFaxFields
+      ? [
+          {
+            key: "fax",
+            header: intl.formatMessage({
+              id: "provider.fax",
+              defaultMessage: "Fax",
+            }),
+          },
+        ]
+      : []),
     {
       key: "email",
       header: intl.formatMessage({
@@ -915,8 +1035,7 @@ const RequesterSection = ({
         />
       </p>
 
-      {/* Required By — order-level date, not tied to Organization/Site
-          selection; kept outside that subsection so it always renders. */}
+      {/* Required By and Priority are order-level, not tied to the site. */}
       <Grid>
         <Column lg={5} md={4} sm={4}>
           <div className="cds--form-item">
@@ -930,7 +1049,7 @@ const RequesterSection = ({
               id="requiredBy"
               type="date"
               className="env-manifest-datetime"
-              min={new Date().toISOString().split("T")[0]}
+              min={toLocalIsoDate(labNow())}
               value={orderData?.sampleOrderItems?.requiredBy || ""}
               onChange={(e) => {
                 setOrderData((prev) => ({
@@ -944,6 +1063,31 @@ const RequesterSection = ({
               disabled={isReadOnly}
             />
           </div>
+        </Column>
+        <Column lg={5} md={4} sm={4}>
+          <Select
+            id="priority"
+            labelText={intl.formatMessage({
+              id: "order.priority",
+              defaultMessage: "Priority",
+            })}
+            value={orderData?.sampleOrderItems?.priority || "ROUTINE"}
+            onChange={handlePriorityChange}
+            helperText={intl.formatMessage({
+              id: "order.priority.helper",
+              defaultMessage:
+                "ROUTINE: standard turnaround. STAT: process immediately.",
+            })}
+            disabled={isReadOnly}
+          >
+            {priorityOptions.map((opt) => (
+              <SelectItem
+                key={opt.value}
+                value={opt.value}
+                text={intl.formatMessage({ id: opt.labelId })}
+              />
+            ))}
+          </Select>
         </Column>
       </Grid>
 
@@ -970,11 +1114,10 @@ const RequesterSection = ({
               labelText={
                 <span>
                   <FormattedMessage id="site.name" defaultMessage="Site Name" />
-                  {siteRequired && (
-                    <span className="required-indicator"> *</span>
-                  )}
+                  <RequiredMarker required={siteRequired} />
                 </span>
               }
+              {...requiredProps(siteRequired)}
               placeholder={intl.formatMessage({
                 id: "site.name.placeholder",
                 defaultMessage: "Enter site name",
@@ -986,29 +1129,8 @@ const RequesterSection = ({
               })}
               value={siteSearchTerm}
               onChange={(e) => setSiteSearchTerm(e.target.value)}
-              disabled={isReadOnly || effectiveSelectedSite}
+              disabled={isReadOnly || Boolean(effectiveSelectedSite)}
             />
-          </Column>
-          <Column lg={5} md={4} sm={4}>
-            <Select
-              id="priority"
-              labelText={intl.formatMessage({
-                id: "order.priority",
-                defaultMessage: "Priority",
-              })}
-              value={orderData?.sampleOrderItems?.priority || "ROUTINE"}
-              onChange={handlePriorityChange}
-              helperText={intl.formatMessage({
-                id: "order.priority.helper",
-                defaultMessage:
-                  "ROUTINE: standard turnaround. STAT: process immediately.",
-              })}
-              disabled={isReadOnly}
-            >
-              {priorityOptions.map((opt) => (
-                <SelectItem key={opt.id} value={opt.id} text={opt.value} />
-              ))}
-            </Select>
           </Column>
 
           {/* Search Buttons */}
@@ -1019,7 +1141,9 @@ const RequesterSection = ({
                 size="md"
                 onClick={handleSiteSearch}
                 disabled={
-                  isSearchingSites || isReadOnly || effectiveSelectedSite
+                  isSearchingSites ||
+                  isReadOnly ||
+                  Boolean(effectiveSelectedSite)
                 }
               >
                 <FormattedMessage
@@ -1130,8 +1254,12 @@ const RequesterSection = ({
               <Button
                 kind="tertiary"
                 size="sm"
-                onClick={() => handleUseAsNewOrganization(siteSearchTerm)}
-                disabled={isReadOnly || isOrganizationAddNewRestricted}
+                onClick={() => handleAddNewOrganization(siteSearchTerm)}
+                disabled={
+                  isReadOnly ||
+                  isOrganizationAddNewRestricted ||
+                  checkingPossibleMatches
+                }
               >
                 <FormattedMessage
                   id="requester.organization.add.new"
@@ -1290,23 +1418,27 @@ const RequesterSection = ({
                     disabled={isOrgContactFieldDisabled}
                   />
                 </Column>
-                <Column lg={5} md={4} sm={4}>
-                  <TextInput
-                    id="siteContactFax"
-                    labelText={intl.formatMessage({
-                      id: "requester.organization.fax",
-                      defaultMessage: "Organization Fax",
-                    })}
-                    value={orderData?.sampleOrderItems?.referringSiteFax || ""}
-                    onChange={(e) =>
-                      handleSiteContactFieldChange(
-                        "referringSiteFax",
-                        e.target.value,
-                      )
-                    }
-                    disabled={isOrgContactFieldDisabled}
-                  />
-                </Column>
+                {showFaxFields && (
+                  <Column lg={5} md={4} sm={4}>
+                    <TextInput
+                      id="siteContactFax"
+                      labelText={intl.formatMessage({
+                        id: "requester.organization.fax",
+                        defaultMessage: "Organization Fax",
+                      })}
+                      value={
+                        orderData?.sampleOrderItems?.referringSiteFax || ""
+                      }
+                      onChange={(e) =>
+                        handleSiteContactFieldChange(
+                          "referringSiteFax",
+                          e.target.value,
+                        )
+                      }
+                      disabled={isOrgContactFieldDisabled}
+                    />
+                  </Column>
+                )}
                 <Column lg={6} md={4} sm={4}>
                   <TextInput
                     id="siteContactEmail"
@@ -1384,7 +1516,9 @@ const RequesterSection = ({
                   size="md"
                   onClick={() => handleRequestorSearch()}
                   disabled={
-                    isSearchingRequestors || isReadOnly || selectedRequestor
+                    isSearchingRequestors ||
+                    isReadOnly ||
+                    Boolean(selectedRequestor)
                   }
                 >
                   <FormattedMessage
@@ -1396,7 +1530,7 @@ const RequesterSection = ({
                   kind="ghost"
                   size="md"
                   onClick={handleClearRequestorSearch}
-                  disabled={selectedRequestor}
+                  disabled={Boolean(selectedRequestor)}
                 >
                   <FormattedMessage
                     id="label.button.clear"
@@ -1742,11 +1876,10 @@ const RequesterSection = ({
                       id="provider.name"
                       defaultMessage="Provider Name"
                     />
-                    {providerRequired && (
-                      <span className="required-indicator"> *</span>
-                    )}
+                    <RequiredMarker required={providerRequired} />
                   </span>
                 }
+                {...requiredProps(providerRequired)}
                 placeholder={intl.formatMessage({
                   id: "provider.name.placeholder",
                   defaultMessage: "Enter provider name",
@@ -1755,7 +1888,7 @@ const RequesterSection = ({
                 onChange={(e) =>
                   handleProviderFieldChange("name", e.target.value)
                 }
-                disabled={isReadOnly || effectiveSelectedProvider}
+                disabled={isReadOnly || Boolean(effectiveSelectedProvider)}
               />
             </Column>
             <Column lg={6} md={4} sm={4}>
@@ -1770,7 +1903,7 @@ const RequesterSection = ({
                 onChange={(e) =>
                   handleProviderFieldChange("phone", e.target.value)
                 }
-                disabled={isReadOnly || effectiveSelectedProvider}
+                disabled={isReadOnly || Boolean(effectiveSelectedProvider)}
               />
             </Column>
 
@@ -1784,7 +1917,7 @@ const RequesterSection = ({
                   disabled={
                     isSearchingProviders ||
                     isReadOnly ||
-                    effectiveSelectedProvider
+                    Boolean(effectiveSelectedProvider)
                   }
                 >
                   <FormattedMessage
@@ -1831,6 +1964,33 @@ const RequesterSection = ({
             return (
               <>
                 <Grid>
+                  {effectiveSelectedProvider?.isNew && (
+                    <Column lg={4} md={4} sm={4}>
+                      <Select
+                        id="providerTitle"
+                        labelText={intl.formatMessage({
+                          id: "provider.title.field",
+                        })}
+                        value={sampleOrderItems.providerTitleCode || ""}
+                        onChange={handleNewProviderTitleChange}
+                        disabled={isProviderFieldDisabled}
+                      >
+                        <SelectItem
+                          value=""
+                          text={intl.formatMessage({
+                            id: "provider.title.none",
+                          })}
+                        />
+                        {providerTitles.map((title) => (
+                          <SelectItem
+                            key={title.code}
+                            value={title.code}
+                            text={title.label || title.code}
+                          />
+                        ))}
+                      </Select>
+                    </Column>
+                  )}
                   <Column lg={4} md={4} sm={4}>
                     <TextInput
                       id="providerFirstName"
@@ -1890,29 +2050,31 @@ const RequesterSection = ({
                   </Column>
                 </Grid>
                 <Grid>
-                  <Column lg={6} md={4} sm={4}>
-                    <TextInput
-                      id="providerFax"
-                      labelText={intl.formatMessage({
-                        id: "provider.fax.field",
-                        defaultMessage: "Provider Fax",
-                      })}
-                      value={orderData?.sampleOrderItems?.providerFax || ""}
-                      onChange={(e) =>
-                        handleProviderContactFieldChange(
-                          "providerFax",
-                          e.target.value,
-                        )
-                      }
-                      invalid={providerFaxInvalid}
-                      invalidText={intl.formatMessage({
-                        id: "provider.fax.invalid",
-                        defaultMessage:
-                          "Enter a valid fax number, digits and + ( ) - only.",
-                      })}
-                      disabled={isProviderFieldDisabled}
-                    />
-                  </Column>
+                  {showFaxFields && (
+                    <Column lg={6} md={4} sm={4}>
+                      <TextInput
+                        id="providerFax"
+                        labelText={intl.formatMessage({
+                          id: "provider.fax.field",
+                          defaultMessage: "Provider Fax",
+                        })}
+                        value={orderData?.sampleOrderItems?.providerFax || ""}
+                        onChange={(e) =>
+                          handleProviderContactFieldChange(
+                            "providerFax",
+                            e.target.value,
+                          )
+                        }
+                        invalid={providerFaxInvalid}
+                        invalidText={intl.formatMessage({
+                          id: "provider.fax.invalid",
+                          defaultMessage:
+                            "Enter a valid fax number, digits and + ( ) - only.",
+                        })}
+                        disabled={isProviderFieldDisabled}
+                      />
+                    </Column>
+                  )}
                   <Column lg={6} md={4} sm={4}>
                     <TextInput
                       id="providerEmail"
@@ -2043,8 +2205,12 @@ const RequesterSection = ({
                 <Button
                   kind="tertiary"
                   size="sm"
-                  onClick={() => handleUseAsNewProvider(providerSearch.name)}
-                  disabled={isReadOnly || isProviderAddNewRestricted}
+                  onClick={() => handleAddNewProvider(providerSearch.name)}
+                  disabled={
+                    isReadOnly ||
+                    isProviderAddNewRestricted ||
+                    checkingPossibleMatches
+                  }
                 >
                   <FormattedMessage
                     id="provider.add.new"
@@ -2115,6 +2281,7 @@ const RequesterSection = ({
           )}
         </div>
       )}
+      {possibleMatchesDialog}
     </Tile>
   );
 };

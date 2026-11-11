@@ -23,7 +23,6 @@ import org.openelisglobal.inventory.service.InventoryLotUnavailableException;
 import org.openelisglobal.inventory.service.InventoryManagementService;
 import org.openelisglobal.inventory.service.InventoryTransactionService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -38,7 +37,6 @@ import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.openelisglobal.microbiology.service.MicroReagentLotService;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
 import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
@@ -166,11 +164,10 @@ public class MicroReagentLotTransactionIntegrationTest extends BaseWebContextSen
         String methodId = fixtures.createMethodId();
         ReferenceData referenceData = fixtures.createReferenceData(methodId);
         SampleItem sampleItem = fixtures.createSampleWithSampleItem("OGC782M8L");
-        var microCase = caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.BACTERIOLOGY, methodId,
-                userId);
+        var microCase = caseService.createOrGetCase(sampleItem.getId(), methodId, userId);
         var test = fixtures.createCatalogTest();
         Analysis analysis = createAnalysis(sampleItem, test, userId);
-        caseAnalysisService.linkAnalysis(microCase, analysis, referenceData.cultureSetup());
+        caseAnalysisService.linkAnalysis(microCase, analysis, null);
 
         InventoryItem item = getOrCreateInventoryItem(userId);
         TestReagentLink reagentLink = new TestReagentLink();
@@ -229,7 +226,6 @@ public class MicroReagentLotTransactionIntegrationTest extends BaseWebContextSen
         item.setFhirUuid(UUID.randomUUID());
         item.setName("M8 reagent " + UUID.randomUUID().toString().substring(0, 12));
         item.setDescription("Service-created M8 transaction fixture");
-        item.setItemType(ItemType.REAGENT);
         item.setCategory("Microbiology test");
         item.setUnits("unit");
         item.setQuantityPerUnit(1);

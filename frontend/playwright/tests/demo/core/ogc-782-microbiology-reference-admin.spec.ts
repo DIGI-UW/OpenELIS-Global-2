@@ -108,11 +108,12 @@ test.describe("OGC-782 M3 reference administration demo", () => {
         .filter({ hasText: "Gram negative AST panel (UAT)" })
         .filter({ hasText: "Current" });
       await expect(currentRow).toBeVisible({ timeout: LONG_TIMEOUT });
+      const versionCell = currentRow
+        .getByRole("cell")
+        .filter({ hasText: /^v\d+$/ });
+      await expect(versionCell).toHaveText(/^v\d+$/);
       const originalVersion = Number(
-        (await currentRow.getByRole("cell").nth(2).innerText()).replace(
-          /^v/,
-          "",
-        ),
+        (await versionCell.innerText()).replace(/^v/, ""),
       );
       await currentRow.getByRole("button", { name: "Options" }).click();
       await page.getByRole("menuitem", { name: "Publish new version" }).click();
@@ -181,9 +182,9 @@ test.describe("OGC-782 M3 reference administration demo", () => {
         .toUpperCase()}`;
       const csv = [
         "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,resistant_value,units",
-        `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L`,
-        `CLSI,${importVersion},Unknown organism,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L`,
-        `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,not-a-number,2,2,4,synthetic-mg/L`,
+        `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,1,2,2,4,mg/L`,
+        `CLSI,${importVersion},Unknown organism,REFUAT,MIC,,MIC,1,2,2,4,mg/L`,
+        `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,not-a-number,2,2,4,mg/L`,
       ].join("\n");
       await page.getByRole("button", { name: "Import CSV" }).click();
       await page.locator('input[type="file"]').setInputFiles({

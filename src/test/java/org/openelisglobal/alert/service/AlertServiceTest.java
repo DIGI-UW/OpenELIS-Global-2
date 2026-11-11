@@ -68,6 +68,17 @@ public class AlertServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void testAcknowledgeAlert_WithResolvedAlert_IsRefusedAndLeavesItResolved() {
+        Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 100L, AlertSeverity.CRITICAL,
+                "Temperature threshold violated", "{\"temperature\": -15.5}");
+        alertService.acknowledgeAlert(alert.getId(), 1);
+        alertService.resolveAlert(alert.getId(), 1, "Temperature stabilized");
+
+        assertThrows(IllegalStateException.class, () -> alertService.acknowledgeAlert(alert.getId(), 1));
+        assertEquals(AlertStatus.RESOLVED, alertService.get(alert.getId()).getStatus());
+    }
+
+    @Test
     public void testResolveAlert_WithAcknowledgedAlert_TransitionsToResolved() {
         Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 100L, AlertSeverity.CRITICAL,
                 "Temperature threshold violated", "{\"temperature\": -15.5}");

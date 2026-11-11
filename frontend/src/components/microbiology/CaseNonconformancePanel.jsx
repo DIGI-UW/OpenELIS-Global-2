@@ -13,8 +13,13 @@ import {
 import { useIntl } from "react-intl";
 import MicrobiologyService from "./MicrobiologyService";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
+import SearchableSelect from "../common/SearchableSelect";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 
 const EMPTY_ISOLATES = [];
+// Matched by key, not by label: labels follow the user's language (OGC-1507).
+const PRE_ANALYTICAL_KEY = "nce.category.preanalytical";
+const SPECIMEN_LOST_KEY = "microbiology.uat.nce.specimenLost";
 
 const initialForm = {
   categoryId: "",
@@ -34,7 +39,6 @@ const CaseNonconformancePanel = ({
   caseId,
   mode,
   isolates = EMPTY_ISOLATES,
-  workflowType,
   service = MicrobiologyService,
   onComplete,
   onCancel,
@@ -71,12 +75,16 @@ const CaseNonconformancePanel = ({
         setCategories(safeCategories);
         setReportingUnits(Array.isArray(unitRows) ? unitRows : []);
         if (!lostMode) {
-          const preAnalytical = safeCategories.find((category) =>
-            String(category.name || "")
-              .toLowerCase()
-              .replace(/[^a-z]/g, "")
-              .includes("preanalytical"),
-          );
+          const preAnalytical =
+            safeCategories.find(
+              (category) => category.displayKey === PRE_ANALYTICAL_KEY,
+            ) ||
+            safeCategories.find((category) =>
+              String(category.name || "")
+                .toLowerCase()
+                .replace(/[^a-z]/g, "")
+                .includes("preanalytical"),
+            );
           if (preAnalytical) {
             setForm((current) => ({
               ...current,
@@ -84,11 +92,12 @@ const CaseNonconformancePanel = ({
             }));
           }
         } else {
-          const match = safeCategories
-            .flatMap((category) =>
-              (category.types || []).map((type) => ({ category, type })),
-            )
-            .find(({ type }) =>
+          const pairs = safeCategories.flatMap((category) =>
+            (category.types || []).map((type) => ({ category, type })),
+          );
+          const match =
+            pairs.find(({ type }) => type.displayKey === SPECIMEN_LOST_KEY) ||
+            pairs.find(({ type }) =>
               String(type.name || "")
                 .toLowerCase()
                 .includes("specimen lost"),
@@ -137,7 +146,7 @@ const CaseNonconformancePanel = ({
           ),
         ),
       ),
-      service.getAntibiotics(workflowType),
+      service.getAntibiotics(),
     ])
       .then(([runsByIsolate, antibioticRows]) => {
         if (!active) {
@@ -163,7 +172,7 @@ const CaseNonconformancePanel = ({
     return () => {
       active = false;
     };
-  }, [form.disposition, intl, isolates, lostMode, service, workflowType]);
+  }, [form.disposition, intl, isolates, lostMode, service]);
 
   const selectedCategory = useMemo(
     () =>
@@ -276,7 +285,13 @@ const CaseNonconformancePanel = ({
         <div className="microbiology-form-grid">
           <Select
             id="microbiology-nce-category"
-            labelText={intl.formatMessage({ id: "microbiology.nce.category" })}
+            {...requiredProps()}
+            labelText={
+              <>
+                {intl.formatMessage({ id: "microbiology.nce.category" })}
+                <RequiredMarker />
+              </>
+            }
             value={form.categoryId}
             disabled={loading || lostMode}
             onChange={(event) => {
@@ -309,24 +324,17 @@ const CaseNonconformancePanel = ({
               />
             ))}
           </Select>
-          <Select
+          <SearchableSelect
             id="microbiology-nce-reporting-unit"
+            required
             labelText={intl.formatMessage({
               id: "microbiology.nce.reportingUnit",
             })}
+            options={reportingUnits}
             value={form.reportingUnitId}
             disabled={loading}
-            onChange={(event) => update("reportingUnitId", event.target.value)}
-          >
-            <SelectItem value="" text="" />
-            {reportingUnits.map((unit) => (
-              <SelectItem
-                key={unit.id}
-                value={String(unit.id)}
-                text={unit.value}
-              />
-            ))}
-          </Select>
+            onChange={(id) => update("reportingUnitId", id)}
+          />
           <TextInput
             id="microbiology-nce-title"
             labelText={intl.formatMessage({ id: "microbiology.nce.title" })}
@@ -336,7 +344,12 @@ const CaseNonconformancePanel = ({
         </div>
 
         <RadioButtonGroup
-          legendText={intl.formatMessage({ id: "microbiology.nce.severity" })}
+          legendText={
+            <>
+              {intl.formatMessage({ id: "microbiology.nce.severity" })}
+              <RequiredMarker />
+            </>
+          }
           name="microbiology-nce-severity"
           valueSelected={form.severity}
           onChange={(value) => update("severity", value)}
@@ -360,7 +373,13 @@ const CaseNonconformancePanel = ({
 
         <TextArea
           id="microbiology-nce-description"
-          labelText={intl.formatMessage({ id: "microbiology.nce.description" })}
+          {...requiredProps()}
+          labelText={
+            <>
+              {intl.formatMessage({ id: "microbiology.nce.description" })}
+              <RequiredMarker />
+            </>
+          }
           value={form.description}
           onChange={(event) => update("description", event.target.value)}
         />

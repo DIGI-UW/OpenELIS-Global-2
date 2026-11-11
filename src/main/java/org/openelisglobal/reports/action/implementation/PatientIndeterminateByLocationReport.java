@@ -13,9 +13,7 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
-import java.util.HashMap;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.organization.util.OrganizationTypeList;
@@ -37,8 +35,8 @@ public class PatientIndeterminateByLocationReport extends PatientIndeterminateRe
     private SampleProjectService sampleProjectService = SpringContext.getBean(SampleProjectService.class);
 
     @Override
-    protected String reportFileName() {
-        return "Patient_Indeterminate_ByLocation";
+    protected Layout layout() {
+        return Layout.BY_LOCATION;
     }
 
     @Override
@@ -110,22 +108,5 @@ public class PatientIndeterminateByLocationReport extends PatientIndeterminateRe
         }
         reportSample = null;
         reportPatient = null;
-    }
-
-    @Override
-    public HashMap<String, Object> getReportParameters() throws IllegalStateException {
-        return super.getReportParameters();
-    }
-
-    @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        return super.getReportDataSource();
-    }
-
-    @Override
-    protected void createReportParameters() {
-        super.createReportParameters();
-        reportParameters.put("contact",
-                "CHU de Treichville, 01 BP 1712 Tel : 21-21-42-50/21-25-4189 Fax : 21-24-29-69/" + " 21-25-10-63");
     }
 }

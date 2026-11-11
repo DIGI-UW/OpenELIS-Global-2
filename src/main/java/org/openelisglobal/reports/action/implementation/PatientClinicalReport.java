@@ -23,7 +23,6 @@ import net.sf.jasperreports.engine.JRDataSource;
 import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.IStatusService;
@@ -83,8 +82,8 @@ public class PatientClinicalReport extends PatientReport implements IReportCreat
         List<Analysis> analysisList = analysisService
                 .getAnalysesBySampleIdAndStatusId(sampleService.getId(currentSample), analysisStatusIds);
 
-        List<Analysis> filteredAnalysisList = userService.filterAnalysesByLabUnitRoles(systemUserId, analysisList,
-                Constants.ROLE_REPORTS);
+        analysisList = includeIssuedMicrobiologyAnalyses(analysisList);
+        List<Analysis> filteredAnalysisList = filterAnalysesForReportUser(analysisList);
         currentConclusion = null;
         Set<SampleItem> sampleSet = new HashSet<>();
         List<ClinicalPatientData> currentSampleReportItems = new ArrayList<>(filteredAnalysisList.size());
@@ -95,6 +94,12 @@ public class PatientClinicalReport extends PatientReport implements IReportCreat
 
                 if (analysis.getTest() != null) {
                     currentAnalysis = analysis;
+                    var microReport = microbiologyReports().issuedForAnalysis(analysis.getId());
+                    if (microReport != null) {
+                        if (reportedMicroCases.add(microReport.caseId))
+                            currentSampleReportItems.add(buildMicrobiologyPatientData(microReport, hasParentResult));
+                        continue;
+                    }
                     ClinicalPatientData resultsData = buildClinicalPatientData(hasParentResult);
 
                     if (currentAnalysis.isReferredOut()) {
@@ -271,7 +276,7 @@ public class PatientClinicalReport extends PatientReport implements IReportCreat
                 ClinicalPatientData marker = new ClinicalPatientData(data);
                 ResultService resultResultService = SpringContext.getBean(ResultService.class);
                 Result result = data.getParentResult();
-                marker.setTestName(resultResultService.getSimpleResultValue(result));
+                marker.setTestName(resultResultService.formatSimpleResultForDisplay(result));
                 marker.setResult(null);
                 marker.setTestRefRange(null);
                 marker.setParentMarker(true);

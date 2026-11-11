@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="125-analyzer-result-instrument-note" author="oe">
+        <comment>Keep the instrument's own comments on a run (for example why it failed) on the staged result, so the reviewer sees them and dismissing a failed run can record them on the order.</comment>
+        <addColumn schemaName="clinlims" tableName="analyzer_results">
+            <column name="instrument_note" type="TEXT"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="instrument_note"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

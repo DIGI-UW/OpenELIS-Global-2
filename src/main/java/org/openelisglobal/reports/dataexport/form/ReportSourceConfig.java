@@ -28,7 +28,7 @@ public record ReportSourceConfig(String id, int version, String label, String so
             throw new IllegalArgumentException("reporting.definition.duplicate");
         }
         for (Map.Entry<String, List<String>> defaults : defaultColumns.entrySet()) {
-            if (!layouts.contains(defaults.getKey()) || defaults.getValue() == null || defaults.getValue().isEmpty()
+            if (!layouts.contains(defaults.getKey()) || defaults.getValue() == null
                     || new HashSet<>(defaults.getValue()).size() != defaults.getValue().size()) {
                 throw new IllegalArgumentException("reporting.definition.defaultsInvalid");
             }

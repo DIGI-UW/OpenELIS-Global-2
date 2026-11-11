@@ -1,8 +1,10 @@
 package org.openelisglobal.organization.form;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.List;
@@ -28,6 +30,7 @@ public class OrganizationForm extends BaseForm {
     private String organizationName = "";
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Size(max = 30)
     private String city = "";
 
     @OptionalNotBlank(formFields = { Field.OrganizationAddressInfo, Field.ZipCode })
@@ -61,6 +64,7 @@ public class OrganizationForm extends BaseForm {
     private String multipleUnit = "";
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Size(max = 30)
     private String streetAddress = "";
 
     @OptionalNotBlank(formFields = { Field.OrganizationAddressInfo, Field.OrgState })
@@ -71,6 +75,10 @@ public class OrganizationForm extends BaseForm {
 
     @URL
     private String internetAddress = "";
+
+    @Email
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String email = "";
 
     @OptionalNotBlank(formFields = { Field.MLS })
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
@@ -235,6 +243,14 @@ public class OrganizationForm extends BaseForm {
 
     public String getInternetAddress() {
         return internetAddress;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public void setInternetAddress(String internetAddress) {

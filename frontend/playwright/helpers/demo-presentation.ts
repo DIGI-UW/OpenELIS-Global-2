@@ -1,7 +1,13 @@
 import * as fs from "fs";
 import * as path from "path";
 import { Locator, Page, TestInfo } from "@playwright/test";
-import { showSceneLabel, showStepCard, showTitleCard } from "./title-card";
+import {
+  showCaption,
+  showHighlight,
+  showSceneLabel,
+  showStepCard,
+  showTitleCard,
+} from "./title-card";
 import { isVideoProject, videoPause } from "./video-pause";
 
 /** Directory where loose screenshot evidence files are saved (video mode). */
@@ -27,6 +33,17 @@ export type DemoPresentation = {
     durationMs?: number,
   ) => Promise<void>;
   scene: (label: string) => Promise<void>;
+  /**
+   * Opens a story: its card stays up while off-screen preparation runs, under
+   * the captions, until the first page load.
+   */
+  intro: (title: string, subtitle: string) => Promise<void>;
+  /** Narrates what happens next; the line stays, across page loads, until replaced. */
+  caption: (text: string | null) => Promise<void>;
+  /** Draws the eye to the element that shows the outcome. */
+  highlight: (locator: Locator, durationMs?: number) => Promise<void>;
+  /** Closes a story on the outcome its assertions just read back. */
+  verified: (title: string, subtitle?: string) => Promise<void>;
   pause: (ms: number) => Promise<void>;
   evidence: (
     name: string,
@@ -39,6 +56,8 @@ export function createDemoPresentation(
   testInfo: TestInfo,
 ): DemoPresentation {
   const isVideo = isVideoProject(testInfo);
+  let caption: string | null = null;
+  let repaintsOnLoad = false;
 
   return {
     isVideo,
@@ -58,6 +77,38 @@ export function createDemoPresentation(
     step: (stepNumber, description, durationMs = 3000) =>
       showStepCard(page, stepNumber, description, durationMs, testInfo),
     scene: (label) => showSceneLabel(page, label, testInfo),
+    intro: (title, subtitle) =>
+      showTitleCard(page, title, subtitle, 3000, testInfo, { hold: true }),
+    caption: async (text) => {
+      if (!isVideo) return;
+      caption = text;
+      if (!repaintsOnLoad) {
+        repaintsOnLoad = true;
+        page.on("domcontentloaded", () => {
+          // A load that starts while this paints destroys the context; the next load repaints.
+          showCaption(page, caption, testInfo).catch(() => undefined);
+        });
+      }
+      await showCaption(page, text, testInfo);
+      // Long enough to read before the screen moves on.
+      if (text)
+        await videoPause(
+          page,
+          Math.min(3500, 1200 + 30 * text.length),
+          testInfo,
+        );
+    },
+    highlight: (locator, durationMs = 2500) =>
+      showHighlight(locator, durationMs, testInfo),
+    verified: async (title, subtitle) => {
+      if (!isVideo) return;
+      caption = null;
+      await showCaption(page, null, testInfo);
+      await showTitleCard(page, title, subtitle, 4500, testInfo, {
+        eyebrow: "Verified",
+        accent: "#24a148",
+      });
+    },
     pause: (ms) => videoPause(page, ms, testInfo),
     evidence: async (
       name: string,

@@ -145,6 +145,9 @@
   <!-- required_by on sample (order level) — replaces OGC-527 sample_item approach -->
   <include relativeToChangelogFile="true" file="035-move-required-by-to-sample.xml"/>
 
+  <!-- Upgrade from 3.2.2.0: park CRITICAL_RESULT alerts while 036/057 redeclare chk_alert_type without it -->
+  <include relativeToChangelogFile="true" file="036-0-stash-upgrade-alert-types.xml"/>
+
   <!-- Add REQUIRED_BY_DEADLINE to alert type constraint -->
   <include relativeToChangelogFile="true" file="036-add-required-by-alert-type.xml"/>
 
@@ -289,6 +292,38 @@
   <include relativeToChangelogFile="true" file="073-inventory-item-code-sequence.xml"/>
   <!-- OGC-657: Storage Management collapses to one sidenav row; its levels are tabs -->
   <include relativeToChangelogFile="true" file="073-storage-menu-collapse.xml"/>
+  <!-- OGC-438: per-item lead time for the board's order-by date -->
+  <include relativeToChangelogFile="true" file="103-inventory-item-lead-time.xml"/>
+
+  <!-- OGC-438: per-item ordering state, so an ordered item stops alerting -->
+  <include relativeToChangelogFile="true" file="104-inventory-item-ordering-state.xml"/>
+
+  <!-- OGC-438: completed order-to-receipt cycles, so the lead time can be learned -->
+  <include relativeToChangelogFile="true" file="107-inventory-order-cycle.xml"/>
+
+  <!-- OGC-438: free-form tags on an item, replacing the fixed item_type -->
+  <include relativeToChangelogFile="true" file="105-inventory-item-tags.xml"/>
+
+  <!-- OGC-438: per-tag state a free-form tag string cannot hold -->
+  <include relativeToChangelogFile="true" file="108-inventory-tag-directory.xml"/>
+
+  <!-- OGC-438: individual_tracking becomes track_lots, the per-item lot-tracking flag -->
+  <include relativeToChangelogFile="true" file="109-inventory-item-track-lots.xml"/>
+
+  <!-- OGC-438: physical count sessions and each item's last-counted stamp -->
+  <include relativeToChangelogFile="true" file="110-inventory-count-session.xml"/>
+
+  <!-- OGC-438: the manufacturer's product barcode (UPC or GTIN) on the item -->
+  <include relativeToChangelogFile="true" file="106-inventory-item-upc.xml"/>
+
+  <!-- OGC-438: a UPC is unique ignoring leading zeros; must follow 106 -->
+  <include relativeToChangelogFile="true" file="139-inventory-item-upc-digits.xml"/>
+
+  <!-- OGC-438: Items, Receive and Reports each get a menu row under Inventory -->
+  <include relativeToChangelogFile="true" file="111-inventory-sidenav-routes.xml"/>
+
+  <!-- OGC-438: drop item_type; must follow 105, which copied it into inventory_item_tag -->
+  <include relativeToChangelogFile="true" file="112-drop-inventory-item-type.xml"/>
 
   <!-- OGC-949 / OGC-763: test_alert_rule foundation for the v2 Alerts tab -->
   <include relativeToChangelogFile="true" file="049-test-alert-rule.xml"/>
@@ -396,19 +431,18 @@
   <include relativeToChangelogFile="true" file="090-patient-search-trigram-indexes.xml"/>
   <include relativeToChangelogFile="true" file="091-backfill-fhir-uuids.xml"/>
 
+  <!-- The analyzer cutover changesets below leave the pre-Bridge storage in place;
+       116-remove-pre-bridge-analyzer-storage exports and removes it.
+       See docs/analyzers/pre-bridge-settings-export.md. -->
   <include relativeToChangelogFile="true" file="085-analyzer-profile-binding.xml"/>
   <include relativeToChangelogFile="true" file="086-analyzer-site-binding.xml"/>
-  <include relativeToChangelogFile="true" file="088-remove-analyzer-qc-rule.xml"/>
   <include relativeToChangelogFile="true" file="089-analyzer-site-binding-confirmation.xml"/>
   <include relativeToChangelogFile="true" file="090-analyzer-verification-evidence.xml"/>
   <include relativeToChangelogFile="true" file="091-analyzer-activation-record.xml"/>
   <include relativeToChangelogFile="true" file="092-normalize-analyzer-deleted-status.xml"/>
-  <include relativeToChangelogFile="true" file="093-remove-superseded-analyzer-runtime.xml"/>
-  <include relativeToChangelogFile="true" file="094-remove-openelis-analyzer-connection-runtime.xml"/>
   <include relativeToChangelogFile="true" file="095-allow-repeated-analyzer-site-binding-fingerprints.xml"/>
   <include relativeToChangelogFile="true" file="096-analyzer-result-source-context.xml"/>
-  <include relativeToChangelogFile="true" file="097-remove-openelis-analyzer-error-queue.xml"/>
-  <include relativeToChangelogFile="true" file="098-remove-superseded-analyzer-schema.xml"/>
+  <include relativeToChangelogFile="true" file="097-normalize-analyzer-registration.xml"/>
 
   <!-- OGC-782 M1: microbiology catalog/reference foundations. The historical
        filename is retained so already-applied demo migrations keep identity. -->
@@ -430,6 +464,8 @@
 
   <!-- OGC-782: keep the referral and critical-result alert types after 057 redeclares the constraint -->
   <include relativeToChangelogFile="true" file="058-alert-type-union.xml"/>
+  <!-- Upgrade from 3.2.2.0: restore the alert types parked by 036-0 -->
+  <include relativeToChangelogFile="true" file="058-1-restore-upgrade-alert-types.xml"/>
   <!-- OGC-782 remediation: explicit critical communication targets and lifecycle -->
   <include relativeToChangelogFile="true" file="058-microbiology-critical-lifecycle.xml"/>
 
@@ -560,4 +596,111 @@
   <include relativeToChangelogFile="true" file="103-catalog-import-decisions.xml"/>
   <include relativeToChangelogFile="true" file="104-analyzer-delivery-receipt.xml"/>
 
+  <!-- OGC-701 / OGC-728: NCE trigger-source provenance for Westgard auto-created NCEs -->
+  <include relativeToChangelogFile="true" file="083-nce-trigger-source.xml"/>
+
+  <!-- OGC-707: CAPA Register due date on nce_action_log -->
+  <include relativeToChangelogFile="true" file="084-nce-action-log-due-date.xml"/>
+
+  <!-- OGC-704: per-test TEa for Westgard sigma metrics -->
+  <include relativeToChangelogFile="true" file="085-add-test-tea-column.xml"/>
+
+  <!-- OGC-701 / OGC-728: NCE trigger-source provenance for Westgard auto-created NCEs
+       (renumbered from 051 on rebase: develop claimed 051-075) -->
+  <include relativeToChangelogFile="true" file="076-nce-trigger-source.xml"/>
+
+  <!-- OGC-427 / OGC-811 M1: batch workplan foundation -->
+  <include relativeToChangelogFile="true" file="104-batch-workplan-foundation.xml"/>
+
+  <!-- Programs V2 (OGC-781): domain + is_active + program_lab_unit junction.
+       Existing programs backfill to CLINICAL/active; the many-to-many keeps
+       the legacy single test_section_id column populated during the
+       transition (dropped in a follow-up once every reader has migrated). -->
+  <include relativeToChangelogFile="true" file="105-program-domain.xml"/>
+  <include relativeToChangelogFile="true" file="106-program-active.xml"/>
+  <include relativeToChangelogFile="true" file="107-program-lab-unit-junction.xml"/>
+  <include relativeToChangelogFile="true" file="108-program-domain-shipped-classification.xml"/>
+
+  <!-- Audit history rows for tables keyed by a UUID string (qc_control_lot). -->
+  <include relativeToChangelogFile="true" file="109-history-reference-key.xml"/>
+
+  <!-- Order Entry Configuration switches for optional patient sex and date of birth. -->
+  <include relativeToChangelogFile="true" file="110-optional-patient-sex-age-config.xml"/>
+
+  <!-- Order progress status, release and cancellation records on the order; the order cancel reason list. -->
+  <include relativeToChangelogFile="true" file="111-order-progress-status.xml"/>
+
+  <!-- Locations and Organizations: organization profile fields, identifiers, change log, sampling-site link, category and ownership lists. -->
+  <include relativeToChangelogFile="true" file="112-locations-organizations.xml"/>
+
+  <!-- Result entry acknowledgements: who acknowledged a critical value or confirmed a value outside the valid range, and when. -->
+  <include relativeToChangelogFile="true" file="113-result-entry-acknowledgement.xml"/>
+
+  <!-- Validation is one page: the menu item opens it and the per-search entries are retired. -->
+  <include relativeToChangelogFile="true" file="114-validation-menu-collapse.xml"/>
+
+  <!-- Organization State / Province holds a province or region name. -->
+  <include relativeToChangelogFile="true" file="115-organization-state-length.xml"/>
+
+  <!-- Pre-Bridge analyzer settings: exported to the configuration-import history, then their tables and columns removed. -->
+  <include relativeToChangelogFile="true" file="116-remove-pre-bridge-analyzer-storage.xml"/>
+
+  <!-- Result entry has one page: the unified-route switch and the legacy result-entry menu rows are retired. -->
+  <include relativeToChangelogFile="true" file="117-retire-legacy-results-entry.xml"/>
+  <!-- IHC and Cytology results stored as a raw "see report" message key get its text. -->
+  <include relativeToChangelogFile="true" file="118-repair-see-report-results.xml"/>
+  <!-- OGC-1151: privilege data for the navigation menu filter -->
+  <include relativeToChangelogFile="true" file="111-menu-privilege-urls.xml"/>
+
+  <!-- Overdue STAT alerts: the turnaround target they are raised against. -->
+  <include relativeToChangelogFile="true" file="119-stat-turnaround-config.xml"/>
+  <include relativeToChangelogFile="true" file="132-analyzer-result-instrument-specimen-id.xml"/>
+  <include relativeToChangelogFile="true" file="121-analyzer-delivery-receipt-bundle.xml"/>
+  <include relativeToChangelogFile="true" file="122-analyzer-result-instrument-patient.xml"/>
+  <include relativeToChangelogFile="true" file="123-analyzer-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="124-analyzer-mapping-baseline-migration.xml"/>
+  <include relativeToChangelogFile="true" file="125-analyzer-result-instrument-note.xml"/>
+  <include relativeToChangelogFile="true" file="126-analyzer-mapping-sub-identity.xml"/>
+  <include relativeToChangelogFile="true" file="127-analyzer-result-raw-sub-identity.xml"/>
+  <include relativeToChangelogFile="true" file="128-analyzer-result-instrument-provenance.xml"/>
+  <include relativeToChangelogFile="true" file="129-dictionary-terminology-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="130-analyzer-mapping-assay-enabled.xml"/>
+  <include relativeToChangelogFile="true" file="133-analyzer-mapping-drop-instrument-code.xml"/>
+  <include relativeToChangelogFile="true" file="134-analyzer-result-instrument-sample-flags.xml"/>
+  <include relativeToChangelogFile="true" file="135-analyzer-accept-notes-on-their-analysis.xml"/>
+
+  <!-- Printed reports: the paper size they are laid out on (A4 or Letter). -->
+  <include relativeToChangelogFile="true" file="120-report-paper-size.xml"/>
+
+  <!-- Analyzer Bridge pairing: OpenELIS's client key pair and the pinned Bridge certificate. -->
+  <include relativeToChangelogFile="true" file="131-analyzer-bridge-pairing.xml"/>
+
+
+  <!-- Result component codes are unique among a test's active components (OGC-1458). -->
+  <include relativeToChangelogFile="true" file="136-result-component-active-code-unique.xml"/>
+
+  <!-- QC targets that no longer fit their test's result type are retired once (OGC-1462). -->
+  <include relativeToChangelogFile="true" file="137-qc-targets-retire-stale.xml"/>
+
+  <!-- Terminology codes are stored trimmed (OGC-1465). -->
+  <include relativeToChangelogFile="true" file="138-terminology-codes-trimmed.xml"/>
+  <!-- A mapping confirmation keeps how the profile read each row (spec point 13). -->
+  <include relativeToChangelogFile="true" file="140-analyzer-mapping-confirmation-readings.xml"/>
+  <include relativeToChangelogFile="true" file="141-menu-config-source.xml"/>
+  <!-- A held analyzer result keeps how its record read on arrival (spec point 13). -->
+  <include relativeToChangelogFile="true" file="142-analyzer-result-arrival-reading.xml"/>
+  <include relativeToChangelogFile="true" file="143-analyzer-mapping-source-definition.xml"/>
+  <include relativeToChangelogFile="true" file="121-amr-v2-culture-workspace.xml"/>
+    <include file="122-amr-v2-isolates-referral.xml" relativeToChangelogFile="true"/>
+<include file="123-amr-v2-ast-reporting.xml" relativeToChangelogFile="true"/>
+    <include file="124-amr-v2-automation-bench-labels.xml" relativeToChangelogFile="true"/>
+  <include file="140-amr-reference-package.xml" relativeToChangelogFile="true"/>
+  <include file="141-amr-breakpoint-lookup-index.xml" relativeToChangelogFile="true"/>
+  <include file="142-amr-clinical-context.xml" relativeToChangelogFile="true"/>
+  <include file="143-amr-disk-content.xml" relativeToChangelogFile="true"/>
+  <include file="126-amr-organism-default-current-panel.xml" relativeToChangelogFile="true"/>
+  <include relativeToChangelogFile="true" file="144-analyzer-setup-reception.xml"/>
+  <include relativeToChangelogFile="true" file="145-optional-reporting-decimal-places.xml"/>
+  <include relativeToChangelogFile="true" file="146-explicit-log-display.xml"/>
+  <include relativeToChangelogFile="true" file="147-log-display-source-and-seed.xml"/>
 </databaseChangeLog>

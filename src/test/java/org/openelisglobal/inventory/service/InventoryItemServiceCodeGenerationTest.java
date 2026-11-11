@@ -22,7 +22,6 @@ import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.inventory.dao.InventoryItemCodeSequenceDAO;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
 /** {@code InventoryItemServiceImpl.insert()} fills in the item's code. */
@@ -70,7 +69,6 @@ public class InventoryItemServiceCodeGenerationTest {
         InventoryItem item = new InventoryItem();
         item.setName(name);
         item.setUnits("mL");
-        item.setItemType(ItemType.REAGENT);
         item.setIsActive("Y");
         return item;
     }
