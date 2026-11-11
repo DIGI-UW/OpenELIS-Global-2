@@ -421,11 +421,12 @@ const InventoryItemsBoard = () => {
     : visibleRows;
 
   const toggleSort = (key) =>
-    setSort((current) =>
-      current.key === key
-        ? { key, ascending: !current.ascending }
-        : { key, ascending: true },
-    );
+    setSort((current) => {
+      if (current.key !== key) return { key, ascending: true };
+      return current.ascending
+        ? { key, ascending: false }
+        : { key: null, ascending: true };
+    });
 
   const sortableHeader = (key, labelId, extraProps = {}) => (
     <TableHeader

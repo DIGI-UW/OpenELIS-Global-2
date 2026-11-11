@@ -375,15 +375,16 @@ describe("InventoryItemsBoard", () => {
     ).toHaveTextContent("—");
   });
 
-  it("keeps the server's urgency ordering until a column is sorted", async () => {
+  it("keeps the server's urgency ordering until a column is sorted, and returns to it on a third click", async () => {
     await renderBoard();
-    expect(
-      bodyRows().map((row) => within(row).getAllByRole("cell")[1].textContent),
-    ).toEqual([
+    const urgencyOrder = [
       expect.stringContaining(CARTRIDGE.name),
       expect.stringContaining(SYPHILIS.name),
       expect.stringContaining(MALARIA.name),
-    ]);
+    ];
+    const itemOrder = () =>
+      bodyRows().map((row) => within(row).getAllByRole("cell")[1].textContent);
+    expect(itemOrder()).toEqual(urgencyOrder);
 
     const sortByOnHand = () =>
       fireEvent.click(
@@ -405,6 +406,12 @@ describe("InventoryItemsBoard", () => {
         within(row).getAllByRole("cell")[2].textContent.trim(),
       ),
     ).toEqual(["60 tests", "12 tests", "8 tests"]);
+
+    sortByOnHand();
+    expect(itemOrder()).toEqual(urgencyOrder);
+    expect(
+      screen.getByRole("columnheader", { name: /On hand/i }),
+    ).toHaveAttribute("aria-sort", "none");
   });
 
   it("narrows in place by status", async () => {
