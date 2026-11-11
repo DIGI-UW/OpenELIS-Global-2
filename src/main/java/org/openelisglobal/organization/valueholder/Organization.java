@@ -104,6 +104,7 @@ public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<
 
     private BigDecimal gpsLatitude;
     private BigDecimal gpsLongitude;
+    private String gpsSource;
     private String contactName;
     private String description;
     private String categoryId;
@@ -364,6 +365,14 @@ public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<
 
     public void setGpsLongitude(BigDecimal gpsLongitude) {
         this.gpsLongitude = gpsLongitude;
+    }
+
+    public String getGpsSource() {
+        return gpsSource;
+    }
+
+    public void setGpsSource(String gpsSource) {
+        this.gpsSource = gpsSource;
     }
 
     public String getContactName() {

@@ -31,6 +31,7 @@ import ValidationPolicySection, {
 } from "./ValidationPolicySection";
 import { settingDescription, settingName } from "./settingLabels";
 import { matchesSearch } from "../../../common/searchText";
+import FacilityLocationSection from "../facilityLocation/FacilityLocationSection";
 
 interface ConfigMenuDisplayProps {
   id: string;
@@ -287,6 +288,12 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
                 {validationPolicyEnabled && (
                   <Section>
                     <ValidationPolicySection policy={validationPolicy} />
+                    <br />
+                  </Section>
+                )}
+                {props.menuType === "SiteInformationMenu" && (
+                  <Section>
+                    <FacilityLocationSection />
                     <br />
                   </Section>
                 )}
