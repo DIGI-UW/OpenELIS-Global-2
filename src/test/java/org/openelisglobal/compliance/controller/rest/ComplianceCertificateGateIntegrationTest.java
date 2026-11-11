@@ -68,6 +68,21 @@ public class ComplianceCertificateGateIntegrationTest extends BaseWebContextSens
         assertEquals("application/pdf", generated.getResponse().getContentType().split(";")[0]);
     }
 
+    @Test
+    public void aTestRemovedAndAddedBackHoldsTheCertificateUntilValidated() throws Exception {
+        setStatus("9101, 9102, 9103, 9104", AnalysisStatus.Finalized);
+        setStatus("9109", AnalysisStatus.NotStarted);
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.analysis (id, sampitem_id, test_id, analysis_type, revision,"
+                        + " status_id) VALUES (9120, 9101, 9102, 'MANUAL', 1, CAST(? AS numeric))",
+                statusService.getStatusID(AnalysisStatus.Canceled));
+
+        MvcResult refused = exportPdf();
+
+        assertEquals("the removed copy is cancelled at revision 1; the one added back has no result", 409,
+                refused.getResponse().getStatus());
+    }
+
     private MvcResult exportPdf() throws Exception {
         return mockMvc.perform(post("/rest/complianceReport/exportPdf").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"sampleId\":9101}")).andReturn();
