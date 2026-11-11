@@ -2089,6 +2089,8 @@
   "laporanHasil.filter.labNumber": "Lab number",
   "laporanHasil.filter.labNumber.help": "Type or scan; a partial number matches the start. Dates are not needed.",
   "laporanHasil.labNumber.notFound": "No environmental order with lab number {labNumber}",
+  "laporanHasil.labNumber.filteredOut": "Lab number {labNumber}: {count, plural, one {# order matches, but the other filters hide it} other {# orders match, but the other filters hide them}}. Set the filters to All, or check that the order is collected.",
+  "laporanHasil.labNumber.limited": "More orders start with {labNumber} than can be listed. Type more of the number to narrow the list.",
   "laporanHasil.filter.dateTo": "Date To",
   "laporanHasil.filter.generated": "Generated",
   "laporanHasil.filter.generationStatus": "Generation Status",

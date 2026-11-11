@@ -495,6 +495,15 @@ export default function LaporanHasilReport() {
 
       {isLoading && <Loading withOverlay={false} />}
 
+      {!isLoading && reportData?.labNumberLimited && searchedLabNumber && (
+        <p style={{ marginTop: "1rem", color: "#525252" }}>
+          <FormattedMessage
+            id="laporanHasil.labNumber.limited"
+            values={{ labNumber: searchedLabNumber }}
+          />
+        </p>
+      )}
+
       {!isLoading && reportData && (
         <DataTable rows={tableRows} headers={tableHeaders}>
           {({
@@ -608,7 +617,15 @@ export default function LaporanHasilReport() {
           style={{ marginTop: "1rem", color: "#525252" }}
           data-testid="laporan-hasil-empty"
         >
-          {searchedLabNumber ? (
+          {searchedLabNumber && reportData.labNumberMatches > 0 ? (
+            <FormattedMessage
+              id="laporanHasil.labNumber.filteredOut"
+              values={{
+                labNumber: searchedLabNumber,
+                count: reportData.labNumberMatches,
+              }}
+            />
+          ) : searchedLabNumber ? (
             <FormattedMessage
               id="laporanHasil.labNumber.notFound"
               values={{ labNumber: searchedLabNumber }}

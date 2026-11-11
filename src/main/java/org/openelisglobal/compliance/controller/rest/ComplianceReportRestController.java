@@ -155,6 +155,7 @@ public class ComplianceReportRestController {
         int ineligibleCount = 0;
         int generatedCount = 0;
         int notYetGeneratedCount = 0;
+        int labNumberMatches = 0;
 
         for (Sample sample : samples) {
             String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
@@ -162,6 +163,7 @@ public class ComplianceReportRestController {
             if (!"environmental".equalsIgnoreCase(workflowType)) {
                 continue;
             }
+            labNumberMatches++;
 
             // Exclude orders not yet collected (e.g. a fresh resample draft awaiting
             // re-collection): no specimen has a collection date.
@@ -241,6 +243,10 @@ public class ComplianceReportRestController {
         response.setGeneratedCount(generatedCount);
         response.setNotYetGeneratedCount(notYetGeneratedCount);
         response.setOrders(orders);
+        if (labNumber != null && !labNumber.isBlank()) {
+            response.setLabNumberMatches(labNumberMatches);
+            response.setLabNumberLimited(samples.size() >= LAB_NUMBER_MATCHES);
+        }
         return ResponseEntity.ok(response);
     }
 

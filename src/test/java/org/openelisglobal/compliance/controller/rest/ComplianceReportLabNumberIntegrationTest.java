@@ -67,6 +67,20 @@ public class ComplianceReportLabNumberIntegrationTest extends BaseWebContextSens
     }
 
     @Test
+    public void anOrderHiddenByAFilterStillCountsAsAMatch() throws Exception {
+        mockMvc.perform(get("/rest/complianceReport").param("labNumber", "CD-9101")
+                .param("complianceStatus", "COMPLIANT").accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.orders").isEmpty()).andExpect(jsonPath("$.labNumberMatches").value(1));
+        mockMvc.perform(get("/rest/complianceReport").param("labNumber", "CD-9102").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.labNumberMatches").value(0));
+    }
+
+    @Test
+    public void aLabNumberTypedInLowerCaseIsFound() throws Exception {
+        assertEquals(List.of("CD-9101"), labNumbersFor("cd-9101"));
+    }
+
+    @Test
     public void withoutALabNumberTheDateWindowStillApplies() throws Exception {
         mockMvc.perform(get("/rest/complianceReport").accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.orders[?(@.labNumber == 'CD-9101')]").isEmpty());

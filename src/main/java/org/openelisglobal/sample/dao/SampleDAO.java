@@ -81,8 +81,8 @@ public interface SampleDAO extends BaseDAO<Sample, String> {
     String getLargestAccessionNumberWithPrefix(String prefix);
 
     /**
-     * Environmental samples (domain E) whose lab number starts with the prefix, in
-     * lab number order, at most max.
+     * Environmental samples (domain E) whose lab number starts with the prefix,
+     * ignoring case, in lab number order, at most max.
      */
     List<Sample> getEnvironmentalSamplesWithAccessionNumberStartingWith(String prefix, int max);
 

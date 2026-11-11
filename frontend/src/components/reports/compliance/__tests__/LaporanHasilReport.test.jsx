@@ -370,7 +370,13 @@ describe("LaporanHasilReport", () => {
       urls.push(url);
       callback(
         url.includes("labNumber=NOPE")
-          ? { ineligibleCount: 0, generatedCount: 0, notYetGeneratedCount: 0, orders: [] }
+          ? {
+              ineligibleCount: 0,
+              generatedCount: 0,
+              notYetGeneratedCount: 0,
+              orders: [],
+              labNumberMatches: 0,
+            }
           : MOCK_REPORT,
       );
     });
@@ -397,6 +403,55 @@ describe("LaporanHasilReport", () => {
         callback(MOCK_REPORT);
       }
     });
+  });
+
+  it("says a lab number matches when the filters hide its order, and when the list is cut", async () => {
+    const { getFromOpenElisServer } = await import("../../../utils/Utils");
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else if (url.includes("labNumber=ENV-2026-001")) {
+        callback({
+          ineligibleCount: 1,
+          generatedCount: 0,
+          notYetGeneratedCount: 0,
+          orders: [],
+          labNumberMatches: 1,
+        });
+      } else {
+        callback({ ...MOCK_REPORT, labNumberMatches: 200, labNumberLimited: true });
+      }
+    });
+    try {
+      renderWithIntl(<LaporanHasilReport />);
+      const field = screen.getByRole("textbox", { name: "Lab number" });
+
+      fireEvent.change(field, { target: { value: "ENV-2026-001" } });
+      await act(async () => {
+        fireEvent.keyDown(field, { key: "Enter" });
+      });
+      const empty = screen.getByTestId("laporan-hasil-empty");
+      expect(empty).toHaveTextContent(
+        "Lab number ENV-2026-001: 1 order matches, but the other filters hide it.",
+      );
+      expect(empty).not.toHaveTextContent("No environmental order");
+
+      fireEvent.change(field, { target: { value: "ENV" } });
+      await act(async () => {
+        fireEvent.keyDown(field, { key: "Enter" });
+      });
+      expect(
+        screen.getByText(
+          "More orders start with ENV than can be listed. Type more of the number to narrow the list.",
+        ),
+      ).toBeInTheDocument();
+    } finally {
+      getFromOpenElisServer.mockImplementation((url, callback) =>
+        callback(
+          url.includes("compliance-statuses") ? MOCK_STATUSES : MOCK_REPORT,
+        ),
+      );
+    }
   });
 
   it("shows empty state when no orders", async () => {
