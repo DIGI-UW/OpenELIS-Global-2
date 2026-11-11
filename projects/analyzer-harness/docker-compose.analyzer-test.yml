@@ -102,12 +102,6 @@ services:
         aliases:
           - oe.openelis.org
 
-  # Proxy needs both networks to reach OE.
-  proxy:
-    networks:
-      default:
-      analyzer-net:
-
 networks:
   analyzer-net:
     driver: bridge

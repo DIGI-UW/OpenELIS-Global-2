@@ -201,7 +201,8 @@ services:
             nocopy: true
         - ./volume/nginx/nginx-prod.conf:/etc/nginx/nginx.conf.template:ro
     networks:
-        - default  
+      default:
+        ipv4_address: 172.20.1.122
     restart: unless-stopped
     depends_on:
        certs:
