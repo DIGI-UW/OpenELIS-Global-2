@@ -95,6 +95,7 @@ public class AnalyzerResultItem implements Serializable {
 
     @ValidDate(groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String completeDate;
+    private Timestamp completedAt;
 
     private boolean isPositive = false;
     private String duplicateAnalyzerResultId;
@@ -413,6 +414,16 @@ public class AnalyzerResultItem implements Serializable {
 
     public String getCompleteDate() {
         return completeDate;
+    }
+
+    @JsonIgnore
+    public Timestamp getCompletedAt() {
+        return completedAt;
+    }
+
+    @JsonIgnore
+    public void setCompletedAt(Timestamp completedAt) {
+        this.completedAt = completedAt;
     }
 
     public void setPositive(boolean isPositive) {
