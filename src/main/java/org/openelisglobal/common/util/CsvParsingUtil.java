@@ -52,6 +52,36 @@ public final class CsvParsingUtil {
         return new BufferedReader(new StringReader(text));
     }
 
+    /** Reads a complete record, preserving newlines inside quoted cells. */
+    public static String readCsvRecord(BufferedReader reader) throws IOException {
+        String line = reader.readLine();
+        if (line == null || isSkippableLine(line)) {
+            return line;
+        }
+        StringBuilder record = new StringBuilder();
+        boolean quoted = false;
+        while (true) {
+            record.append(line);
+            for (int i = 0; i < line.length(); i++) {
+                if (line.charAt(i) == '"') {
+                    if (quoted && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                        i++;
+                    } else {
+                        quoted = !quoted;
+                    }
+                }
+            }
+            if (!quoted) {
+                return record.toString();
+            }
+            line = reader.readLine();
+            if (line == null) {
+                throw new IOException("Unterminated quoted CSV field");
+            }
+            record.append('\n');
+        }
+    }
+
     /**
      * Parses a CSV line into trimmed fields, honoring double-quoted cells.
      *

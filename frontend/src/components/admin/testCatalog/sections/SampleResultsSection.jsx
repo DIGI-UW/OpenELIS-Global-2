@@ -174,6 +174,12 @@ const ResultEntryPreview = ({ component, uoms, intl }) => {
 
 // OGC-1458 — the rule a refused (422) save names, and what to tell the admin.
 const SAVE_REFUSALS = {
+  "logDisplay.numericRequired":
+    "error.testCatalog.sampleResults.logNumericRequired",
+  "logDisplay.sourceInvalid":
+    "error.testCatalog.sampleResults.logDisplay.sourceInvalid",
+  "decimalPlaces.invalid":
+    "error.testCatalog.sampleResults.decimalPlacesInvalid",
   "components.activeNeedsComponent":
     "error.testCatalog.sampleResults.activeNeedsComponent",
   "resultType.unknown": "label.testCatalog.sampleResults.resultTypeRequired",
@@ -288,8 +294,12 @@ const SampleResultsSection = ({ testId }) => {
     if (nextType !== "N") {
       // Numeric-only fields.
       patch.uomId = "";
-      patch.significantDigits = null;
+      patch.reportingDecimalPlaces = null;
       patch.allowMultipleReadings = false;
+    }
+    if (!["N", "A"].includes(nextType)) {
+      patch.displayLog10 = false;
+      patch.log10SourceComponentCode = null;
     }
     if (!isSelectList) {
       // Select-list options are meaningless for non-list types.
@@ -301,7 +311,13 @@ const SampleResultsSection = ({ testId }) => {
   // ── Immutable updaters ─────────────────────────────────────────────────────
   const patchComponent = (ci, patch) =>
     setComponents((prev) =>
-      prev.map((c, i) => (i === ci ? { ...c, ...patch } : c)),
+      prev.map((c, i) => {
+        if (i === ci) return { ...c, ...patch };
+        return patch.code !== undefined &&
+          c.log10SourceComponentCode === prev[ci].code
+          ? { ...c, log10SourceComponentCode: patch.code }
+          : c;
+      }),
     );
 
   // FR-29: create a unit inline, then append it to the picker and select it on
@@ -443,11 +459,12 @@ const SampleResultsSection = ({ testId }) => {
           // The type is an explicit choice (FR-56/28) — no silent Numeric
           // default.
           resultType: null,
-          significantDigits: null,
+          reportingDecimalPlaces: null,
           defaultResult: "",
           allowMultipleReadings: false,
           isPrimary: prev.length === 0,
           showOnReport: true,
+          isRequired: prev.length === 0,
           options: [],
           interpretations: [],
         },
@@ -752,7 +769,8 @@ const SampleResultsSection = ({ testId }) => {
         ...c,
         defaultResult: offeredDefault(c),
         displayOrder: toInt(c.displayOrder),
-        significantDigits: toInt(c.significantDigits),
+        reportingDecimalPlaces: toInt(c.reportingDecimalPlaces),
+        displayLog10: c.displayLog10 === true,
         lod: toInt(c.lod),
         loq: toInt(c.loq),
         options: (c.options || []).map((o) => ({
@@ -970,6 +988,18 @@ const SampleResultsSection = ({ testId }) => {
                     patchComponent(ci, { showOnReport: checked })
                   }
                 />
+                <Toggle
+                  id={`comp-required-${ci}`}
+                  labelText={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.isRequired",
+                  })}
+                  labelA={intl.formatMessage({ id: "label.no" })}
+                  labelB={intl.formatMessage({ id: "label.yes" })}
+                  toggled={c.isRequired === true}
+                  onToggle={(checked) =>
+                    patchComponent(ci, { isRequired: checked })
+                  }
+                />
                 <TextInput
                   id={`comp-code-${ci}`}
                   maxLength={COLUMN_MAX.code}
@@ -1104,25 +1134,25 @@ const SampleResultsSection = ({ testId }) => {
                       </div>
                     )}
                     <NumberInput
-                      id={`comp-sigdig-${ci}`}
+                      id={`comp-reporting-decimals-${ci}`}
                       label={intl.formatMessage({
-                        id: "label.testCatalog.sampleResults.significantDigits",
+                        id: "label.testCatalog.sampleResults.reportingDecimalPlaces",
                       })}
                       helperText={intl.formatMessage({
-                        id: "label.testCatalog.sampleResults.significantDigits.helper",
+                        id: "label.testCatalog.sampleResults.reportingDecimalPlaces.helper",
                       })}
                       min={0}
                       max={10}
                       allowEmpty
                       value={
-                        c.significantDigits === null ||
-                        c.significantDigits === undefined
+                        c.reportingDecimalPlaces === null ||
+                        c.reportingDecimalPlaces === undefined
                           ? ""
-                          : c.significantDigits
+                          : c.reportingDecimalPlaces
                       }
                       onChange={(_e, { value }) =>
                         patchComponent(ci, {
-                          significantDigits: value === "" ? null : value,
+                          reportingDecimalPlaces: value === "" ? null : value,
                         })
                       }
                     />
@@ -1180,6 +1210,67 @@ const SampleResultsSection = ({ testId }) => {
                         }
                       />
                     </div>
+                  </>
+                )}
+                {["N", "A"].includes(c.resultType) && (
+                  <>
+                    <Checkbox
+                      id={`comp-display-log10-${ci}`}
+                      checked={c.displayLog10 === true}
+                      labelText={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.displayLog10",
+                      })}
+                      onChange={(_event, { checked }) =>
+                        patchComponent(ci, {
+                          displayLog10: checked,
+                          log10SourceComponentCode: checked
+                            ? c.log10SourceComponentCode
+                            : null,
+                        })
+                      }
+                    />
+                    <p>
+                      {intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.displayLog10.helper",
+                      })}
+                    </p>
+                    {c.displayLog10 && (
+                      <Select
+                        id={`comp-log10-source-${ci}`}
+                        labelText={intl.formatMessage({
+                          id: "label.testCatalog.sampleResults.log10Source",
+                        })}
+                        value={c.log10SourceComponentCode || ""}
+                        onChange={(event) =>
+                          patchComponent(ci, {
+                            log10SourceComponentCode:
+                              event.target.value || null,
+                          })
+                        }
+                      >
+                        <SelectItem
+                          value=""
+                          text={intl.formatMessage({
+                            id: "label.testCatalog.sampleResults.log10Source.none",
+                          })}
+                        />
+                        {components
+                          .filter(
+                            (source, i) =>
+                              i !== ci &&
+                              source.resultType === "N" &&
+                              source.showOnReport !== false &&
+                              !source.displayLog10,
+                          )
+                          .map((source) => (
+                            <SelectItem
+                              key={source.code}
+                              value={source.code}
+                              text={source.label || source.code}
+                            />
+                          ))}
+                      </Select>
+                    )}
                   </>
                 )}
                 {["D", "M", "C"].includes(c.resultType) ? (

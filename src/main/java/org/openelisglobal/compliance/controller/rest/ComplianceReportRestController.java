@@ -8,6 +8,8 @@ import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.PdfExportSupport;
@@ -15,9 +17,11 @@ import org.openelisglobal.compliance.service.ComplianceEvaluationResult;
 import org.openelisglobal.compliance.service.ComplianceEvaluationService;
 import org.openelisglobal.compliance.service.ComplianceReportGenerationService;
 import org.openelisglobal.compliance.service.LhuAmendmentService;
+import org.openelisglobal.compliance.valueholder.ComplianceStandard;
 import org.openelisglobal.esig.service.ElectronicSignatureService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
+import org.openelisglobal.microbiology.form.MicroPatientReportForm;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.sample.dao.SampleComplianceStandardDAO;
@@ -60,6 +64,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/complianceReport")
 @PreAuthorize("hasAnyRole('RESULTS', 'VALIDATION', 'ADMIN')")
 public class ComplianceReportRestController {
+
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroEnvironmentalReportService microbiologyReports;
 
     private static final DateTimeFormatter DISPLAY_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final String RECORD_TYPE_SAMPLE = "SAMPLE";
@@ -113,16 +120,30 @@ public class ComplianceReportRestController {
         return ResponseEntity.ok(statuses);
     }
 
+    /**
+     * The most orders a lab number search returns; a full lab number finds one, a
+     * short prefix is narrowed by typing more.
+     */
+    private static final int LAB_NUMBER_MATCHES = 200;
+
+    /**
+     * The orders for the Compliance Report. A lab number (OGC-1619) finds the
+     * orders whose lab number starts with it, whatever their date; the other
+     * filters still apply.
+     */
     @GetMapping
     public ResponseEntity<ComplianceReportDTO> getReport(@RequestParam(required = false) String dateFrom,
             @RequestParam(required = false) String dateTo, @RequestParam(required = false) String siteId,
             @RequestParam(required = false) String standardId, @RequestParam(required = false) String complianceStatus,
-            @RequestParam(required = false) String generationStatus) {
+            @RequestParam(required = false) String generationStatus, @RequestParam(required = false) String labNumber) {
 
         List<Sample> samples;
         String from = toSystemDateFormat(dateFrom);
         String to = toSystemDateFormat(dateTo);
-        if (from != null && to != null) {
+        if (labNumber != null && !labNumber.isBlank()) {
+            samples = sampleService.getEnvironmentalSamplesWithAccessionNumberStartingWith(labNumber.trim(),
+                    LAB_NUMBER_MATCHES);
+        } else if (from != null && to != null) {
             samples = sampleService.getSamplesReceivedInDateRange(from, to);
         } else {
             java.time.LocalDate today = java.time.LocalDate.now();
@@ -134,6 +155,7 @@ public class ComplianceReportRestController {
         int ineligibleCount = 0;
         int generatedCount = 0;
         int notYetGeneratedCount = 0;
+        int labNumberMatches = 0;
 
         for (Sample sample : samples) {
             String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
@@ -141,6 +163,7 @@ public class ComplianceReportRestController {
             if (!"environmental".equalsIgnoreCase(workflowType)) {
                 continue;
             }
+            labNumberMatches++;
 
             // Exclude orders not yet collected (e.g. a fresh resample draft awaiting
             // re-collection): no specimen has a collection date.
@@ -151,7 +174,16 @@ public class ComplianceReportRestController {
             }
 
             List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
-            if (links.isEmpty()) {
+            if (standardId != null && !standardId.isEmpty()
+                    && links.stream().noneMatch(link -> link.getComplianceStandard().getId().equals(standardId))
+                    && !links.isEmpty()) {
+                continue;
+            }
+            String ineligibleReason = links.isEmpty() ? ComplianceReportOrderDTO.INELIGIBLE_NO_STANDARD
+                    : complianceEvaluationService.awaitsValidation(sample)
+                            ? ComplianceReportOrderDTO.INELIGIBLE_NOT_VALIDATED
+                            : null;
+            if (ineligibleReason != null) {
                 ineligibleCount++;
                 // Show ineligible orders in the table unless the user is filtering
                 // by a specific compliance status or generation status (ineligible
@@ -161,16 +193,11 @@ public class ComplianceReportRestController {
                 boolean filteringByGeneration = generationStatus != null && !generationStatus.isEmpty()
                         && !"all".equalsIgnoreCase(generationStatus);
                 if (!filteringByStatus && !filteringByGeneration) {
-                    ComplianceReportOrderDTO ineligibleDto = buildOrderDTO(sample, null, null, false);
+                    ComplianceReportOrderDTO ineligibleDto = buildOrderDTO(sample, links, null, false);
                     ineligibleDto.setComplianceStatus("INELIGIBLE");
+                    ineligibleDto.setIneligibleReason(ineligibleReason);
                     orders.add(ineligibleDto);
                 }
-                continue;
-            }
-
-            SampleComplianceStandard primaryLink = links.get(0);
-            if (standardId != null && !standardId.isEmpty()
-                    && !primaryLink.getComplianceStandard().getId().equals(standardId)) {
                 continue;
             }
 
@@ -194,7 +221,7 @@ public class ComplianceReportRestController {
                 }
             }
 
-            ComplianceReportOrderDTO dto = buildOrderDTO(sample, primaryLink, eval, hasBeenGenerated);
+            ComplianceReportOrderDTO dto = buildOrderDTO(sample, links, eval, hasBeenGenerated);
 
             if (siteId != null && !siteId.isEmpty()) {
                 if (!siteId.equals(dto.getSiteCode())) {
@@ -216,6 +243,10 @@ public class ComplianceReportRestController {
         response.setGeneratedCount(generatedCount);
         response.setNotYetGeneratedCount(notYetGeneratedCount);
         response.setOrders(orders);
+        if (labNumber != null && !labNumber.isBlank()) {
+            response.setLabNumberMatches(labNumberMatches);
+            response.setLabNumberLimited(samples.size() >= LAB_NUMBER_MATCHES);
+        }
         return ResponseEntity.ok(response);
     }
 
@@ -242,7 +273,8 @@ public class ComplianceReportRestController {
      * reports nobody downloaded.
      */
     @PostMapping("/exportPdf")
-    public void exportPdf(@RequestBody ExportRequest request, HttpServletResponse response) throws IOException {
+    public void exportPdf(@RequestBody ExportRequest request, HttpServletResponse response,
+            jakarta.servlet.http.HttpServletRequest httpRequest) throws IOException {
         Long sampleId = request == null ? null : request.getSampleId();
         if (sampleId == null) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "sampleId is required");
@@ -255,11 +287,25 @@ public class ComplianceReportRestController {
         }
 
         List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
-        SampleComplianceStandard primaryLink = links.isEmpty() ? null : links.get(0);
+        if (complianceEvaluationService.awaitsValidation(sample)) {
+            response.sendError(HttpServletResponse.SC_CONFLICT,
+                    "Every test must be validated before the certificate is generated");
+            return;
+        }
+        List<MicroPatientReportForm> releasedMicrobiology;
+        try {
+            releasedMicrobiology = microbiologyReports.released(sample.getId(),
+                    org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest));
+        } catch (IllegalStateException e) {
+            response.sendError(HttpServletResponse.SC_CONFLICT,
+                    "The microbiology report must be released before the certificate is generated");
+            return;
+        }
         ComplianceEvaluationResult eval = complianceEvaluationService.evaluate(sample);
-        ComplianceReportOrderDTO dto = buildOrderDTO(sample, primaryLink, eval,
+        ComplianceReportOrderDTO dto = buildOrderDTO(sample, links, eval,
                 reportGenerationService.getLastGenerated(sampleId).isPresent());
 
+        dto.setMicrobiology(releasedMicrobiology);
         String safeFilename = sample.getAccessionNumber().replaceAll("[^a-zA-Z0-9\\-]", "");
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition", "attachment; filename=\"LH-" + safeFilename + ".pdf\"");
@@ -319,6 +365,8 @@ public class ComplianceReportRestController {
                         { "Preservation", safe(dto.getPreservation()) } });
 
         addComplianceTable(document, dto, sectionFont, headerFont, cellFont);
+        org.openelisglobal.microbiology.service.MicroEnvironmentalCertificateRows.append(document,
+                dto.getMicrobiology(), sectionFont, cellFont);
         addSignatureTable(document, dto, sectionFont, labelFont, cellFont);
 
         document.close();
@@ -347,8 +395,8 @@ public class ComplianceReportRestController {
     }
 
     @PostMapping("/reissue")
-    public ResponseEntity<?> reissue(@RequestBody ReissueRequest request, HttpServletResponse response)
-            throws IOException {
+    public ResponseEntity<?> reissue(@RequestBody ReissueRequest request, HttpServletResponse response,
+            jakarta.servlet.http.HttpServletRequest httpRequest) throws IOException {
         if (request.getReason() == null || request.getReason().trim().isEmpty()) {
             return ResponseEntity.badRequest().body("Amendment reason must not be blank");
         }
@@ -362,6 +410,19 @@ public class ComplianceReportRestController {
         if (!lhuAmendmentService.hasBeenReleased(request.getSampleId())) {
             return ResponseEntity.status(404).body("Sample has not been released; nothing to amend");
         }
+        if (complianceEvaluationService.awaitsValidation(sample)) {
+            return ResponseEntity.status(HttpServletResponse.SC_CONFLICT)
+                    .body("Every test must be validated before the certificate is reissued");
+        }
+
+        List<MicroPatientReportForm> releasedMicrobiology;
+        try {
+            releasedMicrobiology = microbiologyReports.released(sample.getId(),
+                    org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpServletResponse.SC_CONFLICT)
+                    .body("The microbiology report must be released before the certificate is reissued");
+        }
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String userId = auth != null ? auth.getName() : null;
@@ -371,9 +432,10 @@ public class ComplianceReportRestController {
         if (!archiveService.findBySampleIdAndAmendmentNumber(request.getSampleId(), 0).isPresent()) {
             try {
                 List<SampleComplianceStandard> origLinks = sampleComplianceStandardDAO.getAllForSample(sample.getId());
-                SampleComplianceStandard origPrimaryLink = origLinks.isEmpty() ? null : origLinks.get(0);
                 ComplianceEvaluationResult origEval = complianceEvaluationService.evaluate(sample);
-                ComplianceReportOrderDTO origDto = buildOrderDTO(sample, origPrimaryLink, origEval, true);
+                ComplianceReportOrderDTO origDto = buildOrderDTO(sample, origLinks, origEval, true);
+                origDto.setMicrobiology(microbiologyReports.released(sample.getId(),
+                        org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest)));
                 byte[] origPdfBytes = buildOriginalPdfBytes(origDto);
                 archiveService.archiveIfAbsent(request.getSampleId(), 0, origPdfBytes, userId);
             } catch (Exception e) {
@@ -389,11 +451,11 @@ public class ComplianceReportRestController {
         // Refresh sample to get updated amendmentNumber, then regenerate PDF
         sample = sampleService.get(String.valueOf(request.getSampleId()));
         List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
-        SampleComplianceStandard primaryLink = links.isEmpty() ? null : links.get(0);
         ComplianceEvaluationResult eval = complianceEvaluationService.evaluate(sample);
-        ComplianceReportOrderDTO dto = buildOrderDTO(sample, primaryLink, eval,
+        ComplianceReportOrderDTO dto = buildOrderDTO(sample, links, eval,
                 reportGenerationService.getLastGenerated(request.getSampleId()).isPresent());
 
+        dto.setMicrobiology(releasedMicrobiology);
         String safeFilename = sample.getAccessionNumber().replaceAll("[^a-zA-Z0-9\\-]", "");
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition",
@@ -460,21 +522,33 @@ public class ComplianceReportRestController {
                         { "Preservation", safe(dto.getPreservation()) } });
 
         addComplianceTable(document, dto, sectionFont, headerFont, cellFont);
+        org.openelisglobal.microbiology.service.MicroEnvironmentalCertificateRows.append(document,
+                dto.getMicrobiology(), sectionFont, cellFont);
         addSignatureTable(document, dto, sectionFont, labelFont, cellFont);
 
         document.close();
         return buf.toByteArray();
     }
 
-    private ComplianceReportOrderDTO buildOrderDTO(Sample sample, SampleComplianceStandard link,
+    private static String joinStandards(List<SampleComplianceStandard> links,
+            Function<ComplianceStandard, String> part) {
+        return links.stream().map(SampleComplianceStandard::getComplianceStandard).map(part)
+                .filter(text -> text != null && !text.isBlank()).distinct().collect(Collectors.joining(", "));
+    }
+
+    /**
+     * The report row and certificate for an order. Every standard linked to the
+     * order is named, in link order, since each one is evaluated (FR-02).
+     */
+    private ComplianceReportOrderDTO buildOrderDTO(Sample sample, List<SampleComplianceStandard> links,
             ComplianceEvaluationResult eval, boolean hasBeenGenerated) {
         ComplianceReportOrderDTO dto = new ComplianceReportOrderDTO();
         dto.setSampleId(Long.parseLong(sample.getId()));
         dto.setLabNumber(sample.getAccessionNumber());
 
-        if (link != null) {
-            dto.setStandardName(link.getComplianceStandard().getName());
-            dto.setRegulationNumber(link.getComplianceStandard().getRegulationNumber());
+        if (links != null && !links.isEmpty()) {
+            dto.setStandardName(joinStandards(links, standard -> standard.getName()));
+            dto.setRegulationNumber(joinStandards(links, standard -> standard.getRegulationNumber()));
         }
 
         List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
@@ -508,6 +582,9 @@ public class ComplianceReportRestController {
                 org.openelisglobal.vector.valueholder.VectorSamplingSite site = vectorSamplingSiteService
                         .get(Integer.parseInt(siteIdStr));
                 if (site != null) {
+                    if (siteName == null || siteName.isBlank())
+                        dto.setSiteName(site.getName());
+                    dto.setSiteCode(site.getCode());
                     String lat = site.getGpsLatitude();
                     String lon = site.getGpsLongitude();
                     if (lat != null && !lat.isEmpty() && lon != null && !lon.isEmpty()) {
@@ -526,13 +603,12 @@ public class ComplianceReportRestController {
         dto.setPreservation(
                 observationHistoryService.getRawValueForSample(ObservationType.ENV_PRESERVATION_METHOD, sampleId));
 
+        dto.setTestCount(complianceEvaluationService.orderedTestCount(sample));
         if (eval != null) {
             dto.setComplianceStatus(eval.getOverallStatus().name());
             dto.setParameterResults(eval.getParameterResults());
-            dto.setTestCount(eval.getParameterResults().size());
         } else {
             dto.setComplianceStatus("NONE");
-            dto.setTestCount(0);
         }
 
         reportGenerationService.getLastGenerated(Long.parseLong(sample.getId())).ifPresent(dto::setLastGenerated);

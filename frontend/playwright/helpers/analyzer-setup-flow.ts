@@ -33,6 +33,12 @@ export async function activateShippedAnalyzer(
   await setup.selectProfile(profile.displayName, profile);
   await setup.fillName(name);
   await setup.selectLabUnit(profile.labUnit);
+  await setup.continueToConnect();
+  if ("senderId" in connection) {
+    await setup.fillSenderId(connection.senderId);
+  } else {
+    await setup.fillImportDirectory(connection.importDirectory);
+  }
   await setup.continueToVerify(assays);
   const mapping = (await (
     await page.request.get(
@@ -46,12 +52,6 @@ export async function activateShippedAnalyzer(
     await expect(confirm).toBeEnabled();
     await confirm.click();
     await expect(page.getByText("Mappings confirmed")).toBeVisible();
-  }
-  await setup.continueToConnect();
-  if ("senderId" in connection) {
-    await setup.fillSenderId(connection.senderId);
-  } else {
-    await setup.fillImportDirectory(connection.importDirectory);
   }
   await page.getByRole("button", { name: "Finish and activate" }).click();
   const analyzer = await analyzerByName(page, name, profile.profileId);

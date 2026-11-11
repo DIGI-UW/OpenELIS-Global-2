@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <!-- OGC-1588: a QC override is an audit point, so the release records why the
+         user released a batch whose QC was not Pass. Rows written before this
+         change keep a null reason. -->
+    <changeSet id="OGC-1588-batch-workplan-override-reason" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="batch_workplan_qc_release"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="batch_workplan_qc_release" columnName="override_reason"/>
+            </not>
+        </preConditions>
+        <comment>The reason given for releasing a batch over QC that was not Pass</comment>
+        <addColumn schemaName="clinlims" tableName="batch_workplan_qc_release">
+            <column name="override_reason" type="VARCHAR(1000)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

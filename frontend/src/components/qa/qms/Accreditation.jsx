@@ -513,9 +513,7 @@ const Accreditation = () => {
             </>
           )}
 
-          {/* ISO 15189 §7.7 — is every accredited test in a live EQA scheme?
-              Derived from data the lab already keeps in the EQA module, so there is
-              nothing to maintain here and no way for the answer to go stale. */}
+          {/* ISO 15189:2022 §7.3.7.3: is every accredited test in a live EQA scheme? */}
           <div className="qi-dashboard__controls">
             <h3>
               <FormattedMessage id="qa.qms.accreditation.eqa.title" />

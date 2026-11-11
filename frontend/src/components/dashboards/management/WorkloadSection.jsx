@@ -10,7 +10,11 @@ import {
   TableHeader,
   TableRow,
   Tile,
+  Toggletip,
+  ToggletipButton,
+  ToggletipContent,
 } from "@carbon/react";
+import { Information } from "@carbon/icons-react";
 import { StackedAreaChart } from "@carbon/charts-react";
 import "@carbon/charts/styles.css";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -51,7 +55,7 @@ const chartOptions = (samplesTitle) => ({
     },
   },
   points: { enabled: false },
-  legend: { enabled: true, position: "bottom" },
+  legend: { enabled: true, position: "bottom", truncation: { type: "none" } },
   toolbar: { enabled: false },
 });
 
@@ -77,7 +81,9 @@ const WorkloadSection = ({ scope, scopeLabel }) => {
       return query.isError ? (
         <ServerDataState query={query} />
       ) : (
-        <DataTableSkeleton columnCount={COLUMNS.length} rowCount={4} />
+        <div className="mgmt-workload__skeleton">
+          <DataTableSkeleton columnCount={COLUMNS.length} rowCount={4} />
+        </div>
       );
     }
     if (data.sections.length === 0) {
@@ -107,11 +113,25 @@ const WorkloadSection = ({ scope, scopeLabel }) => {
           />
         </Tile>
         <Tile className="mgmt-workload__card">
-          <h4>
+          <h4 className="mgmt-workload__tat-title">
             <FormattedMessage
               id="label.mgmt.workload.tatTable"
               values={{ 0: scopeLabel }}
             />
+            <Toggletip align="bottom">
+              <ToggletipButton
+                label={intl.formatMessage({
+                  id: "label.mgmt.workload.tatTable.info",
+                })}
+              >
+                <Information />
+              </ToggletipButton>
+              <ToggletipContent>
+                <p>
+                  <FormattedMessage id="label.mgmt.workload.tatTable.tooltip" />
+                </p>
+              </ToggletipContent>
+            </Toggletip>
           </h4>
           <DataTable
             rows={data.sections}

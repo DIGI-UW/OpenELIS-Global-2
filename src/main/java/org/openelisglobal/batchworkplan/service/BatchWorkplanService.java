@@ -7,6 +7,8 @@ import org.openelisglobal.batchworkplan.form.BatchSetupOptionsResponse;
 import org.openelisglobal.batchworkplan.form.BatchWorkplanRequest;
 import org.openelisglobal.batchworkplan.form.BatchWorkplanResponse;
 import org.openelisglobal.batchworkplan.form.PendingBatchTestResponse;
+import org.openelisglobal.batchworkplan.form.PendingTestsPageResponse;
+import org.openelisglobal.batchworkplan.form.PendingTestsQuery;
 import org.openelisglobal.batchworkplan.valueholder.BatchWorkplanStatus;
 
 public interface BatchWorkplanService {
@@ -17,6 +19,13 @@ public interface BatchWorkplanService {
      * which is how every other workplan screen behaves.
      */
     List<PendingBatchTestResponse> getPendingTests(Integer limit, String sysUserId);
+
+    /**
+     * One page of the pending tests the user may work, filtered, searched and
+     * sorted in the query, with the total and the values each filter can take
+     * across the whole pool (OGC-1588: the list used to hold only the 500 oldest).
+     */
+    PendingTestsPageResponse getPendingTestsPage(PendingTestsQuery query, String sysUserId);
 
     /**
      * The caller's own batches that are still work in hand. Archived batches are
@@ -57,12 +66,14 @@ public interface BatchWorkplanService {
     /**
      * Release a draft batch for printing (FR-WG-001-003). QC Pass releases it. Any
      * other overridable status releases it only when {@code override} is set and
-     * the caller {@code mayOverride}, and then raises an NCE linked to the batch
-     * (FR-NCE-002). No lot, or a retired lot, never releases (BR-012).
+     * the caller {@code mayOverride} and gives a {@code reason}, which is kept with
+     * the release and written on the NCE it raises (FR-NCE-002). No lot, or a
+     * retired lot, never releases (BR-012).
      *
      * @throws BatchReleaseRefusedException when the release is refused
+     * @throws IllegalArgumentException     when an override comes without a reason
      */
-    BatchWorkplanResponse generate(Long id, boolean override, boolean mayOverride, String sysUserId);
+    BatchWorkplanResponse generate(Long id, boolean override, String reason, boolean mayOverride, String sysUserId);
 
     /** Archive every batch the caller still has in hand (FR-BL-009). */
     int archiveAll(String sysUserId);

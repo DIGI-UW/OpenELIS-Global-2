@@ -11,9 +11,13 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.testalertrule.service.TestAlertRuleService;
+import org.openelisglobal.testalertrule.valueholder.TestAlertRule;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionInitiateRequest;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionResult;
 import org.openelisglobal.vector.service.VectorPoolService;
@@ -45,6 +49,12 @@ public class VectorDeconvolutionServiceImplTest extends BaseWebContextSensitiveT
 
     @Autowired
     private AnalysisService analysisService;
+
+    @Autowired
+    private ResultService resultService;
+
+    @Autowired
+    private TestAlertRuleService alertRuleService;
 
     @Before
     public void loadFixture() throws Exception {
@@ -288,5 +298,38 @@ public class VectorDeconvolutionServiceImplTest extends BaseWebContextSensitiveT
             originalIds.add(Long.valueOf(si.getId()));
         }
         Assert.assertEquals("redistributed set equals original member set", originalIds, redistributed);
+    }
+
+    @Test
+    public void confirmResultForAllMembers_queuesTheAlertMessageForEachFinalizedMemberResult() {
+        String ruleName = "VectorConfirmIT Rule";
+        Result poolResult = new Result();
+        poolResult.setAnalysis(analysisService.get(String.valueOf(POOL_ANALYSIS_ID)));
+        poolResult.setValue("Positive");
+        poolResult.setResultType("A");
+        poolResult.setSysUserId(SYS_USER_ID);
+        resultService.insert(poolResult);
+        TestAlertRule rule = new TestAlertRule();
+        rule.setTestId("700");
+        rule.setName(ruleName);
+        rule.setTriggerType("ALL");
+        rule.setEnabled(true);
+        rule.setNotifyEmail(true);
+        rule.setNotifyCustomEmail("officer@example.org");
+        rule.setSysUserId(SYS_USER_ID);
+        alertRuleService.insert(rule);
+        try {
+            deconvolutionService.confirmResultForAllMembers(INTAKE_POOL_ID_LONG, SYS_USER_ID);
+
+            Integer queued = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM clinlims.notification_log WHERE product = 'ALERT' AND rule_name = ?",
+                    Integer.class, ruleName);
+            Assert.assertEquals(Integer.valueOf(6), queued);
+        } finally {
+            jdbcTemplate.update("DELETE FROM clinlims.notification_log_channel WHERE notification_log_id IN"
+                    + " (SELECT id FROM clinlims.notification_log WHERE rule_name = ?)", ruleName);
+            jdbcTemplate.update("DELETE FROM clinlims.notification_log WHERE rule_name = ?", ruleName);
+            jdbcTemplate.update("DELETE FROM clinlims.test_alert_rule WHERE name = ?", ruleName);
+        }
     }
 }

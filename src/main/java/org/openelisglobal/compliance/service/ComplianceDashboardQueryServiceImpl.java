@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.compliance.controller.rest.dto.DashboardSummaryDTO;
 import org.openelisglobal.compliance.controller.rest.dto.DashboardTrendDTO;
 import org.openelisglobal.compliance.controller.rest.dto.MonthDataPointDTO;
@@ -21,6 +23,7 @@ import org.openelisglobal.compliance.controller.rest.dto.ParameterSeriesDTO;
 import org.openelisglobal.compliance.controller.rest.dto.SiteComparisonDTO;
 import org.openelisglobal.compliance.controller.rest.dto.SiteParameterTrendDTO;
 import org.openelisglobal.compliance.controller.rest.dto.SiteSeriesDTO;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,35 +33,6 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
     private static final String ENV_SITE_TYPE = "envSamplingSiteId";
     private static final int LOW_DATA_THRESHOLD = 3;
     private static final DateTimeFormatter MONTH_FMT = DateTimeFormatter.ofPattern("yyyy-MM");
-
-    // Two LATERAL subqueries per (result, sample) pair, mirroring
-    // ComplianceEvaluationServiceImpl which checks all thresholds for a test:
-    //
-    // primary_ct: the single primary pass/fail rule (RANGE/MIN/MAX/EXACT).
-    // RANGE preferred over MAX over MIN over EXACT — matches ThresholdType
-    // priority.
-    //
-    // borderline_ct: an optional BORDERLINE advisory zone for the same test.
-    // When a value fails the primary rule but falls within the BORDERLINE
-    // zone it is MARGINAL rather than FAIL (same as isBorderline() in the service).
-    private static final String THRESHOLD_JOIN = "LEFT JOIN LATERAL (" + "  SELECT ct.threshold_type AS ct_type, "
-            + "         ct.min_value      AS ct_min, " + "         ct.max_value      AS ct_max, "
-            + "         ct.target_value   AS ct_target " + "  FROM clinlims.compliance_threshold ct "
-            + "  JOIN clinlims.parameter_group pg ON pg.id = ct.group_id "
-            + "  JOIN clinlims.sample_compliance_standards scs2 " + "       ON scs2.sample_id = s.id "
-            + "       AND scs2.compliance_standard_id = pg.standard_id " + "  WHERE (ct.test_id = a.test_id "
-            + "         OR (ct.test_id IS NULL " + "             AND LOWER(ct.parameter_code) = LOWER(t.name))) "
-            + "    AND ct.threshold_type NOT IN ('BORDERLINE','DESCRIPTIVE','SELECT_MAP') "
-            + "    AND ct.is_active = TRUE AND ct.archived = FALSE " + "  ORDER BY " + "    CASE ct.threshold_type "
-            + "      WHEN 'RANGE' THEN 1 WHEN 'MAXIMUM' THEN 2 "
-            + "      WHEN 'MINIMUM' THEN 3 WHEN 'EXACT' THEN 4 END " + "  LIMIT 1" + ") primary_ct ON TRUE "
-            + "LEFT JOIN LATERAL (" + "  SELECT ct.min_value AS bl_min, ct.max_value AS bl_max "
-            + "  FROM clinlims.compliance_threshold ct " + "  JOIN clinlims.parameter_group pg ON pg.id = ct.group_id "
-            + "  JOIN clinlims.sample_compliance_standards scs2 " + "       ON scs2.sample_id = s.id "
-            + "       AND scs2.compliance_standard_id = pg.standard_id " + "  WHERE (ct.test_id = a.test_id "
-            + "         OR (ct.test_id IS NULL " + "             AND LOWER(ct.parameter_code) = LOWER(t.name))) "
-            + "    AND ct.threshold_type = 'BORDERLINE' " + "    AND ct.is_active = TRUE AND ct.archived = FALSE "
-            + "  LIMIT 1" + ") borderline_ct ON TRUE ";
 
     /**
      * A numeric result is stored in the notation the technologist wrote it in.
@@ -83,20 +57,67 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
 
     private static final String IS_NUMERIC = NUMERIC_VALUE + " ~ '^-?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$'";
 
-    // Passes primary threshold (RANGE/MIN/MAX/EXACT)
-    private static final String PRIMARY_PASSES = "(" + "  (primary_ct.ct_type = 'RANGE'   AND " + NUMERIC_CAST
-            + " BETWEEN primary_ct.ct_min AND primary_ct.ct_max) OR " + "  (primary_ct.ct_type = 'MINIMUM' AND "
-            + NUMERIC_CAST + " >= primary_ct.ct_min) OR " + "  (primary_ct.ct_type = 'MAXIMUM' AND " + NUMERIC_CAST
-            + " <= primary_ct.ct_max) OR " + "  (primary_ct.ct_type = 'EXACT'   AND " + NUMERIC_CAST
-            + " = primary_ct.ct_target)" + ")";
+    private static final String THRESHOLD_MATCH = "  FROM clinlims.compliance_threshold ct "
+            + "  JOIN clinlims.parameter_group pg ON pg.id = ct.group_id "
+            + "  JOIN clinlims.sample_compliance_standards scs2 ON scs2.sample_id = s.id "
+            + "       AND scs2.compliance_standard_id = pg.standard_id "
+            + "  WHERE (ct.test_id = a.test_id OR (ct.test_id IS NULL AND LOWER(ct.parameter_code) = LOWER(t.name))) "
+            + "    AND ct.is_active = TRUE AND ct.archived = FALSE ";
 
-    // Has an applicable primary threshold
-    private static final String HAS_PRIMARY = "primary_ct.ct_type IS NOT NULL";
+    private static final String MEETS_LIMIT = "CASE WHEN " + IS_NUMERIC + " THEN COALESCE(CASE ct.threshold_type "
+            + "  WHEN 'RANGE' THEN " + NUMERIC_CAST + " BETWEEN ct.min_value AND ct.max_value "
+            + "  WHEN 'MINIMUM' THEN " + NUMERIC_CAST + " >= ct.min_value " + "  WHEN 'MAXIMUM' THEN " + NUMERIC_CAST
+            + " <= ct.max_value " + "  WHEN 'EXACT' THEN " + NUMERIC_CAST
+            + " = ct.target_value END, FALSE) ELSE FALSE END";
 
-    // Within the BORDERLINE advisory zone (value outside primary but inside
-    // borderline bounds)
-    private static final String IN_BORDERLINE = "borderline_ct.bl_min IS NOT NULL " + "AND " + NUMERIC_CAST
-            + " BETWEEN borderline_ct.bl_min AND borderline_ct.bl_max";
+    private static final String IN_ZONE = "CASE WHEN " + IS_NUMERIC + " THEN COALESCE(" + NUMERIC_CAST
+            + " BETWEEN ct.min_value AND ct.max_value, FALSE) ELSE FALSE END";
+
+    private static final String LIMIT_TYPES = "('RANGE','MINIMUM','MAXIMUM','EXACT')";
+
+    // LATERAL subqueries per (result, sample) pair, judging a value by the rule
+    // ComplianceEvaluationServiceImpl applies (OGC-1615):
+    //
+    // limits_ct: for each of the order's standards that sets a limit
+    // (RANGE/MINIMUM/MAXIMUM/EXACT) for the test, whether the value meets every
+    // limit of that standard, and whether that standard's BORDERLINE advisory
+    // zone covers it. The value passes when it meets every standard's limits; a
+    // miss is MARGINAL only when the zone of the standard it missed covers it.
+    // There is no implicit margin.
+    //
+    // display_ct: every limit, for the exceedance list.
+    //
+    // primary_ct: the one limit a trend chart draws next to a value (RANGE, then
+    // MAXIMUM, MINIMUM, EXACT); it is for display only.
+    private static final String THRESHOLD_JOIN = "LEFT JOIN LATERAL (SELECT COUNT(*) AS ct_count, "
+            + "  BOOL_AND(std_pass) AS ct_pass, BOOL_AND(std_pass OR std_zone) AS ct_rescued FROM ("
+            + "  SELECT BOOL_AND(CASE WHEN ct.threshold_type IN " + LIMIT_TYPES + " THEN " + MEETS_LIMIT
+            + " ELSE TRUE END) AS std_pass, BOOL_OR(CASE WHEN ct.threshold_type = 'BORDERLINE' THEN " + IN_ZONE
+            + " ELSE FALSE END) AS std_zone " + THRESHOLD_MATCH + "    AND ct.threshold_type IN "
+            + "('RANGE','MINIMUM','MAXIMUM','EXACT','BORDERLINE') GROUP BY pg.standard_id "
+            + "  HAVING COUNT(*) FILTER (WHERE ct.threshold_type IN " + LIMIT_TYPES + ") > 0"
+            + ") per_standard) limits_ct ON TRUE " + "LEFT JOIN LATERAL (SELECT STRING_AGG(CASE ct.threshold_type "
+            + "      WHEN 'RANGE' THEN CAST(TRIM_SCALE(ct.min_value) AS text) || ' to ' || "
+            + "      CAST(TRIM_SCALE(ct.max_value) AS text) "
+            + "      WHEN 'MINIMUM' THEN '>= ' || CAST(TRIM_SCALE(ct.min_value) AS text) "
+            + "      WHEN 'MAXIMUM' THEN '<= ' || CAST(TRIM_SCALE(ct.max_value) AS text) "
+            + "      WHEN 'EXACT' THEN '= ' || CAST(TRIM_SCALE(ct.target_value) AS text) END "
+            + "      || COALESCE(' ' || ct.units, ''), '; ' ORDER BY ct.sort_order, ct.id) AS ct_display "
+            + THRESHOLD_MATCH + "    AND ct.threshold_type IN " + LIMIT_TYPES + ") display_ct ON TRUE "
+            + "LEFT JOIN LATERAL (SELECT ct.threshold_type AS ct_type, ct.min_value AS ct_min, "
+            + "  ct.max_value AS ct_max, ct.target_value AS ct_target " + THRESHOLD_MATCH
+            + "    AND ct.threshold_type IN " + LIMIT_TYPES + " ORDER BY CASE ct.threshold_type "
+            + "      WHEN 'RANGE' THEN 1 WHEN 'MAXIMUM' THEN 2 WHEN 'MINIMUM' THEN 3 WHEN 'EXACT' THEN 4 END LIMIT 1"
+            + ") primary_ct ON TRUE ";
+
+    // Meets every limit of every standard
+    private static final String PRIMARY_PASSES = "COALESCE(limits_ct.ct_pass, FALSE)";
+
+    // Has at least one limit to be judged against
+    private static final String HAS_PRIMARY = "limits_ct.ct_count > 0";
+
+    // Every standard it misses has an advisory zone that covers it
+    private static final String IN_BORDERLINE = "COALESCE(limits_ct.ct_rescued, FALSE)";
 
     private static final String IS_PASSING = IS_NUMERIC + " AND " + HAS_PRIMARY + " AND " + PRIMARY_PASSES;
 
@@ -122,6 +143,9 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
     @PersistenceContext
     private EntityManager em;
 
+    @Autowired
+    private IStatusService statusService;
+
     private static final String SITE_JOIN = "JOIN clinlims.observation_history oh_site "
             + "  ON oh_site.sample_id = s.id " + "  AND oh_site.observation_history_type_id = "
             + "    (SELECT id FROM clinlims.observation_history_type WHERE type_name = '" + ENV_SITE_TYPE + "') "
@@ -130,8 +154,16 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
     // Core FROM + JOIN block shared by all result queries.
     // result → analysis → test → sample_item → sample → site (via obs_history)
     // THRESHOLD_JOIN resolves compliance_threshold for each (result, sample) pair.
+    /**
+     * Every result the Compliance Report judges is counted here too. A test made in
+     * the Test Catalog is saved as not reportable, so filtering on the reportable
+     * flag left those results out of the dashboard while the report and certificate
+     * graded them (OGC-1615). Only validated (Finalized) results are counted, as on
+     * the report: a result edited after release, or a cancelled test, is not.
+     */
     private String coreFrom() {
-        return "FROM clinlims.result r " + "JOIN clinlims.analysis a ON r.analysis_id = a.id AND r.is_reportable = 'Y' "
+        return "FROM clinlims.result r " + "JOIN clinlims.analysis a ON r.analysis_id = a.id AND a.status_id = "
+                + Integer.parseInt(statusService.getStatusID(AnalysisStatus.Finalized)) + " "
                 + "JOIN clinlims.test t ON a.test_id = t.id " + "JOIN clinlims.sample_item si ON a.sampitem_id = si.id "
                 + "JOIN clinlims.sample s ON si.samp_id = s.id " + SITE_JOIN + THRESHOLD_JOIN;
     }
@@ -426,13 +458,8 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
                         : "status".equals(sortBy) ? "compliance_status" : "collection_date";
         String dir = "asc".equalsIgnoreCase(sortDir) ? "ASC" : "DESC";
 
-        // Threshold display: for RANGE show "min–max", for MIN show "≥min", for MAX
-        // show "≤max"
-        String thresholdExpr = "CASE primary_ct.ct_type "
-                + "WHEN 'RANGE'   THEN CAST(primary_ct.ct_min AS text) || ' to ' || CAST(primary_ct.ct_max AS text) "
-                + "WHEN 'MINIMUM' THEN '>= ' || CAST(primary_ct.ct_min AS text) "
-                + "WHEN 'MAXIMUM' THEN '<= ' || CAST(primary_ct.ct_max AS text) "
-                + "WHEN 'EXACT'   THEN '= ' || CAST(primary_ct.ct_target AS text) " + "ELSE NULL END";
+        // Every limit the value is judged against, e.g. ">= 0.2; <= 5"
+        String thresholdExpr = "display_ct.ct_display";
 
         StringBuilder sql = new StringBuilder("SELECT si.collection_date, s.accession_number, "
                 + "CAST(vss.id AS text) AS site_id, vss.name AS site_name, "

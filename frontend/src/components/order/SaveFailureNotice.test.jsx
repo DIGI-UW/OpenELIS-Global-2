@@ -125,7 +125,7 @@ describe("saveFailureMessage", () => {
         ),
       ),
     ).toBe(
-      "sampleOrderItems.requestorFirstName: invalid name format, possibly illegal character",
+      "Requestor first name: invalid name format, possibly illegal character",
     );
   });
 
@@ -156,5 +156,34 @@ describe("saveFailureMessage", () => {
         message: "sampleOrderItems: errors.samples.with.no.tests",
       }),
     ).toBe(messages["errors.samples.with.no.tests"]);
+  });
+
+  // OGC-1615 walk: a rejected requestor name read
+  // "sampleOrderItems.requestorLastName: invalid name format".
+  it("names a rejected field as the screen names it", () => {
+    orderContextValue.saveStatus = "error";
+    orderContextValue.error =
+      "sampleOrderItems.requestorLastName: invalid name format, possibly illegal character";
+    orderContextValue.fieldErrors = {
+      "sampleOrderItems.requestorLastName":
+        "invalid name format, possibly illegal character",
+    };
+    renderNotice([]);
+
+    expect(
+      screen.getByText(
+        "Requestor last name: invalid name format, possibly illegal character",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/sampleOrderItems\.requestorLastName/),
+    ).not.toBeInTheDocument();
+    expect(
+      saveFailureMessage(createIntl({ locale: "en", messages }), {
+        message: orderContextValue.error,
+      }),
+    ).toBe(
+      "Requestor last name: invalid name format, possibly illegal character",
+    );
   });
 });

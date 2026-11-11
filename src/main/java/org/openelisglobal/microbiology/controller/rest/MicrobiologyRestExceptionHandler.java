@@ -18,6 +18,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice(basePackages = "org.openelisglobal.microbiology.controller.rest")
 public class MicrobiologyRestExceptionHandler {
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(
+            org.springframework.security.access.AccessDeniedException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("status", 403, "error", "MICROBIOLOGY_ACCESS_DENIED"));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(IllegalArgumentException exception) {
         return ResponseEntity.badRequest().body(Map.of("status", HttpStatus.BAD_REQUEST.value(), "error",

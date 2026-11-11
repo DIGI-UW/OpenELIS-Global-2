@@ -25,6 +25,8 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.dashboard.management.ScopeRange;
+import org.openelisglobal.dashboard.management.kpi.KpiService.SectionTat;
+import org.openelisglobal.dashboard.management.workload.WorkloadService;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.qaevent.qiconfig.dto.QiConfigView;
 import org.openelisglobal.qaevent.qiconfig.service.QiConfigService;
@@ -32,6 +34,7 @@ import org.openelisglobal.reports.qi.QiReportSupport;
 import org.openelisglobal.reports.tat.bean.TATCalculationMode;
 import org.openelisglobal.reports.tat.bean.TATResult;
 import org.openelisglobal.reports.tat.bean.TATSegment;
+import org.openelisglobal.reports.tat.bean.TATSummaryResponse.BreakdownRow;
 import org.openelisglobal.reports.tat.service.TATReportService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +53,9 @@ public class KpiTatFiguresIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private TATReportService tatReportService;
+
+    @Autowired
+    private WorkloadService workloadService;
 
     @Autowired
     private TestSectionService testSectionService;
@@ -97,6 +103,9 @@ public class KpiTatFiguresIntegrationTest extends BaseWebContextSensitiveTest {
         analysis(sample("2097-03-04 12:00"), testA, sectionA, "2097-03-04 11:00", Status.DONE);
         analysis(sample("2097-03-05 13:00"), testA, sectionA, "2097-03-05 14:00:17.9999", Status.DONE);
         analysis(sample("2097-03-06 09:30"), null, null, "2097-03-07 05:30", Status.DONE);
+        analysis(sample("2097-03-07 08:00"), testA, sectionB, "2097-03-07 10:00", Status.DONE);
+        analysis(sample("2097-03-08 08:00"), testA, sectionB, "2097-03-08 12:00", Status.DONE);
+        analysis(sample("2097-03-09 08:00"), testA, sectionB, "2097-03-11 00:00", Status.DONE);
         analysis(sample("2097-02-27 10:00"), testA, sectionA, "2097-02-27 15:00", Status.DONE);
         analysis(sample("2097-02-28 23:00"), testB, sectionB, "2097-03-02 23:00", Status.DONE);
         // Outside both periods.
@@ -107,11 +116,11 @@ public class KpiTatFiguresIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void tatFiguresMatchTheTatReportsRows() {
         ManagementKpis kpis = kpiService.getKpis(SCOPE);
-        Map<String, BigDecimal> byUnit = kpiService.onTimeByLabUnit(SCOPE);
+        Map<String, SectionTat> bySection = kpiService.tatBySection(SCOPE);
 
         Expected expected = new Expected(tatReport(SCOPE.priorFrom(), SCOPE.to()));
-        assertEquals(new BigDecimal("10.00"), kpis.medianTat().value());
-        assertEquals(new BigDecimal("80.0"), kpis.onTime().value());
+        assertEquals(new BigDecimal("4.00"), kpis.medianTat().value());
+        assertEquals(new BigDecimal("75.0"), kpis.onTime().value());
         assertEquals(expected.median(true), kpis.medianTat().value());
         assertEquals(expected.median(false), kpis.medianTat().prior());
         assertEquals(expected.medianSpark(), kpis.medianTat().spark());
@@ -119,8 +128,19 @@ public class KpiTatFiguresIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(expected.onTime(false), kpis.onTime().prior());
         assertEquals(expected.onTimeSpark(), kpis.onTime().spark());
 
-        Map<String, BigDecimal> expectedByUnit = byUnit(tatReport(SCOPE.from(), SCOPE.to()));
+        Map<String, BigDecimal> onTimeByUnit = onTimeByUnit(tatReport(SCOPE.from(), SCOPE.to()));
+        Map<String, SectionTat> expectedByUnit = new HashMap<>();
+        for (BreakdownRow row : tatReportService.getSummary(SCOPE.from(), SCOPE.to(), TATSegment.RECEIPT_TO_VALIDATION,
+                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, "LAB_UNIT").getBreakdown()) {
+            expectedByUnit.put(row.getDimensionValue(),
+                    new SectionTat(row.getMedian(), row.getPercentile90(), onTimeByUnit.get(row.getDimensionValue())));
+        }
+        Map<String, SectionTat> byUnit = new HashMap<>();
+        bySection.forEach((section, tat) -> byUnit.put(
+                section == null ? "Unknown" : testSectionService.getTestSectionById(section).getLocalizedName(), tat));
         assertEquals(Set.of(unitA, unitB, "Unknown"), expectedByUnit.keySet());
+        assertEquals(new SectionTat(new BigDecimal("10.00"), new BigDecimal("40.00"), new BigDecimal("60.0")),
+                byUnit.get(unitB));
         assertEquals(expectedByUnit, byUnit);
     }
 
@@ -132,7 +152,7 @@ public class KpiTatFiguresIntegrationTest extends BaseWebContextSensitiveTest {
         statistics.setStatisticsEnabled(true);
         try {
             kpiService.getKpis(SCOPE);
-            kpiService.onTimeByLabUnit(SCOPE);
+            workloadService.getWorkload(SCOPE);
             assertEquals(0, statistics.getEntityStatistics(Analysis.class.getName()).getLoadCount());
         } finally {
             statistics.setStatisticsEnabled(wasEnabled);
@@ -173,7 +193,7 @@ public class KpiTatFiguresIntegrationTest extends BaseWebContextSensitiveTest {
         }
     }
 
-    private Map<String, BigDecimal> byUnit(List<TATResult> rows) {
+    private Map<String, BigDecimal> onTimeByUnit(List<TATResult> rows) {
         Map<String, List<TATResult>> grouped = new LinkedHashMap<>();
         rows.stream().filter(r -> r.getSelectedSegmentTat() != null)
                 .forEach(r -> grouped.computeIfAbsent(

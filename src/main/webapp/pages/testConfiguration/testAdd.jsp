@@ -240,9 +240,9 @@
         }
 
         <% if( locale.getLanguage().equals("en")){ %>
-        	ul.append( createLI(0, jQuery("#testNameEnglish").val(), true) );
+            ul.append(createLI(0, jQuery("#testNameEnglish").val(), true));
         <% } else { %>
-        	ul.append( createLI(0, jQuery("#testNameFrench").val(), true) );
+            ul.append(createLI(0, jQuery("#testNameFrench").val(), true));
         <% } %>
 
         jQuery("#sort" + sampleTypeId).append(ul);
@@ -259,7 +259,7 @@
         li.addClass("ui-state-default_oe ui-state-default_oe-tag");
         span.addClass("ui-icon ui-icon-arrowthick-2-n-s");
         li.append(span);
-        li.append(name);
+        li.append(document.createTextNode(name));
         if (highlight) {
             li.addClass("altered");
         }
@@ -286,7 +286,7 @@
     function createNameSpan(sampleTypeName) {
         var nameSpan = jQuery(document.createElement("span"));
         nameSpan.addClass("half-tab");
-        nameSpan.append(sampleTypeName);
+        nameSpan.append(document.createTextNode(sampleTypeName));
         return nameSpan;
     }
 
@@ -719,7 +719,7 @@
             li = jQuery(document.createElement("li"));
             li.val(this.value);
             qualified = qualifyList.find("option[value=" + this.value + "]:selected").length == 1;
-            li.append(jQuery(this).text() + (qualified ? "-- qualified" : ""));
+            li.append(document.createTextNode(jQuery(this).text() + (qualified ? "-- qualified" : "")));
             verifyList.append(li);
         });
     }
@@ -835,7 +835,7 @@
         jQuery("#highNormal_0").removeClass("error");
         jQuery("#lowReportingRange").val('-Infinity');
         jQuery("#highReportingRange").val('Infinity');
-        jQuery("#significantDigits").val('');
+        jQuery("#reportingDecimalPlaces").val('');
         jQuery("#lowerAge_0").val('0');
         jQuery("#upperAge_0").text('');
         jQuery("#upperAgeSetter_0").val('Infinity');
@@ -850,7 +850,7 @@
         root.find(" option:selected").removeAttr("selected");
     }
     function setStep1ReadOnlyFields() {
-        var panelNames = "";
+        var panelNames = document.createDocumentFragment();
 
         jQuery("#testNameEnglishRO").text(jQuery("#testNameEnglish").val());
         jQuery("#testNameFrenchRO").text(jQuery("#testNameFrench").val());
@@ -858,13 +858,14 @@
         jQuery("#testReportNameFrenchRO").text(jQuery("#testReportNameFrench").val());
         jQuery("#testSectionRO").text(jQuery("#testUnitSelection  option:selected").text());
         jQuery("#panelSelection option:selected").each(function () {
-            panelNames += (jQuery(this).text()) + "\<br\>";
+            panelNames.appendChild(document.createTextNode(jQuery(this).text()));
+            panelNames.appendChild(document.createElement("br"));
         });
         //we use append for optional
         jQuery("#panelRO").empty();
         jQuery("#panelRO").append(panelNames);
         jQuery("#uomRO").empty();
-        jQuery("#uomRO").append(jQuery("#uomSelection  option:selected").text());
+        jQuery("#uomRO").append(document.createTextNode(jQuery("#uomSelection  option:selected").text()));
         jQuery("#loincRO").text(jQuery("#loinc").val());
         jQuery("#resultTypeRO").text(jQuery("#resultTypeSelection  option:selected").text());
         jQuery("#activeRO").text(jQuery("#active").attr("checked") ? "Y" : "N");
@@ -946,7 +947,7 @@
         jsonObj.lowCritical = jQuery("#lowCritical").val();
         jsonObj.highCritical = jQuery("#highCritical").val();
 
-        jsonObj.significantDigits = jQuery("#significantDigits").val();
+        jsonObj.reportingDecimalPlaces = jQuery("#reportingDecimalPlaces").val();
         jsonObj.resultLimits = [];
 
 
@@ -1513,8 +1514,8 @@ td {
             </tr>
             <tr id="endRow"></tr>
         </table>
-        <label for="significantDigits"><spring:message code="label.significant.digits" /></label>
-        <input type="number" min="0" max="10" id="significantDigits">
+        <label for="reportingDecimalPlaces"><spring:message code="label.reporting.decimal.places" /></label>
+        <input type="number" min="0" max="10" id="reportingDecimalPlaces">
     </div>
 
 
