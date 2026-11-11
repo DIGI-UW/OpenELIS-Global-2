@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   Button,
   InlineNotification,
@@ -41,6 +41,8 @@ import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { FlagChip, accentClass } from "./flags";
 import { resultFlagFor } from "./resultFlagFor";
 import SampleKindTag from "../SampleKindTag";
+import EQABadge from "../../eqa/EQABadge";
+import { getFromOpenElisServer } from "../../utils/Utils";
 import { AnalysisNote, noteVisibleOnRow } from "./noteScope";
 import { NceDisposition } from "./nceDisposition";
 import { ResultsDomain, formatDomainMessage } from "./domainIntl";
@@ -53,6 +55,7 @@ import {
 } from "./sectionLayout";
 import { labNow } from "../../utils/labClock";
 import { ConfigurationContext } from "../../layout/Layout";
+import { methodOptions, useMethodChoices } from "./methodChoices";
 
 /**
  * OGC-1021 (R2 of OGC-811) — the expanded row panel.
@@ -139,7 +142,10 @@ interface ExpandedPanelProps {
   dilutionDraft: DilutionDraft;
   sectionLayout: SectionLayout;
   onSectionLayoutChange: (layout: SectionLayout) => void;
-  onFieldChange: (field: "testMethod" | "analyzerId", value: string) => void;
+  onFieldChange: (
+    field: "testMethod" | "analyzerId" | "eqaAnalystId",
+    value: string,
+  ) => void;
   onValueChange: (
     field: "resultValue" | "multiSelectResultValues",
     value: string,
@@ -243,6 +249,12 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
 
   const methodName =
     methods.find((m) => m.id === row.testMethod)?.value || row.testMethod || "";
+  const methodChoices = useMethodChoices(row.testId as string | undefined);
+  const methodsOffered = methodOptions(
+    methodChoices,
+    methods,
+    row.testMethod as string | undefined,
+  );
   const analyzerName =
     analyzers.find((a) => a.id === row.analyzerId)?.value ||
     row.analyzerId ||
@@ -260,6 +272,31 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
       onValueChange("resultValue", computed);
     }
   };
+
+  const eqaSchemeId = row.eqaPerAnalyst
+    ? (row.eqaSchemeId as string | undefined)
+    : undefined;
+  const [eqaAnalysts, setEqaAnalysts] = useState<
+    { id: string; displayName: string }[]
+  >([]);
+  useEffect(() => {
+    if (!eqaSchemeId) {
+      return undefined;
+    }
+    let active = true;
+    getFromOpenElisServer(
+      `/rest/eqa/schemes/${eqaSchemeId}/eligible-analysts`,
+      (list: { id: string; displayName: string }[]) => {
+        if (active) {
+          setEqaAnalysts(list || []);
+        }
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [eqaSchemeId]);
+  const eqaAnalystId = (row.eqaAnalystId as string | undefined) || "";
 
   // one order-record fetch per accession feeds Order info + Programme
   const orderContext = useOrderContext(row.accessionNumber);
@@ -306,7 +343,11 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           data-testid={`sample-kind-${rowKey}`}
         >
           <FormattedMessage id="column.name.sampleKind" />
-          <SampleKindTag qcType={row.qcType} />
+          {row.eqaSample ? (
+            <EQABadge priority={row.eqaPriority} />
+          ) : (
+            <SampleKindTag qcType={row.qcType} />
+          )}
         </span>
         {row.referredOut && (
           <Tag type="cyan" size="sm">
@@ -373,7 +414,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                 }
               >
                 <SelectItem text="" value="" />
-                {methods.map((m) => (
+                {methodsOffered.map((m) => (
                   <SelectItem text={m.value} value={m.id} key={m.id} />
                 ))}
               </Select>
@@ -413,6 +454,47 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             <div className="unifiedFieldHint">
               <FormattedMessage id="label.results.methodAnalyzerHint" />
             </div>
+
+            {eqaSchemeId && (
+              <>
+                <div className="cds--label unifiedFieldSpacer">
+                  <FormattedMessage id="eqa.result.analyst" />
+                </div>
+                {editable ? (
+                  <Select
+                    id={`eqaAnalyst-${rowKey}`}
+                    noLabel
+                    value={eqaAnalystId}
+                    invalid={!eqaAnalystId}
+                    invalidText={intl.formatMessage({
+                      id: "eqa.result.analystRequired",
+                    })}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                      onFieldChange("eqaAnalystId", e.target.value)
+                    }
+                  >
+                    <SelectItem
+                      text={intl.formatMessage({
+                        id: "eqa.result.analystChoose",
+                      })}
+                      value=""
+                    />
+                    {eqaAnalysts.map((analyst) => (
+                      <SelectItem
+                        text={analyst.displayName}
+                        value={analyst.id}
+                        key={analyst.id}
+                      />
+                    ))}
+                  </Select>
+                ) : (
+                  <span>
+                    {eqaAnalysts.find((a) => a.id === eqaAnalystId)
+                      ?.displayName || "—"}
+                  </span>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -716,13 +798,13 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
       {/* Critical banner (FR-C2) — the one full-width banner. The person
           entering the value acknowledges it at Save (OGC-1417); the banner's
           dashboard acknowledgement is the follow-up. */}
-      {flag === "CRITICAL" && (
+      {flag === "CRITICAL" && !row.eqaSample && (
         <CriticalBanner
           analysisId={row.analysisId as string | undefined}
           criticalRange={row.criticalRange}
         />
       )}
-      {flag === "CRITICAL" && !editable && (
+      {flag === "CRITICAL" && !editable && !row.eqaSample && (
         <CriticalCallbackAction
           row={{
             resultId: row.resultId as string | undefined,

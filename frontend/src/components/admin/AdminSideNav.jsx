@@ -239,7 +239,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
     !!editorSampleTypeId ||
     !!editorPanelId ||
     !!editorLabUnitId ||
-    /\/(TestCatalogList|SampleTypeEditor|LabUnitManagement|CatalogImport)(\/|$)/.test(
+    /\/(TestCatalogList|SampleTypeEditor|ContainerTypes|LabUnitManagement|CatalogImport)(\/|$)/.test(
       location.pathname,
     );
 
@@ -369,6 +369,12 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
                 : "sidenav.label.admin.sampleTypeManagement"
             }
           />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="containerTypes"
+          {...navProps(`${path}/ContainerTypes`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.containerTypes" />
         </SideNavMenuItem>
         <SideNavMenuItem
           data-cy="testCatalogList"

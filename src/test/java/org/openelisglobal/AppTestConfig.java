@@ -130,9 +130,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.sampleacceptance", "org.openelisglobal.sampletyperequest",
         "org.openelisglobal.resultreporting.service", "org.openelisglobal.security", "org.openelisglobal.genericsample",
         "org.openelisglobal.questionnaire", "org.openelisglobal.qa", "org.openelisglobal.microbiology",
-        "org.openelisglobal.batchworkplan", "org.openelisglobal.resultrun", "org.openelisglobal.reportqueue",
-        "org.openelisglobal.delivery", "org.openelisglobal.workplan.daoimpl",
-        "org.openelisglobal.dashboard" }, excludeFilters = {
+        "org.openelisglobal.batchworkplan", "org.openelisglobal.resultrun", "org.openelisglobal.containertype",
+        "org.openelisglobal.validationpolicy", "org.openelisglobal.reportqueue", "org.openelisglobal.delivery",
+        "org.openelisglobal.workplan.daoimpl", "org.openelisglobal.dashboard" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.[BS].*"),

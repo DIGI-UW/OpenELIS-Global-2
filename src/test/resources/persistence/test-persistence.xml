@@ -187,6 +187,8 @@
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.resultrun.valueholder.ResultRun</class>
+        <class>org.openelisglobal.containertype.valueholder.ContainerType</class>
+        <class>org.openelisglobal.validationpolicy.valueholder.ValidationPolicy</class>
 
         <!-- Westgard QC entities (003-westgard-qc) -->
         <class>org.openelisglobal.qc.valueholder.QCControlLot</class>
@@ -272,6 +274,7 @@
         <class>org.openelisglobal.compliance.valueholder.ComplianceThreshold</class>
         <class>org.openelisglobal.compliance.valueholder.ComplianceThresholdValueMap</class>
         <class>org.openelisglobal.compliance.valueholder.ComplianceReportArchive</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceReportGeneration</class>
         <class>org.openelisglobal.reportqueue.valueholder.ReportVersion</class>
         <class>org.openelisglobal.reportqueue.valueholder.ReportVersionItem</class>
         <class>org.openelisglobal.reportqueue.valueholder.ReportPrintEvent</class>

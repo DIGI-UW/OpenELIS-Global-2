@@ -189,6 +189,7 @@ function PathologyCaseView() {
   // taken from (see focusFirstOf).
   const focusAfterLoad = useRef(null);
   const focusOnlyFrom = useRef(null);
+  const releaseAfterLoad = useRef(null);
   // Mirrors `dirty` for a server answer that arrives after the render that
   // sent the request, so it can tell whether there is unsaved work to keep.
   const dirtyRef = useRef(false);
@@ -237,6 +238,12 @@ function PathologyCaseView() {
     if (!componentMounted.current) {
       return;
     }
+    const release = releaseAfterLoad.current;
+    releaseAfterLoad.current = null;
+    if (!loaded) {
+      release?.();
+      return;
+    }
     // The case arrives unassigned when nobody has picked it up yet: the person
     // who opened it is the one doing the work, so record them rather than
     // asking them to say so. The pathologist half only applies once the case
@@ -256,6 +263,7 @@ function PathologyCaseView() {
         userSessionDetails.lastName + "," + userSessionDetails.firstName;
     }
     setCaseInfo(loaded);
+    release?.();
     dirtyRef.current = false;
     setDirty(false);
     const focusTargets = focusAfterLoad.current;
@@ -569,15 +577,19 @@ function PathologyCaseView() {
         if (!componentMounted.current) {
           return;
         }
-        transitioningRef.current = false;
-        setTransitioning(false);
+        const release = () => {
+          transitioningRef.current = false;
+          setTransitioning(false);
+        };
         setNotificationVisible(true);
         const readBack = (targets) => {
           if (dirtyRef.current) {
+            release();
             return;
           }
           focusAfterLoad.current = targets;
           focusOnlyFrom.current = startedBy ? [startedBy] : [];
+          releaseAfterLoad.current = release;
           reloadCase();
         };
         if (!requestFailed(response)) {
@@ -618,6 +630,8 @@ function PathologyCaseView() {
           readBack(direction === "return" ? [RETURN_STAGE_BUTTON] : null);
         } else if (response?.status === 400) {
           readBack(null);
+        } else {
+          release();
         }
       },
     );

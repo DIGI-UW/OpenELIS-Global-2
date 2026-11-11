@@ -484,6 +484,68 @@ describe("PathologyCaseView stage transitions", () => {
     expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
   });
 
+  // Until the case is read again the page still shows the stage it left, so
+  // a second press would post that stage and come back as a conflict.
+  const holdCaseReads = () => {
+    const held = [];
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === CASE_URL) {
+        held.push(callback);
+        return;
+      }
+      if (url.startsWith("/rest/paginatedDisplayList/")) {
+        return callback({
+          displayItems: [],
+          paging: { totalPages: 1, currentPage: 1 },
+        });
+      }
+      return callback([]);
+    });
+    return held;
+  };
+
+  it("keeps the moves and the form held until the case is read again after a move lands", async () => {
+    servedCase = caseAtStage("PROCESSING");
+    renderCaseView();
+    await loaded();
+    const heldReads = holdCaseReads();
+
+    fireEvent.click(primaryButton("pathology.action.sendForEmbedding"));
+    await answerMove({ status: "EMBEDDING" });
+
+    expect(heldReads).toHaveLength(1);
+    expect(saveDraftButton()).toBeDisabled();
+    fireEvent.click(primaryButton("pathology.action.sendForEmbedding"));
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      heldReads[0]({ ...caseAtStage("EMBEDDING") });
+    });
+
+    expect(saveDraftButton()).toBeEnabled();
+    expect(document.getElementById("caseStage")).toHaveTextContent(
+      messages["pathology.stage.embedding"],
+    );
+  });
+
+  it("lets go of the moves when the read after a move fails, leaving the page as it was", async () => {
+    servedCase = caseAtStage("PROCESSING");
+    renderCaseView();
+    await loaded();
+    const heldReads = holdCaseReads();
+
+    fireEvent.click(primaryButton("pathology.action.sendForEmbedding"));
+    await answerMove({ status: "EMBEDDING" });
+    await act(async () => {
+      heldReads[0](undefined);
+    });
+
+    expect(saveDraftButton()).toBeEnabled();
+    expect(document.getElementById("caseStage")).toHaveTextContent(
+      messages["pathology.stage.processing"],
+    );
+  });
+
   it("never posts a stage with the case save", async () => {
     servedCase = caseAtStage("PROCESSING");
     renderCaseView();
