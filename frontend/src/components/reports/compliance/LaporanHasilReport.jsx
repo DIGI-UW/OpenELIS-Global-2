@@ -130,6 +130,10 @@ export default function LaporanHasilReport() {
         setComplianceStatusItems([
           { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.all", defaultMessage: "All" }) },
           ...data,
+          {
+            id: "RESULTS",
+            text: intl.formatMessage({ id: "laporanHasil.status.resultsReport" }),
+          },
         ]);
       },
     );
@@ -539,11 +543,14 @@ export default function LaporanHasilReport() {
                                 <TableCell key={cell.id}>
                                   {statusTag(cell.value, {
                                     ...statusLabels,
-                                    NONE: intl.formatMessage({
-                                      id: "laporanHasil.status.notGraded",
-                                    }),
                                     INELIGIBLE: intl.formatMessage({
                                       id: "laporanHasil.tile.ineligible",
+                                    }),
+                                    NONE: intl.formatMessage({
+                                      id:
+                                        order?.reportKind === "RESULTS"
+                                          ? "laporanHasil.status.resultsReport"
+                                          : "laporanHasil.status.notGraded",
                                     }),
                                   })}
                                 </TableCell>
@@ -552,22 +559,18 @@ export default function LaporanHasilReport() {
                             if (cell.info.header === "actions") {
                               const isIneligible =
                                 order?.complianceStatus === "INELIGIBLE";
-                              const hasBeenReleased = !!order?.hasBeenReleased;
+                              const reportIssued = !!order?.reportIssued;
                               return (
                                 <TableCell key={cell.id}>
                                   {isIneligible ? (
                                     <span style={{ color: "#525252", fontSize: "0.875rem" }}>
-                                      {order?.ineligibleReason ===
-                                      "NOT_VALIDATED" ? (
-                                        <FormattedMessage id="laporanHasil.status.notValidated" />
+                                      {order?.ineligibleReason === "NO_TESTS" ? (
+                                        <FormattedMessage id="laporanHasil.status.noTests" />
                                       ) : (
-                                        <FormattedMessage
-                                          id="laporanHasil.status.ineligible"
-                                          defaultMessage="No standard linked"
-                                        />
+                                        <FormattedMessage id="laporanHasil.status.notValidated" />
                                       )}
                                     </span>
-                                  ) : hasBeenReleased ? (
+                                  ) : reportIssued ? (
                                     <Button
                                       size="sm"
                                       kind="tertiary"
@@ -688,6 +691,16 @@ export default function LaporanHasilReport() {
 
 function OrderDetail({ order, statusLabels }) {
   const intl = useIntl();
+  const certificate = order.reportKind !== "RESULTS";
+  const resultHeaders = [
+    "laporanHasil.detail.sample",
+    "laporanHasil.detail.parameter",
+    "laporanHasil.detail.result",
+    "laporanHasil.detail.unit",
+    "laporanHasil.detail.method",
+    "laporanHasil.detail.guideline",
+    ...(certificate ? ["laporanHasil.detail.status"] : []),
+  ];
   return (
     <Grid narrow style={{ padding: "1rem 0" }}>
       <Column lg={5} md={4} sm={4}>
@@ -738,6 +751,7 @@ function OrderDetail({ order, statusLabels }) {
         </StructuredListWrapper>
       </Column>
 
+      {certificate ? (
       <Column lg={7} md={8} sm={4}>
         <h5 style={{ marginBottom: "0.5rem" }}>
           <FormattedMessage id="laporanHasil.detail.complianceSummary" />
@@ -792,6 +806,59 @@ function OrderDetail({ order, statusLabels }) {
               </TableContainer>
             )}
           </DataTable>
+        ) : (
+          <p style={{ color: "#525252", fontSize: "0.875rem" }}>–</p>
+        )}
+      </Column>
+      ) : (
+        <Column lg={7} md={8} sm={4}>
+          <h5 style={{ marginBottom: "0.5rem" }}>
+            <FormattedMessage id="laporanHasil.detail.complianceSummary" />
+          </h5>
+          <p
+            style={{ color: "#525252", fontSize: "0.875rem" }}
+            data-testid="laporan-hasil-results-only"
+          >
+            <FormattedMessage id="laporanHasil.detail.resultsOnly" />
+          </p>
+        </Column>
+      )}
+
+      <Column lg={16} md={8} sm={4} style={{ marginTop: "1rem" }}>
+        <h5 style={{ marginBottom: "0.5rem" }}>
+          <FormattedMessage id="laporanHasil.detail.results" />
+        </h5>
+        {order.reportRows && order.reportRows.length > 0 ? (
+          <Table size="sm" data-testid="laporan-hasil-report-rows">
+            <TableHead>
+              <TableRow>
+                {resultHeaders.map((id) => (
+                  <TableHeader key={id}>
+                    <FormattedMessage id={id} />
+                  </TableHeader>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {order.reportRows.map((row, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    {`${row.sampleNumber ?? "–"}. ${row.sampleType ?? ""}`}
+                  </TableCell>
+                  <TableCell>{row.parameter || "–"}</TableCell>
+                  <TableCell>{row.result || "–"}</TableCell>
+                  <TableCell>{row.unit || ""}</TableCell>
+                  <TableCell>{row.method || ""}</TableCell>
+                  <TableCell>{row.guideline || ""}</TableCell>
+                  {certificate && (
+                    <TableCell>
+                      {row.status ? statusTag(row.status, statusLabels) : ""}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         ) : (
           <p style={{ color: "#525252", fontSize: "0.875rem" }}>–</p>
         )}

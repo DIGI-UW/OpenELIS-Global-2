@@ -1,5 +1,6 @@
 package org.openelisglobal.compliance.service;
 
+import java.util.List;
 import org.openelisglobal.sample.valueholder.Sample;
 
 public interface ComplianceEvaluationService {
@@ -19,4 +20,12 @@ public interface ComplianceEvaluationService {
 
     /** How many tests the order has, not counting cancelled ones. */
     int orderedTestCount(Sample sample);
+
+    /**
+     * Every validated result of the order, sample by sample (OGC-1617), with the
+     * guideline value and status of each linked standard that sets a limit for the
+     * test, one line per such standard. A test no standard covers is listed once
+     * with an empty guideline.
+     */
+    List<EnvironmentalReportRow> reportRows(Sample sample);
 }
