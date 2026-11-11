@@ -15,6 +15,8 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.service.sender.AsyncNotificationDispatcher;
 import org.openelisglobal.notification.valueholder.EmailNotification;
@@ -35,6 +37,7 @@ import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testalertrule.valueholder.TestAlertRule;
+import org.openelisglobal.testresult.service.TestResultService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -76,6 +79,12 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
     @Autowired
     private AsyncNotificationDispatcher asyncNotificationDispatcher;
 
+    @Autowired
+    private TestResultService testResultService;
+
+    @Autowired
+    private DictionaryService dictionaryService;
+
     @Override
     @Transactional
     public void evaluateAndDispatch(Result result, String sysUserId) {
@@ -89,10 +98,10 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         // the number drives the rules; the critical alert shows what the
         // technologist wrote
         String value = result.getValue();
-        String writtenValue = result.getEnteredValue();
         boolean critical = isCriticalValue(result, value);
         if (critical) {
-            recordCriticalResultAlert(result, test, writtenValue);
+            recordCriticalResultAlert(result, test,
+                    "D".equals(result.getResultType()) ? answerLabel(result) : result.getEnteredValue());
         }
         for (TestAlertRule rule : matchingRules(result, test, critical)) {
             dispatchHeader(rule, message(rule, test, result), sysUserId);
@@ -154,6 +163,11 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
     private String message(TestAlertRule rule, Test test, Result result) {
         return MessageUtil.getMessage("notification.testAlert.message", new String[] { rule.getName(), testName(test),
                 StringEscapeUtils.unescapeHtml4(resultService.formatResultForDisplay(result, true)) });
+    }
+
+    private String answerLabel(Result result) {
+        Dictionary answer = dictionaryService.getDictionaryById(result.getValue());
+        return answer == null ? result.getValue() : answer.getLocalizedName();
     }
 
     private boolean matches(TestAlertRule rule, Result result, String value, boolean critical) {
@@ -235,15 +249,23 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
     /**
      * OGC-1022 (R3) — a numeric value outside the authored critical bounds of the
      * patient-conditional result limit. POSITIVE_INFINITY is the "not authored"
-     * sentinel for both bounds, so tests without critical bounds never fire.
+     * sentinel for both bounds, so tests without critical bounds never fire. A
+     * coded value is critical when the catalog marks its answer critical.
      */
     private boolean isCriticalValue(Result result, String value) {
-        if (value == null || value.isBlank() || !"N".equals(result.getResultType())) {
+        if (value == null || value.isBlank()) {
             return false;
         }
         try {
-            double numeric = Double.parseDouble(value);
             Analysis analysis = result.getAnalysis();
+            if ("D".equals(result.getResultType())) {
+                String componentId = result.getTestResult() == null ? null : result.getTestResult().getComponentId();
+                return testResultService.isCriticalAnswer(analysis.getTest().getId(), componentId, "D", value);
+            }
+            if (!"N".equals(result.getResultType())) {
+                return false;
+            }
+            double numeric = Double.parseDouble(value);
             Patient patient = sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample());
             ResultLimit limit = resultLimitService.getResultLimitForResult(analysis, result, patient);
             return ValidationSignals.isCritical(limit, numeric);

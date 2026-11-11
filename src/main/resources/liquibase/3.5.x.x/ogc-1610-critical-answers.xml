@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="ogc-1610-test-result-is-critical" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="test_result" columnName="is_critical"/>
+            </not>
+        </preConditions>
+        <comment>A coded answer can be critical, as a number beyond a critical bound is: recording it asks for the critical acknowledgment and raises the critical result alert.</comment>
+        <addColumn schemaName="clinlims" tableName="test_result">
+            <column name="is_critical" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="test_result" columnName="is_critical"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

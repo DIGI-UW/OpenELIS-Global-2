@@ -138,11 +138,11 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
 
     @Override
     @Transactional
-    public void persistAnalyzerResults(List<AnalyzerResults> deletableAnalyzerResults,
+    public List<Result> persistAnalyzerResults(List<AnalyzerResults> deletableAnalyzerResults,
             List<SampleGrouping> sampleGroupList, String sysUserId) {
         removeHandledResultsFromAnalyzerResults(deletableAnalyzerResults, sysUserId);
 
-        insertResults(sampleGroupList, sysUserId);
+        return insertResults(sampleGroupList, sysUserId);
     }
 
     private void removeHandledResultsFromAnalyzerResults(List<AnalyzerResults> deletableAnalyzerResults,
@@ -152,7 +152,7 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
         }
     }
 
-    private boolean insertResults(List<SampleGrouping> sampleGroupList, String sysUserId) {
+    private List<Result> insertResults(List<SampleGrouping> sampleGroupList, String sysUserId) {
         for (SampleGrouping grouping : sampleGroupList) {
             if (grouping.addSample) {
                 // try {
@@ -223,9 +223,14 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
 
         TestReflexUtil testReflexUtil = new TestReflexUtil();
         testReflexUtil.addNewTestsToDBForReflexTests(convertGroupListToTestReflexBeans(sampleGroupList), sysUserId);
-        new TestCalculatedUtil().addNewTestsToDBForCalculatedTests(acceptedResultSets(sampleGroupList), sysUserId);
+        List<ResultSet> accepted = acceptedResultSets(sampleGroupList);
+        TestCalculatedUtil calculations = new TestCalculatedUtil();
+        calculations.addNewTestsToDBForCalculatedTests(accepted, sysUserId);
 
-        return true;
+        List<Result> recorded = new ArrayList<>();
+        accepted.forEach(resultSet -> recorded.add(resultSet.result));
+        recorded.addAll(calculations.getCalculatedResults());
+        return recorded;
     }
 
     private List<ResultSet> acceptedResultSets(List<SampleGrouping> sampleGroupList) {
