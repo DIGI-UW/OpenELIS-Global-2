@@ -113,10 +113,8 @@ public class CalculatedValueRestController {
 
     /**
      * The component a calculation writes to has to belong to its resulting test and
-     * be able to hold the value it produces. A calculation yields a number, so a
-     * coded component is not somewhere it can land - and validating the test's
-     * primary instead would accept exactly the configuration this is meant to
-     * catch.
+     * be able to hold the value it produces: a number, or for a coded component the
+     * answer the rule names.
      */
     /**
      * An unset component picker posts "", which Postgres reads as a key that does
@@ -149,7 +147,7 @@ public class CalculatedValueRestController {
         }
         String destinationType = ruleResultScope.resultTypeForComponent(testId, componentId,
                 testService.getResultType(testService.get(testId)));
-        if (!"N".equals(destinationType)) {
+        if (!"N".equals(destinationType) && (calculation.getResult() == null || calculation.getResult().isBlank())) {
             throw new CalculationRuleViolation(DESTINATION_NOT_NUMERIC,
                     Map.of("component", String.valueOf(destination.getLabel())));
         }

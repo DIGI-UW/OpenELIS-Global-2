@@ -187,4 +187,45 @@ public class CalculationExpressionTest {
                         List.of(n("1"), math("=="), n("2"), math("&&"), result(), math(Operation.OUTSIDE_NORMAL_RANGE)))
                 .evaluate(o -> new CalculationExpression.Operand(10, 2.0, 8.0)));
     }
+
+    private static Operation answer(String id) {
+        return op(Operation.OperationType.ANSWER, id);
+    }
+
+    private static String withAnswer(double recorded, Operation... operations) {
+        return CalculationExpression.compile(List.of(operations))
+                .evaluate(o -> CalculationExpression.Operand.answer(recorded));
+    }
+
+    @Test
+    public void aCodedResultComparesWithAnAnswer() {
+        assertEquals("true", withAnswer(42, result(), math("=="), answer("42")));
+        assertEquals("false", withAnswer(43, result(), math("=="), answer("42")));
+        assertEquals("true", withAnswer(43, result(), math("!="), answer("42")));
+        assertEquals("true",
+                withAnswer(42, answer("42"), math("=="), result(), math("&&"), result(), math("!="), answer("7")));
+    }
+
+    @Test
+    public void answersOnlyCompareWithResultsOrAnswers() {
+        rejected(answer("42"), math("+"), n("1"));
+        rejected(result(), math(">="), answer("42"));
+        rejected(answer("42"), math("=="), n("42"));
+        rejected(answer("42"), math("&&"), answer("42"));
+        rejected(answer("0"), math("=="), result());
+        rejected(answer("Detected"), math("=="), result());
+    }
+
+    @Test
+    public void aCodedResultIsNeverReadAsANumber() {
+        assertThrows(IllegalArgumentException.class, () -> withAnswer(42, result(), math("+"), n("1")));
+        assertThrows(IllegalArgumentException.class, () -> withAnswer(42, result(), math("=="), n("42")));
+        assertThrows(IllegalArgumentException.class, () -> withAnswer(42, math("-"), result()));
+        assertThrows(IllegalArgumentException.class, () -> withAnswer(42, result(), math(Operation.IN_NORMAL_RANGE)));
+    }
+
+    @Test
+    public void aNumericResultNeverMatchesAnAnswer() {
+        assertThrows(IllegalArgumentException.class, () -> calculate(result(), math("=="), answer("4")));
+    }
 }
