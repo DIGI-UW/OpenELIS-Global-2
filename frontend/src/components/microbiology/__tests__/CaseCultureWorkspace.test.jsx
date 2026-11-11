@@ -701,3 +701,28 @@ it("moves keyboard focus into the culture dialog and back to its trigger when it
     ).toHaveFocus(),
   );
 });
+
+it("keeps Save off while the browser is offline", async () => {
+  const onLine = vi
+    .spyOn(window.navigator, "onLine", "get")
+    .mockReturnValue(false);
+  try {
+    show(api([]));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Inoculate culture" }),
+    );
+    change("Bottle or plate identifier", "P-OFFLINE");
+    change("Medium lot", "20");
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByText(
+        "Working offline; refresh when network returns.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Save", exact: true }),
+    ).toBeDisabled();
+  } finally {
+    onLine.mockRestore();
+  }
+});

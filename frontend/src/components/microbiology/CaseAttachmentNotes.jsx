@@ -11,7 +11,7 @@ import {
 import { useIntl } from "react-intl";
 import { labTimestamp } from "./MicrobiologyTime";
 import { MODAL_FIRST_FIELD, ReturnFocus } from "./returnFocus";
-import OfflineNotice from "./OfflineNotice";
+import OfflineNotice, { useOnline } from "./OfflineNotice";
 
 export default function CaseAttachmentNotes({
   detail,
@@ -23,6 +23,7 @@ export default function CaseAttachmentNotes({
 }) {
   const intl = useIntl(),
     t = (id, values) => intl.formatMessage({ id }, values);
+  const online = useOnline();
   const [open, setOpen] = useState(false),
     [text, setText] = useState(""),
     [external, setExternal] = useState(false),
@@ -69,7 +70,7 @@ export default function CaseAttachmentNotes({
           closeButtonLabel={t("label.button.close")}
           primaryButtonText={t("microbiology.testing.saveNote")}
           secondaryButtonText={t("label.button.close")}
-          primaryButtonDisabled={busy || !text.trim()}
+          primaryButtonDisabled={busy || !text.trim() || !online}
           onRequestSubmit={save}
           onRequestClose={() => setOpen(false)}
           onSecondarySubmit={() => setOpen(false)}

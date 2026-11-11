@@ -28,3 +28,36 @@ it("moves keyboard focus to the note field and back to the notes button when the
   );
   await waitFor(() => expect(trigger).toHaveFocus());
 });
+
+it("keeps Save off and says why when the browser is offline", () => {
+  const onLine = vi
+    .spyOn(window.navigator, "onLine", "get")
+    .mockReturnValue(false);
+  try {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseAttachmentNotes
+          detail={{ id: "c1", canWrite: true }}
+          service={{ addNote: vi.fn() }}
+          targetType="CULTURE"
+          targetId="r1"
+        />
+      </IntlProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Notes (0)" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByRole("textbox"), {
+      target: { value: "Plate checked" },
+    });
+    expect(
+      within(dialog).getByText(
+        "Working offline; refresh when network returns.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Save note" }),
+    ).toBeDisabled();
+  } finally {
+    onLine.mockRestore();
+  }
+});
