@@ -14,6 +14,7 @@ export type OperationType =
   | "MATH_FUNCTION"
   | "INTEGER"
   | "PATIENT_ATTRIBUTE"
+  | "ANSWER"
   | "";
 
 export interface OperationModel {
@@ -22,6 +23,7 @@ export interface OperationModel {
   type: OperationType;
   value: string | number;
   sampleId: number;
+  componentId?: string | number;
 }
 
 export const CalculatedValueFormValues: CalculatedValueFormModel = {
