@@ -6,6 +6,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
+import { Modal } from "@carbon/react";
 import messages from "../../../languages/en.json";
 import MacroTextArea from "./MacroTextArea";
 import { getTextMacros } from "./TextMacroService";
@@ -139,6 +140,45 @@ describe("MacroTextArea", () => {
 
     expect(field).toHaveValue(".unknown ");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("closes only the suggestions on Escape inside a dialog, then lets Escape close the dialog", async () => {
+    const user = userEvent.setup();
+    const onRequestClose = vi.fn();
+    const Harness = () => {
+      const [value, setValue] = React.useState("");
+      return (
+        <Modal open modalHeading="Add reading" onRequestClose={onRequestClose}>
+          <MacroTextArea
+            id="reading-note"
+            labelText="Reading note"
+            context="MICROBIOLOGY_CULTURE_READING"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+          />
+        </Modal>
+      );
+    };
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <Harness />
+      </IntlProvider>,
+    );
+
+    const field = screen.getByLabelText("Reading note");
+    await user.click(field);
+    await user.type(field, "Plate read: .ng");
+    expect(await screen.findByRole("listbox")).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(onRequestClose).not.toHaveBeenCalled();
+    expect(field).toHaveValue("Plate read: .ng");
+
+    await user.keyboard("{Escape}");
+
+    expect(onRequestClose).toHaveBeenCalledTimes(1);
   });
 
   it("does not expand a phrase that would exceed the field limit", async () => {

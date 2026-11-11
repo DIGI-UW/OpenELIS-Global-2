@@ -75,6 +75,21 @@ const MacroTextArea = forwardRef(
       );
     }, [intl, open, suggestions.length]);
 
+    const listVisible = open && (loading || suggestions.length > 0);
+
+    useEffect(() => {
+      if (!listVisible) return undefined;
+      const closeList = (event) => {
+        if (event.key !== "Escape" || event.target !== inputRef.current) return;
+        event.stopPropagation();
+        event.preventDefault();
+        setOpen(false);
+      };
+      // Carbon Modal closes on Escape from a document capture listener; only a window capture listener runs first.
+      window.addEventListener("keydown", closeList, true);
+      return () => window.removeEventListener("keydown", closeList, true);
+    }, [listVisible]);
+
     const emitValue = (nextValue) => {
       onChange({ target: { value: nextValue } });
     };
@@ -197,7 +212,7 @@ const MacroTextArea = forwardRef(
               : undefined
           }
         />
-        {open && (loading || suggestions.length > 0) && (
+        {listVisible && (
           <Layer className="text-macro-field__popover">
             <div
               id={listboxId}
