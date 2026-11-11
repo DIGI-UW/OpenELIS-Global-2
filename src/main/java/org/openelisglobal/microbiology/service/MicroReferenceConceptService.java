@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.service;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.LoadedRow;
@@ -32,20 +33,30 @@ public class MicroReferenceConceptService {
         }
     }
 
+    /**
+     * Each organism leaves the session once it is saved, so a file of tens of
+     * thousands of rows costs the same per row as a short one.
+     */
     public LoadedRow<String> loadOrganism(CsvRow row) {
         String source = required(row, "source", 80), code = required(row, "code", 120);
         String name = required(row, "displayName", 255), whonet = optional(row, "whonetCode", 50);
-        String group = optional(row, "organism_group", 255);
         var existing = organisms.findByReference(source, code);
         if (existing.isPresent()) {
-            // A group the package supplies fills a blank; a laboratory's own group stays.
             MicroOrganism known = existing.get();
-            if (group == null || (known.getOrganismGroup() != null && !known.getOrganismGroup().isBlank()))
-                return LoadedRow.skipped("Existing source identity; local values preserved");
-            known.setOrganismGroup(group);
-            known.setLastUpdatedBy(ACTOR);
-            organisms.update(known);
-            return LoadedRow.updated(known.getId());
+            if (whonet != null && !whonet.equalsIgnoreCase(known.getWhonetCode())) {
+                organisms.findByWhonetCodeIgnoreCase(whonet).ifPresent(holder -> {
+                    throw new IllegalArgumentException(
+                            "WHONET code " + whonet + " is already used by " + holder.getDisplayName());
+                });
+            }
+            boolean changed = applyPackageValues(known, row, whonet);
+            if (changed) {
+                known.setLastUpdatedBy(ACTOR);
+                organisms.update(known);
+            }
+            organisms.evict(known);
+            return changed ? LoadedRow.updated(known.getId())
+                    : LoadedRow.skipped("Existing source identity; local values preserved");
         }
         var byName = organisms.findByDisplayNameIgnoreCase(name);
         var byCode = whonet == null ? Optional.<MicroOrganism>empty() : organisms.findByWhonetCodeIgnoreCase(whonet);
@@ -58,12 +69,10 @@ public class MicroReferenceConceptService {
         boolean created = byName.isEmpty() && byCode.isEmpty();
         if (created) {
             organism.setDisplayName(name);
-            organism.setWhonetCode(whonet);
             organism.setGramStain(optional(row, "gramStain", 20));
             organism.setSeeded(true);
         }
-        if (group != null && (organism.getOrganismGroup() == null || organism.getOrganismGroup().isBlank()))
-            organism.setOrganismGroup(group);
+        applyPackageValues(organism, row, whonet);
         organism.setReferenceSource(source);
         organism.setReferenceCode(code);
         organism.setLastUpdatedBy(ACTOR);
@@ -72,7 +81,56 @@ public class MicroReferenceConceptService {
             organisms.insert(organism);
         else
             organisms.update(organism);
+        organisms.evict(organism);
         return created ? LoadedRow.created(organism.getId()) : LoadedRow.updated(organism.getId());
+    }
+
+    /**
+     * The package is the source of an organism's WHONET code and name, rank and
+     * prevalence. A group is the laboratory's once it has set one.
+     */
+    private boolean applyPackageValues(MicroOrganism organism, CsvRow row, String whonet) {
+        boolean changed = false;
+        if (whonet != null && !whonet.equals(organism.getWhonetCode())) {
+            organism.setWhonetCode(whonet);
+            changed = true;
+        }
+        String whonetName = optional(row, "whonetName", 255);
+        if (whonetName != null && !whonetName.equals(organism.getWhonetName())) {
+            organism.setWhonetName(whonetName);
+            changed = true;
+        }
+        String rank = optional(row, "rank", 40);
+        if (rank != null && !rank.equals(organism.getTaxonomicRank())) {
+            organism.setTaxonomicRank(rank);
+            changed = true;
+        }
+        BigDecimal prevalence = prevalence(row);
+        if (prevalence != null
+                && (organism.getPrevalence() == null || prevalence.compareTo(organism.getPrevalence()) != 0)) {
+            organism.setPrevalence(prevalence);
+            changed = true;
+        }
+        String group = optional(row, "organism_group", 255);
+        if (group != null && (organism.getOrganismGroup() == null || organism.getOrganismGroup().isBlank())) {
+            organism.setOrganismGroup(group);
+            changed = true;
+        }
+        return changed;
+    }
+
+    private static BigDecimal prevalence(CsvRow row) {
+        String value = optional(row, "prevalence", 10);
+        if (value == null)
+            return null;
+        try {
+            BigDecimal number = new BigDecimal(value);
+            if (number.signum() >= 0 && number.compareTo(new BigDecimal("100")) < 0)
+                return number;
+        } catch (NumberFormatException e) {
+            // Reported below with the value that failed.
+        }
+        throw new IllegalArgumentException("prevalence must be a number from 0 to under 100: " + value);
     }
 
     public LoadedRow<String> loadAntibiotic(CsvRow row) {

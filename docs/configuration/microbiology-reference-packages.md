@@ -13,12 +13,20 @@ read release archives, download metadata or run R.
 | `microbiology-antimicrobials/`        | `source,code,displayName,whonetCode`     | 320   |
 | `microbiology-breakpoints/`           | Existing breakpoint import columns below | 330   |
 
-Organisms also accept `gramStain`; antimicrobials accept `antibioticClass`.
-`source` and `code` identify a reference concept independently of its local name
-and database identifier. An existing source identity retains local values and
-activity. Unambiguous pre-existing name/code matches can adopt an identity;
-conflicting matches fail the catalog import. These files do not choose a site's
-panels, routing, significance or clinical protocol.
+Organisms also accept `gramStain`, `organism_group`, `whonetName`, `rank` and
+`prevalence`; antimicrobials accept `antibioticClass`. `source` and `code`
+identify a reference concept independently of its local name and database
+identifier. An existing source identity retains local values and activity.
+Unambiguous pre-existing name/code matches can adopt an identity; conflicting
+matches fail the catalog import. These files do not choose a site's panels,
+routing, significance or clinical protocol.
+
+The organism file is the source of an organism's WHONET code and name, `rank`
+and `prevalence`: a later file replaces them on the organisms it identifies, and
+a blank cell changes nothing. A blank organism group takes the file's group; a
+group a laboratory set stays. If another organism already uses a WHONET code the
+file assigns, the file fails and names that organism. `prevalence` is a number
+from 0 to under 100; lower means more common in human infections.
 
 Breakpoint files use the existing administrator CSV importer:
 

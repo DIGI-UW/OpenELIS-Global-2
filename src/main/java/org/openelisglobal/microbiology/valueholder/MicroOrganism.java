@@ -59,6 +59,40 @@ public class MicroOrganism extends BaseObject<String> {
     @Column(name = "reference_code", length = 120)
     private String referenceCode;
 
+    @Column(name = "whonet_name", length = 255)
+    private String whonetName;
+
+    @Column(name = "taxonomic_rank", length = 40)
+    private String taxonomicRank;
+
+    /** Lower is more common in human infections. */
+    @Column(name = "prevalence", precision = 4, scale = 2)
+    private java.math.BigDecimal prevalence;
+
+    public String getWhonetName() {
+        return whonetName;
+    }
+
+    public void setWhonetName(String value) {
+        whonetName = value;
+    }
+
+    public String getTaxonomicRank() {
+        return taxonomicRank;
+    }
+
+    public void setTaxonomicRank(String value) {
+        taxonomicRank = value;
+    }
+
+    public java.math.BigDecimal getPrevalence() {
+        return prevalence;
+    }
+
+    public void setPrevalence(java.math.BigDecimal value) {
+        prevalence = value;
+    }
+
     public String getReferenceSource() {
         return referenceSource;
     }
