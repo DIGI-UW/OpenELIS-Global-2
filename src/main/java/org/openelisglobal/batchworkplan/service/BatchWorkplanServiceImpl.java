@@ -9,6 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -36,6 +37,8 @@ import org.openelisglobal.batchworkplan.form.BatchWorkplanResponse;
 import org.openelisglobal.batchworkplan.form.ControlLotQcResponse;
 import org.openelisglobal.batchworkplan.form.InstrumentOptionResponse;
 import org.openelisglobal.batchworkplan.form.PendingBatchTestResponse;
+import org.openelisglobal.batchworkplan.form.PendingTestsPageResponse;
+import org.openelisglobal.batchworkplan.form.PendingTestsQuery;
 import org.openelisglobal.batchworkplan.form.ReagentLotOptionResponse;
 import org.openelisglobal.batchworkplan.form.ReagentOptionResponse;
 import org.openelisglobal.batchworkplan.valueholder.BatchWorkplan;
@@ -83,6 +86,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
     private static final int DEFAULT_PENDING_LIMIT = 100;
     private static final int MAX_PENDING_LIMIT = 500;
     private static final int MAX_NAME_LENGTH = 100;
+    private static final int MAX_REASON_LENGTH = 1000;
     private static final int COMPLETED_RETENTION_DAYS = 30;
     // An override is a deliberate release on QC that is not current, not a QC
     // failure in itself: the failing run, if any, already raised its own CRITICAL
@@ -154,6 +158,39 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
 
     @Override
     @Transactional(readOnly = true)
+    public PendingTestsPageResponse getPendingTestsPage(PendingTestsQuery query, String sysUserId) {
+        Set<String> assignedAnalysisIds = batchWorkplanItemDAO.getAnalysisIdsInStatuses(unarchivedStatuses());
+        List<String> visibleTestIds = userService.getUserTestIdsForLabUnitRoles(sysUserId, Constants.ROLE_RESULTS);
+        List<String> statusIds = workplanPendingStatusIds();
+        List<String> pageIds = batchWorkplanDAO.getPendingAnalysisIds(statusIds, visibleTestIds, assignedAnalysisIds,
+                query);
+        long total = batchWorkplanDAO.countPendingAnalyses(statusIds, visibleTestIds, assignedAnalysisIds, query);
+        Map<String, Analysis> byId = analysesByIdFromAnalyses(
+                pageIds.isEmpty() ? List.of() : analysisService.getAnalysesByIdsWithDetails(pageIds));
+        List<Analysis> analyses = pageIds.stream().map(byId::get).filter(Objects::nonNull).collect(Collectors.toList());
+        Map<String, String> patientNames = patientNames(analyses);
+        List<PendingBatchTestResponse> items = analyses.stream()
+                .map(analysis -> toPendingResponse(analysis, patientNames)).collect(Collectors.toList());
+        return new PendingTestsPageResponse(items, total,
+                filterOptions(statusIds, visibleTestIds, assignedAnalysisIds, "test"),
+                filterOptions(statusIds, visibleTestIds, assignedAnalysisIds, "panel"),
+                filterOptions(statusIds, visibleTestIds, assignedAnalysisIds, "unit"),
+                filterOptions(statusIds, visibleTestIds, assignedAnalysisIds, "priority").stream()
+                        .map(PendingTestsPageResponse.FilterOption::id).collect(Collectors.toList()));
+    }
+
+    private List<PendingTestsPageResponse.FilterOption> filterOptions(List<String> statusIds, List<String> testIds,
+            Set<String> excluded, String field) {
+        return batchWorkplanDAO.getPendingFilterValues(statusIds, testIds, excluded, field).stream()
+                .map(row -> new PendingTestsPageResponse.FilterOption(String.valueOf(row[0]),
+                        row[1] == null ? "" : String.valueOf(row[1])))
+                .sorted(Comparator.comparing(PendingTestsPageResponse.FilterOption::name,
+                        String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<BatchWorkplanResponse> getBatches(String sysUserId) {
         List<BatchWorkplan> batches = batchWorkplanDAO.getForUserInStatuses(toUserId(sysUserId), unarchivedStatuses());
         Set<String> analysisIds = batches.stream().flatMap(batch -> batch.getItems().stream())
@@ -188,7 +225,8 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
 
         Set<String> alreadyAssigned = batchWorkplanItemDAO.getExistingAnalysisIds(analysisIds, unarchivedStatuses());
         if (!alreadyAssigned.isEmpty()) {
-            throw new IllegalArgumentException("Analyses already assigned to an open batch: " + alreadyAssigned);
+            throw new IllegalArgumentException(
+                    "Already in an open batch: " + labNumbersAndTests(new ArrayList<>(alreadyAssigned)));
         }
 
         List<Analysis> analyses = analysisService.getAnalysesByIdsWithDetails(analysisIds);
@@ -202,12 +240,13 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
             throw new IllegalArgumentException("One or more analyses are outside your lab units");
         }
         validatePending(analyses);
+        String testSectionId = singleLabUnit(analyses, StringUtils.trimToNull(request.getTestSectionId()));
 
         BatchWorkplan batch = new BatchWorkplan();
         batch.setName(StringUtils.defaultIfBlank(StringUtils.trimToNull(request.getName()),
                 "Batch " + LocalDateTime.now().format(BATCH_NAME_FORMAT)));
         batch.setStatus(BatchWorkplanStatus.DRAFT);
-        batch.setTestSectionId(StringUtils.trimToNull(request.getTestSectionId()));
+        batch.setTestSectionId(testSectionId);
         batch.setNotes(StringUtils.trimToNull(request.getNotes()));
         batch.setCreatedAt(Timestamp.from(Instant.now()));
         batch.setSysUserId(sysUserId);
@@ -254,7 +293,8 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
                 Set<String> elsewhere = batchWorkplanItemDAO.getExistingAnalysisIdsOutsideBatch(added,
                         unarchivedStatuses(), batch.getId());
                 if (!elsewhere.isEmpty()) {
-                    throw new IllegalArgumentException("Analyses already assigned to an open batch: " + elsewhere);
+                    throw new IllegalArgumentException(
+                            "Already in an open batch: " + labNumbersAndTests(new ArrayList<>(elsewhere)));
                 }
                 List<Analysis> addedAnalyses = analysisService.getAnalysesByIdsWithDetails(added);
                 if (addedAnalyses.size() != added.size()) {
@@ -264,6 +304,8 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
                     throw new IllegalArgumentException("One or more analyses are outside your lab units");
                 }
                 validatePending(addedAnalyses);
+                batch.setTestSectionId(singleLabUnit(analysisService.getAnalysesByIdsWithDetails(analysisIds),
+                        batch.getTestSectionId()));
             }
             Map<String, BatchWorkplanItem> kept = new HashMap<>();
             for (BatchWorkplanItem item : batch.getItems()) {
@@ -353,7 +395,8 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
     }
 
     @Override
-    public BatchWorkplanResponse generate(Long id, boolean override, boolean mayOverride, String sysUserId) {
+    public BatchWorkplanResponse generate(Long id, boolean override, String reason, boolean mayOverride,
+            String sysUserId) {
         Integer actorId = requireUserId(sysUserId);
         BatchWorkplan batch = requireOwnBatch(id, sysUserId);
         requireDraft(batch);
@@ -379,9 +422,17 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         if (overriding && !mayOverride) {
             throw new BatchReleaseRefusedException(BatchReleaseRefusedException.Reason.OVERRIDE_NOT_PERMITTED, qc);
         }
+        String overrideReason = overriding ? StringUtils.trimToNull(reason) : null;
+        if (overriding && overrideReason == null) {
+            throw new IllegalArgumentException("Give the reason for releasing this batch without passing QC");
+        }
+        if (overrideReason != null && overrideReason.length() > MAX_REASON_LENGTH) {
+            throw new IllegalArgumentException(
+                    "The override reason cannot exceed " + MAX_REASON_LENGTH + " characters");
+        }
 
         Timestamp now = Timestamp.from(Instant.now());
-        NcEvent nce = overriding ? raiseOverrideNce(batch, tests, qc, now, sysUserId) : null;
+        NcEvent nce = overriding ? raiseOverrideNce(batch, tests, qc, overrideReason, now, sysUserId) : null;
         for (ControlLotQcResponse lot : qc.lots()) {
             BatchWorkplanQcRelease release = new BatchWorkplanQcRelease();
             release.setBatchWorkplanId(batch.getId());
@@ -391,6 +442,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
             release.setQcResultId(lot.lastRun() == null ? null : lot.lastRun().id());
             release.setQcRuleViolationId(lot.openViolationIds().isEmpty() ? null : lot.openViolationIds().get(0));
             release.setOverridden(overriding);
+            release.setOverrideReason(overrideReason);
             release.setNceId(nce == null ? null : nce.getId());
             release.setReleasedAt(now);
             release.setReleasedByUserId(actorId);
@@ -503,7 +555,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
      * and the run or violation behind it.
      */
     private NcEvent raiseOverrideNce(BatchWorkplan batch, List<BatchTestRef> tests, BatchQcStatusResponse qc,
-            Timestamp now, String sysUserId) {
+            String reason, Timestamp now, String sysUserId) {
         String instrument = qc.instrumentName() != null ? qc.instrumentName() : "bench (no analyzer)";
         String testNames = tests.stream().map(BatchTestRef::testName).distinct().collect(Collectors.joining(", "));
 
@@ -528,6 +580,7 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
             description.append(".");
         }
         description.append(" Tests in batch: ").append(labNumbersAndTests(batch)).append(".");
+        description.append(" Reason given for the override: ").append(reason);
 
         NcEvent nce = new NcEvent();
         nce.setSysUserId(sysUserId);
@@ -537,7 +590,8 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         nce.setTitle(
                 StringUtils.abbreviate("QC deviation - workplan override: " + testNames + " on " + instrument, 255));
         nce.setDescription(description.toString());
-        nce.setImmediateAction("Batch released for testing without current QC; review the batch's results");
+        nce.setImmediateAction(
+                "Batch released for testing without current QC (" + reason + "); review the batch's results");
         nce.setNameOfReporter(userDisplayName(sysUserId));
         nce.setDateOfEvent(new java.sql.Date(now.getTime()));
         firstTestSectionId(tests).ifPresent(nce::setReportingUnitId);
@@ -595,8 +649,13 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
     }
 
     private String labNumbersAndTests(BatchWorkplan batch) {
-        List<String> ids = batch.getItems().stream().map(BatchWorkplanItem::getAnalysisId).collect(Collectors.toList());
-        return analysisService.getAnalysesByIdsWithDetails(ids).stream().map(analysis -> {
+        return labNumbersAndTests(
+                batch.getItems().stream().map(BatchWorkplanItem::getAnalysisId).collect(Collectors.toList()));
+    }
+
+    /** "lab number test" for each analysis, as a person finds them on screen. */
+    private String labNumbersAndTests(List<String> analysisIds) {
+        return analysisService.getAnalysesByIdsWithDetails(analysisIds).stream().map(analysis -> {
             String labNumber = analysis.getSampleItem() != null && analysis.getSampleItem().getSample() != null
                     ? analysis.getSampleItem().getSample().getAccessionNumber()
                     : "?";
@@ -672,8 +731,55 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
         batch.setUpdatedByUserId(requireUserId(sysUserId));
     }
 
+    /**
+     * The requested analysis ids, trimmed and without repeats. An id that is not a
+     * number names no analysis, and is reported as such rather than as the parse
+     * error it would otherwise raise in the query.
+     */
     private List<String> cleanIds(List<String> ids) {
-        return ids.stream().filter(StringUtils::isNotBlank).map(String::trim).distinct().collect(Collectors.toList());
+        List<String> cleaned = ids.stream().filter(StringUtils::isNotBlank).map(String::trim).distinct()
+                .collect(Collectors.toList());
+        if (cleaned.stream().anyMatch(id -> !StringUtils.isNumeric(id))) {
+            throw new IllegalArgumentException("One or more analyses were not found");
+        }
+        return cleaned;
+    }
+
+    /**
+     * The one lab unit every analysis of a batch belongs to. A batch shares one
+     * reagent, lot and QC standing, which are a lab unit's; a test from another
+     * unit would be released on QC that does not cover it. When the batch names a
+     * unit, every analysis must be in it.
+     */
+    private String singleLabUnit(List<Analysis> analyses, String requiredSectionId) {
+        Set<String> sections = new LinkedHashSet<>();
+        for (Analysis analysis : analyses) {
+            TestSection section = sectionOf(analysis);
+            sections.add(section == null ? "" : section.getId());
+        }
+        if (sections.size() > 1) {
+            throw new IllegalArgumentException("A batch holds the tests of one lab unit; these come from "
+                    + analyses.stream().map(this::sectionNameOf).distinct().collect(Collectors.joining(", ")));
+        }
+        String section = sections.isEmpty() ? null : StringUtils.trimToNull(sections.iterator().next());
+        if (requiredSectionId != null && section != null && !requiredSectionId.equals(section)) {
+            throw new IllegalArgumentException("A batch holds the tests of one lab unit; "
+                    + analyses.stream().map(this::sectionNameOf).distinct().collect(Collectors.joining(", "))
+                    + " is not this batch's unit");
+        }
+        return section != null ? section : requiredSectionId;
+    }
+
+    private TestSection sectionOf(Analysis analysis) {
+        if (analysis.getTestSection() != null) {
+            return analysis.getTestSection();
+        }
+        return analysis.getTest() == null ? null : analysis.getTest().getTestSection();
+    }
+
+    private String sectionNameOf(Analysis analysis) {
+        TestSection section = sectionOf(analysis);
+        return section == null ? "no lab unit" : section.getTestSectionName();
     }
 
     private List<BatchTestRef> testsOf(BatchWorkplan batch) {
@@ -861,8 +967,8 @@ public class BatchWorkplanServiceImpl implements BatchWorkplanService {
                         return test == null ? testId : test.getName();
                     });
             releases.add(new BatchReleaseResponse(release.getControlLotId(), lotNumber, testName, release.getQcStatus(),
-                    release.isOverridden(), release.getNceId(), nceNumber, release.getReleasedAt(),
-                    userDisplayName(String.valueOf(release.getReleasedByUserId()))));
+                    release.isOverridden(), release.getOverrideReason(), release.getNceId(), nceNumber,
+                    release.getReleasedAt(), userDisplayName(String.valueOf(release.getReleasedByUserId()))));
         }
         return releases;
     }

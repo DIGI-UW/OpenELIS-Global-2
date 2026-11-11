@@ -17,7 +17,9 @@
 package org.openelisglobal.result.action.util;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IResultSaveService;
 import org.openelisglobal.note.valueholder.Note;
@@ -34,6 +36,7 @@ public class ResultsUpdateDataSet implements IResultSaveService {
     private List<TestResultItem> analysisOnlyChangeResults = new ArrayList<>();
     private List<ResultSet> newResults = new ArrayList<>();
     private List<Analysis> modifiedAnalysis = new ArrayList<>();
+    private final Set<String> finalizedBeforeSave = new HashSet<>();
     private List<Result> deletableResults = new ArrayList<>();
     private List<Result> calculatedResults = new ArrayList<>();
     private List<ReferralSet> savableReferralSets = new ArrayList<>();
@@ -77,6 +80,10 @@ public class ResultsUpdateDataSet implements IResultSaveService {
 
     public List<Analysis> getModifiedAnalysis() {
         return modifiedAnalysis;
+    }
+
+    public Set<String> getFinalizedBeforeSave() {
+        return finalizedBeforeSave;
     }
 
     public Analysis findModifiedAnalysis(String analysisId) {

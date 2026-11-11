@@ -61,6 +61,9 @@ public class BatchWorkplanQcRelease extends BaseObject<Long> {
     @Column(name = "overridden", nullable = false)
     private boolean overridden;
 
+    @Column(name = "override_reason", length = 1000)
+    private String overrideReason;
+
     @Column(name = "released_at", nullable = false)
     private Timestamp releasedAt;
 
@@ -139,6 +142,14 @@ public class BatchWorkplanQcRelease extends BaseObject<Long> {
 
     public void setOverridden(boolean overridden) {
         this.overridden = overridden;
+    }
+
+    public String getOverrideReason() {
+        return overrideReason;
+    }
+
+    public void setOverrideReason(String overrideReason) {
+        this.overrideReason = overrideReason;
     }
 
     public Timestamp getReleasedAt() {

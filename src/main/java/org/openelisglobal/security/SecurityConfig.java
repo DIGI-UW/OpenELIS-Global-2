@@ -123,6 +123,11 @@ public class SecurityConfig {
      * alone.
      */
     public static final String[] BRIDGE_INGRESS_PATHS = { "/analyzer/fhir" };
+    /**
+     * Prebuilt module frontends served from the module JARs; authenticated session,
+     * no module URL mapping.
+     */
+    public static final String[] MODULE_ASSET_PAGES = { "/modules/**" };
 
     private static final String CONTENT_SECURITY_POLICY = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
             + " connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline';"

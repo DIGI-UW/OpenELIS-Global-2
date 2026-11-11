@@ -31,7 +31,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.jdbc.ReturningWork;
@@ -94,12 +93,6 @@ public abstract class CSVRoutineColumnBuilder {
             validStatusId = SpringContext.getBean(IStatusService.class).getStatusID(validStatusFilter);
         }
     }
-
-    /**
-     * The list of all columns that can be exported for lookup when report is
-     * generated
-     */
-    private final Map<String, CSVRoutineColumn> columnsByDbName = new HashMap<>();
 
     /**
      * The list of columns in order of definition, so that we can generate
@@ -167,13 +160,12 @@ public abstract class CSVRoutineColumnBuilder {
 
     /** Ids, not display names: display names repeat across a catalog. */
     protected static String resultColumnName(Test test) {
-        return "test_" + test.getId();
+        return CSVColumnSql.resultColumnName(test);
     }
 
     /** Must match the column order that appendResultCrosstab declares. */
     protected String resultCategorySql() {
-        String ids = allTests.stream().map(Test::getId).collect(Collectors.joining(","));
-        return "SELECT id FROM unnest(ARRAY[" + ids + "]) WITH ORDINALITY AS category(id, position) ORDER BY position";
+        return CSVColumnSql.categorySql(allTests.stream().map(Test::getId).toList());
     }
 
     /** map to provide appropriate tag to identify the project. */
@@ -330,13 +322,11 @@ public abstract class CSVRoutineColumnBuilder {
 
     public void add(String dbName, String csvTitle, Strategy strat) {
         CSVRoutineColumn col = new CSVRoutineColumn(dbName, csvTitle, strat);
-        columnsByDbName.put(dbName, col);
         columnsInOrder.add(col);
     }
 
     public void add(String dbName, String csvTitle, ICSVRoutineColumnCustomStrategy customStrategy) {
         CSVRoutineColumn col = new CSVRoutineColumn(dbName, csvTitle, Strategy.CUSTOM, customStrategy);
-        columnsByDbName.put(dbName, col);
         columnsInOrder.add(col);
     }
 
@@ -530,10 +520,6 @@ public abstract class CSVRoutineColumnBuilder {
      * @param highDate
      */
     protected void appendResultCrosstab(java.sql.Date lowDate, java.sql.Date highDate) {
-        // A list of analytes which should not show up in the regular results,
-        // because they are not the primary results, but, for example, is a
-        // conclusion.
-        // String excludeAnalytes = getExcludedAnalytesSet();
         SQLConstant listName = SQLConstant.RESULT;
         if (allTests.isEmpty()) {
             // Postgres crosstab() requires at least one category column. When
@@ -568,9 +554,6 @@ public abstract class CSVRoutineColumnBuilder {
                 + formatDateForDatabaseSql(highDate) + " '') " + "\n "
                 // sql injection safe as user cannot overwrite validStatusId in database
                 /// + ((validStatusId == null) ? "" : " AND a.status_id = " + validStatusId)
-                // + (( excludeAnalytes == null)?"":
-                // " AND r.analyte_id NOT IN ( " + excludeAnalytes) + ")"
-                // + " AND a.test_id = t.id "
                 + labUnitFilter + "\n ORDER BY 1, 2 " + "\n ', '" + resultCategorySql() + "' ) ");
         // end of cross tab
 
@@ -587,61 +570,23 @@ public abstract class CSVRoutineColumnBuilder {
         // results.
     }
 
-    /**
-     * @return
-     */
-    private String getExcludedAnalytesSet() {
-        String[] excludedAnalytes = new String[] { getGendCD4CountAnalyteId() };
-        StringBuilder sb = new StringBuilder();
-        for (String a : excludedAnalytes) {
-            sb.append(a).append(",");
-        }
-        sb.setLength(sb.length() - 1);
-        return sb.toString();
-    }
-
     protected void appendObservationHistoryCrosstab(java.sql.Date lowDate, java.sql.Date highDate) {
         appendCrosstabPreamble(SQLConstant.DEMO);
         query.append( // any Observation History items
-                "\n crosstab( " + "\n 'SELECT DISTINCT oh.sample_id as samp_id, oht.type_name, value "
+                "\n crosstab( " + "\n 'SELECT DISTINCT oh.sample_id as samp_id, oht.id, value "
                         + "\n FROM observation_history AS oh, sample AS s, observation_history_type AS oht "
                         + "\n WHERE s.entered_date >= date(''" + formatDateForDatabaseSql(lowDate) + "'') "
                         + "\n AND s.entered_date <= date(''" + formatDateForDatabaseSql(highDate) + "'')"
                         + "\n AND s.id = oh.sample_id AND oh.observation_history_type_id = oht.id order by 1;' "
-                        + "\n , "
-                        + "\n 'SELECT DISTINCT oht.type_name FROM observation_history_type AS oht ORDER BY 1;' " + // must
-                                                                                                                   // be
-                                                                                                                   // the
-                                                                                                                   // same
-                                                                                                                   // list
-                                                                                                                   // as
-                                                                                                                   // the
-                                                                                                                   // column
-                                                                                                                   // definition
-                                                                                                                   // for
-                                                                                                                   // the
-                                                                                                                   // demo
-                                                                                                                   // table
-                                                                                                                   // below.
-                        "\n ) \n ");
+                        + "\n , " + "\n '"
+                        + CSVColumnSql
+                                .categorySql(allObHistoryTypes.stream().map(ObservationHistoryType::getId).toList())
+                        + "' " + "\n ) \n ");
 
-        // in the following list of observation history items, all valid values
-        // are listed in alphabetical order (since that is how crosstab lists
-        // them), so that that the queries constructed don't have to filter the
-        // exceptional ones.
-        // It is the column name list defined in the constructor of this class
-        // which picks the right column to display (and in what order). That
-        // list is also used to generated the JasperReport XML
-        // That list skips the OH types which actually repeat (priorDiseases,
-        // priorARVTreatmentINNs) which are returned as as crosstab set of
-        // columns either specially named columns (disease acronyms for each
-        // diseases) or with with n after their name (priorARVTreatmentINNs1, 2,
-        // ... )
+        // Declare columns in the same order as the numeric category query.
         query.append(" as demo ( " + " \"s_id\"                           numeric(10) ");
         for (ObservationHistoryType oht : allObHistoryTypes) {
-            // this is sql injection safe as users currently have no way of modifying fields
-            // in ObservationHistoryTypes
-            query.append("\n," + oht.getTypeName() + " varchar(100) ");
+            query.append("\n," + CSVColumnSql.observationColumnName(oht.getTypeName()) + " varchar(100) ");
         }
         query.append(" ) \n");
         appendCrosstabPostfix(lowDate, highDate, SQLConstant.DEMO);
@@ -659,16 +604,6 @@ public abstract class CSVRoutineColumnBuilder {
         query.append("\n ON s.id = " + listName + ".s_id " + " AND s.entered_date >= '"
                 + formatDateForDatabaseSql(lowDate) + "'" + " AND s.entered_date <= '"
                 + formatDateForDatabaseSql(highDate) + "'" + " ORDER BY 1 " + "\n) AS " + listName + "\n ");
-    }
-
-    protected Object pad20(Object translate) {
-        // uncomment the following lines to help make everything line up when
-        // debugging output.
-        // String strIn = (String)translate;
-        // int len = strIn.length();
-        // len = ( len > 30 )? 30: len;
-        // translate = translate + " ".substring(len);
-        return translate;
     }
 
     /** Generate a column to the list of all columns. One for each possible test. */

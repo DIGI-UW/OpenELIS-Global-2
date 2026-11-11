@@ -56,6 +56,26 @@ public class MicroReportReleaseServiceTest {
     public void setUp() {
         service = new MicroReportReleaseServiceImpl(caseDAO, activityDAO, readinessService, communicationDAO,
                 reportProjectionService, reportVersionService, amendmentService);
+        var authorization = org.mockito.Mockito.mock(MicroCaseAuthorizationService.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "authorization", authorization);
+        org.mockito.Mockito.lenient().when(authorization.requireWrite(anyString(), anyString(), anyString()))
+                .thenReturn(new MicroCase());
+    }
+
+    @Test
+    public void staleIncomingConfirmationCannotReleaseANewArrival() {
+        var readiness = new MicroCaseReadinessForm();
+        readiness.finalReleaseReady = true;
+        readiness.pendingIncomingIds = List.of("reviewed", "new-arrival");
+        when(readinessService.getReadiness("case-1")).thenReturn(readiness);
+        try {
+            service.releaseFinal("case-1", "1", List.of("reviewed"));
+            fail("A new arrival needs confirmation");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("MICROBIOLOGY_INCOMING_CONFIRM_RELEASE", expected.getMessage());
+        }
+        verify(reportProjectionService, never()).releaseFinal(anyString(), anyString());
+        verify(caseDAO, never()).update(any());
     }
 
     @Test
@@ -77,6 +97,25 @@ public class MicroReportReleaseServiceTest {
         verify(reportVersionService, never()).recordInitialFinal(anyString(), any(MicroReportProjectionResult.class),
                 anyString());
         verify(activityDAO, never()).insert(any());
+    }
+
+    @Test
+    public void partialReportsPreserveTheWorkStageIncludingNoGrowthReady() {
+        for (var stage : List.of(MicroCaseStage.NO_GROWTH_READY, MicroCaseStage.IDENTIFICATION,
+                MicroCaseStage.AST_IN_PROGRESS)) {
+            var microCase = new MicroCase();
+            microCase.setId("case-" + stage.name());
+            microCase.setStage(stage.name());
+            when(caseDAO.get(microCase.getId())).thenReturn(Optional.of(microCase));
+            when(caseDAO.update(microCase)).thenReturn(microCase);
+            when(reportProjectionService.releasePreliminary(microCase.getId(), "1"))
+                    .thenReturn(new MicroReportProjectionResult("Validated result", true, List.of("11")));
+            var released = service.releasePreliminary(microCase.getId(), "1");
+            assertEquals(stage.name(), released.getStage());
+            assertEquals(MicroCaseFinalReleaseState.PRELIMINARY_RELEASED.name(), released.getFinalReleaseState());
+            verify(reportVersionService).recordPreliminary(org.mockito.ArgumentMatchers.eq(microCase.getId()),
+                    any(MicroReportProjectionResult.class), org.mockito.ArgumentMatchers.eq("1"));
+        }
     }
 
     @Test

@@ -130,6 +130,14 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
 
     @Override
     @Transactional(readOnly = true)
+    public int countTestsBySampleTypeId(String sampleTypeId) {
+        // Counts include every assignment, without loading and sorting each test's
+        // localized catalog metadata just to obtain the list size.
+        return typeOfSampleTestService.getTypeOfSampleTestsForSampleType(sampleTypeId).size();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public TypeOfSample getTransientTypeOfSampleById(String id) {
         return baseObjectDAO.getTypeOfSampleById(id);
     }

@@ -5725,7 +5725,7 @@ CREATE TABLE clinlims.result (
     min_normal double precision,
     max_normal double precision,
     parent_id numeric(10,0),
-    significant_digits numeric DEFAULT (0)::numeric,
+    significant_digits numeric,
     "grouping" numeric DEFAULT (0)::numeric
 );
 
@@ -8054,7 +8054,7 @@ CREATE TABLE clinlims.test_result (
     flags character varying(10),
     tst_rslt_type character varying(1),
     value character varying(80),
-    significant_digits numeric DEFAULT 0,
+    significant_digits numeric,
     quant_limit character varying(30),
     cont_level character varying(30),
     lastupdated timestamp(6) without time zone,

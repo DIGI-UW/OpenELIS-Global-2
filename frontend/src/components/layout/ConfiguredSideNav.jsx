@@ -34,14 +34,29 @@ export function canonicalMenuUrl(url) {
   return moved ? moved + reporting.slice(path.length) : reporting;
 }
 
+// A module's entries (keys under mod.<id>.) render once the shell has the
+// module's messages; until then, or without a bundle, they stay hidden rather
+// than show a raw key.
+export function hasModuleLabel(displayKey, messages) {
+  return (
+    !displayKey ||
+    !displayKey.startsWith("mod.") ||
+    Boolean(messages && messages[displayKey])
+  );
+}
+
 export default function ConfiguredSideNav({ menus }) {
   const intl = useIntl();
   const location = useLocation();
+  const messages = intl.messages;
   const visibleMenus = useMemo(() => {
     const filter = (items) =>
       items
         .filter(
-          ({ menu }) => menu.isActive && !legacyResults.has(menu.elementId),
+          ({ menu }) =>
+            menu.isActive &&
+            !legacyResults.has(menu.elementId) &&
+            hasModuleLabel(menu.displayKey, messages),
         )
         .map((item) => ({
           ...item,
@@ -52,7 +67,7 @@ export default function ConfiguredSideNav({ menus }) {
           childMenus: filter(item.childMenus || []),
         }));
     return filter(menus || []);
-  }, [menus]);
+  }, [menus, messages]);
   const expandedMenus = useMenuAutoExpand(visibleMenus);
   const label = (key) => intl.formatMessage({ id: key, defaultMessage: key });
 

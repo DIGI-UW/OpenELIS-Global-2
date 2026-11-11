@@ -23,6 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasAnyRole('ADMIN', 'ANALYSER_IMPORT')")
 public class AnalyzerDeliveryIssuesRestController extends BaseRestController {
 
+    static final String BRIDGE_NOT_CONFIGURED = "analyzer.deliveryIssues.error.bridgeNotConfigured";
+
+    static final String BRIDGE_NOT_PAIRED = "analyzer.deliveryIssues.error.bridgeNotPaired";
+
     private final AnalyzerDeliveryIssueService deliveryIssueService;
 
     public AnalyzerDeliveryIssuesRestController(AnalyzerDeliveryIssueService deliveryIssueService) {
@@ -38,15 +42,36 @@ public class AnalyzerDeliveryIssuesRestController extends BaseRestController {
             data.put("rows", rows);
             return ResponseEntity.ok(Map.of("status", "success", "data", data));
         } catch (BridgeAnalyzerConnectionException exception) {
+            if (BRIDGE_NOT_CONFIGURED.equals(exception.messageKey())) {
+                return bridgeUnavailable(false, false);
+            }
+            if (BRIDGE_NOT_PAIRED.equals(exception.messageKey())) {
+                return bridgeUnavailable(true, false);
+            }
             return bridgeFailure(exception);
         }
+    }
+
+    /**
+     * No Bridge address, or a Bridge that is not paired yet, is a known state, not
+     * an upstream failure (OGC-1594): the list is empty, and the flags say why. An
+     * unpaired Bridge may still hold results, which OpenELIS lists once it pairs.
+     * Both used to answer 502.
+     */
+    private static ResponseEntity<Map<String, Object>> bridgeUnavailable(boolean configured, boolean paired) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("count", 0);
+        data.put("rows", List.of());
+        data.put("bridgeConfigured", configured);
+        data.put("bridgePaired", paired);
+        return ResponseEntity.ok(Map.of("status", "success", "data", data));
     }
 
     @PostMapping("/{id}/retry")
     public ResponseEntity<Map<String, Object>> retry(@PathVariable String id, HttpServletRequest request) {
         try {
             deliveryIssueService.retry(id, getSysUserId(request));
-            return ResponseEntity.ok(Map.of("status", "success", "id", id));
+            return ResponseEntity.accepted().body(Map.of("status", "accepted", "id", id, "state", "QUEUED"));
         } catch (BridgeAnalyzerConnectionException exception) {
             return bridgeFailure(exception);
         } catch (IllegalArgumentException exception) {

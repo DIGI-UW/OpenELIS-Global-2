@@ -8,9 +8,12 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import ca.uhn.fhir.context.FhirContext;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +30,7 @@ import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Quantity;
+import org.hl7.fhir.r4.model.Specimen;
 import org.hl7.fhir.r4.model.StringType;
 import org.junit.After;
 import org.junit.Before;
@@ -45,11 +49,17 @@ import org.openelisglobal.analyzer.service.AnalyzerMappingTestDraft;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
+import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultsAcceptService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContextSensitiveTest {
@@ -90,6 +100,12 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     private AnalyzerResultsService resultsService;
     @Autowired
     private AnalyzerDeliveryBundleService bundleService;
+    @Autowired
+    private AnalyzerResultsAcceptService acceptService;
+    @Autowired
+    private IStatusService statusService;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
@@ -126,6 +142,57 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     @Test
     public void separateQualitativeControlRunsWithTheSameAnswerBothReachQc() throws Exception {
         assertIndependentControlRuns(prepareQualitativeControl("POS", true));
+    }
+
+    @Test
+    public void unmatchedNumericControlRemainsVisibleAndRecoversExactlyOnceAfterLotCorrection() throws Exception {
+        Bundle bundle = prepareControl(true);
+        jdbc.update("UPDATE clinlims.qc_control_lot SET control_level = 'OTHER' WHERE id = ?", QC_LOT_ID);
+        var receipt = importService.importBundle(bundle, "1");
+        assertEquals(0, receipt.controlResultsProcessed());
+        assertEquals(1, receipt.resultsHeld());
+        AnalyzerResults held = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).get(0);
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_QC_LOT_MISSING, held.getImportIssueReason());
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+        assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
+        jdbc.update(
+                "UPDATE clinlims.qc_control_lot SET lot_number = 'QC-LOT-WBC-2026-08', control_level = 'NORMAL' WHERE id = ?",
+                QC_LOT_ID);
+        assertEquals(1, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
+        assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
+        assertFalse(resultsService.get(held.getId()).isReadOnly());
+        assertEquals(0, new BigDecimal("7.1").compareTo(jdbc.queryForObject(
+                "SELECT result_value FROM clinlims.qc_result WHERE control_lot_id = ?", BigDecimal.class, QC_LOT_ID)));
+        assertEquals(receipt, importService.importBundle(bundle, "1"));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+    }
+
+    @Test
+    public void aMultiRecordControlCreatesOnlyThePrimaryQcMeasurement() throws Exception {
+        Bundle bundle = prepareControl(true, false);
+        jdbc.update("INSERT INTO clinlims.test_result_component"
+                + " (id, test_id, code, label, display_order, is_active, result_type)"
+                + " VALUES ('comp-control-aux', ?, 'AUX', 'Control auxiliary', 1, 'Y', 'N')", TEST_ID);
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping_test"
+                + " (mapping_id, source_row_key, mapping_state, test_id, component_id, last_updated)"
+                + " VALUES (?, 'AUX', 'BOUND', ?, 'comp-control-aux', NOW())", MAPPING_ID, TEST_ID);
+        Observation auxiliary = bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow().copy();
+        auxiliary.getCode().getCodingFirstRep().setCode("AUX");
+        auxiliary.setId("auxiliary");
+        auxiliary.getValueQuantity().setValue(new BigDecimal("999"));
+        bundle.addEntry().setFullUrl("urn:uuid:control-auxiliary").setResource(auxiliary);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
+        var receipt = importService.importBundle(bundle, "1");
+        assertEquals(2, receipt.resultsStaged());
+        assertEquals(0, receipt.resultsHeld());
+        assertEquals(1, receipt.controlResultsProcessed());
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+        assertEquals(0, new BigDecimal("7.1").compareTo(jdbc.queryForObject(
+                "SELECT result_value FROM clinlims.qc_result WHERE control_lot_id = ?", BigDecimal.class, QC_LOT_ID)));
     }
 
     private void assertIndependentControlRuns(Bundle first) {
@@ -853,7 +920,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
      * for its answer it is held for that reason.
      */
     @Test
-    public void everyRowAControlHeldWholeRecoversIntoIsCheckedAgainstQc() throws Exception {
+    public void aControlHeldWholeRecoversItsMeasurementWithoutChartingItsAuxiliaryCall() throws Exception {
         Bundle bundle = prepareControl(true, false);
         jdbc.update("INSERT INTO clinlims.test_result_component"
                 + " (id, test_id, code, label, display_order, is_active) VALUES ('comp-call', ?, 'call', 'call', 1, 'Y')",
@@ -885,8 +952,11 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         List<AnalyzerResults> recovered = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
         assertEquals("the number and the call, once each", 2, recovered.size());
         AnalyzerResults call = stagedOn(recovered, "comp-call");
-        assertTrue(call.isReadOnly());
-        assertEquals(AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING, call.getImportIssueReason());
+        assertFalse(call.isReadOnly());
+        assertNull(call.getImportIssueReason());
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+        assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
     }
 
     @Test
@@ -982,6 +1052,48 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
         assertEquals(receipt, importService.importBundle(bundle, "1"));
         assertEquals(3, resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).size());
+    }
+
+    @Test
+    @Transactional
+    public void aResultAcceptedOnAnEnteredOrderIsCompletedAtTheTimeTheAnalyzerReportedIt() throws Exception {
+        try {
+            // status_service.xml holds an entered order: accession 123456789, tube 8600.
+            executeDataSetWithStateManagement("testdata/status_service.xml");
+            bindTest("VENDOR-NEW-42");
+            long analysisId = jdbc.queryForObject("SELECT nextval('analysis_seq')", Long.class);
+            jdbc.update(
+                    "INSERT INTO clinlims.analysis (id, sampitem_id, test_id, status_id, analysis_type, revision,"
+                            + " is_reportable, lastupdated) VALUES (?, 8600, ?, ?, 'MANUAL', '0', 'Y', NOW())",
+                    analysisId, TEST_ID, Long.valueOf(statusService.getStatusID(AnalysisStatus.NotStarted)));
+            Timestamp completedAt = Timestamp.valueOf("2026-10-12 17:04:00");
+            Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
+            bundle.getEntry().stream().map(entry -> entry.getResource()).filter(Specimen.class::isInstance)
+                    .map(Specimen.class::cast).findFirst().orElseThrow().getIdentifierFirstRep().setValue("123456789");
+            bundle.getEntry().stream().map(entry -> entry.getResource()).filter(Observation.class::isInstance)
+                    .map(Observation.class::cast).findFirst().orElseThrow().setEffective(new DateTimeType(completedAt));
+            confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
+
+            importService.importBundle(bundle, "1");
+            AnalyzerResults staged = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).get(0);
+            AnalyzerResultItem accepted = new AnalyzerResultItem();
+            accepted.setId(staged.getId());
+            accepted.setAccessionNumber("123456789");
+            accepted.setTestId(String.valueOf(TEST_ID));
+            accepted.setResult(staged.getResult());
+            accepted.setSampleGroupingNumber(1);
+            accepted.setIsAccepted(true);
+            acceptService.acceptAndPersist(List.of(accepted), "1");
+            entityManager.flush();
+
+            assertEquals("the order's analysis holds the result", "DETECTED", jdbc.queryForObject(
+                    "SELECT value FROM clinlims.result WHERE analysis_id = ?", String.class, analysisId));
+            assertEquals("the analysis is completed when the analyzer completed it", completedAt, jdbc.queryForObject(
+                    "SELECT completed_date FROM clinlims.analysis WHERE id = ?", Timestamp.class, analysisId));
+        } finally {
+            // Roll back first: tearDown cannot delete a test an analysis still uses.
+            TestTransaction.end();
+        }
     }
 
     private Analyzer analyzer() {

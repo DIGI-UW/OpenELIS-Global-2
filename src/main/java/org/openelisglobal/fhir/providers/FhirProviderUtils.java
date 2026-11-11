@@ -1,6 +1,5 @@
 package org.openelisglobal.fhir.providers;
 
-import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.api.server.IBundleProvider;
 import ca.uhn.fhir.rest.param.DateRangeParam;
 import ca.uhn.fhir.rest.param.ReferenceAndListParam;
@@ -12,82 +11,18 @@ import ca.uhn.fhir.rest.param.TokenOrListParam;
 import ca.uhn.fhir.rest.param.TokenParam;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.IdType;
-import org.hl7.fhir.r4.model.OperationOutcome;
-import org.hl7.fhir.r4.model.Resource;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.ControllerUtills;
-import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.fhir.search.bundleProviders.PagedBundleProvider;
 
 public final class FhirProviderUtils {
 
     private FhirProviderUtils() {
-    }
-
-    public static MethodOutcome buildCreateOutcome(IBaseResource resource) {
-
-        MethodOutcome outcome = new MethodOutcome();
-
-        outcome.setId(resource.getIdElement());
-        outcome.setResource(resource);
-        outcome.setCreated(true);
-        outcome.setResponseStatusCode(201);
-
-        return outcome;
-    }
-
-    public static MethodOutcome buildUpdateOutcome(IBaseResource resource) {
-
-        MethodOutcome outcome = new MethodOutcome();
-
-        outcome.setId(resource.getIdElement());
-        outcome.setResource(resource);
-        outcome.setCreated(false);
-        outcome.setResponseStatusCode(200);
-
-        return outcome;
-    }
-
-    public static MethodOutcome buildDeleteOutcome(IdType theId, String resourceType) {
-
-        MethodOutcome outcome = new MethodOutcome();
-
-        outcome.setId(theId);
-        outcome.setResponseStatusCode(204);
-
-        OperationOutcome operationOutcome = new OperationOutcome();
-
-        operationOutcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.INFORMATION)
-                .setDiagnostics(resourceType + " " + theId.getIdPart() + " has been deleted");
-
-        outcome.setOperationOutcome(operationOutcome);
-
-        return outcome;
-    }
-
-    public static void syncToFhirStore(FhirPersistanceService fhirPersistenceService, Resource resource,
-            String callerClassName, String callingMethod) {
-
-        try {
-            fhirPersistenceService.updateFhirResourceInFhirStore(resource);
-
-        } catch (Exception exception) {
-            LogEvent.logError(callerClassName, callingMethod,
-                    "FHIR store sync failed (continuing anyway): " + exception.getMessage());
-        }
-    }
-
-    public static String getSysUserId(HttpServletRequest request) {
-
-        return ControllerUtills.getSysUserId(request);
     }
 
     public static String safeMessage(Exception e) {

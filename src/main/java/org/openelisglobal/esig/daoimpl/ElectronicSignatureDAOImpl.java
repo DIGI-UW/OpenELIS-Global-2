@@ -111,6 +111,41 @@ public class ElectronicSignatureDAOImpl extends BaseDAOImpl<ElectronicSignature,
         }
     }
 
+    private static final String FOLDED = "function('unaccent', lower(coalesce(%s, '')))";
+
+    /**
+     * The typed text as a LIKE pattern over folded columns: lower case, accents
+     * removed, LIKE wildcards escaped; null when nothing was typed.
+     */
+    private static String textPattern(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        String folded = java.text.Normalizer
+                .normalize(text.trim().toLowerCase(java.util.Locale.ROOT), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return "%" + folded.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+    }
+
+    private String buildSearchWhereClause(Long signerId, SignatureMeaning meaning, String recordType, String text) {
+        StringBuilder where = new StringBuilder(buildSearchWhereClause(signerId, meaning, recordType));
+        if (textPattern(text) != null) {
+            where.append(" AND (").append(String.format(FOLDED, "e.signerNamePrinted")).append(" LIKE :text ESCAPE '!'")
+                    .append(" OR ").append(String.format(FOLDED, "e.rejectionReason")).append(" LIKE :text ESCAPE '!'")
+                    .append(" OR ").append(String.format(FOLDED, "e.recordType")).append(" LIKE :text ESCAPE '!'")
+                    .append(" OR str(e.recordId) LIKE :text ESCAPE '!')");
+        }
+        return where.toString();
+    }
+
+    private void setSearchParameters(Query<?> query, Timestamp startDate, Timestamp endDate, Long signerId,
+            SignatureMeaning meaning, String recordType, String text) {
+        setSearchParameters(query, startDate, endDate, signerId, meaning, recordType);
+        if (textPattern(text) != null) {
+            query.setParameter("text", textPattern(text));
+        }
+    }
+
     private String buildSearchWhereClause(Long signerId, SignatureMeaning meaning, String recordType) {
         StringBuilder where = new StringBuilder("WHERE e.signedAt BETWEEN :startDate AND :endDate");
         if (signerId != null) {
@@ -143,12 +178,19 @@ public class ElectronicSignatureDAOImpl extends BaseDAOImpl<ElectronicSignature,
     @Override
     public List<ElectronicSignature> searchSignatures(Timestamp startDate, Timestamp endDate, Long signerId,
             SignatureMeaning meaning, String recordType, int page, int pageSize) throws LIMSRuntimeException {
+        return searchSignatures(startDate, endDate, signerId, meaning, recordType, null, page, pageSize);
+    }
+
+    @Override
+    public List<ElectronicSignature> searchSignatures(Timestamp startDate, Timestamp endDate, Long signerId,
+            SignatureMeaning meaning, String recordType, String text, int page, int pageSize)
+            throws LIMSRuntimeException {
         try {
-            String sql = "FROM ElectronicSignature e " + buildSearchWhereClause(signerId, meaning, recordType)
+            String sql = "FROM ElectronicSignature e " + buildSearchWhereClause(signerId, meaning, recordType, text)
                     + " ORDER BY e.signedAt DESC";
             Query<ElectronicSignature> query = entityManager.unwrap(Session.class).createQuery(sql,
                     ElectronicSignature.class);
-            setSearchParameters(query, startDate, endDate, signerId, meaning, recordType);
+            setSearchParameters(query, startDate, endDate, signerId, meaning, recordType, text);
             query.setFirstResult(page * pageSize);
             query.setMaxResults(pageSize);
             return query.list();
@@ -161,11 +203,17 @@ public class ElectronicSignatureDAOImpl extends BaseDAOImpl<ElectronicSignature,
     @Override
     public long countSearchSignatures(Timestamp startDate, Timestamp endDate, Long signerId, SignatureMeaning meaning,
             String recordType) throws LIMSRuntimeException {
+        return countSearchSignatures(startDate, endDate, signerId, meaning, recordType, null);
+    }
+
+    @Override
+    public long countSearchSignatures(Timestamp startDate, Timestamp endDate, Long signerId, SignatureMeaning meaning,
+            String recordType, String text) throws LIMSRuntimeException {
         try {
             String sql = "SELECT count(*) FROM ElectronicSignature e "
-                    + buildSearchWhereClause(signerId, meaning, recordType);
+                    + buildSearchWhereClause(signerId, meaning, recordType, text);
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
-            setSearchParameters(query, startDate, endDate, signerId, meaning, recordType);
+            setSearchParameters(query, startDate, endDate, signerId, meaning, recordType, text);
             return query.uniqueResult();
         } catch (HibernateException e) {
             LogEvent.logError(e);

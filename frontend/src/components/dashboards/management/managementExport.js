@@ -42,7 +42,7 @@ export const EXPORT_SECTIONS = [
       ],
       body: [
         ["label.mgmt.kpi.totalSamples", data.samples, 0],
-        ["label.mgmt.kpi.medianTat", data.medianTat, 2],
+        ["label.mgmt.export.col.medianTatHours", data.medianTat, 2],
         ["label.mgmt.kpi.onTime", data.onTime, 2],
         ["label.mgmt.kpi.rejectionRate", data.rejection, 2],
         ["label.mgmt.kpi.qcPassRate", data.qcPass, 2],
@@ -98,7 +98,15 @@ export const EXPORT_SECTIONS = [
         ),
         String(a.samples),
         a.section || "—",
-        a.lastActivityAt || "—",
+        a.lastActivityAt
+          ? intl.formatDate(a.lastActivityAt, {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "—",
       ]),
     }),
   },
@@ -212,7 +220,12 @@ export const EXPORT_SECTIONS = [
           r.expiry || "—",
         ]),
         ...(data.expiring || []).map((l) => [
-          t(intl, "label.mgmt.stock.expiringIn30"),
+          t(
+            intl,
+            l.expired
+              ? "label.mgmt.stock.expiredLots"
+              : "label.mgmt.stock.expiringIn30",
+          ),
           l.name,
           l.lot || "—",
           value(l.remaining, 0),

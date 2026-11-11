@@ -264,6 +264,7 @@ function CalendarManagement() {
             titleText={intl.formatMessage({ id: "calendar.management.year" })}
             items={yearOptions}
             selectedItem={yearOptions.find((y) => y.id === year)}
+            itemToString={(item) => item?.text ?? ""}
             onChange={({ selectedItem }) => setYear(selectedItem.id)}
             style={{ width: "120px" }}
           />
