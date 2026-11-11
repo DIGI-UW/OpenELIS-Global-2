@@ -121,6 +121,29 @@ public class LoginThrottleFilterTest extends SecuritySliceMockMvcTest {
         assertNotNull(otherClient.getRequest().getSession().getAttribute("SPRING_SECURITY_CONTEXT"));
     }
 
+    @Test
+    public void malformedForwardedHeader_cannotBypassFailureRecording() throws Exception {
+        for (boolean apiCall : new boolean[] { false, true }) {
+            tracker.clear();
+            for (int i = 0; i < LIMIT; i++) {
+                MvcResult failed = mockMvc.perform(post("/ValidateLogin" + (apiCall ? "?apiCall=true" : ""))
+                        .param("loginName", "unknown" + i).param("password", "wrong-password")
+                        .header("X-Forwarded-For", ",").session(new MockHttpSession())).andReturn();
+                assertEquals(apiCall ? 401 : 302, failed.getResponse().getStatus());
+            }
+            MvcResult blocked = login("admin", "password", apiCall);
+            assertNull(blocked.getRequest().getSession().getAttribute("SPRING_SECURITY_CONTEXT"));
+            if (apiCall) {
+                assertEquals(401, blocked.getResponse().getStatus());
+                assertEquals("{\"error\":\"error.throttled\"}", blocked.getResponse().getContentAsString());
+            } else {
+                Errors errors = (Errors) blocked.getRequest().getSession().getAttribute(Constants.LOGIN_ERRORS);
+                assertNotNull(errors);
+                assertEquals("login.error.throttled", errors.getAllErrors().get(0).getCode());
+            }
+        }
+    }
+
     private MvcResult proxiedLogin(String loginName, String password, String forwarded) throws Exception {
         return mockMvc.perform(post("/ValidateLogin?apiCall=true").param("loginName", loginName)
                 .param("password", password).header("X-Forwarded-For", forwarded).with(request -> {

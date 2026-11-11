@@ -30,21 +30,12 @@ public class CustomAuthenticationFailureHandler implements AuthenticationFailure
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
             AuthenticationException exception) throws IOException, ServletException {
-        // get the X-Forwarded-For header so that we know if the request is from a proxy
-        final String xfHeader = request.getHeader("X-Forwarded-For");
-        if (xfHeader == null) {
-            // no proxy
-            LogEvent.logInfo(this.getClass().getSimpleName(), "onFailure",
-                    "Unsuccessful login attempt from " + request.getRemoteAddr());
-        } else {
-            // from proxy
-            LogEvent.logInfo(this.getClass().getSimpleName(), "onFailure",
-                    "Unsuccessful login attempt from " + xfHeader.split(",")[0]);
-        }
+        String clientAddress = loginAttemptTracker.clientAddress(request);
         if (!(exception instanceof LoginThrottledException)) {
-            loginAttemptTracker.recordFailure(request.getParameter("loginName"),
-                    loginAttemptTracker.clientAddress(request));
+            loginAttemptTracker.recordFailure(request.getParameter("loginName"), clientAddress);
         }
+        LogEvent.logInfo(this.getClass().getSimpleName(), "onFailure",
+                "Unsuccessful login attempt from " + clientAddress);
         if ("true".equals(request.getParameter("apiCall"))) {
             this.handleApiLogin(request, response, exception);
             return;
