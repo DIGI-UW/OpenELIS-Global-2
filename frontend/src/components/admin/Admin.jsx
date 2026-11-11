@@ -67,12 +67,14 @@ import AdminDashboard from "./AdminDashboard";
 import ModulesAdminPage from "../../modules/ModulesAdminPage";
 import StuckAnalyzerEvents from "./StuckAnalyzerEvents";
 import MicrobiologyReferenceAdmin from "./microbiologyReference/MicrobiologyReferenceAdmin";
+import MacroLibraryPage from "./textMacro/MacroLibraryPage";
 
 function Admin() {
   const { path } = useRouteMatch();
 
   return (
     <Switch>
+      <Route path={`${path}/MacroLibrary`} component={MacroLibraryPage} />
       <Route
         path={`${path}/MicrobiologyReference/:section/:detailId?`}
         component={MicrobiologyReferenceAdmin}
