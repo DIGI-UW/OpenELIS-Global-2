@@ -21,6 +21,7 @@ import org.openelisglobal.compliance.valueholder.ComplianceStandard;
 import org.openelisglobal.esig.service.ElectronicSignatureService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
+import org.openelisglobal.microbiology.form.MicroPatientReportForm;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.sample.dao.SampleComplianceStandardDAO;
@@ -157,7 +158,16 @@ public class ComplianceReportRestController {
             }
 
             List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
-            if (links.isEmpty()) {
+            if (standardId != null && !standardId.isEmpty()
+                    && links.stream().noneMatch(link -> link.getComplianceStandard().getId().equals(standardId))
+                    && !links.isEmpty()) {
+                continue;
+            }
+            String ineligibleReason = links.isEmpty() ? ComplianceReportOrderDTO.INELIGIBLE_NO_STANDARD
+                    : complianceEvaluationService.awaitsValidation(sample)
+                            ? ComplianceReportOrderDTO.INELIGIBLE_NOT_VALIDATED
+                            : null;
+            if (ineligibleReason != null) {
                 ineligibleCount++;
                 // Show ineligible orders in the table unless the user is filtering
                 // by a specific compliance status or generation status (ineligible
@@ -167,15 +177,11 @@ public class ComplianceReportRestController {
                 boolean filteringByGeneration = generationStatus != null && !generationStatus.isEmpty()
                         && !"all".equalsIgnoreCase(generationStatus);
                 if (!filteringByStatus && !filteringByGeneration) {
-                    ComplianceReportOrderDTO ineligibleDto = buildOrderDTO(sample, null, null, false);
+                    ComplianceReportOrderDTO ineligibleDto = buildOrderDTO(sample, links, null, false);
                     ineligibleDto.setComplianceStatus("INELIGIBLE");
+                    ineligibleDto.setIneligibleReason(ineligibleReason);
                     orders.add(ineligibleDto);
                 }
-                continue;
-            }
-
-            if (standardId != null && !standardId.isEmpty()
-                    && links.stream().noneMatch(link -> link.getComplianceStandard().getId().equals(standardId))) {
                 continue;
             }
 
@@ -261,12 +267,25 @@ public class ComplianceReportRestController {
         }
 
         List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
+        if (complianceEvaluationService.awaitsValidation(sample)) {
+            response.sendError(HttpServletResponse.SC_CONFLICT,
+                    "Every test must be validated before the certificate is generated");
+            return;
+        }
+        List<MicroPatientReportForm> releasedMicrobiology;
+        try {
+            releasedMicrobiology = microbiologyReports.released(sample.getId(),
+                    org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest));
+        } catch (IllegalStateException e) {
+            response.sendError(HttpServletResponse.SC_CONFLICT,
+                    "The microbiology report must be released before the certificate is generated");
+            return;
+        }
         ComplianceEvaluationResult eval = complianceEvaluationService.evaluate(sample);
         ComplianceReportOrderDTO dto = buildOrderDTO(sample, links, eval,
                 reportGenerationService.getLastGenerated(sampleId).isPresent());
 
-        dto.setMicrobiology(microbiologyReports.released(sample.getId(),
-                org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest)));
+        dto.setMicrobiology(releasedMicrobiology);
         String safeFilename = sample.getAccessionNumber().replaceAll("[^a-zA-Z0-9\\-]", "");
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition", "attachment; filename=\"LH-" + safeFilename + ".pdf\"");
@@ -371,9 +390,19 @@ public class ComplianceReportRestController {
         if (!lhuAmendmentService.hasBeenReleased(request.getSampleId())) {
             return ResponseEntity.status(404).body("Sample has not been released; nothing to amend");
         }
+        if (complianceEvaluationService.awaitsValidation(sample)) {
+            return ResponseEntity.status(HttpServletResponse.SC_CONFLICT)
+                    .body("Every test must be validated before the certificate is reissued");
+        }
 
-        var releasedMicrobiology = microbiologyReports.released(sample.getId(),
-                org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest));
+        List<MicroPatientReportForm> releasedMicrobiology;
+        try {
+            releasedMicrobiology = microbiologyReports.released(sample.getId(),
+                    org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpServletResponse.SC_CONFLICT)
+                    .body("The microbiology report must be released before the certificate is reissued");
+        }
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String userId = auth != null ? auth.getName() : null;
@@ -554,13 +583,12 @@ public class ComplianceReportRestController {
         dto.setPreservation(
                 observationHistoryService.getRawValueForSample(ObservationType.ENV_PRESERVATION_METHOD, sampleId));
 
+        dto.setTestCount(complianceEvaluationService.orderedTestCount(sample));
         if (eval != null) {
             dto.setComplianceStatus(eval.getOverallStatus().name());
             dto.setParameterResults(eval.getParameterResults());
-            dto.setTestCount(eval.getParameterResults().size());
         } else {
             dto.setComplianceStatus("NONE");
-            dto.setTestCount(0);
         }
 
         reportGenerationService.getLastGenerated(Long.parseLong(sample.getId())).ifPresent(dto::setLastGenerated);

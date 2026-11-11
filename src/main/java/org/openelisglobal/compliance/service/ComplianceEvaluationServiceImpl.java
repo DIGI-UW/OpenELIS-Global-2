@@ -3,6 +3,7 @@ package org.openelisglobal.compliance.service;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -20,6 +21,7 @@ import org.openelisglobal.compliance.valueholder.ComplianceThreshold;
 import org.openelisglobal.compliance.valueholder.ThresholdType;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.dao.SampleComplianceStandardDAO;
@@ -73,6 +75,50 @@ public class ComplianceEvaluationServiceImpl implements ComplianceEvaluationServ
     @Autowired
     private IStatusService statusService;
 
+    @Autowired
+    private MicroCaseAnalysisDAO microCaseAnalysisDAO;
+
+    /**
+     * A test owned by a microbiology case is released with the case's final report,
+     * which the certificate requires separately, so only the other tests must be
+     * validated.
+     */
+    @Override
+    public boolean awaitsValidation(Sample sample) {
+        return orderedTests(sample)
+                .anyMatch(analysis -> !statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)
+                        && microCaseAnalysisDAO.getActiveByAnalysisId(analysis.getId()) == null);
+    }
+
+    @Override
+    public int orderedTestCount(Sample sample) {
+        return (int) orderedTests(sample).count();
+    }
+
+    private Stream<Analysis> orderedTests(Sample sample) {
+        return sampleItemService.getSampleItemsBySampleId(sample.getId()).stream()
+                .flatMap(item -> liveTests(item).stream());
+    }
+
+    /**
+     * The latest analysis of each test that was not cancelled. A test removed from
+     * the order and added back has a new analysis at a lower revision than its
+     * cancelled copy, so the latest revision is taken among the live ones only.
+     */
+    private List<Analysis> liveTests(SampleItem sampleItem) {
+        return analysisService.getAnalysesBySampleItem(sampleItem).stream()
+                .filter(analysis -> analysis.getTest() != null)
+                .filter(analysis -> !statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled))
+                .collect(Collectors.toMap(analysis -> analysis.getTest().getId(), Function.identity(),
+                        (one, other) -> revision(one) >= revision(other) ? one : other, LinkedHashMap::new))
+                .values().stream().toList();
+    }
+
+    private static int revision(Analysis analysis) {
+        String revision = analysis.getRevision();
+        return revision == null || revision.isBlank() ? 0 : Integer.parseInt(revision.trim());
+    }
+
     @Override
     public ComplianceEvaluationResult evaluate(Sample sample) {
         List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
@@ -88,7 +134,7 @@ public class ComplianceEvaluationServiceImpl implements ComplianceEvaluationServ
         boolean nameStandards = links.size() > 1;
         List<ParameterResult> paramResults = new ArrayList<>();
         for (SampleItem sampleItem : sampleItems) {
-            List<Analysis> analyses = analysisService.getMaxRevisionAnalysesBySample(sampleItem);
+            List<Analysis> analyses = liveTests(sampleItem);
             for (Analysis analysis : analyses) {
                 if (analysis.getTest() == null
                         || !statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {

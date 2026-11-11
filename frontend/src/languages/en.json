@@ -2096,6 +2096,8 @@
   "laporanHasil.status.borderline": "Borderline",
   "laporanHasil.status.compliant": "Compliant",
   "laporanHasil.status.ineligible": "No standard linked",
+  "laporanHasil.status.notValidated": "Results not yet validated",
+  "laporanHasil.error.notValidated": "Every test must be validated before the certificate can be generated.",
   "laporanHasil.status.nonCompliant": "Non-Compliant",
   "laporanHasil.status.none": "–",
   "laporanHasil.status.notGraded": "Not graded",

@@ -1,8 +1,10 @@
 package org.openelisglobal.compliance.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -30,6 +32,8 @@ import org.openelisglobal.compliance.valueholder.ComplianceThresholdValueMap;
 import org.openelisglobal.compliance.valueholder.ThresholdType;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.dao.SampleComplianceStandardDAO;
@@ -55,6 +59,8 @@ public class ComplianceEvaluationServiceImplTest {
     private DictionaryService dictionaryService;
     @Mock
     private IStatusService statusService;
+    @Mock
+    private MicroCaseAnalysisDAO microCaseAnalysisDAO;
 
     @InjectMocks
     private ComplianceEvaluationServiceImpl service;
@@ -116,7 +122,7 @@ public class ComplianceEvaluationServiceImplTest {
     private void givenOneTest(List<ComplianceThreshold> thresholds, String value) {
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
-        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem)).thenReturn(List.of(analysis));
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(analysis));
         when(complianceThresholdService.getThresholdsByTestAndStandard("5", "10")).thenReturn(thresholds);
         when(resultService.getResultsByAnalysis(analysis)).thenReturn(List.of(resultWithValue(value)));
     }
@@ -133,7 +139,7 @@ public class ComplianceEvaluationServiceImplTest {
     public void rangeThreshold_valueInRange_isCompliant() {
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
-        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem)).thenReturn(List.of(analysis));
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(analysis));
         when(complianceThresholdService.getThresholdsByTestAndStandard("5", "10"))
                 .thenReturn(List.of(rangeThreshold("4.5", "8.5")));
         when(resultService.getResultsByAnalysis(analysis)).thenReturn(List.of(resultWithValue("7.0")));
@@ -149,7 +155,7 @@ public class ComplianceEvaluationServiceImplTest {
     public void rangeThreshold_valueAtBoundary_isCompliant() {
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
-        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem)).thenReturn(List.of(analysis));
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(analysis));
         when(complianceThresholdService.getThresholdsByTestAndStandard("5", "10"))
                 .thenReturn(List.of(rangeThreshold("4.5", "8.5")));
         when(resultService.getResultsByAnalysis(analysis)).thenReturn(List.of(resultWithValue("4.5")));
@@ -229,7 +235,7 @@ public class ComplianceEvaluationServiceImplTest {
         secondLink.setComplianceStandard(second);
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link, secondLink));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
-        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem)).thenReturn(List.of(analysis));
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(analysis));
         when(complianceThresholdService.getThresholdsByTestAndStandard("5", "10"))
                 .thenReturn(List.of(rangeThreshold("0.2", "5")));
         when(complianceThresholdService.getThresholdsByTestAndStandard("5", "11"))
@@ -276,7 +282,7 @@ public class ComplianceEvaluationServiceImplTest {
     public void rangeThreshold_valueFarOutside_isNonCompliant() {
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
-        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem)).thenReturn(List.of(analysis));
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(analysis));
         when(complianceThresholdService.getThresholdsByTestAndStandard("5", "10"))
                 .thenReturn(List.of(rangeThreshold("4.5", "8.5")));
         when(resultService.getResultsByAnalysis(analysis)).thenReturn(List.of(resultWithValue("12.0")));
@@ -300,7 +306,7 @@ public class ComplianceEvaluationServiceImplTest {
 
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
-        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem)).thenReturn(List.of(analysis));
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(analysis));
         when(complianceThresholdService.getThresholdsByTestAndStandard("5", "10")).thenReturn(List.of(t));
         when(resultService.getResultsByAnalysis(analysis)).thenReturn(List.of(resultWithValue("0.01")));
 
@@ -327,7 +333,7 @@ public class ComplianceEvaluationServiceImplTest {
     public void noMatchingThreshold_testExcludedFromResults() {
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
-        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem)).thenReturn(List.of(analysis));
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(analysis));
         when(complianceThresholdService.getThresholdsByTestAndStandard("5", "10"))
                 .thenReturn(Collections.emptyList());
 
@@ -357,7 +363,7 @@ public class ComplianceEvaluationServiceImplTest {
 
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
-        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem)).thenReturn(List.of(analysis, analysis2));
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(analysis, analysis2));
         when(complianceThresholdService.getThresholdsByTestAndStandard("5", "10")).thenReturn(List.of(t1));
         when(complianceThresholdService.getThresholdsByTestAndStandard("6", "10")).thenReturn(List.of(t2));
         when(resultService.getResultsByAnalysis(analysis)).thenReturn(List.of(resultWithValue("7.0")));
@@ -374,7 +380,7 @@ public class ComplianceEvaluationServiceImplTest {
     public void rollUp_oneBorderlineRestCompliant_overallBorderline() {
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
-        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem)).thenReturn(List.of(analysis));
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(analysis));
         when(complianceThresholdService.getThresholdsByTestAndStandard("5", "10"))
                 .thenReturn(List.of(rangeThreshold("4.5", "8.5"), threshold(ThresholdType.BORDERLINE, "8.5", "9.0")));
         when(resultService.getResultsByAnalysis(analysis)).thenReturn(List.of(resultWithValue("8.8")));
@@ -390,12 +396,85 @@ public class ComplianceEvaluationServiceImplTest {
         analysis.setStatusId("15");
         when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
         when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
-        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem)).thenReturn(List.of(analysis));
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(analysis));
         lenient().when(complianceThresholdService.getThresholdsByTestAndStandard("5", "10"))
                 .thenReturn(List.of(threshold(ThresholdType.RANGE, "0.2", "5")));
         lenient().when(resultService.getResultsByAnalysis(analysis)).thenReturn(List.of(resultWithValue("5.3")));
 
         assertNull("an edited result waiting for validation is not on the report", service.evaluate(sample));
         verify(resultService, never()).getResultsByAnalysis(analysis);
+    }
+
+    @Test
+    public void anOrderAwaitsValidationUntilEveryTestThatWasNotCancelledIsFinalized() {
+        Analysis validated = analysisWithStatus("6");
+        Analysis cancelled = analysisWithStatus("14");
+        Analysis notStarted = analysisWithStatus("4");
+        when(statusService.matches(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(AnalysisStatus.Finalized)))
+                .thenAnswer(invocation -> "6".equals(invocation.getArgument(0)));
+        when(statusService.matches(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(AnalysisStatus.Canceled)))
+                .thenAnswer(invocation -> "14".equals(invocation.getArgument(0)));
+        when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
+
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(validated, cancelled));
+        assertFalse("validated, and the cancelled test does not count", service.awaitsValidation(sample));
+
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(validated, cancelled, notStarted));
+        assertTrue("a test with no result yet holds the order back", service.awaitsValidation(sample));
+        assertEquals("the cancelled test is not counted", 2, service.orderedTestCount(sample));
+    }
+
+    @Test
+    public void aMicrobiologyCaseTestFollowsItsCaseReleaseNotResultValidation() {
+        Analysis validated = analysisWithStatus("6");
+        Analysis culture = analysisWithStatus("4");
+        culture.setId("77");
+        when(microCaseAnalysisDAO.getActiveByAnalysisId("77")).thenReturn(new MicroCaseAnalysis());
+        when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(validated, culture));
+
+        assertFalse("a culture is released with its case report, which the certificate checks",
+                service.awaitsValidation(sample));
+        assertEquals(2, service.orderedTestCount(sample));
+    }
+
+    @Test
+    public void aTestRemovedAndAddedBackIsJudgedByTheCopyAddedBack() {
+        when(statusService.matches(anyString(), eq(AnalysisStatus.Canceled)))
+                .thenAnswer(invocation -> "14".equals(invocation.getArgument(0)));
+        Analysis removed = analysisOfTest("5", "14", "1");
+        Analysis addedBack = analysisOfTest("5", "4", "0");
+        when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
+        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(List.of(removed, addedBack));
+
+        assertTrue("the copy added back has no result yet", service.awaitsValidation(sample));
+        assertEquals(1, service.orderedTestCount(sample));
+
+        addedBack.setStatusId(FINALIZED);
+        when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
+        when(complianceThresholdService.getThresholdsByTestAndStandard("5", "10"))
+                .thenReturn(List.of(threshold(ThresholdType.RANGE, "0.2", "5")));
+        when(resultService.getResultsByAnalysis(addedBack)).thenReturn(List.of(resultWithValue("7")));
+
+        assertFalse(service.awaitsValidation(sample));
+        assertEquals(ComplianceStatus.NON_COMPLIANT, service.evaluate(sample).getOverallStatus());
+    }
+
+    private int nextTestId = 100;
+
+    private Analysis analysisWithStatus(String statusId) {
+        return analysisOfTest(String.valueOf(nextTestId++), statusId, "0");
+    }
+
+    private Analysis analysisOfTest(String testId, String statusId, String revision) {
+        org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
+        test.setId(testId);
+        Analysis a = new Analysis();
+        a.setTest(test);
+        a.setStatusId(statusId);
+        a.setRevision(revision);
+        return a;
     }
 }
