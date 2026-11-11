@@ -34,11 +34,11 @@ export const AlertDialog = () => {
               key={notificationBody.id ?? index}
               title={notificationBody.title}
               timeout={notificationTimeout(notificationBody.kind)}
-              onClose={(event) => {
+              onClose={(_event) => {
                 // Remove notification from array when it closes automatically
                 removeNotification(notificationBody.id);
               }}
-              onCloseButtonClick={(event) => {
+              onCloseButtonClick={(_event) => {
                 removeNotification(notificationBody.id);
               }}
               lowContrast={true}

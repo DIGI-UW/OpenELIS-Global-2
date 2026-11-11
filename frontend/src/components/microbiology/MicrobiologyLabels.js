@@ -26,7 +26,7 @@ export const formatMicrobiologyActivityNote = (activity, intl) => {
           },
         );
       }
-    } catch (error) {
+    } catch {
       // Historical malformed JSON falls back to the stored legacy note.
     }
   }

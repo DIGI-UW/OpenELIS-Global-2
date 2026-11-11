@@ -15,7 +15,7 @@ import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds, AlertDialog } from "../common/CustomNotification";
 
 const EOrderSearch = ({
-  setEOrders = (eOrders) => {
+  setEOrders = (_eOrders) => {
     console.debug("set EOrders default");
   },
   eOrderRef,

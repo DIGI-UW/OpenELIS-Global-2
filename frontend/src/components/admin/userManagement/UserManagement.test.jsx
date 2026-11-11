@@ -137,7 +137,7 @@ describe("UserManagement", () => {
       cb({ status: 200 });
     });
 
-    const { container } = renderScreen();
+    renderScreen();
     expect(await screen.findByText("Deen")).toBeInTheDocument();
 
     // The row itself toggles selection (TableRow onClick), which is how a user

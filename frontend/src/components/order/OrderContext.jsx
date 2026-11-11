@@ -505,13 +505,6 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
 
               setOrderDataState(loadedOrderData);
 
-              // Load sample type requests if no sample_items exist (decoupled workflow)
-              // This handles Step 1 edit where samples are stored as requests, not items
-              const hasSampleItems =
-                response.samples &&
-                response.samples.length > 0 &&
-                response.samples.some((s) => s.sampleItemId);
-
               const loadedEnvFields =
                 loadedOrderData?.sampleOrderItems?.environmentalFields || {};
               const injectVectorFields = (samplesList) =>
@@ -794,7 +787,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     let body = {};
     try {
       body = (await response.json()) || {};
-    } catch (parseError) {
+    } catch {
       body = {};
     }
     const byField = {};
@@ -865,7 +858,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     try {
       const body = await response.clone().json();
       return body?.patientProperties?.patientPK || "";
-    } catch (e) {
+    } catch {
       return "";
     }
   };
@@ -906,7 +899,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       tests = Array.isArray(body?.rangeNotAppliedTests)
         ? body.rangeNotAppliedTests
         : [];
-    } catch (e) {
+    } catch {
       tests = [];
     }
     setRangeNotApplied({ labNumber: labNo || null, tests });
@@ -941,7 +934,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       let savedSamples = [];
       try {
         savedSamples = JSON.parse(lastSavedDataRef.current || "{}").samples;
-      } catch (unreadable) {
+      } catch {
         savedSamples = [];
       }
       setSamplesState((current) => restoreRemovedTests(current, savedSamples));

@@ -38,7 +38,7 @@ function NonConformityMenuManagement() {
 
   const componentMounted = useRef(false);
 
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showChildren, setShowChildren] = useState(false);
   const [menuItem, setMenuItem] = useState({ menu: {}, childMenus: [] });

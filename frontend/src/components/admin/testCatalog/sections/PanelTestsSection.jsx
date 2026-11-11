@@ -198,7 +198,7 @@ const PanelTestsSection = ({ panel, autoActivate, onSaved }) => {
         if (response && response.status === 422) {
           try {
             body = await response.json();
-          } catch (e) {
+          } catch {
             body = null;
           }
         }

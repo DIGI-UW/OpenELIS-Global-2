@@ -86,7 +86,7 @@ export default function SearchField({
             onResultsChangeRef.current(Array.isArray(response) ? response : []);
           },
         );
-      } catch (e) {
+      } catch {
         if (requestId === requestIdRef.current) {
           setStatus("error");
           onResultsChangeRef.current([]);
