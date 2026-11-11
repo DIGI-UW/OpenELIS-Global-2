@@ -11,6 +11,7 @@ import messages from "../../languages/en.json";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import ESignatureModal from "./ESignatureModal";
 import {
+  certifyUser,
   executeSignature,
   getSessionStatus,
   isUserCertified,
@@ -75,6 +76,30 @@ describe("ESignatureModal", () => {
       ),
     );
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+  });
+
+  it("after certifying, Enter signs with the session username already filled in", async () => {
+    isUserCertified.mockResolvedValue({ certified: false });
+    certifyUser.mockResolvedValue({});
+    const onSuccess = vi.fn();
+    renderModal(onSuccess);
+
+    fireEvent.click(await screen.findByRole("checkbox"));
+    const certPassword = screen.getByLabelText("Password");
+    fireEvent.change(certPassword, { target: { value: "adminADMIN!" } });
+    fireEvent.keyDown(certPassword, { key: "Enter", code: "Enter" });
+
+    const username = await screen.findByLabelText("Username");
+    expect(username).toHaveValue("admin");
+    const password = screen.getByLabelText("Password");
+    fireEvent.change(password, { target: { value: "adminADMIN!" } });
+    fireEvent.keyDown(password, { key: "Enter", code: "Enter" });
+
+    await waitFor(() =>
+      expect(executeSignature).toHaveBeenCalledWith(
+        expect.objectContaining({ username: "admin" }),
+      ),
+    );
   });
 
   it("marks its root so a host modal drops its transform while it is open", async () => {

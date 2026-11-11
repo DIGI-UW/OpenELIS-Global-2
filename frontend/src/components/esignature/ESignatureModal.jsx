@@ -170,6 +170,7 @@ const ESignatureModal = ({
 
       // After certification, proceed to signature
       setPassword("");
+      setEnteredUsername(userName);
       setFlowStep("fullAuth");
     } catch (err) {
       handleApiError(err);
