@@ -17,11 +17,11 @@ import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
-import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 /**
@@ -47,6 +47,10 @@ public class OdooIntegrationService {
 
     @Autowired
     private PatientService patientService;
+
+    @Lazy
+    @Autowired
+    private TestService testService;
 
     /**
      * Creates an invoice in Odoo for the given sample data.
@@ -107,20 +111,17 @@ public class OdooIntegrationService {
         try {
             Sample sample = updateData.getSample();
             if (sample == null) {
-                log.warn("No sample found in updateData, using default partner ID 1");
-                return 1;
+                throw new OdooOperationException("No sample to find the patient of");
             }
 
             Patient patient = sampleHumanService.getPatientForSample(sample);
             if (patient == null) {
-                log.warn("No patient found for sample {}, using default partner ID 1", sample.getAccessionNumber());
-                return 1;
+                throw new OdooOperationException("No patient for sample " + sample.getAccessionNumber());
             }
 
             Person person = patient.getPerson();
             if (person == null) {
-                log.warn("No person found for patient {}, using default partner ID 1", patient.getId());
-                return 1;
+                throw new OdooOperationException("No person for patient " + patient.getId());
             }
 
             String nationalId = patientService.getNationalId(patient);
@@ -144,17 +145,17 @@ public class OdooIntegrationService {
             Integer partnerId = odooConnection.create("res.partner", List.of(partnerData));
 
             if (partnerId == null) {
-                log.warn("Failed to create partner for patient {}, using default partner ID 1", patient.getId());
-                return 1;
+                throw new OdooOperationException("Odoo returned no customer id for patient " + patient.getId());
             }
 
             log.info("Created new partner in Odoo with ID: {} for patient: {} {}", partnerId, person.getFirstName(),
                     person.getLastName());
             return partnerId;
 
+        } catch (OdooOperationException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("Error getting or creating patient partner: {}", e.getMessage(), e);
-            return 1;
+            throw new OdooOperationException("Could not find or create the patient's customer in Odoo", e);
         }
     }
 
@@ -292,16 +293,18 @@ public class OdooIntegrationService {
             partnerData.put("city", person.getCity());
         }
 
-        if (person.getState() != null && !person.getState().trim().isEmpty()) {
-            partnerData.put("state_id", person.getState());
+        Integer countryId = findRecordByCodeOrName("res.country", person.getCountry(), null);
+        if (countryId != null) {
+            partnerData.put("country_id", countryId);
+        }
+
+        Integer stateId = findRecordByCodeOrName("res.country.state", person.getState(), countryId);
+        if (stateId != null) {
+            partnerData.put("state_id", stateId);
         }
 
         if (person.getZipCode() != null && !person.getZipCode().trim().isEmpty()) {
             partnerData.put("zip", person.getZipCode());
-        }
-
-        if (person.getCountry() != null && !person.getCountry().trim().isEmpty()) {
-            partnerData.put("country_id", person.getCountry());
         }
 
         partnerData.put("customer_rank", 1);
@@ -319,7 +322,6 @@ public class OdooIntegrationService {
         if (updateData.getSampleItemsTests() != null) {
             for (SampleTestCollection sampleTest : updateData.getSampleItemsTests()) {
                 for (Test test : sampleTest.tests) {
-                    TestService testService = SpringContext.getBean(TestService.class);
                     String testName = testService.get(test.getId()).getLocalizedTestName()
                             .getLocalizedValue(testMapLocale.equalsIgnoreCase("EN") ? Locale.ENGLISH : Locale.FRENCH);
 
@@ -333,10 +335,13 @@ public class OdooIntegrationService {
                     if (mappingKey != null) {
                         TestProductMapping.TestProductInfo productInfo = testProductMapping.getProductName(mappingKey);
                         Map<String, Object> invoiceLine = new HashMap<>();
+                        Integer productId = findProductId(productInfo.getProductName());
+                        if (productId != null) {
+                            invoiceLine.put("product_id", productId);
+                        }
                         invoiceLine.put("name", productInfo.getProductName());
                         invoiceLine.put("quantity", productInfo.getQuantity());
                         invoiceLine.put("price_unit", productInfo.getPriceUnit());
-                        invoiceLine.put("account_id", 1);
                         invoiceLines.add(invoiceLine);
                         log.info(
                                 "Added invoice line for test: {} (mapped from: {}) with product: {}, quantity: {}, price: {}",
@@ -349,5 +354,66 @@ public class OdooIntegrationService {
             }
         }
         return invoiceLines;
+    }
+
+    /**
+     * The Odoo product named like the mapping's product, so the line takes that
+     * product's income account and taxes; without one, Odoo books the line to the
+     * sales journal's default income account.
+     */
+    private Integer findProductId(String productName) {
+        if (productName == null || productName.isBlank()) {
+            return null;
+        }
+        return firstId(odooConnection.searchAndRead("product.product", List.of("name", "=", productName.trim()),
+                List.of("id")), null);
+    }
+
+    /**
+     * A country or state given as its code (UG) or its name (Uganda), matched
+     * case-insensitively; a state is only taken from the patient's country when
+     * that is known. Odoo stores both as record ids, so text it does not know is
+     * left off the customer rather than failing the invoice.
+     */
+    private Integer findRecordByCodeOrName(String model, String value, Integer countryId) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        List<String> fields = countryId == null ? List.of("id") : List.of("id", "country_id");
+        for (String field : List.of("code", "name")) {
+            Integer id = firstId(odooConnection.searchAndRead(model, List.of(field, "=ilike", value.trim()), fields),
+                    countryId);
+            if (id != null) {
+                return id;
+            }
+        }
+        log.warn("No {} in Odoo matches '{}'; the customer is created without it", model, value);
+        return null;
+    }
+
+    private static Integer firstId(Object[] records, Integer countryId) {
+        if (records == null) {
+            return null;
+        }
+        for (Object record : records) {
+            if (!(record instanceof Map)) {
+                continue;
+            }
+            Map<?, ?> fields = (Map<?, ?>) record;
+            if (countryId != null && !sameCountry(fields.get("country_id"), countryId)) {
+                continue;
+            }
+            Object id = fields.get("id");
+            if (id instanceof Integer) {
+                return (Integer) id;
+            }
+        }
+        return null;
+    }
+
+    private static boolean sameCountry(Object many2one, Integer countryId) {
+        Object id = many2one instanceof Object[] && ((Object[]) many2one).length > 0 ? ((Object[]) many2one)[0]
+                : many2one;
+        return countryId.equals(id);
     }
 }
