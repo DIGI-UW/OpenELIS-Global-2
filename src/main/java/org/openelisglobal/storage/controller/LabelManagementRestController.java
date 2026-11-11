@@ -5,6 +5,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.storage.dao.StorageDeviceDAO;
@@ -86,7 +88,7 @@ public class LabelManagementRestController extends BaseRestController {
             String userId;
             try {
                 userId = getCurrentUserId();
-            } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
+            } catch (LIMSRuntimeException e) {
                 logger.error("Could not resolve acting user for label print", e);
                 response.setStatus(HttpStatus.UNAUTHORIZED.value());
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);

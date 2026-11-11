@@ -1,7 +1,6 @@
 package org.openelisglobal.storage.controller;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -19,6 +18,7 @@ import org.openelisglobal.storage.service.LabelManagementService;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -176,5 +176,38 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
 
         mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")).andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/pdf"));
+    }
+
+    @Test
+    public void printLabel_ShouldRecordAuthenticatedUser_InPrintHistory() throws Exception {
+        resyncSequence("clinlims.system_user_seq", "clinlims.system_user");
+        jdbcTemplate.update("INSERT INTO system_user (id, external_id, login_name, last_name, first_name, initials, "
+                + "is_active, is_employee, lastupdated) "
+                + "SELECT nextval('system_user_seq'), 'TEST_PRINTER', 'printtester', 'Tester', 'Print', 'PT', 'Y', 'Y', now() "
+                + "WHERE NOT EXISTS (SELECT 1 FROM system_user WHERE login_name = 'printtester')");
+        String expectedUserId = jdbcTemplate
+                .queryForObject("SELECT id FROM system_user WHERE login_name = 'printtester'", String.class);
+        authenticateAs("printtester");
+
+        String deviceId = String.valueOf(TEST_STORAGE_DEVICE_ID);
+        jdbcTemplate.update("DELETE FROM storage_location_print_history WHERE location_id = ?", deviceId);
+
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")).andExpect(status().isOk());
+
+        String printedBy = jdbcTemplate.queryForObject(
+                "SELECT printed_by FROM storage_location_print_history WHERE location_id = ?", String.class, deviceId);
+        assertEquals("Print history should record the acting user", expectedUserId, printedBy);
+        assertNotEquals("Should not be the hardcoded system user", "1", printedBy);
+    }
+
+    @Test
+    public void printLabel_ShouldReturn401_WhenNoAuthContext() throws Exception {
+        SecurityContextHolder.clearContext();
+        int before = countRowsInTable("storage_location_print_history");
+
+        mockMvc.perform(post("/rest/storage/device/" + TEST_STORAGE_DEVICE_ID + "/print-label"))
+                .andExpect(status().isUnauthorized());
+
+        assertEquals("No print history should be written", before, countRowsInTable("storage_location_print_history"));
     }
 }
