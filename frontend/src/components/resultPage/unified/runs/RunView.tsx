@@ -28,6 +28,7 @@ import {
 import { FlagChip } from "../flags";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import RunsChip from "./RunsChip";
+import useSiteDateFormat from "../../../common/useSiteDateFormat";
 import { formatRunTime, runSourceKey, runStateKey } from "./runFormat";
 import {
   EMPTY_SELECTION,
@@ -143,6 +144,7 @@ const RunView: React.FC<RunViewProps> = ({
   onOpenRun,
 }) => {
   const intl = useIntl();
+  const { pattern } = useSiteDateFormat();
   const [header, setHeader] = useState<RunHeader | null>(null);
   const [headerState, setHeaderState] = useState<
     "loading" | "ready" | "missing"
@@ -368,12 +370,13 @@ const RunView: React.FC<RunViewProps> = ({
                 {setting("run.label.operator", header.operatorName)}
                 {setting(
                   "run.label.opened",
-                  header.openedAt && formatRunTime(intl, header.openedAt),
+                  header.openedAt &&
+                    formatRunTime(intl, header.openedAt, pattern),
                 )}
                 {setting(
                   "run.label.lastActivity",
                   header.lastActivityAt &&
-                    formatRunTime(intl, header.lastActivityAt),
+                    formatRunTime(intl, header.lastActivityAt, pattern),
                 )}
                 {setting(
                   "run.label.state",

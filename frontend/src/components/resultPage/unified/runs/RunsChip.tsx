@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import useSiteDateFormat from "../../../common/useSiteDateFormat";
 import { formatRunTime, runSourceKey, runStateKey } from "./runFormat";
 
 export interface RunSummary {
@@ -38,6 +39,7 @@ const RunsChip: React.FC<RunsChipProps> = ({
   onOpenRun,
 }) => {
   const intl = useIntl();
+  const { pattern } = useSiteDateFormat();
   const [list, setList] = useState<RunList | null>(null);
   const [failed, setFailed] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -102,7 +104,9 @@ const RunsChip: React.FC<RunsChipProps> = ({
               <span>
                 {intl.formatMessage({ id: runSourceKey(run.source) })}
                 {run.analyzerName ? ` · ${run.analyzerName}` : ""}
-                {run.openedAt ? ` · ${formatRunTime(intl, run.openedAt)}` : ""}
+                {run.openedAt
+                  ? ` · ${formatRunTime(intl, run.openedAt, pattern)}`
+                  : ""}
                 {" · "}
                 <FormattedMessage
                   id="run.progress"

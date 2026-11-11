@@ -1,6 +1,7 @@
 import React from "react";
 import { Tag } from "@carbon/react";
 import { useIntl } from "react-intl";
+import useSiteDateFormat from "../../../common/useSiteDateFormat";
 import { formatRunTime, runSourceKey } from "./runFormat";
 
 export interface WaitingRun {
@@ -22,6 +23,7 @@ interface WaitingTagProps {
  */
 const WaitingTag: React.FC<WaitingTagProps> = ({ run, onOpenRun }) => {
   const intl = useIntl();
+  const { pattern } = useSiteDateFormat();
   const open = () => {
     if (onOpenRun) {
       onOpenRun(run.runId);
@@ -31,7 +33,7 @@ const WaitingTag: React.FC<WaitingTagProps> = ({ run, onOpenRun }) => {
   };
   const detail = [
     intl.formatMessage({ id: runSourceKey(run.source) }),
-    run.openedAt ? formatRunTime(intl, run.openedAt) : null,
+    run.openedAt ? formatRunTime(intl, run.openedAt, pattern) : null,
   ]
     .filter(Boolean)
     .join(" · ");

@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { IntlShape } from "react-intl";
 
 const SOURCE_KEYS: Record<string, string> = {
@@ -19,13 +20,17 @@ export const runSourceKey = (source: string): string =>
 export const runStateKey = (state: string): string =>
   STATE_KEYS[state] ?? "run.state.open";
 
-/** A run's times arrive as ISO instants and read in the lab's locale. */
-export const formatRunTime = (intl: IntlShape, iso: string): string => {
+/** A run's times arrive as ISO instants; the date follows the site date format. */
+export const formatRunTime = (
+  intl: IntlShape,
+  iso: string,
+  datePattern: string,
+): string => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
     return iso;
   }
-  return `${intl.formatDate(date)} ${intl.formatTime(date)}`;
+  return `${format(date, datePattern)} ${intl.formatTime(date)}`;
 };
 
 /** Where leaving a run returns to: the worklist as it was before. */
