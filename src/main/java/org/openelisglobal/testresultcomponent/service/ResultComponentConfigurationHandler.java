@@ -39,6 +39,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandler {
 
+    // Every test starts with this primary; a file naming another primary takes it
+    // over.
+    private static final String SEEDED_PRIMARY = "PRIMARY";
+
     @Autowired
     private TestResultComponentService componentService;
 
@@ -103,6 +107,7 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
         for (TestResultComponent existing : componentService.getActiveComponentsByTestId(test.getId())) {
             byCode.put(existing.getCode().toUpperCase(), existing);
         }
+        boolean namesSeededPrimary = group.stream().anyMatch(row -> SEEDED_PRIMARY.equalsIgnoreCase(row.get("code")));
         List<CsvLoadSummary.Outcome> rowOutcomes = new ArrayList<>();
         for (CsvRow row : group) {
             String code = row.get("code");
@@ -110,6 +115,14 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
                 throw new IllegalArgumentException("line " + row.lineNumber() + " has no code");
             }
             TestResultComponent component = byCode.get(code.toUpperCase());
+            if (component == null && !namesSeededPrimary && row.flag("isPrimary", false)) {
+                component = byCode.remove(SEEDED_PRIMARY);
+                if (component != null) {
+                    component.setCode(code);
+                    component.setLabel(code);
+                    byCode.put(code.toUpperCase(), component);
+                }
+            }
             boolean created = component == null;
             if (created) {
                 component = new TestResultComponent();
