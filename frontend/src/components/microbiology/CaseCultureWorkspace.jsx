@@ -9,6 +9,7 @@ import {
 import ContainerLabelButton from "./ContainerLabelButton";
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
+import MacroTextArea from "../common/textMacro/MacroTextArea";
 import {
   Accordion,
   AccordionItem,
@@ -31,7 +32,6 @@ import {
   TableHeader,
   TableRow,
   Tag,
-  TextArea,
   TextInput,
   Tile,
 } from "@carbon/react";
@@ -378,8 +378,9 @@ function CultureActionForm({
         {action.kind === "positive-time" &&
           input("positiveAt", "datetime-local")}
         {["reading", "extension"].includes(action.kind) && (
-          <TextArea
+          <MacroTextArea
             id="culture-note"
+            context="MICROBIOLOGY_CULTURE_READING"
             labelText={t("note")}
             value={draft.note || ""}
             maxLength={2000}

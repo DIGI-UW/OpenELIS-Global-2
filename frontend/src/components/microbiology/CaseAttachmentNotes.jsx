@@ -5,10 +5,10 @@ import {
   Modal,
   Stack,
   Tag,
-  TextArea,
   InlineNotification,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import MacroTextArea from "../common/textMacro/MacroTextArea";
 import { labTimestamp } from "./MicrobiologyTime";
 
 export default function CaseAttachmentNotes({
@@ -89,8 +89,9 @@ export default function CaseAttachmentNotes({
             ))}
             {detail.canWrite && (
               <>
-                <TextArea
+                <MacroTextArea
                   id={`note-${targetType}-${targetId}`}
+                  context="MICROBIOLOGY_CASE_NOTE"
                   labelText={t("microbiology.testing.newNote")}
                   value={text}
                   maxLength={4000}
