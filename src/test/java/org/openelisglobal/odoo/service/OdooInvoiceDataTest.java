@@ -140,6 +140,73 @@ public class OdooInvoiceDataTest extends BaseWebContextSensitiveTest {
         verify(odoo, never()).create(eq("account.move"), anyList());
     }
 
+    @Test
+    public void aNamesakeCustomerIsNeverReused() {
+        when(odoo.searchAndRead(eq("res.partner"), anyList(), anyList()))
+                .thenAnswer(call -> List.of("ref", "=", "NID-1").equals(call.getArgument(1)) ? new Object[0]
+                        : new Object[] { Map.of("id", 8, "name", "Joann Leeds") });
+
+        Map<?, ?> customer = createInvoiceAndReturnCustomer();
+
+        assertEquals("NID-1", customer.get("ref"));
+        verify(odoo, never()).searchAndRead(eq("res.partner"), eq(List.of("name", "ilike", "Invoice Odootest")),
+                anyList());
+    }
+
+    @Test
+    public void theCustomerWithThePatientsNationalIdIsReused() {
+        when(odoo.searchAndRead("res.partner", List.of("ref", "=", "NID-1"), List.of("id")))
+                .thenReturn(new Object[] { Map.of("id", 7) });
+
+        service.createInvoice(order());
+
+        verify(odoo, never()).create(eq("res.partner"), anyList());
+        assertEquals(7, createdInvoice().get("partner_id"));
+    }
+
+    @Test
+    public void aPatientWithoutNationalIdIsKeptAsOneCustomerByPatientId() {
+        when(patientService.getNationalId(any())).thenReturn(null);
+
+        Map<?, ?> customer = createInvoiceAndReturnCustomer();
+
+        assertEquals("OE-PATIENT-11", customer.get("ref"));
+        verify(odoo).searchAndRead("res.partner", List.of("ref", "=", "OE-PATIENT-11"), List.of("id"));
+    }
+
+    @Test
+    public void aFailedCustomerSearchFailsTheInvoiceInsteadOfCreatingADuplicate() {
+        when(odoo.searchAndRead(eq("res.partner"), anyList(), anyList()))
+                .thenThrow(new RuntimeException("Odoo is down"));
+
+        try {
+            service.createInvoice(order());
+            fail("expected the invoice to fail");
+        } catch (OdooOperationException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("Failed to create invoice"));
+        }
+        verify(odoo, never()).create(eq("res.partner"), anyList());
+        verify(odoo, never()).create(eq("account.move"), anyList());
+    }
+
+    @Test
+    public void aStateIsOnlyLookedUpWithinAKnownCountry() {
+        person.setState("CA");
+        when(odoo.searchAndRead(eq("res.country.state"), anyList(), anyList()))
+                .thenReturn(new Object[] { Map.of("id", 13, "country_id", new Object[] { 233, "United States" }) });
+
+        Map<?, ?> customer = createInvoiceAndReturnCustomer();
+
+        assertFalse(customer.containsKey("state_id"));
+    }
+
+    private Map<?, ?> createdInvoice() {
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        ArgumentCaptor<List<Map<String, Object>>> invoice = ArgumentCaptor.forClass((Class) List.class);
+        verify(odoo).create(eq("account.move"), invoice.capture());
+        return (Map<?, ?>) invoice.getValue().get(0);
+    }
+
     private Map<?, ?> createInvoiceAndReturnFirstLine() {
         service.createInvoice(order());
         @SuppressWarnings({ "unchecked", "rawtypes" })
