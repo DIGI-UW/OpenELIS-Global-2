@@ -54,6 +54,7 @@ test.describe("Adopting a newer profile revision", () => {
       await setup.selectProfile(displayName, { profileId, revision: 1 });
       await setup.fillName(displayName);
       await setup.selectFirstLabUnit();
+      await setup.continueToConnect();
       await setup.continueToVerify();
       const analyzerId = new URL(page.url()).searchParams.get("analyzerId")!;
 

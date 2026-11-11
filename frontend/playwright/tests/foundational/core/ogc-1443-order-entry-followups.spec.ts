@@ -6,6 +6,7 @@ import {
   NAV_TIMEOUT,
   UI_TIMEOUT,
 } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1443 — order entry v4 follow-ups from acceptance:
@@ -80,9 +81,10 @@ async function enterNewPatient(page: Page, lastName: string) {
 
 async function chooseSerum(page: Page, index: number, withTest: boolean) {
   const sampleSection = page.getByTestId("order-sample-test-section");
-  await sampleSection
-    .locator(`#sampleType-${index}`)
-    .selectOption({ label: "Serum" });
+  await chooseCarbonOption(
+    sampleSection.locator(`#sampleType-${index}`),
+    "Serum",
+  );
   if (withTest) {
     const firstTest = sampleSection
       .locator(`label[for^="test-${index}-"]`)

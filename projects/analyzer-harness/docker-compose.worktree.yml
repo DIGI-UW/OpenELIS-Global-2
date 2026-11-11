@@ -32,7 +32,6 @@ services:
         -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims
         -Ddatasource.username=clinlims
         -Dspring.liquibase.contexts=test
-        -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
         -Dorg.openelisglobal.uat.scenarios.enabled=${OE_UAT_SCENARIOS_ENABLED:-true}
     networks: !override
       default: {}

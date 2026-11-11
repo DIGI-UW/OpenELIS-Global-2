@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.form;
 
 public class MicroOrganismAdminForm {
+    public String susceptibilityProtocol = "GENERAL";
     public String id;
     public String displayName;
     public String shortName;

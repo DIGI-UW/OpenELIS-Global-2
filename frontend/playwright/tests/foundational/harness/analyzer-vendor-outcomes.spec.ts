@@ -78,7 +78,7 @@ const outcomes: Array<{
     outcome: "quantified",
     expected: {
       HIVVL: {
-        main: "1010",
+        main: "1009.64",
         "Log viral load": "3.00",
         "HIV-1": "Positive",
         ...HIV_READINGS,

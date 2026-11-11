@@ -2,6 +2,7 @@ package org.openelisglobal.eqa.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -17,6 +18,7 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQACycleService.PanelSampleRequest;
 import org.openelisglobal.eqa.service.EQACycleService.ProviderCycleRequest;
+import org.openelisglobal.eqa.service.EQACycleSubmissionService;
 import org.openelisglobal.eqa.service.EQAInvalidTransitionException;
 import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
 import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
@@ -219,6 +221,7 @@ public class EQACycleRestController extends BaseRestController {
                 enrolledNames.add(enrollment.getProgramName().trim().toLowerCase());
             }
         }
+        EQACycleSubmissionService submissionService = SpringContext.getBean(EQACycleSubmissionService.class);
         List<Map<String, Object>> rows = new ArrayList<>();
         for (EQACycle cycle : cycleService.getAll()) {
             Map<String, Object> dto = toCycleDto(cycle);
@@ -226,6 +229,9 @@ public class EQACycleRestController extends BaseRestController {
             if (!participatesIn(cycle, enrolledNames, dto)) {
                 continue;
             }
+            EQACycleSubmissionService.AutoSubmission auto = submissionService.autoSubmission(cycle.getId());
+            dto.put("autoSubmitReason", auto.reason().name());
+            dto.put("autoSubmitDueAt", auto.dueAt() == null ? null : Timestamp.from(auto.dueAt()).toString());
             if (labEnrollmentId != null) {
                 dto.put("participantState", cycleService.deriveParticipantState(cycle, labEnrollmentId).name());
             }
@@ -247,11 +253,16 @@ public class EQACycleRestController extends BaseRestController {
         return samples instanceof List<?> linked && !linked.isEmpty();
     }
 
+    @GetMapping(value = "/cycles/mine/enrollments", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<Map<String, Object>> enrollmentsOpenForCycles() {
+        return cycleService.getEnrollmentsOpenForCycles().stream()
+                .map(e -> Map.<String, Object>of("id", e.getId(), "programName", e.getProgramName())).toList();
+    }
+
     /**
      * The participant's own way in: a cycle for a programme this lab has enrolled
      * in, for a provider that does not send consignments to an OpenELIS. The
-     * programme is named, not numbered, because that is all an enrollment carries;
-     * it must exist locally under the same name.
+     * programme is named, not numbered, because that is all an enrollment carries.
      */
     @PostMapping(value = "/cycles/mine", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.PARTICIPANT)
@@ -261,16 +272,8 @@ public class EQACycleRestController extends BaseRestController {
         if (schemeName == null) {
             throw new IllegalArgumentException("A cycle needs a scheme");
         }
-        boolean enrolled = enrollmentService.findActiveEnrollments().stream()
-                .anyMatch(e -> e.getProgramName() != null && e.getProgramName().trim().equalsIgnoreCase(schemeName));
-        if (!enrolled) {
-            throw new IllegalArgumentException("This laboratory is not enrolled in " + schemeName);
-        }
-        EQACycle cycle = cycleService.ensureParticipantCycle(schemeName, null, stringField(body, "cycleName"),
-                dateField(body, "distributionDate"), dateField(body, "submissionDeadline"), getSysUserId(request))
-                .orElseThrow(() -> new IllegalArgumentException("No scheme named '" + schemeName
-                        + "' exists on this instance; add it under EQA Management, Schemes"));
-        return toCycleDto(cycle);
+        return toCycleDto(cycleService.createParticipantCycle(schemeName, stringField(body, "cycleName"),
+                dateField(body, "distributionDate"), dateField(body, "submissionDeadline"), getSysUserId(request)));
     }
 
     /**
@@ -304,12 +307,8 @@ public class EQACycleRestController extends BaseRestController {
      * Progress and per-sample entry state for a cycle, at analysis grain.
      *
      * <p>
-     * What counts as entered depends on the lane, because the two lanes have
-     * different gates. An external analyte counts once its analysis is finalized in
-     * the standard pipeline, which is what auto-submit waits on. An in-house one
-     * counts as soon as a result exists: that lane scores from the unblind and
-     * never goes through validation at all, so the Finalized rule left a fully
-     * answered and scored panel reading <i>0 of 6</i>.
+     * An external analyte counts once its result awaits validation or is validated;
+     * an in-house one once a result exists, because that lane skips validation.
      *
      * <p>
      * When the scheme's review gate is on, each analyte also carries what the lab
@@ -328,6 +327,7 @@ public class EQACycleRestController extends BaseRestController {
         IStatusService statusService = SpringContext.getBean(IStatusService.class);
         String finalizedId = statusService.getStatusID(AnalysisStatus.Finalized);
         String notStartedId = statusService.getStatusID(AnalysisStatus.NotStarted);
+        String awaitingValidationId = statusService.getStatusID(AnalysisStatus.TechnicalAcceptance);
         boolean withReportedValues = Boolean.TRUE.equals(dto.get("requiresCycleReview"));
         boolean inHouse = EQASchemeType.IN_HOUSE.name().equals(dto.get("schemeType"));
 
@@ -352,7 +352,8 @@ public class EQACycleRestController extends BaseRestController {
                 boolean finalized = finalizedId.equals(analysis.getStatusId());
                 // In-house: answered is the gate, and an answer is a result. Reading
                 // the status instead would count a cancelled analysis as entered.
-                boolean answered = inHouse ? hasResult(analysis) : finalized;
+                boolean answered = inHouse ? hasResult(analysis)
+                        : finalized || awaitingValidationId.equals(analysis.getStatusId());
                 if (answered) {
                     entered++;
                     enteredHere++;
@@ -372,9 +373,11 @@ public class EQACycleRestController extends BaseRestController {
             sampleDto.put("id", link.getEqaProviderSampleId());
             sampleDto.put("labNo", order.getAccessionNumber());
             sampleDto.put("analytes", analytes);
-            sampleDto.put("entryStatus",
-                    (inHouse ? enteredHere == analyses.size() && !analyses.isEmpty() : allFinalized) ? "entered"
-                            : anyStarted ? "in_progress" : "empty");
+            String entryStatus = anyStarted ? "in_progress" : "empty";
+            if (!analyses.isEmpty() && enteredHere == analyses.size()) {
+                entryStatus = allFinalized ? "validated" : "entered";
+            }
+            sampleDto.put("entryStatus", entryStatus);
             sampleDtos.add(sampleDto);
         }
         dto.put("progress", Map.of("entered", entered, "total", total));
@@ -388,7 +391,8 @@ public class EQACycleRestController extends BaseRestController {
      */
     private boolean hasResult(Analysis analysis) {
         for (Result result : resultService.getResultsByAnalysis(analysis)) {
-            String rendered = resultService.getSimpleResultValue(result);
+            String rendered = ("N".equals(result.getResultType()) ? result.getValue()
+                    : resultService.formatSimpleResultForDisplay(result));
             if (rendered != null && !rendered.isBlank()) {
                 return true;
             }
@@ -413,7 +417,8 @@ public class EQACycleRestController extends BaseRestController {
         }
         StringBuilder value = new StringBuilder();
         for (Result result : resultService.getResultsByAnalysis(analysis)) {
-            String rendered = resultService.getSimpleResultValue(result);
+            String rendered = ("N".equals(result.getResultType()) ? result.getValue()
+                    : resultService.formatSimpleResultForDisplay(result));
             if (rendered != null && !rendered.isBlank()) {
                 value.append(value.length() == 0 ? "" : ", ").append(rendered);
             }

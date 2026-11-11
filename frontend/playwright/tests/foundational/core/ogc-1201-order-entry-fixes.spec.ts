@@ -43,13 +43,15 @@ test.describe("OGC-1201 order entry", () => {
     // It is a real button, not an anchor without an href.
     await expect(generate).toHaveJSProperty("tagName", "BUTTON");
 
+    // Auto-generation temporarily disables the button and removes it from tab order.
+    await expect(page.locator("#labNumber")).not.toHaveValue("", {
+      timeout: NAV_TIMEOUT,
+    });
+    await expect(generate).toBeEnabled();
     await page.locator("#labNumber").focus();
     await page.keyboard.press("Tab");
     await expect(generate).toBeFocused();
 
-    await expect(page.locator("#labNumber")).not.toHaveValue("", {
-      timeout: NAV_TIMEOUT,
-    });
     const before = await page.locator("#labNumber").inputValue();
     await page.keyboard.press("Enter");
     await expect(page.locator("#labNumber")).not.toHaveValue(before, {

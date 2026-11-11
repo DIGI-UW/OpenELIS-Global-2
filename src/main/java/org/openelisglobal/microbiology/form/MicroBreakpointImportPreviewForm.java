@@ -10,5 +10,7 @@ public class MicroBreakpointImportPreviewForm {
     public int skippedRows;
     public int importedRows;
     public int unchangedRows;
+    public List<Integer> importedRowNumbers = new ArrayList<>();
+    public List<Integer> unchangedRowNumbers = new ArrayList<>();
     public List<MicroBreakpointImportErrorForm> errors = new ArrayList<>();
 }

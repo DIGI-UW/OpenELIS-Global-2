@@ -22,7 +22,16 @@ import { getFromOpenElisServer } from "../../../utils/Utils";
  * catalogue could not be loaded says so and offers Retry (OGC-1449), instead of
  * offering nothing to add.
  */
-const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
+const CollectTestPickerSection = ({
+  samples,
+  setSamples,
+  isReadOnly,
+  titleId = "collect.addTests.title",
+  helperId = "collect.addTests.helper",
+  excludedTestIds = [],
+  excludedTestIdsBySample = {},
+  cataloguePath = "/rest/sample-type-tests",
+}) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
   const fetchedTypesRef = useRef({});
@@ -37,13 +46,25 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
     };
   }, []);
 
+  const cataloguePathRef = useRef(cataloguePath);
+  useEffect(() => {
+    cataloguePathRef.current = cataloguePath;
+    fetchedTypesRef.current = {};
+    setCatalogue({});
+    setFailedTypes({});
+  }, [cataloguePath]);
+
   const loadCatalogue = (sampleTypeId) => {
+    const requestedPath = cataloguePath;
     fetchedTypesRef.current[sampleTypeId] = true;
     setFailedTypes((prev) => ({ ...prev, [sampleTypeId]: false }));
     getFromOpenElisServer(
-      `/rest/sample-type-tests?sampleType=${sampleTypeId}`,
+      `${cataloguePath}?sampleType=${encodeURIComponent(sampleTypeId)}`,
       (response) => {
-        if (!componentMounted.current) {
+        if (
+          !componentMounted.current ||
+          requestedPath !== cataloguePathRef.current
+        ) {
           return;
         }
         if (!response) {
@@ -69,7 +90,7 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
       }
       loadCatalogue(sampleTypeId);
     });
-  }, [samples]);
+  }, [samples, cataloguePath]);
 
   const updateSample = (sampleIndex, changes) =>
     setSamples(
@@ -118,14 +139,11 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
   return (
     <Tile className="order-section">
       <h4 className="section-title">
-        <FormattedMessage
-          id="collect.addTests.title"
-          defaultMessage="Add Tests or Panels"
-        />
+        <FormattedMessage id={titleId} defaultMessage="Add Tests or Panels" />
       </h4>
       <p className="helper-text">
         <FormattedMessage
-          id="collect.addTests.helper"
+          id={helperId}
           defaultMessage="Add a test the clinician asked for after the order was entered, or one that only becomes appropriate with the specimen in hand."
         />
       </p>
@@ -215,17 +233,50 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
                     onClick={() =>
                       !isReadOnly && toggleSelection(index, "panels", panel)
                     }
+                    role="button"
+                    tabIndex={isReadOnly ? -1 : 0}
+                    aria-disabled={isReadOnly}
+                    onKeyDown={(event) => {
+                      if (
+                        !isReadOnly &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        toggleSelection(index, "panels", panel);
+                      }
+                    }}
                   >
                     {panel.name}
                   </Tag>
                 ))}
-                {matching(options.tests, term).map((test) => (
+                {matching(
+                  options.tests.filter(
+                    (test) =>
+                      !excludedTestIds.includes(String(test.id)) &&
+                      !(
+                        excludedTestIdsBySample[sample.sampleItemId] || []
+                      ).includes(String(test.id)),
+                  ),
+                  term,
+                ).map((test) => (
                   <Tag
                     key={`available-test-${test.id}`}
                     type="outline"
                     onClick={() =>
                       !isReadOnly && toggleSelection(index, "tests", test)
                     }
+                    role="button"
+                    tabIndex={isReadOnly ? -1 : 0}
+                    aria-disabled={isReadOnly}
+                    onKeyDown={(event) => {
+                      if (
+                        !isReadOnly &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        toggleSelection(index, "tests", test);
+                      }
+                    }}
                   >
                     {test.name}
                   </Tag>

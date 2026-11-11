@@ -5,6 +5,7 @@
  */
 import {
   bulkOutcomeKey,
+  bulkSuccessMessages,
   bulkReleaseRequest,
   clearRows,
   triageRows,
@@ -136,5 +137,27 @@ describe("bulkOutcomeKey", () => {
     expect(bulkOutcomeKey(undefined)).toBe(
       "label.validation.bulk.error.generic",
     );
+  });
+});
+
+describe("bulkSuccessMessages (OGC-1608)", () => {
+  it("names tests validated in part apart from the ones released", () => {
+    expect(
+      bulkSuccessMessages({ released: ["1"], accepted: ["2"], skipped: [] }),
+    ).toEqual([
+      { id: "label.validation.bulk.success", values: { count: 1 } },
+      { id: "label.validation.bulk.accepted", values: { count: 1 } },
+    ]);
+    expect(bulkSuccessMessages({ released: [], accepted: ["2"] })).toEqual([
+      { id: "label.validation.bulk.accepted", values: { count: 1 } },
+    ]);
+    expect(
+      bulkSuccessMessages({ released: ["1"], skipped: [{}], accepted: [] }),
+    ).toEqual([
+      {
+        id: "label.validation.bulk.partial",
+        values: { released: 1, skipped: 1 },
+      },
+    ]);
   });
 });

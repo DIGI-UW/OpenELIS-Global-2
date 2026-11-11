@@ -135,7 +135,8 @@
         instrument_id="200" test_id="1" resolution_status="UNRESOLVED"
         sys_user_id="1" last_updated="2026-02-20 10:00:00" />
 
-    <!-- Analyzer 300: only has resolved violations (should NOT appear in dashboard) -->
+    <!-- Analyzer 300: only has resolved violations (visible without configured
+        QC) -->
     <analyzer id="300" name="Resolved Only Analyzer"
         is_active="true" status="ACTIVE" bridge_connection_id="bridge-300"
         mapping_id="823" test_unit_ids="703"
@@ -149,7 +150,7 @@
         resolved_date_time="2026-02-19 09:00:00" resolved_by_user_id="1"
         sys_user_id="1" last_updated="2026-02-19 09:00:00" />
 
-    <!-- Resolved violation on instrument 300 (instrument should not appear
+    <!-- Resolved violation on instrument 300 (must not increase violations
         at all) -->
     <qc_rule_violation id="viol-005"
         triggering_result_id="qr-001" rule_code="1_3s"

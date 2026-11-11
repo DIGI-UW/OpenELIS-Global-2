@@ -127,6 +127,45 @@ describe("Modify Order added samples (OGC-1406)", () => {
     expect(body.sampleXML).not.toMatch(/sampleID=''/);
   });
 
+  test("an added sample carries its quantity and unit of measure (OGC-1515)", async () => {
+    const measured = addedSample("37", [{ id: "322", name: "Histopathology" }]);
+    measured.sampleXML = { ...measured.sampleXML, quantity: "2.5", uom: "14" };
+    stepSamples.value = [measured];
+    let body;
+    utilsMock.postToOpenElisServerFullResponse.mockImplementation(
+      (url, payload) => {
+        body = JSON.parse(payload);
+      },
+    );
+    openOrderStep();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    });
+
+    expect(body.sampleXML).toMatch(
+      /<sample sampleID='37'[^>]* quantity='2.5' uom='14'/,
+    );
+  });
+
+  test("an added sample without a quantity or unit sends them empty", async () => {
+    stepSamples.value = [addedSample("37", [{ id: "322", name: "Histo" }])];
+    let body;
+    utilsMock.postToOpenElisServerFullResponse.mockImplementation(
+      (url, payload) => {
+        body = JSON.parse(payload);
+      },
+    );
+    openOrderStep();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    });
+
+    expect(body.sampleXML).toMatch(/ quantity='' uom='' /);
+    expect(body.sampleXML).not.toMatch(/undefined/);
+  });
+
   test("a sample with a type but no test blocks Submit and is named", () => {
     stepSamples.value = [
       addedSample("37", [{ id: "322", name: "Histopathology examination" }]),

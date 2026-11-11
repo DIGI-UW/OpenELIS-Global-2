@@ -56,6 +56,9 @@ const QCDashboard = ({ initialTab = 0 }) => {
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [showExport, setShowExport] = useState(false);
+  const [acknowledgements, setAcknowledgements] = useState(0);
+  const violationsSignal = `${lastUpdated ? lastUpdated.getTime() : 0}:${acknowledgements}`;
+  const violationAcknowledged = () => setAcknowledgements((count) => count + 1);
 
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   // The real gate is the backend @PreAuthorize(qa.view.qc); this only hides the
@@ -221,7 +224,10 @@ const QCDashboard = ({ initialTab = 0 }) => {
       )}
 
       {/* Active Violations Banner */}
-      <ActiveViolationsBanner refreshSignal={lastUpdated} />
+      <ActiveViolationsBanner
+        refreshSignal={violationsSignal}
+        onAcknowledged={violationAcknowledged}
+      />
 
       {/* Summary Tiles */}
       <QCSummaryTiles summary={summary || {}} loading={loading} />
@@ -244,7 +250,10 @@ const QCDashboard = ({ initialTab = 0 }) => {
             <InstrumentsTab instruments={instruments} loading={loading} />
           </TabPanel>
           <TabPanel>
-            <AlertsTab />
+            <AlertsTab
+              refreshSignal={violationsSignal}
+              onAcknowledged={violationAcknowledged}
+            />
           </TabPanel>
           <TabPanel>
             <BenchQcTab />

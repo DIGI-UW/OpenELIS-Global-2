@@ -415,6 +415,84 @@ describe("AnalyzerTypeManagement", () => {
     expect(await screen.findByText("Cepheid GeneXpert MTB/RIF")).toBeVisible();
   });
 
+  it("says no Bridge is configured rather than that loading failed (OGC-1594)", async () => {
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        ...catalog,
+        types: [],
+        summary: { total: 0, inUse: 0, needsAttention: 0, deactivated: 0 },
+        bridgeConfigured: false,
+      }),
+    );
+
+    renderPage();
+
+    expect(
+      await screen.findByTestId("analyzer-types-bridge-not-configured"),
+    ).toHaveTextContent(
+      "No Analyzer Bridge address is configured for OpenELIS.",
+    );
+    expect(
+      screen.queryByText("Analyzer types could not be loaded"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("No analyzer types yet")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Adjust the search or filters to see other analyzer types.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says the Bridge is not paired rather than that loading failed (OGC-1594)", async () => {
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        ...catalog,
+        types: [],
+        summary: { total: 0, inUse: 0, needsAttention: 0, deactivated: 0 },
+        bridgeConfigured: true,
+        bridgePaired: false,
+      }),
+    );
+
+    renderPage();
+
+    const notice = await screen.findByTestId(
+      "analyzer-types-bridge-not-paired",
+    );
+    expect(notice).toHaveTextContent("The Analyzer Bridge is not paired");
+    expect(notice).toHaveTextContent(
+      "The analyzer types it serves are listed here once it is paired on the Analyzers page.",
+    );
+    expect(
+      screen.queryByText("Analyzer types could not be loaded"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-types-bridge-not-configured"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("No analyzer types yet")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Create Profile adds one."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers Create Profile when a site with a Bridge has no analyzer types yet", async () => {
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        ...catalog,
+        types: [],
+        summary: { total: 0, inUse: 0, needsAttention: 0, deactivated: 0 },
+        bridgeConfigured: true,
+      }),
+    );
+
+    renderPage();
+
+    expect(
+      await screen.findByText("No analyzer types yet"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Create Profile adds one.")).toBeInTheDocument();
+  });
+
   it("names each profile file the Bridge set aside and still lists the others", async () => {
     getAnalyzerTypeCatalog.mockImplementation((callback) =>
       callback({

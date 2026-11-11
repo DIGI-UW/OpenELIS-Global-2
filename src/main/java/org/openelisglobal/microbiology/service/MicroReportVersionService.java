@@ -10,12 +10,16 @@ public interface MicroReportVersionService {
 
     MicroReportVersion ensureFinalBaseline(MicroCase microCase);
 
+    MicroReportVersion recordPreliminary(String caseId, MicroReportProjectionResult projection, String performedBy);
+
     MicroReportVersion recordInitialFinal(String caseId, MicroReportProjectionResult projection, String performedBy);
 
     MicroReportVersion recordAmendedFinal(MicroCaseAmendment amendment, MicroReportProjectionResult projection,
             String performedBy);
 
     List<MicroReportVersion> getVersions(String caseId);
+
+    List<org.openelisglobal.microbiology.form.MicroReportVersionForm> getVersionForms(String caseId);
 
     List<MicroReportVersionSource> getSourcesForCase(String caseId);
 }
