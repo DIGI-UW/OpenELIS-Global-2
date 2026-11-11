@@ -80,6 +80,7 @@ public class ComplianceReportOrderDTO {
     private String preservation;
 
     private boolean hasBeenReleased;
+    private boolean reportIssued;
     private List<ParameterResult> parameterResults;
     private SignatureDTO analystSignature;
     private SignatureDTO managerSignature;
@@ -256,6 +257,18 @@ public class ComplianceReportOrderDTO {
 
     public void setHasBeenReleased(boolean hasBeenReleased) {
         this.hasBeenReleased = hasBeenReleased;
+    }
+
+    /**
+     * The released report was issued: its original is archived, or it was already
+     * amended. Only an issued report is amended; until then it is generated.
+     */
+    public boolean isReportIssued() {
+        return reportIssued;
+    }
+
+    public void setReportIssued(boolean reportIssued) {
+        this.reportIssued = reportIssued;
     }
 
     public SignatureDTO getAnalystSignature() {

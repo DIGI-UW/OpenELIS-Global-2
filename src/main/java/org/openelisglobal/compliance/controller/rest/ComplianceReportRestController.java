@@ -188,7 +188,8 @@ public class ComplianceReportRestController {
             }
 
             ComplianceEvaluationResult eval = complianceEvaluationService.evaluate(sample);
-            String orderStatus = eval != null ? eval.getOverallStatus().name() : "NONE";
+            String orderStatus = links.isEmpty() ? ComplianceReportOrderDTO.KIND_RESULTS
+                    : eval != null ? eval.getOverallStatus().name() : "NONE";
 
             if (complianceStatus != null && !complianceStatus.isEmpty() && !"all".equalsIgnoreCase(complianceStatus)
                     && !orderStatus.equalsIgnoreCase(complianceStatus)) {
@@ -364,6 +365,10 @@ public class ComplianceReportRestController {
         if (!lhuAmendmentService.hasBeenReleased(request.getSampleId())) {
             return ResponseEntity.status(404).body("Sample has not been released; nothing to amend");
         }
+        if (!reportIssued(sample)) {
+            return ResponseEntity.status(HttpServletResponse.SC_CONFLICT)
+                    .body("The report has not been issued yet; generate it before reissuing");
+        }
         if (ineligibleReason(sample) != null) {
             return ResponseEntity.status(HttpServletResponse.SC_CONFLICT)
                     .body("Every test must be validated before the report is reissued");
@@ -440,6 +445,16 @@ public class ComplianceReportRestController {
                 sample.getAmendmentNumber());
         return EnvironmentalReportPdf.build(dto, new EnvironmentalReportPdf.Amendment(certificateNumber,
                 sample.getAmendmentNumber(), sample.getAmendsLhuNumber(), sample.getAmendmentReason()));
+    }
+
+    /**
+     * A released report is issued when it is first generated, which archives its
+     * original; validating and releasing the results does not issue it.
+     */
+    private boolean reportIssued(Sample sample) {
+        Integer amendmentNumber = sample.getAmendmentNumber();
+        return (amendmentNumber != null && amendmentNumber > 0)
+                || archiveService.findBySampleIdAndAmendmentNumber(Long.parseLong(sample.getId()), 0).isPresent();
     }
 
     /**
@@ -541,6 +556,7 @@ public class ComplianceReportRestController {
 
         reportGenerationService.getLastGenerated(Long.parseLong(sample.getId())).ifPresent(dto::setLastGenerated);
         dto.setHasBeenReleased(lhuAmendmentService.hasBeenReleased(Long.parseLong(sample.getId())));
+        dto.setReportIssued(reportIssued(sample));
 
         // Both RESULT_BATCH (AUTHORED) and VALIDATION_BATCH (VALIDATED_AND_RELEASED)
         // store record_id = analysis.id.

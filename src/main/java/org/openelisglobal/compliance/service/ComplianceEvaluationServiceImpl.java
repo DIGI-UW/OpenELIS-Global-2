@@ -227,8 +227,10 @@ public class ComplianceEvaluationServiceImpl implements ComplianceEvaluationServ
                     if (results.isEmpty()) {
                         break;
                     }
-                    paramResults.add(buildParameterResult(thresholds, results.get(0).getValue(),
-                            nameStandards ? standardLabel(standard) : null));
+                    ParameterResult judged = buildParameterResult(thresholds, results.get(0).getValue(),
+                            nameStandards ? standardLabel(standard) : null);
+                    judged.setAnalysisId(analysis.getId());
+                    paramResults.add(judged);
                 }
             }
         }

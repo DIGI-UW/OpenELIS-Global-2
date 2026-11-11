@@ -167,13 +167,22 @@ final class EnvironmentalReportPdf {
             } catch (IllegalArgumentException e) {
                 overall = dto.getComplianceStatus();
             }
-            document.add(
-                    new Phrase(
-                            "\n" + MessageUtil.getMessage("envReport.conclusion",
-                                    new Object[] { overall, assessed.size(), safe(dto.getStandardName()) }) + "\n",
-                            labelFont));
+            document.add(new Phrase(
+                    "\n" + MessageUtil.getMessage("envReport.conclusion",
+                            new Object[] { overall, assessedResults(assessed), safe(dto.getStandardName()) }) + "\n",
+                    labelFont));
         }
         document.add(new Phrase(text("envReport.decisionRule") + "\n", cellFont));
+    }
+
+    /**
+     * A result judged against several standards has a line per standard and counts
+     * once.
+     */
+    private static long assessedResults(List<ComplianceEvaluationResult.ParameterResult> assessed) {
+        return assessed.stream()
+                .map(parameter -> parameter.getAnalysisId() == null ? parameter : parameter.getAnalysisId()).distinct()
+                .count();
     }
 
     private void addSignatures(Document document, ComplianceReportOrderDTO dto) throws DocumentException {

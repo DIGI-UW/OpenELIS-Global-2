@@ -68,6 +68,7 @@ const MOCK_REPORT = {
       complianceStatus: "COMPLIANT",
       lastGenerated: "2026-04-05T10:30:00",
       hasBeenReleased: true,
+      reportIssued: true,
       gpsCoordinates: null,
       collectionMethod: null,
       waterTemp: null,
@@ -223,6 +224,57 @@ describe("LaporanHasilReport", () => {
       name: /Reissue with Amendment/i,
     });
     expect(reissueButtons).toHaveLength(1);
+  });
+
+  it("offers Generate PDF for a released order whose report was never issued", async () => {
+    const { getFromOpenElisServer } = await import("../../../utils/Utils");
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback({
+          ...MOCK_REPORT,
+          orders: [
+            {
+              ...MOCK_REPORT.orders[1],
+              lastGenerated: null,
+              hasBeenReleased: true,
+              reportIssued: false,
+            },
+          ],
+        });
+      }
+    });
+    try {
+      renderWithIntl(<LaporanHasilReport />);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+      });
+
+      expect(
+        screen.getByRole("button", { name: /Generate PDF/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Reissue with Amendment/i }),
+      ).not.toBeInTheDocument();
+    } finally {
+      getFromOpenElisServer.mockImplementation((url, callback) =>
+        callback(
+          url.includes("compliance-statuses") ? MOCK_STATUSES : MOCK_REPORT,
+        ),
+      );
+    }
+  });
+
+  it("filters by results report among the compliance statuses", () => {
+    renderWithIntl(<LaporanHasilReport />);
+    fireEvent.click(
+      screen.getByRole("combobox", { name: /Compliance Status/i }),
+    );
+
+    expect(
+      screen.getByRole("option", { name: "Results report (no standard)" }),
+    ).toBeInTheDocument();
   });
 
   it("says why an order with results not yet validated has no certificate (OGC-1620)", async () => {
@@ -543,6 +595,7 @@ describe("LaporanHasilReport", () => {
               complianceStatus: "NONE",
               reportKind: "RESULTS",
               hasBeenReleased: false,
+              reportIssued: false,
               lastGenerated: null,
               reportRows: [{ ...rows[1] }],
             },

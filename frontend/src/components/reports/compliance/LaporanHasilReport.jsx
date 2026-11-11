@@ -130,6 +130,10 @@ export default function LaporanHasilReport() {
         setComplianceStatusItems([
           { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.all", defaultMessage: "All" }) },
           ...data,
+          {
+            id: "RESULTS",
+            text: intl.formatMessage({ id: "laporanHasil.status.resultsReport" }),
+          },
         ]);
       },
     );
@@ -555,7 +559,7 @@ export default function LaporanHasilReport() {
                             if (cell.info.header === "actions") {
                               const isIneligible =
                                 order?.complianceStatus === "INELIGIBLE";
-                              const hasBeenReleased = !!order?.hasBeenReleased;
+                              const reportIssued = !!order?.reportIssued;
                               return (
                                 <TableCell key={cell.id}>
                                   {isIneligible ? (
@@ -566,7 +570,7 @@ export default function LaporanHasilReport() {
                                         <FormattedMessage id="laporanHasil.status.notValidated" />
                                       )}
                                     </span>
-                                  ) : hasBeenReleased ? (
+                                  ) : reportIssued ? (
                                     <Button
                                       size="sm"
                                       kind="tertiary"
