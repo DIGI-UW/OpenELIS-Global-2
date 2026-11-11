@@ -205,3 +205,9 @@ unspecified run. Older package editions remain immutable and reload unchanged; a
 new contextual dataset requires a new package version. New editions load
 inactive and require activation and default selection in laboratory
 administration.
+
+### Outbound clinical-data delivery
+
+See [outbound email and FHIR delivery](../upgrades/outbound-delivery.md) for
+sender and recipient configuration, required transport security, and the review
+of retained configuration and registrations when upgrading an existing site.
