@@ -63,10 +63,12 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
     public ResponseEntity<List<MicroReferenceOptionForm>> getOrganisms(@RequestParam(required = false) String q,
             @RequestParam(required = false) List<String> id,
             @RequestParam(defaultValue = "" + ORGANISM_PAGE) int limit) {
-        List<MicroOrganism> organisms = id == null || id.isEmpty()
-                ? referenceService.searchOrganisms(q, Math.max(1, Math.min(limit, MAX_ORGANISMS)))
-                : referenceService.getOrganisms(id.stream().limit(MAX_ORGANISMS).toList());
-        return ResponseEntity.ok(organisms.stream().map(this::toOrganismForm).toList());
+        if (id != null && !id.isEmpty()) {
+            return ResponseEntity.ok(referenceService.getOrganisms(id.stream().limit(MAX_ORGANISMS).toList()).stream()
+                    .map(organism -> toOrganismForm(organism, null)).toList());
+        }
+        return ResponseEntity.ok(referenceService.searchOrganisms(q, Math.max(1, Math.min(limit, MAX_ORGANISMS)))
+                .stream().map(match -> toOrganismForm(match.organism(), match.formerName())).toList());
     }
 
     @GetMapping("/breakpoint-standards")
@@ -119,12 +121,12 @@ public class MicrobiologyReferenceRestController extends BaseRestController {
         return form;
     }
 
-    private MicroReferenceOptionForm toOrganismForm(MicroOrganism organism) {
+    private MicroReferenceOptionForm toOrganismForm(MicroOrganism organism, String formerName) {
         MicroReferenceOptionForm form = new MicroReferenceOptionForm();
         form.id = organism.getId();
         form.label = organism.getDisplayName();
         form.code = organism.getWhonetCode();
-        form.whonetName = organism.getWhonetName();
+        form.formerName = formerName;
         return form;
     }
 }

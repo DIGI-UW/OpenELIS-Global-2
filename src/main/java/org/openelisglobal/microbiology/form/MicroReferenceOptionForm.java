@@ -5,5 +5,6 @@ public class MicroReferenceOptionForm {
     public String id;
     public String label;
     public String code;
-    public String whonetName;
+    /** The older WHONET name a search found this organism by. */
+    public String formerName;
 }

@@ -9,21 +9,17 @@ const read = (query) =>
     ),
   );
 
-// The server ranks the matches: an exact WHONET code, then the most common organisms.
+// The server ranks the matches: an exact WHONET code, then the organisms WHONET marks as common.
 export const searchOrganisms = (text) =>
   read(`q=${encodeURIComponent(text || "")}`);
 
 export const getOrganism = (id) =>
   read(`id=${encodeURIComponent(id)}`).then((found) => found[0] || null);
 
-// "Klebsiella (Klebsiella sp., kl-)": the WHONET name and code a WHONET user knows it by.
+// "Klebsiella sp. (kl-)": WHONET's name and code.
 export const organismText = (organism) => {
   if (!organism) return "";
-  const known = [
-    organism.whonetName !== organism.label && organism.whonetName,
-    organism.code,
-  ].filter(Boolean);
-  return known.length
-    ? `${organism.label} (${known.join(", ")})`
+  return organism.code
+    ? `${organism.label} (${organism.code})`
     : organism.label;
 };

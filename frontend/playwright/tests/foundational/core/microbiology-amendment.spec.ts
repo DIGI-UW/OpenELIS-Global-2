@@ -84,6 +84,9 @@ test.describe("Microbiology final-report amendments", () => {
         exact: true,
       });
       await organism.fill("Klebsiella pneumoniae (UAT)");
+      await expect(
+        dialog.getByRole("option", { name: /Klebsiella pneumoniae \(UAT\)/ }),
+      ).toBeVisible();
       await organism.press("ArrowDown");
       await organism.press("Enter");
       await dialog

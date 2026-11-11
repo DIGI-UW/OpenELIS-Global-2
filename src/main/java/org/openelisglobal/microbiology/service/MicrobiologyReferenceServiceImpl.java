@@ -4,6 +4,7 @@ import java.util.List;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismMatch;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDefaultDAO;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
@@ -33,7 +34,7 @@ public class MicrobiologyReferenceServiceImpl implements MicrobiologyReferenceSe
 
     @Override
     @Transactional(readOnly = true)
-    public List<MicroOrganism> searchOrganisms(String text, int limit) {
+    public List<MicroOrganismMatch> searchOrganisms(String text, int limit) {
         return organismDAO.searchActive(text, limit);
     }
 

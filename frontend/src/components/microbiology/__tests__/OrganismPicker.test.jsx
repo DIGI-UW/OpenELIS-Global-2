@@ -9,17 +9,13 @@ import { getFromOpenElisServer } from "../../utils/Utils";
 
 vi.mock("../../utils/Utils", () => ({ getFromOpenElisServer: vi.fn() }));
 
-const klebsiella = {
-  id: "k",
-  label: "Klebsiella",
-  code: "kl-",
-  whonetName: "Klebsiella sp.",
-};
-const ecoli = {
-  id: "e",
-  label: "Escherichia coli",
-  code: "eco",
-  whonetName: "Escherichia coli",
+const klebsiella = { id: "k", label: "Klebsiella sp.", code: "kl-" };
+const ecoli = { id: "e", label: "Escherichia coli", code: "eco" };
+const kluyveromyces = {
+  id: "m",
+  label: "Kluyveromyces marxianus",
+  code: "kma",
+  formerName: "Candida kefyr",
 };
 const URL = "/rest/microbiology/reference/organisms";
 
@@ -37,7 +33,14 @@ beforeEach(() => {
     if (query.has("id")) {
       callback([klebsiella, ecoli].filter((o) => o.id === query.get("id")));
     } else {
-      callback(query.get("q") === "kleb" ? [klebsiella] : [ecoli]);
+      const typed = query.get("q");
+      callback(
+        typed === "kleb"
+          ? [klebsiella]
+          : typed === "kefyr"
+            ? [kluyveromyces]
+            : [ecoli],
+      );
     }
   });
 });
@@ -55,19 +58,55 @@ it("offers the server's matches to what was typed and reports the organism chose
   fireEvent.change(screen.getByRole("combobox", { name: "Organism" }), {
     target: { value: "kleb" },
   });
-  fireEvent.click(
-    await screen.findByRole("option", {
-      name: "Klebsiella (Klebsiella sp., kl-)",
-    }),
-  );
+  const row = await screen.findByRole("option", { name: /Klebsiella sp\./ });
+  expect(row).toHaveTextContent("kl-");
+  fireEvent.click(row);
   expect(getFromOpenElisServer).toHaveBeenCalledWith(
     `${URL}?q=kleb`,
     expect.any(Function),
   );
   expect(onChange).toHaveBeenCalledWith("k");
   expect(screen.getByRole("combobox", { name: "Organism" })).toHaveValue(
-    "Klebsiella (Klebsiella sp., kl-)",
+    "Klebsiella sp. (kl-)",
   );
+});
+
+it("says which older name found an organism", async () => {
+  show(
+    <OrganismPicker
+      id="picker"
+      titleText="Organism"
+      value=""
+      onChange={vi.fn()}
+    />,
+  );
+  fireEvent.change(screen.getByRole("combobox", { name: "Organism" }), {
+    target: { value: "kefyr" },
+  });
+  expect(
+    await screen.findByRole("option", { name: /Kluyveromyces marxianus/ }),
+  ).toHaveTextContent("Formerly Candida kefyr");
+});
+
+it("withdraws the earlier rows as soon as the text changes", async () => {
+  show(
+    <OrganismPicker
+      id="picker"
+      titleText="Organism"
+      value=""
+      onChange={vi.fn()}
+    />,
+  );
+  const input = screen.getByRole("combobox", { name: "Organism" });
+  fireEvent.click(input);
+  expect(
+    await screen.findByRole("option", { name: /Escherichia coli/ }),
+  ).toBeVisible();
+  fireEvent.change(input, { target: { value: "kleb" } });
+  expect(screen.queryByRole("option", { name: /Escherichia coli/ })).toBeNull();
+  expect(
+    await screen.findByRole("option", { name: /Klebsiella sp\./ }),
+  ).toBeVisible();
 });
 
 it("shows an organism it was given only by id", async () => {
@@ -92,7 +131,7 @@ it("shows an organism it was given only by id", async () => {
 
 it("names an organism by id and falls back when there is none", async () => {
   const { rerender } = show(<OrganismName id="k" fallback="Not available" />);
-  expect(await screen.findByText("Klebsiella")).toBeVisible();
+  expect(await screen.findByText("Klebsiella sp.")).toBeVisible();
   rerender(<OrganismName id="" fallback="Not available" />);
   expect(await screen.findByText("Not available")).toBeVisible();
 });

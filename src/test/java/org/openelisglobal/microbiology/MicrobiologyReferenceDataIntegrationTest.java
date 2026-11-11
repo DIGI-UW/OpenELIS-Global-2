@@ -136,7 +136,7 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     public void reviewedScenarioCanReleaseWithoutBypassingFinalRequirements() {
         String actor = scenarioActor;
         var scenario = uatScenarioService.provision(scenarioRequest("AST_REVIEWED"), actor);
-        var corrected = referenceService.searchOrganisms("KPNUAT", 1).get(0);
+        var corrected = referenceService.searchOrganisms("KPNUAT", 1).get(0).organism();
         var panel = referenceService.getActiveAstPanels(null).stream()
                 .filter(p -> p.getId().equals(scenario.astPanelId)).findFirst().orElseThrow();
         org.openelisglobal.microbiology.service.MicroAstPanelAssignmentService.requireCompatible(corrected, panel);

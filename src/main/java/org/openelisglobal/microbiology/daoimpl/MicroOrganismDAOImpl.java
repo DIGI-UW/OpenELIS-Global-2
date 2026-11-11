@@ -6,6 +6,7 @@ import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismMatch;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,18 +39,33 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
         return query.list();
     }
 
+    private static final String OLDER_NAME = " from clinlims.micro_whonet_organism w where w.taxonomic_status = 'O'"
+            + " and (lower(w.whonet_org_code) = lower(o.whonet_code) or lower(w.replaced_by) = lower(o.whonet_code))"
+            + " and (lower(w.organism) like :fragment or lower(w.whonet_org_code) like :prefix)";
+    private static final String OWN_NAME_OR_CODE = "lower(o.display_name) like :fragment or lower(o.whonet_code) like :prefix";
+
     @Override
     @Transactional(readOnly = true)
-    public List<MicroOrganism> searchActive(String text, int limit) {
+    public List<MicroOrganismMatch> searchActive(String text, int limit) {
         String q = text == null ? "" : text.trim().toLowerCase(java.util.Locale.ROOT);
-        return entityManager.unwrap(Session.class)
-                .createQuery("from MicroOrganism o where o.isActive = 'Y' and (:q = ''"
-                        + " or lower(o.displayName) like :fragment or lower(o.whonetName) like :fragment"
-                        + " or lower(o.whonetCode) = :q)"
-                        + " order by case when lower(o.whonetCode) = :q then 0 else 1 end,"
-                        + " o.prevalence asc nulls last, case when o.whonetCode is null then 1 else 0 end,"
-                        + " lower(o.displayName)", MicroOrganism.class)
-                .setParameter("q", q).setParameter("fragment", "%" + q + "%").setMaxResults(limit).list();
+        String pattern = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        @SuppressWarnings("unchecked")
+        List<Object[]> found = entityManager
+                .createNativeQuery(
+                        "select o.id, case when " + OWN_NAME_OR_CODE + " then null else (select min(w.organism)"
+                                + OLDER_NAME + ") end" + " from clinlims.micro_organism o where o.is_active = 'Y' and ("
+                                + OWN_NAME_OR_CODE + " or exists (select 1" + OLDER_NAME + "))"
+                                + " order by case when lower(o.whonet_code) = :q then 0 else 1 end,"
+                                + " case when exists (select 1 from clinlims.micro_whonet_organism c"
+                                + " where lower(c.whonet_org_code) = lower(o.whonet_code) and c.taxonomic_status = 'C'"
+                                + " and c.common = 'X') then 0 else 1 end, lower(o.display_name)")
+                .setParameter("q", q).setParameter("fragment", "%" + pattern + "%")
+                .setParameter("prefix", pattern + "%").setMaxResults(limit).getResultList();
+        java.util.Map<String, MicroOrganism> organisms = new java.util.HashMap<>();
+        getByIds(found.stream().map(row -> (String) row[0]).toList())
+                .forEach(organism -> organisms.put(organism.getId(), organism));
+        return found.stream().map(row -> new MicroOrganismMatch(organisms.get((String) row[0]), (String) row[1]))
+                .toList();
     }
 
     @Override

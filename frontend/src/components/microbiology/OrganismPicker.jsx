@@ -2,12 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import { ComboBox } from "@carbon/react";
 import { getOrganism, organismText, searchOrganisms } from "./OrganismSearch";
+import "./OrganismPicker.scss";
 
 const TYPING_PAUSE_MS = 250;
 
 /**
  * Picks one organism. The list is far too long to hold in the page, so the
- * choices are the server's matches to what has been typed.
+ * choices are the server's matches to what has been typed. A row shows WHONET's
+ * name and code, and the older name when that is what was typed.
  */
 const OrganismPicker = ({ id, titleText, value, onChange, ...rest }) => {
   const intl = useIntl();
@@ -54,11 +56,35 @@ const OrganismPicker = ({ id, titleText, value, onChange, ...rest }) => {
       })}
       items={matches}
       itemToString={organismText}
+      itemToElement={(organism) => (
+        <span className="organismPicker__row">
+          <span>{organism.label}</span>
+          {organism.code && (
+            <span className="organismPicker__code">{organism.code}</span>
+          )}
+          {organism.formerName && (
+            <span className="organismPicker__former">
+              {intl.formatMessage(
+                { id: "microbiology.organism.formerly" },
+                { name: organism.formerName },
+              )}
+            </span>
+          )}
+        </span>
+      )}
       selectedItem={selected}
       shouldFilterItem={() => true}
       onInputChange={(text) => {
         clearTimeout(pause.current);
-        if (text === organismText(selected)) return;
+        // Choosing a row writes its text here; that is not a new search.
+        if (
+          text === organismText(selected) ||
+          matches.some((organism) => organismText(organism) === text)
+        )
+          return;
+        // Rows for the earlier text must not be choosable while the new ones load.
+        latest.current++;
+        setMatches([]);
         pause.current = setTimeout(() => search(text), TYPING_PAUSE_MS);
       }}
       onChange={({ selectedItem }) => {

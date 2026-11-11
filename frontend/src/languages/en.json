@@ -11158,6 +11158,7 @@
   "microbiology.isolate.identificationHistory": "Identification history",
   "microbiology.isolate.identificationReason": "Re-identification reason",
   "microbiology.isolate.organism.select": "Select an organism",
+  "microbiology.organism.formerly": "Formerly {name}",
   "microbiology.organism.search.placeholder": "Type a name or WHONET code",
   "microbiology.isolate.unidentified": "Unidentified",
   "microbiology.ast.identificationRequired": "Identify the isolate before setting up AST.",
