@@ -3676,6 +3676,7 @@
   "externalconnections.name.placeholder": "Enter connection name",
   "externalconnections.programmedconnection": "Connection Type",
   "externalconnections.save.success": "External connection saved successfully.",
+  "externalconnections.save.failed": "The connection was not saved: {reason}",
   "externalconnections.search": "Search external connections",
   "externalconnections.search.placeholder": "Search by name or type",
   "externalconnections.select": "Select",
