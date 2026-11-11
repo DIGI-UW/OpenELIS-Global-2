@@ -114,4 +114,60 @@ describe("the pathology reading a referred case carries", () => {
       screen.getByText(messages["pathology.label.grossExam"], { exact: false }),
     ).toBeInTheDocument();
   });
+
+  // A slide's level and stain are what the pathologist reads it by; the
+  // referred list showed only its name and location.
+  it("shows each referred slide's level and the name of its stain", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === CASE_URL) {
+        return callback({
+          labNumber: "ACC4",
+          reffered: true,
+          status: "IN_PROGRESS",
+          assignedTechnicianId: "1",
+          assignedPathologistId: "1",
+          grossExam: "",
+          microscopyExam: "",
+          blocks: [
+            { id: 1, designation: "A1", cassetteState: "BLOCK", active: true },
+          ],
+          slides: [
+            {
+              id: 5,
+              designation: "1",
+              blockId: 1,
+              level: "2",
+              stainId: "31",
+              active: true,
+              location: "Tray 4",
+            },
+          ],
+          stainNames: { 31: "PAS" },
+          reports: [],
+          requests: [],
+          techniques: [],
+          conclusions: [],
+        });
+      }
+      if (url.startsWith("/rest/paginatedDisplayList/")) {
+        return callback({
+          displayItems: [],
+          paging: { totalPages: 1, currentPage: 1 },
+        });
+      }
+      return callback([]);
+    });
+
+    renderCaseView();
+
+    const level = await waitFor(() =>
+      screen.getByLabelText(messages["pathology.label.level"]),
+    );
+    expect(level).toHaveValue("2");
+    expect(level).toBeDisabled();
+    expect(
+      screen.getByLabelText(messages["pathology.label.stain"]),
+    ).toHaveValue("PAS");
+    expect(screen.getByDisplayValue("A1.1")).toBeInTheDocument();
+  });
 });

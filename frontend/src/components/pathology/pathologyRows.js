@@ -36,13 +36,6 @@ export function deactivatedCount(rows) {
 }
 
 /**
- * A new slide that names no block yet, which the server refuses to save.
- */
-export function needsParentBlock(slide) {
-  return isUnsavedRow(slide) && slide?.blockId == null;
-}
-
-/**
  * An unsaved row's place among the unsaved rows of its list, counted from
  * one, so "New cassette 1" is the first new one whatever was saved before it.
  */
@@ -102,6 +95,61 @@ export function slideOnBlockName(slide, blocks) {
     : slideIdentifier(slide);
 }
 
+// Whether a row belongs on a list that shows retired rows only on request.
+function shownOnList(row, showDeactivated) {
+  return showDeactivated || !isDeactivatedRow(row);
+}
+
+/**
+ * The microtomy section's groups, in list order: one per saved block in use,
+ * each with the slides cut from it, and last the slides no block on the case
+ * is recorded for (`block: null`, `legacy: true`), only when there are any.
+ * A retired block is listed whenever it still holds a slide in use, so no
+ * slide in use can drop out of sight with its block, and otherwise only when
+ * retired rows are asked for; retired slides likewise. An unsaved slide sits
+ * under the block it was added to. Ids arrive as numbers or strings, so they
+ * are compared as strings.
+ */
+export function microtomyGroups(blocks, slides, showDeactivated) {
+  const allSlides = slides ?? [];
+  const shownSlides = allSlides.filter((slide) =>
+    shownOnList(slide, showDeactivated),
+  );
+  const cutFrom = (block) =>
+    shownSlides.filter((slide) => String(slide.blockId) === String(block.id));
+  const holdsSlideInUse = (block) =>
+    allSlides.some(
+      (slide) =>
+        !isDeactivatedRow(slide) && String(slide.blockId) === String(block.id),
+    );
+
+  const groups = (blocks ?? [])
+    .filter((block) => !isUnsavedRow(block))
+    .filter(
+      (block) =>
+        !isDeactivatedRow(block) || showDeactivated || holdsSlideInUse(block),
+    )
+    .map((block) => ({
+      block,
+      slides: cutFrom(block),
+      retired: isDeactivatedRow(block),
+      legacy: false,
+    }));
+
+  const withoutBlock = shownSlides.filter(
+    (slide) => parentBlockOf(slide, blocks) === undefined,
+  );
+  if (withoutBlock.length > 0) {
+    groups.push({
+      block: null,
+      slides: withoutBlock,
+      retired: false,
+      legacy: true,
+    });
+  }
+  return groups;
+}
+
 /**
  * A block has been embedded, so it is a verified object; a cassette is still
  * waiting for embedding.
@@ -158,23 +206,23 @@ export function nextOutstandingCassette(blocks, block) {
 }
 
 /**
- * The tissue types a cassette's picker offers: the served ones, plus the one
- * the cassette already holds when it is not among them. The served list holds
- * active entries only, so without that row a tissue type retired after it was
- * recorded would leave the cassette looking as if none had been.
+ * The entries a dictionary picker on a row offers: the served ones, plus the
+ * one the row already holds when it is not among them. The served list holds
+ * active entries only, so without that entry a tissue type or a stain retired
+ * after it was recorded would leave the row looking as if none had been.
+ * `names` maps a held id to its name, as the case read carries it.
  */
-export function tissueTypeItems(served, block, names) {
+export function heldOrServedItems(served, heldId, names) {
   const items = served ?? [];
-  const held = block?.tissueTypeId;
   if (
-    held === null ||
-    held === undefined ||
-    held === "" ||
-    items.some((item) => String(item.id) === String(held))
+    heldId === null ||
+    heldId === undefined ||
+    heldId === "" ||
+    items.some((item) => String(item.id) === String(heldId))
   ) {
     return items;
   }
-  return [...items, { id: held, value: names?.[held] ?? String(held) }];
+  return [...items, { id: heldId, value: names?.[heldId] ?? String(heldId) }];
 }
 
 /**
@@ -289,10 +337,14 @@ export function rowListEditors(listKey, updateCase) {
         ),
       })),
     // No id key at all: the server reads a missing id as a new row and names
-    // it.
-    addRow: (row) =>
+    // it. Answers the new row's client key, so the caller can find the row
+    // once it is on the page.
+    addRow: (row) => {
+      const added = withClientKey(row);
       updateCase((prev) => ({
-        [listKey]: [...(prev[listKey] ?? []), withClientKey(row)],
-      })),
+        [listKey]: [...(prev[listKey] ?? []), added],
+      }));
+      return added.clientKey;
+    },
   };
 }

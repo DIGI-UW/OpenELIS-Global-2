@@ -23,6 +23,9 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
     /** Audit verb recorded when a block is retired. */
     String PATHOLOGY_BLOCK_DEACTIVATED = "PATHOLOGY_BLOCK_DEACTIVATED";
 
+    /** Audit verb recorded when a slide is cut from a block. */
+    String PATHOLOGY_SLIDE_CREATED = "PATHOLOGY_SLIDE_CREATED";
+
     /** Audit verb recorded when a slide is retired. */
     String PATHOLOGY_SLIDE_DEACTIVATED = "PATHOLOGY_SLIDE_DEACTIVATED";
 
@@ -37,6 +40,16 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
 
     /** Audit verb recorded when the processor run is written at Processing. */
     String PATHOLOGY_RUN_REFERENCE_RECORDED = "PATHOLOGY_RUN_REFERENCE_RECORDED";
+
+    /** Dictionary category a laboratory fills with the tissue types it cuts. */
+    String TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
+
+    /**
+     * Dictionary category of the stains a slide may carry, shipped by the
+     * configuration loader and extended by the laboratory. The code reads the
+     * category by this name.
+     */
+    String STAIN_CATEGORY = "Pathology Stains";
 
     List<PathologySample> getWithStatus(List<PathologyStatus> statuses);
 

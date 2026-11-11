@@ -18,6 +18,7 @@ import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
+import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.bean.SampleOrderItem;
@@ -111,6 +112,8 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
             pathologySample.getSlides().size();
             displayItem.setBlocks(pathologySample.getBlocks());
             displayItem.setSlides(pathologySample.getSlides());
+            displayItem.setStainNames(PathologyDisplayServiceImpl.dictionaryNames(
+                    pathologySample.getSlides().stream().map(PathologySlide::getStainId), dictionaryService));
             displayItem.setGrossExam(pathologySample.getGrossExam());
             displayItem.setMicroscopyExam(pathologySample.getMicroscopyExam());
 

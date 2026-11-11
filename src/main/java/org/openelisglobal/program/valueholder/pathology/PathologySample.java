@@ -17,7 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.LazyCollection;
 import org.hibernate.annotations.LazyCollectionOption;
 import org.openelisglobal.dictionary.service.DictionaryService;
-import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
@@ -227,21 +227,19 @@ public class PathologySample extends ProgramSample {
                     .map(e -> "Block: " + e.displayIdentifier() + ", Cassette State: "
                             + (e.getCassetteState() == null ? "" : e.getCassetteState().name()) + ", Location: "
                             + StringUtils.defaultString(e.getLocation()) + ", Tissue: "
-                            + tissueTypeName(e.getTissueTypeId()) + ", Active: " + e.isActive())
+                            + dictionaryName(e.getTissueTypeId()) + ", Active: " + e.isActive())
                     .collect(Collectors.toList()), "; ");
         }
     }
 
     /**
-     * The tissue type by its dictionary name, so a history row says what the
-     * cassette held rather than a bare id; the id stands in for a missing entry.
+     * A dictionary entry by its name, so a history row says what a cassette held or
+     * how a slide was stained rather than a bare id; the id stands in for a missing
+     * entry.
      */
-    private static String tissueTypeName(String tissueTypeId) {
-        if (StringUtils.isBlank(tissueTypeId)) {
-            return "";
-        }
-        Dictionary entry = SpringContext.getBean(DictionaryService.class).getDataForId(tissueTypeId);
-        return entry == null ? tissueTypeId : entry.getDisplayValue();
+    private static String dictionaryName(String dictionaryId) {
+        return DictionaryEntryNames.localizedNameOf(SpringContext.getBean(DictionaryService.class), dictionaryId)
+                .orElse(StringUtils.defaultString(dictionaryId));
     }
 
     public void setBlocks(List<PathologyBlock> blocks) {
@@ -252,17 +250,19 @@ public class PathologySample extends ProgramSample {
         return slides;
     }
 
-    /** Names each slide by the identifier written on it and by its parent block. */
+    /**
+     * Names each slide by the identifier written on it and by its parent block,
+     * with the level it was cut at and the stain it carries.
+     */
     public String getSlides_Audit() {
         if (slides == null) {
             return null;
         } else {
-            return StringUtils.join(slides.stream()
-                    .map(e -> "Slide: " + e.displayIdentifier() + ", Block: "
-                            + (e.getBlockId() == null ? "" : e.getBlockId()) + ", Location: "
-                            + StringUtils.defaultString(e.getLocation()) + ", Active: " + e.isActive() + ", File Type: "
-                            + StringUtils.defaultString(e.getFileType()))
-                    .collect(Collectors.toList()), "; ");
+            return StringUtils.join(slides.stream().map(e -> "Slide: " + e.displayIdentifier() + ", Block: "
+                    + (e.getBlockId() == null ? "" : e.getBlockId()) + ", Location: "
+                    + StringUtils.defaultString(e.getLocation()) + ", Level: " + StringUtils.defaultString(e.getLevel())
+                    + ", Stain: " + dictionaryName(e.getStainId()) + ", Active: " + e.isActive() + ", File Type: "
+                    + StringUtils.defaultString(e.getFileType())).collect(Collectors.toList()), "; ");
         }
     }
 

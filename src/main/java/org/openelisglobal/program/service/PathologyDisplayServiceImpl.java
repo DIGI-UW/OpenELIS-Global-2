@@ -10,15 +10,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dictionary.service.DictionaryService;
-import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.RequestDisplayBean;
@@ -29,6 +30,7 @@ import org.openelisglobal.program.valueholder.pathology.PathologyDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
@@ -118,7 +120,10 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         displayItem.setGrossExam(pathologySample.getGrossExam());
         displayItem.setMicroscopyExam(pathologySample.getMicroscopyExam());
         displayItem.setDecalcificationRequired(pathologySample.isDecalcificationRequired());
-        displayItem.setTissueTypeNames(tissueTypeNames(pathologySample.getBlocks()));
+        displayItem.setTissueTypeNames(dictionaryNames(
+                pathologySample.getBlocks().stream().map(PathologyBlock::getTissueTypeId), dictionaryService));
+        displayItem.setStainNames(dictionaryNames(pathologySample.getSlides().stream().map(PathologySlide::getStainId),
+                dictionaryService));
         List<PathologyStageEvent> stageEvents = pathologySampleService.getStageEvents(pathologySampleId);
         displayItem.setStageEvents(stageEvents.stream().map(StageEventView::of).collect(Collectors.toList()));
         displayItem.setRunReference(runReference(stageEvents));
@@ -181,15 +186,15 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
     }
 
     /**
-     * Names every tissue type the cassettes hold, retired entries included, which
-     * the category list the picker is filled from leaves out.
+     * Names every dictionary entry the rows hold, the tissue a cassette holds or
+     * the stain on a slide, retired entries included, which the category list a
+     * picker is filled from leaves out. An id that names no entry stands for
+     * itself.
      */
-    private Map<String, String> tissueTypeNames(List<PathologyBlock> blocks) {
+    static Map<String, String> dictionaryNames(Stream<String> dictionaryIds, DictionaryService dictionaryService) {
         Map<String, String> names = new LinkedHashMap<>();
-        blocks.stream().map(PathologyBlock::getTissueTypeId).filter(StringUtils::isNotBlank).distinct().forEach(id -> {
-            Dictionary entry = dictionaryService.getDataForId(id);
-            names.put(id, entry == null ? id : entry.getLocalizedName());
-        });
+        dictionaryIds.filter(StringUtils::isNotBlank).distinct()
+                .forEach(id -> names.put(id, DictionaryEntryNames.localizedNameOf(dictionaryService, id).orElse(id)));
         return names;
     }
 

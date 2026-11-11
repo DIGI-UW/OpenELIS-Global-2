@@ -49,6 +49,7 @@ import {
   deriveRailItems,
   EMBEDDING_SECTION_ID,
   embeddingStatement,
+  MICROTOMY_SECTION_ID,
   openRequestNames,
   PROCESSING_SECTION_ID,
   railCurrentIndex,
@@ -62,12 +63,12 @@ import {
   countedRows,
   embeddingSummary,
   isEmbeddedRow,
-  needsParentBlock,
   nextOutstandingCassette,
   objectNaming,
   stripClientKeys,
 } from "./pathologyRows";
 import DeactivateRowDialog from "./DeactivateRowDialog";
+import { focusFirstOf } from "./focus";
 import CaseInformationSection from "./sections/CaseInformationSection";
 import GrossingSection from "./sections/GrossingSection";
 import EmbeddingSection from "./sections/EmbeddingSection";
@@ -109,38 +110,10 @@ const RETURN_REASON_MAX_LENGTH = 255;
 const RETURN_BLOCKED_HINT_ID = "returnStageBlockedReason";
 const RETURN_CONFIRM_HINT_ID = "returnStageConfirmReason";
 
-/**
- * Focuses the first of the given selectors that names a control which can
- * take focus, so a target that has gone, or is disabled, falls through to the
- * next.
- *
- * The person may be typing in a field while an answer lands; focus then
- * stays where it is. With `unlessHeld`, focus moves only once nothing holds
- * it, as after the clicked button has gone. With `onlyFrom`, it also moves
- * away from the listed controls, the ones that started the request, which
- * may still be on the page and still hold focus.
- */
-function focusFirstOf(targets, { unlessHeld = false, onlyFrom = null } = {}) {
-  setTimeout(() => {
-    const held = document.activeElement;
-    const nothingHeld = !held || held === document.body || !held.isConnected;
-    if (unlessHeld && !nothingHeld) {
-      return;
-    }
-    if (onlyFrom && !nothingHeld && !onlyFrom.includes(held)) {
-      return;
-    }
-    for (const target of [].concat(targets)) {
-      const element = document.querySelector(target);
-      if (element && !element.disabled) {
-        element.focus();
-        return;
-      }
-    }
-  });
-}
-
 const TISSUE_TYPES_URL = "/rest/dictionary/category/pathology_tissue_types";
+
+const STAINS_URL =
+  "/rest/dictionary/category/" + encodeURIComponent("Pathology Stains");
 
 /**
  * The anatomic-pathology case, on the shared case-view shell.
@@ -191,6 +164,7 @@ function PathologyCaseView() {
   // Null until the list has arrived, so an empty list can only ever mean the
   // laboratory has configured none.
   const [tissueTypes, setTissueTypes] = useState(null);
+  const [stains, setStains] = useState(null);
   const [loadingConclusions, setLoadingConclusions] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
   const [nextPage, setNextPage] = useState(null);
@@ -222,7 +196,6 @@ function PathologyCaseView() {
   // Mirrors `dirty` for a server answer that arrives after the render that
   // sent the request, so it can tell whether there is unsaved work to keep.
   const dirtyRef = useRef(false);
-  const [saveRefusedForBlock, setSaveRefusedForBlock] = useState(false);
   const [reportParams, setReportParams] = useState({
     0: {
       submited: false,
@@ -296,8 +269,6 @@ function PathologyCaseView() {
     release?.();
     dirtyRef.current = false;
     setDirty(false);
-    // A load drops every unsaved slide, so an earlier refusal marks nothing.
-    setSaveRefusedForBlock(false);
     const focusTargets = focusAfterLoad.current;
     const onlyFrom = focusOnlyFrom.current;
     focusAfterLoad.current = null;
@@ -309,13 +280,19 @@ function PathologyCaseView() {
     setFormVersion((version) => version + 1);
   };
 
-  // The tissue types are read again with the case because a refused save
-  // can mean one was retired since the page loaded, and reloading is what
-  // the bench is told to do about it. A failed read keeps the list it had.
+  // The tissue types and stains are read again with the case because a
+  // refused save can mean one was retired since the page loaded, and
+  // reloading is what the bench is told to do about it. A failed read keeps
+  // the list it had.
   const reloadCase = () => {
     getFromOpenElisServer(TISSUE_TYPES_URL, (list) => {
       if (componentMounted.current && Array.isArray(list)) {
         setTissueTypes(list);
+      }
+    });
+    getFromOpenElisServer(STAINS_URL, (list) => {
+      if (componentMounted.current && Array.isArray(list)) {
+        setStains(list);
       }
     });
     getFromOpenElisServer(caseUrl, loadCase);
@@ -669,18 +646,6 @@ function PathologyCaseView() {
     if (isSubmitting) {
       return;
     }
-    // The server would refuse it anyway, in a sentence naming no row.
-    const refused = (caseInfo.slides ?? []).some(needsParentBlock);
-    setSaveRefusedForBlock(refused);
-    if (refused) {
-      setNotificationVisible(true);
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "pathology.locked.slideNeedsBlock" }),
-      });
-      return;
-    }
     setIsSubmitting(true);
     setPostSavePrintModel(null);
     let submitValues = {
@@ -784,6 +749,11 @@ function PathologyCaseView() {
     isPathologist,
     configurationProperties,
     decalcificationRequired,
+    // Retired slides count: they are on record, and a stage switched off
+    // must still show them.
+    sectionHasRows: (candidate) =>
+      candidate.id === MICROTOMY_SECTION_ID &&
+      (caseInfo.slides ?? []).length > 0,
   });
   const openNames = openRequestNames(caseInfo.requests);
 
@@ -827,17 +797,19 @@ function PathologyCaseView() {
             onEmbed={embedCassette}
           />
         );
-      case "pathology-section-microtomy":
+      case MICROTOMY_SECTION_ID:
         return (
           <MicrotomySection
             caseInfo={caseInfo}
             updateCase={updateCase}
             readOnly={readOnly}
+            untracked={Boolean(section.readOnlyBecauseUntracked)}
+            stains={stains}
+            configurationProperties={configurationProperties}
             onSlideFile={(index, file) => attachFile("slides", index, file)}
             dirty={dirty}
             saving={isSubmitting}
             moving={transitioning}
-            saveRefusedForBlock={saveRefusedForBlock}
             onDeactivate={setPendingDeactivation}
           />
         );

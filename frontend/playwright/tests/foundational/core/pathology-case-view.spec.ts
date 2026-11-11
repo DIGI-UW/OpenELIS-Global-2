@@ -8,7 +8,9 @@ import {
   SeededPathologyCase,
 } from "../../../helpers/seed-pathology-data";
 import {
+  addSlideTo,
   advanceCase,
+  blockGroup,
   expandSection,
   expectStage,
   expectStageSwitchesOn,
@@ -22,7 +24,6 @@ import {
   saveDraft,
   sectionHeader,
   setStageSwitch,
-  slideRows,
   summaryRow,
 } from "../../../helpers/pathology-case-view";
 import { UI_TIMEOUT } from "../../../helpers/timeouts";
@@ -336,39 +337,35 @@ test.describe.serial("Pathology case view on the shared shell", () => {
   }, testInfo) => {
     await openCase(page, seeded);
 
-    // A slide names the block it was cut from, and only a block the server
-    // has already saved can be named, so the walk saves a cassette first.
+    // A slide is added under the block it was cut from, and only a block the
+    // server has already saved is listed, so the walk saves a cassette first.
     await expandSection(page, "pathology-section-grossing");
     await page.getByRole("button", { name: "Add cassette" }).click();
     await saveDraft(page, seeded.pathologySampleId);
 
     // The stages between are not what this test is about, so the case is
-    // taken there through the move endpoints, and opened again to show it.
+    // taken there through the move endpoints, which embed the cassette on the
+    // way, and opened again to show it.
     await moveCaseToStage(page, seeded, "MICROTOMY");
     await openCase(page, seeded);
     await expandSection(page, "pathology-section-microtomy");
-    await page.getByRole("button", { name: "Add slide" }).click();
+    await addSlideTo(page, "A1");
 
-    // The one slide on the list, still unsaved and so not yet named.
-    const row = slideRows(page);
+    // The one slide under A1, still unsaved and so not yet named.
+    const row = blockGroup(page, "A1").locator(".pathology-case-view__row");
     await expect(row).toBeVisible();
-
-    // The picker's name carries the row's name after its visible title.
-    const parent = row.getByRole("combobox", { name: /^Cut from block/ });
-    await parent.click();
-    await row.getByRole("option", { name: "A1", exact: true }).click();
-    await expect(parent).toHaveValue("A1");
 
     // The section bodies were moved onto the shell carrying the sixteen-column
     // Carbon Grid rows the flat form laid them out with, inside a centre
     // column that is nine of those sixteen. The columns wrapped and their
     // controls were drawn on top of one another. A new slide row now carries
-    // its identity line, the block picker, the location and its actions; only
-    // a browser can show that they still sit apart, so only this can catch an
-    // overlap coming back.
+    // its identity line, its level and stain, the location and its actions;
+    // only a browser can show that they still sit apart, so only this can
+    // catch an overlap coming back.
     const controls = [
       row.locator(".pathology-case-view__row-identity"),
-      parent,
+      row.getByLabel("Level New slide 1", { exact: true }),
+      row.getByRole("combobox", { name: "Stain New slide 1", exact: true }),
       // Carbon's file uploader renders its label and its own trigger as two
       // buttons of the same name; the first is the one a technician sees.
       row.getByRole("button", { name: "Upload file" }).first(),
@@ -398,12 +395,14 @@ test.describe.serial("Pathology case view on the shared shell", () => {
     await expect(row.locator(".pathology-case-view__upload-hint")).toHaveText(
       "JPEG, PNG, or PDF, up to 10 MB.",
     );
-    await expect(controls[2]).toHaveAccessibleDescription(
+    // The hint is the upload button's accessible description: with the level
+    // and the stain on the row, Upload file is the fourth control measured.
+    await expect(controls[3]).toHaveAccessibleDescription(
       "JPEG, PNG, or PDF, up to 10 MB.",
     );
     // Guidance stays above the actions, while Upload file and Remove share a line.
     expect(
-      Math.abs(boxes[2].y - boxes[3].y),
+      Math.abs(boxes[3].y - boxes[4].y),
       "Upload file and Remove sit on one line",
     ).toBeLessThanOrEqual(2);
 

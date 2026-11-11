@@ -70,6 +70,12 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
      */
     private Map<String, String> tissueTypeNames;
 
+    /**
+     * The name of every stain the case's slides carry, by dictionary id, so a stain
+     * retired after a slide recorded it still reads as a name.
+     */
+    private Map<String, String> stainNames;
+
     private List<PathologyReport> reports;
 
     /** Every stage the case entered, oldest first, as recorded by the server. */
@@ -214,6 +220,14 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
     public void setTissueTypeNames(Map<String, String> tissueTypeNames) {
         this.tissueTypeNames = tissueTypeNames;
+    }
+
+    public Map<String, String> getStainNames() {
+        return stainNames;
+    }
+
+    public void setStainNames(Map<String, String> stainNames) {
+        this.stainNames = stainNames;
     }
 
     public String getConclusionText() {

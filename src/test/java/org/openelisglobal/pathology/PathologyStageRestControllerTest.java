@@ -8,6 +8,7 @@ import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletResponse;
 
@@ -127,6 +128,21 @@ public class PathologyStageRestControllerTest extends PathologyControllerTestSup
                 body.get("messageKey"));
         assertNotNull("with its values, empty or not", body.get("messageArgs"));
         assertEquals("the case stays at grossing", "GROSSING", storedStage());
+    }
+
+    /** Microtomy is finished once at least one slide is cut and in use. */
+    @Test
+    public void advanceFromMicrotomyWithNoSlide_answers400WithTheMessageId() throws Exception {
+        storeAt(PathologyStatus.MICROTOMY);
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE pathology_sample_id = ?", CASE_ID);
+
+        MockHttpServletResponse response = postAsTechnician(ADVANCE, "{\"from\":\"MICROTOMY\"}");
+
+        assertEquals("a case with no slide is not sent to staining", HttpStatus.BAD_REQUEST.value(),
+                response.getStatus());
+        assertEquals("the answer carries the message the screen translates", "pathology.error.microtomyIncomplete",
+                bodyOf(response).get("messageKey"));
+        assertEquals("the case stays at microtomy", "MICROTOMY", storedStage());
     }
 
     /** A return without a reason is refused (FR-2.5). */

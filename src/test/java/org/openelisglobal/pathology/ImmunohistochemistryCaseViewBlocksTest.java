@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -28,6 +29,15 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
     private static final int LEGACY_BLOCK_ID = 101;
     private static final int LEGACY_SLIDE_ID = 201;
     private static final int IHC_SAMPLE_ID = 9701;
+
+    /**
+     * This class's own stain category id and entry, which tests seed themselves.
+     */
+    private static final int STAIN_CATEGORY_ID = 9710;
+    private static final int STAIN = 9711;
+    private static final String STAIN_NAME = "Masson trichrome";
+
+    private boolean insertedTheStainCategory;
 
     @Autowired
     private ImmunohistochemistryDisplayService immunohistochemistryDisplayService;
@@ -62,6 +72,12 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
 
     private void clearOwnRows() {
         jdbcTemplate.update("DELETE FROM clinlims.immunohistochemistry_sample WHERE id = ?", IHC_SAMPLE_ID);
+        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = NULL WHERE stain_id = ?", STAIN);
+        DictionaryRows.removeEntries(jdbcTemplate, STAIN);
+        if (insertedTheStainCategory) {
+            DictionaryRows.removeCategory(jdbcTemplate, STAIN_CATEGORY_ID);
+            insertedTheStainCategory = false;
+        }
         jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table = ?",
                 Integer.parseInt(referenceTablesService.getReferenceTableByName("PATHOLOGY_BLOCK").getId()));
     }
@@ -92,5 +108,23 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
         assertFalse("but it is marked retired, the same as the pathology case view sees it", block.isActive());
         PathologySlide slide = displayItem.getSlides().get(0);
         assertTrue("deactivating the block leaves its slide untouched", slide.isActive());
+    }
+
+    /**
+     * The referred view names each slide's stain as the pathology case view does.
+     */
+    @Test
+    public void caseView_namesTheStainsOfTheReferredSlides() {
+        insertedTheStainCategory = DictionaryRows.insertCategory(jdbcTemplate, STAIN_CATEGORY_ID,
+                PathologySampleService.STAIN_CATEGORY, PathologySampleService.STAIN_CATEGORY, "PathStain");
+        int categoryId = DictionaryRows.idOfCategory(jdbcTemplate, PathologySampleService.STAIN_CATEGORY);
+        DictionaryRows.insertEntry(jdbcTemplate, STAIN, categoryId, STAIN_NAME, "PSMas", true);
+        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = ? WHERE id = ?", STAIN, LEGACY_SLIDE_ID);
+
+        ImmunohistochemistryCaseViewDisplayItem displayItem = immunohistochemistryDisplayService
+                .convertToCaseDisplayItem(IHC_SAMPLE_ID);
+
+        assertEquals("the referred slide's stain is named, not left as a dictionary id",
+                Map.of(String.valueOf(STAIN), STAIN_NAME), displayItem.getStainNames());
     }
 }
