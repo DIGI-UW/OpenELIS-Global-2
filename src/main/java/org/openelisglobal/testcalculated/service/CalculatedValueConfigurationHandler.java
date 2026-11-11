@@ -102,14 +102,15 @@ public class CalculatedValueConfigurationHandler extends AbstractCatalogCsvHandl
         }
         calculation.setName(name);
         calculation.setTestId(Integer.valueOf(test.getId()));
-        calculation.setSampleId(Integer.valueOf(specimen(test, row.get("sampleType"), context).getId()));
+        TypeOfSample specimen = specimen(test, row.get("sampleType"), context);
+        calculation.setSampleId(Integer.valueOf(specimen.getId()));
         calculation.setComponentId(row.isBlank("componentCode") ? null : destination.getId());
         calculation.setResult(row.isBlank("result") ? null : answer(destination.getId(), row.get("result")));
         calculation.setNote(row.isBlank("note") ? null : row.get("note"));
         boolean active = row.flag("isActive", true);
         calculation.setActive(active);
         calculation.setToggled(active);
-        List<Operation> operations = operations(row.get("expression"), test, context);
+        List<Operation> operations = operations(row.get("expression"), test, specimen, context);
         if (created || !sameOperations(calculation.getOperations(), operations)) {
             calculation.setOperations(operations);
         }
@@ -123,7 +124,7 @@ public class CalculatedValueConfigurationHandler extends AbstractCatalogCsvHandl
         return created ? LoadedRow.created(id) : LoadedRow.updated(id);
     }
 
-    private List<Operation> operations(String expression, Test test, String context) {
+    private List<Operation> operations(String expression, Test test, TypeOfSample specimen, String context) {
         List<Operation> operations = new ArrayList<>();
         Matcher matcher = TOKEN.matcher(expression);
         int position = 0;
@@ -143,6 +144,8 @@ public class CalculatedValueConfigurationHandler extends AbstractCatalogCsvHandl
                 }
                 operation.setType(Operation.OperationType.TEST_RESULT);
                 operation.setValue(operandTest.getId());
+                operation.setSampleId(
+                        Integer.valueOf((separator < 0 ? specimen : specimen(operandTest, "", context)).getId()));
                 operation.setComponentId(
                         component(operandTest, reference.substring(separator + 1).trim(), context).getId());
             } else if (matcher.group(2) != null) {
@@ -176,7 +179,8 @@ public class CalculatedValueConfigurationHandler extends AbstractCatalogCsvHandl
         for (int i = 0; i < loaded.size(); i++) {
             Operation a = ordered.get(i), b = loaded.get(i);
             if (a.getType() != b.getType() || !Objects.equals(a.getValue(), b.getValue())
-                    || !Objects.equals(a.getComponentId(), b.getComponentId())) {
+                    || !Objects.equals(a.getComponentId(), b.getComponentId())
+                    || !Objects.equals(a.getSampleId(), b.getSampleId())) {
                 return false;
             }
         }

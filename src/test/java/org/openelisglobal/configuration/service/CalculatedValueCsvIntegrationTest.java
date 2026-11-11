@@ -98,6 +98,11 @@ public class CalculatedValueCsvIntegrationTest extends BaseWebContextSensitiveTe
         assertEquals(
                 List.of("ITCV detected: Detected", "ITCV invalid: Invalid, retest", "ITCV not detected: Not detected"),
                 rules());
+        assertEquals("each operand reads the test's specimen, as the page needs to show it", List.of(PREFIX + "Plasma"),
+                jdbc.queryForList("SELECT DISTINCT s.description FROM clinlims.calculation_operation o"
+                        + " JOIN clinlims.type_of_sample s ON s.id = o.sample_id WHERE o.type = 'TEST_RESULT'"
+                        + " AND o.calculation_id IN (SELECT id FROM clinlims.calculation WHERE name LIKE 'ITCV %')",
+                        String.class));
         assertEquals(List.of("TEST_RESULT:EBOV", "MATH_FUNCTION:==", "ANSWER:Not detected", "MATH_FUNCTION:&&",
                 "TEST_RESULT:IC", "MATH_FUNCTION:==", "ANSWER:Detected"), operations(PREFIX + "not detected"));
     }
@@ -178,6 +183,7 @@ public class CalculatedValueCsvIntegrationTest extends BaseWebContextSensitiveTe
         for (Long testId : jdbc.queryForList("SELECT id FROM clinlims.test WHERE description LIKE 'ITCV %'",
                 Long.class)) {
             jdbc.update("DELETE FROM clinlims.test_terminology_mapping WHERE test_id = ?", testId);
+            jdbc.update("DELETE FROM clinlims.result_limits WHERE test_id = ?", testId);
             jdbc.update("DELETE FROM clinlims.test_result WHERE test_id = ?", testId);
             jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", testId);
             jdbc.update("DELETE FROM clinlims.sampletype_test WHERE test_id = ?", testId);
