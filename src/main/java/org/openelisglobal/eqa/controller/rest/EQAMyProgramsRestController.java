@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentTestMap;
 import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -36,11 +38,44 @@ public class EQAMyProgramsRestController extends BaseRestController {
     @Autowired
     private AnalyteService analyteService;
 
+    @Autowired
+    private EQACycleService cycleService;
+
+    /**
+     * The lab's enrollments. {@code ?active=true} keeps only those the lab is
+     * taking part in, which is what order entry offers (OGC-1483); My Programs
+     * lists every one, suspended and withdrawn included, to manage them.
+     */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, Object>>> listMyPrograms() {
-        List<EQALabProgramEnrollment> enrollments = enrollmentService.findAll();
+    public ResponseEntity<List<Map<String, Object>>> listMyPrograms(
+            @RequestParam(required = false, defaultValue = "false") boolean active) {
+        List<EQALabProgramEnrollment> enrollments = active ? enrollmentService.findActiveEnrollments()
+                : enrollmentService.findAll();
         List<Map<String, Object>> dtos = enrollments.stream().map(this::toDto).collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
+    }
+
+    /**
+     * The open cycles an EQA order for this enrollment can be linked to, with their
+     * deadline and the panel codes the provider sent (OGC-1483).
+     */
+    @GetMapping(value = "/{id}/open-cycles", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> openCycles(@PathVariable Long id) {
+        EQALabProgramEnrollment enrollment = enrollmentService.getMatch("id", id).orElse(null);
+        if (enrollment == null) {
+            return ResponseEntity.notFound().build();
+        }
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (EQACycleService.OpenCycle cycle : cycleService.findOpenCycles(enrollment.getProgramName())) {
+            Map<String, Object> row = new HashMap<>();
+            row.put("id", cycle.id());
+            row.put("name", cycle.name());
+            row.put("cycleNumber", cycle.cycleNumber());
+            row.put("deadline", cycle.deadline() == null ? null : cycle.deadline().toString());
+            row.put("panelCodes", cycle.panelCodes());
+            rows.add(row);
+        }
+        return ResponseEntity.ok(rows);
     }
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)

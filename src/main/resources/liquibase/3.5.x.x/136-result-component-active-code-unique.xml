@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1458: a removed result component is soft-deleted and kept for the record,
+    but the (test_id, code) constraint still counted it, so its code stayed taken:
+    removing Primary while another component existed failed (the next component is
+    promoted to the code PRIMARY), and re-adding a removed code revived the old
+    row with its old ranges. Codes are unique among a test's ACTIVE components.
+    -->
+    <changeSet author="openelis" id="136-result-component-active-code-unique">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM pg_constraint
+                WHERE conname = 'uq_test_result_component_test_code'
+            </sqlCheck>
+        </preConditions>
+        <comment>Result component codes are unique among a test's active components only.</comment>
+        <dropUniqueConstraint schemaName="clinlims" tableName="test_result_component"
+            constraintName="uq_test_result_component_test_code"/>
+        <sql>
+            CREATE UNIQUE INDEX uq_test_result_component_active_code
+                ON clinlims.test_result_component (test_id, code)
+                WHERE is_active = 'Y'
+        </sql>
+        <rollback>
+            <sql>DROP INDEX IF EXISTS clinlims.uq_test_result_component_active_code</sql>
+            <addUniqueConstraint schemaName="clinlims" tableName="test_result_component"
+                columnNames="test_id, code" constraintName="uq_test_result_component_test_code"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

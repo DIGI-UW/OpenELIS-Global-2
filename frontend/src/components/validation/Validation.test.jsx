@@ -71,11 +71,12 @@ const renderValidation = (
   rows,
   configurationProperties = { AccessionFormat: "" },
   params = "",
+  addNotification = vi.fn(),
 ) =>
   render(
     <ConfigurationContext.Provider value={{ configurationProperties }}>
       <NotificationContext.Provider
-        value={{ setNotificationVisible: vi.fn(), addNotification: vi.fn() }}
+        value={{ setNotificationVisible: vi.fn(), addNotification }}
       >
         <IntlProvider locale="en" messages={messages}>
           <Validation
@@ -399,6 +400,32 @@ describe("Validation — Check before release (OGC-1027)", () => {
     expect(payload.doRange).toBe(false);
     expect(payload.accessionNumber).toBe("ACC0");
     expect(payload.rows.map((r) => r.analysisId)).toEqual(["100", "102"]);
+  });
+
+  it("a bulk release that only validates part of a test says the test stays open (OGC-1608)", () => {
+    postToOpenElisServerJsonResponse.mockReset();
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>
+      callback({ released: [], accepted: ["100"], skipped: [] }),
+    );
+    const addNotification = vi.fn();
+    renderValidation(
+      [row(0)],
+      BULK_ON,
+      "?type=order&accessionNumber=ACC0",
+      addNotification,
+    );
+    fireEvent.click(screen.getByTestId("release-all-clear"));
+    fireEvent.click(
+      screen.getByTestId("release-all-clear-sign").querySelector("button"),
+    );
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "success",
+        message:
+          "1 result(s) validated on tests that stay open until their other components are resulted and validated.",
+      }),
+    );
   });
 
   it("a needs-review row offers 'Review →' which opens its panel (OGC-1029)", () => {

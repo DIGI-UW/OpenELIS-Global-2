@@ -103,6 +103,53 @@ describe("requestSession", () => {
     );
   });
 
+  const redirectedTo = (url, response) => {
+    Object.defineProperty(response, "redirected", { value: true });
+    Object.defineProperty(response, "url", { value: url });
+    return response;
+  };
+
+  test("asks again, without reporting an outage, when a stale session cookie is redirected to the login page", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        redirectedTo(
+          "https://lab.example:10443/api/OpenELIS-Global/LoginPage",
+          new Response("<!DOCTYPE html><html></html>", { status: 200 }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, { authenticated: false, csrf: "fresh" }),
+      );
+
+    await expect(requestSession("/api/session")).resolves.toEqual({
+      authenticated: false,
+      csrf: "fresh",
+    });
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  test("reports a signed-out session when the second check is redirected too", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      redirectedTo(
+        "https://lab.example/api/OpenELIS-Global/LoginPage",
+        new Response("<!DOCTYPE html><html></html>", { status: 200 }),
+      ),
+    );
+
+    await expect(requestSession("/api/session")).resolves.toEqual({
+      authenticated: false,
+    });
+  });
+
+  test("still treats a page served without a login redirect as the server not reached", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("<!DOCTYPE html><html></html>", { status: 200 }),
+    );
+
+    await expect(requestSession("/api/session")).rejects.toThrow();
+  });
+
   test("gives up on a request the proxy holds open", async () => {
     vi.useFakeTimers();
     vi.spyOn(globalThis, "fetch").mockImplementation(

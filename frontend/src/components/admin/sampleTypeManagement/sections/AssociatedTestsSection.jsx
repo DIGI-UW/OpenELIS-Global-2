@@ -110,7 +110,12 @@ function AssociatedTestsSection({ sampleTypeId, onChange }) {
             loadCandidates();
           } else {
             setError(
-              intl.formatMessage({ id: "label.sampleType.tests.addError" }),
+              intl.formatMessage({
+                id:
+                  status === 422
+                    ? "label.sampleType.tests.domainMismatch"
+                    : "label.sampleType.tests.addError",
+              }),
             );
           }
         },
@@ -132,7 +137,12 @@ function AssociatedTestsSection({ sampleTypeId, onChange }) {
             loadCandidates();
           } else {
             setError(
-              intl.formatMessage({ id: "label.sampleType.tests.removeError" }),
+              intl.formatMessage({
+                id:
+                  status === 422
+                    ? "label.sampleType.tests.removeLastOfActive"
+                    : "label.sampleType.tests.removeError",
+              }),
             );
           }
         },

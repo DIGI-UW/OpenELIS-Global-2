@@ -12,10 +12,18 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
+import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.eqa.service.SampleEQAService;
+import org.openelisglobal.eqa.valueholder.SampleEQA;
+import org.openelisglobal.note.service.NoteService;
+import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
+import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.notification.service.NotificationContext;
 import org.openelisglobal.notification.service.NotificationTriggerDispatcher;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
@@ -26,6 +34,8 @@ import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
+import org.openelisglobal.sample.override.service.SampleOrderOverrideService;
+import org.openelisglobal.sample.override.valueholder.OverrideType;
 import org.openelisglobal.sample.service.SampleComplianceStandardService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
@@ -94,6 +104,20 @@ public class ResampleServiceImpl implements ResampleService {
 
     @Autowired
     private VectorPoolService vectorPoolService;
+
+    @Autowired
+    private SampleEQAService sampleEQAService;
+
+    @Autowired
+    private SampleOrderOverrideService sampleOrderOverrideService;
+
+    @Autowired
+    private NoteService noteService;
+
+    @Autowired
+    private DisplayListService displayListService;
+
+    private static final String SAMPLE_SUBJECT = "Sample Note";
 
     @Override
     @Transactional
@@ -208,6 +232,7 @@ public class ResampleServiceImpl implements ResampleService {
             }
             sampleComplianceStandardService.replaceAllForSample(newSampleId, copies);
         }
+        copyEqaContext(originalSampleId, newSampleId, sysUserId, userId);
 
         // 4. Clone ONLY the failed specimen and its tests onto the replacement as a
         // fresh draft. The specimen awaits collection (Entered) and analyses start
@@ -306,6 +331,12 @@ public class ResampleServiceImpl implements ResampleService {
     @Override
     @Transactional
     public void reject(String sampleItemId, String reason, Integer userId) {
+        reject(sampleItemId, null, reason, userId);
+    }
+
+    @Override
+    @Transactional
+    public void reject(String sampleItemId, String rejectReasonId, String reason, Integer userId) {
         SampleItem item = sampleItemService.get(sampleItemId);
         if (item == null) {
             throw new IllegalArgumentException("Cannot reject: sample item not found for id " + sampleItemId);
@@ -314,13 +345,22 @@ public class ResampleServiceImpl implements ResampleService {
         // the pool, not the member — so rejecting any member rejects the whole pool
         // (the pool is the unit of acceptance for vector). Non-pooled specimens
         // (Clinical/Env, or a single-organism vector order) reject directly.
+        String rejectReason = rejectReasonName(rejectReasonId);
+        if (rejectReasonId != null && rejectReason == null) {
+            throw new IllegalArgumentException("Unknown rejection reason: " + rejectReasonId);
+        }
+        if (rejectReasonId == null && isEqa(item.getSample())) {
+            throw new IllegalArgumentException("Choose a rejection reason.");
+        }
         VectorPool pool = vectorPoolService.getIntakePoolBySampleItemId(sampleItemId);
         if (pool != null) {
             rejectPool(pool.getId(), reason, userId);
             return;
         }
         String sysUserId = userId != null ? String.valueOf(userId) : null;
+        item.setRejectReasonId(rejectReasonId);
         rejectSampleItem(item, analysisService.getAnalysesBySampleItem(item), sysUserId);
+        recordRejectionNote(item, noteText(rejectReason, reason), sysUserId);
     }
 
     @Override
@@ -344,7 +384,79 @@ public class ResampleServiceImpl implements ResampleService {
                 continue;
             }
             rejectSampleItem(member, analysisService.getAnalysesBySampleItem(member), sysUserId);
+            recordRejectionNote(member, reason, sysUserId);
         }
+    }
+
+    /**
+     * Whether the order is an EQA / proficiency-testing sample. PT material cannot
+     * be recollected, so its rejection must say why (OGC-1488).
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isEqa(Sample sample) {
+        if (sample == null || sample.getId() == null) {
+            return false;
+        }
+        return sampleEQAService.findBySampleId(Long.valueOf(sample.getId()))
+                .map(eqa -> Boolean.TRUE.equals(eqa.getIsEqaSample())).orElse(false);
+    }
+
+    private String rejectReasonName(String rejectReasonId) {
+        if (rejectReasonId == null) {
+            return null;
+        }
+        for (IdValuePair rejectReason : displayListService.getList(ListType.REJECTION_REASONS)) {
+            if (rejectReasonId.equals(rejectReason.getId())) {
+                return rejectReason.getValue();
+            }
+        }
+        return null;
+    }
+
+    private static String noteText(String rejectReason, String comment) {
+        if (rejectReason == null) {
+            return comment;
+        }
+        return comment == null || comment.isBlank() ? rejectReason : rejectReason + " | " + comment;
+    }
+
+    /**
+     * Keeps the rejection's reason on the specimen, where the legacy form keeps it.
+     */
+    private void recordRejectionNote(SampleItem item, String text, String sysUserId) {
+        if (text == null || text.isBlank()) {
+            return;
+        }
+        Note note = noteService.createSavableNote(item, NoteType.REJECTION_REASON, text, SAMPLE_SUBJECT, sysUserId);
+        noteService.insert(note);
+    }
+
+    /**
+     * A replacement for an EQA sample stays an EQA sample: it carries the original
+     * scheme, cycle and deadline, and the decision that the order has no patient
+     * (OGC-1488).
+     */
+    private void copyEqaContext(String originalSampleId, String newSampleId, String sysUserId, Integer userId) {
+        Long originalId = Long.valueOf(originalSampleId);
+        sampleEQAService.findBySampleId(originalId).ifPresent(original -> {
+            SampleEQA copy = new SampleEQA();
+            copy.setSampleId(Long.valueOf(newSampleId));
+            copy.setIsEqaSample(original.getIsEqaSample());
+            copy.setEqaEnrollmentId(original.getEqaEnrollmentId());
+            copy.setEqaProviderSampleId(original.getEqaProviderSampleId());
+            copy.setEqaDeadline(original.getEqaDeadline());
+            copy.setEqaPriority(original.getEqaPriority());
+            copy.setEqaDistribution(original.getEqaDistribution());
+            copy.setCycleId(original.getCycleId());
+            copy.setRoundId(original.getRoundId());
+            copy.setSysUserId(sysUserId != null ? sysUserId : original.getSysUserId());
+            sampleEQAService.insert(copy);
+        });
+        sampleOrderOverrideService.findBySampleIdAndType(originalId, OverrideType.NO_PATIENT)
+                .ifPresent(override -> sampleOrderOverrideService.record(Long.valueOf(newSampleId),
+                        OverrideType.NO_PATIENT, override.getReasonCode(), override.getReason(),
+                        userId == null ? null : Long.valueOf(userId)));
     }
 
     /**

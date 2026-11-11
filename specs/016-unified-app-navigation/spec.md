@@ -102,6 +102,19 @@ sections with a single global sidebar component.
   be sequenced? → A: Big-bang cutover: Build the new GlobalSidebar + config
   loading, then replace all three SideNavs (Admin, Reports, Validation) at once.
 
+### Session 2026-10-20 (OGC-1520, one menu model)
+
+- Q: How do `menu_config.json`, Admin > Menu and the per-request include/exclude
+  filter share control of the navigation? → A: The user: "Retire it, convert
+  once". At every start the file seeds the menu rows: its `menus` insert rows
+  that are missing and set the fields they name on rows whose `config_source`
+  is not `admin`; when `org.openelisglobal.menu.configuration.autocreate` is on,
+  its `includes` or `excludes` deactivate the rows they leave out. Nothing is
+  filtered per request. An edit in Admin > Menu marks the row `admin`, and the
+  file no longer changes it. `GET /rest/admin/menu/configuration` exports the
+  current menu in the file's format; seeding a fresh install with it reproduces
+  the navigation.
+
 #### FR3: Role-Based Access Control
 
 - Extend backend menu model with `requiredRoles` attribute as an array of Spring

@@ -121,3 +121,148 @@
 .board-log-usage {
   flex: 0 0 auto;
 }
+
+.board-critical-banner {
+  max-inline-size: none;
+  margin-bottom: 1rem;
+}
+
+.board-order-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.board-order-fields > * {
+  flex: 1 1 16rem;
+}
+
+.board-suggestions-help {
+  margin-bottom: 0.5rem;
+}
+
+.board-suggestions-button {
+  flex: 0 0 auto;
+}
+
+.board-item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem;
+  margin-top: 0.25rem;
+}
+
+/* FilterableMultiSelect skips the .cds--form-item flex sizing. Size this wrapper:
+   a flex-basis on the column-direction control sets its height, not its width. */
+.board-tag-filter {
+  flex: 0 1 16rem;
+  min-width: 0;
+}
+
+.board-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 42rem) {
+  .board-tag-filter {
+    flex: 1 1 100%;
+  }
+}
+
+.board-show-deactivated {
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.board-deactivate-implications {
+  margin: 0.75rem 0 0 1rem;
+  list-style: disc;
+}
+
+.board-deactivate-implications li {
+  margin-bottom: 0.25rem;
+}
+
+.board-count-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  background: #f4f4f4;
+  border-left: 3px solid #0f62fe;
+}
+
+.board-count-scope {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.board-count-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.board-count-tally {
+  font-size: 0.875rem;
+}
+
+.board-count-entry {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.board-count-entry .cds--number {
+  width: 6rem;
+  min-width: 6rem;
+}
+
+.board-count-expected {
+  font-size: 0.75rem;
+  color: #525252;
+  white-space: nowrap;
+}
+
+.receive-delivery {
+  padding-top: 0.5rem;
+}
+
+.delivery-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.delivery-line > .cds--form-item,
+.delivery-line > .cds--list-box__wrapper {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.delivery-line > .cds--btn {
+  flex: 0 0 auto;
+}
+
+.delivery-unknown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.delivery-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}

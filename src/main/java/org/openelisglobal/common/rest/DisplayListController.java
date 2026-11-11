@@ -43,6 +43,7 @@ import org.openelisglobal.project.service.ProjectService;
 import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
+import org.openelisglobal.reports.action.implementation.ExportStudyProjectByDate;
 import org.openelisglobal.reports.action.implementation.ExportTrendsByDate;
 import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.role.service.RoleService;
@@ -187,6 +188,16 @@ public class DisplayListController extends BaseRestController {
         return projects;
     }
 
+    /** The studies the general export by date can write (CIStudyExport). */
+    @GetMapping(value = "studyprojects", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getStudyExportProjects() {
+        List<IdValuePair> projectList = new ArrayList<>();
+        new ExportStudyProjectByDate().getProjectList()
+                .forEach(project -> projectList.add(new IdValuePair(project.getId(), project.getProjectName())));
+        return projectList;
+    }
+
     @GetMapping(value = "trendsprojects", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getTempProjects() {
@@ -295,18 +306,16 @@ public class DisplayListController extends BaseRestController {
     }
 
     /**
-     * Returns methods linked to the given test plus the default method id. Falls
-     * back to all active methods (no default) if the test has no configured links.
+     * Returns the active methods linked to the given test, A to Z, plus the default
+     * method id. Falls back to every active method, A to Z (no default), if the
+     * test has no active links.
      */
     @GetMapping(value = "methods-for-test/{testId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public MethodsForTestResponse getMethodsForTest(@PathVariable String testId) {
-        List<IdValuePair> methodList = testMethodService.getMethodDisplayListForTest(testId);
-        if (methodList != null) {
-            return new MethodsForTestResponse(methodList, testMethodService.getDefaultMethodId(testId));
-        }
-        return new MethodsForTestResponse(DisplayListService.getInstance().getList(DisplayListService.ListType.METHODS),
-                null);
+        List<IdValuePair> linked = testMethodService.getMethodDisplayListForTest(testId);
+        return new MethodsForTestResponse(testMethodService.getMethodChoicesForTest(testId),
+                linked == null ? null : testMethodService.getDefaultMethodId(testId));
     }
 
     @GetMapping(value = "tests-by-sample", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -417,6 +426,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED));
         configs.put(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED));
+        configs.put(Property.PATHOLOGY_SCAN_VERIFICATION_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_SCAN_VERIFICATION_REQUIRED));
         // Required-field settings the order-entry lanes must honour. These have
         // always existed as FormFields, consulted only by the legacy JSP screens,
         // so the React lanes silently overrode what every shipped profile sets.

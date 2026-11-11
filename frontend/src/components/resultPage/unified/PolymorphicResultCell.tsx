@@ -43,7 +43,7 @@ export interface ResultCellRow {
   unitsOfMeasure?: string;
   testName?: string;
   /** decimal places this test is configured to report to */
-  significantDigits?: number;
+  reportingDecimalPlaces?: number;
 }
 
 /**
@@ -61,37 +61,39 @@ export function enteredDecimalPlaces(value: string): number {
   return decimalPlaces(value);
 }
 
-export function exceedsConfiguredPrecision(
+export function exceedsReportingDecimalPlaces(
   value: string | undefined,
-  significantDigits: number | undefined,
+  reportingDecimalPlaces: number | undefined,
 ): boolean {
-  if (!value || significantDigits === undefined || significantDigits < 0) {
+  if (!value || reportingDecimalPlaces == null || reportingDecimalPlaces < 0) {
     return false;
   }
   return (
-    Number.isFinite(Number(normalizeScientificNotation(value))) &&
-    exceedsDecimalPlaces(value, significantDigits)
+    normalizeScientificNotation(value) === value &&
+    !/[eE]/.test(value) &&
+    Number.isFinite(Number(value)) &&
+    exceedsDecimalPlaces(value, reportingDecimalPlaces)
   );
 }
 
 /**
  * Whether the row is holding a newly typed value finer than the test reports
- * to.
+ * to, which the entry field warns about. The value is saved as typed and
+ * reported rounded to the test's places (OGC-1544), so it is not refused.
  *
- * <p>A value already stored at that precision is left alone: it is a record
- * that exists, and refusing to save the row would strand it — the reader could
- * not so much as add a note to say so. What is refused is entering a new one.
+ * <p>A value already stored at that precision raises no warning: it is a
+ * record that exists.
  */
-export function blocksSaveOnPrecision(row: {
+export function warnsOnReportingFormat(row: {
   resultType?: string;
   resultValue?: string;
   rawResultValue?: string;
-  significantDigits?: number;
+  reportingDecimalPlaces?: number;
 }): boolean {
   return (
     row.resultType === "N" &&
     row.resultValue !== row.rawResultValue &&
-    exceedsConfiguredPrecision(row.resultValue, row.significantDigits)
+    exceedsReportingDecimalPlaces(row.resultValue, row.reportingDecimalPlaces)
   );
 }
 
@@ -158,6 +160,16 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
     return (
       <span className="unifiedResultsReadOnlyValue">
         {readOnlyDisplay(row)}
+        {row.resultType === "N" &&
+          row.rawResultValue != null &&
+          row.rawResultValue !== row.resultValue && (
+            <span className="cds--label">
+              {intl.formatMessage(
+                { id: "label.results.clinicalValue" },
+                { value: row.rawResultValue },
+              )}
+            </span>
+          )}
       </span>
     );
   }
@@ -209,7 +221,7 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
       );
 
     case "N": {
-      const tooPrecise = blocksSaveOnPrecision(row);
+      const formatWillChange = warnsOnReportingFormat(row);
       return (
         <TextInput
           id={`unifiedResultValue-${rowKey}`}
@@ -217,10 +229,10 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
           hideLabel
           type="text"
           inputMode="text"
-          invalid={tooPrecise}
-          invalidText={intl.formatMessage(
-            { id: "error.results.precision" },
-            { 0: row.significantDigits ?? 0 },
+          warn={formatWillChange}
+          warnText={intl.formatMessage(
+            { id: "warning.results.reportingFormat" },
+            { 0: row.reportingDecimalPlaces ?? 0 },
           )}
           value={row.resultValue || ""}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>

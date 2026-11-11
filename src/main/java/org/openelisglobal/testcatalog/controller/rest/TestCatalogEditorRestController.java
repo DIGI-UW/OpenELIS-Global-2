@@ -11,6 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTestCapability;
@@ -31,6 +32,7 @@ import org.openelisglobal.qc.valueholder.TestQcThreshold;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.terminology.TerminologySystems;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
@@ -136,6 +138,9 @@ public class TestCatalogEditorRestController {
     private TestCatalogCreationService testCatalogCreationService;
 
     @Autowired(required = false)
+    private org.openelisglobal.unitofmeasure.service.UnitOfMeasureService unitOfMeasureService;
+
+    @Autowired(required = false)
     private TestSectionService testSectionService;
 
     // Field-injected (optional) so the existing all-args constructor used by unit
@@ -155,6 +160,10 @@ public class TestCatalogEditorRestController {
     // Field-injected (optional) for the OGC-224 panel Terminology section.
     @Autowired(required = false)
     private org.openelisglobal.panelterminology.service.PanelTerminologyMappingService panelTerminologyService;
+
+    // Field-injected (optional) for an answer's terminology.
+    @Autowired(required = false)
+    private org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService answerTerminologyService;
 
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
@@ -236,7 +245,10 @@ public class TestCatalogEditorRestController {
         Set<String> sampleTypeTestIds = null;
         if (!isBlank(sampleType)) {
             sampleTypeTestIds = new HashSet<>();
-            for (TypeOfSampleTest link : typeOfSampleTestService.getTypeOfSampleTestsForSampleType(sampleType)) {
+            List<TypeOfSampleTest> links = TestCatalogNumericIdGuard.isNumericId(sampleType)
+                    ? typeOfSampleTestService.getTypeOfSampleTestsForSampleType(sampleType.trim())
+                    : List.of();
+            for (TypeOfSampleTest link : links) {
                 sampleTypeTestIds.add(link.getTestId());
             }
         }
@@ -313,8 +325,8 @@ public class TestCatalogEditorRestController {
         }
         result.pageSize = Math.max(1, pageSize);
         result.page = Math.max(1, page);
-        int from = Math.min((result.page - 1) * result.pageSize, filtered.size());
-        int to = Math.min(from + result.pageSize, filtered.size());
+        int from = (int) Math.min((long) (result.page - 1) * result.pageSize, filtered.size());
+        int to = (int) Math.min((long) from + result.pageSize, filtered.size());
         result.rows = new ArrayList<>(filtered.subList(from, to));
         // Augment each name with its sample type — e.g. "Covid-PCR (Urine)" — using
         // the same helper the rest of the app uses (respects augmentTestNameWithType),
@@ -355,13 +367,27 @@ public class TestCatalogEditorRestController {
         public boolean isActive;
     }
 
+    /**
+     * The lab units to choose from. With {@code includeInactive} the deactivated
+     * ones come too, marked inactive, so the test editor can keep showing a test's
+     * deactivated unit instead of a blank picker (OGC-189 M2, OGC-1459); every
+     * other chooser keeps the active-only list.
+     */
     @GetMapping(value = "/lab-units", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<LabUnitOption> listLabUnits() {
+    public List<LabUnitOption> listLabUnits(@RequestParam(defaultValue = "false") boolean includeInactive) {
         List<LabUnitOption> options = new ArrayList<>();
         if (testSectionService == null) {
             return options;
         }
-        for (TestSection section : testSectionService.getAllActiveTestSections()) {
+        List<TestSection> sections = new ArrayList<>(testSectionService.getAllActiveTestSections());
+        if (includeInactive) {
+            for (TestSection section : testSectionService.getAllInActiveTestSections()) {
+                if (!TestSectionService.USER_SENTINEL_SECTION_NAME.equals(section.getTestSectionName())) {
+                    sections.add(section);
+                }
+            }
+        }
+        for (TestSection section : sections) {
             LabUnitOption option = new LabUnitOption();
             option.id = section.getId();
             option.name = section.getLocalizedName();
@@ -404,12 +430,20 @@ public class TestCatalogEditorRestController {
         // name, unless an explicit description was sent) is already another
         // test's. The code-in-use 409 stays bodyless, as released clients expect.
         public String conflict;
+        /** Set only on a 422 body: the field whose value was refused. */
+        public String invalidField;
     }
 
     @PostMapping(value = "/tests", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<CreatedTest> createTest(@RequestBody CreateTestRequest body, HttpServletRequest request) {
         if (testCatalogCreationService == null) {
             return ResponseEntity.status(503).build();
+        }
+        if (body != null) {
+            body.name = trimToNull(body.name);
+            body.reportingName = trimToNull(body.reportingName);
+            body.code = trimToNull(body.code);
+            body.description = trimToNull(body.description);
         }
         List<String> desiredSampleTypes = body == null ? List.of()
                 : resolveSampleTypeIds(body.sampleTypeIds, body.sampleTypeId);
@@ -420,10 +454,26 @@ public class TestCatalogEditorRestController {
         // D-030 domain guard (OGC-1145 FR-3): every sample type must be compatible
         // with the test's domain.
         for (String sampleTypeId : desiredSampleTypes) {
-            TypeOfSample type = typeOfSampleService.get(sampleTypeId);
+            TypeOfSample type = TestCatalogNumericIdGuard.isNumericId(sampleTypeId)
+                    ? typeOfSampleService.getTypeOfSampleById(sampleTypeId.trim())
+                    : null;
             if (type == null || !sampleTypeDomainCompatible(body.domain, type)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
+        }
+        if (!isBlank(body.labUnitId)
+                && (!TestCatalogNumericIdGuard.isNumericId(body.labUnitId) || testSectionService == null
+                        || testSectionService.getTestSectionById(body.labUnitId.trim()) == null)) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        if (labUnitIsInactive(body.labUnitId)) {
+            CreatedTest refused = new CreatedTest();
+            refused.invalidField = "labUnitId";
+            return ResponseEntity.unprocessableEntity().body(refused);
+        }
+        if (!isBlank(body.copyFromId) && (!TestCatalogNumericIdGuard.isNumericId(body.copyFromId)
+                || testService.getTestById(body.copyFromId.trim()) == null)) {
+            return ResponseEntity.unprocessableEntity().build();
         }
         // Code uniqueness (FR-4) → 409 so the UI can flag the field.
         if (testCatalogCreationService.codeInUse(body.code)) {
@@ -449,12 +499,17 @@ public class TestCatalogEditorRestController {
         params.orderable = body.orderable;
         params.description = body.description;
         String sysUserId = ControllerUtills.getSysUserId(request);
-        String newId = testCatalogCreationService.createInactiveTest(params, sysUserId);
+        String newId;
+        try {
+            newId = testCatalogCreationService.createInactiveTest(params, sysUserId);
+        } catch (TestCatalogCreationService.CodeInUseException e) {
+            return ResponseEntity.status(409).build();
+        }
         // Copy the source's result components (incl. options/interpretations).
         // The variant-group link that used to accompany this is retired
         // (OGC-1145 Phase 3): the m:n sample-type model replaced variants.
-        if (!isBlank(body.copyFromId) && testService.getTestById(body.copyFromId) != null) {
-            componentService.copyComponentsFromTest(body.copyFromId, newId, sysUserId);
+        if (!isBlank(body.copyFromId)) {
+            componentService.copyComponentsFromTest(body.copyFromId.trim(), newId, sysUserId);
             invalidateHealth();
         }
         // Creating a test may have activated a previously-inactive lab unit; refresh
@@ -467,6 +522,18 @@ public class TestCatalogEditorRestController {
         CreatedTest created = new CreatedTest();
         created.testId = newId;
         return ResponseEntity.status(201).body(created);
+    }
+
+    /**
+     * A new test may not go into a deactivated unit: creating it there used to
+     * switch the unit back on (OGC-1459), which only reactivating the unit may do.
+     */
+    private boolean labUnitIsInactive(String labUnitId) {
+        if (isBlank(labUnitId) || testSectionService == null || !TestCatalogNumericIdGuard.isNumericId(labUnitId)) {
+            return false;
+        }
+        TestSection unit = testSectionService.getTestSectionById(labUnitId.trim());
+        return unit != null && "N".equals(unit.getIsActive());
     }
 
     @GetMapping(value = "/tests/{testId}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -681,6 +748,9 @@ public class TestCatalogEditorRestController {
             return ResponseEntity.unprocessableEntity().build();
         }
         String invalidField = firstInvalidField(body);
+        if (invalidField == null && labUnitRefused(test, body.labUnitId)) {
+            invalidField = "labUnitId";
+        }
         if (invalidField != null) {
             BasicInfo invalid = new BasicInfo();
             invalid.invalidField = invalidField;
@@ -690,12 +760,21 @@ public class TestCatalogEditorRestController {
         // guard a duplicate reached the constraint and surfaced as a bare 500 with
         // an empty body — on exactly the create-then-edit flow the editor steers
         // users into (OGC-1180). Same-test no-op saves stay 200.
+        if (body.description != null) {
+            body.description = body.description.trim();
+        }
         if (body.description != null && !body.description.equals(test.getDescription())
                 && descriptionInUse(body.description, testId)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(descriptionConflict());
         }
+        if (changesCode(body.code, test.getLocalCode()) && testCatalogCreationService != null
+                && testCatalogCreationService.codeInUse(body.code, testId)) {
+            BasicInfo conflict = new BasicInfo();
+            conflict.conflict = "code";
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(conflict);
+        }
         if (body.code != null && !body.code.isBlank()) {
-            test.setLocalCode(body.code);
+            test.setLocalCode(body.code.trim());
         }
         if (body.description != null) {
             test.setDescription(body.description);
@@ -723,17 +802,13 @@ public class TestCatalogEditorRestController {
         if (body.notifyResults != null) {
             test.setNotifyResults(body.notifyResults);
         }
-        // Lab unit (test section) is editable on modify too (not just create).
-        // Assigning an inactive section activates it, mirroring the create flow and
-        // the legacy Test Section assignment, so the test surfaces on Add Order.
+        // Lab unit (test section) is editable on modify too (not just create). A
+        // save never changes the unit's status (OGC-1459): keeping a test in its
+        // deactivated unit leaves the unit off, and moving it into an inactive one
+        // was refused above.
         if (!isBlank(body.labUnitId) && testSectionService != null) {
-            TestSection section = testSectionService.get(body.labUnitId);
+            TestSection section = testSectionService.getTestSectionById(body.labUnitId.trim());
             if (section != null) {
-                if ("N".equals(section.getIsActive())) {
-                    section.setIsActive("Y");
-                    section.setSysUserId(ControllerUtills.getSysUserId(request));
-                    testSectionService.update(section);
-                }
                 test.setTestSection(section);
             }
         }
@@ -820,6 +895,26 @@ public class TestCatalogEditorRestController {
         return null;
     }
 
+    /**
+     * True when the save names a lab unit it cannot use: one that does not exist
+     * (or is not an id), or a different, inactive one.
+     */
+    private boolean labUnitRefused(Test test, String labUnitId) {
+        if (isBlank(labUnitId) || testSectionService == null) {
+            return false;
+        }
+        if (!TestCatalogNumericIdGuard.isNumericId(labUnitId)) {
+            return true;
+        }
+        TestSection target = testSectionService.getTestSectionById(labUnitId.trim());
+        if (target == null) {
+            return true;
+        }
+        TestSection current = test.getTestSection();
+        boolean sameUnit = current != null && target.getId().equals(current.getId());
+        return !sameUnit && "N".equals(target.getIsActive());
+    }
+
     private static boolean validThreshold(String value) {
         if (isBlank(value)) {
             return true;
@@ -846,16 +941,37 @@ public class TestCatalogEditorRestController {
      * comparison is exact-match — mirroring what the database will enforce — and
      * {@code excludeTestId} lets a test keep its own description on save.
      */
+    /**
+     * Compared trimmed (OGC-1464) and case-sensitive, like the test_desc_uk index
+     * it fronts (OGC-1180).
+     */
     private boolean descriptionInUse(String description, String excludeTestId) {
         if (isBlank(description)) {
             return false;
         }
+        String wanted = description.trim();
         for (Test other : testService.getAllTests(false)) {
-            if (description.equals(other.getDescription()) && !other.getId().equals(excludeTestId)) {
+            if (other.getDescription() != null && wanted.equals(other.getDescription().trim())
+                    && !other.getId().equals(excludeTestId)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static String trimToNull(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    /**
+     * True when a Basic Info save changes the test's code. A legacy code another
+     * test shares stays saveable as long as it is not changed (OGC-1464).
+     */
+    private static boolean changesCode(String requested, String stored) {
+        if (isBlank(requested)) {
+            return false;
+        }
+        return stored == null || !requested.trim().equalsIgnoreCase(stored.trim());
     }
 
     private static BasicInfo descriptionConflict() {
@@ -965,6 +1081,10 @@ public class TestCatalogEditorRestController {
         public Boolean normal;
         // Choosing this option opens a text box for a qualifying value at result entry.
         public Boolean qualifiable;
+        // A value the admin typed rather than picked from the dictionary. It is
+        // stored as a dictionary entry with that text, even when the text is a
+        // number that happens to be another entry's id (OGC-1458).
+        public Boolean freeText;
     }
 
     /** A labeled result field of a test (e.g. systolic, diastolic). */
@@ -975,7 +1095,9 @@ public class TestCatalogEditorRestController {
         public Integer displayOrder;
         public String resultType;
         public String uomId;
-        public Integer significantDigits;
+        public Integer reportingDecimalPlaces;
+        public Boolean displayLog10;
+        public String log10SourceComponentCode;
         public String defaultResult;
         public Boolean allowMultipleReadings;
         // Exactly one component per test is primary — the one mirrored to the
@@ -984,6 +1106,10 @@ public class TestCatalogEditorRestController {
         // Per-component default for printing on the patient report (OGC-1127).
         // Null/absent = true (backward-compatible: existing components print).
         public Boolean showOnReport;
+        // OGC-1608: a required component without a result keeps its test open.
+        // Null/absent keeps a stored component's value; a new one is required
+        // only when it is the primary.
+        public Boolean isRequired;
         // Detection limits of a quantitative component (OGC-1148), both optional.
         public java.math.BigDecimal lod;
         public java.math.BigDecimal loq;
@@ -994,6 +1120,107 @@ public class TestCatalogEditorRestController {
     public static class SampleResults {
         public String testId;
         public List<ResultComponentDto> components = new ArrayList<>();
+        /** Set only on a 422 body: the rule that refused the save (OGC-1458). */
+        public String refusal;
+        /** The component the refusal is about, when there is one. */
+        public String refusedComponent;
+        /**
+         * The version of the components the editor loaded; a save against a newer one
+         * is refused with conflict "stale" (OGC-1463).
+         */
+        public String version;
+        /** Set only on a 409 body: "stale". */
+        public String conflict;
+        public String messageKey;
+    }
+
+    private static final String STALE_SECTION = "error.staleSave.section";
+
+    private static SampleResults staleSampleResults(SampleResults current) {
+        SampleResults body = new SampleResults();
+        body.testId = current.testId;
+        body.version = current.version;
+        body.conflict = "stale";
+        body.messageKey = STALE_SECTION;
+        return body;
+    }
+
+    /**
+     * True when the save names a component of this test that was removed: only a
+     * page loaded before the removal still holds it (OGC-1463).
+     */
+    private boolean namesRemovedComponent(String testId, List<ResultComponentDto> components) {
+        Set<String> removed = new HashSet<>();
+        for (TestResultComponent component : componentService.getComponentsByTestId(testId)) {
+            if (!"Y".equals(component.getIsActive())) {
+                removed.add(component.getId());
+            }
+        }
+        return components.stream().anyMatch(c -> !isBlank(c.id) && removed.contains(c.id));
+    }
+
+    /**
+     * A component's label as a refusal names it, cut where it would flood the
+     * message.
+     */
+    private static String shortName(String label) {
+        return label == null || label.length() <= 60 ? label : label.substring(0, 60) + "…";
+    }
+
+    private static ResponseEntity<SampleResults> refusedSampleResults(String testId, String refusal, String component) {
+        SampleResults body = new SampleResults();
+        body.testId = testId;
+        body.refusal = refusal;
+        body.refusedComponent = component;
+        return ResponseEntity.unprocessableEntity().body(body);
+    }
+
+    /**
+     * True when a component holds text longer than its column: code 50, label 255,
+     * default result 80; an option's value 80; an interpretation's match 80, text
+     * 255, severity and color 20 (OGC-1467).
+     */
+    private static boolean componentTooLong(ResultComponentDto c) {
+        if (longerThan(c.code, 50) || longerThan(c.log10SourceComponentCode, 50) || longerThan(c.label, 255)
+                || longerThan(c.defaultResult, 80) || c.options.stream().anyMatch(o -> longerThan(o.value, 80))) {
+            return true;
+        }
+        return c.interpretations.stream().anyMatch(i -> longerThan(i.valueMatch, 80) || longerThan(i.text, 255)
+                || longerThan(i.severity, 20) || longerThan(i.color, 20));
+    }
+
+    private boolean knownUnit(String uomId) {
+        if (!TestCatalogNumericIdGuard.isNumericId(uomId)) {
+            return false;
+        }
+        return unitOfMeasureService == null || unitOfMeasureService.getUnitOfMeasureById(uomId.trim()) != null;
+    }
+
+    private static boolean knownResultType(String type) {
+        if (isBlank(type)) {
+            return false;
+        }
+        for (TypeOfTestResultServiceImpl.ResultType resultType : TypeOfTestResultServiceImpl.ResultType.values()) {
+            if (resultType.getCharacterValue().equals(type)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * True when an option holds text the admin typed: flagged as such, or a new
+     * option whose shown name is not the name of the dictionary entry its value
+     * would resolve to. A bare dictionary id with no name stays a dictionary pick.
+     */
+    private boolean isFreeTextOption(OptionDto option) {
+        if (Boolean.TRUE.equals(option.freeText)) {
+            return true;
+        }
+        if (!isBlank(option.id) || isBlank(option.valueName) || isBlank(option.value)) {
+            return false;
+        }
+        return !option.valueName.trim().equals(dictionaryName(option.value.trim()));
     }
 
     @GetMapping(value = "/tests/{testId}/sample-results", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -1012,6 +1239,21 @@ public class TestCatalogEditorRestController {
         if (test == null) {
             return ResponseEntity.notFound().build();
         }
+        if (body == null || body.components == null
+                || body.components.stream()
+                        .anyMatch(c -> c == null || c.options == null || c.interpretations == null
+                                || c.options.stream().anyMatch(Objects::isNull)
+                                || c.interpretations.stream().anyMatch(Objects::isNull))) {
+            return ResponseEntity.badRequest().build();
+        }
+        SampleResults current = toSampleResults(testId);
+        if (StaleSaveGuard.isStaleVersion(body.version, current.version)
+                || namesRemovedComponent(testId, body.components)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(staleSampleResults(current));
+        }
+        if (body.components.isEmpty() && test.isActive()) {
+            return refusedSampleResults(testId, "components.activeNeedsComponent", null);
+        }
         // Each component needs a code + label, and codes must be unique within the
         // request (the DB enforces (test_id, code) too, but reject early + cleanly).
         Set<String> codes = new HashSet<>();
@@ -1019,8 +1261,31 @@ public class TestCatalogEditorRestController {
             if (isBlank(c.code) || isBlank(c.label)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
+            if (!knownResultType(c.resultType)) {
+                return refusedSampleResults(testId, "resultType.unknown", c.label);
+            }
+            if (Boolean.TRUE.equals(c.displayLog10) && !"N".equals(c.resultType) && !"A".equals(c.resultType)) {
+                return refusedSampleResults(testId, "logDisplay.numericRequired", shortName(c.label));
+            }
+            if (!isBlank(c.log10SourceComponentCode) && (!Boolean.TRUE.equals(c.displayLog10) || body.components
+                    .stream()
+                    .noneMatch(source -> c.log10SourceComponentCode.trim().equals(source.code)
+                            && !source.code.equals(c.code) && "N".equals(source.resultType)
+                            && !Boolean.FALSE.equals(source.showOnReport) && !Boolean.TRUE.equals(source.displayLog10)
+                            && isBlank(source.log10SourceComponentCode)))) {
+                return refusedSampleResults(testId, "logDisplay.sourceInvalid", shortName(c.label));
+            }
+            if (c.reportingDecimalPlaces != null && (c.reportingDecimalPlaces < 0 || c.reportingDecimalPlaces > 10)) {
+                return refusedSampleResults(testId, "decimalPlaces.invalid", shortName(c.label));
+            }
             if (!codes.add(c.code)) {
                 return ResponseEntity.unprocessableEntity().build();
+            }
+            if (componentTooLong(c)) {
+                return refusedSampleResults(testId, "value.tooLong", shortName(c.label));
+            }
+            if (!isBlank(c.uomId) && !knownUnit(c.uomId)) {
+                return refusedSampleResults(testId, "unit.unknown", c.label);
             }
             // FR-C2 (OGC-1148): detection limits are non-negative and LOD <= LOQ.
             if ((c.lod != null && c.lod.signum() < 0) || (c.loq != null && c.loq.signum() < 0)
@@ -1051,11 +1316,14 @@ public class TestCatalogEditorRestController {
             e.setDisplayOrder(c.displayOrder != null ? c.displayOrder : 0);
             e.setResultType(c.resultType);
             e.setUomId(c.uomId);
-            e.setSignificantDigits(c.significantDigits);
+            e.setReportingDecimalPlaces(c.reportingDecimalPlaces);
+            e.setDisplayLog10(Boolean.TRUE.equals(c.displayLog10));
+            e.setLog10SourceComponentCode(c.log10SourceComponentCode);
             e.setDefaultResult(c.defaultResult);
             e.setAllowMultipleReadings(Boolean.TRUE.equals(c.allowMultipleReadings));
             e.setIsPrimary(Boolean.TRUE.equals(c.isPrimary));
             e.setShowOnReport(!Boolean.FALSE.equals(c.showOnReport));
+            e.setIsRequired(c.isRequired != null ? c.isRequired : storedIsRequired(testId, c));
             e.setLod(c.lod);
             e.setLoq(c.loq);
             desired.add(e);
@@ -1082,6 +1350,7 @@ public class TestCatalogEditorRestController {
                     tr.setId(o.id);
                 }
                 tr.setValue(o.value);
+                tr.setFreeText(isFreeTextOption(o));
                 tr.setSortOrder(o.sortOrder != null ? String.valueOf(o.sortOrder) : null);
                 tr.setIsNormal(Boolean.TRUE.equals(o.normal));
                 tr.setIsQuantifiable(Boolean.TRUE.equals(o.qualifiable));
@@ -1112,17 +1381,6 @@ public class TestCatalogEditorRestController {
         }
     }
 
-    @PostMapping(value = "/tests/{testId}/sample-results/copy-from/{sourceId}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<SampleResults> copySampleResults(@PathVariable String testId, @PathVariable String sourceId,
-            HttpServletRequest request) {
-        Test test = testService.getTestById(testId);
-        if (test == null || testService.getTestById(sourceId) == null) {
-            return ResponseEntity.notFound().build();
-        }
-        componentService.copyComponentsFromTest(sourceId, testId, ControllerUtills.getSysUserId(request));
-        return ResponseEntity.ok(toSampleResults(testId));
-    }
-
     /** The primary component's id: the flagged one, else the first. */
     private static String primaryComponentId(List<TestResultComponent> components) {
         for (TestResultComponent component : components) {
@@ -1131,6 +1389,18 @@ public class TestCatalogEditorRestController {
             }
         }
         return components.isEmpty() ? null : components.get(0).getId();
+    }
+
+    /**
+     * A save that leaves isRequired out keeps the value the component has: the one
+     * stored under its id, else under its code, else required only for the primary.
+     */
+    private boolean storedIsRequired(String testId, ResultComponentDto c) {
+        List<TestResultComponent> active = componentService.getActiveComponentsByTestId(testId);
+        TestResultComponent stored = active.stream().filter(e -> !isBlank(c.id) && c.id.equals(e.getId())).findFirst()
+                .orElseGet(() -> active.stream().filter(e -> !isBlank(c.code) && c.code.equalsIgnoreCase(e.getCode()))
+                        .findFirst().orElse(null));
+        return stored != null ? stored.getIsRequired() : Boolean.TRUE.equals(c.isPrimary);
     }
 
     private SampleResults toSampleResults(String testId) {
@@ -1155,7 +1425,9 @@ public class TestCatalogEditorRestController {
             dto.displayOrder = c.getDisplayOrder();
             dto.resultType = c.getResultType();
             dto.uomId = c.getUomId();
-            dto.significantDigits = c.getSignificantDigits();
+            dto.reportingDecimalPlaces = c.getReportingDecimalPlaces();
+            dto.displayLog10 = c.getDisplayLog10();
+            dto.log10SourceComponentCode = c.getLog10SourceComponentCode();
             dto.defaultResult = c.getDefaultResult();
             if (isBlank(dto.defaultResult) && c.getId().equals(primaryId) && legacyDefault != null
                     && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(c.getResultType())) {
@@ -1164,6 +1436,7 @@ public class TestCatalogEditorRestController {
             dto.allowMultipleReadings = c.getAllowMultipleReadings();
             dto.isPrimary = c.getIsPrimary();
             dto.showOnReport = c.getShowOnReport();
+            dto.isRequired = c.getIsRequired();
             dto.lod = c.getLod();
             dto.loq = c.getLoq();
             for (TestResultInterpretation i : interpretationService.getActiveByComponentId(c.getId())) {
@@ -1190,6 +1463,7 @@ public class TestCatalogEditorRestController {
             }
             sr.components.add(dto);
         }
+        sr.version = StaleSaveGuard.versionOf(sr.components);
         return sr;
     }
 
@@ -1288,7 +1562,8 @@ public class TestCatalogEditorRestController {
 
     public static class RangesResponse {
         public String testId;
-        public List<RangeDto> ranges = new ArrayList<>();
+        /** No default: a save that leaves the list out is refused (OGC-1467). */
+        public List<RangeDto> ranges;
         // The coverage report is computed on every load/save so the UI's per-sex
         // gap panel reflects exactly what was persisted, no separate round-trip.
         public RangeCoverageValidationService.CoverageReport coverage;
@@ -1318,6 +1593,9 @@ public class TestCatalogEditorRestController {
         Set<String> associatedTypeIds = new HashSet<>();
         for (TypeOfSample type : testService.getTypeOfSamples(test)) {
             associatedTypeIds.add(type.getId());
+        }
+        if (body.ranges == null || body.ranges.stream().anyMatch(Objects::isNull)) {
+            return ResponseEntity.badRequest().build();
         }
         // FR-19 (OGC-1119): a range constrains one of this test's own result
         // components, never a component of another test.
@@ -1444,12 +1722,15 @@ public class TestCatalogEditorRestController {
     }
 
     @GetMapping(value = "/group/summary", produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<GroupTestSummary> groupSummary(@RequestParam String ids) {
+    public ResponseEntity<List<GroupTestSummary>> groupSummary(@RequestParam String ids) {
         List<GroupTestSummary> out = new ArrayList<>();
         for (String rawId : ids.split(",")) {
             String id = rawId.trim();
             if (id.isEmpty()) {
                 continue;
+            }
+            if (!TestCatalogNumericIdGuard.isNumericId(id)) {
+                return ResponseEntity.badRequest().build();
             }
             Test test = testService.getTestById(id);
             if (test == null) {
@@ -1465,18 +1746,37 @@ public class TestCatalogEditorRestController {
             summary.sampleType = sampleTypeOfTest != null ? sampleTypeOfTest.getLocalizedName() : null;
             out.add(summary);
         }
-        return out;
+        return ResponseEntity.ok(out);
     }
 
     public static class GroupRangesUpdate {
         public List<String> testIds = new ArrayList<>();
-        public List<RangeDto> ranges = new ArrayList<>();
+        /**
+         * No default: a request that leaves the ranges out is refused (400) rather than
+         * read as "clear every test's ranges"; an explicit empty list still clears
+         * them.
+         */
+        public List<RangeDto> ranges;
     }
 
     @PutMapping(value = "/group/ranges", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> saveGroupRanges(@RequestBody GroupRangesUpdate body, HttpServletRequest request) {
         if (body == null || body.testIds == null || body.testIds.isEmpty()) {
             return ResponseEntity.unprocessableEntity().build();
+        }
+        if (body.ranges == null || body.ranges.stream().anyMatch(Objects::isNull)) {
+            return ResponseEntity.badRequest().build();
+        }
+        List<Test> tests = new ArrayList<>();
+        for (String testId : body.testIds) {
+            if (!TestCatalogNumericIdGuard.isNumericId(testId)) {
+                return ResponseEntity.badRequest().build();
+            }
+            Test test = testService.getTestById(testId.trim());
+            if (test == null) {
+                return ResponseEntity.notFound().build();
+            }
+            tests.add(test);
         }
         for (RangeDto r : body.ranges) {
             if (r.gender != null && !r.gender.isBlank() && !RANGE_GENDERS.contains(r.gender)) {
@@ -1491,12 +1791,9 @@ public class TestCatalogEditorRestController {
                 return ResponseEntity.unprocessableEntity().build();
             }
         }
-        String sysUserId = ControllerUtills.getSysUserId(request);
-        for (String testId : body.testIds) {
-            Test test = testService.getTestById(testId);
-            if (test == null) {
-                continue;
-            }
+        Map<String, List<ResultLimit>> desiredByTestId = new LinkedHashMap<>();
+        for (Test test : tests) {
+            String testId = test.getId();
             // New rows per test: the ids in the shared set belong to no single test,
             // so drop them and let each test insert its own (FR-11 per-test write).
             // The component and specimen ids in the shared set belong to the test
@@ -1526,8 +1823,9 @@ public class TestCatalogEditorRestController {
                 copy.highReporting = r.highReporting;
                 perTest.add(copy);
             }
-            resultLimitService.saveRangesForTest(testId, toResultLimits(perTest), sysUserId);
+            desiredByTestId.put(testId, toResultLimits(perTest));
         }
+        resultLimitService.saveRangesForTests(desiredByTestId, ControllerUtills.getSysUserId(request));
         return ResponseEntity.ok().build();
     }
 
@@ -1565,6 +1863,7 @@ public class TestCatalogEditorRestController {
     private RangesResponse toRanges(String testId) {
         RangesResponse resp = new RangesResponse();
         resp.testId = testId;
+        resp.ranges = new ArrayList<>();
         List<ResultLimit> limits = resultLimitService.getAllResultLimitsForTest(testId);
         List<TestResultComponent> comps = componentService.getActiveComponentsByTestId(testId);
         Map<String, String> codeById = new HashMap<>();
@@ -1658,6 +1957,54 @@ public class TestCatalogEditorRestController {
         public String disposalUnit;
         public String specialInstructions;
         public Boolean overrideRestricted;
+        /** Set only on a 422 body: the field whose value was refused (OGC-1465). */
+        public String invalidField;
+    }
+
+    /** The condition codes the Storage form offers (FR-86). */
+    static final Set<String> STORAGE_CONDITIONS = Set.of("AMBIENT", "CONTROLLED_ROOM_TEMPERATURE", "COOL_ROOM",
+            "COLD_ROOM", "REFRIGERATED", "FROZEN", "DEEP_FROZEN", "ULTRA_LOW_FREEZER", "WARM_INCUBATOR");
+
+    /**
+     * The field a storage save would store wrongly: a condition code the form does
+     * not offer, text longer than its column, or a negative duration (OGC-1465). A
+     * condition the test already holds (an imported code) stays saveable.
+     */
+    static String invalidStorageField(StorageDto body, String storedCondition) {
+        if (!isBlank(body.storageCondition) && !STORAGE_CONDITIONS.contains(body.storageCondition)
+                && !body.storageCondition.equals(storedCondition)) {
+            return "storageCondition";
+        }
+        if (longerThan(body.storageConditionCustom, 200)) {
+            return "storageConditionCustom";
+        }
+        if (body.storageDuration != null && body.storageDuration < 0) {
+            return "storageDuration";
+        }
+        if (longerThan(body.storageDurationUnit, 20)) {
+            return "storageDurationUnit";
+        }
+        if (longerThan(body.disposalMethod, 100)) {
+            return "disposalMethod";
+        }
+        if (body.disposalTimeframe != null && body.disposalTimeframe < 0) {
+            return "disposalTimeframe";
+        }
+        if (longerThan(body.disposalUnit, 20)) {
+            return "disposalUnit";
+        }
+        return null;
+    }
+
+    /** Measures the value as it is stored: the save does not trim it. */
+    private static boolean longerThan(String value, int max) {
+        return value != null && value.length() > max;
+    }
+
+    private static ResponseEntity<StorageDto> invalidStorage(String field) {
+        StorageDto refused = new StorageDto();
+        refused.invalidField = field;
+        return ResponseEntity.unprocessableEntity().body(refused);
     }
 
     @GetMapping(value = "/tests/{testId}/storage", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -1676,6 +2023,12 @@ public class TestCatalogEditorRestController {
         Test test = testService.getTestById(testId);
         if (test == null) {
             return ResponseEntity.notFound().build();
+        }
+        TestSampleHandling stored = handlingService.getByTestId(testId);
+        String invalidField = body == null ? "storage"
+                : invalidStorageField(body, stored == null ? null : stored.getStorageCondition());
+        if (invalidField != null) {
+            return invalidStorage(invalidField);
         }
         TestSampleHandling saved = handlingService.saveForTest(testId, toHandling(body),
                 ControllerUtills.getSysUserId(request));
@@ -1731,14 +2084,23 @@ public class TestCatalogEditorRestController {
         if (body.fields != null && !STORAGE_FIELDS.keySet().containsAll(body.fields)) {
             return ResponseEntity.unprocessableEntity().build();
         }
+        if (invalidStorageField(body.storage, null) != null) {
+            return ResponseEntity.unprocessableEntity().build();
+        }
+        for (String testId : body.testIds) {
+            if (!TestCatalogNumericIdGuard.isNumericId(testId)) {
+                return ResponseEntity.badRequest().build();
+            }
+            if (testService.getTestById(testId.trim()) == null) {
+                return ResponseEntity.notFound().build();
+            }
+        }
         if (body.fields != null && body.fields.isEmpty()) {
             return ResponseEntity.ok().build();
         }
-        String sysUserId = ControllerUtills.getSysUserId(request);
-        for (String testId : body.testIds) {
-            if (testService.getTestById(testId) == null) {
-                continue;
-            }
+        Map<String, TestSampleHandling> desiredByTestId = new LinkedHashMap<>();
+        for (String rawId : body.testIds) {
+            String testId = rawId.trim();
             StorageDto desired = body.storage;
             if (body.fields != null) {
                 desired = toStorage(testId, handlingService.getByTestId(testId));
@@ -1746,8 +2108,9 @@ public class TestCatalogEditorRestController {
                     STORAGE_FIELDS.get(field).accept(desired, body.storage);
                 }
             }
-            handlingService.saveForTest(testId, toHandling(desired), sysUserId);
+            desiredByTestId.put(testId, toHandling(desired));
         }
+        handlingService.saveForTests(desiredByTestId, ControllerUtills.getSysUserId(request));
         return ResponseEntity.ok().build();
     }
 
@@ -1891,6 +2254,9 @@ public class TestCatalogEditorRestController {
         if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null) {
             return ResponseEntity.notFound().build();
         }
+        if (body.items == null || body.items.stream().anyMatch(Objects::isNull)) {
+            return ResponseEntity.badRequest().build();
+        }
         Map<String, Integer> orderByTestId = new HashMap<>();
         for (TestOrderItem item : body.items) {
             if (!isBlank(item.testId) && item.displayOrder != null) {
@@ -1928,8 +2294,6 @@ public class TestCatalogEditorRestController {
 
     // ── Terminology Mappings (OGC-957..958) ───────────────────────────────────
 
-    private static final Set<String> TERM_SOURCES = Set.of("LOINC", "SNOMED", "CIEL", "OCL");
-
     private static final Set<String> TERM_RELATIONSHIPS = Set.of("SAME_AS", "BROADER_THAN", "NARROWER_THAN");
 
     /** One terminology mapping: a standard-terminology code for this test. */
@@ -1957,13 +2321,22 @@ public class TestCatalogEditorRestController {
 
     public static class TerminologyResponse {
         public String testId;
-        public List<MappingDto> mappings = new ArrayList<>();
+        /** No default: a save that leaves the list out is refused (OGC-1467). */
+        public List<MappingDto> mappings;
         // The test's active components, so the editor can offer an "Applies to"
         // scope per mapping row without a second request.
         public List<TerminologyComponentDto> components = new ArrayList<>();
         // OGC-1145 FR-13: the test's associated sample types, so the editor can
         // offer the per-specimen override picker without a second request.
         public List<SampleTypeOption> sampleTypes = new ArrayList<>();
+        /**
+         * The version of the mappings the editor loaded; a save against a newer one is
+         * refused with conflict "stale" (OGC-1463).
+         */
+        public String version;
+        /** Set only on a 409 body: "stale". */
+        public String conflict;
+        public String messageKey;
     }
 
     @GetMapping(value = "/tests/{testId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -1994,12 +2367,31 @@ public class TestCatalogEditorRestController {
         for (TypeOfSample type : testService.getTypeOfSamples(test)) {
             associatedTypeIds.add(type.getId());
         }
+        if (body == null || body.mappings == null || body.mappings.stream().anyMatch(Objects::isNull)) {
+            return ResponseEntity.badRequest().build();
+        }
+        TerminologyResponse current = toTerminology(testId);
+        if (StaleSaveGuard.isStaleVersion(body.version, current.version)) {
+            TerminologyResponse stale = new TerminologyResponse();
+            stale.testId = testId;
+            stale.version = current.version;
+            stale.conflict = "stale";
+            stale.messageKey = STALE_SECTION;
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(stale);
+        }
         Set<String> seen = new HashSet<>();
         List<TestTerminologyMapping> desired = new ArrayList<>();
         for (MappingDto m : body.mappings) {
-            // Source must be a known terminology; code required; relationship (if
-            // present) must be a known qualifier.
-            if (isBlank(m.source) || !TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+            // Source is any identifier that fits its column; code required;
+            // relationship (if present) must be a known qualifier.
+            if (longerThan(m.code, 80) || longerThan(m.displayName, 255)) {
+                TerminologyResponse refused = new TerminologyResponse();
+                refused.testId = testId;
+                refused.messageKey = "error.testCatalog.terminology.tooLong";
+                return ResponseEntity.unprocessableEntity().body(refused);
+            }
+            m.source = TerminologySystems.sourceOf(m.source);
+            if (m.source == null || isBlank(m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
@@ -2018,7 +2410,7 @@ public class TestCatalogEditorRestController {
             // DB enforces it per test/scope, but reject early + cleanly rather than
             // surfacing a raw 500.
             if (!seen.add((componentId == null ? "" : componentId) + " " + (sampleTypeId == null ? "" : sampleTypeId)
-                    + " " + m.source + " " + m.code)) {
+                    + " " + m.source + " " + m.code.trim())) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             TestTerminologyMapping e = new TestTerminologyMapping();
@@ -2038,6 +2430,7 @@ public class TestCatalogEditorRestController {
     private TerminologyResponse toTerminology(String testId) {
         TerminologyResponse resp = new TerminologyResponse();
         resp.testId = testId;
+        resp.mappings = new ArrayList<>();
         for (TestTerminologyMapping m : terminologyService.getActiveByTestId(testId)) {
             MappingDto dto = new MappingDto();
             dto.id = m.getId();
@@ -2063,6 +2456,7 @@ public class TestCatalogEditorRestController {
             option.domain = Domain.normalize(type.getDomain());
             resp.sampleTypes.add(option);
         }
+        resp.version = StaleSaveGuard.versionOf(resp.mappings);
         return resp;
     }
 
@@ -2136,6 +2530,10 @@ public class TestCatalogEditorRestController {
         public List<PanelMembership> memberships = new ArrayList<>();
         /** Set only on a 422 body: why the domain guard refused this write. */
         public DomainConflict domainConflict;
+        /** Set only on a 422 body: the rule that refused the write (OGC-1456). */
+        public String refusal;
+        /** With {@code panel.activeNeedsTest}: the active panels left empty. */
+        public List<PanelMembership> refusedPanels = new ArrayList<>();
     }
 
     /** A test within a panel — the read-only preview for the position editor. */
@@ -2149,6 +2547,11 @@ public class TestCatalogEditorRestController {
     public static class PanelTestOrderResponse {
         public String panelId;
         public List<PanelTestRow> tests = new ArrayList<>();
+        /**
+         * The version of the member list the editor loaded; a member save sent with a
+         * newer one is refused as stale (OGC-1463).
+         */
+        public String version;
     }
 
     public static class MembershipItem {
@@ -2157,7 +2560,10 @@ public class TestCatalogEditorRestController {
     }
 
     public static class PanelMembershipUpdate {
-        public List<MembershipItem> memberships = new ArrayList<>();
+        /**
+         * No default: an omitted list is refused, never read as "leave every panel".
+         */
+        public List<MembershipItem> memberships;
     }
 
     @GetMapping(value = "/panels", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -2247,10 +2653,8 @@ public class TestCatalogEditorRestController {
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS_INACTIVE);
     }
 
-    // ── Panel terminology (OGC-224 C4) — parity with the sample-type mapper,
-    // including WHONET; the LOINC mapping is the panel's primary identifier ──
-
-    private static final Set<String> PANEL_TERM_SOURCES = Set.of("LOINC", "SNOMED", "CIEL", "OCL", "WHONET");
+    // ── Panel terminology (OGC-224 C4) — codes in any system; the LOINC mapping
+    // is the panel's primary identifier ──
 
     public static class PanelTerminologyMappingDto {
         public String id;
@@ -2274,7 +2678,30 @@ public class TestCatalogEditorRestController {
 
     public static class PanelTerminologyResponse {
         public String panelId;
-        public List<PanelTerminologyMappingDto> mappings = new ArrayList<>();
+        /**
+         * No default: on a save an omitted list is refused, never read as "clear every
+         * mapping" (OGC-1456).
+         */
+        public List<PanelTerminologyMappingDto> mappings;
+        /** Set only on a 422 body: the rule that refused the write (OGC-1456). */
+        public String refusal;
+        /** The code the refusal is about. */
+        public String refusedCode;
+    }
+
+    /** panel_terminology_mapping.code is VARCHAR(80). */
+    private static final int PANEL_TERM_CODE_MAX_LENGTH = 80;
+
+    /** A LOINC code is at most 10 characters (panel.loinc routes e-orders). */
+    private static final int LOINC_MAX_LENGTH = 10;
+
+    private static ResponseEntity<PanelTerminologyResponse> refusedTerminology(String panelId, String refusal,
+            String code) {
+        PanelTerminologyResponse body = new PanelTerminologyResponse();
+        body.panelId = panelId;
+        body.refusal = refusal;
+        body.refusedCode = code;
+        return ResponseEntity.unprocessableEntity().body(body);
     }
 
     @GetMapping(value = "/panels/{panelId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -2291,12 +2718,16 @@ public class TestCatalogEditorRestController {
         if (findPanel(panelId) == null) {
             return ResponseEntity.notFound().build();
         }
+        if (body == null || body.mappings == null || body.mappings.stream().anyMatch(Objects::isNull)) {
+            return ResponseEntity.badRequest().build();
+        }
         // (source, code) unique within the request — the DB enforces it per
         // panel, but reject early + cleanly rather than surfacing a raw 500.
         Set<String> seen = new HashSet<>();
         List<org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping> desired = new ArrayList<>();
         for (PanelTerminologyMappingDto m : body.mappings) {
-            if (isBlank(m.source) || !PANEL_TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+            m.source = TerminologySystems.sourceOf(m.source);
+            if (m.source == null || isBlank(m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
@@ -2304,6 +2735,12 @@ public class TestCatalogEditorRestController {
             }
             if (!seen.add(m.source + " " + m.code.trim())) {
                 return ResponseEntity.unprocessableEntity().build();
+            }
+            if (m.code.trim().length() > PANEL_TERM_CODE_MAX_LENGTH) {
+                return refusedTerminology(panelId, "code.tooLong", m.code.trim());
+            }
+            if ("LOINC".equals(m.source) && m.code.trim().length() > LOINC_MAX_LENGTH) {
+                return refusedTerminology(panelId, "loinc.tooLong", m.code.trim());
             }
             org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping e = new org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping();
             e.setSource(m.source);
@@ -2320,10 +2757,95 @@ public class TestCatalogEditorRestController {
 
     private PanelTerminologyResponse toPanelTerminology(String panelId) {
         PanelTerminologyResponse resp = new PanelTerminologyResponse();
+        resp.mappings = new ArrayList<>();
         resp.panelId = panelId;
         for (org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping m : panelTerminologyService
                 .getActiveByPanelId(panelId)) {
             resp.mappings.add(PanelTerminologyMappingDto.of(m));
+        }
+        return resp;
+    }
+
+    public static class AnswerTerminologyMappingDto {
+        public String id;
+        public String source;
+        public String code;
+        public String relationship;
+        public String displayName;
+
+        // no entity-arg constructor: a second public constructor reads as an
+        // implicit Jackson creator under the strict mapper and breaks request
+        // binding (400)
+        static AnswerTerminologyMappingDto of(
+                org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping m) {
+            AnswerTerminologyMappingDto dto = new AnswerTerminologyMappingDto();
+            dto.id = m.getId();
+            dto.source = m.getSource();
+            dto.code = m.getCode();
+            dto.relationship = m.getRelationship();
+            dto.displayName = m.getDisplayName();
+            return dto;
+        }
+    }
+
+    public static class AnswerTerminologyResponse {
+        public String dictionaryId;
+        public List<AnswerTerminologyMappingDto> mappings = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/answers/{dictionaryId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AnswerTerminologyResponse> getAnswerTerminology(@PathVariable String dictionaryId) {
+        if (findAnswer(dictionaryId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(toAnswerTerminology(dictionaryId));
+    }
+
+    @PutMapping(value = "/answers/{dictionaryId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AnswerTerminologyResponse> saveAnswerTerminology(@PathVariable String dictionaryId,
+            @RequestBody AnswerTerminologyResponse body, HttpServletRequest request) {
+        if (findAnswer(dictionaryId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Set<String> seen = new HashSet<>();
+        List<org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping> desired = new ArrayList<>();
+        for (AnswerTerminologyMappingDto m : body.mappings) {
+            m.source = TerminologySystems.sourceOf(m.source);
+            if (m.source == null || isBlank(m.code)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            if (!seen.add(m.source + " " + m.code.trim())) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping e = new org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping();
+            e.setSource(m.source);
+            e.setCode(m.code.trim());
+            e.setRelationship(isBlank(m.relationship) ? null : m.relationship);
+            e.setDisplayName(isBlank(m.displayName) ? null : m.displayName.trim());
+            desired.add(e);
+        }
+        answerTerminologyService.saveMappingsForDictionary(dictionaryId, desired,
+                ControllerUtills.getSysUserId(request));
+        return ResponseEntity.ok(toAnswerTerminology(dictionaryId));
+    }
+
+    private Dictionary findAnswer(String dictionaryId) {
+        if (dictionaryService == null || answerTerminologyService == null || dictionaryId == null
+                || !dictionaryId.matches("\\d+")) {
+            return null;
+        }
+        return dictionaryService.getDictionaryById(dictionaryId);
+    }
+
+    private AnswerTerminologyResponse toAnswerTerminology(String dictionaryId) {
+        AnswerTerminologyResponse resp = new AnswerTerminologyResponse();
+        resp.dictionaryId = dictionaryId;
+        for (org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping m : answerTerminologyService
+                .getActiveByDictionaryId(dictionaryId)) {
+            resp.mappings.add(AnswerTerminologyMappingDto.of(m));
         }
         return resp;
     }
@@ -2502,6 +3024,12 @@ public class TestCatalogEditorRestController {
             option.name = existing.getPanelName();
             return ResponseEntity.ok(option);
         }
+        if (name.length() > PANEL_NAME_MAX_LENGTH) {
+            PanelOption refusal = new PanelOption();
+            refusal.name = name;
+            refusal.refusal = "name.tooLong";
+            return ResponseEntity.unprocessableEntity().body(refusal);
+        }
 
         // panel.name_localization_id is NOT NULL — create the name localization
         // first, mirroring the legacy panel-add flow.
@@ -2555,6 +3083,10 @@ public class TestCatalogEditorRestController {
         if (panelService.getPanelById(panelId) == null) {
             return ResponseEntity.notFound().build();
         }
+        return ResponseEntity.ok(panelTestOrder(panelId));
+    }
+
+    private PanelTestOrderResponse panelTestOrder(String panelId) {
         PanelTestOrderResponse resp = new PanelTestOrderResponse();
         resp.panelId = panelId;
         for (PanelItem pi : panelItemService.getPanelItemsForPanel(panelId)) {
@@ -2575,7 +3107,9 @@ public class TestCatalogEditorRestController {
             String bn = b.testName == null ? "" : b.testName;
             return an.compareToIgnoreCase(bn);
         });
-        return ResponseEntity.ok(resp);
+        resp.version = StaleSaveGuard
+                .versionOf(resp.tests.stream().map(row -> row.testId + "@" + row.position).toList());
+        return resp;
     }
 
     @PutMapping(value = "/tests/{testId}/panels", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -2584,6 +3118,9 @@ public class TestCatalogEditorRestController {
         Test test = testService.getTestById(testId);
         if (test == null) {
             return ResponseEntity.notFound().build();
+        }
+        if (body == null || body.memberships == null || body.memberships.stream().anyMatch(Objects::isNull)) {
+            return ResponseEntity.badRequest().build();
         }
         // OGC-224: SAMPLETYPE_PANEL must follow every membership write — panels
         // this test leaves need a sync just as much as panels it joins.
@@ -2618,6 +3155,25 @@ public class TestCatalogEditorRestController {
             }
             fallback++;
         }
+        TestPanelsResponse emptied = new TestPanelsResponse();
+        for (String leftPanelId : affectedPanelIds) {
+            if (positionByPanelId.containsKey(leftPanelId)) {
+                continue;
+            }
+            Panel left = findPanel(leftPanelId);
+            if (left != null && "Y".equals(left.getIsActive())
+                    && panelItemService.getPanelItemsForPanel(leftPanelId).size() <= 1) {
+                PanelMembership refusedPanel = new PanelMembership();
+                refusedPanel.panelId = left.getId();
+                refusedPanel.panelName = left.getPanelName();
+                emptied.refusedPanels.add(refusedPanel);
+            }
+        }
+        if (!emptied.refusedPanels.isEmpty()) {
+            emptied.testId = testId;
+            emptied.refusal = "panel.activeNeedsTest";
+            return ResponseEntity.unprocessableEntity().body(emptied);
+        }
         panelItemService.setMembershipsForTest(test, positionByPanelId, ControllerUtills.getSysUserId(request));
         affectedPanelIds.addAll(positionByPanelId.keySet());
         // null only in hand-constructed unit-style tests (field-injected)
@@ -2639,13 +3195,18 @@ public class TestCatalogEditorRestController {
     }
 
     public static class PanelTestsUpdate {
-        public List<PanelTestItem> tests = new ArrayList<>();
+        /**
+         * No default: an omitted list is refused, never read as "remove every member".
+         */
+        public List<PanelTestItem> tests;
         /**
          * Create-flow only: a newly created panel defaults to Active when its first
          * test is added. Honored only when the panel is inactive and had zero members
          * before this write — editing never auto-flips.
          */
         public Boolean autoActivate;
+        /** The member-list version the editor loaded (OGC-1463). */
+        public String version;
     }
 
     public static class PanelTestsResponse {
@@ -2653,6 +3214,15 @@ public class TestCatalogEditorRestController {
         public List<PanelTestRow> tests = new ArrayList<>();
         /** Set only on a 422 body: why the domain guard refused this write. */
         public DomainConflict domainConflict;
+        /** Set only on a 422 body: the rule that refused the write (OGC-1456). */
+        public String refusal;
+        /** With {@code tests.inactive}: the inactive tests the write tried to add. */
+        public List<ConflictingTest> refusedTests = new ArrayList<>();
+        /** The member-list version after the write, or the current one on a 409. */
+        public String version;
+        /** Set only on a 409 body: "stale". */
+        public String conflict;
+        public String messageKey;
     }
 
     @PutMapping(value = "/panels/{panelId}/tests", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -2662,16 +3232,36 @@ public class TestCatalogEditorRestController {
         if (panel == null) {
             return ResponseEntity.notFound().build();
         }
+        if (body == null || body.tests == null || body.tests.stream().anyMatch(Objects::isNull)) {
+            return ResponseEntity.badRequest().build();
+        }
+        String currentVersion = panelTestOrder(panelId).version;
+        if (StaleSaveGuard.isStaleVersion(body.version, currentVersion)) {
+            PanelTestsResponse stale = new PanelTestsResponse();
+            stale.version = currentVersion;
+            stale.conflict = "stale";
+            stale.messageKey = STALE_SECTION;
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(stale);
+        }
         String sysUserId = ControllerUtills.getSysUserId(request);
         Map<String, Integer> positionByTestId = new LinkedHashMap<>();
         List<Test> outside = new ArrayList<>();
+        List<Test> inactive = new ArrayList<>();
+        List<PanelItem> priorMembers = panelItemService.getPanelItemsForPanel(panel.getId());
+        Set<String> priorMemberIds = new HashSet<>();
+        for (PanelItem member : priorMembers) {
+            if (member.getTest() != null) {
+                priorMemberIds.add(member.getTest().getId());
+            }
+        }
         int fallback = 1;
         for (PanelTestItem item : body.tests) {
-            if (isBlank(item.testId) || positionByTestId.containsKey(item.testId)) {
-                // blank or duplicate member — reject the whole request
+            if (!TestCatalogNumericIdGuard.isNumericId(item.testId)
+                    || positionByTestId.containsKey(item.testId.trim())) {
+                // blank, malformed or duplicate member — reject the whole request
                 return ResponseEntity.unprocessableEntity().build();
             }
-            Test test = testService.getTestById(item.testId);
+            Test test = testService.getTestById(item.testId.trim());
             if (test == null) {
                 return ResponseEntity.unprocessableEntity().build();
             }
@@ -2681,7 +3271,10 @@ public class TestCatalogEditorRestController {
             if (!Domain.normalize(panel.getDomain()).equals(Domain.normalize(test.getDomain()))) {
                 outside.add(test);
             }
-            positionByTestId.put(item.testId, item.position != null ? item.position : fallback);
+            if (!test.isActive() && !priorMemberIds.contains(test.getId())) {
+                inactive.add(test);
+            }
+            positionByTestId.put(test.getId(), item.position != null ? item.position : fallback);
             fallback++;
         }
         if (!outside.isEmpty()) {
@@ -2689,7 +3282,18 @@ public class TestCatalogEditorRestController {
             refused.domainConflict = domainConflict(Domain.normalize(panel.getDomain()), outside);
             return ResponseEntity.unprocessableEntity().body(refused);
         }
-        int priorCount = panelItemService.getPanelItemsForPanel(panel.getId()).size();
+        if (!inactive.isEmpty()) {
+            PanelTestsResponse refused = new PanelTestsResponse();
+            refused.refusal = "tests.inactive";
+            refused.refusedTests = domainConflict(Domain.normalize(panel.getDomain()), inactive).tests;
+            return ResponseEntity.unprocessableEntity().body(refused);
+        }
+        if (positionByTestId.isEmpty() && "Y".equals(panel.getIsActive())) {
+            PanelTestsResponse refused = new PanelTestsResponse();
+            refused.refusal = "tests.activeNeedsTest";
+            return ResponseEntity.unprocessableEntity().body(refused);
+        }
+        int priorCount = priorMembers.size();
         panelItemService.setMembershipsForPanel(panel, positionByTestId, sysUserId);
         // SAMPLETYPE_PANEL follows the membership write (order entry reads it);
         // null only in hand-constructed unit-style tests (field-injected)
@@ -2708,7 +3312,9 @@ public class TestCatalogEditorRestController {
         refreshPanelDisplayLists();
         PanelTestsResponse resp = new PanelTestsResponse();
         resp.panel = toPanelOption(panelService.getPanelById(panel.getId()));
-        resp.tests = getPanelTestOrder(panel.getId()).getBody().tests;
+        PanelTestOrderResponse saved = panelTestOrder(panel.getId());
+        resp.tests = saved.tests;
+        resp.version = saved.version;
         return ResponseEntity.ok(resp);
     }
 

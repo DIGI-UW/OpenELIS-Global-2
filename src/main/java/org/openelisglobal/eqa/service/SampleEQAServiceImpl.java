@@ -99,12 +99,8 @@ public class SampleEQAServiceImpl extends BaseObjectServiceImpl<SampleEQA, Long>
     @Override
     @Transactional(readOnly = true)
     public Optional<Long> findPerAnalystSchemeId(Long sampleId) {
-        return schemeOf(sampleId).filter(scheme -> Boolean.TRUE.equals(scheme.getPerAnalyst())).map(EQAProgram::getId);
-    }
-
-    @Override
-    public boolean isInHouse(Long sampleId) {
-        return schemeOf(sampleId).filter(scheme -> scheme.getSchemeType() == EQASchemeType.IN_HOUSE).isPresent();
+        return schemeOf(sampleId).filter(scheme -> Boolean.TRUE.equals(scheme.getPerAnalyst()))
+                .filter(scheme -> scheme.getSchemeType() != EQASchemeType.IN_HOUSE).map(EQAProgram::getId);
     }
 
     private Optional<EQAProgram> schemeOf(Long sampleId) {

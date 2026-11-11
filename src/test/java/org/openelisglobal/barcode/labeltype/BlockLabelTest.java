@@ -1,5 +1,6 @@
 package org.openelisglobal.barcode.labeltype;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -109,6 +110,51 @@ public class BlockLabelTest {
         assertTrue(fields.stream().anyMatch(field -> "Biopsy".equals(field.getValue())));
         assertTrue(fields.stream().anyMatch(field -> "55".equals(field.getValue())));
         assertTrue(fields.stream().anyMatch(field -> "3".equals(field.getValue())));
+    }
+
+    @Test
+    public void designation_isPrintedInsteadOfTheLegacyNumber() {
+        PathologySample pathologySample = new PathologySample();
+        pathologySample.setId(55);
+
+        PathologyBlock block = new PathologyBlock();
+        block.setBlockNumber(3);
+        block.setDesignation("A1");
+
+        BlockLabel label = new BlockLabel(null, new Sample(), pathologySample, block, "ACC-1", "Biopsy");
+
+        List<LabelField> fields = collect(label.getAboveFields());
+        assertTrue(fields.stream().anyMatch(field -> "A1".equals(field.getValue())));
+        assertFalse(fields.stream().anyMatch(field -> "3".equals(field.getValue())));
+        assertEquals("the barcode still carries the lab number", "ACC-1", label.getCode());
+    }
+
+    /**
+     * Every block label carried the lab number as its symbol, so a scanned block
+     * read the same as every other block of the order. The symbol is now the
+     * block's own barcode; the print count stays keyed on the lab number.
+     */
+    @Test
+    public void theSymbol_isTheBlocksOwnBarcode() {
+        PathologyBlock block = new PathologyBlock();
+        block.setDesignation("A1");
+        block.setBarcode("ACC-1.A1");
+
+        BlockLabel label = new BlockLabel(null, new Sample(), new PathologySample(), block, "ACC-1", "Biopsy");
+
+        assertEquals("the scanned symbol names this block", "ACC-1.A1", label.getCode());
+        assertEquals("the print count is still kept per order for block labels", "ACC-1-B", label.labelInfoCode());
+    }
+
+    @Test
+    public void aBlockWithNoBarcode_stillScansToItsOrder() {
+        PathologyBlock block = new PathologyBlock();
+        block.setDesignation("A1");
+
+        BlockLabel label = new BlockLabel(null, new Sample(), new PathologySample(), block, "ACC-1", "Biopsy");
+
+        assertEquals("a row with no barcode prints the lab number rather than nothing", "ACC-1", label.getCode());
+        assertEquals("and keeps the same print count", "ACC-1-B", label.labelInfoCode());
     }
 
     private List<LabelField> collect(Iterable<LabelField> fields) {

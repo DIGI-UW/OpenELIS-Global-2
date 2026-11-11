@@ -252,4 +252,100 @@ describe("CombinedTestEditor compares ranges across tests' own components (OGC-1
 
     expect(await screen.findByTestId("ranges-differ-warning")).toBeVisible();
   });
+
+  it("warns when the siblings differ only in their reporting range (OGC-1455)", async () => {
+    wire(
+      sibling("comp-31", { lowReporting: 0.2, highReporting: 9 }),
+      sibling("comp-32", { id: "50", lowReporting: 0.2, highReporting: 12 }),
+    );
+    renderGroup();
+
+    expect(await screen.findByTestId("ranges-differ-warning")).toBeVisible();
+  });
+});
+
+describe("CombinedTestEditor when a test's ranges fail to load (OGC-1455)", () => {
+  const setAll = () =>
+    screen.getByRole("button", {
+      name: messages["button.testCatalog.setAllTo"],
+    });
+
+  const failFor = (failing) => {
+    const base = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (failing.some((suffix) => url.endsWith(suffix))) {
+        cb(undefined);
+      } else {
+        base(url, cb);
+      }
+    });
+    return base;
+  };
+
+  it("says so, disables Set all and sends nothing", async () => {
+    failFor(["/tests/32/ranges"]);
+    renderGroup();
+
+    expect(await screen.findByTestId("group-ranges-load-error")).toBeVisible();
+    expect(setAll()).toBeDisabled();
+    fireEvent.click(setAll());
+    expect(putToOpenElisServer).not.toHaveBeenCalled();
+  });
+
+  it("does not badge the other tests as different when the seed test failed to load", async () => {
+    const base = failFor(["/tests/31/ranges"]);
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/tests/31/ranges")) {
+        cb(undefined);
+      } else if (url.endsWith("/tests/32/ranges")) {
+        cb({
+          testId: "32",
+          ranges: [{ ...seedRange, id: "50" }],
+          sampleTypes: [],
+        });
+      } else {
+        base(url, cb);
+      }
+    });
+    renderGroup();
+
+    await screen.findByTestId("group-ranges-load-error");
+    expect(
+      screen.queryByText(messages["state.testCatalog.differsAcrossTests"]),
+    ).toBeNull();
+  });
+
+  it("names the test whose ranges did not load", async () => {
+    failFor(["/tests/32/ranges"]);
+    renderGroup();
+
+    expect(
+      await screen.findByTestId("group-ranges-load-error"),
+    ).toHaveTextContent("HIV rapid test HIV(Plasma)");
+  });
+
+  it("treats a failed component list as a failed load too", async () => {
+    failFor(["/tests/31/sample-results"]);
+    renderGroup();
+
+    expect(await screen.findByTestId("group-ranges-load-error")).toBeVisible();
+    expect(setAll()).toBeDisabled();
+  });
+
+  it("enables Set all once a retry loads every test", async () => {
+    const base = failFor(["/tests/32/ranges"]);
+    renderGroup();
+    await screen.findByTestId("group-ranges-load-error");
+
+    getFromOpenElisServer.mockImplementation(base);
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["common.retry"] }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("group-ranges-load-error")).toBeNull(),
+    );
+    expect(await screen.findByTestId("ranges-differ-warning")).toBeVisible();
+    expect(setAll()).toBeEnabled();
+  });
 });

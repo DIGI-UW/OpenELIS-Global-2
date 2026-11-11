@@ -15,7 +15,7 @@ import { RecentlyViewed } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import StorageHistoryModal from "./StorageHistoryModal";
@@ -196,28 +196,54 @@ const StorageSection = ({ testId, groupTestIds }) => {
     const payload = isGroup
       ? { testIds: groupTestIds, storage, fields: changedFields }
       : storage;
-    putToOpenElisServer(url, JSON.stringify(payload), (status) => {
-      setSaving(false);
-      setNotificationVisible(true);
-      if (status === 200) {
-        addNotification({
-          kind: "success",
-          title: intl.formatMessage({
-            id: "label.testCatalog.section.storage",
-          }),
-          message: intl.formatMessage({
-            id: "label.testCatalog.storage.saved",
-          }),
-        });
-        load();
-      } else {
-        addNotification({
-          kind: "error",
-          title: intl.formatMessage({ id: "error.title" }),
-          message: intl.formatMessage({ id: "server.error.msg" }),
-        });
-      }
-    });
+    putToOpenElisServerFullResponse(
+      url,
+      JSON.stringify(payload),
+      async (response) => {
+        setSaving(false);
+        setNotificationVisible(true);
+        const status = response ? response.status : 0;
+        if (status === 422) {
+          const body = await response.json().catch(() => null);
+          const label = body && FIELD_LABELS[body.invalidField];
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "label.testCatalog.section.storage",
+            }),
+            message: intl.formatMessage(
+              { id: "error.testCatalog.storage.invalidField" },
+              {
+                field: label
+                  ? intl.formatMessage({ id: label })
+                  : intl.formatMessage({
+                      id: "label.testCatalog.section.storage",
+                    }),
+              },
+            ),
+          });
+          return;
+        }
+        if (status === 200) {
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({
+              id: "label.testCatalog.section.storage",
+            }),
+            message: intl.formatMessage({
+              id: "label.testCatalog.storage.saved",
+            }),
+          });
+          load();
+        } else {
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "error.title" }),
+            message: intl.formatMessage({ id: "server.error.msg" }),
+          });
+        }
+      },
+    );
   };
 
   if (loading) {

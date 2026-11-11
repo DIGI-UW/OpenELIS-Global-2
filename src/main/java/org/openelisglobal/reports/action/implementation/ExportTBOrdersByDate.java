@@ -19,7 +19,7 @@ import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
 import java.text.ParseException;
 import org.apache.commons.validator.GenericValidator;
-import org.jfree.util.Log;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.project.service.ProjectService;
@@ -48,7 +48,7 @@ public class ExportTBOrdersByDate extends CSVRoutineSampleExportReport
             form.setUseLowerDateRange(Boolean.TRUE);
             form.setUseUpperDateRange(Boolean.TRUE);
         } catch (RuntimeException e) {
-            Log.error("Error in ExportTBOrdersByDate.setRequestParemeters: ", e);
+            LogEvent.logError("Error in ExportTBOrdersByDate.setRequestParemeters: ", e);
         }
     }
 
@@ -88,7 +88,7 @@ public class ExportTBOrdersByDate extends CSVRoutineSampleExportReport
             csvRoutineColumnBuilder = getColumnBuilder();
             csvRoutineColumnBuilder.buildDataSource();
         } catch (SQLException e) {
-            Log.error("Error in " + this.getClass().getSimpleName() + ".createReportItems: ", e);
+            LogEvent.logError("Error in " + this.getClass().getSimpleName() + ".createReportItems: ", e);
             add1LineErrorMessage("report.error.message.general.error");
         }
     }

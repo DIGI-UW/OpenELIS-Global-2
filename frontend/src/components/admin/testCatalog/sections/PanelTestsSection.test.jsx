@@ -174,3 +174,138 @@ describe("PanelTestsSection save refusals (OGC-1232)", () => {
     );
   });
 });
+
+describe("PanelTestsSection when the member list fails to load (OGC-1456)", () => {
+  const failMembers = () =>
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/test-order")) {
+        cb(undefined);
+      } else if (url.startsWith("/rest/sample-types")) {
+        cb([]);
+      }
+    });
+
+  it("says so and keeps Save disabled, so nothing replaces the members", () => {
+    failMembers();
+    wrap(ENV_PANEL);
+
+    expect(screen.getByTestId("panel-tests-load-error")).toBeVisible();
+    expect(screen.getByRole("button", { name: /^save$/i })).toBeDisabled();
+    expect(screen.queryByText(messages["empty.panel.tests"])).toBeNull();
+    expect(screen.queryByTestId("panel-tests-count")).toBeNull();
+  });
+
+  it("loads the members on Retry and enables Save", async () => {
+    failMembers();
+    wrap(ENV_PANEL);
+
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/test-order")) {
+        cb({
+          tests: [{ testId: "6", testName: "pH", code: "PH", position: 1 }],
+        });
+      } else if (url.startsWith("/rest/sample-types")) {
+        cb([]);
+      }
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["common.retry"] }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("panel-tests-load-error")).toBeNull(),
+    );
+    expect(screen.getByText("pH")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^save$/i })).toBeEnabled();
+  });
+});
+
+describe("PanelTestsSection membership refusals (OGC-1456)", () => {
+  const refuse = (body) =>
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({ ok: false, status: 422, json: () => Promise.resolve(body) }),
+    );
+
+  it("explains that an active panel keeps at least one test", async () => {
+    wrap(ENV_PANEL);
+    refuse({ refusal: "tests.activeNeedsTest" });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(notification.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["error.panel.tests.activeNeedsTest"],
+        }),
+      ),
+    );
+  });
+
+  it("shows the stored members again after that refusal", async () => {
+    wrap(ENV_PANEL);
+    const memberLoads = () =>
+      getFromOpenElisServer.mock.calls.filter(([url]) =>
+        url.includes("/test-order"),
+      ).length;
+    const before = memberLoads();
+    refuse({ refusal: "tests.activeNeedsTest" });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() => expect(memberLoads()).toBe(before + 1));
+  });
+
+  it("names the inactive tests it refused", async () => {
+    wrap(ENV_PANEL);
+    refuse({
+      refusal: "tests.inactive",
+      refusedTests: [{ testId: "6", name: "pH(Water)" }],
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(notification.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: expect.stringContaining("pH(Water)"),
+        }),
+      ),
+    );
+  });
+});
+
+describe("PanelTestsSection two editors (OGC-1463)", () => {
+  it("sends the loaded version and shows a stale save with Refresh", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/test-order")) {
+        cb({ tests: [], version: "v1" });
+      } else if (url.startsWith("/rest/sample-types")) {
+        cb([]);
+      }
+    });
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        ok: false,
+        status: 409,
+        json: () => Promise.resolve({ conflict: "stale", version: "v2" }),
+      }),
+    );
+    wrap(ENV_PANEL);
+    const memberLoads = () =>
+      getFromOpenElisServer.mock.calls.filter(([url]) =>
+        url.includes("/test-order"),
+      ).length;
+
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+    expect(
+      await screen.findByTestId("panel-tests-stale-save"),
+    ).toBeInTheDocument();
+    expect(
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).version,
+    ).toBe("v1");
+    expect(screen.getByRole("button", { name: /^save$/i })).toBeDisabled();
+    const before = memberLoads();
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["label.results.refresh"] }),
+    );
+    await waitFor(() => expect(memberLoads()).toBe(before + 1));
+    expect(notification.addNotification).not.toHaveBeenCalled();
+  });
+});

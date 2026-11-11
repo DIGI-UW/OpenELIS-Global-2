@@ -188,6 +188,6 @@ public class QaOverviewServiceImpl implements QaOverviewService {
     private String lookupInstrumentName(String instrumentId) {
         String fallback = "Instrument " + instrumentId;
         return orWarn("Instrument name",
-                () -> analyzerService.getWithBinding(instrumentId).map(Analyzer::getName).orElse(fallback), fallback);
+                () -> analyzerService.getWithMapping(instrumentId).map(Analyzer::getName).orElse(fallback), fallback);
     }
 }

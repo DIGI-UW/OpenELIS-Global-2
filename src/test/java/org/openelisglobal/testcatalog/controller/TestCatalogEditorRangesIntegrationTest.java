@@ -168,6 +168,7 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
 
     private static RangesResponse body(RangeDto... ranges) {
         RangesResponse resp = new RangesResponse();
+        resp.ranges = new java.util.ArrayList<>();
         for (RangeDto r : ranges) {
             resp.ranges.add(r);
         }

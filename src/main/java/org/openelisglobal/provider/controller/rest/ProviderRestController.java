@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
@@ -68,6 +69,14 @@ public class ProviderRestController {
         }
     }
 
+    static final int MAX_SEARCH_PAGE_SIZE = 200;
+
+    /**
+     * Providers matching a name or a phone number, one page of {@code pageSize}
+     * rows (1 to {@value #MAX_SEARCH_PAGE_SIZE}). The unfiltered list pages at
+     * {@code page.defaultPageSize}, which the response then reports as its page
+     * size, so its start rows line up with what the DAO returns.
+     */
     @GetMapping(value = "/provider/search", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> searchProviders(@RequestParam(required = false) String search,
             @RequestParam(required = false) String phone, @RequestParam(defaultValue = "1") int page,
@@ -76,13 +85,18 @@ public class ProviderRestController {
         try {
             List<Provider> providers;
             int totalCount;
+            page = Math.max(page, 1);
+            boolean byPhone = !GenericValidator.isBlankOrNull(phone);
+            boolean byName = !byPhone && !GenericValidator.isBlankOrNull(search);
+            pageSize = byPhone || byName ? Math.min(Math.max(pageSize, 1), MAX_SEARCH_PAGE_SIZE)
+                    : Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
             int startRecNo = ((page - 1) * pageSize) + 1;
 
-            if (!GenericValidator.isBlankOrNull(phone)) {
-                providers = providerService.getPagesOfSearchedProvidersByPhone(startRecNo, phone);
+            if (byPhone) {
+                providers = providerService.getPagesOfSearchedProvidersByPhone(startRecNo, pageSize, phone);
                 totalCount = providerService.getTotalSearchedProviderCountByPhone(phone);
-            } else if (!GenericValidator.isBlankOrNull(search)) {
-                providers = providerService.getPagesOfSearchedProviders(startRecNo, search);
+            } else if (byName) {
+                providers = providerService.getPagesOfSearchedProviders(startRecNo, pageSize, search);
                 totalCount = providerService.getTotalSearchedProviderCount(search);
             } else {
                 providers = providerService.getPageOfProviders(startRecNo);
@@ -126,7 +140,7 @@ public class ProviderRestController {
                 }
 
                 providerData.put("externalId", provider.getExternalId());
-                providerData.put("isActive", "Y".equals(provider.getActive()));
+                providerData.put("isActive", Boolean.TRUE.equals(provider.getActive()));
 
                 results.add(providerData);
             }

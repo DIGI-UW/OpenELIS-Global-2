@@ -10,7 +10,7 @@
     <properties>
         <maven.java.release>21</maven.java.release>
         <!-- Semantic Versioning; see RELEASES.md -->
-        <revision>3.3.0-SNAPSHOT</revision>
+        <revision>3.4.0-SNAPSHOT</revision>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
@@ -22,7 +22,12 @@
         <log4j.version>2.25.5</log4j.version>
         <springframework.version>6.2.19</springframework.version>
         <springsecurity.version>6.5.11</springsecurity.version>
+        <!-- Module system contracts (module-contracts/), each released on its
+            own cadence -->
+        <openelis-spi.version>1.0.0-SNAPSHOT</openelis-spi.version>
+        <openelis-module-api.version>1.0.0-SNAPSHOT</openelis-module-api.version>
         <testContainersVersion>1.19.8</testContainersVersion>
+        <surefire.runOrder>alphabetical</surefire.runOrder>
     </properties>
 
     <dependencyManagement>
@@ -107,6 +112,18 @@
             <artifactId>dataexport-core</artifactId>
             <version>0.0.0.9</version>
         </dependency>
+        <!-- Module system contracts, built from module-contracts/ before the WAR
+            (like dataexport) -->
+        <dependency>
+            <groupId>org.openelisglobal</groupId>
+            <artifactId>openelis-spi</artifactId>
+            <version>${openelis-spi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openelisglobal</groupId>
+            <artifactId>openelis-module-api</artifactId>
+            <version>${openelis-module-api.version}</version>
+        </dependency>
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>hapi-fhir-structures-r4</artifactId>
@@ -143,6 +160,11 @@
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>hapi-fhir-base</artifactId>
             <version>7.0.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.fhir</groupId>
+            <artifactId>ucum</artifactId>
+            <version>1.0.8</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -269,6 +291,11 @@
                 <exclusion>
                     <groupId>org.bouncycastle</groupId>
                     <artifactId>bcprov-jdk16</artifactId>
+                </exclusion>
+                <!-- Bundles 2011 copies of bcpkix classes that shadow bcpkix-jdk18on. -->
+                <exclusion>
+                    <groupId>org.bouncycastle</groupId>
+                    <artifactId>bcmail-jdk16</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -615,10 +642,24 @@
             <version>2.9.0</version>
             <scope>test</scope>
         </dependency>
+        <!-- Module manifest validation (JSON schema) and semver ranges; compile
+            scope since the module registry validates manifests at start-up -->
         <dependency>
             <groupId>com.networknt</groupId>
             <artifactId>json-schema-validator</artifactId>
             <version>1.5.6</version>
+        </dependency>
+        <dependency>
+            <groupId>org.semver4j</groupId>
+            <artifactId>semver4j</artifactId>
+            <version>5.6.0</version>
+        </dependency>
+        <!-- Core feature boundaries (CoreBoundariesArchitectureTest), frozen baseline
+            in src/test/resources/archunit_store -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit4</artifactId>
+            <version>1.3.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -816,11 +857,7 @@
             <artifactId>javase</artifactId>
             <version>3.5.2</version>
         </dependency>
-        <dependency>
-            <groupId>org.openjdk.nashorn</groupId>
-            <artifactId>nashorn-core</artifactId>
-            <version>15.4</version>
-        </dependency>
+
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>
@@ -866,6 +903,19 @@
             </resource>
             <resource>
                 <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>adminPassword.txt</exclude>
+                </excludes>
+            </resource>
+            <!-- The interface's translation catalogue, which server-rendered reports
+                print their labels from (UiMessages), so a report reads in the screens' language
+                and wording. -->
+            <resource>
+                <directory>frontend/src/languages</directory>
+                <targetPath>ui-languages</targetPath>
+                <includes>
+                    <include>*.json</include>
+                </includes>
             </resource>
         </resources>
         <plugins>
@@ -873,6 +923,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
                 <version>3.3.1</version>
+                <configuration>
+                    <!-- openelis-core for modules: the WAR's classes as openelisglobal-<version>-classes.jar -->
+                    <attachClasses>true</attachClasses>
+                    <classesClassifier>classes</classesClassifier>
+                </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -929,7 +984,7 @@
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
-                <version>2.43.0</version>
+                <version>3.10.4</version>
                 <configuration>
                     <pom>
                         <includes>
@@ -958,6 +1013,7 @@
                                 <exclude>.idea/**</exclude>
                                 <exclude>.cursor/**</exclude>
                                 <exclude>.claude/**</exclude>
+                                <exclude>.worktrees/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -992,6 +1048,7 @@
                                 <exclude>.idea/**</exclude>
                                 <exclude>.cursor/**</exclude>
                                 <exclude>.claude/**</exclude>
+                                <exclude>.worktrees/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -1018,6 +1075,7 @@
                                 <exclude>**/target/**</exclude>
                                 <exclude>.cursor/**</exclude>
                                 <exclude>.claude/**</exclude>
+                                <exclude>.worktrees/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
                                 <exclude>tools/openelis-analyzer-bridge/**</exclude>
                                 <exclude>tools/analyzer-mock-server/**</exclude>
@@ -1044,6 +1102,16 @@
                     </formats>
                     <!-- define a language-specific format -->
                     <java>
+                        <includes>
+                            <include>src/main/java/**/*.java</include>
+                            <include>src/test/java/**/*.java</include>
+                            <include>module-contracts/**/src/**/*.java</include>
+                            <include>module-test/**/src/**/*.java</include>
+                            <include>modules/**/src/**/*.java</include>
+                        </includes>
+                        <excludes>
+                            <exclude>**/target/**</exclude>
+                        </excludes>
                         <importOrder />
                         <!-- standard import order -->
 
@@ -1066,8 +1134,8 @@
                         does not roll back, so results depend on class order. Surefire's default
                         "filesystem" order differs per runner VM, which made the same commit pass
                         on one runner and fail on another. Alphabetical is deterministic and stable
-                        as classes are added. -->
-                    <runOrder>alphabetical</runOrder>
+                        as classes are added. The nightly order check overrides it with -Dsurefire.runOrder=reversealphabetical. -->
+                    <runOrder>${surefire.runOrder}</runOrder>
                 </configuration>
             </plugin>
             <plugin>
@@ -1132,5 +1200,33 @@
 
         </plugins>
     </build>
+
+    <profiles>
+        <!-- The Eclipse formatter is fetched from download.eclipse.org; while
+            that site is down CI fetches the same pinned release from an Eclipse mirror. -->
+        <profile>
+            <id>eclipse-p2-mirror</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <configuration>
+                            <java>
+                                <eclipse>
+                                    <p2Mirrors>
+                                        <p2Mirror>
+                                            <prefix>https://download.eclipse.org/</prefix>
+                                            <url>https://mirrors.huaweicloud.com/eclipse/</url>
+                                        </p2Mirror>
+                                    </p2Mirrors>
+                                </eclipse>
+                            </java>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

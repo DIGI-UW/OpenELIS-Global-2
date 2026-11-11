@@ -15,8 +15,10 @@ import OrderContextCard from "./OrderContextCard";
 import RangeNotAppliedWarning from "./RangeNotAppliedWarning";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import SaveNavigationButtons from "./SaveNavigationButtons";
+import MicroCasesOpened from "./MicroCasesOpened";
 import ToContinueChecklist from "./ToContinueChecklist";
 import { useOrderContext, SaveStatus } from "./OrderContext";
+import CancelTestReasonDialog from "./CancelTestReasonDialog";
 import "./order-workflow.scss";
 
 /**
@@ -220,19 +222,20 @@ const OrderWorkflowLayout = ({
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      <CancelTestReasonDialog />
       <Stack gap={5}>
         <div className="order-workflow-container">
           {/* Header with title, save status, and edit button */}
           <div className="workflow-header">
             <div className="workflow-title-section">
               {title && (
-                <h2 className="order-step-title">
+                <h1 className="order-step-title">
                   {typeof title === "string" ? (
                     <FormattedMessage id={title} />
                   ) : (
                     title
                   )}
-                </h2>
+                </h1>
               )}
               <SaveStatusIndicator />
             </div>
@@ -300,6 +303,8 @@ const OrderWorkflowLayout = ({
             )}
 
           <SavedNextAction steps={steps} activeStep={activeStep} />
+
+          <MicroCasesOpened />
 
           {/* Main Content Area */}
           <div

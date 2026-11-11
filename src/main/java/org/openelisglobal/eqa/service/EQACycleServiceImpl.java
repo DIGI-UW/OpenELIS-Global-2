@@ -45,6 +45,7 @@ import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
 import org.openelisglobal.eqa.valueholder.EQAFollowupStatus;
+import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
@@ -156,6 +157,9 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
     @Autowired
     private SystemUserService systemUserService;
 
+    @Autowired
+    private EQALabProgramEnrollmentService labEnrollmentService;
+
     public EQACycleServiceImpl() {
         super(EQACycle.class);
     }
@@ -206,8 +210,8 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
         if (GenericValidator.isBlankOrNull(schemeName)) {
             return Optional.empty();
         }
-        EQAProgram scheme = eqaProgramService.getAllMatching("name", schemeName.trim()).stream().findFirst()
-                .orElse(null);
+        EQAProgram scheme = eqaProgramService.getAll().stream()
+                .filter(program -> sameProgramme(program.getName(), schemeName)).findFirst().orElse(null);
         if (scheme == null) {
             return Optional.empty();
         }
@@ -233,6 +237,31 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
             eqaRoundDAO.insert(round);
         }
         return Optional.of(cycle);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EQALabProgramEnrollment> getEnrollmentsOpenForCycles() {
+        List<EQAProgram> schemes = eqaProgramService.getAll();
+        return labEnrollmentService.findActiveEnrollments().stream().filter(enrollment -> schemes.stream()
+                .anyMatch(scheme -> sameProgramme(scheme.getName(), enrollment.getProgramName()))).toList();
+    }
+
+    @Override
+    @Transactional
+    public EQACycle createParticipantCycle(String schemeName, String cycleName, Date distributionDate,
+            Date submissionDeadline, String sysUserId) {
+        if (labEnrollmentService.findActiveEnrollments().stream()
+                .noneMatch(enrollment -> sameProgramme(enrollment.getProgramName(), schemeName))) {
+            throw new IllegalArgumentException("This laboratory is not enrolled in " + schemeName);
+        }
+        return ensureParticipantCycle(schemeName, null, cycleName, distributionDate, submissionDeadline, sysUserId)
+                .orElseThrow(() -> new IllegalArgumentException("No scheme named '" + schemeName
+                        + "' exists on this instance; add it under EQA Management, Schemes"));
+    }
+
+    private static boolean sameProgramme(String left, String right) {
+        return left != null && right != null && left.trim().equalsIgnoreCase(right.trim());
     }
 
     /**
@@ -421,6 +450,51 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
             }
         }
         return new EQAPrepGate(participants, requirements, blockers);
+    }
+
+    private static final Set<EQACycleStatus> CLOSED_TO_SAMPLES = EnumSet.of(SUBMITTED, SUBMISSIONS_CLOSED, SCORING,
+            SCORED, CLOSED);
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OpenCycle> findOpenCycles(String schemeName) {
+        List<OpenCycle> open = new ArrayList<>();
+        if (schemeName == null || schemeName.isBlank()) {
+            return open;
+        }
+        for (EQACycle cycle : eqaCycleDAO.getAll()) {
+            if (!sameScheme(cycle, schemeName) || CLOSED_TO_SAMPLES.contains(cycle.getStatus())) {
+                continue;
+            }
+            List<String> codes = new ArrayList<>();
+            for (EQAPanel panel : eqaPanelDAO.getAllMatching("cycle.id", cycle.getId())) {
+                for (EQAPanelSample sample : eqaPanelSampleDAO.getAllMatching("panel.id", panel.getId())) {
+                    if (sample.getSampleCode() != null && !codes.contains(sample.getSampleCode())) {
+                        codes.add(sample.getSampleCode());
+                    }
+                }
+            }
+            codes.sort(String::compareTo);
+            String name = cycle.getCycleName() != null && !cycle.getCycleName().isBlank() ? cycle.getCycleName()
+                    : cycle.getScheme().getName() + " #" + cycle.getCycleNumber();
+            open.add(new OpenCycle(cycle.getId(), name, cycle.getCycleNumber(), cycle.getPlannedEndDate(), codes));
+        }
+        open.sort((left, right) -> Long.compare(right.id(), left.id()));
+        return open;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isOpenCycleOfScheme(Long cycleId, String schemeName) {
+        if (cycleId == null) {
+            return false;
+        }
+        EQACycle cycle = eqaCycleDAO.get(cycleId).orElse(null);
+        return cycle != null && sameScheme(cycle, schemeName) && !CLOSED_TO_SAMPLES.contains(cycle.getStatus());
+    }
+
+    private static boolean sameScheme(EQACycle cycle, String schemeName) {
+        return cycle.getScheme() != null && sameProgramme(cycle.getScheme().getName(), schemeName);
     }
 
     private static int nullToZero(Integer value) {

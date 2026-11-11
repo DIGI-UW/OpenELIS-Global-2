@@ -2,11 +2,10 @@ package org.openelisglobal.siteinformation.service;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.siteinformation.valueholder.SiteInformationDomain;
@@ -39,7 +38,7 @@ public class SiteInformationConfigurationHandler implements DomainConfigurationH
 
     @Override
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
         String headerLine = reader.readLine();
         if (headerLine == null) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "processConfiguration",
@@ -60,6 +59,7 @@ public class SiteInformationConfigurationHandler implements DomainConfigurationH
         int descriptionKeyIndex = findColumnIndex(headers, "descriptionKey");
         int groupIndex = findColumnIndex(headers, "group");
         int encryptedIndex = findColumnIndex(headers, "encrypted");
+        int createOnlyIndex = findColumnIndex(headers, "createOnly");
 
         String line;
         int lineNumber = 1;
@@ -71,7 +71,8 @@ public class SiteInformationConfigurationHandler implements DomainConfigurationH
             }
             try {
                 processRow(parseCsvLine(line.trim()), nameIndex, valueIndex, domainNameIndex, valueTypeIndex, tagIndex,
-                        descriptionIndex, instructionKeyIndex, descriptionKeyIndex, groupIndex, encryptedIndex);
+                        descriptionIndex, instructionKeyIndex, descriptionKeyIndex, groupIndex, encryptedIndex,
+                        createOnlyIndex);
                 processedRows++;
             } catch (Exception e) {
                 LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
@@ -85,7 +86,7 @@ public class SiteInformationConfigurationHandler implements DomainConfigurationH
 
     private void processRow(String[] values, int nameIndex, int valueIndex, int domainNameIndex, int valueTypeIndex,
             int tagIndex, int descriptionIndex, int instructionKeyIndex, int descriptionKeyIndex, int groupIndex,
-            int encryptedIndex) {
+            int encryptedIndex, int createOnlyIndex) {
         String name = getValueOrEmpty(values, nameIndex);
         if (name.isEmpty()) {
             throw new IllegalArgumentException("site_information row is missing name");
@@ -93,6 +94,9 @@ public class SiteInformationConfigurationHandler implements DomainConfigurationH
 
         SiteInformation siteInformation = siteInformationService.getSiteInformationByName(name);
         boolean isNew = siteInformation == null;
+        if (!isNew && Boolean.parseBoolean(getValueOrEmpty(values, createOnlyIndex))) {
+            return;
+        }
         if (isNew) {
             siteInformation = new SiteInformation();
             siteInformation.setName(name);

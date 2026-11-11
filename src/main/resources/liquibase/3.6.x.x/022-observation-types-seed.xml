@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-1517: every observation the application writes needs its observation_history_type
+         row, because SamplePatientUpdateData.createObservation drops the value silently when the
+         type is unknown. Until now several types (the environmental sampling site, its type and
+         subtype, the collection method, the regulatory reference, the location levels, the TB
+         fields, the referrer's patient id, the test location code) came only from the optional
+         observation-history-types CSV, so a deployment whose copy of that file is empty lost the
+         sampling site of every environmental order and the compliance dashboard never found an
+         order. Each type is inserted only when it is absent; existing rows are left untouched. -->
+
+    <changeSet id="022-seed-every-observation-type-the-application-writes" author="oe">
+        <sql splitStatements="true" endDelimiter=";">
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'TbAnalysisMethod', 'TB_ANALYSIS_METHOD', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'TbAnalysisMethod');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'TbDiagnosticReason', 'TB_DIAGNOSTIC_REASON', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'TbDiagnosticReason');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'TbFollowupReason', 'TB_FOLLOWUP_REASON', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'TbFollowupReason');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'TbFollowupReasonPeriodLine1', 'TB_FOLLOWUP_PERIOD_LINE1', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'TbFollowupReasonPeriodLine1');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'TbFollowupReasonPeriodLine2', 'TB_FOLLOWUP_PERIOD_LINE2', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'TbFollowupReasonPeriodLine2');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'TbOrderReason', 'TB_ORDER_REASON', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'TbOrderReason');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'TbSampleAspects', 'TB_SAMPLE_ASPECT', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'TbSampleAspects');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'billingRefNumber', 'BILLING_REFERENCE_NUMBER', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'billingRefNumber');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envAmbientTemp', 'ENV_AMBIENT_TEMP', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envAmbientTemp');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envCollectionMethod', 'ENV_COLLECTION_METHOD', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envCollectionMethod');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envCollectionSiteDescription', 'ENV_COLLECTION_SITE_DESCRIPTION', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envCollectionSiteDescription');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envComplianceStandards', 'ENV_COMPLIANCE_STANDARDS', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envComplianceStandards');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envContactPerson', 'ENV_CONTACT_PERSON', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envContactPerson');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envContactPhone', 'ENV_CONTACT_PHONE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envContactPhone');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envEnvironmentalConditions', 'ENV_ENVIRONMENTAL_CONDITIONS', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envEnvironmentalConditions');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envEnvironmentalZone', 'ENV_ENVIRONMENTAL_ZONE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envEnvironmentalZone');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envFieldNotes', 'ENV_FIELD_NOTES', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envFieldNotes');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envLocationDistrictId', 'ENV_LOCATION_DISTRICT_ID', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envLocationDistrictId');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envLocationRegionId', 'ENV_LOCATION_REGION_ID', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envLocationRegionId');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envLocationVillageId', 'ENV_LOCATION_VILLAGE_ID', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envLocationVillageId');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envPreservationMethod', 'ENV_PRESERVATION_METHOD', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envPreservationMethod');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envRegulatoryReference', 'ENV_REGULATORY_REFERENCE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envRegulatoryReference');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envRequesterReference', 'ENV_REQUESTER_REFERENCE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envRequesterReference');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envSamplingSiteId', 'ENV_SAMPLING_SITE_ID', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envSamplingSiteId');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envSamplingSiteName', 'ENV_SAMPLING_SITE_NAME', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envSamplingSiteName');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envSiteSubtype', 'ENV_SITE_SUBTYPE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envSiteSubtype');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envSiteType', 'ENV_SITE_TYPE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envSiteType');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envWaterTemp', 'ENV_WATER_TEMP', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envWaterTemp');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envWeather', 'ENV_WEATHER', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envWeather');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'envWorkflowType', 'ENV_WORKFLOW_TYPE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envWorkflowType');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'hivStatus', 'HIV_STATUS', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'hivStatus');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'initialSampleCondition', 'INITIAL_SAMPLE_CONDITION', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'initialSampleCondition');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'nextVisitDate', 'NEXT_VISIT_DATE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'nextVisitDate');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'paymentStatus', 'PAYMENT_STATUS', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'paymentStatus');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'program', 'PROGRAM', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'program');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'provisionalClinicalDiagnosis', 'PROVISIONAL_CLINICAL_DIAGNOSIS', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'provisionalClinicalDiagnosis');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'referrersPatientId', 'REFERRERS_PATIENT_ID', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'referrersPatientId');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'referringSite', 'REFERRING_SITE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'referringSite');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'requestDate', 'REQUEST_DATE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'requestDate');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'testLocationCode', 'TEST_LOCATION_CODE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'testLocationCode');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'testLocationCodeOther', 'TEST_LOCATION_CODE_OTHER', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'testLocationCodeOther');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecCollectionNotes', 'VS_COLLECTION_NOTES', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecCollectionNotes');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecCollectionSiteId', 'VS_COLLECTION_SITE_ID', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecCollectionSiteId');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecCollectionSiteName', 'VS_COLLECTION_SITE_NAME', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecCollectionSiteName');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecGpsLatitude', 'VS_GPS_LATITUDE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecGpsLatitude');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecGpsLongitude', 'VS_GPS_LONGITUDE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecGpsLongitude');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecHumanBitingCatch', 'VS_HUMAN_BITING_CATCH', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecHumanBitingCatch');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecLifecycleStage', 'VS_LIFECYCLE_STAGE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecLifecycleStage');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecPathogensOfInterest', 'VS_PATHOGENS_OF_INTEREST', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecPathogensOfInterest');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecPoolCount', 'VS_POOL_COUNT', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecPoolCount');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecPoolingMethod', 'VS_POOLING_METHOD', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecPoolingMethod');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecRestingContext', 'VS_RESTING_CONTEXT', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecRestingContext');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecSampleTypeId', 'VS_SAMPLE_TYPE_ID', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecSampleTypeId');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecSamplesPerPool', 'VS_SAMPLES_PER_POOL', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecSamplesPerPool');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecSpeciesId', 'VS_SPECIES_ID', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecSpeciesId');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecTimeOfDay', 'VS_TIME_OF_DAY', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecTimeOfDay');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecTrapCount', 'VS_TRAP_COUNT', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecTrapCount');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecTrapNights', 'VS_TRAP_NIGHTS', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecTrapNights');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecTrapTypeId', 'VS_TRAP_TYPE_ID', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecTrapTypeId');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vecWorkflowType', 'VS_WORKFLOW_TYPE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vecWorkflowType');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vlPregnancy', 'VL_PREGNANCY', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vlPregnancy');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'vlSuckle', 'VL_SUCKLE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'vlSuckle');
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

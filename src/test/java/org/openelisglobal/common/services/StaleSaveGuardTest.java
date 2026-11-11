@@ -7,6 +7,9 @@ import static org.junit.Assert.assertTrue;
 
 import jakarta.persistence.OptimisticLockException;
 import java.sql.Timestamp;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.hibernate.StaleObjectStateException;
 import org.junit.Test;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -49,6 +52,36 @@ public class StaleSaveGuardTest {
     public void theTokenIsTheVersionInEpochMillis() {
         assertEquals(String.valueOf(STORED.getTime()), StaleSaveGuard.token(STORED));
         assertNull(StaleSaveGuard.token(null));
+    }
+
+    /** OGC-1463: the version of a list an editor saves as a whole. */
+    @Test
+    public void aListVersionChangesWithTheListAndNotWithMapOrder() {
+        Map<String, Object> a = new LinkedHashMap<>();
+        a.put("code", "2345-7");
+        a.put("source", "LOINC");
+        Map<String, Object> sameInOtherOrder = new LinkedHashMap<>();
+        sameInOtherOrder.put("source", "LOINC");
+        sameInOtherOrder.put("code", "2345-7");
+        Map<String, Object> other = new LinkedHashMap<>(a);
+        other.put("code", "3333-3");
+
+        String version = StaleSaveGuard.versionOf(List.of(a));
+
+        assertEquals(version, StaleSaveGuard.versionOf(List.of(sameInOtherOrder)));
+        assertFalse(version.equals(StaleSaveGuard.versionOf(List.of(a, other))));
+        assertFalse(version.equals(StaleSaveGuard.versionOf(List.of())));
+        assertEquals("rows loaded in another order are the same list", StaleSaveGuard.versionOf(List.of(a, other)),
+                StaleSaveGuard.versionOf(List.of(other, a)));
+    }
+
+    @Test
+    public void aListVersionIsStaleOnlyWhenSentAndDifferent() {
+        String version = StaleSaveGuard.versionOf(List.of("a"));
+        assertFalse(StaleSaveGuard.isStaleVersion(version, version));
+        assertTrue(StaleSaveGuard.isStaleVersion(StaleSaveGuard.versionOf(List.of()), version));
+        assertFalse(StaleSaveGuard.isStaleVersion(null, version));
+        assertFalse(StaleSaveGuard.isStaleVersion(" ", version));
     }
 
     @Test

@@ -27,7 +27,10 @@ final class EqaReportedValue {
 
     /** The reported value of a single pipeline result, unescaped. */
     static String of(ResultService resultService, Result pipelineResult) {
-        String printable = resultService.getResultValue(pipelineResult, ",", true, false);
+        if ("N".equals(pipelineResult.getResultType())) {
+            return pipelineResult.getValue();
+        }
+        String printable = resultService.formatResultForDisplay(pipelineResult, ",", true, false);
         return printable == null ? null : StringEscapeUtils.unescapeHtml4(printable);
     }
 }

@@ -15,6 +15,48 @@ const API = "/api/OpenELIS-Global";
 const REFERENCE_LAB = "CEDRES";
 const SEED_TEST_ID = "13";
 
+/**
+ * The reference lab is seeded by SQL after the app started, so the cached list
+ * of reference labs may not hold it yet. Saving its active flag through the
+ * Locations editor reloads that list, as any admin change to it would.
+ */
+async function offerReferenceLab(page: Page) {
+  await page.goto("/", { timeout: NAV_TIMEOUT });
+  const found = await page.request.get(
+    `${API}/rest/locations/organizations?q=${REFERENCE_LAB}&status=all`,
+  );
+  expect(found.status()).toBe(200);
+  const rows = ((await found.json()).items || []) as {
+    id: string;
+    name: string;
+  }[];
+  const lab = rows.find((row) => row.name === REFERENCE_LAB);
+  expect(lab, `${REFERENCE_LAB} is seeded`).toBeTruthy();
+  const status = await page.evaluate(
+    async ({ api, id }) => {
+      const response = await fetch(
+        `${api}/rest/locations/organizations/active`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF") || "",
+          },
+          body: JSON.stringify({
+            ids: [id],
+            active: true,
+            includeChildren: false,
+          }),
+        },
+      );
+      return response.status;
+    },
+    { api: API, id: lab!.id },
+  );
+  expect(status).toBe(200);
+}
+
 async function openPrepareSamples(page: Page, accessionNumber: string) {
   await page.goto(
     `/order/clinical/collect?labNumber=${encodeURIComponent(accessionNumber)}`,
@@ -75,6 +117,10 @@ async function worklistLists(page: Page, accessionNumber: string) {
 }
 
 test.describe("Refer Out from Prepare Samples (OGC-1423)", () => {
+  test.beforeEach(async ({ page }) => {
+    await offerReferenceLab(page);
+  });
+
   test("a tube referred from its row is saved with the step and the fully referred order skips Sample check", async ({
     page,
   }) => {

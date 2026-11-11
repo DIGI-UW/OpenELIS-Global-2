@@ -19,12 +19,14 @@ export interface FlaggableRow {
   upperAbnormalRange?: number | string | null;
   lowerCritical?: number | string | null;
   higherCritical?: number | string | null;
+  reportingDecimalPlaces?: number | null;
 }
 
 /**
  * The flag a row should show for the value it holds right now.
  *
- * A numeric row is judged as it is typed, against the bounds the server
+ * A numeric row is judged using its clinical value, independent of reporting
+ * decimal places, against the bounds the server
  * resolved for it, with the same rule the legacy Results screen and the server
  * apply (INVALID beats CRITICAL beats ABNORMAL beats NORMAL). Every other row,
  * and a numeric row the server found no result limit for, keeps the flag the
@@ -40,7 +42,9 @@ export function resultFlagFor(row: FlaggableRow): ResultFlag | undefined {
   if (!typed) {
     return undefined;
   }
-  const numeric = normalizeScientificNotation(typed.replace(/[<>]/g, ""));
-  const { flag } = classifyNumericResult(numeric, row);
+  const plain = normalizeScientificNotation(
+    typed.replace(/^(<=|>=|<|>)\s*/, ""),
+  );
+  const { flag } = classifyNumericResult(plain, row);
   return isResultFlag(flag) ? flag : undefined;
 }

@@ -47,6 +47,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
 
     @Autowired
+    private org.openelisglobal.resultvalidation.service.ResultSelfValidationPolicy selfValidationPolicy;
+
+    @Autowired
     private AnalysisService analysisService;
     @Autowired
     private ResultService resultService;
@@ -77,7 +80,17 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     @Transactional
     public List<Analysis> persistDataSet(ResultsUpdateDataSet actionDataSet, List<IResultUpdate> updaters,
             String sysUserId) {
+        for (Analysis analysis : actionDataSet.getModifiedAnalysis()) {
+            selfValidationPolicy.requireCaseWriteAccess(analysis, sysUserId,
+                    org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
+        }
         for (Note note : actionDataSet.getNoteList()) {
+            // A note already recorded on the analysis (the same text posted again with
+            // a row) is kept once; refusing it used to fail the whole save, value and
+            // all, as "An error occurred while updating" (OGC-1569).
+            if (noteService.duplicateNoteExists(note)) {
+                continue;
+            }
             noteService.insert(note);
             // Every rejection opens its NCE (trigger: TEST_REJECTION). All
             // rejection paths funnel through this persist, so the hook lives
@@ -173,9 +186,10 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             updater.transactionalUpdate(actionDataSet);
         }
 
-        // Results finalized at entry skip validation, so announce them here too.
-        eventPublisher.publishEvent(
-                new ResultsValidatedEvent(ResultsValidatedEvent.finalizedSamples(actionDataSet.getModifiedAnalysis())));
+        // Results finalized at entry skip validation, so announce them here too,
+        // but not the ones that were already finalized before this save.
+        eventPublisher.publishEvent(ResultsValidatedEvent.finalized(actionDataSet.getModifiedAnalysis().stream()
+                .filter(analysis -> !actionDataSet.getFinalizedBeforeSave().contains(analysis.getId())).toList()));
         return reflexAnalysises;
     }
 
@@ -323,6 +337,10 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
         }
     }
 
+    /**
+     * The tests reflex and calculation rules generated. A calculation may fill the
+     * analysis a reflex has just added; that generated test is listed once.
+     */
     protected List<Analysis> setTestReflexes(ResultsUpdateDataSet actionDataSet, String sysUserId) {
         TestReflexUtil testReflexUtil = new TestReflexUtil();
         TestCalculatedUtil testCaliculatedUtil = new TestCalculatedUtil();
@@ -341,7 +359,12 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
         List<Analysis> caclculatedAnalyses = testCaliculatedUtil.addNewTestsToDBForCalculatedTests(allResults,
                 sysUserId);
         actionDataSet.getCalculatedResults().addAll(testCaliculatedUtil.getCalculatedResults());
-        reflexAnalysises.addAll(caclculatedAnalyses);
+        for (Analysis calculated : caclculatedAnalyses) {
+            if (reflexAnalysises.stream()
+                    .noneMatch(added -> added.getId() != null && added.getId().equals(calculated.getId()))) {
+                reflexAnalysises.add(calculated);
+            }
+        }
         return reflexAnalysises;
     }
 

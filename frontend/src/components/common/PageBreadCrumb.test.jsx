@@ -72,4 +72,26 @@ describe("PageBreadCrumb", () => {
     ]);
     expect(screen.getByText("Leonardo")).toBeInTheDocument();
   });
+
+  it("shows a data crumb such as an analyzer's name as it is, without looking it up as a message", () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <IntlProvider locale="en" messages={messages} onError={console.error}>
+        <MemoryRouter>
+          <PageBreadCrumb
+            breadcrumbs={[
+              { label: "home.label", link: "/" },
+              { text: "Cepheid GeneXpert (ASTM Mode)", isCurrentPage: true },
+            ]}
+          />
+        </MemoryRouter>
+      </IntlProvider>,
+    );
+
+    expect(
+      screen.getByRole("navigation", { name: "Breadcrumb" }),
+    ).toHaveTextContent("Cepheid GeneXpert (ASTM Mode)");
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
+  });
 });

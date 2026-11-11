@@ -6,9 +6,11 @@ import {
   SERUM,
   WHOLE_BLOOD,
   firstRealOption,
+  labUnitNameOf,
   labUnitOf,
   openServerPageHolding,
   orderTests,
+  serverTodayFor,
   signIfAsked,
 } from "../../../helpers/results-nce-ui";
 import {
@@ -16,6 +18,7 @@ import {
   NAV_TIMEOUT,
   UI_TIMEOUT,
 } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * The unified Results worklist narrows what it shows by lab unit, by patient
@@ -60,10 +63,10 @@ async function chooseLabUnit(page: Page, unitId: string, accession: string) {
   const loaded = worklistLoad(page, (url) =>
     url.includes(`testSectionId=${unitId}`),
   );
-  await page
-    .getByRole("main")
-    .getByRole("combobox", { name: "Lab Unit" })
-    .selectOption(unitId);
+  await chooseCarbonOption(
+    page.getByRole("main").getByRole("combobox", { name: "Lab Unit" }),
+    await labUnitNameOf(page, unitId),
+  );
   await openServerPageHolding(page, await loaded, accession);
 }
 
@@ -141,6 +144,42 @@ test.describe("Unified Results filters", () => {
       });
       await expect(worklistRow(page, otherPatientOrder)).toHaveCount(0);
       await expect(page).toHaveURL(/patientId=\d+/);
+    });
+  });
+
+  test("a Test date typed in the box filters the worklist when Load results is clicked", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const main = page.getByRole("main");
+    const date = main.getByRole("textbox", { name: "Test date" });
+
+    await test.step("a typed date is sent with the load and kept in the URL", async () => {
+      await openResults(page);
+      const today = await serverTodayFor(date);
+      await date.fill(today);
+      const loaded = worklistLoad(page, (url) =>
+        new URL(url).searchParams.has("collectionDate"),
+      );
+      await main.getByRole("button", { name: "Load results" }).click();
+      expect(
+        new URL((await loaded).url()).searchParams.get("collectionDate"),
+      ).toBe(today);
+      await expect(date).toHaveValue(today);
+      await expect(page).toHaveURL(
+        new RegExp(`collectionDate=${encodeURIComponent(today)}`),
+      );
+    });
+
+    await test.step("text that is not a date is cleared and not sent", async () => {
+      await date.fill("31/31/2026");
+      await main.getByRole("button", { name: "Search by patient" }).focus();
+      await expect(date).toHaveValue("");
+      const loaded = worklistLoad(page, () => true);
+      await main.getByRole("button", { name: "Load results" }).click();
+      expect(
+        new URL((await loaded).url()).searchParams.has("collectionDate"),
+      ).toBe(false);
     });
   });
 

@@ -72,6 +72,13 @@ const QC_TAG_TYPE = { PASS: "green", FAIL: "red" };
  * panel caps its own width to stay readable without scrolling sideways.
  */
 const PANEL_STYLE = { maxWidth: "1200px" };
+
+/**
+ * The server's select-list choices start with an empty ("0", "") entry for the
+ * legacy screens; the Modify list already offers its own empty choice.
+ */
+const isBlankChoice = (entry) =>
+  String(entry.id) === "0" && !String(entry.value ?? "").trim();
 const LABEL_STYLE = { display: "block" };
 
 const resultsEntryLink = (accessionNumber) =>
@@ -85,6 +92,14 @@ const Field = ({ labelKey, value, testId }) => (
     <span>{value}</span>
   </div>
 );
+
+/**
+ * The value Modify starts from: a numeric result as it was entered, since the row
+ * shows it rounded to the test's places (OGC-1544). A viral load shown as its
+ * count starts from that count.
+ */
+const modifyStartValue = (row) =>
+  row.displayResultAsLog ? displayResult(row) : (row.result ?? "");
 
 const ValidationReviewPanel = ({
   data: row,
@@ -161,7 +176,7 @@ const ValidationReviewPanel = ({
   const [modifying, setModifying] = useState(false);
   const [retesting, setRetesting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
-  const [newValue, setNewValue] = useState(row.result ?? "");
+  const [newValue, setNewValue] = useState(modifyStartValue(row));
   const [busy, setBusy] = useState(false);
   const [errorKey, setErrorKey] = useState("");
   // OGC-1417: a corrected value the server will not store until the validator
@@ -267,7 +282,9 @@ const ValidationReviewPanel = ({
   const qcHoldBlocksRelease =
     row.qcHold === true &&
     configurationProperties?.QC_FAIL_BLOCKS_VALIDATION === "true";
-  const releaseBlocked = busy || qcAckBlocksRelease || qcHoldBlocksRelease;
+  const selfValidationBlocked = row.selfValidationBlocked === true;
+  const releaseBlocked =
+    busy || qcAckBlocksRelease || qcHoldBlocksRelease || selfValidationBlocked;
   const reasonMissing = notesRequired && !noteText.trim();
   const modificationBlocked =
     busy || !editableHere || !String(newValue ?? "").trim() || reasonMissing;
@@ -316,6 +333,14 @@ const ValidationReviewPanel = ({
             </strong>
             {unitsOnly(row.units) && <span> {unitsOnly(row.units)}</span>}{" "}
             <FlagChip flag={flag} />
+            {row.resultType === "N" && displayResult(row) !== row.result && (
+              <div className="unifiedFieldHint">
+                <FormattedMessage
+                  id="label.results.clinicalValue"
+                  values={{ value: row.result }}
+                />
+              </div>
+            )}
           </div>
           <Field
             labelKey="label.validation.review.normalRange"
@@ -482,13 +507,15 @@ const ValidationReviewPanel = ({
                 onChange={(event) => setNewValue(event.target.value)}
               >
                 <SelectItem value="" text="" />
-                {(row.dictionaryResults || []).map((entry) => (
-                  <SelectItem
-                    key={entry.id}
-                    value={String(entry.id)}
-                    text={entry.value}
-                  />
-                ))}
+                {(row.dictionaryResults || [])
+                  .filter((entry) => !isBlankChoice(entry))
+                  .map((entry) => (
+                    <SelectItem
+                      key={entry.id}
+                      value={String(entry.id)}
+                      text={entry.value}
+                    />
+                  ))}
               </Select>
             )}
             {editableHere && row.resultType !== "D" && (
@@ -619,6 +646,13 @@ const ValidationReviewPanel = ({
         >
           {!inSideMode && (
             <span data-testid="review-release">
+              {selfValidationBlocked && (
+                <p id={`review-self-validation-hint-${row.id}`}>
+                  {intl.formatMessage({
+                    id: "microbiology.testing.selfValidationBlocked",
+                  })}
+                </p>
+              )}
               <ESignatureButton
                 meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
                 context={signContext}
@@ -631,6 +665,8 @@ const ValidationReviewPanel = ({
                   [
                     qcAckBlocksRelease && `review-qc-ack-hint-${row.id}`,
                     qcHoldBlocksRelease && `review-qc-hold-hint-${row.id}`,
+                    selfValidationBlocked &&
+                      `review-self-validation-hint-${row.id}`,
                   ]
                     .filter(Boolean)
                     .join(" ") || undefined
@@ -748,7 +784,7 @@ const ValidationReviewPanel = ({
               disabled={busy}
               onClick={() => {
                 setModifying(false);
-                setNewValue(row.result ?? "");
+                setNewValue(modifyStartValue(row));
                 setErrorKey("");
                 if (!visibilityChosen) {
                   changeNoteVisibility(NOTE_EXTERNAL, false);

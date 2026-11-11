@@ -4,6 +4,7 @@ import {
   identifyAndResolvePositive,
   addRequestingOrganization,
 } from "../../../helpers/seed-vector-data";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * Vector Surveillance — full user story demo (single continuous take).
@@ -80,7 +81,7 @@ test.describe("Vector Surveillance — full user story", () => {
     });
 
     await test.step("Act 3 — record the collection with trap-effort + pathogen tests", async () => {
-      await page.locator("#sampleType-0").selectOption({ label: "Mosquito" });
+      await chooseCarbonOption(page.locator("#sampleType-0"), "Mosquito");
       await page.locator("#collectedVolume-0").fill(String(quantity));
       await page.locator("#trapCount-0").fill(String(traps));
       await page.locator("#trapNights-0").fill(String(nights));
@@ -98,9 +99,7 @@ test.describe("Vector Surveillance — full user story", () => {
       await demo.evidence("story-3-collection-entered");
       await page.getByRole("button", { name: "Save", exact: true }).click();
       await expect(
-        page
-          .getByText("Sample Order Entry has been saved successfully")
-          .first(),
+        page.getByText(/Order \S+ has been saved\./).first(),
       ).toBeVisible({ timeout: 20_000 });
       await demo.pause(1500);
     });

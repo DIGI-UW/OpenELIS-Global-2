@@ -10,6 +10,11 @@ export const fetchLabPerformance = (callback) =>
     callback(data ? { ...EMPTY, ...data } : EMPTY),
   );
 
+export const fetchOpenEqaNceCount = (callback) =>
+  getFromOpenElisServer("/rest/eqa/lab-performance/open-nce-count", (data) =>
+    callback(data?.open ?? 0),
+  );
+
 /**
  * The register's EQA filter (docs/eqa/nce-deep-links.md). Both EQA trigger
  * sources share the EQA_ prefix, so one query parameter covers auto-created

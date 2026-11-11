@@ -16,6 +16,6 @@ public interface AnalyzerInstanceService {
 
     AnalyzerInstanceView update(String analyzerId, AnalyzerInstanceRequest request, String actor);
 
-    AnalyzerInstanceView selectSiteBindingRevision(String analyzerId, String siteBindingId, int revision,
-            String bindingFingerprint, String actor);
+    AnalyzerInstanceView applyMapping(String analyzerId, String mappingId, int revision, String mappingFingerprint,
+            String actor);
 }

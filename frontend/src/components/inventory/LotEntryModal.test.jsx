@@ -66,7 +66,7 @@ const fillRequiredFieldsExceptLocation = async () => {
   fireEvent.click(
     screen.getByRole("combobox", { name: /select catalog item/i }),
   );
-  fireEvent.click(await screen.findByText("Malaria RDT (RDT)"));
+  fireEvent.click(await screen.findByText("Malaria RDT (MAL_RDT)"));
   fireEvent.change(screen.getByLabelText(/lot number/i), {
     target: { value: "LOT-1" },
   });
@@ -78,7 +78,7 @@ const fillRequiredFieldsExceptLocation = async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   InventoryItemAPI.getAll.mockResolvedValue([
-    { id: "MALARIA_RDT", name: "Malaria RDT", itemType: "RDT" },
+    { id: "MALARIA_RDT", name: "Malaria RDT", code: "MAL_RDT" },
   ]);
   InventoryLotStorageAPI.getLocation.mockResolvedValue({});
 });
@@ -93,7 +93,7 @@ describe("LotEntryModal — storage location wiring (OGC-657)", () => {
     fireEvent.click(screen.getByText("Save"));
 
     expect(
-      await screen.findByText(/please assign a storage location/i),
+      await screen.findByText(/assign a storage location/i),
     ).toBeInTheDocument();
     expect(InventoryManagementAPI.receive).not.toHaveBeenCalled();
   });
@@ -214,7 +214,7 @@ describe("LotEntryModal — auto-generated lot number", () => {
     fireEvent.click(
       screen.getByRole("combobox", { name: /select catalog item/i }),
     );
-    fireEvent.click(await screen.findByText("Malaria RDT (RDT)"));
+    fireEvent.click(await screen.findByText("Malaria RDT (MAL_RDT)"));
     fireEvent.change(screen.getByLabelText(/initial quantity/i), {
       target: { value: "5" },
     });
@@ -356,7 +356,7 @@ describe("LotEntryModal — partial save recovery", () => {
     fireEvent.click(screen.getByText("Save"));
 
     expect(
-      await screen.findByText(/please assign a storage location/i),
+      await screen.findByText(/assign a storage location/i),
     ).toBeInTheDocument();
     expect(InventoryManagementAPI.receive).not.toHaveBeenCalled();
     expect(InventoryLotStorageAPI.assignLocation).not.toHaveBeenCalled();
@@ -493,5 +493,73 @@ describe("LotEntryModal — barcode on a lot that has none", () => {
         expect.objectContaining({ barcode: "BC-GIVEN-13" }),
       );
     });
+  });
+});
+
+describe("LotEntryModal — calendar dates on an edited lot", () => {
+  const originalTz = process.env.TZ;
+  beforeAll(() => {
+    process.env.TZ = "Africa/Kampala";
+  });
+  afterAll(() => {
+    process.env.TZ = originalTz;
+  });
+
+  it("saves the expiry and receipt days it shows, not the day before", async () => {
+    InventoryLotAPI.update.mockResolvedValue({});
+    renderWithIntl(
+      <LotEntryModal
+        open
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        lot={{
+          id: 21,
+          inventoryItem: { id: "MALARIA_RDT" },
+          lotNumber: "LOT-21",
+          barcode: "BC-21",
+          currentQuantity: 4,
+          status: "ACTIVE",
+          qcStatus: "PASSED",
+          expirationDate: Date.UTC(2027, 2, 31),
+          receiptDate: Date.UTC(2026, 9, 5),
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      expect(InventoryLotAPI.update).toHaveBeenCalledWith(
+        21,
+        expect.objectContaining({
+          expirationDate: "2027-03-31T00:00:00.000Z",
+          receiptDate: "2026-10-05T00:00:00.000Z",
+        }),
+      );
+    });
+  });
+});
+
+describe("LotEntryModal — quantity on an edited lot", () => {
+  it("locks the quantity, which only an adjustment may change", () => {
+    renderWithIntl(
+      <LotEntryModal
+        open
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        lot={{
+          id: 21,
+          inventoryItem: { id: "MALARIA_RDT" },
+          lotNumber: "LOT-21",
+          currentQuantity: 4,
+          status: "ACTIVE",
+          qcStatus: "PASSED",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByLabelText(messages["lot.initialQuantity"]),
+    ).toBeDisabled();
   });
 });

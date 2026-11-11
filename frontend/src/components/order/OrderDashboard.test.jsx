@@ -32,6 +32,7 @@ vi.mock("./OrderContext", () => ({
   useOrderContext: () => ({ loadOrder, resetOrder: vi.fn() }),
 }));
 vi.mock("../layout/Layout", () => ({
+  ConfigurationContext: React.createContext({}),
   NotificationContext: React.createContext({
     notificationVisible: false,
     setNotificationVisible: vi.fn(),
@@ -233,9 +234,12 @@ describe("cancelling an order", () => {
       name: /Cancel order$/,
     });
     expect(confirm).toBeDisabled();
+    expect(
+      within(dialog).getByLabelText(/^Reason for cancelling/),
+    ).toHaveAttribute("aria-required", "true");
 
     await user.selectOptions(
-      within(dialog).getByLabelText("Reason for cancelling"),
+      within(dialog).getByLabelText(/^Reason for cancelling/),
       "Duplicate order",
     );
     expect(confirm).toBeEnabled();
@@ -277,7 +281,7 @@ describe("cancelling an order", () => {
       name: "Cancel order LAB-ENTERED?",
     });
     await user.selectOptions(
-      within(dialog).getByLabelText("Reason for cancelling"),
+      within(dialog).getByLabelText(/^Reason for cancelling/),
       "Other",
     );
     const confirm = within(dialog).getByRole("button", {
@@ -285,7 +289,7 @@ describe("cancelling an order", () => {
     });
     expect(confirm).toBeDisabled();
     await user.type(
-      within(dialog).getByLabelText("Describe the reason"),
+      within(dialog).getByLabelText(/^Describe the reason/),
       "Patient seen elsewhere",
     );
     await user.click(confirm);
@@ -317,7 +321,7 @@ describe("cancelling an order", () => {
       name: "Cancel order LAB-ENTERED?",
     });
     await user.selectOptions(
-      within(dialog).getByLabelText("Reason for cancelling"),
+      within(dialog).getByLabelText(/^Reason for cancelling/),
       "Request withdrawn",
     );
     await user.click(

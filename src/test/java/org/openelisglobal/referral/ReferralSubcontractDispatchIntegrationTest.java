@@ -5,14 +5,12 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
 import java.sql.Timestamp;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.After;
@@ -21,14 +19,17 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.externalconnections.service.ExternalConnectionService;
-import org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData;
-import org.openelisglobal.externalconnections.valueholder.ExternalConnection;
-import org.openelisglobal.externalconnections.valueholder.ExternalConnection.AuthType;
-import org.openelisglobal.externalconnections.valueholder.ExternalConnection.ProgrammedConnection;
+import org.openelisglobal.delivery.dao.DeliveryChannelDAO;
+import org.openelisglobal.delivery.dao.DeliveryQueueDAO.Claim;
+import org.openelisglobal.delivery.dto.DeliveryChannelDTO;
+import org.openelisglobal.delivery.service.DeliveryChannelService;
+import org.openelisglobal.delivery.service.DeliveryOutboxService;
+import org.openelisglobal.delivery.service.sender.DeliveryMessage;
+import org.openelisglobal.delivery.service.sender.WhatsAppDeliverySender;
+import org.openelisglobal.delivery.valueholder.DeliveryChannel;
+import org.openelisglobal.delivery.valueholder.DeliveryChannel.Channel;
 import org.openelisglobal.notification.service.NotificationLogService;
 import org.openelisglobal.notification.service.NotificationTriggerConfigService;
-import org.openelisglobal.notification.service.sender.WhatsAppNotificationSender;
 import org.openelisglobal.notification.valueholder.NotificationChannel;
 import org.openelisglobal.notification.valueholder.NotificationLog;
 import org.openelisglobal.notification.valueholder.NotificationLog.OverallStatus;
@@ -36,7 +37,6 @@ import org.openelisglobal.notification.valueholder.NotificationLogChannel;
 import org.openelisglobal.notification.valueholder.NotificationLogChannel.ChannelStatus;
 import org.openelisglobal.notification.valueholder.NotificationRecipientType;
 import org.openelisglobal.notification.valueholder.NotificationTriggerConfig;
-import org.openelisglobal.notification.valueholder.WhatsAppNotification;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralStatus;
@@ -51,13 +51,19 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
     private ReferralService referralService;
 
     @Autowired
-    private WhatsAppNotificationSender whatsAppNotificationSender;
+    private WhatsAppDeliverySender whatsAppDeliverySender;
 
     @Autowired
     private NotificationTriggerConfigService notificationTriggerConfigService;
 
     @Autowired
-    private ExternalConnectionService externalConnectionService;
+    private DeliveryChannelService deliveryChannelService;
+
+    @Autowired
+    private DeliveryChannelDAO deliveryChannelDAO;
+
+    @Autowired
+    private DeliveryOutboxService deliveryOutboxService;
 
     @Autowired
     private NotificationLogService notificationLogService;
@@ -65,16 +71,25 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
     private Object originalSenderHttpClient;
     private org.apache.http.impl.client.CloseableHttpClient mockHttpClient;
 
+    /**
+     * The WhatsApp transport the delivery worker would use, steered by the test:
+     * the Twilio HTTP client is a mock that answers 201 with a message sid.
+     */
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/referral.xml");
-        // Connection + credentials live on the WHATSAPP_SERVER external_connection +
-        // BasicAuthenticationData. Tests that exercise dispatch or directly invoke the
-        // sender opt in via seedActiveWhatsappServerExternalConnection(); the default
-        // no-fire baseline tests rely on the trigger being disabled by default.
-        ReflectionTestUtils.setField(whatsAppNotificationSender, "whatsappFromNumber", "+14155238886");
-
-        originalSenderHttpClient = ReflectionTestUtils.getField(whatsAppNotificationSender, "httpClient");
+        jdbcTemplate.update("DELETE FROM clinlims.notification_log_attempt WHERE notification_log_id IN"
+                + " (SELECT id FROM clinlims.notification_log WHERE event_code = 'SUBCONTRACT_DISPATCHED')");
+        jdbcTemplate.update("DELETE FROM clinlims.notification_log_channel WHERE notification_log_id IN"
+                + " (SELECT id FROM clinlims.notification_log WHERE event_code = 'SUBCONTRACT_DISPATCHED')");
+        jdbcTemplate.update("DELETE FROM clinlims.notification_log WHERE event_code = 'SUBCONTRACT_DISPATCHED'");
+        notificationTriggerConfigService.getByEventCode("SUBCONTRACT_DISPATCHED").ifPresent(config -> {
+            if (config.isEnabled()) {
+                config.setEnabled(false);
+                notificationTriggerConfigService.saveConfig(config, ACTOR);
+            }
+        });
+        originalSenderHttpClient = ReflectionTestUtils.getField(whatsAppDeliverySender, "httpClient");
         mockHttpClient = Mockito.mock(org.apache.http.impl.client.CloseableHttpClient.class);
         org.apache.http.client.methods.CloseableHttpResponse mockResponse = Mockito
                 .mock(org.apache.http.client.methods.CloseableHttpResponse.class);
@@ -85,23 +100,19 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
                 "{\"sid\":\"SMtest\"}", java.nio.charset.StandardCharsets.UTF_8));
         Mockito.when(mockHttpClient.execute(any(org.apache.http.client.methods.HttpUriRequest.class)))
                 .thenReturn(mockResponse);
-        ReflectionTestUtils.setField(whatsAppNotificationSender, "httpClient", mockHttpClient);
+        ReflectionTestUtils.setField(whatsAppDeliverySender, "httpClient", mockHttpClient);
     }
 
     @After
     public void tearDown() {
-        ReflectionTestUtils.setField(whatsAppNotificationSender, "httpClient", originalSenderHttpClient);
-        // Reset the WHATSAPP_SERVER connection back to inactive so tests that
-        // expect a no-fire baseline (e.g. dispatch_transitionsDraftToDispatched...)
-        // aren't poisoned by a prior test having flipped it active.
-        externalConnectionService.getMatch("programmedConnection", ProgrammedConnection.WHATSAPP_SERVER.name())
-                .ifPresent(conn -> {
-                    if (Boolean.TRUE.equals(conn.getActive())) {
-                        conn.setActive(false);
-                        conn.setSysUserId(ACTOR);
-                        externalConnectionService.save(conn);
-                    }
-                });
+        ReflectionTestUtils.setField(whatsAppDeliverySender, "httpClient", originalSenderHttpClient);
+        DeliveryChannelDTO whatsApp = deliveryChannelService.get(Channel.WHATSAPP).orElseThrow();
+        whatsApp.setActive(false);
+        deliveryChannelService.save(Channel.WHATSAPP, whatsApp, ACTOR);
+    }
+
+    private long subcontractDispatchedRows() {
+        return notificationLogService.countMatching(Optional.of("SUBCONTRACT_DISPATCHED"), Optional.empty());
     }
 
     private static final Timestamp HANDOFF = Timestamp.valueOf("2026-05-18 10:30:00");
@@ -133,14 +144,11 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
         assertEquals("courier ABC", latest.getNotes());
 
         // OGC-527: dispatch no longer triggers WhatsApp delivery — notifications are
-        // wired to
-        // the REFERRAL_OUT event on referral save, not on the DISPATCHED transition.
-        // Give any
-        // legacy async path a moment to run if it were going to, then assert the
-        // sender's HTTP
-        // client was never invoked.
+        // wired to the REFERRAL_OUT event on referral save, not on the DISPATCHED
+        // transition. Give any legacy async path a moment to run if it were going
+        // to, then assert nothing was queued.
         Thread.sleep(300);
-        verify(mockHttpClient, never()).execute(any(org.apache.http.client.methods.HttpUriRequest.class));
+        assertEquals(0, subcontractDispatchedRows());
     }
 
     /**
@@ -175,7 +183,7 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
         org.junit.Assert.assertNull(after.getSubcontract());
 
         Thread.sleep(300);
-        verify(mockHttpClient, never()).execute(any(org.apache.http.client.methods.HttpUriRequest.class));
+        assertEquals(0, subcontractDispatchedRows());
         assertEquals(beforeCount, referralService.getSubcontractStatusHistory("2").size());
     }
 
@@ -189,7 +197,7 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
         } catch (IllegalStateException expected) {
             // expected
         }
-        verify(mockHttpClient, never()).execute(any(org.apache.http.client.methods.HttpUriRequest.class));
+        assertEquals(0, subcontractDispatchedRows());
     }
 
     @Test
@@ -204,58 +212,65 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
         Referral after = referralService.getReferralById("1");
         assertEquals(ReferralStatus.DRAFT, after.getStatus());
         Thread.sleep(300);
-        verify(mockHttpClient, never()).execute(any(org.apache.http.client.methods.HttpUriRequest.class));
+        assertEquals(0, subcontractDispatchedRows());
     }
 
+    /**
+     * With the trigger on, a dispatch queues one WhatsApp message to the CoC
+     * contact in the delivery outbox; the delivery worker then sends it through the
+     * WhatsApp transport and the row turns Sent.
+     */
     @Test
-    public void dispatch_whenSubcontractDispatchedTriggerEnabled_firesWhatsAppToCocContact() throws Exception {
+    public void dispatch_whenSubcontractDispatchedTriggerEnabled_queuesWhatsAppToCocContactAndTheWorkerSendsIt()
+            throws Exception {
         enableSubcontractDispatchedTrigger();
-        seedActiveWhatsappServerExternalConnection();
-        long logCountBefore = notificationLogService.countMatching(Optional.of("SUBCONTRACT_DISPATCHED"),
-                Optional.empty());
+        setUpWhatsAppChannel();
+        long logCountBefore = subcontractDispatchedRows();
 
         referralService.dispatchReferral("1", HANDOFF, ACTOR, "courier ABC");
 
-        ArgumentCaptor<org.apache.http.client.methods.HttpUriRequest> captor = ArgumentCaptor
-                .forClass(org.apache.http.client.methods.HttpUriRequest.class);
-        verify(mockHttpClient, timeout(2000)).execute(captor.capture());
-
-        org.apache.http.HttpEntityEnclosingRequest entityRequest = (org.apache.http.HttpEntityEnclosingRequest) captor
-                .getValue();
-        String body = new String(entityRequest.getEntity().getContent().readAllBytes(),
-                java.nio.charset.StandardCharsets.UTF_8);
-        // CoC contact phone from referral.xml fixture (subcontract id=10):
-        // "+1-555-0142"
-        // URL-encoded as the "To=whatsapp:..." param: "+" -> "%2B", ":" -> "%3A".
-        org.junit.Assert.assertTrue("body should carry the CoC contact phone as the WhatsApp recipient: " + body,
-                body.contains("whatsapp%3A%2B1-555-0142"));
-
-        // The @EventListener must persist a NotificationLog row on the async
-        // dispatcher thread. Previously this was silently failing with
-        // "no transaction is in progress" because the @Transactional advice
-        // wasn't being applied through the JDK dynamic proxy on the async path;
-        // the listener now drives the write through TransactionTemplate.
-        // Poll briefly because the listener fires after the HTTP call.
-        long deadline = System.currentTimeMillis() + 2000;
+        long deadline = System.currentTimeMillis() + 5000;
         long logCountAfter = logCountBefore;
         while (System.currentTimeMillis() < deadline && logCountAfter == logCountBefore) {
-            logCountAfter = notificationLogService.countMatching(Optional.of("SUBCONTRACT_DISPATCHED"),
-                    Optional.empty());
+            logCountAfter = subcontractDispatchedRows();
             if (logCountAfter == logCountBefore) {
                 Thread.sleep(50);
             }
         }
-        assertEquals("dispatcher fire must persist one NotificationLog row via @EventListener", logCountBefore + 1,
-                logCountAfter);
-        List<NotificationLog> rows = notificationLogService.findPage(Optional.of("SUBCONTRACT_DISPATCHED"),
-                Optional.empty(), 1, 1);
-        NotificationLog persisted = rows.get(0);
-        assertEquals(NotificationRecipientType.COC_CONTACT, persisted.getRecipientType());
-        assertEquals(OverallStatus.SENT, persisted.getOverallStatus());
-        assertEquals(1, persisted.getChannels().size());
-        NotificationLogChannel ch = persisted.getChannels().iterator().next();
+        assertEquals("the dispatcher must queue one row", logCountBefore + 1, logCountAfter);
+        NotificationLog queued = notificationLogService
+                .findPage(Optional.of("SUBCONTRACT_DISPATCHED"), Optional.empty(), 1, 1).get(0);
+        assertEquals(NotificationRecipientType.COC_CONTACT, queued.getRecipientType());
+        // CoC contact phone from referral.xml fixture (subcontract id=10):
+        // "+1-555-0142"
+        assertEquals("+1-555-0142", queued.getRecipientPhone());
+        assertEquals(OverallStatus.QUEUED, queued.getOverallStatus());
+        assertEquals(1, queued.getChannels().size());
+        NotificationLogChannel ch = queued.getChannels().iterator().next();
         assertEquals(NotificationChannel.WHATSAPP, ch.getChannel());
-        assertEquals(ChannelStatus.SUCCESS, ch.getStatus());
+        assertEquals(ChannelStatus.QUEUED, ch.getStatus());
+
+        List<Claim> claims = deliveryOutboxService.claim("test-worker", 10);
+        assertEquals(1, claims.size());
+        deliveryOutboxService.attempt(claims.get(0), "test-worker");
+
+        ArgumentCaptor<org.apache.http.client.methods.HttpUriRequest> captor = ArgumentCaptor
+                .forClass(org.apache.http.client.methods.HttpUriRequest.class);
+        verify(mockHttpClient).execute(captor.capture());
+        org.apache.http.HttpEntityEnclosingRequest entityRequest = (org.apache.http.HttpEntityEnclosingRequest) captor
+                .getValue();
+        String body = new String(entityRequest.getEntity().getContent().readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8);
+        // URL-encoded as the "To=whatsapp:..." param: "+" -> "%2B", ":" -> "%3A".
+        org.junit.Assert.assertTrue("body should carry the CoC contact phone as the WhatsApp recipient: " + body,
+                body.contains("whatsapp%3A%2B1-555-0142"));
+        NotificationLog sent = notificationLogService.get(queued.getId());
+        assertEquals(OverallStatus.SENT, sent.getOverallStatus());
+        assertEquals(ChannelStatus.SUCCESS, sent.getChannels().iterator().next().getStatus());
+        assertEquals("SMtest", sent.getChannels().iterator().next().getGatewayMessageId());
+        org.junit.Assert.assertFalse("the patient's name is neither stored nor sent as a template variable",
+                String.valueOf(sent.getTemplateVariables()).contains("patientFirstName")
+                        || body.contains("patientFirstName") || body.contains("patientLastName"));
     }
 
     private void enableSubcontractDispatchedTrigger() {
@@ -272,46 +287,24 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
         notificationTriggerConfigService.saveConfig(config, ACTOR);
     }
 
-    private void seedActiveWhatsappServerExternalConnection() {
-        Optional<ExternalConnection> existing = externalConnectionService.getMatch("programmedConnection",
-                ProgrammedConnection.WHATSAPP_SERVER.name());
-        if (existing.isPresent()) {
-            externalConnectionService.updateExternalConnectionFields(existing.get().getId(), ACTOR, true, null,
-                    AuthType.BASIC, null, null, null, "ACtest", "secret");
-            return;
-        }
-        BasicAuthenticationData basicAuth = new BasicAuthenticationData();
-        basicAuth.setSysUserId(ACTOR);
-        basicAuth.setUsername("ACtest");
-        basicAuth.setPassword("secret");
-        ExternalConnection connection = new ExternalConnection();
-        connection.setSysUserId(ACTOR);
-        connection.setActive(true);
-        connection.setProgrammedConnection(ProgrammedConnection.WHATSAPP_SERVER);
-        connection.setActiveAuthenticationType(AuthType.BASIC);
-        externalConnectionService.createNewExternalConnection(Map.of(AuthType.BASIC, basicAuth), List.of(), connection);
+    private void setUpWhatsAppChannel() {
+        DeliveryChannelDTO whatsApp = deliveryChannelService.get(Channel.WHATSAPP).orElseThrow();
+        whatsApp.setActive(true);
+        whatsApp.setUsername("ACtest");
+        whatsApp.setSecret("secret");
+        whatsApp.setSenderAddress("+14155238886");
+        deliveryChannelService.save(Channel.WHATSAPP, whatsApp, ACTOR);
     }
 
     @Test
     public void senderSendDirectly_withoutTemplate_usesFreeTextBody() throws Exception {
-        seedActiveWhatsappServerExternalConnection();
-        WhatsAppNotification notification = new WhatsAppNotification();
-        notification.setReceiverPhoneNumber("+15550199");
-        org.openelisglobal.notification.valueholder.NotificationPayload payload = new org.openelisglobal.notification.valueholder.NotificationPayload() {
-            @Override
-            public String getMessage() {
-                return "Hello WhatsApp";
-            }
+        setUpWhatsAppChannel();
+        DeliveryChannel config = deliveryChannelDAO.findByChannel(Channel.WHATSAPP).orElseThrow();
 
-            @Override
-            public String getSubject() {
-                return "Subj";
-            }
-        };
-        notification.setPayload(payload);
+        String sid = whatsAppDeliverySender.send(config,
+                new DeliveryMessage(NotificationChannel.WHATSAPP, "+15550199", "Subj", "Hello WhatsApp"));
 
-        whatsAppNotificationSender.send(notification);
-
+        assertEquals("SMtest", sid);
         ArgumentCaptor<org.apache.http.client.methods.HttpUriRequest> captor = ArgumentCaptor
                 .forClass(org.apache.http.client.methods.HttpUriRequest.class);
         verify(mockHttpClient, timeout(2000)).execute(captor.capture());
@@ -321,5 +314,7 @@ public class ReferralSubcontractDispatchIntegrationTest extends BaseWebContextSe
                 java.nio.charset.StandardCharsets.UTF_8);
         org.junit.Assert.assertTrue("body should carry free-text Body when no template: " + body,
                 body.contains("Body=Hello+WhatsApp"));
+        org.junit.Assert.assertTrue("the sending number comes from the channel row: " + body,
+                body.contains("From=whatsapp%3A%2B14155238886"));
     }
 }

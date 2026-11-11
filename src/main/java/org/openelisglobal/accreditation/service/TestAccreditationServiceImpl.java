@@ -110,8 +110,13 @@ public class TestAccreditationServiceImpl extends AuditableBaseObjectServiceImpl
         if (accreditingBodyId == null) {
             throw new IllegalArgumentException("Accrediting body is required");
         }
-        if (accreditingBodyDAO.get(accreditingBodyId).isEmpty()) {
+        var body = accreditingBodyDAO.get(accreditingBodyId);
+        if (body.isEmpty()) {
             throw new IllegalArgumentException("No accrediting body with id " + accreditingBodyId);
+        }
+        if (!Boolean.TRUE.equals(body.get().getActive())) {
+            throw new IllegalArgumentException(
+                    "This accrediting body is inactive; reactivate it before enrolling tests");
         }
         if (testService().getTestById(testId) == null) {
             throw new IllegalArgumentException("No test with id " + testId);

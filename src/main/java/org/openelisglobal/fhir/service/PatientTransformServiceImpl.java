@@ -169,18 +169,32 @@ public class PatientTransformServiceImpl implements PatientTransformService {
         } catch (ParseException e) {
             LogEvent.logError("patient date unparseable '" + patient.getBirthDateForDisplay() + "'", e);
         }
-        if (GenericValidator.isBlankOrNull(patient.getGender())) {
-            fhirPatient.setGender(AdministrativeGender.UNKNOWN);
-        } else if (patient.getGender().equalsIgnoreCase("M")) {
-            fhirPatient.setGender(AdministrativeGender.MALE);
-        } else {
-            fhirPatient.setGender(AdministrativeGender.FEMALE);
-        }
+        fhirPatient.setGender(administrativeGenderFor(patient.getGender()));
         fhirPatient.setTelecom(common.transformToTelecom(patient.getPerson()));
 
         fhirPatient.addAddress(transformToAddress(patient.getPerson()));
 
         return fhirPatient;
+    }
+
+    /**
+     * The stored sex as a FHIR gender. Only M and F name a sex; O is other, and a
+     * blank or any other stored value is unknown rather than a guess.
+     */
+    private AdministrativeGender administrativeGenderFor(String gender) {
+        if (GenericValidator.isBlankOrNull(gender)) {
+            return AdministrativeGender.UNKNOWN;
+        }
+        switch (gender.trim().toUpperCase()) {
+        case "M":
+            return AdministrativeGender.MALE;
+        case "F":
+            return AdministrativeGender.FEMALE;
+        case "O":
+            return AdministrativeGender.OTHER;
+        default:
+            return AdministrativeGender.UNKNOWN;
+        }
     }
 
     @Override
@@ -195,11 +209,11 @@ public class PatientTransformServiceImpl implements PatientTransformService {
             String system = identifier.getSystem();
             String value = identifier.getValue();
 
-            if ("http://openelis-global.org/pat_nationalId".equals(system)) {
+            if ((fhirConfig.getOeFhirSystem() + "/pat_nationalId").equals(system)) {
                 patientSearchResults.setNationalId(value);
-            } else if ("http://openelis-global.org/pat_guid".equals(system)) {
+            } else if ((fhirConfig.getOeFhirSystem() + "/pat_guid").equals(system)) {
                 patientSearchResults.setExternalId(value);
-            } else if ("http://openelis-global.org/pat_uuid".equals(system)) {
+            } else if ((fhirConfig.getOeFhirSystem() + "/pat_uuid").equals(system)) {
                 patientSearchResults.setGUID(value);
             }
         }

@@ -75,19 +75,12 @@ This project keeps several worktrees. When asked to work on a branch or PR, find
 its worktree first and make every edit there — never in the primary directory.
 Note that each worktree needs its own installer run, per step 1.
 
-## FILE Ownership Model
+## Analyzer architecture
 
-For FILE-based analyzer workflows in OpenELIS Global 2:
-
-- Bridge owns the analyzer connection, its runtime configuration, directory
-  watching/polling, parsing, archive/error handling, and file transport.
-- OpenELIS owns the lab-facing connection reference, local clinical bindings,
-  direct normalized ingestion endpoint, result processing, review, and audit.
-- An OpenELIS app-side FILE poller is outside the target architecture and must
-  not be added. Any proposal to change this requires an explicit architecture
-  decision that supersedes this ownership model.
-
-When guidance conflicts, this ownership model takes precedence.
+What the Analyzer Bridge and OpenELIS each own (profiles, connections, FILE
+watching, mappings, adoption, placement, import, pairing and roles) is specified
+in [specs/analyzers/spec.md](specs/analyzers/spec.md). Read it before analyzer
+work; it, not this file, is the authority.
 
 ## OpenELIS Work Product/Engineering Boundary
 
@@ -106,58 +99,6 @@ source only.
   explicit ADR or versioned contract when a new decision is required.
 - Use `openelis-work` screenshots and prototypes for functional and visual
   comparison, never as an implementation specification.
-
-For the target analyzer architecture, Analyzer Bridge owns portable analyzer
-profiles, durable analyzer connections and their runtime configuration, and
-analyzer-facing behavior (listeners, parsing, probes, protocol execution, and
-FILE watching/transport). OpenELIS owns lab-facing orchestration, the reference
-to a Bridge connection, lab units, local clinical catalog bindings,
-verification/audit, activation intent, operational QC, held results, and review.
-Do not recreate Bridge runtime or connection-configuration authority in
-OpenELIS.
-
-The established working analyzer profile system is the implementation baseline,
-not a disposable legacy model. A profile has exactly two jobs: define
-communication/runtime behavior for one analyzer type, and supply defaults for
-creating a new Bridge connection for that type through the OpenELIS setup
-workflow. Bridge persists the connection's profile pin and runtime values;
-OpenELIS persists only its Bridge connection reference and LIMS-owned state.
-Moving catalog packaging to Bridge, making revisions immutable, and adding
-lifecycle/management UX must evolve those semantics additively. Do not introduce
-a second profile contract, replace profile-owned defaults with frontend/server
-constants, or accept a profile-contract change without unabridged GeneXpert ASTM
-and FluoroCycler compatibility tests across OE setup, Bridge runtime, and
-analyzer mock traffic.
-
-Existing profile content is curated from instrument evidence. A current row is
-retained, corrected, represented as a proven alias, split, or removed according
-to its semantics; current storage or equal LOINC values never create a
-preservation obligation. Do not introduce `LEGACY_UNBOUND`, a legacy profile-row
-domain, or a runtime compatibility path for superseded profile/config storage.
-
-Profile execution is fully data-driven. Production code must not special-case a
-hard-coded profile ID/revision, manufacturer, model, display name, analyzer test
-code, fixture name, or vendor-specific field/value, and it must not duplicate a
-profile-owned default in frontend or server constants. Generic lookup by values
-read from a profile or analyzer pin is expected. Named analyzer profiles belong
-only in profile data and parameterized test fixtures; validators, consumers,
-runtime handlers, and UI composition remain profile-agnostic.
-
-Control-result recognition is Analyzer Type behavior owned by the pinned Bridge
-profile revision. Bridge must use only the profile's explicit recognition mode
-and rules; it must not use an OpenELIS-pushed classifier or a hard-coded
-fallback. `AnalyzerQcRule` is not part of the target architecture. OpenELIS
-operational QC (`QCControlLot`, `QCResult`, statistics, Westgard evaluation,
-violations, and alerts) remains a separate linked workflow and must not gate
-analyzer activation or stale analyzer mapping/recognition verification.
-
-Published Bridge profile revisions are immutable and retained while referenced.
-A Bridge connection pins a profile ID/revision; an OpenELIS analyzer references
-that connection and records the acknowledged profile reference needed for local
-binding verification and audit. Update shared and Duplicate Profile never move a
-configured connection implicitly, and OpenELIS must not keep an authoritative
-copied-profile snapshot, runtime-configuration copy, or per-analyzer mapping
-editor.
 
 > **Purpose:** This file provides comprehensive project context for ALL AI
 > coding agents (Claude, Cursor, Copilot, Jules, Aider, etc.). It contains
@@ -192,7 +133,7 @@ reporting, serving 30+ countries worldwide.
 
 **Governance:**
 
-- **Constitution Authority**: `.specify/memory/constitution.md` (v1.8.1) is the
+- **Constitution Authority**: `.specify/memory/constitution.md` (v1.12.1) is the
   authoritative governance document
 - **All code changes MUST comply with constitutional principles**
 - **Constitution supersedes all other documentation in case of conflict**
@@ -407,7 +348,7 @@ jakarta.persistence (Jakarta EE 9)
 
 ## Constitution Principles Summary
 
-> **Full Document:** `.specify/memory/constitution.md` (v1.8.1)
+> **Full Document:** `.specify/memory/constitution.md` (v1.12.1)
 
 The constitution defines 9 core principles that ALL code changes MUST follow:
 
@@ -567,8 +508,25 @@ complex logic.
 
 ### VI. Database Schema Management
 
-**Rule:** All database changes MUST go through Liquibase. NO direct DDL/DML in
-production.
+**Rule:** Database schema changes and conversions of existing historical records
+MUST go through Liquibase. Concepts, catalogs, and configuration defaults MUST
+use configuration files and application configuration loaders.
+
+**Choose the correct path before writing a migration:**
+
+- Tables, columns, indexes, and constraints: Liquibase.
+- Converting existing records to a new schema: Liquibase, with explicit
+  preservation and rollback rules. This does not permit seeding new vocabulary.
+- Dictionary categories and entries, test catalogs, reporting tracks, label
+  presets, and settings defaults: configuration loaders. Inspect the existing
+  handlers and [configuration guide](docs/configuration/README.md) first; extend
+  the loader when a domain is missing.
+- Do not seed or manage concepts through Liquibase `insert`, SQL inserts,
+  `loadData`, or `loadUpdateData`. Existing seed migrations are legacy code, not
+  examples to copy.
+- Configuration imports must be repeatable, preserve referenced IDs and local
+  customizations, and test fresh installation, reload, and upgrade behavior.
+  Moving an existing catalog must not delete or recreate referenced concepts.
 
 **How:**
 
@@ -689,8 +647,8 @@ resistance, pulling all future work toward the wrong design.
 - Do NOT add features to superseded components (entities, readers, handlers)
 - Remove legacy code in the same PR, a paired PR, or a tracked priority issue
 - No dual-write to old and new tables/entities
-- Respect component boundaries (Bridge owns parsing and analyzer runtime
-  configuration; OE owns clinical bindings and review)
+- Respect component boundaries (for analyzers, as
+  [specs/analyzers/spec.md](specs/analyzers/spec.md) assigns them)
 - Build on the target architecture, not the legacy one
 
 **Anti-pattern:** Marking code `@Deprecated` without migrating callers or
@@ -705,7 +663,7 @@ exists in one of them.
 
 Use `scripts/dev-stack` from the root of every clone or worktree. It is the only
 supported interactive development launcher and starts the complete core
-OpenELIS + analyzer harness with worktree-scoped containers, images, networks,
+OpenELIS + analyzer harness with checkout-scoped containers, images, networks,
 ports, and volumes.
 
 ```bash
@@ -721,8 +679,10 @@ application scenario services. `scripts/dev-stack down --volumes --yes` is the
 only supported destructive reset. CI-parity and release tooling are separate
 interfaces and are not replacements for this development path.
 
-Localhost uses random loopback ports and self-signed TLS. Domain-enabled dev
-servers use the same command after setting `LETSENCRYPT_DOMAIN` and
+Localhost uses random loopback ports and mkcert TLS. Install mkcert as a
+prerequisite; `up` handles first-use system trust before building and may
+request administrator authentication. Later starts reuse trust. Domain-enabled
+dev servers use the same command after setting `LETSENCRYPT_DOMAIN` and
 `LETSENCRYPT_EMAIL` in `.env`; the stack then exposes 80/443 and uses the
 existing Let's Encrypt flow.
 
@@ -730,12 +690,15 @@ existing Let's Encrypt flow.
 
 Use the mode matching the work:
 
-- `scripts/dev-stack up` builds this checkout using worktree-specific images,
-  including the Bridge and analyzer mock exactly as checked out in their
-  submodules. It initializes only empty submodules, never moves or resets a
-  populated one, and prints a line for each submodule that differs from the
-  recorded commit or has uncommitted changes. It does not reuse published
-  application images.
+- `scripts/dev-stack up` builds this checkout's WAR and runs it, with the
+  frontend source mounted, in the published development images named in the
+  harness compose files. It never builds container images by default; only
+  `up --build` builds them from the checkout, which Bridge, mock, frontend
+  dependency and image build changes need. Without `--build` it warns when the
+  checkout differs from what the published images contain. It initializes only
+  empty submodules, never moves or resets a populated one, and prints a line for
+  each submodule that differs from the recorded commit or has uncommitted
+  changes.
 - `scripts/run-ci-checks.sh` runs the complete local CI package on one committed
   revision and its recorded submodule commits, concurrently with GitHub after
   each push. Targeted tests alone are not full parity. Retain and inspect the
@@ -2401,6 +2364,8 @@ Before creating PR, verify ALL items:
 
     - Schema changes via Liquibase XML (NOT direct SQL)
     - Rollback scripts provided
+    - No concept, catalog, or configuration-default seeds in Liquibase;
+      configuration loaders cover fresh installation, reload, and upgrades
 
 13. **FHIR Resources Validated:**
 
@@ -2461,6 +2426,14 @@ Before creating PR, verify ALL items:
   and checkpoint/status semantics
 - **E2E CI Operator Model:** `specs/plans/e2e-ci-operator-model.md` -
   operational troubleshooting guide for CI maintainers
+- **Module System Architecture:** `specs/plans/module-system-architecture.md` -
+  research and design for the implementation-specific module/plugin system
+  (backend module JARs, frontend remotes, manifests, roadmap); the module author
+  guide is `docs/modules.md`
+- **Module System Decision Record:** `docs/adr/0001-module-system.md` - the
+  accepted architecture, the Phase 0 decisions (publishing, package naming,
+  strict mode, schema layout, route policy, fail policy, loader engine) and the
+  decision-check results
 
 ### Testing Documentation
 
@@ -2555,6 +2528,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2026-09-29 **Constitution Version:** 1.12.0 **Maintained By:**
+**Last Updated:** 2026-10-14 **Constitution Version:** 1.12.1 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

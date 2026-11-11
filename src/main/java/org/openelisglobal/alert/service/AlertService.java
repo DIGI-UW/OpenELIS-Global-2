@@ -104,6 +104,9 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      */
     List<Alert> getAlertsByEntityRef(String entityType, String entityRef);
 
+    /** Outstanding means OPEN or ACKNOWLEDGED. */
+    List<Alert> getOutstandingAlerts(String entityType, AlertType alertType);
+
     /**
      * Count active alerts (OPEN or ACKNOWLEDGED) for a specific entity.
      *

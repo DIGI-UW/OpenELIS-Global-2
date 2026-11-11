@@ -44,6 +44,7 @@ import LabelsSection, {
 import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
 import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
+import SearchableSelect from "../common/SearchableSelect";
 const AddOrder = (props) => {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -64,7 +65,7 @@ const AddOrder = (props) => {
     stagedAttachments,
     setStagedAttachments,
   } = props;
-  const [otherSamplingVisible, setOtherSamplingVisible] = useState(false);
+  const [otherTestLocationCodeId, setOtherTestLocationCodeId] = useState("");
   const [providers, setProviders] = useState([]);
   const [paymentOptions, setPaymentOptions] = useState([]);
   const [samplingPerformed, setSamplingPerformed] = useState([]);
@@ -285,6 +286,9 @@ const AddOrder = (props) => {
         setSiteNames(response.sampleOrderItems.referringSiteList);
         setPaymentOptions(response.sampleOrderItems.paymentOptions);
         setSamplingPerformed(response.sampleOrderItems.testLocationCodeList);
+        setOtherTestLocationCodeId(
+          response.sampleOrderItems.otherTestLocationCodeId || "",
+        );
         setProviders(response.sampleOrderItems.providersList);
       }
     });
@@ -404,18 +408,15 @@ const AddOrder = (props) => {
     });
   }
 
-  const handleSamplingPerformed = (e) => {
-    const { value } = e.target;
-    if (value === "1310") {
-      setOtherSamplingVisible(!otherSamplingVisible);
-    } else {
-      setOtherSamplingVisible(false);
-    }
+  const handleSamplingPerformed = (value) => {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
         ...orderFormValues.sampleOrderItems,
         testLocationCode: value,
+        ...(value === String(otherTestLocationCodeId)
+          ? {}
+          : { otherLocationCode: "" }),
       },
     });
   };
@@ -833,17 +834,21 @@ const AddOrder = (props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderLabelSignature, isModifyOrder]);
 
-  // Human-facing row label for the sample table: the sample type name, falling
-  // back to "Sample N" (the filtered position the backend correlates by).
+  // Human-facing row label for the sample table, as the Result Reporting
+  // headings read it: "Sample N: <sample type>", numbered by the sample's place
+  // on the form so both sections name a sample alike.
   const orderLabelSampleFormatter = (row) => {
     const sample = orderLabelSamples[Number(row.sampleIdLocal)];
-    if (sample && sample.name) {
-      return sample.name;
-    }
-    return intl.formatMessage(
+    const position = sample ? samples.indexOf(sample) : -1;
+    const heading = intl.formatMessage(
       { id: "orderEntry.labels.sampleRow.header" },
-      { number: row.sampleNumber, id: row.sampleIdLocal },
+      {
+        number: position >= 0 ? position + 1 : row.sampleNumber,
+        id: row.sampleIdLocal,
+      },
     );
+    const typeName = sampleTypeNameOf(sample);
+    return typeName ? `${heading}: ${typeName}` : heading;
   };
 
   // Capture the LabelsSection's chosen quantities (persistPayload, already shaped
@@ -1432,27 +1437,15 @@ const AddOrder = (props) => {
               &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
             </Column>
             <Column lg={8} md={4} sm={4}>
-              <Select
+              <SearchableSelect
                 id="testLocationCodeId"
-                name="testLocationCode"
-                value={orderFormValues.sampleOrderItems.testLocationCode ?? ""}
-                labelText={
-                  <FormattedMessage id="order.sampling.performed.label" />
-                }
-                onChange={(e) => handleSamplingPerformed(e)}
-                required
-              >
-                <SelectItem value="" text="" />
-                {samplingPerformed.map((option) => {
-                  return (
-                    <SelectItem
-                      key={option.id}
-                      value={option.id}
-                      text={option.value}
-                    />
-                  );
+                labelText={intl.formatMessage({
+                  id: "order.sampling.performed.label",
                 })}
-              </Select>
+                options={samplingPerformed || []}
+                value={orderFormValues.sampleOrderItems.testLocationCode ?? ""}
+                onChange={handleSamplingPerformed}
+              />
             </Column>
             <Column lg={8} md={4} sm={4}>
               <TextInput
@@ -1460,7 +1453,11 @@ const AddOrder = (props) => {
                 labelText={intl.formatMessage({ id: "order.if.other.label" })}
                 onChange={handleOtherLocationCode}
                 value={orderFormValues.sampleOrderItems.otherLocationCode ?? ""}
-                disabled={!otherSamplingVisible}
+                disabled={
+                  !otherTestLocationCodeId ||
+                  String(orderFormValues.sampleOrderItems.testLocationCode) !==
+                    String(otherTestLocationCodeId)
+                }
                 id="testLocationCodeOtherId"
               />
             </Column>

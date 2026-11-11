@@ -465,17 +465,6 @@ const ControlRecognitionDraftEditor = ({ draftId, onStateChange, onSaved }) => {
           })}
         />
       )}
-      {(draft.validationIssues || []).length > 0 && (
-        <InlineNotification
-          kind="warning"
-          lowContrast
-          hideCloseButton
-          title={intl.formatMessage({
-            id: "analyzerType.recognition.validation.title",
-          })}
-          subtitle={(draft.validationIssues || []).join(" ")}
-        />
-      )}
       <Button
         kind="secondary"
         size="sm"

@@ -7,6 +7,7 @@ import {
   Switch,
 } from "react-router-dom";
 import RedirectOldUI from "./RedirectOldUI";
+import ModuleRoutes from "./modules/ModuleRoutes";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { Admin } from "./components";
 import ChangePassword from "./components/ChangePassword";
@@ -14,6 +15,7 @@ import Home from "./components/Home";
 import Layout from "./components/layout/Layout";
 import StorageManagementPage from "./components/storage/StorageManagementPage";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
+import ManagementDashboard from "./components/dashboards/management/ManagementDashboard";
 import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
 import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
 import ProviderSchemeList from "./components/eqa/Provider/ProviderSchemeList";
@@ -39,7 +41,11 @@ import CallbackReport from "./components/qa/qi/CallbackReport";
 import ESignatureLog from "./components/qa/qms/ESignatureLog";
 import CapaRegister from "./components/qa/qms/CapaRegister";
 import Accreditation from "./components/qa/qms/Accreditation";
-import InventoryManagement from "./components/inventory/InventoryManagement";
+import {
+  InventoryItemsPage,
+  InventoryReceivePage,
+  InventoryReportsPage,
+} from "./components/inventory/InventoryManagement";
 import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import BoxCreation from "./components/shipment/BoxCreation";
 import BoxDetails from "./components/shipment/BoxDetails";
@@ -107,6 +113,7 @@ import PatientMerge from "./components/patient/PatientMerge";
 import Aliquot from "./components/sample/Aliquot";
 import Workplan from "./components/workplan/Workplan";
 import BatchWorkplan from "./components/workplan/BatchWorkplan";
+import BatchWorkplanPrint from "./components/workplan/batch/BatchWorkplanPrint";
 import AddOrder from "./components/addOrder/Index";
 import FindOrder from "./components/modifyOrder/Index";
 import ModifyOrder from "./components/modifyOrder/ModifyOrder";
@@ -142,6 +149,8 @@ import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index";
 import LaporanHasilReport from "./components/reports/compliance/LaporanHasilReport";
+import ReportPrintQueue from "./components/reports/printQueue/ReportPrintQueue";
+import SentMessages from "./components/reports/sentMessages/SentMessages";
 import ManualEntryHelper from "./components/reports/vectorSurveillance/ManualEntryHelper";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm";
@@ -186,6 +195,7 @@ import {
   VectorIdentificationWorklist,
   VectorDeconvolutionWorklist,
 } from "./components/vectorIdentification";
+import { endServerSession } from "./components/utils/endServerSession";
 
 // QA-context breadcrumb for the TAT report mounted at /qa/qi/tat (OGC-696).
 // Labels are i18n keys resolved by PageBreadCrumb.
@@ -200,6 +210,8 @@ export const ANALYZER_RESULTS_ROLES = [
   Roles.GLOBAL_ADMIN,
   Roles.ANALYSER_IMPORT,
 ];
+
+export const ANALYZER_SETUP_ROLES = [Roles.GLOBAL_ADMIN];
 
 // The quality-indicator reports: same route shape, same roles, each gated on its
 // own indicator being enabled.
@@ -355,7 +367,6 @@ export default function App() {
             form.submit();
           } else {
             // No SAML form in response — fall back to a direct redirect
-            getUserSessionDetails();
             window.location.href = config.loginRedirect;
           }
         })
@@ -363,22 +374,11 @@ export default function App() {
           console.error(error);
         });
     } else {
-      fetch(config.serverBaseUrl + "/Logout", {
-        //includes the browser sessionId in the Header for Authentication on the backend server
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": localStorage.getItem("CSRF"),
-        },
-      })
-        .then((response) => response.status)
-        .then(() => {
-          getUserSessionDetails();
+      endServerSession(config.serverBaseUrl, localStorage.getItem("CSRF")).then(
+        () => {
           window.location.href = config.loginRedirect;
-        })
-        .catch((error) => {
-          console.error(error);
-        });
+        },
+      );
     }
   };
 
@@ -948,6 +948,13 @@ export default function App() {
                   render={() => <AlertsDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
+                <SecureRoute
+                  path="/dashboards/management"
+                  exact
+                  render={() => <ManagementDashboard />}
+                  permission="dashboards.view.management"
+                  role={Roles.GLOBAL_ADMIN}
+                />
                 {/* QA v0.5 IA rehome (OGC-691): EQA and QC pages moved under
                     /qa/*. Kept so bookmarks and anything still linking an old
                     path land on the new page. */}
@@ -1375,9 +1382,21 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
+                  path="/inventory/receive"
+                  exact
+                  render={() => <InventoryReceivePage />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/inventory/reports"
+                  exact
+                  render={() => <InventoryReportsPage />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
                   path="/inventory"
                   exact
-                  render={() => <InventoryManagement />}
+                  render={() => <InventoryItemsPage />}
                   role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
@@ -1447,7 +1466,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
+                  role={ANALYZER_SETUP_ROLES}
                 />
                 <SecureRoute
                   path="/analyzers/types"
@@ -1459,7 +1478,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
+                  role={ANALYZER_SETUP_ROLES}
                 />
                 <SecureRoute
                   path="/analyzers/types/:profileId/mapping"
@@ -1471,7 +1490,31 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.ANALYSER_IMPORT}
+                  role={ANALYZER_SETUP_ROLES}
+                />
+                <SecureRoute
+                  path="/analyzers/:analyzerId/mapping"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzerTypeMappingPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={ANALYZER_SETUP_ROLES}
+                />
+                <SecureRoute
+                  path="/analyzers/:analyzerId/adoption"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzerTypeMappingPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={ANALYZER_SETUP_ROLES}
                 />
                 <SecureRoute
                   path="/analyzers/qc/instruments/:instrumentId"
@@ -1586,6 +1629,12 @@ export default function App() {
                   path="/Workplan"
                   exact
                   component={() => <BatchWorkplan />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/Workplan/batch/:id/print"
+                  exact
+                  component={() => <BatchWorkplanPrint />}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
@@ -1704,6 +1753,18 @@ export default function App() {
                   role={Roles.REPORTS}
                 />
                 <SecureRoute
+                  path="/ReportPrintQueue"
+                  exact
+                  render={() => <ReportPrintQueue />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/SentMessages"
+                  exact
+                  render={() => <SentMessages />}
+                  role={[Roles.REPORTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
                   path="/VectorManualEntry"
                   exact
                   render={() => <ManualEntryHelper />}
@@ -1762,6 +1823,8 @@ export default function App() {
                   )}
                   role={ANALYZER_RESULTS_ROLES}
                 />
+                {/* Pages of installed modules, /m/<module id>/..., before the catch-all */}
+                <Route path="/m/:moduleId" render={() => <ModuleRoutes />} />
                 <Route path="*" render={() => <RedirectOldUI />} />
               </Switch>
             </Layout>

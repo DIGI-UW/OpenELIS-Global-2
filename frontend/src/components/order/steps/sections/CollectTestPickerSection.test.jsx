@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -35,6 +35,35 @@ describe("CollectTestPickerSection", () => {
     );
   });
 
+  it("uses the case catalog and excludes an existing assay only on its specimen", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <CollectTestPickerSection
+          samples={[
+            { sampleItemId: "A", sampleTypeId: "5", sampleTypeName: "First" },
+            { sampleItemId: "B", sampleTypeId: "5", sampleTypeName: "Second" },
+          ]}
+          setSamples={vi.fn()}
+          cataloguePath="/rest/microbiology/cases/C/analyses/catalog"
+          excludedTestIdsBySample={{ A: ["9"] }}
+        />
+      </IntlProvider>,
+    );
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/microbiology/cases/C/analyses/catalog?sampleType=5",
+      expect.any(Function),
+    );
+    expect(screen.getAllByText("Malaria RDT")).toHaveLength(1);
+    expect(
+      within(screen.getByText(/Second/).closest("li")).getByText("Malaria RDT"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByText(/First/).closest("li")).queryByText(
+        "Malaria RDT",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   // OGC-1201 A: Collect showed the ordered tests but offered no way to add
   // one, so a test asked for at the bedside meant walking back to step 1.
   it("offers the catalogue for each collectable sample's own type", () => {
@@ -66,6 +95,30 @@ describe("CollectTestPickerSection", () => {
     const updated = setSamples.mock.calls[0][0];
     expect(updated[0].tests).toEqual([{ id: "9", name: "Malaria RDT" }]);
     expect(updated[1].tests).toEqual([]);
+  });
+
+  // OGC-1449: a failed catalogue request offered nothing to add, with no
+  // message and no way to load it again.
+  it("says the catalogue could not be loaded and loads it on Retry", async () => {
+    getFromOpenElisServer.mockImplementationOnce((url, callback) =>
+      callback(undefined),
+    );
+    renderPicker([
+      { sampleTypeId: "5", sampleTypeName: "Blood", tests: [], panels: [] },
+    ]);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "The tests for this sample type could not be loaded.",
+    );
+    expect(screen.queryByText("Malaria RDT")).not.toBeInTheDocument();
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Malaria RDT")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("stays out of the way when nothing is collectable yet", () => {

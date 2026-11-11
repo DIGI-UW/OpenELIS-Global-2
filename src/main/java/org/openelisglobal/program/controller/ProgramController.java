@@ -48,6 +48,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping(value = "/rest")
 public class ProgramController extends BaseRestController {
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroReportingTrackService reportingTracks;
 
     @Autowired
     private QuestionnaireStorageService questionnaireStorageService;
@@ -107,6 +109,9 @@ public class ProgramController extends BaseRestController {
         program.setIsActive(resolveActive(form.getActive(), existing));
         program.setShowOnMicroCase(form.getShowOnMicroCase() == null ? existing != null && existing.isShowOnMicroCase()
                 : form.getShowOnMicroCase());
+        program.setReportingTrackId(
+                form.getReportingTrackId() == null ? existing == null ? null : existing.getReportingTrackId()
+                        : reportingTracks.validate(form.getReportingTrackId()));
         Set<TestSection> labUnits = resolveLabUnits(form, existing);
         program.setLabUnits(labUnits);
         program.setTestSection(ProgramPickerRules.firstLabUnit(labUnits));
@@ -252,6 +257,8 @@ public class ProgramController extends BaseRestController {
         form.setDomain(Domain.normalize(program.getDomain()));
         form.setActive(ProgramPickerRules.isActive(program));
         form.setShowOnMicroCase(program.isShowOnMicroCase());
+        form.setReportingTrackId(program.getReportingTrackId());
+        form.setReportingTracks(reportingTracks.options());
         form.setLabUnitIds(ProgramPickerRules.labUnitIds(program));
     }
 

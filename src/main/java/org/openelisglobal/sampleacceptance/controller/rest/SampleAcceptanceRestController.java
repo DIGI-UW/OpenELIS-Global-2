@@ -298,9 +298,10 @@ public class SampleAcceptanceRestController extends BaseRestController {
     }
 
     /**
-     * Plainly reject a single (non-pooled vector) specimen — no replacement order.
-     * Body: {@code { "reason": "..." }} (optional). Returns
-     * {@code {rejected:true}}.
+     * Plainly reject a single specimen (a non-pooled vector catch, or an EQA
+     * sample) — no replacement order. Body: {@code { "rejectReasonId": "...",
+     * "reason": "..." }}: one of the lab's rejection reasons, required for an EQA
+     * sample, and an optional comment. Returns {@code {rejected:true}}.
      */
     @PostMapping("/sample-item/{sampleItemId}/reject")
     @PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'ADMIN')")
@@ -311,7 +312,10 @@ public class SampleAcceptanceRestController extends BaseRestController {
                 return error(HttpStatus.BAD_REQUEST, "Invalid sampleItemId: must be numeric");
             }
             String reason = body == null ? null : asString(body.get("reason"));
-            resampleService.reject(sampleItemId, reason == null ? null : reason.trim(), currentUserId());
+            String rejectReasonId = body == null ? null : asString(body.get("rejectReasonId"));
+            resampleService.reject(sampleItemId,
+                    rejectReasonId == null || rejectReasonId.isBlank() ? null : rejectReasonId.trim(),
+                    reason == null ? null : reason.trim(), currentUserId());
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("rejected", true);
             return ResponseEntity.ok(response);
@@ -533,6 +537,7 @@ public class SampleAcceptanceRestController extends BaseRestController {
         resample.put("resampledToAccession", sample == null ? null : accessionOf(sample.getResampledToSampleId()));
         resample.put("resampledFromAccession", sample == null ? null : accessionOf(sample.getResampledFromSampleId()));
         response.put("resample", resample);
+        response.put("eqa", resampleService.isEqa(sample));
         return response;
     }
 

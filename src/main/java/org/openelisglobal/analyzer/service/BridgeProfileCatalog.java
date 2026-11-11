@@ -3,10 +3,20 @@ package org.openelisglobal.analyzer.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 
-public record BridgeProfileCatalog(String schemaVersion, String catalogFingerprint, List<ProfileRevision> profiles) {
+public record BridgeProfileCatalog(String schemaVersion, String catalogFingerprint, List<ProfileRevision> profiles,
+        List<CatalogIssue> issues) {
 
     public BridgeProfileCatalog {
         profiles = profiles == null ? List.of() : List.copyOf(profiles);
+        issues = issues == null ? List.of() : List.copyOf(issues);
+    }
+
+    public BridgeProfileCatalog(String schemaVersion, String catalogFingerprint, List<ProfileRevision> profiles) {
+        this(schemaVersion, catalogFingerprint, profiles, List.of());
+    }
+
+    /** A profile file or draft the Bridge set aside when it loaded, and why. */
+    public record CatalogIssue(String source, String reason) {
     }
 
     public record ProfileRevision(JsonNode profile, JsonNode publication,

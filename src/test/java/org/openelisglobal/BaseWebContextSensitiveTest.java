@@ -9,7 +9,9 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.sql.DataSource;
 import org.dbunit.DatabaseUnitException;
@@ -26,6 +28,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.DefaultConfigurationProperties.OEProperties;
+import org.openelisglobal.common.util.DefaultConfigurationProperties.PropertyHolder;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.security.WithDaemonUser;
 import org.slf4j.Logger;
@@ -44,6 +49,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.AbstractTransactionalJUnit4SpringContextTests;
 import org.springframework.test.context.transaction.AfterTransaction;
 import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -113,9 +119,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
             { "sample_human", "sample_human_seq" }, { "analysis", "analysis_seq" }, { "result", "result_seq" },
             { "inventory_item", "inventory_item_seq" }, { "observation_history", "observation_history_seq" },
             { "image", "image_seq" }, { "organization", "organization_seq" }, { "analyzer", "analyzer_seq" },
-            { "analyzer_profile_binding", "analyzer_profile_binding_seq" },
-            { "analyzer_site_binding", "analyzer_site_binding_seq" },
-            { "analyzer_site_binding_revision", "analyzer_site_binding_revision_seq" },
+            { "analyzer_mapping", "analyzer_mapping_seq" },
             { "referral_status_history", "referral_status_history_seq" }, { "calculation", "calculation_seq" },
             { "result_limits", "result_limits_seq" }, { "site_information", "site_information_seq" },
             { "reflex_rule", "reflex_rule_seq" }, { "reflex_rule_condition", "reflex_rule_condition_seq" },
@@ -148,6 +152,9 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     protected MockMvc mockMvc;
 
     private boolean loadedTransactionalFixture;
+    private ConfigurationProperties testConfiguration;
+    private OEProperties propertiesBeforeTest;
+    private Map<String, PropertyHolder> propertyHoldersBeforeTest;
 
     /**
      * Reuses a shared {@link ObjectMapper} to avoid expensive repeated jackson
@@ -167,6 +174,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         // callback. Restore the legacy lookup after tests using another context.
         webApplicationContext.getBean(org.openelisglobal.spring.util.SpringContext.class)
                 .setApplicationContext(webApplicationContext);
+        snapshotConfigurationProperties();
         // Ensure the "admin" SystemUser row exists so UserContextHolder can
         // resolve the principal set below (or by @WithMockUser(username="admin")
         // on individual tests). Without this, fillSysUserIdIfMissing throws
@@ -175,6 +183,30 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
 
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A",
                 List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_RESULTS"))));
+    }
+
+    @SuppressWarnings("unchecked")
+    private void snapshotConfigurationProperties() {
+        testConfiguration = ConfigurationProperties.getInstance();
+        propertiesBeforeTest = (OEProperties) ReflectionTestUtils.getField(testConfiguration, "finalProperties");
+        Map<String, PropertyHolder> holders = (Map<String, PropertyHolder>) ReflectionTestUtils
+                .getField(propertiesBeforeTest, "allProperties");
+        propertyHoldersBeforeTest = new HashMap<>(holders);
+    }
+
+    @After
+    @SuppressWarnings("unchecked")
+    public void restoreConfigurationProperties() {
+        if (propertiesBeforeTest == null) {
+            return;
+        }
+        // Restoring strings alone loses the translations on localized properties.
+        // Restore the original holders after subclass cleanup has run.
+        ReflectionTestUtils.setField(testConfiguration, "finalProperties", propertiesBeforeTest);
+        Map<String, PropertyHolder> holders = (Map<String, PropertyHolder>) ReflectionTestUtils
+                .getField(propertiesBeforeTest, "allProperties");
+        holders.clear();
+        holders.putAll(propertyHoldersBeforeTest);
     }
 
     @After
@@ -646,6 +678,19 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
                         + "SELECT nextval('clinlims.site_information_seq'), ?, ?, 'text', now() "
                         + "WHERE NOT EXISTS (SELECT 1 FROM clinlims.site_information WHERE name = ?)",
                 name, value, name);
+    }
+
+    /**
+     * Idempotently ensure a {@code clinlims.system_role} row with this name exists.
+     * Several fixtures replace the whole role table with their own rows and leave
+     * the seeded roles out for the rest of the JVM run, so a test that grants a
+     * seeded role by name would otherwise grant nothing. Insert-if-absent only; the
+     * id comes from the role sequence.
+     */
+    protected void ensureSystemRole(String name) {
+        jdbcTemplate.update("INSERT INTO clinlims.system_role (id, name, description, active, editable) "
+                + "SELECT nextval('clinlims.system_role_seq'), ?, ?, true, false "
+                + "WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_role WHERE name = ?)", name, name, name);
     }
 
     /**

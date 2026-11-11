@@ -72,6 +72,26 @@ public class EQALabPerformanceIntegrationTest extends EQASpineTestBase {
     }
 
     @Test
+    public void acceptanceRateBetweenTwoDatesCountsOnlyResultsScoredInside() {
+        EQAProgram scheme = insertScheme("Perf scheme dated", EQASchemeType.INTERNATIONAL_PT, "NHLS");
+        EQACycle recent = cycleEnding(scheme, 1, LocalDate.now().minusMonths(2));
+        scored(recent, "ACCEPTABLE", LocalDate.now().minusMonths(2));
+        scored(recent, "UNACCEPTABLE", LocalDate.now().minusMonths(2));
+        EQACycle old = cycleEnding(scheme, 2, LocalDate.now().minusMonths(18));
+        scored(old, "UNACCEPTABLE", LocalDate.now().minusMonths(18));
+        Long draft = insertParticipantResult(recent, roundsByCycle.get(recent.getId()), ENROLLMENT, freshAnalyte(),
+                EQASubmissionStatus.DRAFT, "99");
+        setScore(draft, "UNACCEPTABLE", LocalDate.now().minusMonths(1));
+
+        assertEquals(Integer.valueOf(50),
+                labPerformanceService.getAcceptanceRate(LocalDate.now().minusMonths(3), LocalDate.now()));
+        assertEquals(Integer.valueOf(0), labPerformanceService.getAcceptanceRate(LocalDate.now().minusMonths(20),
+                LocalDate.now().minusMonths(15)));
+        assertNull(labPerformanceService.getAcceptanceRate(LocalDate.now().minusMonths(12),
+                LocalDate.now().minusMonths(6)));
+    }
+
+    @Test
     public void aResultOlderThanTheWindowDropsOutOfTheRateAndIntoTheComparison() {
         EQAProgram scheme = insertScheme("Perf scheme aged", EQASchemeType.INTERNATIONAL_PT, "NHLS");
         EQACycle recent = cycleEnding(scheme, 1, LocalDate.now().minusMonths(3));
@@ -135,6 +155,32 @@ public class EQALabPerformanceIntegrationTest extends EQASpineTestBase {
         assertNull("nothing scored yet is pending, not acceptable", recent.get(0).get("performance"));
         assertEquals(0, recent.get(0).get("scoredCount"));
         assertTrue("coverage needs a verdict, so an unscored cycle contributes no row", coverage().isEmpty());
+    }
+
+    @Test
+    public void theOpenEqaNceCountKeepsAnOpenNceOlderThanTheWindowAndSkipsClosedAndNonEqaOnes() {
+        int countBefore = labPerformanceService.countOpenEqaNces();
+        int kpiBefore = (Integer) kpis().get("eqaNceOpenCount");
+        insertNce(98811, "EQA_UNACCEPTABLE", "Pending", LocalDate.now().minusMonths(13));
+        insertNce(98812, "EQA_FOLLOWUP_ESCALATION", "In Progress", LocalDate.now().minusDays(3));
+        insertNce(98813, "EQA_UNACCEPTABLE", "Closed", LocalDate.now().minusDays(3));
+        insertNce(98814, "QC_BENCH_CONTROL", "Pending", LocalDate.now().minusDays(3));
+
+        assertEquals(countBefore + 2, labPerformanceService.countOpenEqaNces());
+        assertEquals("the twelve-month KPI leaves the older one out", kpiBefore + 1, kpis().get("eqaNceOpenCount"));
+    }
+
+    @Override
+    protected void cleanEqaTables() {
+        jdbc.update("DELETE FROM clinlims.nc_event WHERE id BETWEEN 98811 AND 98814");
+        super.cleanEqaTables();
+    }
+
+    private void insertNce(int id, String triggerSource, String status, LocalDate reported) {
+        jdbc.update(
+                "INSERT INTO clinlims.nc_event (id, nce_number, trigger_source_type, status, report_date)"
+                        + " VALUES (?, ?, ?, ?, ?)",
+                id, "NCE-PERF-" + id, triggerSource, status, java.sql.Date.valueOf(reported));
     }
 
     @SuppressWarnings("unchecked")

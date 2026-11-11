@@ -29,4 +29,16 @@ public class CriticalCallbackDAOImpl extends BaseDAOImpl<CriticalCallback, Strin
         query.setParameterList("resultIds", resultIds);
         return query.list();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CriticalCallback> getCallbacksForAnalyses(Collection<String> analysisIds) {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            return List.of();
+        }
+        String hql = "from CriticalCallback c where c.analysisId in (:analysisIds) order by c.loggedAt desc";
+        Query<CriticalCallback> query = entityManager.unwrap(Session.class).createQuery(hql, CriticalCallback.class);
+        query.setParameterList("analysisIds", analysisIds);
+        return query.list();
+    }
 }

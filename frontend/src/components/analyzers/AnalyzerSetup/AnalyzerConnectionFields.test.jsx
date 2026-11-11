@@ -45,7 +45,7 @@ const field = {
   choices,
 };
 
-function SetupFields({ fields, onSave }) {
+function SetupFields({ fields, onSave, suggestions }) {
   const [values, setValues] = useState(() =>
     initializeConnectionValues(fields),
   );
@@ -56,6 +56,7 @@ function SetupFields({ fields, onSave }) {
         values={values}
         changedSecrets={new Set()}
         submitAttempted={false}
+        suggestions={suggestions}
         onChange={(changedField, value) =>
           setValues((previous) => ({ ...previous, [changedField.key]: value }))
         }
@@ -67,12 +68,37 @@ function SetupFields({ fields, onSave }) {
   );
 }
 
-const renderFields = (fields, onSave = vi.fn()) =>
+const renderFields = (fields, onSave = vi.fn(), suggestions) =>
   render(
     <IntlProvider locale="en" messages={{ ...messages, ...labels }}>
-      <SetupFields fields={fields} onSave={onSave} />
+      <SetupFields fields={fields} onSave={onSave} suggestions={suggestions} />
     </IntlProvider>,
   );
+
+describe("sender fields received from instruments", () => {
+  it("fills the sender ID from a sender field the Bridge received", async () => {
+    const onSave = vi.fn();
+    const sender = {
+      key: "senderId",
+      labelKey: "analyzer.connection.field.senderId",
+      inputKind: "TEXT",
+      required: false,
+    };
+    renderFields([sender], onSave, {
+      senderId: ["CPHL^GeneXpert^6.2", "CPHL^Sysmex^1.0"],
+    });
+
+    expect(screen.getByText("Received from instruments:")).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "CPHL^GeneXpert^6.2" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save settings" }),
+    );
+
+    expect(onSave).toHaveBeenCalledWith({ senderId: "CPHL^GeneXpert^6.2" });
+  });
+});
 
 describe("profile-defined connection choices", () => {
   it.each(choices)(

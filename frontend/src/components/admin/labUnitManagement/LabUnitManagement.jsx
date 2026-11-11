@@ -41,6 +41,7 @@ import {
   RadioButtonGroup,
   RadioButton,
   Toggle,
+  Dropdown,
   Button,
   InlineNotification,
   Modal,
@@ -63,8 +64,9 @@ import useActiveLocales from "../../common/useActiveLocales";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import StaleSaveNotice, { isStaleConflict } from "../../common/StaleSaveNotice";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -101,9 +103,12 @@ const mapLabUnit = (item) => ({
   names: item.names || {},
   description: item.description || "",
   domain: item.domain || "CLINICAL",
+  requireTrackedMedia: !!item.requireTrackedMedia,
+  gramStainTestId: item.gramStainTestId || "",
   active: item.isActive !== undefined ? item.isActive : true,
   testCount: item.testCount || 0,
   sortOrder: item.sortOrder || 0,
+  lastupdated: item.lastupdated || null,
 });
 
 function LabUnitManagement({ intl }) {
@@ -167,6 +172,7 @@ function LabUnitManagement({ intl }) {
 
   // Form validation and state
   const [formErrors, setFormErrors] = useState({});
+  const [staleSave, setStaleSave] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const nameInputRef = useRef(null);
@@ -180,10 +186,8 @@ function LabUnitManagement({ intl }) {
 
   // Tests assigned to the lab unit currently being edited (drives the
   // deactivate-in-use warning).
-  // Only the setter is read now: the deactivation impact summary fetches live
-  // counts from the server (M3) rather than deriving them from this cache,
-  // which could be stale relative to what the flow is about to act on.
-  const [, setAssignedTests] = useState([]);
+  // Supplies the configured Gram stain choices; deactivation uses live counts.
+  const [assignedTests, setAssignedTests] = useState([]);
 
   // OGC-189 M3 — guarded deactivation. Switching a lab unit off opens an
   // impact summary with three options behind a typed confirmation, instead of
@@ -194,6 +198,9 @@ function LabUnitManagement({ intl }) {
   const [deactivationDestination, setDeactivationDestination] = useState("");
   const [deactivationConfirmText, setDeactivationConfirmText] = useState("");
   const [deactivationBusy, setDeactivationBusy] = useState(false);
+  // The server's reason when it refuses the deactivation (OGC-1459).
+  const [deactivationError, setDeactivationError] = useState(null);
+  const [deactivationStale, setDeactivationStale] = useState(false);
 
   const refreshLabUnits = useCallback(async () => {
     return await new Promise((resolve, reject) => {
@@ -322,11 +329,39 @@ function LabUnitManagement({ intl }) {
       return;
     }
     setEditingUnit({ ...unit });
+    setStaleSave(false);
     setFormErrors({});
     setShowSuccess(false);
     setPendingDomain(null);
     setAssignedTests([]);
   }, [view, labUnitId, labUnits, editingUnit]);
+
+  // Other sections of this page (Display Order) change the unit too, so coming
+  // back to Basic Info takes the stored version; otherwise the next save here
+  // would be refused as stale (OGC-1463).
+  const editingUnitId = editingUnit ? editingUnit.id : null;
+  useEffect(() => {
+    if (
+      view !== "editor" ||
+      activeSection !== "basic-info" ||
+      !editingUnitId ||
+      String(editingUnitId) !== String(labUnitId)
+    ) {
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/lab-units-management/${editingUnitId}`,
+      (res) => {
+        if (res && res.success && res.data) {
+          setEditingUnit((prev) =>
+            prev && String(prev.id) === String(res.data.id)
+              ? { ...prev, lastupdated: res.data.lastupdated || null }
+              : prev,
+          );
+        }
+      },
+    );
+  }, [view, activeSection, editingUnitId, labUnitId]);
 
   // Seed the "add" form once when we land on /LabUnitManagement/new.
   useEffect(() => {
@@ -352,6 +387,16 @@ function LabUnitManagement({ intl }) {
     setShowSuccess(false);
     setPendingDomain(null);
   }, [view, labUnits.length, editingUnit]);
+
+  useEffect(() => {
+    if (editingUnit?.id)
+      getFromOpenElisServer(
+        `/rest/lab-units-management/${editingUnit.id}/tests`,
+        (data) => {
+          if (Array.isArray(data)) setAssignedTests(data);
+        },
+      );
+  }, [editingUnit?.id]);
 
   // Clear editor state when returning to the list URL.
   useEffect(() => {
@@ -469,6 +514,8 @@ function LabUnitManagement({ intl }) {
           names: trimmedNames(editingUnit.names),
           description: editingUnit.description?.trim() || undefined,
           domain: editingUnit.domain || "CLINICAL",
+          requireTrackedMedia: !!editingUnit.requireTrackedMedia,
+          gramStainTestId: editingUnit.gramStainTestId || "",
         };
         const created = await new Promise((resolve, reject) => {
           postToOpenElisServerJsonResponse(
@@ -499,19 +546,32 @@ function LabUnitManagement({ intl }) {
           names: trimmedNames(editingUnit.names),
           description: editingUnit.description?.trim(),
           domain: editingUnit.domain || "CLINICAL",
+          requireTrackedMedia: !!editingUnit.requireTrackedMedia,
+          gramStainTestId: editingUnit.gramStainTestId || "",
           isActive:
             editingUnit.active !== undefined ? editingUnit.active : true,
+          lastupdated: editingUnit.lastupdated || null,
         };
         await new Promise((resolve, reject) => {
-          putToOpenElisServer(
+          putToOpenElisServerFullResponse(
             `/rest/lab-units-management/${editingUnit.id}`,
             JSON.stringify(updateData),
-            (status) => {
+            async (response) => {
+              const status = response ? response.status : 0;
               if (status === 200) {
                 resolve(status);
-              } else {
-                reject(new Error(`Update failed (HTTP ${status})`));
+                return;
               }
+              const body = response
+                ? await response.json().catch(() => null)
+                : null;
+              const refusal = new Error(
+                status === 409 && !isStaleConflict(status, body)
+                  ? intl.formatMessage({ id: "error.labUnit.name.duplicate" })
+                  : `Update failed (HTTP ${status})`,
+              );
+              refusal.stale = isStaleConflict(status, body);
+              reject(refusal);
             },
           );
         });
@@ -534,6 +594,10 @@ function LabUnitManagement({ intl }) {
         setFormErrors({});
       }
     } catch (error) {
+      if (error.stale) {
+        setStaleSave(true);
+        return;
+      }
       const operation = view === "add" ? "create" : "update";
       setFormErrors({
         submit: `Failed to ${operation} lab unit: ${error.message}`,
@@ -549,6 +613,7 @@ function LabUnitManagement({ intl }) {
     listUrl,
     labUnits,
     refreshLabUnits,
+    intl,
   ]);
 
   // Domain radio handler: in the editor an actual change is staged behind the
@@ -620,6 +685,8 @@ function LabUnitManagement({ intl }) {
     setDeactivationOption("");
     setDeactivationDestination("");
     setDeactivationConfirmText("");
+    setDeactivationError(null);
+    setDeactivationStale(false);
     setDeactivationOpen(true);
     getFromOpenElisServer(
       `/rest/lab-units-management/${labUnitId}/deactivation-impact`,
@@ -633,14 +700,30 @@ function LabUnitManagement({ intl }) {
     );
   }, [labUnitId]);
 
+  /**
+   * After a stale refusal, load the unit as it is now so the deactivation can be
+   * confirmed against the current version (OGC-1463).
+   */
+  const refreshAfterStaleDeactivation = useCallback(() => {
+    getFromOpenElisServer(`/rest/lab-units-management/${labUnitId}`, (res) => {
+      if (res && res.success && res.data) {
+        setEditingUnit(mapLabUnit(res.data));
+        setDeactivationStale(false);
+      }
+    });
+  }, [labUnitId]);
+
   const confirmDeactivation = useCallback(() => {
     setDeactivationBusy(true);
+    setDeactivationError(null);
+    setDeactivationStale(false);
     postToOpenElisServerJsonResponse(
       `/rest/lab-units-management/${labUnitId}/deactivate`,
       JSON.stringify({
         option: deactivationOption,
         destinationLabUnitId: deactivationDestination,
         confirmation: deactivationConfirmText,
+        lastupdated: editingUnit?.lastupdated || null,
       }),
       (response) => {
         setDeactivationBusy(false);
@@ -648,6 +731,25 @@ function LabUnitManagement({ intl }) {
           setDeactivationOpen(false);
           setEditingUnit((prev) => ({ ...prev, active: false }));
           setShowSuccess(true);
+          getFromOpenElisServer(
+            `/rest/lab-units-management/${labUnitId}`,
+            (res) => {
+              if (res && res.success && res.data) {
+                setEditingUnit(mapLabUnit(res.data));
+              }
+            },
+          );
+        } else if (isStaleConflict(response?.status, response)) {
+          setDeactivationStale(true);
+        } else {
+          setDeactivationError(
+            response?.refusal === "destination.inactive"
+              ? intl.formatMessage({
+                  id: "error.labUnit.deactivate.destinationInactive",
+                })
+              : response?.message ||
+                  intl.formatMessage({ id: "error.labUnit.deactivate.failed" }),
+          );
         }
       },
     );
@@ -656,6 +758,8 @@ function LabUnitManagement({ intl }) {
     deactivationOption,
     deactivationDestination,
     deactivationConfirmText,
+    editingUnit,
+    intl,
   ]);
 
   // ─── LIST VIEW ────────────────────────────────────────────────
@@ -1100,7 +1204,21 @@ function LabUnitManagement({ intl }) {
                 Toggle) would mount with undefined and not reflect the saved
                 status. */}
             {view === "editor" &&
-            !(editingUnit && String(editingUnit.id) === String(labUnitId)) ? (
+            !isLoading &&
+            !labUnits.some((item) => String(item.id) === String(labUnitId)) ? (
+              <InlineNotification
+                kind="error"
+                lowContrast
+                hideCloseButton
+                data-testid="lab-unit-not-found"
+                title={intl.formatMessage({
+                  id: loadError
+                    ? "label.labUnit.editorLoadError"
+                    : "label.labUnit.notFound",
+                })}
+              />
+            ) : view === "editor" &&
+              !(editingUnit && String(editingUnit.id) === String(labUnitId)) ? (
               <div
                 style={{
                   display: "flex",
@@ -1116,6 +1234,11 @@ function LabUnitManagement({ intl }) {
               <>
                 {activeSection === "basic-info" && (
                   <div>
+                    {staleSave && (
+                      <div style={{ marginBottom: "var(--cds-spacing-06)" }}>
+                        <StaleSaveNotice testId="lab-unit-stale-save" />
+                      </div>
+                    )}
                     {(showSuccess || formErrors.submit) && (
                       <div style={{ marginBottom: "var(--cds-spacing-06)" }}>
                         <Stack gap={5}>
@@ -1291,6 +1414,65 @@ function LabUnitManagement({ intl }) {
                             {view === "editor" && (
                               <>
                                 <Toggle
+                                  id="lu-tracked-media"
+                                  labelText={intl.formatMessage({
+                                    id: "microbiology.culture.requireTrackedMedia",
+                                  })}
+                                  labelA={intl.formatMessage({
+                                    id: "label.inactive",
+                                  })}
+                                  labelB={intl.formatMessage({
+                                    id: "label.active",
+                                  })}
+                                  toggled={!!editingUnit?.requireTrackedMedia}
+                                  onToggle={(requireTrackedMedia) =>
+                                    setEditingUnit((prev) => ({
+                                      ...prev,
+                                      requireTrackedMedia,
+                                    }))
+                                  }
+                                />
+                                <Dropdown
+                                  id="lu-gram-stain-test"
+                                  titleText={intl.formatMessage({
+                                    id: "microbiology.culture.gramTest",
+                                  })}
+                                  label={intl.formatMessage({
+                                    id: "microbiology.culture.choose",
+                                  })}
+                                  items={[
+                                    {
+                                      id: "",
+                                      name: intl.formatMessage({
+                                        id: "microbiology.culture.noGramTest",
+                                      }),
+                                    },
+                                    ...assignedTests.filter(
+                                      (test) => test.active && test.orderable,
+                                    ),
+                                  ]}
+                                  itemToString={(item) =>
+                                    item?.name || item?.testName || ""
+                                  }
+                                  selectedItem={
+                                    assignedTests.find(
+                                      (test) =>
+                                        test.id ===
+                                        editingUnit?.gramStainTestId,
+                                    ) || null
+                                  }
+                                  onChange={({ selectedItem }) =>
+                                    setEditingUnit((prev) => ({
+                                      ...prev,
+                                      gramStainTestId: selectedItem?.id || "",
+                                    }))
+                                  }
+                                />
+                              </>
+                            )}
+                            {view === "editor" && (
+                              <>
+                                <Toggle
                                   id="lu-active"
                                   labelText={intl.formatMessage({
                                     id: "label.labUnit.active",
@@ -1368,6 +1550,7 @@ function LabUnitManagement({ intl }) {
                             onClick={saveEditor}
                             disabled={
                               isSubmitting ||
+                              staleSave ||
                               !!Object.keys(formErrors).filter(
                                 (key) => formErrors[key],
                               ).length ||
@@ -1447,6 +1630,21 @@ function LabUnitManagement({ intl }) {
                       onRequestSubmit={confirmDeactivation}
                     >
                       <Stack gap={5}>
+                        {deactivationError && (
+                          <InlineNotification
+                            kind="error"
+                            lowContrast
+                            hideCloseButton
+                            title={intl.formatMessage({ id: "error.title" })}
+                            subtitle={deactivationError}
+                          />
+                        )}
+                        {deactivationStale && (
+                          <StaleSaveNotice
+                            testId="lab-unit-deactivate-stale"
+                            onRefresh={refreshAfterStaleDeactivation}
+                          />
+                        )}
                         {!deactivationImpact ? (
                           <p>
                             <FormattedMessage id="label.labUnit.deactivate.loading" />
@@ -1567,7 +1765,8 @@ function LabUnitManagement({ intl }) {
                                 {labUnits
                                   .filter(
                                     (unit) =>
-                                      String(unit.id) !== String(labUnitId),
+                                      String(unit.id) !== String(labUnitId) &&
+                                      unit.active !== false,
                                   )
                                   .map((unit) => (
                                     <SelectItem

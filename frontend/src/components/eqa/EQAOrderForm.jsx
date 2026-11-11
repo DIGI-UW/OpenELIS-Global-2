@@ -12,6 +12,7 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
 import { formatIsoDateForBackend } from "../order/dateUtils";
+import SearchableSelect from "../common/SearchableSelect";
 
 const OPEN_FOR_RESULTS = [
   "PLANNED",
@@ -25,6 +26,12 @@ const OPEN_FOR_RESULTS = [
  * material. Exported so the wizard's Next button holds on the same
  * rule the receipt service enforces, rather than a second copy of it.
  */
+/** An EQA order names the scheme it belongs to (OGC-1483). */
+export const eqaSchemeMissing = (orderFormValues) => {
+  const order = orderFormValues?.sampleOrderItems || {};
+  return !!order.isEQASample && !String(order.eqaProgramId || "").trim();
+};
+
 export const eqaReceiptNoteMissing = (orderFormValues) => {
   const order = orderFormValues?.sampleOrderItems || {};
   return (
@@ -63,7 +70,7 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
     componentMounted.current = true;
 
     // Fetch self-enrolled programmes (My Programs)
-    getFromOpenElisServer("/rest/eqa/my-programs", (response) => {
+    getFromOpenElisServer("/rest/eqa/my-programs?active=true", (response) => {
       if (componentMounted.current && Array.isArray(response)) {
         setMyPrograms(response);
       }
@@ -200,23 +207,23 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
           <Grid>
             {/* Programme — from My Programs (self-enrollments) */}
             <Column lg={8} md={4} sm={4}>
-              <Select
+              <SearchableSelect
                 id="eqa-program"
+                required
                 labelText={intl.formatMessage({
                   id: "eqa.order.programme",
                 })}
+                options={myPrograms.map((prog) => ({
+                  id: String(prog.id),
+                  value: prog.programName || prog.name,
+                }))}
                 value={sampleOrder.eqaProgramId || ""}
-                onChange={(e) => updateField("eqaProgramId", e.target.value)}
-              >
-                <SelectItem value="" text="" />
-                {myPrograms.map((prog) => (
-                  <SelectItem
-                    key={prog.id}
-                    value={String(prog.id)}
-                    text={prog.programName || prog.name}
-                  />
-                ))}
-              </Select>
+                invalid={eqaSchemeMissing(orderFormValues)}
+                invalidText={intl.formatMessage({
+                  id: "order.eqa.schemeRequired",
+                })}
+                onChange={(id) => updateField("eqaProgramId", id)}
+              />
             </Column>
 
             {/* Provider Sample ID */}

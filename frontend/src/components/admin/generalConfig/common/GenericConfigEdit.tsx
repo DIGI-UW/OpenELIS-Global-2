@@ -32,6 +32,7 @@ import {
 } from "../../../layout/Layout";
 
 import { FormattedMessage, useIntl } from "react-intl";
+import { settingDescription, settingName } from "./settingLabels";
 
 interface GenericConfigEditProps {
   menuType: string;
@@ -94,8 +95,11 @@ const GenericConfigEdit = ({
   const reloadConfiguration =
     configurationContext?.reloadConfiguration ?? (() => undefined);
 
-  const { data: storedConfig, isLoading: configLoading } =
-    useServerData<FormEntryConfig>(`/rest/${menuType}?ID=${ID}`);
+  const {
+    data: storedConfig,
+    isLoading: configLoading,
+    isFetching: configFetching,
+  } = useServerData<FormEntryConfig>(`/rest/${menuType}?ID=${ID}`);
   const invalidateServerData = useInvalidateServerData();
 
   // A logo is held apart from the rest of the config, so it is a second read,
@@ -129,12 +133,17 @@ const GenericConfigEdit = ({
   };
 
   useEffect(() => {
-    if (!storedConfig || !recordKey || seededRecord.current === recordKey) {
+    if (
+      !storedConfig ||
+      !recordKey ||
+      configFetching ||
+      seededRecord.current === recordKey
+    ) {
       return;
     }
     seededRecord.current = recordKey;
     seedFrom(storedConfig);
-  }, [storedConfig, recordKey]);
+  }, [storedConfig, recordKey, configFetching]);
 
   // The image is fetched separately and can arrive after the user has chosen
   // a file or asked to remove it. It may update the server preview, never a
@@ -267,7 +276,7 @@ const GenericConfigEdit = ({
 
   return (
     <div className="adminPageContent">
-      {(isLoading || configLoading) && (
+      {(isLoading || configLoading || (configFetching && !FormEntryConfig)) && (
         <Loading
           description={intl.formatMessage({ id: "loading.description" })}
         />
@@ -294,7 +303,7 @@ const GenericConfigEdit = ({
                   </h4>
                 </Column>
                 <Column lg={3} md={6} sm={3}>
-                  {FormEntryConfig.paramName}
+                  {settingName(intl, FormEntryConfig.paramName)}
                 </Column>
               </Grid>
               <br />
@@ -305,7 +314,11 @@ const GenericConfigEdit = ({
                   </h4>
                 </Column>
                 <Column lg={7} md={6} sm={4}>
-                  {FormEntryConfig.description}
+                  {settingDescription(
+                    intl,
+                    FormEntryConfig.paramName,
+                    FormEntryConfig.description,
+                  )}
                 </Column>
               </Grid>
               <br />
@@ -347,6 +360,13 @@ const GenericConfigEdit = ({
                     <Column lg={3} md={6} sm={3}>
                       <Dropdown
                         id="dictionaryDropdown"
+                        titleText={intl.formatMessage({
+                          id: "admin.page.configuration.formEntryConfigMenu.value",
+                        })}
+                        hideLabel
+                        label={intl.formatMessage({
+                          id: "admin.page.configuration.formEntryConfigMenu.value",
+                        })}
                         items={FormEntryConfig.dictionaryValues}
                         selectedItem={selectedDictionaryValue}
                         onChange={handleDictionaryChange}

@@ -75,6 +75,23 @@ frontend.openelis.org:
     - ./configs/translation:/usr/share/nginx/html/translation:ro
 ```
 
+### Printed reports
+
+The patient report prints its labels from the same catalogue as the screens, so
+an override rewords the report too. The backend reads the overrides from
+`/var/lib/openelis-global/translation`; mount the same directory there on the
+webapp service (the shipped `docker-compose.yml` and `scripts/dev-stack` already
+do):
+
+```yaml
+oe.openelis.org:
+  volumes:
+    - ./configs/translation:/var/lib/openelis-global/translation:ro
+```
+
+The report reads the files each time it prints, so a change shows on the next
+report with no restart.
+
 ### When a change takes effect
 
 |                        | Editing a file that is already there | Adding a locale file that was not there |

@@ -52,7 +52,7 @@ public class BlockLabel extends Label {
 
         if (useBlockId)
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.blockNumber"),
-                    String.valueOf(block.getBlockNumber()), 4));
+                    block.displayIdentifier(), 4));
         if (useSpecimenType) {
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.specimenType"),
                     StringUtils.defaultString(specimenType), 4));
@@ -63,8 +63,7 @@ public class BlockLabel extends Label {
                             : "",
                     4));
         }
-        // adding bar code
-        setCode(labNo);
+        setRowCode(block.getBarcode(), labNo);
     }
 
     /**
@@ -124,5 +123,15 @@ public class BlockLabel extends Label {
     public int getMaxNumLabels() {
         return BarcodeConfigUtil.parseIntSafe(
                 ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_BLOCK_LABEL_PRINTED), 10);
+    }
+
+    @Override
+    protected String labelInfoCode() {
+        return orderLabNo() + "-B";
+    }
+
+    @Override
+    protected String labelInfoType() {
+        return "block";
     }
 }

@@ -76,6 +76,21 @@ public class EQALabPerformanceServiceImpl implements EQALabPerformanceService {
         return page;
     }
 
+    @Override
+    public Integer getAcceptanceRate(LocalDate from, LocalDate to) {
+        int scored = 0;
+        int acceptable = 0;
+        for (EQAParticipantResult result : participantResultDAO.getAll()) {
+            LocalDate scoredOn = anchorDate(result);
+            if (result.getSubmissionStatus() != EQASubmissionStatus.DRAFT && result.getPerformanceStatus() != null
+                    && scoredOn != null && !scoredOn.isBefore(from) && !scoredOn.isAfter(to)) {
+                scored++;
+                acceptable += result.getPerformanceStatus() == EQAPerformanceStatus.ACCEPTABLE ? 1 : 0;
+            }
+        }
+        return rate(acceptable, scored);
+    }
+
     private Map<String, Object> kpis(List<EQAParticipantResult> results, LocalDate windowStart, int uncoveredTests) {
         LocalDate priorStart = windowStart.minusMonths(WINDOW_MONTHS);
 
@@ -150,6 +165,15 @@ public class EQALabPerformanceServiceImpl implements EQALabPerformanceService {
             open += CLOSED_NCE_STATUSES.contains(event.getStatus()) ? 0 : 1;
         }
         return Map.of("eqaNceCount", total, "eqaNceOpenCount", open);
+    }
+
+    @Override
+    public int countOpenEqaNces() {
+        return (int) ncEventService.getAll().stream()
+                .filter(event -> event.getTriggerSourceType() != null
+                        && event.getTriggerSourceType().startsWith(EqaScoreNceService.TRIGGER_SOURCE_PREFIX)
+                        && !CLOSED_NCE_STATUSES.contains(event.getStatus()))
+                .count();
     }
 
     /**
@@ -227,12 +251,8 @@ public class EQALabPerformanceServiceImpl implements EQALabPerformanceService {
         return rows;
     }
 
-    /**
-     * The accredited tests with no live EQA enrollment — ISO 15189 §7.7.2's
-     * alternative-assessment candidates. Read from the accreditation module rather
-     * than recomputed here, so both pages answer the coverage question the same
-     * way.
-     */
+    // ISO 15189:2022 §7.3.7.3 candidates, read from the accreditation module so
+    // both pages agree.
     private List<Map<String, Object>> gaps(List<EqaCoverageView> accreditation) {
         Map<String, Map<String, Object>> byTest = new LinkedHashMap<>();
         for (EqaCoverageView body : accreditation) {

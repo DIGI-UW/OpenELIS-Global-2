@@ -10,12 +10,15 @@ case "$1" in
   backend-tests)
     printf 'code\n' > "$OE_CI_PHASE_FILE"
     (cd dataexport && ../scripts/run-java21 mvn clean install)
+    scripts/run-java21 mvn -f module-contracts/pom.xml clean install
     scripts/run-java21 mvn clean install -Dspotless.check.skip=true
+    scripts/run-java21 mvn -f module-test/pom.xml clean install
     ;;
   deployment-contract)
     printf 'code\n' > "$OE_CI_PHASE_FILE"
-    "$OE_CI_NODE22_BIN" --test .github/scripts/publish-checkpoints.test.cjs
+    "$OE_CI_NODE22_BIN" --test .github/scripts/publish-checkpoints.test.cjs .github/scripts/publish-source.test.cjs .github/scripts/publish-release-manifest.test.cjs
     python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
+    python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
     ;;
   agent-assets)
     printf 'code\n' > "$OE_CI_PHASE_FILE"

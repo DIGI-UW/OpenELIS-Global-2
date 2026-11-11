@@ -9,6 +9,7 @@ import java.util.List;
  * browser URL and applied by the service.
  */
 public class MicroWorklistQueryForm {
+    public java.util.Set<String> permittedLabUnitIds;
 
     public String grain = "cultures";
     public String status = "";
@@ -25,4 +26,5 @@ public class MicroWorklistQueryForm {
     public String sort = "priority";
     public int page = 1;
     public int pageSize = 20;
+
 }

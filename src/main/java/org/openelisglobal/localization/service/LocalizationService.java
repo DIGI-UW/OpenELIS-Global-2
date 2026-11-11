@@ -2,6 +2,7 @@ package org.openelisglobal.localization.service;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,13 @@ public interface LocalizationService extends BaseObjectService<Localization, Str
      * @return list of Localization entities missing translations
      */
     List<Localization> findMissingTranslationsForLocale(String locale);
+
+    /**
+     * The display key of each shipped reference value (NCE category or type,
+     * dictionary entry) whose key is in the interface catalogue, by the id of its
+     * name's localization (OGC-1507).
+     */
+    Map<String, String> shippedDisplayKeysByLocalizationId();
 
     /**
      * Count localizations that have a non-empty translation for the specified

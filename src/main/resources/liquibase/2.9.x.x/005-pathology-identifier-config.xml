@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    FR-9.3: the CAP/NSH guideline for labelling surgical pathology specimens,
+    blocks and slides (Nakhleh et al., Arch Pathol Lab Med 2015) declined to
+    prescribe one universal designation scheme and asks each laboratory to
+    set and apply its own, so the scheme is deployment configuration the
+    server reads when assigning a block or slide designation and composing
+    a barcode. The defaults reproduce the case view design's convention:
+    part A, blocks A1 and A2 under it, slides 1 and 2 under a block, barcode
+    accession.A1.1. The rows live in the resultConfiguration domain so they
+    surface on the Result Entry Configuration admin page. These rows live
+    beside the identity columns they configure rather than with the site
+    information changes in 3.3.x.x; the resultConfiguration domain they
+    join to is part of the initial database, so a fresh database already
+    has it before this folder runs.
+    -->
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet id="OGC-264-pathology-identifier-part-scheme" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'pathology.identifier.partScheme';</sqlCheck>
+        </preConditions>
+        <comment>Site setting for how specimen parts are designated (ALPHA or NUMERIC)</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="pathology.identifier.partScheme" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="How specimen parts are designated: ALPHA gives A, B, C; NUMERIC gives 1, 2, 3" />
+            <column name="value" value="ALPHA" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="text" />
+            <column name="instruction_key" value="instructions.pathology.identifier" />
+            <column name="group" value="0" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'pathology.identifier.partScheme'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-identifier-block-format" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'pathology.identifier.blockFormat';</sqlCheck>
+        </preConditions>
+        <comment>Site setting for the pattern used to compose a block designation</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="pathology.identifier.blockFormat" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Pattern for a block designation; {part} is the part, {n} the block number within it" />
+            <column name="value" value="{part}{n}" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="text" />
+            <column name="instruction_key" value="instructions.pathology.identifier" />
+            <column name="group" value="0" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'pathology.identifier.blockFormat'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-identifier-slide-format" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'pathology.identifier.slideFormat';</sqlCheck>
+        </preConditions>
+        <comment>Site setting for the pattern used to compose a slide designation</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="pathology.identifier.slideFormat" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Pattern for a slide designation within its block; {n} is the slide number" />
+            <column name="value" value="{n}" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="text" />
+            <column name="instruction_key" value="instructions.pathology.identifier" />
+            <column name="group" value="0" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'pathology.identifier.slideFormat'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-identifier-separator" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'pathology.identifier.separator';</sqlCheck>
+        </preConditions>
+        <comment>Site setting for the separator placed between the accession, block and slide designations in a barcode</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="pathology.identifier.separator" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Separator between the accession number, block and slide designations in a barcode" />
+            <column name="value" value="." />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="text" />
+            <column name="instruction_key" value="instructions.pathology.identifier" />
+            <column name="group" value="0" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'pathology.identifier.separator'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

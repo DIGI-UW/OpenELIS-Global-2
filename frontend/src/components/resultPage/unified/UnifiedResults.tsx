@@ -18,8 +18,6 @@ import {
   Pagination,
   Search,
   Section,
-  Select,
-  SelectItem,
   Table,
   TableBody,
   TableCell,
@@ -31,7 +29,9 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
+  displayDateToIso,
   getFromOpenElisServer,
+  parseIsoDate,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import { requestFailed, serverMessage } from "../../utils/requestOutcome";
@@ -56,7 +56,6 @@ import ESignatureButton, {
 } from "../../esignature/ESignatureButton";
 import PolymorphicResultCell, {
   ResultCellRow,
-  blocksSaveOnPrecision,
   worklistRowKey,
 } from "./PolymorphicResultCell";
 import {
@@ -82,7 +81,7 @@ import ExpandedPanel, {
   PanelRow,
   RejectDraft,
 } from "./ExpandedPanel";
-import { ReferralDraft } from "./ReferralAction";
+import { ReferralDraft, datePlaceholderId } from "./ReferralAction";
 import { NceDisposition, dispositionRequests } from "./nceDisposition";
 import { SectionLayout, loadSectionLayout } from "./sectionLayout";
 import { FlagChip, accentClass } from "./flags";
@@ -91,10 +90,15 @@ import Avatar from "./Avatar";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import EQABadge from "../../eqa/EQABadge";
 import config from "../../../config.json";
 import SearchPatientForm from "../../patient/SearchPatientForm";
+import SearchableSelect from "../../common/SearchableSelect";
 import { PatientRecord } from "../../patient/types";
 import "./unified-results.scss";
+import RunsChip from "./runs/RunsChip";
+import { clearMethodChoices } from "./methodChoices";
+import WaitingTag, { WaitingRun } from "./runs/WaitingTag";
 import { displayRange, rangeNotAppliedKey } from "../../common/rangeNotApplied";
 
 const replaceResultsUrl = (urlState: URLSearchParams) => {
@@ -147,6 +151,8 @@ interface WorklistRow extends ResultCellRow, PanelRow {
   analyzerId?: string;
   /** analysis-level non-conformity flag, computed server-side (QAService). */
   nonconforming?: boolean;
+  /** OGC-1200 FR-D3: the run this pending test's analyzer value waits in. */
+  waitingRun?: WaitingRun | null;
   [key: string]: unknown;
 }
 
@@ -168,6 +174,8 @@ interface WorklistResponse {
 
 interface SaveResponse {
   status?: number;
+  /** a save refused because the test's analyzer value waits in a run */
+  waitingRun?: WaitingRun;
   error?: string;
   modifiedBy?: string;
   modifiedAt?: string;
@@ -176,6 +184,8 @@ interface SaveResponse {
   resultId?: string;
   /** the analysis status the save moved the row to (Status column + counts) */
   analysisStatusId?: string;
+  /** each part's status after the save, by component id (multi-part tests) */
+  componentStatusIds?: Record<string, string>;
   /** the persisted value, as reported and as stored (OGC-1179) */
   resultValue?: string;
   rawResultValue?: string;
@@ -193,12 +203,15 @@ export interface UnifiedResultsProps {
   accessionNumber?: string;
   embedded?: boolean;
   includeFinished?: boolean;
+  /** Opens a run on /Results (OGC-1200); absent where runs are not offered. */
+  onOpenRun?: (runId: number) => void;
 }
 
 const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   accessionNumber: embeddedAccession,
   embedded = false,
   includeFinished = false,
+  onOpenRun,
 }) => {
   const intl = useIntl();
   const syncUrl = (urlState: URLSearchParams) => {
@@ -258,6 +271,22 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   const { configurationProperties } = useContext(ConfigurationContext) as {
     configurationProperties?: Record<string, string>;
   };
+  const dayFirst = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
+  const parseFilterDate = (text: string): Date | false =>
+    parseIsoDate(displayDateToIso(text.trim(), dayFirst ? "fr-FR" : "en-US"));
+  const commitFilterDate = (date: Date | false) => {
+    if (!date) {
+      setCollectionDate("");
+      return;
+    }
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    setCollectionDate(
+      dayFirst
+        ? `${dd}/${mm}/${date.getFullYear()}`
+        : `${mm}/${dd}/${date.getFullYear()}`,
+    );
+  };
   const allowResultRejection =
     configurationProperties?.allowResultRejection === "true";
   const alertInvalidResults =
@@ -307,6 +336,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   }, [labUnits, selectedLabUnit]);
 
   useEffect(() => {
+    clearMethodChoices();
     getFromOpenElisServer("/rest/results-entry/lab-units", (list: LabUnit[]) =>
       setLabUnits(list || []),
     );
@@ -402,6 +432,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               row.multiSelectResultValues &&
               row.multiSelectResultValues !== "{}",
             ),
+          Boolean(row.waitingRun),
         );
         if (unsaved[worklistRowKey(row)]) {
           states[worklistRowKey(row)] =
@@ -672,7 +703,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   const handleFieldChange = useCallback(
     (
       target: WorklistRow,
-      field: "testMethod" | "analyzerId",
+      field: "testMethod" | "analyzerId" | "eqaAnalystId",
       value: string,
     ) => {
       const key = worklistRowKey(target);
@@ -882,6 +913,39 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   const handleSaveResponse = useCallback(
     (target: WorklistRow, response: SaveResponse | undefined) => {
       const key = worklistRowKey(target);
+      if (response && response.status === 409 && response.waitingRun) {
+        // OGC-1200 FR-D3: an analyzer value reached a run after the worklist
+        // loaded. The row becomes the run's, and nothing typed here is kept.
+        const waitingRun = response.waitingRun;
+        setRows((current) =>
+          current.map((row) =>
+            row.analysisId === target.analysisId
+              ? { ...row, waitingRun, resultValue: "" }
+              : row,
+          ),
+        );
+        setRowStates((current) => {
+          const next = { ...current, [key]: "WAITING" as RowEditState };
+          for (const sibling of rowsRef.current) {
+            if (sibling.analysisId === target.analysisId) {
+              next[worklistRowKey(sibling)] = "WAITING";
+            }
+          }
+          return next;
+        });
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message:
+            serverMessage(response) ||
+            intl.formatMessage(
+              { id: "run.tag.waiting" },
+              { runId: waitingRun.label },
+            ),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
+        return;
+      }
       if (response && response.status === 409) {
         // FR-O2: the stale editor loses — nothing merged, refresh offered.
         setStaleInfo((current) => ({
@@ -921,11 +985,11 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           type: "SAVE_SUCCEEDED",
         }),
       }));
-      // the version token and the analysis status are per ANALYSIS — refresh
-      // them on every component row of this analysis so a sibling save isn't
-      // falsely rejected, and so the Status column and the filter counts above
-      // it describe the worklist as the save left it rather than as it was
-      // loaded (OGC-1179).
+      // the version token is per ANALYSIS — refresh it on every component row
+      // of this analysis so a sibling save isn't falsely rejected. The status
+      // follows the save too, so the Status column and the filter counts
+      // describe the worklist as the save left it (OGC-1179); a component row
+      // carries its own part's status, which the save reports per part.
       // The SAVED row must also adopt the persisted resultId: a row saved
       // from the blank placeholder state would otherwise keep resultId null
       // and every later save would INSERT a duplicate result for the
@@ -941,7 +1005,15 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           if (response.analysisLastupdated) {
             updated.analysisLastupdated = response.analysisLastupdated;
           }
-          if (response.analysisStatusId) {
+          const componentStatusId =
+            row.testResultComponentId &&
+            response.componentStatusIds?.[row.testResultComponentId];
+          if (componentStatusId) {
+            updated.analysisStatusId = componentStatusId;
+          } else if (
+            response.analysisStatusId &&
+            (!row.testResultComponentId || worklistRowKey(row) === key)
+          ) {
             updated.analysisStatusId = response.analysisStatusId;
           }
           if (worklistRowKey(row) === key) {
@@ -1013,6 +1085,8 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       // rounded, so posting it back would quietly rewrite the stored one.
       if (!writesResultValue(rowStates[worklistRowKey(row)] || "EMPTY")) {
         item.resultValue = row.rawResultValue ?? row.resultValue;
+      } else {
+        item.rawResultValue = row.resultValue;
       }
       delete item.result;
       delete item.analysisNotes;
@@ -1023,6 +1097,25 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       // as boolean — same normalization the legacy page applies before POST
       item.reportable = item.reportable !== "N";
       const key = worklistRowKey(row);
+      // A referral the user opened rides the save only when complete; one
+      // missing its laboratory or reason is refused rather than dropped, so a
+      // save never reads as having referred a test it did not.
+      const pendingReferral = referralDrafts[key];
+      if (
+        pendingReferral &&
+        (!pendingReferral.referredInstituteId ||
+          !pendingReferral.referralReasonId)
+      ) {
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "label.results.referral.incomplete",
+          }),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
+        return;
+      }
       // R2 (FR-J1/J2): the dual-axis note — visibility chosen, context auto-set
       // from the edit-state machine (Modification when editing a saved result)
       const noteDraft = noteDrafts[key];
@@ -1142,6 +1235,9 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       rejectDrafts,
       interpretationDrafts,
       rowStates,
+      addNotification,
+      setNotificationVisible,
+      intl,
     ],
   );
 
@@ -1206,6 +1302,22 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   const beforeSign = useCallback(
     (row: WorklistRow) =>
       new Promise<void>((resolve, reject) => {
+        if (
+          row.eqaPerAnalyst &&
+          !row.eqaAnalystId &&
+          (row.resultValue || row.multiSelectResultValues)
+        ) {
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({
+              id: "eqa.result.analystRequired",
+            }),
+            kind: NotificationKinds.error,
+          });
+          setNotificationVisible(true);
+          reject();
+          return;
+        }
         const key = worklistRowKey(row);
         const alerts = owedAlerts(row).filter(
           (alert) => !isConfirmed(key, alert),
@@ -1223,7 +1335,13 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           customCriticalMessage: configurationProperties?.customCriticalMessage,
         });
       }),
-    [owedAlerts, configurationProperties],
+    [
+      owedAlerts,
+      configurationProperties,
+      addNotification,
+      intl,
+      setNotificationVisible,
+    ],
   );
 
   const handleSave = useCallback(
@@ -1287,7 +1405,10 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           <Avatar name={row.patientName} id={row.patientId as string} />
         )}
         <div>
-          <div className="unifiedAccession">{accession}</div>
+          <div className="unifiedAccession">
+            {accession}
+            {Boolean(row.eqaSample) && <EQABadge priority={row.eqaPriority} />}
+          </div>
           {subline && <div className="unifiedSubjectSub">{subline}</div>}
           {/* the old Results page's non-conformity indicator, reproduced
               under the sample/patient identity — analysis-level, shared by
@@ -1382,25 +1503,19 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               />
             </Column>
             <Column
-              lg={3}
+              lg={4}
               md={4}
               sm={4}
               className="unifiedResultsToolbarColumn"
             >
-              <Select
+              <SearchableSelect
                 id="unifiedResultsLabUnit"
                 labelText={intl.formatMessage({ id: "label.results.labUnit" })}
+                options={labUnits}
                 value={selectedLabUnit}
                 disabled={Boolean(selectedPatient)}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  setSelectedLabUnit(e.target.value)
-                }
-              >
-                <SelectItem text="" value="" />
-                {labUnits.map((unit) => (
-                  <SelectItem text={unit.value} value={unit.id} key={unit.id} />
-                ))}
-              </Select>
+                onChange={(id: string) => setSelectedLabUnit(id)}
+              />
             </Column>
             <Column
               lg={3}
@@ -1409,26 +1524,27 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               className="unifiedResultsToolbarColumn"
             >
               <DatePicker
+                key={dayFirst ? "day-first" : "month-first"}
                 datePickerType="single"
-                dateFormat="d/m/Y"
-                onChange={(dates: Date[]) => {
-                  if (dates && dates.length) {
-                    const d = dates[0];
-                    setCollectionDate(
-                      `${String(d.getDate()).padStart(2, "0")}/${String(
-                        d.getMonth() + 1,
-                      ).padStart(2, "0")}/${d.getFullYear()}`,
-                    );
-                  } else {
-                    setCollectionDate("");
-                  }
-                }}
+                dateFormat={dayFirst ? "d/m/Y" : "m/d/Y"}
+                parseDate={parseFilterDate}
+                onChange={(dates: Date[]) =>
+                  commitFilterDate(dates && dates.length ? dates[0] : false)
+                }
               >
                 <DatePickerInput
                   id="unifiedResultsDate"
                   labelText={intl.formatMessage({ id: "label.results.date" })}
-                  placeholder="dd/mm/yyyy"
+                  placeholder={intl.formatMessage({
+                    id: datePlaceholderId(
+                      configurationProperties?.DEFAULT_DATE_LOCALE,
+                    ),
+                  })}
                   disabled={Boolean(selectedPatient)}
+                  onBlur={(event: React.FocusEvent<HTMLInputElement>) => {
+                    const typed = event.target.value.trim();
+                    commitFilterDate(typed ? parseFilterDate(typed) : false);
+                  }}
                 />
               </DatePicker>
             </Column>
@@ -1454,7 +1570,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               </Button>
             </Column>
             <Column
-              lg={4}
+              lg={3}
               md={2}
               sm={4}
               className="unifiedResultsToolbarColumn unifiedResultsLoadColumn"
@@ -1526,6 +1642,9 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
 
         {/* Status filter chips with counts */}
         <Column lg={16} md={8} sm={4} className="unifiedResultsChips">
+          {!embedded && onOpenRun && (
+            <RunsChip testSectionId={selectedLabUnit} onOpenRun={onOpenRun} />
+          )}
           <Tag
             type={statusFilter === "ALL" ? "blue" : "gray"}
             onClick={() => setStatusFilter("ALL")}
@@ -1627,7 +1746,12 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                   const stale = staleInfo[key];
                   const reviewer = presence[row.analysisId];
                   const isExpanded = expandedRowKey === key;
-                  const flag = resultFlagFor(row);
+                  const flag = resultFlagFor({
+                    ...row,
+                    resultValue: isRowEditable(state)
+                      ? row.resultValue
+                      : (row.rawResultValue ?? row.resultValue),
+                  });
                   return (
                     <React.Fragment key={key}>
                       <TableRow>
@@ -1669,6 +1793,12 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                             <Tag type="cyan" size="sm">
                               <FormattedMessage id="label.results.referredOut" />
                             </Tag>
+                          )}
+                          {state === "WAITING" && row.waitingRun && (
+                            <WaitingTag
+                              run={row.waitingRun}
+                              onOpenRun={onOpenRun}
+                            />
                           )}
                         </TableCell>
                         <TableCell className="unifiedResultsSmallCell">
@@ -1754,10 +1884,6 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               recordId={row.analysisId}
                               onBeforeSign={() => beforeSign(row)}
                               onSign={() => handleSave(row)}
-                              disabled={
-                                writesResultValue(state) &&
-                                blocksSaveOnPrecision(row)
-                              }
                               size="sm"
                             >
                               <FormattedMessage id="label.results.save" />
@@ -1880,10 +2006,6 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                                       recordId={row.analysisId}
                                       onBeforeSign={() => beforeSign(row)}
                                       onSign={() => handleSave(row)}
-                                      disabled={
-                                        writesResultValue(state) &&
-                                        blocksSaveOnPrecision(row)
-                                      }
                                       size="sm"
                                     >
                                       <FormattedMessage id="label.results.save" />

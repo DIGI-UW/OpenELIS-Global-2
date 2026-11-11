@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   Stack,
   Accordion,
@@ -28,9 +28,12 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
+import StaleSaveNotice, {
+  isStaleConflict,
+} from "../../../common/StaleSaveNotice";
 
 /**
  * OGC-1234: the source test's components as unsaved rows of this test. Copy
@@ -169,6 +172,31 @@ const ResultEntryPreview = ({ component, uoms, intl }) => {
   );
 };
 
+// OGC-1458 — the rule a refused (422) save names, and what to tell the admin.
+const SAVE_REFUSALS = {
+  "logDisplay.numericRequired":
+    "error.testCatalog.sampleResults.logNumericRequired",
+  "logDisplay.sourceInvalid":
+    "error.testCatalog.sampleResults.logDisplay.sourceInvalid",
+  "decimalPlaces.invalid":
+    "error.testCatalog.sampleResults.decimalPlacesInvalid",
+  "components.activeNeedsComponent":
+    "error.testCatalog.sampleResults.activeNeedsComponent",
+  "resultType.unknown": "label.testCatalog.sampleResults.resultTypeRequired",
+  "value.tooLong": "error.testCatalog.sampleResults.valueTooLong",
+  "unit.unknown": "error.testCatalog.sampleResults.unitUnknown",
+};
+
+/** Column widths the server enforces (OGC-1467); the inputs stop there. */
+const COLUMN_MAX = {
+  code: 50,
+  label: 255,
+  defaultResult: 80,
+  optionValue: 80,
+  valueMatch: 80,
+  interpretationText: 255,
+};
+
 const SampleResultsSection = ({ testId }) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
@@ -202,6 +230,12 @@ const SampleResultsSection = ({ testId }) => {
   // { ci, name, code, ucumCode, description } for the component at index ci.
   const [unitForm, setUnitForm] = useState(null);
 
+  // Aborted when the section unmounts, so a late response never updates a
+  // screen that is gone.
+  const loadAbort = useRef(null);
+  const [version, setVersion] = useState(null);
+  const [stale, setStale] = useState(false);
+
   const load = () => {
     setLoading(true);
     setError(false);
@@ -214,26 +248,40 @@ const SampleResultsSection = ({ testId }) => {
           return;
         }
         setComponents(res.components);
+        setVersion(res.version || null);
+        setStale(false);
         setCopiedFrom(null);
       },
+      loadAbort.current ? loadAbort.current.signal : null,
     );
   };
 
   useEffect(() => {
     if (!testId) {
-      return;
+      return undefined;
     }
+    const controller = new AbortController();
+    loadAbort.current = controller;
     load();
-    getFromOpenElisServer("/rest/test-list", (res) => {
-      if (Array.isArray(res)) {
-        setOtherTests(res.filter((t) => t.id !== testId));
-      }
-    });
-    getFromOpenElisServer("/rest/uom", (res) => {
-      if (Array.isArray(res)) {
-        setUoms(res);
-      }
-    });
+    getFromOpenElisServer(
+      "/rest/test-list",
+      (res) => {
+        if (Array.isArray(res)) {
+          setOtherTests(res.filter((t) => t.id !== testId));
+        }
+      },
+      controller.signal,
+    );
+    getFromOpenElisServer(
+      "/rest/uom",
+      (res) => {
+        if (Array.isArray(res)) {
+          setUoms(res);
+        }
+      },
+      controller.signal,
+    );
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
@@ -246,8 +294,12 @@ const SampleResultsSection = ({ testId }) => {
     if (nextType !== "N") {
       // Numeric-only fields.
       patch.uomId = "";
-      patch.significantDigits = null;
+      patch.reportingDecimalPlaces = null;
       patch.allowMultipleReadings = false;
+    }
+    if (!["N", "A"].includes(nextType)) {
+      patch.displayLog10 = false;
+      patch.log10SourceComponentCode = null;
     }
     if (!isSelectList) {
       // Select-list options are meaningless for non-list types.
@@ -259,7 +311,13 @@ const SampleResultsSection = ({ testId }) => {
   // ── Immutable updaters ─────────────────────────────────────────────────────
   const patchComponent = (ci, patch) =>
     setComponents((prev) =>
-      prev.map((c, i) => (i === ci ? { ...c, ...patch } : c)),
+      prev.map((c, i) => {
+        if (i === ci) return { ...c, ...patch };
+        return patch.code !== undefined &&
+          c.log10SourceComponentCode === prev[ci].code
+          ? { ...c, log10SourceComponentCode: patch.code }
+          : c;
+      }),
     );
 
   // FR-29: create a unit inline, then append it to the picker and select it on
@@ -401,11 +459,12 @@ const SampleResultsSection = ({ testId }) => {
           // The type is an explicit choice (FR-56/28) — no silent Numeric
           // default.
           resultType: null,
-          significantDigits: null,
+          reportingDecimalPlaces: null,
           defaultResult: "",
           allowMultipleReadings: false,
           isPrimary: prev.length === 0,
           showOnReport: true,
+          isRequired: prev.length === 0,
           options: [],
           interpretations: [],
         },
@@ -542,6 +601,9 @@ const SampleResultsSection = ({ testId }) => {
                 {
                   value: "",
                   valueName: null,
+                  // Typed text, never a dictionary id even when it is a number
+                  // (OGC-1458: a typed "1" is the grade 1).
+                  freeText: true,
                   resultType: c.resultType,
                   sortOrder: c.options.length + 1,
                   normal: false,
@@ -702,11 +764,13 @@ const SampleResultsSection = ({ testId }) => {
     setSaving(true);
     const payload = {
       testId,
+      version,
       components: normalized.map((c) => ({
         ...c,
         defaultResult: offeredDefault(c),
         displayOrder: toInt(c.displayOrder),
-        significantDigits: toInt(c.significantDigits),
+        reportingDecimalPlaces: toInt(c.reportingDecimalPlaces),
+        displayLog10: c.displayLog10 === true,
         lod: toInt(c.lod),
         loq: toInt(c.loq),
         options: (c.options || []).map((o) => ({
@@ -719,13 +783,45 @@ const SampleResultsSection = ({ testId }) => {
         })),
       })),
     };
-    putToOpenElisServer(
+    putToOpenElisServerFullResponse(
       `/rest/test-catalog/tests/${testId}/sample-results`,
       JSON.stringify(payload),
-      (status) => {
+      async (response) => {
         setSaving(false);
+        if (response && response.status === 409) {
+          const conflict = await response.json().catch(() => null);
+          if (isStaleConflict(409, conflict)) {
+            setStale(true);
+            return;
+          }
+        }
         setNotificationVisible(true);
-        if (status === 200) {
+        if (response && response.status === 422) {
+          let body = null;
+          try {
+            body = await response.json();
+          } catch (e) {
+            body = null;
+          }
+          const refusal = body && SAVE_REFUSALS[body.refusal];
+          if (body && body.refusal === "components.activeNeedsComponent") {
+            load();
+          }
+          if (refusal) {
+            addNotification({
+              kind: "error",
+              title: intl.formatMessage({
+                id: "label.testCatalog.section.sample-results",
+              }),
+              message: intl.formatMessage(
+                { id: refusal },
+                { component: body.refusedComponent || "" },
+              ),
+            });
+            return;
+          }
+        }
+        if (response && response.status === 200) {
           addNotification({
             kind: "success",
             title: intl.formatMessage({
@@ -824,7 +920,7 @@ const SampleResultsSection = ({ testId }) => {
   // One component → flat; several → accordion panels (FR-34).
 
   return (
-    <Stack gap={6}>
+    <Stack gap={6} style={{ overflowWrap: "anywhere", minWidth: 0 }}>
       <p>
         <FormattedMessage id="label.testCatalog.sampleResults.purpose" />
       </p>
@@ -892,8 +988,21 @@ const SampleResultsSection = ({ testId }) => {
                     patchComponent(ci, { showOnReport: checked })
                   }
                 />
+                <Toggle
+                  id={`comp-required-${ci}`}
+                  labelText={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.isRequired",
+                  })}
+                  labelA={intl.formatMessage({ id: "label.no" })}
+                  labelB={intl.formatMessage({ id: "label.yes" })}
+                  toggled={c.isRequired === true}
+                  onToggle={(checked) =>
+                    patchComponent(ci, { isRequired: checked })
+                  }
+                />
                 <TextInput
                   id={`comp-code-${ci}`}
+                  maxLength={COLUMN_MAX.code}
                   labelText={intl.formatMessage({
                     id: "label.testCatalog.sampleResults.code",
                   })}
@@ -903,6 +1012,7 @@ const SampleResultsSection = ({ testId }) => {
                 />
                 <TextInput
                   id={`comp-label-${ci}`}
+                  maxLength={COLUMN_MAX.label}
                   labelText={intl.formatMessage({
                     id: "label.testCatalog.sampleResults.label",
                   })}
@@ -1024,25 +1134,25 @@ const SampleResultsSection = ({ testId }) => {
                       </div>
                     )}
                     <NumberInput
-                      id={`comp-sigdig-${ci}`}
+                      id={`comp-reporting-decimals-${ci}`}
                       label={intl.formatMessage({
-                        id: "label.testCatalog.sampleResults.significantDigits",
+                        id: "label.testCatalog.sampleResults.reportingDecimalPlaces",
                       })}
                       helperText={intl.formatMessage({
-                        id: "label.testCatalog.sampleResults.significantDigits.helper",
+                        id: "label.testCatalog.sampleResults.reportingDecimalPlaces.helper",
                       })}
                       min={0}
                       max={10}
                       allowEmpty
                       value={
-                        c.significantDigits === null ||
-                        c.significantDigits === undefined
+                        c.reportingDecimalPlaces === null ||
+                        c.reportingDecimalPlaces === undefined
                           ? ""
-                          : c.significantDigits
+                          : c.reportingDecimalPlaces
                       }
                       onChange={(_e, { value }) =>
                         patchComponent(ci, {
-                          significantDigits: value === "" ? null : value,
+                          reportingDecimalPlaces: value === "" ? null : value,
                         })
                       }
                     />
@@ -1102,6 +1212,67 @@ const SampleResultsSection = ({ testId }) => {
                     </div>
                   </>
                 )}
+                {["N", "A"].includes(c.resultType) && (
+                  <>
+                    <Checkbox
+                      id={`comp-display-log10-${ci}`}
+                      checked={c.displayLog10 === true}
+                      labelText={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.displayLog10",
+                      })}
+                      onChange={(_event, { checked }) =>
+                        patchComponent(ci, {
+                          displayLog10: checked,
+                          log10SourceComponentCode: checked
+                            ? c.log10SourceComponentCode
+                            : null,
+                        })
+                      }
+                    />
+                    <p>
+                      {intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.displayLog10.helper",
+                      })}
+                    </p>
+                    {c.displayLog10 && (
+                      <Select
+                        id={`comp-log10-source-${ci}`}
+                        labelText={intl.formatMessage({
+                          id: "label.testCatalog.sampleResults.log10Source",
+                        })}
+                        value={c.log10SourceComponentCode || ""}
+                        onChange={(event) =>
+                          patchComponent(ci, {
+                            log10SourceComponentCode:
+                              event.target.value || null,
+                          })
+                        }
+                      >
+                        <SelectItem
+                          value=""
+                          text={intl.formatMessage({
+                            id: "label.testCatalog.sampleResults.log10Source.none",
+                          })}
+                        />
+                        {components
+                          .filter(
+                            (source, i) =>
+                              i !== ci &&
+                              source.resultType === "N" &&
+                              source.showOnReport !== false &&
+                              !source.displayLog10,
+                          )
+                          .map((source) => (
+                            <SelectItem
+                              key={source.code}
+                              value={source.code}
+                              text={source.label || source.code}
+                            />
+                          ))}
+                      </Select>
+                    )}
+                  </>
+                )}
                 {["D", "M", "C"].includes(c.resultType) ? (
                   <Select
                     id={`comp-default-${ci}`}
@@ -1138,6 +1309,7 @@ const SampleResultsSection = ({ testId }) => {
                 ) : (
                   <TextInput
                     id={`comp-default-${ci}`}
+                    maxLength={COLUMN_MAX.defaultResult}
                     labelText={intl.formatMessage({
                       id: "label.testCatalog.sampleResults.defaultResult",
                     })}
@@ -1235,6 +1407,7 @@ const SampleResultsSection = ({ testId }) => {
                                 ) : (
                                   <TextInput
                                     id={`opt-value-${ci}-${oi}`}
+                                    maxLength={COLUMN_MAX.optionValue}
                                     labelText=""
                                     value={o.value || ""}
                                     onChange={(e) =>
@@ -1412,6 +1585,7 @@ const SampleResultsSection = ({ testId }) => {
                                 ) : (
                                   <TextInput
                                     id={`int-match-${ci}-${ii}`}
+                                    maxLength={COLUMN_MAX.valueMatch}
                                     labelText=""
                                     placeholder={intl.formatMessage({
                                       id: "label.testCatalog.sampleResults.interp.numericHint",
@@ -1428,6 +1602,7 @@ const SampleResultsSection = ({ testId }) => {
                               <TableCell>
                                 <TextInput
                                   id={`int-text-${ci}-${ii}`}
+                                  maxLength={COLUMN_MAX.interpretationText}
                                   labelText=""
                                   value={it.text || ""}
                                   onChange={(e) =>
@@ -1581,6 +1756,9 @@ const SampleResultsSection = ({ testId }) => {
         </p>
       </Modal>
 
+      {stale && (
+        <StaleSaveNotice testId="sample-results-stale-save" onRefresh={load} />
+      )}
       <div style={{ display: "flex", gap: "0.5rem" }}>
         <Button
           kind="tertiary"
@@ -1590,7 +1768,7 @@ const SampleResultsSection = ({ testId }) => {
         >
           <FormattedMessage id="label.testCatalog.sampleResults.addComponent" />
         </Button>
-        <Button kind="primary" disabled={saving} onClick={handleSave}>
+        <Button kind="primary" disabled={saving || stale} onClick={handleSave}>
           <FormattedMessage id="label.button.save" />
         </Button>
       </div>

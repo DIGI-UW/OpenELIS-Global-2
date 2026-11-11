@@ -26,7 +26,8 @@ public class SampleGrouping {
     public Sample sample;
     public SampleHuman sampleHuman;
     public Patient patient;
-    public List<Note> noteList;
+    /** The notes each result takes, in the order of {@link #resultList}. */
+    public List<List<Note>> noteList;
     public SampleItem sampleItem;
     public List<Analysis> analysisList;
     public List<Result> resultList;

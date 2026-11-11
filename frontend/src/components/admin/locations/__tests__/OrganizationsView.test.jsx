@@ -139,6 +139,22 @@ describe("OrganizationsView (OGC-1363)", () => {
     );
   });
 
+  // OGC-1448: the sort description is built from the header's children; an
+  // element there read "Click to sort rows by [object Object] header".
+  it("describes the sortable column by its name", async () => {
+    renderView();
+    await screen.findByText("Health Services Inc");
+
+    const descriptions = [
+      ...document.querySelectorAll(".cds--table-sort__description"),
+    ].map((node) => node.textContent);
+    expect(descriptions.length).toBeGreaterThan(0);
+    descriptions.forEach((text) => {
+      expect(text).not.toContain("[object Object]");
+      expect(text).toContain(messages["label.locations.column.location"]);
+    });
+  });
+
   it("reads its filters from the URL and shows them as named tags", async () => {
     renderView("/MasterListsPage/locations?status=inactive&type=5&q=hsi");
     expect(await screen.findByText("Health Services Inc")).toBeInTheDocument();

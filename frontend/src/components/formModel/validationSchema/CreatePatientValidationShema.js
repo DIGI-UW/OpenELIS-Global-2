@@ -15,11 +15,15 @@ const isValidDisplayDate = (value) => {
   return validDate1 || validDate2;
 };
 
+/**
+ * Messages are React Intl keys; CreatePatientForm shows each one once, on its
+ * field.
+ */
 export const createPatientValidationSchema = (configurationProperties = {}) => {
   const nationalIdValidator =
     configurationProperties.PATIENT_NATIONAL_ID_REQUIRED === "false"
       ? Yup.string()
-      : Yup.string().required("National ID Required");
+      : Yup.string().required("patient.validation.nationalIdRequired");
   const sexRequired = configurationProperties.PATIENT_SEX_REQUIRED !== "false";
   const ageRequired = configurationProperties.PATIENT_AGE_REQUIRED !== "false";
 
@@ -27,23 +31,27 @@ export const createPatientValidationSchema = (configurationProperties = {}) => {
     nationalId: nationalIdValidator,
     birthDateForDisplay: ageRequired
       ? Yup.string()
-          .required("Patient Birth date Required")
-          .test("valid-date", "Invalid date format", isValidDisplayDate)
+          .required("patient.validation.dobOrAgeRequired")
+          .test(
+            "valid-date",
+            "patient.validation.dobInvalid",
+            isValidDisplayDate,
+          )
       : Yup.string()
           .nullable()
           .test(
             "valid-date",
-            "Invalid date format",
+            "patient.validation.dobInvalid",
             (value) => !value || isValidDisplayDate(value),
           ),
-    email: Yup.string().email("Patient Email Must Be Valid"),
+    email: Yup.string().email("patient.validation.emailInvalid"),
     patientContact: Yup.object().shape({
       person: Yup.object().shape({
-        email: Yup.string().email("Contact Email Must Be Valid"),
+        email: Yup.string().email("patient.validation.contactEmailInvalid"),
       }),
     }),
     gender: sexRequired
-      ? Yup.string().required("Sex is Required")
+      ? Yup.string().required("patient.validation.sexRequired")
       : Yup.string().nullable(),
   });
 };

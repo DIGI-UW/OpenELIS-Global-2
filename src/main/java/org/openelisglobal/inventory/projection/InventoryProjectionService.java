@@ -6,4 +6,6 @@ public interface InventoryProjectionService {
 
     /** One row per active item, most urgent first, then soonest run-out. */
     List<InventoryProjection> getBoard();
+
+    List<InventoryProjection> getBoard(boolean includeInactive);
 }

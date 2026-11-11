@@ -11,11 +11,16 @@ import AnalyserResults, {
   buildHeldResultResolutionUrl,
 } from "./AnalyserResults";
 
-const { postResults } = vi.hoisted(() => ({ postResults: vi.fn() }));
+const { postResults, getFromServer, formatLabNumber } = vi.hoisted(() => ({
+  postResults: vi.fn(),
+  getFromServer: vi.fn(),
+  formatLabNumber: vi.fn((value) => value),
+}));
 
 vi.mock("../utils/Utils", () => ({
-  convertAlphaNumLabNumForDisplay: (value) => value,
+  convertAlphaNumLabNumForDisplay: formatLabNumber,
   postToOpenElisServerFullResponse: postResults,
+  getFromOpenElisServer: getFromServer,
 }));
 
 const heldResult = {
@@ -55,41 +60,218 @@ const mappedQualitativeResult = {
 const renderResults = (
   resultList = [heldResult],
   sampleGroup = [resultList[0]],
+  extraProps = {},
+  accessionFormat = "",
 ) => {
   const history = createMemoryHistory({
     initialEntries: ["/AnalyzerResults?id=2001"],
   });
+  const addNotification = vi.fn();
   const view = render(
     <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
         <ConfigurationContext.Provider
-          value={{ configurationProperties: { AccessionFormat: "" } }}
+          value={{
+            configurationProperties: { AccessionFormat: accessionFormat },
+          }}
         >
           <NotificationContext.Provider
             value={{
               setNotificationVisible: vi.fn(),
-              addNotification: vi.fn(),
+              addNotification,
             }}
           >
             <AnalyserResults
               results={{ resultList: resultList.map((row) => ({ ...row })) }}
               sampleGroup={sampleGroup}
               analyzerId="2001"
+              {...extraProps}
             />
           </NotificationContext.Provider>
         </ConfigurationContext.Provider>
       </IntlProvider>
     </Router>,
   );
-  return { ...view, history };
+  return { ...view, history, addNotification };
 };
+
+const matched = (id, group, extra = {}) => ({
+  ...mappedQualitativeResult,
+  id,
+  accessionNumber: "ACC-" + group,
+  sampleGroupingNumber: group,
+  placement: {
+    state: "RESOLVED",
+    match: "ACCESSION",
+    tubes: [{ sampleItemId: "10", externalId: "ACC-" + group + "-1" }],
+    analyses: [{ analysisId: "50", sampleItemId: "10", awaitingResult: true }],
+    proposedSampleItemId: "10",
+    proposedAnalysisId: "50",
+  },
+  ...extra,
+});
 
 describe("AnalyserResults", () => {
   beforeEach(() => {
     postResults.mockReset();
+    getFromServer.mockReset();
+    formatLabNumber.mockReset().mockImplementation((value) => value);
   });
 
-  it("keeps a held qualitative result visible and links it to the shared mapping editor", async () => {
+  it("ticks only the groupings whose every result is matched when saving all", () => {
+    const unordered = matched("2002", 2, {
+      placement: {
+        state: "UNORDERED_ONE_FITS",
+        match: "ACCESSION",
+        tubes: [{ sampleItemId: "11", externalId: "ACC-2-1" }],
+        analyses: [],
+        proposedSampleItemId: "11",
+      },
+    });
+    const first = matched("2001", 1);
+    renderResults([first, unordered], [first, unordered]);
+
+    fireEvent.click(screen.getByLabelText("Save All Results"));
+
+    expect(document.getElementById("resultList2001.isAccepted").checked).toBe(
+      true,
+    );
+    expect(document.getElementById("resultList2002.isAccepted").checked).toBe(
+      false,
+    );
+  });
+
+  it("leaves a grouping unticked when saving all if its patient cannot be checked against the order", () => {
+    const first = matched("2101", 1, {
+      placement: {
+        ...matched("2101", 1).placement,
+        patient: { status: "MATCH", instrumentId: "PAT-1" },
+      },
+    });
+    const unverified = matched("2102", 2, {
+      placement: {
+        ...matched("2102", 2).placement,
+        patient: { status: "NO_ORDER_PATIENT", instrumentId: "PAT-77" },
+      },
+    });
+    renderResults([first, unverified], [first, unverified]);
+
+    fireEvent.click(screen.getByLabelText("Save All Results"));
+
+    expect(document.getElementById("resultList2101.isAccepted").checked).toBe(
+      true,
+    );
+    expect(document.getElementById("resultList2102.isAccepted").checked).toBe(
+      false,
+    );
+  });
+
+  it("lets the reviewer write the note a mismatch held for placement needs", () => {
+    const held = matched("3101", 1, {
+      importIssueReason: "awaiting_placement",
+      placement: {
+        ...matched("3101", 1).placement,
+        patient: { status: "MISMATCH", instrumentId: "PAT-9", orderName: "B" },
+      },
+    });
+    renderResults([held]);
+
+    fireEvent.change(document.getElementById("resultList3101.note"), {
+      target: { value: "Relabelled tube, checked with the ward" },
+    });
+    fireEvent.click(document.getElementById("resultList3101.isAccepted"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const submitted = JSON.parse(postResults.mock.calls[0][1]);
+    expect(submitted.resultList[0].note).toBe(
+      "Relabelled tube, checked with the ward",
+    );
+  });
+
+  it("keeps a result held for placement actionable and posts the chosen analysis", () => {
+    const held = matched("3001", 1, {
+      importIssueReason: "awaiting_placement",
+      placement: {
+        state: "MULTI_TUBE",
+        match: "ACCESSION",
+        tubes: [
+          { sampleItemId: "10", externalId: "ACC-1-1" },
+          { sampleItemId: "11", externalId: "ACC-1-2" },
+        ],
+        analyses: [
+          { analysisId: "50", sampleItemId: "10", awaitingResult: true },
+          { analysisId: "51", sampleItemId: "11", awaitingResult: true },
+        ],
+      },
+    });
+    renderResults([held]);
+
+    fireEvent.change(screen.getByLabelText("Analysis this result belongs to"), {
+      target: { value: "51" },
+    });
+    fireEvent.click(document.getElementById("resultList3001.isAccepted"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const submitted = JSON.parse(postResults.mock.calls[0][1]);
+    expect(submitted.resultList[0].chosenAnalysisId).toBe("51");
+    expect(submitted.resultList[0].isAccepted).toBe(true);
+  });
+
+  it("posts the order and reason when a result is placed on another order", () => {
+    renderResults([matched("6001", 1)]);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Place on another order" }),
+    );
+    fireEvent.change(screen.getByLabelText("Order (lab number)"), {
+      target: { value: "DEV01260000000000038" },
+    });
+    fireEvent.change(screen.getByLabelText("Why this belongs to that order"), {
+      target: { value: "Label misread" },
+    });
+    fireEvent.click(document.getElementById("resultList6001.isAccepted"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const submitted = JSON.parse(postResults.mock.calls[0][1]);
+    expect(submitted.resultList[0].redirectAccession).toBe(
+      "DEV01260000000000038",
+    );
+    expect(submitted.resultList[0].redirectReason).toBe("Label misread");
+  });
+
+  it("shows the specimen ID the instrument sent when it differs from the accession", () => {
+    renderResults([matched("4001", 1, { instrumentSpecimenId: "ACC-1-2" })]);
+    expect(screen.getByTestId("InstrumentSpecimenId")).toHaveTextContent(
+      "Instrument sent: ACC-1-2",
+    );
+  });
+
+  it("shows the warnings the instrument raised about a sample once, with its lab number", () => {
+    const flags = { instrumentSampleFlags: "Anemia, Hypochromia" };
+    renderResults([matched("4101", 1, flags), matched("4102", 1, flags)]);
+
+    const shown = screen.getAllByTestId("InstrumentSampleFlags");
+    expect(shown).toHaveLength(1);
+    expect(shown[0]).toHaveTextContent("Analyzer flags: Anemia, Hypochromia");
+  });
+
+  it("opens the delivery bundle from the row", async () => {
+    getFromServer.mockImplementation((url, callback) =>
+      callback({ resourceType: "Bundle" }),
+    );
+    renderResults([matched("5001", 1, { deliveryReceiptId: "receipt-1" })]);
+
+    fireEvent.click(screen.getByRole("button", { name: "View bundle" }));
+
+    expect(await screen.findByTestId("delivery-bundle")).toHaveTextContent(
+      '"resourceType": "Bundle"',
+    );
+    expect(getFromServer.mock.calls[0][0]).toBe(
+      "/rest/analyzer/deliveries/receipt-1/bundle",
+    );
+  });
+
+  it("keeps a held qualitative result visible and links it to the analyzer's own mapping", async () => {
     renderResults();
 
     expect(await screen.findByText("Held")).toBeInTheDocument();
@@ -97,10 +279,10 @@ describe("AnalyserResults", () => {
     expect(screen.getByText("Analyzer code: QUAL_RESULT")).toBeInTheDocument();
 
     expect(
-      screen.getByRole("link", { name: "Review Analyzer Type mapping" }),
+      screen.getByRole("link", { name: "Review analyzer mapping" }),
     ).toHaveAttribute(
       "href",
-      "/analyzers/types/genexpert-astm/mapping?revision=3&analyzerId=2001&returnTo=%2FAnalyzerResults%3Fid%3D2001&focusTest=QUAL_RESULT&focusValue=POSITIVE",
+      "/analyzers/2001/mapping?returnTo=%2FAnalyzerResults%3Fid%3D2001&focusTest=QUAL_RESULT&focusValue=POSITIVE",
     );
 
     expect(
@@ -139,12 +321,10 @@ describe("AnalyserResults", () => {
       target: { value: "Review before release" },
     });
     fireEvent.click(
-      screen.getByRole("link", { name: "Review Analyzer Type mapping" }),
+      screen.getByRole("link", { name: "Review analyzer mapping" }),
     );
 
-    expect(history.location.pathname).toBe(
-      "/analyzers/types/genexpert-astm/mapping",
-    );
+    expect(history.location.pathname).toBe("/analyzers/2001/mapping");
     expect(history.location.state.worklistDraft).toEqual({
       analyzerId: "2001",
       page: 1,
@@ -168,6 +348,15 @@ describe("AnalyserResults", () => {
     };
     renderResults([result]);
 
+    expect(
+      screen.getByText(
+        /choose a specimen or analysis, place the result on the correct order, or explain a patient mismatch/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Held results cannot be accepted/),
+    ).not.toBeInTheDocument();
+
     fireEvent.change(screen.getByRole("combobox", { name: "Sample type" }), {
       target: { value: "40" },
     });
@@ -179,6 +368,337 @@ describe("AnalyserResults", () => {
     expect(submitted.resultList[0].isAccepted).toBe(true);
   });
 
+  it("explains both kinds of work when specimen and mapping holds share the page", () => {
+    renderResults([
+      heldResult,
+      { ...mappedQualitativeResult, importIssueReason: "awaiting_specimen" },
+    ]);
+    expect(
+      screen.getByText(
+        /choose a specimen or analysis, place the result on the correct order, or explain a patient mismatch/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Review.*mapping/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("explains an unmatched control and offers lot setup and retry", async () => {
+    renderResults([
+      {
+        ...heldResult,
+        testId: "301",
+        isControl: true,
+        importIssueReason: "qc_lot_missing",
+      },
+    ]);
+    fireEvent.click(await screen.findByRole("button", { name: /QC Controls/ }));
+    expect(
+      await screen.findByText(/No matching control lot was found/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Review control lots" }),
+    ).toHaveAttribute("href", "/qa/qc/control-lots");
+    expect(
+      screen.getByRole("link", { name: "Apply mapping to retry control" }),
+    ).toHaveAttribute("href", expect.stringContaining("/mapping"));
+    expect(
+      screen.queryByRole("link", { name: "Review analyzer mapping" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("explains why an off-scale control cannot be charted as an exact measurement", async () => {
+    renderResults([
+      {
+        ...heldResult,
+        isControl: true,
+        importIssueReason: "qc_value_unsupported",
+      },
+    ]);
+    fireEvent.click(await screen.findByRole("button", { name: /QC Controls/ }));
+    expect(
+      await screen.findByText(
+        /an off-scale value cannot be treated as an exact measurement/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("explains a control held for a missing QC target and links to that test's targets", async () => {
+    renderResults([
+      {
+        ...heldResult,
+        testId: "301",
+        isControl: true,
+        importIssueReason: "qc_target_missing",
+      },
+    ]);
+    fireEvent.click(await screen.findByRole("button", { name: /QC Controls/ }));
+
+    expect(
+      await screen.findByText(/no QC target to judge it against/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Set QC target" })).toHaveAttribute(
+      "href",
+      "/MasterListsPage/TestCatalogEditor/301/qc-targets",
+    );
+    expect(
+      screen.queryByRole("link", { name: "Review analyzer mapping" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("explains a result for an assay this instrument's setup has off and links to turn it on", async () => {
+    renderResults([
+      {
+        ...heldResult,
+        importIssueReason: "assay_not_enabled",
+      },
+    ]);
+
+    expect(
+      await screen.findByText(
+        /This assay is off in the analyzer's setup, so its result was held/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Turn the assay on" }),
+    ).toHaveAttribute("href", expect.stringContaining("setup=assays"));
+  });
+
+  it("directs conflicting old spelling mappings to the local mapping editor", async () => {
+    renderResults([
+      { ...heldResult, importIssueReason: "conflicting_answer_mapping" },
+    ]);
+    expect(
+      await screen.findByText(/conflicting local mappings/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Review analyzer mapping" }),
+    ).toHaveAttribute(
+      "href",
+      expect.stringContaining("/analyzers/2001/mapping"),
+    );
+  });
+
+  it.each([
+    "reading_changed",
+    "type_reading_changed",
+    "arrived_under_other_revision",
+  ])(
+    "keeps an older %s hold recoverable through local mapping without asking for re-interpretation",
+    async (reason) => {
+      renderResults([{ ...heldResult, importIssueReason: reason }]);
+      expect(await screen.findByText("Held")).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Review analyzer mapping" }),
+      ).toHaveAttribute(
+        "href",
+        expect.stringContaining("/analyzers/2001/mapping"),
+      );
+      expect(
+        screen.queryByText(/now reads.*differently/),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it("shows a failed run's instrument note and dismisses it as a failed run", async () => {
+    postResults.mockImplementation((_endpoint, _body, callback) =>
+      callback({ status: 200, json: async () => ({ analysisId: "50" }) }),
+    );
+    renderResults([
+      {
+        ...heldResult,
+        testId: "301",
+        rawResultValue: "ERROR",
+        importIssueReason: "run_failed",
+        instrumentNote: "Error 2008: pressure abort",
+      },
+    ]);
+
+    expect(
+      await screen.findByText(/Error 2008: pressure abort/),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Dismiss as failed run" }),
+    );
+
+    expect(postResults.mock.calls[0][0]).toBe(
+      "/rest/analyzer/results/1004/failed-run",
+    );
+    expect(
+      screen.queryByRole("link", { name: "Review analyzer mapping" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each(["unknown_analyzer_result_value", "awaiting_specimen"])(
+    "cancels removal of %s without sending a request or losing the row",
+    async (reason) => {
+      renderResults([{ ...heldResult, importIssueReason: reason }]);
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Remove from review" }),
+      );
+      const dialog = await screen.findByRole("dialog", {
+        name: "Remove result from review?",
+      });
+      expect(dialog).toHaveTextContent("QUAL_RESULT");
+      expect(dialog).toHaveTextContent("POSITIVE");
+      expect(dialog).toHaveTextContent("ACC654321");
+      expect(dialog).toHaveTextContent("cannot be undone");
+      expect(postResults).not.toHaveBeenCalled();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      expect(dialog.closest(".cds--modal")).not.toHaveClass("is-visible");
+      expect(
+        screen.getByRole("button", { name: "Remove from review" }),
+      ).toBeInTheDocument();
+      expect(postResults).not.toHaveBeenCalled();
+    },
+  );
+
+  it("removes a held result from review", async () => {
+    postResults.mockImplementation((_endpoint, _body, callback) =>
+      callback({ status: 204 }),
+    );
+    const { addNotification } = renderResults([
+      { ...heldResult, importIssueReason: "reading_changed" },
+    ]);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Remove from review" }),
+    );
+    expect(postResults).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Remove$/ }));
+
+    expect(postResults.mock.calls[0][0]).toBe(
+      "/rest/analyzer/results/1004/dismiss",
+    );
+    await vi.waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "success",
+          message:
+            "The held result is removed from review. The audit trail keeps it.",
+        }),
+      ),
+    );
+  });
+
+  it("uses the displayed lab number in the removal confirmation", async () => {
+    formatLabNumber.mockReturnValue("ACC-654-321");
+    renderResults([heldResult], [heldResult], {}, "ALPHANUM");
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Remove from review" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    expect(within(dialog).getByText(/ACC-654-321/)).toBeInTheDocument();
+    expect(screen.getByTestId("LabNo")).toHaveTextContent("ACC-654-321");
+    expect(postResults).not.toHaveBeenCalled();
+  });
+
+  it("preserves other rows' unsaved choices when removing a held result", async () => {
+    const refreshResults = vi.fn();
+    postResults.mockImplementation((_endpoint, _body, callback) =>
+      callback({ status: 204 }),
+    );
+    const mapped = matched("1005", 2);
+    renderResults([heldResult, mapped], [heldResult, mapped], {
+      refreshResults,
+    });
+    fireEvent.click(document.getElementById("resultList1005.isAccepted"));
+    fireEvent.change(document.getElementById("resultList1005.note"), {
+      target: { value: "Checked with the ward" },
+    });
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Remove from review" }),
+    );
+    expect(postResults).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Remove$/ }));
+
+    await vi.waitFor(() =>
+      expect(refreshResults).toHaveBeenCalledWith(1, {
+        1005: { isAccepted: true, note: "Checked with the ward" },
+      }),
+    );
+  });
+
+  it("removes a result held for placement from review", async () => {
+    postResults.mockImplementation((_endpoint, _body, callback) =>
+      callback({ status: 204 }),
+    );
+    renderResults([
+      {
+        ...mappedQualitativeResult,
+        importIssueReason: "awaiting_placement",
+        readOnly: false,
+      },
+    ]);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Remove from review" }),
+    );
+    expect(postResults).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Remove$/ }));
+
+    expect(postResults.mock.calls[0][0]).toBe(
+      `/rest/analyzer/results/${mappedQualitativeResult.id}/dismiss`,
+    );
+  });
+
+  it("reports a dismissal that never reached the server", async () => {
+    postResults.mockImplementation((_endpoint, _body, callback) =>
+      callback(undefined),
+    );
+    const { addNotification } = renderResults([
+      { ...heldResult, importIssueReason: "run_failed" },
+    ]);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Dismiss as failed run" }),
+    );
+
+    await vi.waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: "The failed run could not be dismissed",
+        }),
+      ),
+    );
+  });
+
+  it("sends one dismissal while the first is still in flight", async () => {
+    postResults.mockImplementation(() => {});
+    renderResults([{ ...heldResult, importIssueReason: "run_failed" }]);
+
+    const dismiss = await screen.findByRole("button", {
+      name: "Dismiss as failed run",
+    });
+    fireEvent.click(dismiss);
+    fireEvent.click(dismiss);
+
+    expect(postResults).toHaveBeenCalledTimes(1);
+    expect(dismiss).toBeDisabled();
+  });
+
+  it("offers no failed-run dismissal for a result held for its mapping", async () => {
+    renderResults();
+
+    await screen.findByText("Held");
+    expect(
+      screen.queryByRole("button", { name: "Dismiss as failed run" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("links an unknown analyzer test to its mapping and named analyzer", () => {
     const url = buildHeldResultResolutionUrl(
       {
@@ -188,7 +708,7 @@ describe("AnalyserResults", () => {
       },
       "2001",
     );
-    expect(url).toContain("analyzerId=2001");
+    expect(url).toContain("/analyzers/2001/mapping");
     expect(url).toContain("focusTest=QUAL_RESULT");
     expect(url).not.toContain("focusValue=");
   });
@@ -198,6 +718,165 @@ describe("AnalyserResults", () => {
 
     expect(await screen.findByText("NOT DETECTED")).toBeInTheDocument();
     expect(screen.queryByDisplayValue("1379")).not.toBeInTheDocument();
+  });
+
+  it("shows what the instrument reported about a result, labelled as such", async () => {
+    renderResults([
+      {
+        ...mappedQualitativeResult,
+        instrumentFlags: "H",
+        assayName: "Xpert HIV-1 Viral Load",
+        assayVersion: "4",
+        instrumentOperator: "Operator 12",
+      },
+    ]);
+
+    const reported = await screen.findByTestId("instrument-reported-1005");
+    expect(reported).toHaveTextContent("Instrument reported");
+    expect(reported).toHaveTextContent("Flag: H");
+    expect(reported).toHaveTextContent(
+      "Assay: Xpert HIV-1 Viral Load, version 4",
+    );
+    expect(reported).toHaveTextContent("Operator: Operator 12");
+  });
+
+  it("shows nothing instrument-reported when the instrument sent none of it", async () => {
+    renderResults([mappedQualitativeResult]);
+
+    expect(await screen.findByText("NOT DETECTED")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("instrument-reported-1005"),
+    ).not.toBeInTheDocument();
+  });
+
+  describe("a specimen with several tests and a test with several parts", () => {
+    const viralLoad = {
+      id: "7001",
+      analyzerId: "2001",
+      accessionNumber: "ACC-VL",
+      testId: "20",
+      testName: "HIV-1 viral load",
+      result: "1009.64",
+      testResultType: "N",
+      readOnly: false,
+      isControl: false,
+      sampleGroupingNumber: 1,
+    };
+    const part = (id, componentLabel, result, extra = {}) => ({
+      ...viralLoad,
+      id,
+      componentId: "comp-" + id,
+      componentLabel,
+      result,
+      ...extra,
+    });
+
+    it("gives each test on one specimen its own decision", async () => {
+      const mtb = { ...viralLoad, id: "7101", testId: "10", testName: "MTB" };
+      const rif = { ...viralLoad, id: "7102", testId: "11", testName: "RIF" };
+      renderResults([mtb, rif]);
+
+      expect(
+        await screen.findByText("MTB", {
+          selector: "[data-testid=sampleInfo]",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        document.getElementById("resultList7101.isAccepted"),
+      ).not.toBeNull();
+      expect(
+        document.getElementById("resultList7102.isAccepted"),
+      ).not.toBeNull();
+      expect(
+        document.getElementById("resultList7102.isRejected"),
+      ).not.toBeNull();
+    });
+
+    it("unticking a test's Save leaves its parts unsaved with it", async () => {
+      renderResults([
+        { ...viralLoad, isAccepted: true },
+        part("7002", "Log viral load", "3.00", { isAccepted: true }),
+      ]);
+      await screen.findByTestId("result-parts-7001");
+
+      fireEvent.click(document.getElementById("resultList7001.isAccepted"));
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      const submitted = JSON.parse(postResults.mock.calls[0][1]);
+      expect(
+        submitted.resultList.map((row) => [row.id, row.isAccepted]),
+      ).toEqual([
+        ["7001", false],
+        ["7002", false],
+      ]);
+    });
+
+    it("shows a test's parts beneath its main result, under its decision", async () => {
+      renderResults([viralLoad, part("7002", "Log viral load", "3.00")]);
+
+      const parts = await screen.findByTestId("result-parts-7001");
+      expect(parts).toHaveTextContent("Log viral load");
+      expect(parts).toHaveTextContent("3.00");
+      expect(document.getElementById("resultList7002.isAccepted")).toBeNull();
+      expect(document.getElementById("resultList7002.result")).toBeNull();
+      expect(
+        screen.queryAllByText("HIV-1 viral load", {
+          selector: "[data-testid=sampleInfo]",
+        }),
+      ).toHaveLength(1);
+    });
+
+    it("keeps a held part beneath its test, marked as held", async () => {
+      renderResults([
+        viralLoad,
+        part("7003", "Call", "NOT DETECTED", {
+          importIssueReason: "result_mapping_not_ready",
+          readOnly: true,
+        }),
+      ]);
+
+      const parts = await screen.findByTestId("result-parts-7001");
+      expect(within(parts).getByText("Call")).toBeInTheDocument();
+      expect(within(parts).getByText("Held")).toBeInTheDocument();
+    });
+
+    it("lets the reviewer open the mapping a held part waits for", async () => {
+      renderResults([
+        viralLoad,
+        part("7004", "Call", "NOT DETECTED", {
+          importIssueReason: "unknown_analyzer_result_value",
+          rawTestCode: "HIVVL",
+          rawResultValue: "NOT DETECTED",
+          sourceProfileId: "genexpert-astm",
+          sourceProfileRevision: 3,
+          readOnly: true,
+        }),
+      ]);
+
+      const parts = await screen.findByTestId("result-parts-7001");
+      expect(
+        within(parts).getByRole("link", { name: "Review analyzer mapping" }),
+      ).toBeInTheDocument();
+    });
+
+    it("lets the reviewer dismiss a part held as a failed run", async () => {
+      postResults.mockImplementation(() => {});
+      renderResults([
+        viralLoad,
+        part("7005", "Log viral load", "ERROR", {
+          importIssueReason: "run_failed",
+          readOnly: true,
+        }),
+      ]);
+
+      const parts = await screen.findByTestId("result-parts-7001");
+      fireEvent.click(
+        within(parts).getByRole("button", { name: "Dismiss as failed run" }),
+      );
+      expect(postResults.mock.calls[0][0]).toBe(
+        "/rest/analyzer/results/7005/failed-run",
+      );
+    });
   });
 
   it("submits the result selected for acceptance", async () => {
@@ -212,6 +891,24 @@ describe("AnalyserResults", () => {
     expect(postResults).toHaveBeenCalledTimes(1);
     const submittedResults = JSON.parse(postResults.mock.calls[0][1]);
     expect(submittedResults.resultList[0].isAccepted).toBe(true);
+  });
+
+  it("submits the note typed on a result that carried none", async () => {
+    renderResults([mappedQualitativeResult]);
+
+    const resultRow = await screen.findByRole("row", {
+      name: /MTB-RIF NOT DETECTED/,
+    });
+    fireEvent.click(within(resultRow).getAllByRole("checkbox")[0]);
+    fireEvent.change(document.getElementById("resultList1005.note"), {
+      target: { value: "Instrument keyed a different patient ID" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const submittedResults = JSON.parse(postResults.mock.calls[0][1]);
+    expect(submittedResults.resultList[0].note).toBe(
+      "Instrument keyed a different patient ID",
+    );
   });
 
   it("OGC-1417: a retyped value the server refuses as critical is acknowledged and the batch sent again", async () => {
@@ -269,4 +966,40 @@ describe("AnalyserResults", () => {
     expect(resent.resultList[0].result).toBe("25");
     expect(resent.resultList[0].criticalAcknowledged).toBe(true);
   });
+});
+
+it("separates retained setup evidence from actionable clinical results", () => {
+  renderResults([
+    {
+      ...heldResult,
+      importIssueReason: "setup_capture",
+      instrumentSampleFlags: "Sample warning",
+      instrumentFlags: "H",
+      assayName: "Viral load assay",
+      assayVersion: "3",
+      instrumentOperator: "Operator 17",
+    },
+  ]);
+  expect(
+    screen.queryByText(/analyzer results? need attention/),
+  ).not.toBeInTheDocument();
+  const section = screen.getByTestId("analyzer-setup-evidence");
+  fireEvent.click(
+    within(section).getByRole("button", { name: "Retained setup samples (1)" }),
+  );
+  expect(within(section).getByText("POSITIVE")).toBeVisible();
+  expect(
+    within(section).getByTestId("InstrumentSampleFlags"),
+  ).toHaveTextContent("Sample warning");
+  const metadata = within(section).getByTestId(
+    `instrument-reported-${heldResult.id}`,
+  );
+  expect(metadata).toHaveTextContent("Flag: H");
+  expect(metadata).toHaveTextContent("Assay: Viral load assay, version 3");
+  expect(metadata).toHaveTextContent("Operator: Operator 17");
+  expect(within(section).queryByRole("checkbox")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("Save-btn")).not.toBeInTheDocument();
+  expect(
+    screen.queryByText("There are no records to display"),
+  ).not.toBeInTheDocument();
 });

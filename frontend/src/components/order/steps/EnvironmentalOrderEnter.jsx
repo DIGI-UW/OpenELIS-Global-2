@@ -33,10 +33,14 @@ import CollectionConditionsSection from "./sections/CollectionConditionsSection"
 import ProgramSection from "./sections/ProgramSection";
 import RequesterSection from "./sections/RequesterSection";
 import SampleTestSection from "./sections/SampleTestSection";
-import MicroOrderPreview from "./sections/MicroOrderPreview";
+import MicroOrderPreview, {
+  MicroSampleCaseNote,
+  useMicroOrderPreview,
+} from "./sections/MicroOrderPreview";
 import ComplianceStandardsSection from "./sections/ComplianceStandardsSection";
 import { currentLocalTime, todayLocalIso } from "../dateUtils";
 import "../order-workflow.scss";
+import { orderSavedMessage } from "../orderSavedMessage";
 
 const WORKFLOW_TYPE = "environmental";
 const WORKFLOW_PREFIX = "/order/environmental";
@@ -122,6 +126,13 @@ const EnvironmentalOrderEnter = () => {
   );
 
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
+  const microPreview = useMicroOrderPreview({
+    samples,
+    savedOrder: isReadOnly || isEditMode,
+    domain: "ENVIRONMENTAL",
+    samplingSiteId: envFields.samplingSiteId,
+    samplingSiteName: envFields.samplingSiteName,
+  });
   const hasPatientOrSite = !!(
     envFields.samplingSiteId ||
     envFields.samplingSiteName ||
@@ -188,7 +199,10 @@ const EnvironmentalOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo,
+        ),
       });
       setNotificationVisible(true);
     } catch (error) {
@@ -424,15 +438,11 @@ const EnvironmentalOrderEnter = () => {
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
           workflowType={WORKFLOW_TYPE}
+          renderSampleNote={(index) => (
+            <MicroSampleCaseNote preview={microPreview} sampleIndex={index} />
+          )}
         />
-
-        <MicroOrderPreview
-          samples={samples}
-          savedOrder={isReadOnly || isEditMode}
-          domain="ENVIRONMENTAL"
-          samplingSiteId={envFields.samplingSiteId}
-          samplingSiteName={envFields.samplingSiteName}
-        />
+        <MicroOrderPreview preview={microPreview} />
 
         {showNceForm && labNumber && (
           <InlineNceForm

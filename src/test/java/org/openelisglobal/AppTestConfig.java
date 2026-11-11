@@ -100,6 +100,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testterminology.service", "org.openelisglobal.testterminology.daoimpl",
         "org.openelisglobal.sampletypeterminology.service", "org.openelisglobal.sampletypeterminology.daoimpl",
         "org.openelisglobal.panelterminology.service", "org.openelisglobal.panelterminology.daoimpl",
+        "org.openelisglobal.dictionaryterminology.service", "org.openelisglobal.dictionaryterminology.daoimpl",
         "org.openelisglobal.testreagentlink.service", "org.openelisglobal.testreagentlink.daoimpl",
         "org.openelisglobal.testalertrule", "org.openelisglobal.testcatalog.service",
         "org.openelisglobal.testcatalog.dao", "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer",
@@ -129,7 +130,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.sampleacceptance", "org.openelisglobal.sampletyperequest",
         "org.openelisglobal.resultreporting.service", "org.openelisglobal.security", "org.openelisglobal.genericsample",
         "org.openelisglobal.questionnaire", "org.openelisglobal.qa", "org.openelisglobal.microbiology",
-        "org.openelisglobal.batchworkplan" }, excludeFilters = {
+        "org.openelisglobal.batchworkplan", "org.openelisglobal.resultrun", "org.openelisglobal.containertype",
+        "org.openelisglobal.validationpolicy", "org.openelisglobal.reportqueue", "org.openelisglobal.delivery",
+        "org.openelisglobal.workplan.daoimpl", "org.openelisglobal.dashboard" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.[BS].*"),
