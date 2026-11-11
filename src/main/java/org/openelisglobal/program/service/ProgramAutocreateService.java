@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 import liquibase.repackaged.org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Enumerations.PublicationStatus;
 import org.hl7.fhir.r4.model.Questionnaire;
+import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
@@ -180,12 +182,22 @@ public class ProgramAutocreateService {
                     if (!GenericValidator.isBlankOrNull(program.getCode())) {
                         Optional<Program> dbProgram = programService.getMatch("code", form.getProgram().getCode());
                         if (dbProgram.isPresent()) {
-                            if (dbProgram.get().getManuallyChanged()) {
+                            Program persisted = dbProgram.get();
+                            if (persisted.getManuallyChanged()) {
                                 continue;
                             }
-                            program.setId(dbProgram.get().getId());
-                            program.setLastupdated(dbProgram.get().getLastupdated());
+                            program.setId(persisted.getId());
+                            program.setLastupdated(persisted.getLastupdated());
+                            program.setDomain(persisted.getDomain());
+                            program.setIsActive(persisted.getIsActive());
+                            program.setLabUnits(new HashSet<>(persisted.getLabUnits()));
+                            if (program.getQuestionnaireUUID() == null) {
+                                program.setQuestionnaireUUID(persisted.getQuestionnaireUUID());
+                            }
                         }
+                    }
+                    if (GenericValidator.isBlankOrNull(program.getId()) && StringUtils.isNotBlank(form.getDomain())) {
+                        program.setDomain(Domain.normalize(form.getDomain()));
                     }
                     if (program.getQuestionnaireUUID() == null) {
                         program.setQuestionnaireUUID(UUID.randomUUID());
@@ -198,9 +210,13 @@ public class ProgramAutocreateService {
                                 form.getTestSectionName());
                         if (testSection.isPresent()) {
                             program.setTestSection(testSection.get());
+                            program.getLabUnits().add(testSection.get());
                         } else {
                             program.setTestSection(null);
                         }
+                    }
+                    if (program.getTestSection() == null) {
+                        program.setTestSection(ProgramPickerRules.firstLabUnit(program.getLabUnits()));
                     }
                     program = programService.save(program);
                     questionnaire.setId(program.getQuestionnaireUUID().toString());

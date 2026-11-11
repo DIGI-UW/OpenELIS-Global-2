@@ -5,7 +5,6 @@ import org.openelisglobal.inventory.service.InventoryLotUnavailableException;
 import org.openelisglobal.microbiology.service.MicroAmendmentConflictException;
 import org.openelisglobal.microbiology.service.MicroAstConflictException;
 import org.openelisglobal.microbiology.service.MicroCaseLockedException;
-import org.openelisglobal.microbiology.service.MicroCaseWorkflowConflictException;
 import org.openelisglobal.microbiology.service.MicroReferenceConflictException;
 import org.openelisglobal.microbiology.service.MicroWhonetExportBlockedException;
 import org.springframework.core.Ordered;
@@ -18,6 +17,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(basePackages = "org.openelisglobal.microbiology.controller.rest")
 public class MicrobiologyRestExceptionHandler {
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(
+            org.springframework.security.access.AccessDeniedException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("status", 403, "error", "MICROBIOLOGY_ACCESS_DENIED"));
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(IllegalArgumentException exception) {
@@ -53,12 +59,6 @@ public class MicrobiologyRestExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleWhonetExportBlocked(MicroWhonetExportBlockedException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",
                 "MICROBIOLOGY_WHONET_EXPORT_BLOCKED", "message", exception.getMessage()));
-    }
-
-    @ExceptionHandler(MicroCaseWorkflowConflictException.class)
-    public ResponseEntity<Map<String, Object>> handleWorkflowConflict(MicroCaseWorkflowConflictException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",
-                "MICROBIOLOGY_WORKFLOW_CONFLICT", "message", exception.getMessage()));
     }
 
     @ExceptionHandler(InventoryLotUnavailableException.class)

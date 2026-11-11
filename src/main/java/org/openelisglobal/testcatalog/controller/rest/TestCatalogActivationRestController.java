@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.spring.util.SpringContext;
@@ -59,6 +60,9 @@ public class TestCatalogActivationRestController {
 
     private final TestResultService testResultService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
+
     public TestCatalogActivationRestController(TestService testService, ResultLimitService resultLimitService,
             RangeCoverageValidationService coverageService, TestActivationAcknowledgmentService ackService,
             TestResultComponentService componentService, TestResultService testResultService) {
@@ -93,6 +97,9 @@ public class TestCatalogActivationRestController {
         // goes Active, so a missing or shared LOINC is seen where it starts to
         // matter. Warnings only, the activation itself is not blocked.
         public LoincIntegrityService.LoincIntegrity loincIntegrity;
+        // The test's version after activation, which the Basic Info editor adopts so
+        // its next save is not refused as stale (OGC-1376).
+        public String lastupdated;
     }
 
     /**
@@ -116,11 +123,23 @@ public class TestCatalogActivationRestController {
      * FR-57 — a test may only go Active when it is safe to order and result: it
      * must have a name, a lab unit (order entry filters and routes tests by their
      * lab unit, and a sectionless active test used to fail the whole sample type's
-     * test list, OGC-1120), at least one active PRIMARY component carrying a result
-     * type, and every dictionary-backed active component must have at least one
-     * result option. Returns a {@link CompletenessReport} listing every gap;
+     * test list, OGC-1120), a sample type (order entry places a test on a sample of
+     * one of its types, OGC-1460), at least one active PRIMARY component carrying a
+     * result type, and every dictionary-backed active component must have at least
+     * one result option. Returns a {@link CompletenessReport} listing every gap;
      * {@code complete} is true only when nothing is missing.
      */
+    /**
+     * Read from the links themselves, not the cached test-to-sample-type map: a
+     * link written by another path before the cache is cleared must count.
+     */
+    private boolean hasNoSampleType(Test test) {
+        if (typeOfSampleTestService != null) {
+            return typeOfSampleTestService.getTypeOfSampleTestsForTest(test.getId()).isEmpty();
+        }
+        return testService.getTypeOfSamples(test).isEmpty();
+    }
+
     private CompletenessReport checkCompleteness(Test test) {
         CompletenessReport rep = new CompletenessReport();
         String name = test.getName();
@@ -129,6 +148,10 @@ public class TestCatalogActivationRestController {
         }
         if (test.getTestSection() == null) {
             rep.add("NO_LAB_UNIT", "The test has no lab unit. Choose one in Basic Info before activating.");
+        }
+        if (hasNoSampleType(test)) {
+            rep.add("NO_SAMPLE_TYPE",
+                    "The test has no sample type, so it cannot be ordered. Choose one in Basic Info before activating.");
         }
 
         List<TestResultComponent> components = componentService.getActiveComponentsByTestId(test.getId());
@@ -224,10 +247,10 @@ public class TestCatalogActivationRestController {
         // (OGC-1116).
         test.setOrderable(Boolean.TRUE);
         test.setSysUserId(sysUserId);
-        testService.update(test);
+        Test activated = testService.update(test);
 
         refreshTestCaches();
-        return ResponseEntity.ok(toActivationResult(test, report));
+        return ResponseEntity.ok(toActivationResult(activated, report));
     }
 
     /**
@@ -243,6 +266,7 @@ public class TestCatalogActivationRestController {
         result.active = test.isActive();
         result.orderable = Boolean.TRUE.equals(test.getOrderable());
         result.loincIntegrity = SpringContext.getBean(LoincIntegrityService.class).check(test);
+        result.lastupdated = StaleSaveGuard.token(test.getLastupdated());
         return result;
     }
 

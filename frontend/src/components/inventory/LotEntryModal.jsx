@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   TextInput,
@@ -23,28 +23,40 @@ import {
   getDeepestLocationSelection,
   positionToCoordinate,
 } from "../storage/LocationPicker/locationSelectionMapper";
+import { useIsMounted } from "./useIsMounted";
+import { labNow } from "../utils/labClock";
+import { RequiredMarker } from "../common/RequiredMarker";
 
-const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
+// Calendar dates are stored as midnight UTC so the day holds in every time zone.
+const toStoredCalendarDate = (date) =>
+  date
+    ? new Date(
+        Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+      ).toISOString()
+    : null;
+
+const fromStoredCalendarDate = (value) => {
+  if (!value) return null;
+  const stored = new Date(value);
+  return new Date(
+    stored.getUTCFullYear(),
+    stored.getUTCMonth(),
+    stored.getUTCDate(),
+  );
+};
+
+const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
   const intl = useIntl();
   const isEdit = !!lot;
 
-  // Guards setState after awaits — fetches and saves can resolve after the
-  // parent has unmounted this modal (e.g. onSave() closes it before the
-  // finally block runs).
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+  const isMounted = useIsMounted();
 
   const [formData, setFormData] = useState({
     inventoryItem: null,
     lotNumber: "",
     currentQuantity: 0,
     expirationDate: null,
-    receiptDate: new Date(),
+    receiptDate: labNow(),
     qcStatus: "PENDING",
     status: "ACTIVE",
     barcode: "",
@@ -86,15 +98,19 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   }, []);
 
   useEffect(() => {
+    if (!lot && item) {
+      setFormData((prev) => ({ ...prev, inventoryItem: item }));
+    }
+  }, [lot, item]);
+
+  useEffect(() => {
     if (lot) {
       setFormData({
         inventoryItem: lot.inventoryItem,
         lotNumber: lot.lotNumber || "",
         currentQuantity: lot.currentQuantity || 0,
-        expirationDate: lot.expirationDate
-          ? new Date(lot.expirationDate)
-          : null,
-        receiptDate: lot.receiptDate ? new Date(lot.receiptDate) : new Date(),
+        expirationDate: fromStoredCalendarDate(lot.expirationDate),
+        receiptDate: fromStoredCalendarDate(lot.receiptDate) || labNow(),
         qcStatus: lot.qcStatus || "PENDING",
         status: lot.status || "ACTIVE",
         barcode: lot.barcode || "",
@@ -106,25 +122,25 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   const fetchItems = async () => {
     try {
       const allItems = await InventoryItemAPI.getAll({ isActive: true });
-      if (!isMountedRef.current) return;
+      if (!isMounted()) return;
       const validItems = Array.isArray(allItems) ? allItems : [];
       setItems(
         validItems.map((item) => ({
           id: item.id,
-          text: `${item.name} (${item.itemType})`,
+          text: `${item.name} (${item.code})`,
           item: item,
         })),
       );
     } catch (err) {
       console.error("Error fetching items:", err);
-      if (isMountedRef.current) setItems([]);
+      if (isMounted()) setItems([]);
     }
   };
 
   const fetchCurrentLocation = async (lotId) => {
     try {
       const location = await InventoryLotStorageAPI.getLocation(lotId);
-      if (!isMountedRef.current) return;
+      if (!isMounted()) return;
       if (location && location.hierarchicalPath) {
         setCurrentLocation({
           selection: {},
@@ -138,7 +154,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       }
     } catch (err) {
       console.error("Error fetching lot location:", err);
-      if (isMountedRef.current) setCurrentLocation(null);
+      if (isMounted()) setCurrentLocation(null);
     }
   };
 
@@ -154,22 +170,22 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
 
   const validate = () => {
     if (!formData.inventoryItem) {
-      setError("Please select a catalog item");
+      setError(intl.formatMessage({ id: "inventory.receive.error.noItem" }));
       return false;
     }
 
     if (isEdit && !formData.lotNumber?.trim()) {
-      setError("Lot number is required");
+      setError(intl.formatMessage({ id: "lot.error.numberRequired" }));
       return false;
     }
 
     if (!formData.currentQuantity || formData.currentQuantity <= 0) {
-      setError("Quantity must be greater than 0");
+      setError(intl.formatMessage({ id: "inventory.receive.error.quantity" }));
       return false;
     }
 
     if (!isEdit && !pendingAssignment) {
-      setError("Please assign a storage location");
+      setError(intl.formatMessage({ id: "lot.error.locationRequired" }));
       return false;
     }
 
@@ -201,6 +217,8 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       if (isEdit) {
         await InventoryLotAPI.update(lot.id, {
           ...formData,
+          expirationDate: toStoredCalendarDate(formData.expirationDate),
+          receiptDate: toStoredCalendarDate(formData.receiptDate),
           inventoryItem: formData.inventoryItem,
           initialQuantity: lot.initialQuantity,
           version: lot.version,
@@ -220,10 +238,8 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           lotNumber: formData.lotNumber?.trim() || null,
           currentQuantity: formData.currentQuantity,
           initialQuantity: formData.currentQuantity,
-          expirationDate: formData.expirationDate
-            ? formData.expirationDate.toISOString()
-            : null,
-          receiptDate: formData.receiptDate.toISOString(),
+          expirationDate: toStoredCalendarDate(formData.expirationDate),
+          receiptDate: toStoredCalendarDate(formData.receiptDate),
           qcStatus: formData.qcStatus,
           status: formData.status,
           barcode: formData.barcode?.trim() || null,
@@ -255,7 +271,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       onSave();
     } catch (err) {
       console.error("Error saving lot:", err);
-      if (!isMountedRef.current) return;
+      if (!isMounted()) return;
       // errorCode is an en.json id; message is the raw backend string.
       setError(
         err.errorCode
@@ -264,7 +280,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       );
     } finally {
       // onSave() above may have unmounted this modal already.
-      if (isMountedRef.current) setSaving(false);
+      if (isMounted()) setSaving(false);
     }
   };
 
@@ -318,10 +334,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         await InventoryLotStorageAPI.assignLocation(payload);
       }
       await fetchCurrentLocation(lot.id);
-      if (isMountedRef.current) setLocationPickerOpen(false);
+      if (isMounted()) setLocationPickerOpen(false);
     } catch (err) {
       console.error("Error assigning lot location:", err);
-      if (isMountedRef.current)
+      if (isMounted())
         setLocationError(err.message || "Error assigning storage location");
     }
   };
@@ -362,10 +378,11 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           <Dropdown
             id="inventoryItem"
             titleText={<FormattedMessage id="lot.selectItem" />}
-            label="Select catalog item"
+            label={intl.formatMessage({ id: "lot.selectItem" })}
             items={items}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={
+              // Downshift treats undefined as uncontrolled; keep it null while items load.
               formData.inventoryItem
                 ? (items.find((i) => i.id === formData.inventoryItem.id) ??
                   null)
@@ -413,31 +430,33 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             max={999999999}
             step={1}
             required
-            disabled={lotFieldsLocked}
+            disabled={isEdit || lotFieldsLocked}
           />
 
           <DatePicker
             datePickerType="single"
+            dateFormat="Y-m-d"
             value={formData.expirationDate}
             onChange={([date]) => handleChange("expirationDate", date)}
           >
             <DatePickerInput
               id="expirationDate"
               labelText={<FormattedMessage id="lot.expirationDate" />}
-              placeholder="mm/dd/yyyy"
+              placeholder="yyyy-mm-dd"
               disabled={lotFieldsLocked}
             />
           </DatePicker>
 
           <DatePicker
             datePickerType="single"
+            dateFormat="Y-m-d"
             value={formData.receiptDate}
             onChange={([date]) => handleChange("receiptDate", date)}
           >
             <DatePickerInput
               id="receiptDate"
               labelText={<FormattedMessage id="lot.receiptDate" />}
-              placeholder="mm/dd/yyyy"
+              placeholder="yyyy-mm-dd"
               disabled={lotFieldsLocked}
             />
           </DatePicker>
@@ -453,7 +472,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             >
               <FormLabel>
                 <FormattedMessage id="lot.selectLocation" />
-                <span style={{ color: "#da1e28" }}> *</span>
+                <RequiredMarker announce />
               </FormLabel>
               <Button
                 kind="ghost"
@@ -493,7 +512,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           <Dropdown
             id="qcStatus"
             titleText={<FormattedMessage id="lot.qcStatus" />}
-            label="Select QC status"
+            label={intl.formatMessage({ id: "qc.status.select" })}
             items={qcStatusOptions}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={
@@ -509,7 +528,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           <Dropdown
             id="status"
             titleText={<FormattedMessage id="lot.status" />}
-            label="Select status"
+            label={intl.formatMessage({ id: "lot.status.select" })}
             items={statusOptions}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={

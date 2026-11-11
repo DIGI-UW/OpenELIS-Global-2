@@ -1,6 +1,7 @@
 package org.openelisglobal.shipment.service;
 
 import java.sql.Timestamp;
+import java.util.Collection;
 import java.util.List;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.shipment.dao.ShipmentDAO;
@@ -77,6 +78,12 @@ public class ShipmentServiceImpl implements ShipmentService {
             logger.error("Error getting shipments by courier", e);
             throw new LIMSRuntimeException("Error getting shipments by courier", e);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Object[]> getLatestShippedDatesByEqaCycleIds(Collection<Long> eqaCycleIds) {
+        return shipmentDAO.findLatestShippedDatesByEqaCycleIds(eqaCycleIds);
     }
 
     @Override

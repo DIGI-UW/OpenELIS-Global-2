@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Worktree-isolated OpenELIS development stack interface."""
+"""Checkout-isolated OpenELIS development stack interface."""
 
 from __future__ import annotations
 
@@ -8,14 +8,19 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import platform
 import re
 import shlex
 import shutil
+import signal
+import socket
 import subprocess
 import sys
+import time
 from typing import NamedTuple, Sequence
 from urllib.error import URLError
 from urllib.request import Request, urlopen
+import zipfile
 
 
 class StackContext(NamedTuple):
@@ -23,16 +28,63 @@ class StackContext(NamedTuple):
     project: str
     project_dir: Path
     compose_files: tuple[Path, ...]
+    setup: str = "full"
+
+
+SETUPS = ("full", "light")
+# Services the light setup leaves out: the FHIR server, the Analyzer Bridge and the analyzer simulator.
+FULL_ONLY_SERVICES = ("fhir.openelis.org", "openelis-analyzer-bridge", "astm-simulator")
+LIGHT_SERVICES = ("certs", "db.openelis.org", "harness-catalog-init", "oe.openelis.org", "frontend.openelis.org", "proxy")
+
+
+class ModuleCheckout(NamedTuple):
+    """A module source checkout given to `up --module`."""
+
+    path: Path
+    module_id: str
+    entry: str | None
+    dev_port: int | None
+
+
+MODULE_MANIFEST = Path("src/main/resources/META-INF/openelis-module.json")
+JAR_MANIFEST = "META-INF/openelis-module.json"
+DEFAULT_MODULE_DEV_PORT = 5174
 
 
 LOCAL_DOMAINS = {"localhost", "127.0.0.1", "::1"}
+
+# Where up installs mkcert when the machine has no Homebrew; shared by every checkout.
+TOOLS_DIR = Path.home() / ".cache" / "openelis-dev-stack" / "bin"
+MKCERT_DOWNLOAD = "https://dl.filippo.io/mkcert/latest?for={system}/{arch}"
+MKCERT_SYSTEMS = {"Darwin": "darwin", "Linux": "linux"}
+MKCERT_ARCHITECTURES = {"x86_64": "amd64", "amd64": "amd64", "arm64": "arm64", "aarch64": "arm64"}
+
+# Application images: (compose service, image variable in the harness compose
+# files, published repository, image name when built with `up --build`).
+APPLICATION_IMAGES = (
+    ("certs", "DEV_STACK_CERTS_IMAGE", "openelis-global-2-certs", "certs"),
+    ("frontend.openelis.org", "DEV_STACK_FRONTEND_IMAGE", "openelis-global-2-frontend-dev", "frontend"),
+    ("oe.openelis.org", "DEV_STACK_BACKEND_IMAGE", "openelis-global-2-dev", "backend"),
+    ("astm-simulator", "DEV_STACK_MOCK_IMAGE", "openelis-global-2-analyzer-mock", "analyzer-mock"),
+    ("openelis-analyzer-bridge", "DEV_STACK_BRIDGE_IMAGE", "openelis-global-2-analyzer-bridge", "analyzer-bridge"),
+)
+SUBMODULE_SERVICES = {
+    "tools/analyzer-mock-server": "astm-simulator",
+    "tools/openelis-analyzer-bridge": "openelis-analyzer-bridge",
+}
+# Checkout paths baked into the backend development image; the WAR is mounted.
+BACKEND_IMAGE_INPUTS = ("Dockerfile.dev", "install", "tomcat/client-certificates", "tomcat/oe_server.xml")
+# Frontend files baked into the development image; src and public are mounted.
+FRONTEND_IMAGE_INPUTS = ("package.json", "package-lock.json", "vite.config.ts", "index.html", "tsconfig.json")
 
 def slugify(value: str, limit: int = 28) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-") or "worktree"
     return slug[:limit].rstrip("-")
 
 
-def make_context(repo_root: Path) -> StackContext:
+def make_context(repo_root: Path, setup: str = "full") -> StackContext:
+    if setup not in SETUPS:
+        raise ValueError(f"--setup must be one of {', '.join(SETUPS)}")
     root = repo_root.resolve()
     digest = hashlib.sha256(str(root).encode("utf-8")).hexdigest()[:8]
     project = f"oe2-{slugify(root.name)}-{digest}-dev"
@@ -44,7 +96,26 @@ def make_context(repo_root: Path) -> StackContext:
         project_dir / "docker-compose.letsencrypt.yml",
         project_dir / "docker-compose.worktree.yml",
     )
-    return StackContext(root, project, project_dir, compose_files)
+    if setup == "light":
+        compose_files += (project_dir / "docker-compose.light.yml",)
+    return StackContext(root, project, project_dir, compose_files, setup)
+
+
+def setup_record(repo_root: Path) -> Path:
+    return repo_root.resolve() / ".dev-stack" / "setup"
+
+
+def recorded_setup(repo_root: Path) -> str:
+    """The setup the last `up` of this checkout started, full when none was recorded."""
+    record = setup_record(repo_root)
+    setup = record.read_text(encoding="utf-8").strip() if record.is_file() else "full"
+    return setup if setup in SETUPS else "full"
+
+
+def record_setup(context: StackContext) -> None:
+    record = setup_record(context.repo_root)
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text(context.setup + "\n", encoding="utf-8")
 
 
 def read_dotenv(path: Path) -> dict[str, str]:
@@ -71,6 +142,7 @@ def is_local_domain(domain: str) -> bool:
 def build_environment(context: StackContext) -> dict[str, str]:
     uat_scenarios_enabled = os.environ.get("OE_UAT_SCENARIOS_ENABLED", "true")
     environment = os.environ.copy()
+    environment["PATH"] = os.pathsep.join(filter(None, (str(TOOLS_DIR), environment.get("PATH"))))
     for key, value in read_dotenv(context.repo_root / ".env").items():
         environment.setdefault(key, value)
     environment["DEV_STACK_PROJECT"] = context.project
@@ -82,7 +154,7 @@ def build_environment(context: StackContext) -> dict[str, str]:
         environment.setdefault("DEV_STACK_INGRESS_BIND_ADDRESS", "127.0.0.1")
         environment.setdefault("DEV_STACK_HTTP_PORT", "0")
         environment.setdefault("DEV_STACK_HTTPS_PORT", "0")
-        environment.setdefault("DEV_STACK_TLS", "self-signed")
+        environment.setdefault("DEV_STACK_TLS", "local-ca")
     else:
         environment.setdefault("DEV_STACK_INGRESS_BIND_ADDRESS", "0.0.0.0")
         environment.setdefault("DEV_STACK_HTTP_PORT", "80")
@@ -91,44 +163,9 @@ def build_environment(context: StackContext) -> dict[str, str]:
     digest = int(hashlib.sha256(str(context.repo_root).encode("utf-8")).hexdigest()[:8], 16)
     environment["ANALYZER_NETWORK_NAMESPACE"] = context.project
     environment["ANALYZER_SUBNET_PREFIX"] = f"10.{64 + digest % 160}"
-    if frontend_dependencies_changed(context, environment):
-        environment["DEV_STACK_FRONTEND_IMAGE"] = f"{context.project}-frontend:dev"
-        environment["DEV_STACK_BUILD_FRONTEND"] = "true"
-    else:
-        environment.setdefault(
-            "DEV_STACK_FRONTEND_IMAGE",
-            "itechuw/openelis-global-2-frontend-dev:develop",
-        )
-        environment.setdefault("DEV_STACK_BUILD_FRONTEND", "false")
+    for _, variable, repository, _ in APPLICATION_IMAGES:
+        environment.setdefault(variable, published_image(environment, repository))
     return environment
-
-
-def frontend_dependencies_changed(
-    context: StackContext, environment: dict[str, str]
-) -> bool:
-    override = environment.get("DEV_STACK_BUILD_FRONTEND")
-    if override is not None:
-        return override.lower() == "true"
-    paths = (
-        "frontend/.dockerignore",
-        "frontend/.npmrc",
-        "frontend/Dockerfile",
-        "frontend/index.html",
-        "frontend/package-lock.json",
-        "frontend/package.json",
-        "frontend/tsconfig.json",
-        "frontend/vite.config.ts",
-    )
-    try:
-        result = subprocess.run(
-            ["git", "diff", "--quiet", "origin/develop", "--", *paths],
-            cwd=context.repo_root,
-            env=environment,
-            check=False,
-        )
-        return result.returncode != 0
-    except OSError:
-        return True
 
 
 def compose_command(context: StackContext, *arguments: str) -> list[str]:
@@ -152,7 +189,6 @@ def compose_command(context: StackContext, *arguments: str) -> list[str]:
 def required_submodules() -> tuple[str, ...]:
     return (
         "dataexport",
-        "plugins",
         "tools/analyzer-mock-server",
         "tools/openelis-analyzer-bridge",
     )
@@ -211,8 +247,15 @@ def start_services(
     *,
     refresh_running_backend: bool,
 ) -> None:
+    services = LIGHT_SERVICES if context.setup == "light" else ()
+    if context.setup == "light":
+        run(
+            compose_command(context, "rm", "--stop", "--force", *FULL_ONLY_SERVICES),
+            cwd=context.project_dir,
+            environment=environment,
+        )
     run(
-        compose_command(context, "up", "-d", "--remove-orphans"),
+        compose_command(context, "up", "-d", "--no-build", "--remove-orphans", *services),
         cwd=context.project_dir,
         environment=environment,
     )
@@ -222,6 +265,7 @@ def start_services(
                 context,
                 "up",
                 "-d",
+                "--no-build",
                 "--no-deps",
                 "--force-recreate",
                 "oe.openelis.org",
@@ -239,16 +283,8 @@ def ensure_local_env(context: StackContext) -> None:
         print(f"Created local {env_file.relative_to(context.repo_root)} from .env.example")
 
 
-def submodule_repair_mode(
-    expected: str, actual: str, status: str, has_content: bool
-) -> str | None:
-    if not has_content:
-        return "force"
-    if actual == expected:
-        return None
-    if status:
-        raise RuntimeError("Submodule has local changes at the wrong commit")
-    return "checkout"
+def has_checkout(path: Path) -> bool:
+    return path.is_dir() and any(entry.name != ".git" for entry in path.iterdir())
 
 
 def initialize_submodule(
@@ -257,14 +293,7 @@ def initialize_submodule(
     command = ["git", "submodule", "update", "--init", "--recursive", relative_path]
     try:
         run(command, cwd=context.repo_root, environment=environment)
-    except subprocess.CalledProcessError as error:
-        path = context.repo_root / relative_path
-        has_content = path.is_dir() and any(entry.name != ".git" for entry in path.iterdir())
-        if has_content:
-            raise RuntimeError(
-                f"Submodule initialization failed for populated checkout {relative_path}; "
-                "refusing to force it"
-            ) from error
+    except subprocess.CalledProcessError:
         run(
             [
                 "git",
@@ -281,53 +310,39 @@ def initialize_submodule(
         )
 
 
-def ensure_submodules(context: StackContext, environment: dict[str, str]) -> None:
+def ensure_submodules(context: StackContext, environment: dict[str, str]) -> tuple[str, ...]:
+    """Initialize empty submodules and leave populated ones exactly as checked out.
+
+    Returns the submodules whose checkout differs from the recorded pin.
+    """
+    changed: list[str] = []
     for relative_path in required_submodules():
-        initialize_submodule(context, environment, relative_path)
         path = context.repo_root / relative_path
-        expected = output(
+        if not has_checkout(path):
+            initialize_submodule(context, environment, relative_path)
+            continue
+        recorded = output(
             ["git", "rev-parse", f"HEAD:{relative_path}"],
             cwd=context.repo_root,
             environment=environment,
         )
-        actual = output(
+        checked_out = output(
             ["git", "rev-parse", "HEAD"], cwd=path, environment=environment
         )
-        status = output(
+        changes = output(
             ["git", "status", "--porcelain"], cwd=path, environment=environment
         )
-        has_content = any(entry.name != ".git" for entry in path.iterdir())
-        repair_mode = submodule_repair_mode(expected, actual, status, has_content)
-        if repair_mode == "force":
-            run(
-                [
-                    "git",
-                    "submodule",
-                    "update",
-                    "--init",
-                    "--checkout",
-                    "--force",
-                    relative_path,
-                ],
-                cwd=context.repo_root,
-                environment=environment,
-            )
-        elif repair_mode == "checkout":
-            run(
-                ["git", "submodule", "update", "--init", "--checkout", relative_path],
-                cwd=context.repo_root,
-                environment=environment,
-            )
-        verified = output(
-            ["git", "rev-parse", "HEAD"], cwd=path, environment=environment
+        if checked_out == recorded and not changes:
+            continue
+        notice = (
+            f"{relative_path}: checked out {checked_out[:7]} "
+            f"(recorded pin {recorded[:7]})"
         )
-        verified_status = output(
-            ["git", "status", "--porcelain"], cwd=path, environment=environment
-        )
-        if verified != expected or verified_status:
-            raise RuntimeError(
-                f"Submodule {relative_path} is not a clean checkout of {expected[:12]}"
-            )
+        if changes:
+            notice += ", with uncommitted changes"
+        print(notice)
+        changed.append(relative_path)
+    return tuple(changed)
 
 
 def heal_war_mount(context: StackContext) -> None:
@@ -339,7 +354,10 @@ def heal_war_mount(context: StackContext) -> None:
             raise RuntimeError(f"Expected a WAR file but found a non-empty directory at {war}") from error
 
 
-def build_application(context: StackContext, environment: dict[str, str]) -> None:
+def build_application(
+    context: StackContext, environment: dict[str, str], *, install_for_modules: bool = False
+) -> None:
+    """Build the WAR; with modules, also install the core artifacts a module compiles against."""
     java = context.repo_root / "scripts" / "run-java21"
     dataexport = context.repo_root / "dataexport" / "pom.xml"
     run(
@@ -347,18 +365,276 @@ def build_application(context: StackContext, environment: dict[str, str]) -> Non
         cwd=context.repo_root,
         environment=environment,
     )
+    module_contracts = context.repo_root / "module-contracts" / "pom.xml"
     run(
-        [str(java), "mvn", "-q", "package", "-DskipTests", "-Dmaven.test.skip=true"],
+        [str(java), "mvn", "-q", "-f", str(module_contracts), "install", "-DskipTests", "-Dmaven.test.skip=true"],
+        cwd=context.repo_root,
+        environment=environment,
+    )
+    # Always from clean: Maven never deletes a class whose source is gone, so an incremental
+    # build after a branch switch or a deleted file would ship stale classes in the WAR.
+    run(
+        [
+            str(java), "mvn", "-q", "clean", "install" if install_for_modules else "package",
+            "-DskipTests", "-Dmaven.test.skip=true",
+        ],
         cwd=context.repo_root,
         environment=environment,
     )
     war = context.repo_root / "target" / "OpenELIS-Global.war"
     if not war.is_file():
         raise RuntimeError(f"Build did not produce {war}")
+    if install_for_modules:
+        module_test = context.repo_root / "module-test" / "pom.xml"
+        run(
+            [str(java), "mvn", "-q", "-f", str(module_test), "install", "-DskipTests", "-Dmaven.test.skip=true"],
+            cwd=context.repo_root,
+            environment=environment,
+        )
 
 
-def bootstrap_analyzer_harness(context: StackContext, environment: dict[str, str]) -> None:
-    arguments = [str(context.project_dir / "bootstrap.sh"), "--skip-plugins"]
+def read_module_checkout(path_text: str) -> ModuleCheckout:
+    """Read a module checkout's id, remote entry and Vite dev port from its sources."""
+    path = Path(path_text).expanduser().resolve()
+    manifest_path = path / MODULE_MANIFEST
+    if not (path / "pom.xml").is_file() or not manifest_path.is_file():
+        raise RuntimeError(
+            f"--module {path_text}: expected a module checkout with pom.xml and {MODULE_MANIFEST}"
+        )
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except ValueError as error:
+        raise RuntimeError(f"--module {path_text}: {manifest_path} is not valid JSON: {error}") from None
+    module_id = manifest.get("id")
+    if not isinstance(module_id, str) or not re.fullmatch(r"[a-z][a-z0-9-]*", module_id):
+        raise RuntimeError(f"--module {path_text}: the manifest has no valid id")
+    frontend = manifest.get("frontend") if isinstance(manifest.get("frontend"), dict) else None
+    entry = frontend.get("entry") if frontend else None
+    dev_port = None
+    package_json = path / "frontend" / "package.json"
+    if entry and package_json.is_file():
+        scripts = json.loads(package_json.read_text(encoding="utf-8")).get("scripts", {})
+        if "dev" in scripts:
+            dev_port = DEFAULT_MODULE_DEV_PORT
+            for name in ("vite.config.js", "vite.config.ts", "vite.config.mjs"):
+                config = path / "frontend" / name
+                if config.is_file():
+                    match = re.search(r"\bport:\s*(\d+)", config.read_text(encoding="utf-8"))
+                    if match:
+                        dev_port = int(match.group(1))
+                    break
+    return ModuleCheckout(path, module_id, entry, dev_port)
+
+
+def read_module_checkouts(paths: Sequence[str]) -> list[ModuleCheckout]:
+    modules = [read_module_checkout(path) for path in paths]
+    for seen, other in ((a, b) for i, a in enumerate(modules) for b in modules[i + 1:]):
+        if seen.module_id == other.module_id:
+            raise RuntimeError(f"--module given twice for the module id {seen.module_id}")
+        if seen.dev_port and seen.dev_port == other.dev_port:
+            raise RuntimeError(
+                f"Modules {seen.module_id} and {other.module_id} both serve their pages on port "
+                f"{seen.dev_port}; give one of them another server.port in its vite.config"
+            )
+    return modules
+
+
+def jar_module_id(jar: Path) -> str | None:
+    """The id in a JAR's module manifest, or None for any other JAR."""
+    try:
+        with zipfile.ZipFile(jar) as archive:
+            return json.loads(archive.read(JAR_MANIFEST)).get("id")
+    except (KeyError, ValueError, OSError, zipfile.BadZipFile):
+        return None
+
+
+def build_module(context: StackContext, environment: dict[str, str], module: ModuleCheckout) -> None:
+    """Build the module JAR, pages included, against the core this checkout just installed."""
+    print(f"Building module {module.module_id} from {module.path}")
+    run(
+        [
+            str(context.repo_root / "scripts" / "run-java21"), "mvn", "-q", "-f", str(module.path / "pom.xml"),
+            "package", "-DskipTests", "-Dmaven.test.skip=true",
+        ],
+        cwd=module.path,
+        environment=environment,
+    )
+
+
+def built_module_jar(module: ModuleCheckout) -> Path:
+    """The newest JAR under the module's target/ that carries this module's manifest."""
+    candidates = sorted(
+        (jar for jar in (module.path / "target").glob("*.jar") if jar_module_id(jar) == module.module_id),
+        key=lambda jar: jar.stat().st_mtime,
+        reverse=True,
+    )
+    if not candidates:
+        raise RuntimeError(
+            f"No JAR for module {module.module_id} under {module.path / 'target'}; "
+            "run up without --skip-build to build it"
+        )
+    return candidates[0]
+
+
+def file_digest(path: Path) -> str | None:
+    return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+
+
+def deploy_module_jar(context: StackContext, module: ModuleCheckout, jar: Path) -> bool:
+    """Install the JAR as volume/modules/<id>.jar, replacing other copies of the module.
+
+    Returns whether the installed JAR changed, so a running webapp is restarted to load it.
+    """
+    modules_dir = context.repo_root / "volume" / "modules"
+    modules_dir.mkdir(parents=True, exist_ok=True)
+    target = modules_dir / f"{module.module_id}.jar"
+    before = file_digest(target)
+    for other in modules_dir.glob("*.jar"):
+        if other != target and jar_module_id(other) == module.module_id:
+            print(f"Removing {other.relative_to(context.repo_root)}: another copy of module {module.module_id}")
+            other.unlink()
+            before = None
+    shutil.copyfile(jar, target)
+    changed = before != file_digest(target)
+    print(
+        f"Module {module.module_id}: {jar.name} installed as {target.relative_to(context.repo_root)}"
+        + ("" if changed else " (unchanged)")
+    )
+    return changed
+
+
+def require_module_support(context: StackContext, environment: dict[str, str]) -> None:
+    """Refuse a backend image whose entrypoint predates the module runtime's folders."""
+    image = environment["DEV_STACK_BACKEND_IMAGE"]
+    try:
+        run(
+            ["docker", "run", "--rm", "--entrypoint", "grep", image, "-q", "modules-cache", "/docker-entrypoint.sh"],
+            cwd=context.repo_root,
+            environment=environment,
+            capture=True,
+        )
+    except subprocess.CalledProcessError:
+        raise RuntimeError(
+            f"The backend image {image} cannot load modules (its entrypoint predates the module runtime). "
+            "Pull newer development images (rerun up without --skip-build), or add --build to build "
+            "them from this checkout."
+        ) from None
+
+
+def module_state_dir(context: StackContext) -> Path:
+    return context.repo_root / ".dev-stack" / "modules"
+
+
+def stop_module_dev_servers(context: StackContext, module_ids: Sequence[str] | None = None) -> None:
+    """Stop the module Vite dev servers this checkout started (all of them when no ids are given)."""
+    state = module_state_dir(context)
+    if not state.is_dir():
+        return
+    for pid_file in state.glob("*.pid"):
+        if module_ids is not None and pid_file.stem not in module_ids:
+            continue
+        try:
+            os.killpg(int(pid_file.read_text(encoding="utf-8").strip()), signal.SIGTERM)
+            print(f"Stopped the dev server of module {pid_file.stem}")
+        except (ValueError, ProcessLookupError, PermissionError):
+            pass
+        pid_file.unlink()
+
+
+def port_is_open(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.settimeout(1)
+        return probe.connect_ex(("127.0.0.1", port)) == 0
+
+
+def start_module_dev_server(
+    context: StackContext, environment: dict[str, str], module: ModuleCheckout
+) -> bool:
+    """Start `npm run dev` for the module's pages and wait until its remote entry answers.
+
+    Returns False (and says why) when the pages are served from the JAR instead.
+    """
+    if not module.dev_port:
+        print(f"Module {module.module_id}: no frontend dev script; its pages are served from the JAR")
+        return False
+    if not shutil.which("npm", path=environment.get("PATH")):
+        print(
+            f"Warning: npm not found; module {module.module_id} pages are served from the JAR "
+            "without hot reload. Install Node.js to get the dev server.",
+            file=sys.stderr,
+        )
+        return False
+    stop_module_dev_servers(context, [module.module_id])
+    if port_is_open(module.dev_port):
+        raise RuntimeError(
+            f"Port {module.dev_port} is already in use, so the dev server of module {module.module_id} "
+            "cannot start. Stop the process holding it (for example an `npm run dev` started by hand)."
+        )
+    frontend = module.path / "frontend"
+    if not (frontend / "node_modules").is_dir():
+        run(["npm", "ci", "--no-audit", "--no-fund"], cwd=frontend, environment=environment)
+    state = module_state_dir(context)
+    state.mkdir(parents=True, exist_ok=True)
+    log_path = state / f"{module.module_id}-vite.log"
+    with log_path.open("w", encoding="utf-8") as log:
+        process = subprocess.Popen(
+            ["npm", "run", "dev", "--", "--port", str(module.dev_port), "--strictPort"],
+            cwd=frontend,
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+    (state / f"{module.module_id}.pid").write_text(f"{process.pid}\n", encoding="utf-8")
+    entry_url = f"http://localhost:{module.dev_port}/{module.entry}"
+    deadline = time.monotonic() + 120
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            break
+        try:
+            with urlopen(entry_url, timeout=5) as response:
+                if response.status == 200:
+                    print(f"Module {module.module_id}: pages served with hot reload from {entry_url}")
+                    return True
+        except (URLError, OSError):
+            pass
+        time.sleep(1)
+    stop_module_dev_servers(context, [module.module_id])
+    raise RuntimeError(
+        f"The dev server of module {module.module_id} did not serve {entry_url}; see {log_path}"
+    )
+
+
+def route_module_pages(context: StackContext, modules: Sequence[ModuleCheckout]) -> None:
+    """Send the shell's request for a module's remote entry to that module's Vite dev server.
+
+    bootstrap.sh writes a fresh nginx.conf on every up, so the routes last until the next up.
+    The file is rewritten in place because the proxy mounts that single file.
+    """
+    if not modules:
+        return
+    config = context.project_dir / "volume" / "nginx" / "nginx.conf"
+    text = config.read_text(encoding="utf-8")
+    blocks = "".join(
+        f"        # dev-stack up --module: pages of {module.module_id} from its Vite dev server\n"
+        f"        location = /api/OpenELIS-Global/modules/{module.module_id}/{module.entry} {{\n"
+        f"            return 307 http://localhost:{module.dev_port}/{module.entry};\n"
+        "        }\n\n"
+        for module in modules
+    )
+    routed, count = re.subn(r"^[ \t]*location /api/ \{", lambda match: blocks + match.group(0), text, flags=re.M)
+    if not count:
+        raise RuntimeError(f"No `location /api/` block in {config} to place the module routes before")
+    config.write_text(routed, encoding="utf-8")
+
+
+def bootstrap_analyzer_harness(
+    context: StackContext, environment: dict[str, str], *, skip_submodules: bool = False
+) -> None:
+    arguments = [str(context.project_dir / "bootstrap.sh")]
+    if skip_submodules:
+        arguments.append("--skip-submodules")
     if is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
         arguments.append("--local")
     run(
@@ -369,14 +645,147 @@ def bootstrap_analyzer_harness(context: StackContext, environment: dict[str, str
 
 
 def build_images(context: StackContext, environment: dict[str, str]) -> None:
-    services = ["astm-simulator", "openelis-analyzer-bridge"]
-    if environment["DEV_STACK_BUILD_FRONTEND"] == "true":
-        services.insert(0, "frontend.openelis.org")
+    """Build every application image from the checkout and run those instead."""
+    for _, variable, _, name in APPLICATION_IMAGES:
+        environment[variable] = f"{context.project}-{name}:dev"
     run(
-        compose_command(context, "build", *services),
+        compose_command(context, "build", *(service for service, _, _, _ in APPLICATION_IMAGES)),
         cwd=context.project_dir,
         environment=environment,
     )
+
+
+def published_image(environment: dict[str, str], repository: str) -> str:
+    namespace = environment.get("DEV_STACK_IMAGE_NAMESPACE", "itechuw")
+    tag = environment.get("DEV_STACK_IMAGE_TAG", "develop")
+    return f"{namespace}/{repository}:{tag}"
+
+
+def frontend_image_differences(
+    context: StackContext, environment: dict[str, str], image: str
+) -> list[str]:
+    """Name the baked-in frontend files that differ between the image and the checkout."""
+    try:
+        listing = output(
+            ["docker", "run", "--rm", "--entrypoint", "sha256sum", image,
+             *(f"/app/{name}" for name in FRONTEND_IMAGE_INPUTS)],
+            cwd=context.repo_root,
+            environment=environment,
+        )
+    except subprocess.CalledProcessError:
+        return list(FRONTEND_IMAGE_INPUTS)
+    published = {}
+    for line in listing.splitlines():
+        digest, _, path = line.partition(" ")
+        published[Path(path.strip()).name] = digest
+    return [
+        name
+        for name in FRONTEND_IMAGE_INPUTS
+        if published.get(name)
+        != hashlib.sha256((context.repo_root / "frontend" / name).read_bytes()).hexdigest()
+    ]
+
+
+def pull_image(context: StackContext, environment: dict[str, str], image: str) -> None:
+    """Pull an image; on failure keep an existing copy or explain the way out."""
+    try:
+        run(["docker", "pull", image], cwd=context.repo_root, environment=environment)
+        return
+    except subprocess.CalledProcessError:
+        try:
+            run(["docker", "image", "inspect", image], cwd=context.repo_root, environment=environment, capture=True)
+        except subprocess.CalledProcessError:
+            raise RuntimeError(
+                f"Could not pull {image}. Check the network and registry access, "
+                "or rerun with --build to build the images from this checkout."
+            ) from None
+    print(f"Warning: could not pull {image}; using the copy already on this machine", file=sys.stderr)
+
+
+def backend_image_differences(
+    context: StackContext, environment: dict[str, str], image: str
+) -> list[str]:
+    """Name the backend image inputs that differ from the commit the image was built from."""
+    try:
+        revision = output(
+            ["docker", "image", "inspect", "--format",
+             '{{index .Config.Labels "org.opencontainers.image.revision"}}', image],
+            cwd=context.repo_root,
+            environment=environment,
+        )
+        if not revision or revision == "<no value>":
+            return []
+        changed = output(
+            ["git", "diff", "--name-only", revision, "--", *BACKEND_IMAGE_INPUTS],
+            cwd=context.repo_root,
+            environment=environment,
+        ).splitlines()
+    except subprocess.CalledProcessError:
+        return []
+    return [
+        path
+        for path in BACKEND_IMAGE_INPUTS
+        if any(line == path or line.startswith(path + "/") for line in changed)
+    ]
+
+
+def image_record(context: StackContext) -> Path:
+    return context.repo_root / ".dev-stack" / "images.json"
+
+
+def record_images(context: StackContext, environment: dict[str, str]) -> None:
+    """Remember which images this stack runs, for later `up --skip-build` restarts."""
+    record = image_record(context)
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text(
+        json.dumps({variable: environment[variable] for _, variable, _, _ in APPLICATION_IMAGES}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def reuse_recorded_images(context: StackContext, environment: dict[str, str]) -> None:
+    """Select the images the last `up` ran, unless a variable was set explicitly."""
+    record = image_record(context)
+    if not record.is_file():
+        return
+    recorded = json.loads(record.read_text(encoding="utf-8"))
+    for _, variable, _, _ in APPLICATION_IMAGES:
+        if variable in recorded and variable not in os.environ:
+            environment[variable] = recorded[variable]
+
+
+def pull_images(
+    context: StackContext, environment: dict[str, str], changed_submodules: Sequence[str]
+) -> None:
+    """Pull the published development images and say what they cannot reflect."""
+    for service, variable, _, _ in APPLICATION_IMAGES:
+        if context.setup == "light" and service in FULL_ONLY_SERVICES:
+            continue
+        pull_image(context, environment, environment[variable])
+    images = {service: environment[variable] for service, variable, _, _ in APPLICATION_IMAGES}
+    for path, service in SUBMODULE_SERVICES.items():
+        if path in changed_submodules and not (context.setup == "light" and service in FULL_ONLY_SERVICES):
+            print(
+                f"Warning: {service} runs the published {images[service]}, not the {path} "
+                "checkout. Rerun with --build to run the checkout.",
+                file=sys.stderr,
+            )
+    differences = frontend_image_differences(context, environment, images["frontend.openelis.org"])
+    if differences:
+        changed = ", ".join(f"frontend/{name}" for name in differences)
+        print(
+            f"Warning: {changed} differ from {images['frontend.openelis.org']}. "
+            "Rerun with --build if the frontend needs them.",
+            file=sys.stderr,
+        )
+    backend = images["oe.openelis.org"]
+    differences = backend_image_differences(context, environment, backend)
+    if differences:
+        print(
+            f"Warning: {', '.join(differences)} differ from the commit {backend} was built from. "
+            "Rerun with --build if the backend runtime needs them.",
+            file=sys.stderr,
+        )
 
 
 def published_port(context: StackContext, service: str, target: int, environment: dict[str, str]) -> int:
@@ -396,10 +805,12 @@ def endpoint_environment(context: StackContext, environment: dict[str, str]) -> 
     endpoints = {
         "BASE_URL": f"https://{authority}",
         "OE_BACKEND_URL": f"https://localhost:{published_port(context, 'oe.openelis.org', 8443, environment)}",
-        "FHIR_URL": f"https://localhost:{published_port(context, 'fhir.openelis.org', 8443, environment)}",
         "DB_PORT": str(published_port(context, "db.openelis.org", 5432, environment)),
         "COMPOSE_PROJECT_NAME": context.project,
     }
+    if context.setup == "light":
+        return endpoints
+    endpoints["FHIR_URL"] = f"https://localhost:{published_port(context, 'fhir.openelis.org', 8443, environment)}"
     subnet_prefix = environment["ANALYZER_SUBNET_PREFIX"]
     endpoints.update(
         {
@@ -414,12 +825,150 @@ def endpoint_environment(context: StackContext, environment: dict[str, str]) -> 
     return endpoints
 
 
+LOW_DISK_BYTES = 5 * 1024**3
+
+
+def warn_on_low_disk(context: StackContext) -> None:
+    """Name a nearly full disk before the build: Maven, npm and Docker then fail with errors
+    (npm's "no space left on device" inside a quiet Maven build) that do not say why."""
+    free = shutil.disk_usage(context.repo_root).free
+    if free < LOW_DISK_BYTES:
+        print(
+            f"Warning: only {free / 1024**3:.1f} GB free on the disk of {context.repo_root}. "
+            "The build, npm and Docker can fail with 'no space left on device'. Free space first, "
+            "for example: docker image prune, removing unused images (docker images), npm cache clean --force.",
+            file=sys.stderr,
+            flush=True,
+        )
+
+
+def local_https_step(environment: dict[str, str], description: str, step, *arguments) -> None:
+    """Run one local-HTTPS step; when it fails, finish this run with a self-signed certificate.
+
+    Local HTTPS is a convenience: no certificate problem may stop a local up, so a machine
+    where mkcert cannot be installed, trusted, run or verified still gets a working stack.
+    """
+    if environment["DEV_STACK_TLS"].lower() != "local-ca":
+        return
+    try:
+        step(*arguments)
+    except (RuntimeError, ValueError, subprocess.CalledProcessError, OSError) as error:
+        print(
+            f"Warning: trusted local HTTPS is not available ({description} failed: {error}). "
+            "Continuing with a self-signed certificate for this run; the browser will show a "
+            "certificate warning. Fix the cause and rerun up for trusted HTTPS, or set "
+            "DEV_STACK_TLS=self-signed in .env to skip this step.",
+            file=sys.stderr,
+            flush=True,
+        )
+        environment["DEV_STACK_TLS"] = "self-signed"
+
+
+def raise_error(error: BaseException) -> None:
+    raise error
+
+
+def ensure_mkcert(environment: dict[str, str]) -> None:
+    """Install mkcert when local HTTPS needs it: with Homebrew if present, else the official binary."""
+    if environment["DEV_STACK_TLS"].lower() != "local-ca" or shutil.which("mkcert", path=environment.get("PATH")):
+        return
+    if shutil.which("brew", path=environment.get("PATH")):
+        print("mkcert is missing; installing it with Homebrew (brew install mkcert)", flush=True)
+        run(["brew", "install", "mkcert"], cwd=Path.home(), environment=environment)
+    else:
+        system = MKCERT_SYSTEMS.get(platform.system())
+        arch = MKCERT_ARCHITECTURES.get(platform.machine().lower())
+        if not system or not arch:
+            raise RuntimeError(
+                f"mkcert is missing and cannot be installed automatically on {platform.system()} "
+                f"{platform.machine()}. Install it (https://github.com/FiloSottile/mkcert#installation) "
+                "and rerun scripts/dev-stack up, or run with DEV_STACK_TLS=self-signed."
+            )
+        url = MKCERT_DOWNLOAD.format(system=system, arch=arch)
+        target = TOOLS_DIR / "mkcert"
+        print(f"mkcert is missing; downloading it from {url} to {target}", flush=True)
+        TOOLS_DIR.mkdir(parents=True, exist_ok=True)
+        download = target.with_name("mkcert.download")
+        try:
+            with urlopen(url, timeout=120) as response, download.open("wb") as file:
+                shutil.copyfileobj(response, file)
+        except (URLError, OSError) as error:
+            download.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"Could not download mkcert from {url}: {error}. Install it "
+                "(https://github.com/FiloSottile/mkcert#installation) or run with DEV_STACK_TLS=self-signed."
+            ) from None
+        download.chmod(0o755)
+        download.replace(target)
+    if not shutil.which("mkcert", path=environment.get("PATH")):
+        raise RuntimeError("mkcert was installed but is not on the PATH; open a new terminal and rerun scripts/dev-stack up")
+
+
+def ensure_local_tls_trust(context: StackContext, environment: dict[str, str]) -> None:
+    if environment["DEV_STACK_TLS"].lower() != "local-ca":
+        return
+    if not is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
+        raise ValueError("DEV_STACK_TLS=local-ca is only supported for loopback hosts")
+    print(
+        "Checking local HTTPS trust. First use installs this machine's development "
+        "certificate authority in the system trust store and may request administrator "
+        "authentication. Later starts reuse it.",
+        flush=True,
+    )
+    trust_environment = {**environment, "TRUST_STORES": "system"}
+    try:
+        # mkcert skips installation when this authority is already trusted.
+        run(["mkcert", "-install"], cwd=context.repo_root, environment=trust_environment)
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError(
+            "Local HTTPS trust setup did not complete; no build was started. "
+            "Run scripts/dev-stack up in an interactive terminal and complete "
+            "the administrator prompt. For unattended starts, first run "
+            "TRUST_STORES=system mkcert -install interactively on this machine."
+        ) from error
+
+
+def configure_local_tls(context: StackContext, environment: dict[str, str]) -> None:
+    if not is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
+        raise ValueError("DEV_STACK_TLS=local-ca is only supported for loopback hosts")
+    directory = context.repo_root / ".dev-stack" / "tls"
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    certificate, key = directory / "localhost.pem", directory / "localhost-key.pem"
+    # TRUST_STORES=system, as for -install: with JAVA_HOME set, mkcert otherwise checks
+    # the Java trust store and stops when that JDK has no lib/security/cacerts
+    # (Homebrew's openjdk prefix, for one).
+    run(
+        [
+            "mkcert", "-cert-file", str(certificate), "-key-file", str(key),
+            "localhost", "127.0.0.1", "::1",
+        ],
+        cwd=context.repo_root,
+        environment={**environment, "TRUST_STORES": "system"},
+    )
+    key.chmod(0o600)
+    # Only the leaf certificate/key enter this worktree's proxy. The CA key
+    # stays in mkcert's per-user directory and is never copied to a container.
+    for source, destination in (
+        (certificate, "proxy:/etc/nginx/certs/apache-selfsigned.crt"),
+        (key, "proxy:/etc/nginx/keys/apache-selfsigned.key"),
+    ):
+        run(
+            compose_command(context, "cp", str(source), destination),
+            cwd=context.project_dir,
+            environment=environment,
+        )
+    reload_proxy(context, environment)
+
+
 def configure_tls(context: StackContext, environment: dict[str, str]) -> None:
     tls_mode = environment["DEV_STACK_TLS"].lower()
     if tls_mode == "self-signed":
         return
+    if tls_mode == "local-ca":
+        local_https_step(environment, "creating the local certificate", configure_local_tls, context, environment)
+        return
     if tls_mode != "letsencrypt":
-        raise ValueError("DEV_STACK_TLS must be either self-signed or letsencrypt")
+        raise ValueError("DEV_STACK_TLS must be local-ca, self-signed or letsencrypt")
     if is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
         raise ValueError("DEV_STACK_TLS=letsencrypt requires a public LETSENCRYPT_DOMAIN")
     if not environment.get("LETSENCRYPT_EMAIL"):
@@ -444,6 +993,32 @@ def configure_tls(context: StackContext, environment: dict[str, str]) -> None:
         cwd=context.project_dir,
         environment=environment,
     )
+
+
+def verify_tls(context: StackContext, environment: dict[str, str]) -> None:
+    if environment["DEV_STACK_TLS"].lower() != "self-signed":
+        # Verify hostname and operating-system trust even when readiness is
+        # skipped. The shared headless readiness probe permits self-signed TLS.
+        try:
+            run(
+                [
+                    "curl", "--silent", "--show-error", "--output", os.devnull,
+                    "--connect-timeout", "10", "--max-time", "30",
+                    "--retry", "5", "--retry-delay", "1",
+                    "--retry-connrefused", "--retry-max-time", "10",
+                    endpoint_environment(context, environment)["BASE_URL"] + "/",
+                ],
+                cwd=context.repo_root,
+                environment=environment,
+            )
+        except subprocess.CalledProcessError as error:
+            if environment["DEV_STACK_TLS"].lower() == "local-ca":
+                local_https_step(environment, "verifying the trusted certificate", raise_error, error)
+                return
+            raise RuntimeError(
+                "HTTPS verification failed after certificate setup. Check the "
+                "reported curl error and docs/dev_setup.md before retrying up."
+            ) from error
 
 
 def reload_proxy(context: StackContext, environment: dict[str, str]) -> None:
@@ -524,6 +1099,16 @@ def cleanup_analyzer_networks(context: StackContext, environment: dict[str, str]
 
 
 def doctor(context: StackContext, environment: dict[str, str]) -> None:
+    if environment["DEV_STACK_TLS"].lower() == "local-ca" and not shutil.which("mkcert", path=environment.get("PATH")):
+        raise RuntimeError(
+            "Missing local HTTPS prerequisite: mkcert. scripts/dev-stack up installs it "
+            "(Homebrew, or a download into ~/.cache/openelis-dev-stack/bin) and handles the "
+            "one-time system trust setup; or install it yourself (macOS: brew install mkcert). "
+            "See docs/dev_setup.md for other platforms."
+        )
+    for command in ("git", "docker", "mvn", "bash", "curl", "envsubst"):
+        if not shutil.which(command, path=environment.get("PATH")):
+            raise RuntimeError(f"Missing source-build prerequisite: {command}")
     for path in context.compose_files:
         if not path.is_file():
             raise RuntimeError(f"Missing compose file: {path}")
@@ -538,13 +1123,42 @@ def doctor(context: StackContext, environment: dict[str, str]) -> None:
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="dev-stack",
-        description="Run the full worktree-isolated OpenELIS + analyzer development stack.",
+        description="Run the full checkout-isolated OpenELIS + analyzer development stack.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     up = subparsers.add_parser("up")
-    up.add_argument("--skip-build", action="store_true")
+    images = up.add_mutually_exclusive_group()
+    images.add_argument(
+        "--skip-build",
+        action="store_true",
+        help="Reuse this checkout's WAR and the images the last up ran; build and pull nothing.",
+    )
+    images.add_argument(
+        "--build",
+        action="store_true",
+        help="Build the application images from this checkout instead of using the published ones.",
+    )
+    up.add_argument(
+        "--setup",
+        choices=SETUPS,
+        default="full",
+        help=(
+            "full (default): the whole stack with the FHIR server, the Analyzer Bridge and the analyzer simulator; "
+            "light: only the database, the webapp, the frontend and the proxy."
+        ),
+    )
     up.add_argument("--no-wait", action="store_true")
     up.add_argument("--no-scenarios", action="store_true")
+    up.add_argument(
+        "--module",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help=(
+            "A module source checkout to build and install into the stack, its pages served with hot "
+            "reload from the module's Vite dev server. Repeat for several modules."
+        ),
+    )
     down = subparsers.add_parser("down")
     down.add_argument("--volumes", action="store_true")
     down.add_argument("--yes", action="store_true")
@@ -569,43 +1183,82 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)
     args = parse_args(argv if argv is not None else sys.argv[1:])
-    context = make_context(Path(__file__).resolve().parent.parent)
+    repo_root = Path(__file__).resolve().parent.parent
+    setup = args.setup if args.command == "up" else recorded_setup(repo_root)
+    context = make_context(repo_root, setup)
     environment = build_environment(context)
 
     if args.command == "doctor":
-        bootstrap_analyzer_harness(context, environment)
         doctor(context, environment)
     elif args.command == "config":
         bootstrap_analyzer_harness(context, environment)
         run(compose_command(context, "config"), cwd=context.project_dir, environment=environment)
     elif args.command == "up":
+        modules = read_module_checkouts(args.module)
+        warn_on_low_disk(context)
         ensure_local_env(context)
-        ensure_submodules(context, environment)
-        bootstrap_analyzer_harness(context, environment)
+        environment = build_environment(context)
+        local_https_step(environment, "installing mkcert", ensure_mkcert, environment)
+        doctor(context, environment)
+        local_https_step(
+            environment, "trusting the local certificate authority", ensure_local_tls_trust, context, environment
+        )
+        changed_submodules = ensure_submodules(context, environment)
+        bootstrap_analyzer_harness(context, environment, skip_submodules=True)
         backend_was_running = service_is_running(
             context, environment, "oe.openelis.org"
         )
         heal_war_mount(context)
+        modules_changed = False
+        if modules and not args.build:
+            if args.skip_build:
+                reuse_recorded_images(context, environment)
+            else:
+                pull_image(context, environment, environment["DEV_STACK_BACKEND_IMAGE"])
+            require_module_support(context, environment)
         if not args.skip_build:
-            build_application(context, environment)
-            build_images(context, environment)
+            build_application(context, environment, install_for_modules=bool(modules))
+            for module in modules:
+                build_module(context, environment, module)
+        for module in modules:
+            modules_changed |= deploy_module_jar(context, module, built_module_jar(module))
+        if not args.skip_build:
+            if args.build:
+                build_images(context, environment)
+            else:
+                pull_images(context, environment, changed_submodules)
+            record_images(context, environment)
         elif not (context.repo_root / "target" / "OpenELIS-Global.war").is_file():
             raise RuntimeError("--skip-build requires target/OpenELIS-Global.war")
+        else:
+            reuse_recorded_images(context, environment)
+            images = [environment[variable] for _, variable, _, _ in APPLICATION_IMAGES]
+            run(["docker", "image", "inspect", *images], cwd=context.repo_root, environment=environment, capture=True)
+        if modules:
+            require_module_support(context, environment)
+        stop_module_dev_servers(context)
+        served = [module for module in modules if start_module_dev_server(context, environment, module)]
+        route_module_pages(context, served)
         start_services(
             context,
             environment,
-            refresh_running_backend=backend_was_running and not args.skip_build,
+            refresh_running_backend=backend_was_running and (not args.skip_build or modules_changed),
         )
         reload_proxy(context, environment)
         configure_tls(context, environment)
+        verify_tls(context, environment)
+        record_setup(context)
         if not args.no_wait:
             wait_for_login(context, environment)
-            if not args.no_scenarios:
+            if not args.no_scenarios and context.setup == "full":
                 initialize_harness_scenarios(context, environment)
         print_endpoints(context, environment)
     elif args.command == "down":
         validate_down_options(args.volumes, args.yes)
+        stop_module_dev_servers(context)
         cleanup_analyzer_networks(context, environment)
         down_args = ["down", "--remove-orphans"]
         if args.volumes:
@@ -623,6 +1276,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print_endpoints(context, environment, shell_exports=True)
     elif args.command == "playwright":
         playwright_environment = environment.copy()
+        playwright_environment.update(endpoint_environment(context, environment))
         playwright_environment["BASE_URL"] = playwright_base_url(context, environment)
         print(f"Running Playwright against {playwright_environment['BASE_URL']}")
         run(

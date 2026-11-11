@@ -219,10 +219,10 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                     } else {
                         LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching serviceRequest");
                     }
-                    fhirPatient = localFhirClient.read() //
+                    fhirPatient = FhirUtil.refersToPatient(serviceRequest.getSubject()) ? localFhirClient.read() //
                             .resource(Patient.class) //
                             .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()) //
-                            .execute();
+                            .execute() : null;
                     encounter = remoteFhirClient.read().resource(Encounter.class)
                             .withId(serviceRequest.getEncounter().getReferenceElement().getIdPart()).execute();
                     if (ObjectUtils.isEmpty(encounter)) {
@@ -298,7 +298,9 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                             LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching collector");
                         }
                     }
-                    loadDataInForm(form);
+                    if (fhirPatient != null) {
+                        loadDataInForm(form);
+                    }
                 }
             }
         } catch (Exception e) {

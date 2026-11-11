@@ -3,11 +3,21 @@ import { act, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
-import { MemoryRouter, Route } from "react-router-dom";
+import { MemoryRouter, Route, Router } from "react-router-dom";
+import { createMemoryHistory } from "history";
 import { vi } from "vitest";
 import MicrobiologyWorklist from "../MicrobiologyWorklist";
 import messages from "../../../languages/en.json";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+
+vi.mock("../MicrobiologyTime", async (importOriginal) => ({
+  ...(await importOriginal()),
+  labTimeZone: () => "Asia/Tokyo",
+}));
+
+vi.mock("../CaseWorkspaceService", () => ({
+  searchCases: vi.fn().mockResolvedValue({ labUnits: [] }),
+}));
 
 const now = new Date(2026, 7, 4, 12, 0, 0);
 
@@ -39,7 +49,7 @@ describe("MicrobiologyWorklist", () => {
     vi.useRealTimers();
   });
 
-  it("shows due action, critical communication, and sibling workflows", async () => {
+  it("shows due action and critical communication", async () => {
     const service = {
       getWorklistRows: vi.fn().mockResolvedValue({
         rows: [
@@ -49,7 +59,6 @@ describe("MicrobiologyWorklist", () => {
             accessionNumber: "LAB-1001",
             patientDisplay: "Mendez, Olivia",
             specimenDisplay: "Blood",
-            workflowType: "BACTERIOLOGY",
             stage: "AST_IN_PROGRESS",
             dueAction: "AST_REVIEW",
             urgency: "HIGH",
@@ -58,7 +67,6 @@ describe("MicrobiologyWorklist", () => {
             lastActivityAt: "2026-08-06T09:30:00Z",
             needsAstReview: true,
             hasOpenCriticalCommunication: true,
-            siblingWorkflows: ["MYCOBACTERIOLOGY_TB"],
           },
         ],
         total: 1,
@@ -98,16 +106,21 @@ describe("MicrobiologyWorklist", () => {
     expect(
       await screen.findByRole("heading", { name: "Microbiology worklist" }),
     ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Aug 06, 06:30 PM", {
+        selector: ".microbiology-worklist__last-activity span",
+      }),
+    ).toBeInTheDocument();
     expect(service.getWorklistRows).toHaveBeenCalledWith({
       grain: "cultures",
       status: "",
+      labUnitIds: [],
       from: "",
       to: "",
       specimen: [],
       organism: [],
       origin: [],
       significance: [],
-      workflow: "",
       stage: "",
       urgency: "",
       due: "",
@@ -129,14 +142,10 @@ describe("MicrobiologyWorklist", () => {
     expect(worklistRow).toHaveTextContent("Mendez, Olivia");
     expect(worklistRow).toHaveTextContent("Blood");
     expect(worklistRow).toHaveTextContent("Morgan Lee");
-    expect(worklistRow).toHaveTextContent("Linked · 2 workflows");
     expect(worklistRow).toHaveTextContent("AST Review");
     expect(worklistRow).toHaveTextContent("High");
     expect(worklistRow).not.toHaveTextContent("Stat");
     expect(worklistRow).toHaveTextContent("Critical communication");
-    expect(
-      screen.getByTestId("microbiology-worklist-siblings"),
-    ).toHaveTextContent("Linked · 2 workflows");
     expect(
       screen.getByTestId("microbiology-worklist-summary-growth"),
     ).toHaveTextContent("Growth detected");
@@ -163,22 +172,18 @@ describe("MicrobiologyWorklist", () => {
           {
             caseId: "case-timed",
             sampleItemId: "1001",
-            workflowType: "BACTERIOLOGY",
             stage: "INCUBATING",
             dueAction: "INCUBATING",
             incubationDay: 2,
             maxIncubationDays: 5,
             urgency: "ROUTINE",
-            siblingWorkflows: [],
           },
           {
             caseId: "case-fallback",
             sampleItemId: "1002",
-            workflowType: "BACTERIOLOGY",
             stage: "INCUBATING",
             dueAction: "INCUBATING",
             urgency: "ROUTINE",
-            siblingWorkflows: [],
           },
         ],
         total: 2,
@@ -209,13 +214,11 @@ describe("MicrobiologyWorklist", () => {
           {
             caseId: "case-1",
             sampleItemId: "1001",
-            workflowType: "BACTERIOLOGY",
             stage: "AST_IN_PROGRESS",
             dueAction: "AST_REVIEW",
             urgency: "HIGH",
             needsAstReview: true,
             hasOpenCriticalCommunication: false,
-            siblingWorkflows: [],
           },
         ],
         total: 1,
@@ -226,7 +229,7 @@ describe("MicrobiologyWorklist", () => {
 
     renderWorklist(
       service,
-      "/Microbiology/worklist?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest",
+      "/Microbiology/worklist?grain=cultures&urgency=HIGH&sort=newest",
     );
 
     await screen.findByRole("heading", { name: "Microbiology worklist" });
@@ -235,7 +238,7 @@ describe("MicrobiologyWorklist", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest",
+        "/Microbiology/cases/case-1?grain=cultures&urgency=HIGH&sort=newest",
       ),
     );
   });
@@ -258,20 +261,20 @@ describe("MicrobiologyWorklist", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?stage=AST_IN_PROGRESS",
+        "/Microbiology/worklist?grain=cultures&stage=AST_IN_PROGRESS",
       ),
     );
     await waitFor(() =>
       expect(service.getWorklistRows).toHaveBeenLastCalledWith({
         grain: "cultures",
         status: "",
+        labUnitIds: [],
         from: "",
         to: "",
         specimen: [],
         organism: [],
         origin: [],
         significance: [],
-        workflow: "",
         stage: "AST_IN_PROGRESS",
         urgency: "",
         due: "",
@@ -303,7 +306,7 @@ describe("MicrobiologyWorklist", () => {
 
     renderWorklist(
       service,
-      "/Microbiology/worklist?grain=ast&status=results-in&from=2026-08-01&to=2026-08-31&specimen=blood&organism=organism-1&origin=INPATIENT&significance=CLINICALLY_SIGNIFICANT&workflow=BACTERIOLOGY&urgency=HIGH&q=LAB-001&sort=newest&page=3&pageSize=50",
+      "/Microbiology/worklist?grain=ast&status=results-in&from=2026-08-01&to=2026-08-31&specimen=blood&organism=organism-1&origin=INPATIENT&significance=CLINICALLY_SIGNIFICANT&urgency=HIGH&q=LAB-001&sort=newest&page=3&pageSize=50",
     );
 
     expect(
@@ -330,7 +333,7 @@ describe("MicrobiologyWorklist", () => {
       screen.getByRole("link", { name: "Export to WHONET" }),
     ).toHaveAttribute(
       "href",
-      "/Microbiology/whonet?from=2026-08-01&to=2026-08-31&specimen=blood&organism=organism-1&origin=INPATIENT&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&dedup=FIRST_ISOLATE_7_DAY&dedupBasis=COLLECTION_DATE&dedupScope=ANY_SOURCE&excludeContaminants=true&profileSensitivity=INSENSITIVE&source=ast-worklist&step=configure&page=1&pageSize=20",
+      "/Microbiology/whonet?from=2026-08-01&to=2026-08-31&specimen=blood&organism=organism-1&origin=INPATIENT&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&includeEnvironmentalIsolates=false&dedup=FIRST_ISOLATE_7_DAY&dedupBasis=COLLECTION_DATE&dedupScope=ANY_SOURCE&excludeContaminants=true&profileSensitivity=INSENSITIVE&source=ast-worklist&step=configure&page=1&pageSize=20",
     );
   });
 
@@ -369,30 +372,26 @@ describe("MicrobiologyWorklist", () => {
     renderWorklist(service);
 
     const search = await screen.findByPlaceholderText(
-      "Search lab number, patient, specimen, or workflow",
+      "Search lab number, patient, or specimen",
     );
     await user.type(search, "1");
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?q=1",
+        "/Microbiology/worklist?grain=cultures&q=1",
       ),
     );
     expect(
-      screen.getByPlaceholderText(
-        "Search lab number, patient, specimen, or workflow",
-      ),
+      screen.getByPlaceholderText("Search lab number, patient, or specimen"),
     ).toBe(search);
 
     await user.type(search, "2");
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?q=12",
+        "/Microbiology/worklist?grain=cultures&q=12",
       ),
     );
     expect(
-      screen.getByPlaceholderText(
-        "Search lab number, patient, specimen, or workflow",
-      ),
+      screen.getByPlaceholderText("Search lab number, patient, or specimen"),
     ).toBe(search);
   });
 
@@ -402,11 +401,9 @@ describe("MicrobiologyWorklist", () => {
       caseId,
       sampleItemId: caseId,
       accessionNumber: `LAB-${caseId}`,
-      workflowType: "BACTERIOLOGY",
       stage,
       dueAction: stage === "POSITIVE_SIGNAL" ? "CONFIRM_GROWTH" : "SETUP",
       urgency: "ROUTINE",
-      siblingWorkflows: [],
     });
     const service = {
       getWorklistRows: vi
@@ -427,7 +424,7 @@ describe("MicrobiologyWorklist", () => {
 
     renderWorklist(
       service,
-      "/Microbiology/worklist?workflow=BACTERIOLOGY&sort=newest",
+      "/Microbiology/worklist?grain=cultures&sort=newest",
     );
     await act(async () => {
       await Promise.resolve();
@@ -435,7 +432,7 @@ describe("MicrobiologyWorklist", () => {
     });
 
     const search = screen.getByPlaceholderText(
-      "Search lab number, patient, specimen, or workflow",
+      "Search lab number, patient, or specimen",
     );
     const tableScroll = screen.getByTestId(
       "microbiology-worklist-table-scroll",
@@ -489,11 +486,9 @@ describe("MicrobiologyWorklist", () => {
             sampleItemId: "1001",
             accessionNumber: "LAB-1001",
             patientDisplay: "Mendez, Olivia",
-            workflowType: "BACTERIOLOGY",
             stage: "INCUBATING",
             dueAction: "SETUP",
             urgency: "ROUTINE",
-            siblingWorkflows: [],
           },
         ],
         total: 1,
@@ -502,13 +497,16 @@ describe("MicrobiologyWorklist", () => {
       }),
     };
 
-    renderWorklist(service, "/Microbiology/worklist?status=incubating");
+    renderWorklist(
+      service,
+      "/Microbiology/worklist?grain=cultures&status=incubating",
+    );
 
     const row = await screen.findByTestId("microbiology-worklist-row-case-1");
     await user.click(within(row).getByText("Mendez, Olivia"));
 
     expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-      "/Microbiology/cases/case-1?status=incubating",
+      "/Microbiology/cases/case-1?grain=cultures&status=incubating",
     );
   });
 
@@ -522,13 +520,11 @@ describe("MicrobiologyWorklist", () => {
             grain: "ast",
             caseId: "case-1",
             sampleItemId: "1001",
-            workflowType: "BACTERIOLOGY",
             isolateId: "isolate-1",
             isolateLabel: "Isolate 1",
             astRunId: "run-1",
             astStatus: "RESULTS_IN",
             urgency: "HIGH",
-            siblingWorkflows: [],
           },
         ],
         total: 1,
@@ -557,13 +553,11 @@ describe("MicrobiologyWorklist", () => {
     const worklistRow = (caseId, sampleItemId) => ({
       caseId,
       sampleItemId,
-      workflowType: "BACTERIOLOGY",
       stage: "RECEIVED",
       dueAction: "SETUP",
       urgency: "ROUTINE",
       needsAstReview: false,
       hasOpenCriticalCommunication: false,
-      siblingWorkflows: [],
     });
     const service = {
       getWorklistRows: vi.fn().mockImplementation((filters) =>
@@ -591,9 +585,7 @@ describe("MicrobiologyWorklist", () => {
       await screen.findByTestId("microbiology-worklist-row-case-1"),
     ).toBeInTheDocument();
     await user.type(
-      screen.getByPlaceholderText(
-        "Search lab number, patient, specimen, or workflow",
-      ),
+      screen.getByPlaceholderText("Search lab number, patient, or specimen"),
       "2002",
     );
 
@@ -622,10 +614,7 @@ describe("MicrobiologyWorklist", () => {
       }),
     };
 
-    renderWorklist(
-      service,
-      "/Microbiology/worklist?workflow=BACTERIOLOGY&q=blood",
-    );
+    renderWorklist(service, "/Microbiology/worklist?grain=cultures&q=blood");
 
     await screen.findByRole("heading", { name: "Microbiology worklist" });
     await user.click(
@@ -634,7 +623,7 @@ describe("MicrobiologyWorklist", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?status=growth&workflow=BACTERIOLOGY&q=blood",
+        "/Microbiology/worklist?grain=cultures&status=growth&q=blood",
       ),
     );
   });
@@ -654,7 +643,6 @@ describe("MicrobiologyWorklist", () => {
                     sampleItemId: "1001",
                     accessionNumber: "LAB-1001",
                     patientDisplay: "Mendez, Olivia",
-                    workflowType: "BACTERIOLOGY",
                     priority: "STAT",
                     urgency: "HIGH",
                     isolateId: "isolate-1",
@@ -733,11 +721,9 @@ describe("MicrobiologyWorklist", () => {
               rowId: "case-1",
               caseId: "case-1",
               sampleItemId: "1001",
-              workflowType: "BACTERIOLOGY",
               stage: "INCUBATING",
               dueAction: "INCUBATING",
               urgency: "ROUTINE",
-              siblingWorkflows: [],
             },
           ],
           total: 1,
@@ -746,7 +732,10 @@ describe("MicrobiologyWorklist", () => {
         }),
       };
 
-      renderWorklist(service, "/Microbiology/worklist?status=incubating");
+      renderWorklist(
+        service,
+        "/Microbiology/worklist?grain=cultures&status=incubating",
+      );
 
       const rowActions = await screen.findByRole("button", {
         name: "Row actions",
@@ -764,7 +753,7 @@ describe("MicrobiologyWorklist", () => {
         expect(
           screen.getByTestId("microbiology-current-url"),
         ).toHaveTextContent(
-          `/Microbiology/cases/case-1?status=incubating&section=setup&action=${action}`,
+          `/Microbiology/cases/case-1?grain=cultures&status=incubating&section=setup&action=${action}`,
         ),
       );
     },
@@ -777,14 +766,12 @@ describe("MicrobiologyWorklist", () => {
       grain: "ast",
       caseId: "case-1",
       sampleItemId: "1001",
-      workflowType: "BACTERIOLOGY",
       stage: "REVIEW_READY",
       dueAction: "VIEW",
       urgency: "ROUTINE",
       isolateId: "isolate-1",
       astRunId: "run-1",
       astStatus: "REVIEWED",
-      siblingWorkflows: [],
     };
     const service = {
       startRepeatAstRun: vi.fn(),
@@ -858,4 +845,85 @@ describe("MicrobiologyWorklist", () => {
       ),
     );
   });
+});
+
+test("retains the scope notice through canonicalization and clears a lab-unit-only filter", async () => {
+  const service = {
+    getWorklistRows: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+  };
+  renderWorklist(
+    service,
+    "/Microbiology/worklist?grain=ast&labUnitIds=lab-1&scopeFiltersReset=true",
+  );
+  await waitFor(() =>
+    expect(service.getWorklistRows).toHaveBeenCalledWith(
+      expect.objectContaining({ labUnitIds: ["lab-1"] }),
+    ),
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "from=2026-08-01",
+    ),
+  );
+  expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+    "scopeFiltersReset=true",
+  );
+  expect(
+    screen.getByText(messages["microbiology.worklist.scopeFiltersReset"]),
+  ).toBeVisible();
+  const clear = screen.getByRole("button", {
+    name: messages["microbiology.worklist.clearFilters"],
+  });
+  expect(clear).toBeEnabled();
+  await userEvent.click(clear);
+  await waitFor(() =>
+    expect(service.getWorklistRows).toHaveBeenLastCalledWith(
+      expect.objectContaining({ labUnitIds: [] }),
+    ),
+  );
+  expect(clear).toBeDisabled();
+  expect(screen.getByTestId("microbiology-current-url")).not.toHaveTextContent(
+    "labUnitIds",
+  );
+});
+
+test.each([
+  ["microbiology.worklist.caseSearch", "cases"],
+  ["microbiology.worklist.benchActions", "bench"],
+])("clears AST dates when opening %s", async (label, grain) => {
+  const service = {
+    getWorklistRows: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+  };
+  const history = createMemoryHistory({
+    initialEntries: [
+      "/Microbiology/worklist?grain=ast&from=2026-08-01&to=2026-08-31&labUnitIds=lab-1",
+    ],
+  });
+  const destinations = [];
+  history.listen((location, action) => {
+    if (action === "PUSH")
+      destinations.push(location.pathname + location.search);
+  });
+  render(
+    <Router history={history}>
+      <IntlProvider locale="en" messages={messages}>
+        <UserSessionDetailsContext.Provider
+          value={{ userSessionDetails: { roles: ["Global Administrator"] } }}
+        >
+          <MicrobiologyWorklist service={service} now={now} />
+        </UserSessionDetailsContext.Provider>
+      </IntlProvider>
+    </Router>,
+  );
+  await waitFor(() => expect(service.getWorklistRows).toHaveBeenCalled());
+  await userEvent.click(
+    screen.getByRole("button", { name: messages[label], exact: true }),
+  );
+  expect(destinations).toHaveLength(1);
+  const url = new URL(destinations[0], "https://example.test");
+  expect(url.searchParams.get("grain")).toBe(grain);
+  expect(url.searchParams.has("from")).toBe(false);
+  expect(url.searchParams.has("to")).toBe(false);
+  expect(url.searchParams.get("scopeFiltersReset")).toBe("true");
+  expect(url.searchParams.get("labUnitIds")).toBe("lab-1");
 });

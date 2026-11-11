@@ -594,6 +594,22 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
 
     @Override
     @Transactional(readOnly = true)
+    public List<Sample> getEnvironmentalSamplesWithAccessionNumberStartingWith(String prefix, int max) {
+        try {
+            String escaped = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+            return entityManager.createQuery(
+                    "from Sample s where s.domain = 'E' and upper(s.accessionNumber) like upper(:prefix) escape '\\'"
+                            + " order by s.accessionNumber",
+                    Sample.class).setParameter("prefix", escaped + "%").setMaxResults(max).getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Sample getEnvironmentalSamplesWithAccessionNumberStartingWith()",
+                    e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public String getLargestAccessionNumberMatchingPattern(String startingWith, int accessionSize)
             throws LIMSRuntimeException {
         String greatestAccessionNumber = null;
@@ -771,6 +787,25 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
             return query.list();
         } catch (HibernateException e) {
             handleException(e, "findSamplesWithRequiredByBefore");
+        }
+        return new java.util.ArrayList<>();
+    }
+
+    @Override
+    public List<Sample> getStatSamplesReceivedBetweenWithAnalysisIn(java.sql.Timestamp since, java.sql.Timestamp cutoff,
+            List<String> analysisStatusIds) {
+        String sql = "from Sample s where s.priority = :stat and s.receivedTimestamp > :since and"
+                + " s.receivedTimestamp <= :cutoff and exists (from Analysis a where a.sampleItem.sample.id = s.id"
+                + " and a.statusId in (:statusIds))";
+        try {
+            Query<Sample> query = entityManager.unwrap(Session.class).createQuery(sql, Sample.class);
+            query.setParameter("stat", OrderPriority.STAT);
+            query.setParameter("since", since);
+            query.setParameter("cutoff", cutoff);
+            query.setParameterList("statusIds", analysisStatusIds);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getStatSamplesReceivedBetweenWithAnalysisIn");
         }
         return new java.util.ArrayList<>();
     }

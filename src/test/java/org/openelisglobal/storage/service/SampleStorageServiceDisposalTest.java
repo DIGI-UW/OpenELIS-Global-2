@@ -257,18 +257,6 @@ public class SampleStorageServiceDisposalTest {
         assertEquals(0, testSampleItem.getRemainingQuantity().compareTo(new java.math.BigDecimal("3")));
     }
 
-    /** Over-consumption clamps at zero and reports exhaustion. */
-    @Test
-    public void recordSampleUsage_overConsumption_clampsAtZeroExhausted() {
-        testSampleItem.setRemainingQuantity(new java.math.BigDecimal("1.0"));
-
-        Map<String, Object> result = sampleStorageService.recordSampleUsage(TEST_ACCESSION_NUMBER,
-                new java.math.BigDecimal("5"), false, TEST_SYS_USER_ID);
-
-        assertEquals(0, testSampleItem.getRemainingQuantity().compareTo(java.math.BigDecimal.ZERO));
-        assertEquals(Boolean.TRUE, result.get("exhausted"));
-    }
-
     /** Mark used up zeroes the remaining quantity without needing an amount. */
     @Test
     public void recordSampleUsage_markUsedUp_zeroesRemaining() {

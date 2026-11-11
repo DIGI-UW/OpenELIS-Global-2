@@ -1,0 +1,128 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Fixture for SampleEQAOrderStatusIntegrationTest. Deliberately does NOT
+    seed status_of_sample: analysis.status_id has an FK to it, and the tests
+    set real status ids resolved through IStatusService (built from the liquibase
+    seed at context boot). Truncating/replacing that table here would break both
+    the FK writes and the cached lookups. Sample 1 carries two analyses (1, 2),
+    sample 2 one analysis (3), sample 3 none. sample_eqa is declared empty so
+    rows inserted by one test are truncated before the next. -->
+<dataset>
+    <sample_eqa />
+
+    <!-- localization -->
+    <localization id="1" description="Test Description 1" />
+    <localization id="2" description="Test Description 2" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Test Localization 1" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Test Localization 2" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <!-- unit_of_measure -->
+    <unit_of_measure id="1" name="mg/dL"
+        description="Milligrams per deciliter" />
+    <unit_of_measure id="2" name="g/L"
+        description="Grams per liter" />
+
+    <!-- test_trailer -->
+    <test_trailer id="1" name="Trailer Name 1"
+        description="Description 1" text="Sample Text 1"
+        lastupdated="2025-03-13 12:00:00" />
+
+    <!-- scriptlet -->
+    <scriptlet id="1" name="Scriptlet 1" code_type="T"
+        code_source="Source1" lastupdated="2025-03-13 12:00:00" />
+
+    <!-- label -->
+    <label id="1" name="Patient Label"
+        description="Label for patient samples" printer_type="T"
+        scriptlet_id="1" lastupdated="2025-03-20 12:00:00" />
+
+    <!-- method -->
+    <method id="1" name="therapy" description="using therapy"
+        name_localization_id="1" reporting_description=""
+        active_begin="2012-11-01" lastupdated="2023-10-01 12:00:00" />
+
+    <!-- organization -->
+    <organization id="3" lastupdated="2024-06-03 12:00:00.0"
+        name="Global Health Org" city="New York" zip_code="10001"
+        short_name="GHG" multiple_unit="NYC Unit"
+        street_address="123 Health St" state="NY"
+        internet_address="www.globalhealth.org" clia_num="CLIA12345"
+        pws_id="PWS123" local_abbrev="1" code="GHG001" />
+
+    <!-- test_section -->
+    <test_section id="1" name="TB"
+        description="SectionDescription1" org_id="3" is_external="N"
+        lastupdated="2025-03-20 12:00:00.0" sort_order="2147483647"
+        name_localization_id="1" display_key="TestKey1" />
+
+    <!-- test_formats -->
+    <test_formats id="1" lastupdated="2025-03-21 12:00:00" />
+
+    <!-- test -->
+    <test id="1" method_id="1" uom_id="1" description="Blood Test"
+        loinc="123456" reporting_description="Complete Blood Count"
+        active_begin="2025-01-01 12:00:00" active_end="2025-12-31 12:00:00"
+        time_holding="30" time_wait="15" time_ta_average="60"
+        time_ta_warning="90" time_ta_max="120" label_qty="1"
+        lastupdated="2025-03-20 12:00:00" label_id="1" test_trailer_id="1"
+        test_section_id="1" scriptlet_id="1" test_format_id="1"
+        local_code="CBC" sort_order="2147483646" name="Complete Blood Count"
+        orderable="true" guid="abc-123" name_localization_id="1"
+        antimicrobial_resistance="true" />
+
+    <!-- type_of_sample -->
+    <type_of_sample id="1" description="Blood Sample"
+        domain="H" name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
+
+    <!-- sample: status_id is nullable and irrelevant to the derivation, so
+        it is omitted rather than pinned to a row another fixture may have wiped
+        (status_of_sample is truncated by e.g. testdata/analysis.xml, so suite order
+        must not matter here). -->
+    <sample id="1" accession_number="EQAT02001"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="2" accession_number="EQAT02002"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="3" accession_number="EQAT02003"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <!-- sample_item.status_id is NOT NULL; id 1 is the sentinel status row
+        the test guarantees in @Before (ensureStatusRows) before this loads. -->
+    <sample_item id="1" sort_order="1" status_id="1"
+        samp_id="1" typeosamp_id="1" collection_date="2023-11-15 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+    <sample_item id="2" sort_order="1" status_id="1"
+        samp_id="2" typeosamp_id="1" collection_date="2023-11-15 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+    <sample_item id="3" sort_order="1" status_id="1"
+        samp_id="3" typeosamp_id="1" collection_date="2023-11-15 10:00:00"
+        lastupdated="2023-12-01 12:00:00" />
+
+    <!-- analysis: two on sample 1, one on sample 2, none on sample 3. status_id
+        is nullable and every test sets real ids via IStatusService before asserting,
+        so no static status literal is baked in. -->
+    <analysis id="1" sampitem_id="1" test_sect_id="1" test_id="1"
+        revision="1" analysis_type="ROUTINE" entry_date="2023-11-15 12:00:00"
+        lastupdated="2023-12-01 12:00:00"
+        fhir_uuid="e1b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01" />
+    <analysis id="2" sampitem_id="1" test_sect_id="1" test_id="1"
+        revision="1" analysis_type="ROUTINE" entry_date="2023-11-15 12:00:00"
+        lastupdated="2023-12-01 12:00:00"
+        fhir_uuid="e1b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02" />
+    <analysis id="3" sampitem_id="2" test_sect_id="1" test_id="1"
+        revision="1" analysis_type="ROUTINE" entry_date="2023-11-15 12:00:00"
+        lastupdated="2023-12-01 12:00:00"
+        fhir_uuid="e1b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b03" />
+</dataset>

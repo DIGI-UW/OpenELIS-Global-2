@@ -1,5 +1,6 @@
 import React from "react";
 import { Grid, Column } from "@carbon/react";
+import "./caseView.scss";
 
 const TOTAL_SPAN = 16;
 const RAIL_SPAN = 3;
@@ -16,6 +17,12 @@ const SUMMARY_SPAN = 4;
  * the centre column's span is computed from which of its neighbours are
  * actually present rather than the screen choosing between a fixed set of
  * three-column, two-column and one-column layouts by hand.
+ *
+ * The grid is drawn on a surface of its own. The application's content area
+ * is a light grey inside a Carbon white theme zone, where a field and a tile
+ * are the same light grey, so a form laid straight onto the page has inputs
+ * nobody can see until one is focused; every other form screen in this
+ * application sits on a white body card for the same reason.
  */
 const CaseViewLayout = ({
   rail = null,
@@ -28,7 +35,7 @@ const CaseViewLayout = ({
   const centreSpan = TOTAL_SPAN - railSpan - summarySpan;
 
   return (
-    <Grid fullWidth>
+    <Grid fullWidth className="case-view__layout">
       {rail && (
         <Column lg={railSpan} md={8} sm={4}>
           {rail}

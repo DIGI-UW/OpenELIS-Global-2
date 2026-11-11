@@ -176,8 +176,7 @@ public class GenericSampleOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    @org.junit.Ignore("Bug in NoteBookSampleDAO/GenericSampleOrderServiceImpl - Hibernate type mismatch on sampleItemId (String expected, Integer passed)")
-    public void hz_getGenericSampleOrderByAccessionNumber_withExistingSample_returnsPopulatedForm() {
+    public void getGenericSampleOrderByAccessionNumber_withExistingSample_returnsPopulatedForm() {
         GenericSampleOrderForm form = genericSampleOrderService.getGenericSampleOrderByAccessionNumber("EXIST-001");
 
         assertEquals("EXIST-001", form.getDefaultFields().getLabNo());

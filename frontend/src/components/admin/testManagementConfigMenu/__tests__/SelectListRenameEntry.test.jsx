@@ -18,6 +18,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 
+const notify = vi.hoisted(() => vi.fn());
+
 vi.mock("../../../common/PageBreadCrumb", () => ({
   default: function MockBreadCrumb() {
     return <div data-testid="breadcrumb" />;
@@ -46,7 +48,7 @@ vi.mock("../../../layout/Layout", () => ({
   NotificationContext: React.createContext({
     notificationVisible: false,
     setNotificationVisible: vi.fn(),
-    addNotification: vi.fn(),
+    addNotification: notify,
   }),
 }));
 
@@ -239,6 +241,30 @@ describe("SelectListRenameEntry", () => {
     );
     // Renaming used to reload the document, which threw away the whole app.
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  // OGC-1234: a refusal arrives as an object carrying its HTTP status; it used
+  // to be reported as a saved rename.
+  it("reports a refused rename (400) as an error, never as saved", async () => {
+    notify.mockReset();
+    await showOptions();
+    await openOption("Positive");
+
+    fireEvent.change(english(), { target: { value: "Reactive" } });
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) =>
+        callback({ error: "validation", fieldErrors: [], status: 400 }),
+    );
+    submit();
+
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "error" }),
+      ),
+    );
+    expect(notify).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "success" }),
+    );
   });
 
   it("still opens when the option has no stored translations at all", async () => {

@@ -16,7 +16,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,23 +48,18 @@ public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void caseIdentityIsUniquePerSampleItemAndWorkflowWithSiblingSupport() {
-        MicroCase first = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                fixtures.defaultUserId());
-        MicroCase duplicate = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                fixtures.defaultUserId());
-        MicroCase sibling = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.MYCOBACTERIOLOGY_TB, methodId,
-                fixtures.defaultUserId());
+    public void caseIdentityIsUniquePerSampleItem() {
+        MicroCase first = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
+        MicroCase duplicate = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
 
         assertEquals(first.getId(), duplicate.getId());
-        assertEquals(sampleItemId, sibling.getSampleItemId());
-        assertEquals(2, caseService.getSiblingCases(sampleItemId).size());
+        assertEquals(sampleItemId, first.getSampleItemId());
+        assertEquals(1, caseService.getSiblingCases(sampleItemId).size());
     }
 
     @Test
     public void compiledCaseDetailIncludesTimelineAndIsolatesWithoutControllerTraversal() {
-        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                fixtures.defaultUserId());
+        MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
         stateService.advanceStage(microCase.getId(), MicroCaseStage.SETUP_RECORDED, fixtures.defaultUserId(),
                 "setup complete");
         var isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",

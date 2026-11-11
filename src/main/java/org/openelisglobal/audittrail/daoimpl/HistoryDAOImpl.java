@@ -33,13 +33,13 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
     @Override
     @Transactional(readOnly = true)
     public List<History> getHistoryByRefIdAndRefTableId(History history) throws LIMSRuntimeException {
-        String refId = history.getReferenceId();
+        String refId = history.getReferenceKey() != null ? history.getReferenceKey() : history.getReferenceId();
         String tableId = history.getReferenceTable();
         List<History> list;
 
         try {
-            String sql = "from History h where h.referenceId = :refId and h.referenceTable = :tableId order by"
-                    + " h.timestamp desc, h.activity desc";
+            String sql = "from History h where " + referenceProperty(refId)
+                    + " = :refId and h.referenceTable = :tableId order by" + " h.timestamp desc, h.activity desc";
             Query<History> query = entityManager.unwrap(Session.class).createQuery(sql, History.class);
             query.setParameter("refId", refId);
             query.setParameter("tableId", tableId);
@@ -99,6 +99,10 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
         }
     }
 
+    private String referenceProperty(String referenceId) {
+        return referenceId == null || referenceId.matches("\\d+") ? "h.referenceId" : "h.referenceKey";
+    }
+
     private void appendFilters(StringBuilder hql, Timestamp startDate, Timestamp endDate, String sysUserId,
             List<String> referenceTableIds, String activity, String search, String referenceId) {
         if (startDate != null) {
@@ -117,10 +121,10 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
             hql.append(" and h.activity = :activity");
         }
         if (search != null && !search.isEmpty()) {
-            hql.append(" and cast(h.referenceId as string) like :search");
+            hql.append(" and (cast(h.referenceId as string) like :search or h.referenceKey like :search)");
         }
         if (referenceId != null && !referenceId.isEmpty()) {
-            hql.append(" and h.referenceId = :referenceId");
+            hql.append(" and ").append(referenceProperty(referenceId)).append(" = :referenceId");
         }
     }
 

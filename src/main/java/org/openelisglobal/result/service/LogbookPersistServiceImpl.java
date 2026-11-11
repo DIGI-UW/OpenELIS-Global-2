@@ -20,6 +20,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.qaevent.service.TestRejectionNceService;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
@@ -28,6 +29,7 @@ import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
 import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
+import org.openelisglobal.resultvalidation.event.ResultsValidatedEvent;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
@@ -37,11 +39,15 @@ import org.openelisglobal.testreflex.action.util.TestReflexBean;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.openelisglobal.vector.deconvolution.service.VectorDeconvolutionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
+
+    @Autowired
+    private org.openelisglobal.resultvalidation.service.ResultSelfValidationPolicy selfValidationPolicy;
 
     @Autowired
     private AnalysisService analysisService;
@@ -54,6 +60,8 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     @Autowired
     private NoteService noteService;
     @Autowired
+    private TestRejectionNceService testRejectionNceService;
+    @Autowired
     private SampleService sampleService;
     @Autowired
     private ReferralService referralService;
@@ -65,13 +73,38 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     private QcEvaluationService qcEvaluationService;
     @Autowired
     private VectorDeconvolutionService vectorDeconvolutionService;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
     public List<Analysis> persistDataSet(ResultsUpdateDataSet actionDataSet, List<IResultUpdate> updaters,
             String sysUserId) {
+        for (Analysis analysis : actionDataSet.getModifiedAnalysis()) {
+            selfValidationPolicy.requireCaseWriteAccess(analysis, sysUserId,
+                    org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
+        }
         for (Note note : actionDataSet.getNoteList()) {
+            // A note already recorded on the analysis (the same text posted again with
+            // a row) is kept once; refusing it used to fail the whole save, value and
+            // all, as "An error occurred while updating" (OGC-1569).
+            if (noteService.duplicateNoteExists(note)) {
+                continue;
+            }
             noteService.insert(note);
+            // Every rejection opens its NCE (trigger: TEST_REJECTION). All
+            // rejection paths funnel through this persist, so the hook lives
+            // here, not in each controller. A failed NCE must never block a
+            // tech saving results — log and move on.
+            if (Note.REJECT_REASON.equals(note.getNoteType())) {
+                try {
+                    testRejectionNceService.createForRejection(note);
+                } catch (RuntimeException e) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "persistDataSet",
+                            "NCE creation for rejected analysis " + note.getReferenceId() + " failed: "
+                                    + e.getMessage());
+                }
+            }
         }
 
         for (ResultSet resultSet : actionDataSet.getNewResults()) {
@@ -152,6 +185,11 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
         for (IResultUpdate updater : updaters) {
             updater.transactionalUpdate(actionDataSet);
         }
+
+        // Results finalized at entry skip validation, so announce them here too,
+        // but not the ones that were already finalized before this save.
+        eventPublisher.publishEvent(ResultsValidatedEvent.finalized(actionDataSet.getModifiedAnalysis().stream()
+                .filter(analysis -> !actionDataSet.getFinalizedBeforeSave().contains(analysis.getId())).toList()));
         return reflexAnalysises;
     }
 
@@ -299,6 +337,10 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
         }
     }
 
+    /**
+     * The tests reflex and calculation rules generated. A calculation may fill the
+     * analysis a reflex has just added; that generated test is listed once.
+     */
     protected List<Analysis> setTestReflexes(ResultsUpdateDataSet actionDataSet, String sysUserId) {
         TestReflexUtil testReflexUtil = new TestReflexUtil();
         TestCalculatedUtil testCaliculatedUtil = new TestCalculatedUtil();
@@ -316,7 +358,13 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
                 sysUserId);
         List<Analysis> caclculatedAnalyses = testCaliculatedUtil.addNewTestsToDBForCalculatedTests(allResults,
                 sysUserId);
-        reflexAnalysises.addAll(caclculatedAnalyses);
+        actionDataSet.getCalculatedResults().addAll(testCaliculatedUtil.getCalculatedResults());
+        for (Analysis calculated : caclculatedAnalyses) {
+            if (reflexAnalysises.stream()
+                    .noneMatch(added -> added.getId() != null && added.getId().equals(calculated.getId()))) {
+                reflexAnalysises.add(calculated);
+            }
+        }
         return reflexAnalysises;
     }
 

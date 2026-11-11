@@ -1,7 +1,6 @@
 package org.openelisglobal.alert.service;
 
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
 import org.junit.Assert;
@@ -17,14 +16,10 @@ import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
-import org.openelisglobal.notification.service.sender.ClientNotificationSender;
-import org.openelisglobal.notification.valueholder.EmailNotification;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.test.util.AopTestUtils;
-import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Integration tests for {@link AlertNotificationService} and
@@ -48,9 +43,6 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private SiteInformationService siteInformationService;
-
-    @SuppressWarnings("rawtypes")
-    private List<ClientNotificationSender> originalSenders;
 
     @Before
     public void init() throws Exception {
@@ -85,11 +77,11 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
     public void tearDown() {
         // Reset the global configuration to avoid affecting other tests in CI
         ConfigurationProperties.getInstance().setPropertyValue(Property.PATIENT_RESULTS_SMTP_ENABLED, "false");
-        if (originalSenders != null) {
-            Object target = AopTestUtils.getUltimateTargetObject(alertNotificationService);
-            ReflectionTestUtils.setField(target, "notificationSenders", originalSenders);
-            originalSenders = null;
-        }
+        jdbcTemplate.update("DELETE FROM clinlims.notification_log_attempt WHERE notification_log_id IN"
+                + " (SELECT id FROM clinlims.notification_log WHERE product = 'ALERT')");
+        jdbcTemplate.update("DELETE FROM clinlims.notification_log_channel WHERE notification_log_id IN"
+                + " (SELECT id FROM clinlims.notification_log WHERE product = 'ALERT')");
+        jdbcTemplate.update("DELETE FROM clinlims.notification_log WHERE product = 'ALERT'");
     }
 
     @Test
@@ -179,16 +171,20 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
         Mockito.verify(javaMailSender, Mockito.after(2000).never()).send(ArgumentMatchers.any(SimpleMailMessage.class));
     }
 
+    /**
+     * An alert's email is queued in the delivery outbox under product Alert, where
+     * Sent Messages shows it and the delivery worker sends it; nothing is sent from
+     * the alert thread itself.
+     */
     @Test
-    public void handleAlertCreated_buildsAndDispatchesAMessage_forAFreezerOfflineAlert() {
-        RecordingEmailSender recorder = installRecordingSender();
-
+    public void handleAlertCreated_queuesAMessageInTheOutbox_forAFreezerOfflineAlert() {
         // The fixture seeds an active EMAIL config for both alert natures, so a
-        // dispatch alone would not say which one governs offline alerts. Silencing
+        // queued row alone would not say which one governs offline alerts. Silencing
         // the temperature nature leaves EQUIPMENT_ALERT as the only route that can
         // produce a message, which is the contract the Alert Settings screen shows.
         jdbcTemplate.update("UPDATE clinlims.notification_config_option SET active = false"
                 + " WHERE notification_nature = 'FREEZER_TEMPERATURE_ALERT'");
+        long before = countAlertRows();
 
         Alert offlineAlert = new Alert();
         offlineAlert.setAlertType(AlertType.FREEZER_OFFLINE);
@@ -201,40 +197,25 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
 
         alertNotificationService.handleAlertCreated(new AlertCreatedEvent(this, offlineAlert));
 
-        Assert.assertEquals("An offline alert should notify through the equipment nature, not the temperature one", 1,
-                recorder.sent.size());
+        Assert.assertEquals("An offline alert should notify through the equipment nature, not the temperature one",
+                before + 1, countAlertRows());
+        java.util.Map<String, Object> row = jdbcTemplate.queryForMap("SELECT event_code, recipient_email,"
+                + " rendered_subject, rendered_message, overall_status FROM clinlims.notification_log"
+                + " WHERE product = 'ALERT' ORDER BY id DESC LIMIT 1");
+        Assert.assertEquals("EQUIPMENT_ALERT", row.get("event_code"));
+        Assert.assertEquals("test@example.com", row.get("recipient_email"));
         Assert.assertTrue("Subject should name the alert type",
-                recorder.sent.get(0).getSubject().contains("FREEZER_OFFLINE"));
+                String.valueOf(row.get("rendered_subject")).contains("FREEZER_OFFLINE"));
         Assert.assertTrue("Message should carry the offline reason",
-                recorder.sent.get(0).getMessage().contains("not responding to monitoring polls"));
+                String.valueOf(row.get("rendered_message")).contains("not responding to monitoring polls"));
+        Assert.assertTrue("queued for the worker, or failed at once when Email is not set up",
+                List.of("QUEUED", "FAILED").contains(String.valueOf(row.get("overall_status"))));
     }
 
-    @SuppressWarnings("unchecked")
-    private RecordingEmailSender installRecordingSender() {
-        Object target = AopTestUtils.getUltimateTargetObject(alertNotificationService);
-        originalSenders = (List<ClientNotificationSender>) ReflectionTestUtils.getField(target, "notificationSenders");
-        RecordingEmailSender recorder = new RecordingEmailSender();
-        ReflectionTestUtils.setField(target, "notificationSenders", List.of(recorder));
-        return recorder;
-    }
-
-    /**
-     * Stands in for the real senders, whose transports need an SMTP_SERVER
-     * external_connection row this test has no reason to configure.
-     */
-    private static final class RecordingEmailSender implements ClientNotificationSender<EmailNotification> {
-
-        private final List<EmailNotification> sent = new ArrayList<>();
-
-        @Override
-        public Class<EmailNotification> forClass() {
-            return EmailNotification.class;
-        }
-
-        @Override
-        public void send(EmailNotification notification) {
-            sent.add(notification);
-        }
+    private long countAlertRows() {
+        Long count = jdbcTemplate
+                .queryForObject("SELECT COUNT(*) FROM clinlims.notification_log WHERE product = 'ALERT'", Long.class);
+        return count == null ? 0 : count;
     }
 
     @Test

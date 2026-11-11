@@ -17,6 +17,7 @@ import {
   Tag,
   OverflowMenu,
   OverflowMenuItem,
+  Checkbox,
   Dropdown,
   Callout,
 } from "@carbon/react";
@@ -24,6 +25,7 @@ import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import {
+  getAnalyzerDeliveryIssues,
   getAnalyzers,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
@@ -37,9 +39,14 @@ import AnalyzerLifecycleModal, {
 import AnalyzerSetup, {
   type AnalyzerSetupStep,
 } from "../AnalyzerSetup/AnalyzerSetup";
+import BridgePairing from "../BridgePairing/BridgePairing";
 
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import type { Analyzer, AnalyzerStatus } from "../types";
+import {
+  expectsReception,
+  useAnalyzerConnections,
+} from "./useAnalyzerConnections";
 import "./AnalyzersList.css";
 
 interface AnalyzerStats {
@@ -69,18 +76,32 @@ const hasHeldResults = (analyzer: Analyzer) =>
 const isAnalyzerSetupStep = (
   value: string | null,
 ): value is AnalyzerSetupStep =>
-  value === "instrument" || value === "verify" || value === "connect";
+  value === "instrument" ||
+  value === "assays" ||
+  value === "verify" ||
+  value === "connect";
 
 const isAnalyzerLifecycleAction = (
   value: string | null,
 ): value is AnalyzerLifecycleAction =>
-  value === "deactivate" || value === "reactivate";
+  value === "activate" ||
+  value === "deactivate" ||
+  value === "reactivate" ||
+  value === "retire" ||
+  value === "restore" ||
+  value === "delete";
 
 const lifecycleActionsFor = (
   status: AnalyzerStatus,
 ): AnalyzerLifecycleAction[] => {
+  if (status === "RETIRED") {
+    return ["restore", "delete"];
+  }
+  if (status === "SETUP") {
+    return ["activate", "retire", "delete"];
+  }
   if (status === "INACTIVE") {
-    return ["reactivate"];
+    return ["reactivate", "retire", "delete"];
   }
   if (status === "ERROR_PENDING" || status === "OFFLINE") {
     return ["reactivate", "deactivate"];
@@ -108,12 +129,27 @@ const AnalyzersList = () => {
     testUnit: "",
     analyzerType: "",
   });
-  const [stats, setStats] = useState<AnalyzerStats>({
-    total: 0,
-    active: 0,
-    setup: 0,
-    needsAttention: 0,
-  });
+  const { connectionState, refreshConnections } =
+    useAnalyzerConnections(analyzers);
+  const connectionNeedsAttention = (analyzer: Analyzer) =>
+    expectsReception(analyzer) &&
+    !["running", "checking"].includes(connectionState(analyzer));
+  const stats: AnalyzerStats = {
+    total: analyzers.length,
+    active: analyzers.filter(
+      (analyzer) =>
+        analyzer.status === "ACTIVE" && connectionState(analyzer) === "running",
+    ).length,
+    setup: analyzers.filter(
+      (analyzer) =>
+        analyzer.status === "SETUP" || analyzer.status === "VALIDATION",
+    ).length,
+    needsAttention: analyzers.filter(
+      (analyzer) =>
+        hasHeldResults(analyzer) || connectionNeedsAttention(analyzer),
+    ).length,
+  };
+  const heldAnalyzerCount = analyzers.filter(hasHeldResults).length;
   const queryParams = new URLSearchParams(location.search);
   const setupStep = queryParams.get("setup");
   const visibleSetupStep = isAnalyzerSetupStep(setupStep) ? setupStep : null;
@@ -130,7 +166,19 @@ const AnalyzersList = () => {
   const listStatus = queryParams.get("status") || "";
   const listTestUnit = queryParams.get("testUnit") || "";
   const listAnalyzerType = queryParams.get("analyzerType") || "";
+  const listIncludeRetired = queryParams.get("includeRetired") === "true";
   const firstAttentionAnalyzer = analyzers.find(hasHeldResults);
+  const [undeliveredCount, setUndeliveredCount] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getAnalyzerDeliveryIssues((response) => {
+      setUndeliveredCount(
+        response?.status === "success" ? response.data?.count || 0 : 0,
+      );
+    }, controller.signal);
+    return () => controller.abort();
+  }, []);
 
   const openSetup = () => {
     const params = new URLSearchParams(location.search);
@@ -222,18 +270,6 @@ const AnalyzersList = () => {
           setAnalyzers(list);
           setFilteredAnalyzers(list);
 
-          // Calculate statistics based on unified status
-          const activeCount = list.filter((a) => a.status === "ACTIVE").length;
-          const setupCount = list.filter(
-            (a) => a.status === "SETUP" || a.status === "VALIDATION",
-          ).length;
-          const needsAttentionCount = list.filter(hasHeldResults).length;
-          setStats({
-            total: list.length,
-            active: activeCount,
-            setup: setupCount,
-            needsAttention: needsAttentionCount,
-          });
           setLoading(false);
         },
         signal,
@@ -247,13 +283,28 @@ const AnalyzersList = () => {
     ["setup", "analyzerId", "profile", "revision"].forEach((key) =>
       params.delete(key),
     );
+    refreshConnections(setupAnalyzerId);
+    reloadAnalyzers();
+    history.push({ pathname: "/analyzers", search: params.toString() });
+  };
+
+  const reloadAnalyzers = () =>
     loadAnalyzers({
       status: listStatus,
       testUnit: listTestUnit,
       analyzerType: listAnalyzerType,
+      includeRetired: listIncludeRetired,
       ...(listSearch ? { search: listSearch } : {}),
     });
-    history.push({ pathname: "/analyzers", search: params.toString() });
+
+  const toggleRetired = (checked: boolean) => {
+    const params = new URLSearchParams(location.search);
+    if (checked) {
+      params.set("includeRetired", "true");
+    } else {
+      params.delete("includeRetired");
+    }
+    history.push({ pathname: location.pathname, search: params.toString() });
   };
 
   useEffect(() => {
@@ -292,13 +343,21 @@ const AnalyzersList = () => {
     loadAnalyzers(
       {
         ...initialFilters,
+        includeRetired: listIncludeRetired,
         ...(listSearch ? { search: listSearch } : {}),
       },
       controller.signal,
     );
 
     return () => controller.abort();
-  }, [listAnalyzerType, listSearch, listStatus, listTestUnit, loadAnalyzers]);
+  }, [
+    listAnalyzerType,
+    listIncludeRetired,
+    listSearch,
+    listStatus,
+    listTestUnit,
+    loadAnalyzers,
+  ]);
 
   useEffect(() => {
     const storedScrollY = sessionStorage.getItem("analyzers.scrollY");
@@ -331,14 +390,15 @@ const AnalyzersList = () => {
     }
 
     searchTimeoutRef.current = setTimeout(() => {
-      const params = new URLSearchParams(location.search);
+      const currentLocation = history.location;
+      const params = new URLSearchParams(currentLocation.search);
       if (value.trim()) {
         params.set("search", value.trim());
       } else {
         params.delete("search");
       }
       history.replace({
-        pathname: location.pathname,
+        pathname: currentLocation.pathname,
         search: params.toString(),
       });
     }, 300);
@@ -391,9 +451,7 @@ const AnalyzersList = () => {
 
   const rows: AnalyzerTableRow[] = filteredAnalyzers.map((analyzer) => {
     const connection = intl.formatMessage({
-      id: analyzer.bridgeConnectionId
-        ? "analyzer.connection.reference.configured"
-        : "analyzer.connection.reference.missing",
+      id: `analyzer.connection.live.${connectionState(analyzer)}`,
     });
 
     const unifiedStatus = analyzer.status || "SETUP";
@@ -470,6 +528,8 @@ const AnalyzersList = () => {
         />
       )}
 
+      <BridgePairing />
+
       {firstAttentionAnalyzer && (
         <Callout
           kind="warning"
@@ -478,13 +538,13 @@ const AnalyzersList = () => {
           title={intl.formatMessage(
             {
               id:
-                stats.needsAttention === 1
+                heldAnalyzerCount === 1
                   ? "analyzer.attention.title.one"
                   : "analyzer.attention.title.many",
             },
             {
               name: firstAttentionAnalyzer.name,
-              count: stats.needsAttention,
+              count: heldAnalyzerCount,
             },
           )}
           subtitle={intl.formatMessage({
@@ -494,6 +554,30 @@ const AnalyzersList = () => {
             id: "analyzer.attention.review",
           })}
           onActionButtonClick={() => openResults(firstAttentionAnalyzer)}
+        />
+      )}
+
+      {undeliveredCount > 0 && (
+        <Callout
+          kind="warning"
+          lowContrast
+          data-testid="delivery-issues-attention"
+          title={intl.formatMessage(
+            { id: "analyzer.deliveryIssues.attention.title" },
+            { count: undeliveredCount },
+          )}
+          subtitle={intl.formatMessage({
+            id: "analyzer.deliveryIssues.attention.subtitle",
+          })}
+          actionButtonLabel={intl.formatMessage({
+            id: "analyzer.deliveryIssues.attention.review",
+          })}
+          onActionButtonClick={() =>
+            history.push({
+              pathname: "/AnalyzerResults",
+              search: "?view=import-issues",
+            })
+          }
         />
       )}
 
@@ -606,6 +690,12 @@ const AnalyzersList = () => {
                     id: "analyzer.status.offline",
                   }),
                 },
+                {
+                  id: "RETIRED",
+                  text: intl.formatMessage({
+                    id: "analyzer.status.retired",
+                  }),
+                },
               ]}
               itemToString={(item) => (item ? item.text : "")}
               selectedItem={
@@ -634,12 +724,23 @@ const AnalyzersList = () => {
               size="lg"
             />
           </Column>
+          <Column lg={4} md={4} sm={4}>
+            <Checkbox
+              id="analyzer-show-retired"
+              data-testid="analyzer-show-retired"
+              labelText={intl.formatMessage({
+                id: "analyzer.filter.showRetired",
+              })}
+              checked={listIncludeRetired}
+              onChange={(_event, { checked }) => toggleRetired(checked)}
+            />
+          </Column>
         </Grid>
       </div>
 
       <Grid>
         <Column lg={16} md={8} sm={4}>
-          {loading ? (
+          {loading && analyzers.length === 0 ? (
             <div data-testid="analyzers-loading">
               <DataTableSkeleton
                 columnCount={headers.length}
@@ -651,6 +752,7 @@ const AnalyzersList = () => {
           ) : (
             <TableContainer
               data-testid="analyzers-table-container"
+              aria-busy={loading}
               className="analyzers-list-table-container"
             >
               <DataTable rows={rows} headers={headers} isSortable>
@@ -680,6 +782,13 @@ const AnalyzersList = () => {
                           (a) => a.id === row.id,
                         );
                         const unifiedStatus = analyzer?.status || "SETUP";
+                        const observation = analyzer
+                          ? connectionState(analyzer)
+                          : "checking";
+                        const receptionUnconfirmed =
+                          analyzer &&
+                          expectsReception(analyzer) &&
+                          observation !== "running";
 
                         return (
                           <TableRow
@@ -728,12 +837,19 @@ const AnalyzersList = () => {
                                   ACTIVE: "green",
                                   ERROR_PENDING: "red", // Carbon doesn't support "orange", use "red" for error states
                                   OFFLINE: "red",
+                                  RETIRED: "gray",
                                 };
-                                const statusColor =
-                                  statusColorMap[unifiedStatus] || "gray";
+                                const statusColor = receptionUnconfirmed
+                                  ? ["checking", "unknown"].includes(
+                                      observation,
+                                    )
+                                    ? "gray"
+                                    : "red"
+                                  : statusColorMap[unifiedStatus] || "gray";
                                 // Convert ERROR_PENDING to error_pending for i18n key
-                                const statusKey =
-                                  unifiedStatus === "ERROR_PENDING"
+                                const statusKey = receptionUnconfirmed
+                                  ? `analyzer.connection.live.${observation}`
+                                  : unifiedStatus === "ERROR_PENDING"
                                     ? "analyzer.status.error_pending"
                                     : `analyzer.status.${unifiedStatus.toLowerCase()}`;
                                 cellContent = (
@@ -805,20 +921,27 @@ const AnalyzersList = () => {
                                       }
                                       data-testid={`analyzer-action-quality-control-${row.id}`}
                                     />
-                                    {lifecycleActionsFor(unifiedStatus).map(
-                                      (action) => (
-                                        <OverflowMenuItem
-                                          key={action}
-                                          itemText={intl.formatMessage({
-                                            id: `analyzer.action.${action}`,
-                                          })}
-                                          onClick={() =>
-                                            openLifecycle(analyzer, action)
-                                          }
-                                          data-testid={`analyzer-action-${action}-${row.id}`}
-                                        />
-                                      ),
-                                    )}
+                                    {(unifiedStatus === "ACTIVE" &&
+                                    ["stopped", "attention"].includes(
+                                      observation,
+                                    )
+                                      ? ([
+                                          "reactivate",
+                                          ...lifecycleActionsFor(unifiedStatus),
+                                        ] as AnalyzerLifecycleAction[])
+                                      : lifecycleActionsFor(unifiedStatus)
+                                    ).map((action) => (
+                                      <OverflowMenuItem
+                                        key={action}
+                                        itemText={intl.formatMessage({
+                                          id: `analyzer.action.${action}`,
+                                        })}
+                                        onClick={() =>
+                                          openLifecycle(analyzer, action)
+                                        }
+                                        data-testid={`analyzer-action-${action}-${row.id}`}
+                                      />
+                                    ))}
                                   </OverflowMenu>
                                 ) : null;
                               }
@@ -848,7 +971,10 @@ const AnalyzersList = () => {
           analyzer={lifecycleAnalyzer}
           open
           onClose={closeLifecycle}
-          onConfirm={() => loadAnalyzers()}
+          onConfirm={(analyzerId) => {
+            refreshConnections(analyzerId);
+            reloadAnalyzers();
+          }}
         />
       )}
     </div>

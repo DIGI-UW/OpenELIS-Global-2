@@ -10,6 +10,7 @@ import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
@@ -20,6 +21,9 @@ public class SamplePatientEntryFormValidator implements Validator {
     private static final String WORKFLOW_TYPE_FIELD = "workflowType";
     private static final String WORKFLOW_ENVIRONMENTAL = "environmental";
     private static final String WORKFLOW_VECTOR = "vector";
+
+    @Autowired
+    private SampleOrderPartiesValidator orderPartiesValidator;
 
     @Override
     public boolean supports(Class<?> clazz) {
@@ -35,6 +39,7 @@ public class SamplePatientEntryFormValidator implements Validator {
             validateSampleXML(form.getSampleXML(), collectionDateRelation(form), errors);
         }
 
+        orderPartiesValidator.validate(form.getSampleOrderItems(), errors);
     }
 
     /**

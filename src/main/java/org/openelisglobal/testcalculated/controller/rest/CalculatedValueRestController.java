@@ -2,14 +2,18 @@ package org.openelisglobal.testcalculated.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.testcalculated.service.CalculationRuleViolation;
 import org.openelisglobal.testcalculated.service.ResultCalculationService;
 import org.openelisglobal.testcalculated.service.TestCalculationService;
 import org.openelisglobal.testcalculated.valueholder.Calculation;
@@ -31,13 +35,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.server.ResponseStatusException;
 
 @Controller
 @RequestMapping(value = "/rest/")
 public class CalculatedValueRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(CalculatedValueRestController.class);
+
+    static final String NOT_FOUND = "calculation.error.notFound";
+    static final String DESTINATION_NOT_COMPONENT = "calculation.error.destinationNotComponent";
+    static final String DESTINATION_NOT_NUMERIC = "calculation.error.destinationNotNumeric";
 
     @Autowired
     TypeOfSampleService typeOfSampleService;
@@ -68,16 +75,40 @@ public class CalculatedValueRestController {
 
     @PostMapping(value = "test-calculation", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public void saveReflexRule(HttpServletRequest request, @RequestBody Calculation calculation) {
-        normalizeBlankComponents(calculation);
-        validateDestination(calculation);
-        if (calculation.getId() != null) {
-            if (testCalculationService.get(calculation.getId()) != null) {
-                testCalculationService.update(calculation);
+    public ResponseEntity<Map<String, Object>> saveReflexRule(HttpServletRequest request,
+            @RequestBody Calculation calculation) {
+        try {
+            validateDestination(calculation);
+            if (calculation.getId() != null && stored(calculation.getId()) == null) {
+                return refusal(HttpStatus.NOT_FOUND, new CalculationRuleViolation(NOT_FOUND, Map.of()));
             }
+            testCalculationService.validateRule(calculation, !Boolean.FALSE.equals(calculation.getActive()));
+        } catch (CalculationRuleViolation violation) {
+            return refusal(HttpStatus.BAD_REQUEST, violation);
+        }
+        normalizeBlankComponents(calculation);
+        if (calculation.getId() != null) {
+            testCalculationService.update(calculation);
         } else {
             testCalculationService.save(calculation);
         }
+        return ResponseEntity.ok().build();
+    }
+
+    /** The saved rule with this id, or null when there is none. */
+    private Calculation stored(Integer id) {
+        try {
+            return testCalculationService.get(id);
+        } catch (ObjectNotFoundException e) {
+            return null;
+        }
+    }
+
+    private static ResponseEntity<Map<String, Object>> refusal(HttpStatus status, CalculationRuleViolation violation) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("messageKey", violation.getMessageKey());
+        body.put("messageArgs", violation.getMessageArgs());
+        return ResponseEntity.status(status).body(body);
     }
 
     /**
@@ -114,41 +145,45 @@ public class CalculatedValueRestController {
         TestResultComponent destination = testResultComponentService.getActiveComponentsByTestId(testId).stream()
                 .filter(c -> componentId.equals(c.getId())).findFirst().orElse(null);
         if (destination == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "componentId is not an active component of the resulting test: " + componentId);
+            throw new CalculationRuleViolation(DESTINATION_NOT_COMPONENT, Map.of());
         }
         String destinationType = ruleResultScope.resultTypeForComponent(testId, componentId,
                 testService.getResultType(testService.get(testId)));
         if (!"N".equals(destinationType)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "a calculated value is numeric and cannot be written to component " + destination.getLabel()
-                            + ", which reports " + destinationType);
+            throw new CalculationRuleViolation(DESTINATION_NOT_NUMERIC,
+                    Map.of("component", String.valueOf(destination.getLabel())));
         }
     }
 
     @PostMapping(value = "deactivate-test-calculation/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Void> deactivateReflexRule(@PathVariable Integer id) {
+    public ResponseEntity<Map<String, Object>> deactivateReflexRule(@PathVariable Integer id) {
         return setReflexRuleActive(id, false);
     }
 
     /**
      * OGC-655: counterpart to deactivate. Flips the Active flag back to true so the
-     * UI Toggle Rule control has a round-trip persistence path.
+     * UI Toggle Rule control has a round-trip persistence path. Switching a rule on
+     * is refused when it would give a test a second active rule or close a loop.
      */
     @PostMapping(value = "activate-test-calculation/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Void> activateReflexRule(@PathVariable Integer id) {
+    public ResponseEntity<Map<String, Object>> activateReflexRule(@PathVariable Integer id) {
         return setReflexRuleActive(id, true);
     }
 
-    private ResponseEntity<Void> setReflexRuleActive(Integer id, boolean active) {
+    private ResponseEntity<Map<String, Object>> setReflexRuleActive(Integer id, boolean active) {
         try {
-            Calculation calculation = testCalculationService.get(id);
+            Calculation calculation = stored(id);
             if (calculation == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            if (active) {
+                testCalculationService.validateRule(calculation, true);
             }
             calculation.setActive(active);
             testCalculationService.update(calculation);
             return ResponseEntity.ok().build();
+        } catch (CalculationRuleViolation violation) {
+            return refusal(HttpStatus.BAD_REQUEST, violation);
         } catch (RuntimeException e) {
             // Replaces a silent empty catch that swallowed every error (OGC-655) —
             // the FE used to fire-and-forget without status feedback.

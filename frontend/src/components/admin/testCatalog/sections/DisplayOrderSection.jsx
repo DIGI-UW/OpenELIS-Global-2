@@ -12,6 +12,7 @@ import {
   Button,
   Loading,
   InlineNotification,
+  Tag,
 } from "@carbon/react";
 import { ArrowUp, ArrowDown, Draggable } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -29,9 +30,10 @@ import { NotificationContext } from "../../../layout/Layout";
  * a sample-type picker rather than the editor's testId. Reordering is available
  * by drag (native HTML5, the SortableList idiom) or by Arrow Up/Down buttons
  * (FR-009 keyboard alternative), and auto-saves on every change to
- * sampletype_test.display_order (OGC-985).
+ * sampletype_test.display_order (OGC-985). Opened from a test, it starts on that
+ * test's own sample type and marks the test's row.
  */
-const DisplayOrderSection = () => {
+const DisplayOrderSection = ({ testId }) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
@@ -44,7 +46,8 @@ const DisplayOrderSection = () => {
   const [saving, setSaving] = useState(false);
   const dragIndex = useRef(null);
 
-  // Load the sample-type picker once; auto-select the first so the list renders.
+  // Load the sample-type picker, then select the edited test's own sample type
+  // (its primary, else the first it is linked to), else the first in the list.
   useEffect(() => {
     getFromOpenElisServer("/rest/test-catalog/sample-types", (res) => {
       if (!res) {
@@ -53,13 +56,27 @@ const DisplayOrderSection = () => {
         return;
       }
       setSampleTypes(res);
-      if (res.length > 0) {
-        setSelectedTypeId(res[0].id);
-      } else {
+      if (res.length === 0) {
         setLoading(false);
+        return;
       }
+      const listed = (id) => id && res.some((t) => t.id === id);
+      if (!testId) {
+        setSelectedTypeId(res[0].id);
+        return;
+      }
+      getFromOpenElisServer(
+        `/rest/test-catalog/tests/${testId}/basic-info`,
+        (info) => {
+          const candidates = [
+            info && info.sampleTypeId,
+            ...((info && info.sampleTypeIds) || []),
+          ];
+          setSelectedTypeId(candidates.find(listed) || res[0].id);
+        },
+      );
     });
-  }, []);
+  }, [testId]);
 
   const loadOrder = (sampleTypeId) => {
     if (!sampleTypeId) {
@@ -221,7 +238,18 @@ const DisplayOrderSection = () => {
                 onDrop={onDrop(i)}
               >
                 <TableCell>{t.displayOrder}</TableCell>
-                <TableCell>{t.testName}</TableCell>
+                <TableCell>
+                  {t.testName}
+                  {testId && t.testId === testId && (
+                    <Tag
+                      type="blue"
+                      size="sm"
+                      data-testid="display-order-current-test"
+                    >
+                      <FormattedMessage id="label.testCatalog.displayOrder.currentTest" />
+                    </Tag>
+                  )}
+                </TableCell>
                 <TableCell>
                   <Draggable
                     aria-label={intl.formatMessage({

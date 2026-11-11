@@ -2,11 +2,10 @@ package org.openelisglobal.observationhistorytype.service;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -57,7 +56,7 @@ public class ObservationHistoryTypeConfigurationHandler implements DomainConfigu
     @Override
     @Transactional
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
 
         String headerLine = reader.readLine();
         if (headerLine == null) {

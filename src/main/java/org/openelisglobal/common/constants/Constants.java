@@ -1,5 +1,7 @@
 package org.openelisglobal.common.constants;
 
+import java.util.List;
+
 public class Constants {
 
     private Constants() {
@@ -19,6 +21,14 @@ public class Constants {
     public static final String ROLE_RESULTS = "Results";
     public static final String ROLE_VALIDATION = "Validation";
     public static final String ROLE_REPORTS = "Reports";
+    // qa.* permission-key namespace (QA release permission model, liquibase/qa/004)
+    public static final String QA_PERMISSION_PREFIX = "qa.";
+    // mod.<module-id>.<key>: the permission keys installed modules declare in their
+    // manifests (OGC-1579)
+    public static final String MODULE_PERMISSION_PREFIX = "mod.";
+    // Module-name prefixes whose grants become authorities and session permissions
+    public static final List<String> PERMISSION_MODULE_PREFIXES = List.of(QA_PERMISSION_PREFIX, "dashboards.",
+            MODULE_PERMISSION_PREFIX, "fhir.read.");
     public static final String ROLE_PATHOLOGIST = "Pathologist";
     public static final String ROLE_EQA_COORDINATOR = "EQA Coordinator";
     // roles groups

@@ -1,5 +1,6 @@
 package org.openelisglobal.observationhistory.service;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -263,5 +264,18 @@ public class ObservationHistoryServiceImpl extends AuditableBaseObjectServiceImp
     @Transactional(readOnly = true)
     public List<ObservationHistory> getObservationHistoriesBySampleId(String sampleId) {
         return getBaseObjectDAO().getObservationHistoriesBySampleId(sampleId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ObservationHistory> getObservationHistoriesByType(ObservationType type) {
+        if (observationTypeToIdMap.isEmpty()) {
+            initialize();
+        }
+        String typeId = getObservationTypeIdForType(type);
+        if (GenericValidator.isBlankOrNull(typeId)) {
+            return new ArrayList<>();
+        }
+        return baseObjectDAO.getObservationHistoriesByType(typeId);
     }
 }

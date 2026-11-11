@@ -7,11 +7,11 @@ system, Tomcat installation, or entrypoint. Configuration stays at
 `/opt/openelis/config/hapi_application.yaml`; TLS settings and runtime user 8443
 are preserved. The Tomcat installation is now `/usr/local/tomcat`. Deployments
 that override the server configuration by mounting a file at the old Bitnami
-path (`/opt/bitnami/tomcat/conf/server.xml`, as `dev.docker-compose.yml` and the
-installer template do) keep working: the image entrypoint
-(`fhir/docker-entrypoint.sh`) applies such a file to the Tomcat configuration
-directory before start-up. Deployments that pass `-Dhapi.ssl.*` through
-`CATALINA_OPTS` use the baked `server.xml` as before.
+path (`/opt/bitnami/tomcat/conf/server.xml`, as the source harness and installer
+template do) keep working: the image entrypoint (`fhir/docker-entrypoint.sh`)
+applies such a file to the Tomcat configuration directory before start-up.
+Deployments that pass `-Dhapi.ssl.*` through `CATALINA_OPTS` use the baked
+`server.xml` as before.
 
 This addresses the expired Bullseye package metadata that prevented clean image
 builds. It does not constitute a HAPI application upgrade or a PostgreSQL

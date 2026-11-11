@@ -22,11 +22,14 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.mockito.ArgumentCaptor;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
+import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.panelterminology.service.PanelTerminologyMappingService;
+import org.openelisglobal.test.service.LegacyTestVariantFinder;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -55,6 +58,7 @@ public class PanelConfigurationHandlerTest {
     private TypeOfSampleService typeOfSampleService;
     private TypeOfSamplePanelService typeOfSamplePanelService;
     private PanelTerminologyMappingService panelTerminologyMappingService;
+    private LegacyTestVariantFinder legacyVariantFinder;
 
     private DisplayListService previousDisplayListInstance;
 
@@ -73,6 +77,7 @@ public class PanelConfigurationHandlerTest {
         typeOfSampleService = mock(TypeOfSampleService.class);
         typeOfSamplePanelService = mock(TypeOfSamplePanelService.class);
         panelTerminologyMappingService = mock(PanelTerminologyMappingService.class);
+        legacyVariantFinder = mock(LegacyTestVariantFinder.class);
 
         inject("panelService", panelService);
         inject("panelItemService", panelItemService);
@@ -82,6 +87,8 @@ public class PanelConfigurationHandlerTest {
         inject("typeOfSampleService", typeOfSampleService);
         inject("typeOfSamplePanelService", typeOfSamplePanelService);
         inject("panelTerminologyMappingService", panelTerminologyMappingService);
+        inject("legacyVariantFinder", legacyVariantFinder);
+        when(legacyVariantFinder.find(anyString())).thenReturn(Collections.emptyList());
 
         // New panel path, deterministic ids, empty reconcile lists.
         when(panelService.getPanelByName(anyString())).thenReturn(null);
@@ -178,6 +185,75 @@ public class PanelConfigurationHandlerTest {
 
         verify(panelService, never()).insert(any(Panel.class));
         verify(panelService, never()).update(any(Panel.class));
+    }
+
+    /**
+     * OGC-1232 — the import holds the one rule the editor holds: a panel never mixes
+     * domains. A row that would file a CLINICAL member under an ENVIRONMENTAL panel
+     * is skipped, nothing of it is written, and the reason names the test.
+     */
+    @Test
+    public void domainNotSharedByAMember_skipsTheRowNamingTheTest() throws Exception {
+        when(testService.getTestByDescription("Glucose")).thenReturn(test("7", "Glucose", "CLINICAL"));
+        String csv = "panelName,tests,domain\n" + "Water Panel,Glucose,ENVIRONMENTAL\n";
+
+        handler.processConfiguration(stream(csv), "panels.csv");
+
+        verify(panelService, never()).insert(any(Panel.class));
+        verify(panelService, never()).update(any(Panel.class));
+        verify(panelItemService, never()).insert(any(PanelItem.class));
+        CsvLoadSummary summary = handler.getLastSummary();
+        assertEquals(1, summary.getSkipped());
+        String reason = summary.getRows().get(0).reason();
+        assertEquals("the reason names the domain and the offending test",
+                "domain ENVIRONMENTAL is not the domain of every member test: Glucose (CLINICAL)", reason);
+    }
+
+    @Test
+    public void domainSharedByEveryMember_loadsTheRowAndItsMembers() throws Exception {
+        when(testService.getTestByDescription("Coliforms")).thenReturn(test("8", "Coliforms", "ENVIRONMENTAL"));
+        String csv = "panelName,tests,domain\n" + "Water Panel,Coliforms,ENVIRONMENTAL\n";
+
+        handler.processConfiguration(stream(csv), "panels.csv");
+
+        ArgumentCaptor<Panel> panelCaptor = ArgumentCaptor.forClass(Panel.class);
+        verify(panelService).update(panelCaptor.capture());
+        assertEquals("ENVIRONMENTAL", panelCaptor.getValue().getDomain());
+        ArgumentCaptor<PanelItem> itemCaptor = ArgumentCaptor.forClass(PanelItem.class);
+        verify(panelItemService).insert(itemCaptor.capture());
+        assertEquals("8", itemCaptor.getValue().getTest().getId());
+        assertEquals(1, handler.getLastSummary().getCreated());
+    }
+
+    /**
+     * Without a domain column the panel keeps its stored domain, and a member from
+     * another domain is refused against THAT domain, exactly as the editor's Tests
+     * write refuses it.
+     */
+    @Test
+    public void existingPanelWithoutADomainColumn_refusesAMemberOutsideItsStoredDomain() throws Exception {
+        Panel existing = new Panel();
+        existing.setId("9");
+        existing.setPanelName("Vector Mosquito Panel");
+        existing.setDomain("VECTOR");
+        when(panelService.getPanelByName("Vector Mosquito Panel")).thenReturn(existing);
+        when(testService.getTestByDescription("Glucose")).thenReturn(test("7", "Glucose", "CLINICAL"));
+        String csv = "panelName,tests\n" + "Vector Mosquito Panel,Glucose\n";
+
+        handler.processConfiguration(stream(csv), "panels.csv");
+
+        verify(panelService, never()).update(any(Panel.class));
+        verify(panelItemService, never()).insert(any(PanelItem.class));
+        assertEquals("domain VECTOR is not the domain of every member test: Glucose (CLINICAL)",
+                handler.getLastSummary().getRows().get(0).reason());
+    }
+
+    private static org.openelisglobal.test.valueholder.Test test(String id, String description, String domain) {
+        org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
+        test.setId(id);
+        test.setDescription(description);
+        test.setDomain(domain);
+        return test;
     }
 
     @Test

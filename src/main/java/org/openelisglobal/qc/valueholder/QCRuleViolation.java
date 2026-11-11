@@ -3,6 +3,7 @@ package org.openelisglobal.qc.valueholder;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import java.sql.Timestamp;
+import java.util.List;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
@@ -38,8 +39,10 @@ public class QCRuleViolation extends BaseObject<String> {
     // instrumentId and testId reference Analyzer.id and Test.id (String,
     // bridged to NUMERIC via LIMSStringNumberUserType). Match that pattern
     // here — per PR #3112 (OGC-346).
-    @NotNull
-    @Column(name = "instrument_id", nullable = false)
+    // Nullable since OGC-1147: a MANUAL_FAIL violation is raised off a bench
+    // control, which has no analyzer. Analyzer-sourced violations still always
+    // populate it.
+    @Column(name = "instrument_id")
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String instrumentId;
 
@@ -164,5 +167,17 @@ public class QCRuleViolation extends BaseObject<String> {
 
     public void setSystemUserId(Integer systemUserId) {
         this.systemUserId = systemUserId;
+    }
+
+    /**
+     * The severity a QC run carries once its violations are rolled up: REJECTION if
+     * any one of them rejects, WARNING if it only broke warning rules, and null
+     * when the run broke none.
+     */
+    public static String worstSeverity(List<QCRuleViolation> violations) {
+        if (violations.stream().anyMatch(v -> "REJECTION".equals(v.getSeverity()))) {
+            return "REJECTION";
+        }
+        return violations.isEmpty() ? null : "WARNING";
     }
 }

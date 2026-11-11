@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <sample id="8970" accession_number="MGMT-001" status_id="1"
+        entered_date="2026-02-28 23:59:00" received_date="2026-02-28 23:59:00"
+        sys_user_id="1" />
+    <sample id="8971" accession_number="MGMT-002" status_id="1"
+        entered_date="2026-03-01 00:00:00" received_date="2026-03-01 00:00:00"
+        sys_user_id="1" />
+    <sample id="8972" accession_number="MGMT-003" status_id="1"
+        entered_date="2026-03-31 23:30:00" received_date="2026-03-31 23:30:00"
+        sys_user_id="1" />
+    <sample id="8973" accession_number="MGMT-004" status_id="1"
+        entered_date="2026-04-01 00:00:00" received_date="2026-04-01 00:00:00"
+        sys_user_id="1" />
+</dataset>

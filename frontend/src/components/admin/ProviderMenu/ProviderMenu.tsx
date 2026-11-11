@@ -1,4 +1,11 @@
 import React, { useContext, useState, useEffect } from "react";
+import {
+  DEFAULT_SERVER_PAGE_SIZE,
+  serverPageSizeFrom,
+  startingRecNoFor,
+} from "../../utils/offsetPaging";
+import { serverPageArrowsProps } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
 import type { ChangeEvent, ReactNode, SyntheticEvent } from "react";
 import {
   Heading,
@@ -132,21 +139,22 @@ function ProviderMenu() {
   const intl = useIntl();
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [modifyButton, setModifyButton] = useState(true);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
-  const [startingRecNo, setStartingRecNo] = useState<number | string>(1);
   const [providerMenuListShow, setProviderMenuListShow] = useState<
     ProviderTableRow[]
   >([]);
   const [fromRecordCount, setFromRecordCount] = useState("");
   const [toRecordCount, setToRecordCount] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
-  const [paging, setPaging] = useState(1);
+  const [serverPageSize, setServerPageSize] = useState(
+    DEFAULT_SERVER_PAGE_SIZE,
+  );
+  const startingRecNo = startingRecNoFor(page, serverPageSize);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [currentProvider, setCurrentProvider] =
@@ -191,7 +199,7 @@ function ProviderMenu() {
   const { data: providerMenuList } = useServerData<ProviderMenuResponse>(
     panelSearchTerm
       ? `/rest/SearchProviderMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}${titleParam}`
-      : `/rest/ProviderMenu?paging=${paging}&startingRecNo=${startingRecNo}${titleParam}`,
+      : `/rest/ProviderMenu?startingRecNo=${startingRecNo}${titleParam}`,
   );
   const invalidateServerData = useInvalidateServerData();
 
@@ -224,6 +232,14 @@ function ProviderMenu() {
       setFromRecordCount(providerMenuList.fromRecordCount!);
       setToRecordCount(providerMenuList.toRecordCount!);
       setTotalRecordCount(providerMenuList.totalRecordCount!);
+      setServerPageSize((previous) =>
+        serverPageSizeFrom(
+          providerMenuList.fromRecordCount,
+          providerMenuList.toRecordCount,
+          providerMenuList.totalRecordCount,
+          previous,
+        ),
+      );
       setProviderMenuListShow(newProviderMenuList);
     }
   }, [providerMenuList]);
@@ -244,8 +260,7 @@ function ProviderMenu() {
   useEffect(() => {
     if (isSearching && panelSearchTerm === "") {
       setIsSearching(false);
-      setPaging(1);
-      setStartingRecNo(1);
+      setPage(1);
     }
   }, [isSearching, panelSearchTerm]);
 
@@ -281,34 +296,26 @@ function ProviderMenu() {
     );
   }
 
-  const handlePageChange = ({
-    page,
-    pageSize,
-  }: {
-    page: number;
-    pageSize: number;
-  }) => {
-    setPage(page);
-    setPageSize(pageSize);
-    setSelectedRowIds([]);
+  const handlePageChange = ({ page: newPage }: { page: number }) => {
+    if (newPage !== page) {
+      setPage(newPage);
+      setSelectedRowIds([]);
+    }
   };
-
-  const handleNextPage = () => {
-    setPaging((pager) => Math.max(pager, 2));
-    setStartingRecNo(fromRecordCount);
-    setSelectedRowIds([]);
-  };
-
-  const handlePreviousPage = () => {
-    setPaging((pager) => Math.max(pager - 1, 1));
-    setStartingRecNo(Math.max(fromRecordCount as unknown as number, 1));
-    setSelectedRowIds([]);
-  };
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page,
+      totalPages: Math.max(
+        Math.ceil((Number(totalRecordCount) || 0) / serverPageSize),
+        1,
+      ),
+    },
+    onPageRequest: (pageNumber) => handlePageChange({ page: pageNumber }),
+  });
 
   const handlePanelSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     setIsSearching(true);
-    setPaging(1);
-    setStartingRecNo(1);
+    setPage(1);
     const query = event.target.value.toLowerCase();
     setPanelSearchTerm(query);
     setSelectedRowIds([]);
@@ -521,8 +528,6 @@ function ProviderMenu() {
           deleteDeactivate={deleteDeactivateProvider}
           openUpdateModal={openUpdateModal}
           openAddModal={openAddModal}
-          handlePreviousPage={handlePreviousPage}
-          handleNextPage={handleNextPage}
           fromRecordCount={fromRecordCount}
           toRecordCount={toRecordCount}
           totalRecordCount={totalRecordCount}
@@ -749,11 +754,9 @@ function ProviderMenu() {
           <>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
+                {arrows.show && <ServerPageArrows {...arrows} />}
                 <DataTable
-                  rows={providerMenuListShow.slice(
-                    (page - 1) * pageSize,
-                    page * pageSize,
-                  )}
+                  rows={providerMenuListShow}
                   headers={[
                     {
                       key: "select",
@@ -849,9 +852,10 @@ function ProviderMenu() {
                 <Pagination
                   onChange={handlePageChange}
                   page={page}
-                  pageSize={pageSize}
-                  pageSizes={[10, 20]}
-                  totalItems={providerMenuListShow.length}
+                  pageSize={serverPageSize}
+                  pageSizes={[serverPageSize]}
+                  pageSizeInputDisabled
+                  totalItems={Number(totalRecordCount) || 0}
                   forwardText={intl.formatMessage({
                     id: "pagination.forward",
                   })}

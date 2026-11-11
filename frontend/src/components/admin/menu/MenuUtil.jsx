@@ -7,7 +7,10 @@ export const MenuCheckBox = (props) => {
   const intl = useIntl();
 
   const setMenuIsActiveToValueIncludeChildren = (value, currentMenuItem) => {
-    let newCurrentMenuItem = { ...currentMenuItem };
+    let newCurrentMenuItem = {
+      ...currentMenuItem,
+      menu: { ...currentMenuItem.menu },
+    };
     if (newCurrentMenuItem.childMenus) {
       newCurrentMenuItem.childMenus = newCurrentMenuItem.childMenus.map(
         (childMenuItem) => {

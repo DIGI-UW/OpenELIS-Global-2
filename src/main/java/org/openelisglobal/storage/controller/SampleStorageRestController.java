@@ -597,8 +597,9 @@ public class SampleStorageRestController extends BaseRestController {
      *
      * <p>
      * OGC-1026 (Results Entry v3 R7): partial use decrements the remaining quantity
-     * (never below zero); {@code markUsedUp} zeroes it. Exhaustion is remaining ==
-     * 0 — disposal remains an explicit follow-up via /dispose.
+     * and answers 400 for an amount above it; {@code markUsedUp} zeroes it.
+     * Exhaustion is remaining == 0 — disposal remains an explicit follow-up via
+     * /dispose.
      *
      * @param form SampleUsageForm containing sampleItemId (flexible identifier),
      *             amountUsed (decimal string, required unless markUsedUp),

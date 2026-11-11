@@ -9,7 +9,9 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class RoleServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     RoleService roleService;

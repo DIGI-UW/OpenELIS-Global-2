@@ -125,7 +125,6 @@
         <mapping resource="hibernate/hbm/OrganizationAddress.hbm.xml" />
         <mapping resource="hibernate/hbm/PersonAddress.hbm.xml" />
         <mapping resource="hibernate/hbm/OrganizationContact.hbm.xml" />
-        <mapping resource="hibernate/hbm/Menu.hbm.xml" />
         <mapping resource="hibernate/hbm/CronScheduler.hbm.xml" />
         <mapping resource="hibernate/hbm/ReportExternalExport.hbm.xml" />
         <mapping resource="hibernate/hbm/ReportQueueType.hbm.xml" />

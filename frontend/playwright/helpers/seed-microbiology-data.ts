@@ -66,6 +66,11 @@ export interface SeededMicrobiologyCase {
   alternateMethodId?: string;
   sampleTypeId?: string;
   cultureTestId?: string;
+  mediumItemId?: number;
+  isolateSampleTypeId?: string;
+  referralOrganizationId?: string;
+  referralReasonId?: string;
+  followUpTestId?: string;
   tbCultureTestId?: string;
   nonCultureTestId?: string;
 }
@@ -124,9 +129,18 @@ export interface SeededMicrobiologyWhonetExport extends SeededMicrobiologyRefere
 export type SeededFinalMicrobiologyCase = SeededReviewedMicrobiologyCase;
 
 type MicrobiologyScenario =
+  | "UX_CONTEXT"
+  | "M8"
+  | "AST_REPORTING"
   | "CASE"
   | "MVP"
   | "WORKLIST"
+  | "NO_GROWTH_REPORTING"
+  | "CULTURE_WORKSPACE"
+  | "ISOLATE_WORKSPACE"
+  | "RECEIVED_ISOLATE"
+  | "AUTOMATION_BENCH"
+  | "INITIAL_TESTING"
   | "M3"
   | "M4"
   | "R1"
@@ -157,7 +171,7 @@ interface MicrobiologyCaseFixture {
   };
 }
 
-type CulturePurpose = "CLINICAL_DIAGNOSTIC" | "ACTIVE_SCREENING";
+type CulturePurpose = "DIAGNOSTIC" | "SCREENING" | "SURVEY_OR_STUDY";
 
 interface MicrobiologyAstRunFixture {
   id: string;
@@ -248,7 +262,7 @@ export async function seedMicrobiologyCulturePurposeCase(
       {
         headers: { "X-CSRF-Token": await getCsrfToken(page) },
         data: {
-          culturePurpose: "CLINICAL_DIAGNOSTIC",
+          culturePurpose: "DIAGNOSTIC",
           cultureMethodId: seeded.methodId,
           patientOrigin: "",
           admissionDate: null,
@@ -272,16 +286,6 @@ export function seedMicrobiologyWorklistCase(
   page: Page,
 ): Promise<SeededMicrobiologyCase> {
   return provisionMicrobiologyScenario(page, "WORKLIST");
-}
-
-export function seedMicrobiologyClassificationCase(
-  page: Page,
-): Promise<SeededMicrobiologyCase> {
-  return provisionMicrobiologyScenario(
-    page,
-    "R1",
-    `playwright-r1-classification-${randomUUID()}`,
-  );
 }
 
 export async function seedMicrobiologyReferenceAdmin(
@@ -325,6 +329,148 @@ const hasAllAntibiotics = (
     run.readings.some((reading) => reading.antibioticId === antibiotic.id),
   );
 
+export async function ensureWorkspaceGrowthCulture(
+  page: Page,
+  seeded: SeededMicrobiologyCase,
+) {
+  const root = `${API_PREFIX}/rest/microbiology/cases/${seeded.caseId}/cultures`;
+  const rows = await requireJsonResponse<{ id: string; outcome: string }[]>(
+    "Load growth sources",
+    await page.request.get(root),
+  );
+  const growth = rows.find((row) => row.outcome === "GROWTH");
+  if (growth) return growth.id;
+  const options = await requireJsonResponse<{
+    media: {
+      id: number;
+      name: string;
+      lots: { id: number; lotNumber: string }[];
+    }[];
+    atmospheres: { id: string; value: string }[];
+  }>("Load culture choices", await page.request.get(`${root}/options`));
+  const medium = options.media.find((m) =>
+    m.lots.some((lot) => lot.lotNumber === "UAT-MICRO-MEDIA-FEFO"),
+  );
+  const lot = medium?.lots.find((l) => l.lotNumber === "UAT-MICRO-MEDIA-FEFO");
+  const atmosphere = options.atmospheres.find((a) => a.value === "Aerobic");
+  if (!medium || !lot || !atmosphere || !seeded.collectionDate)
+    throw new Error("Growth-source fixture catalog incomplete");
+  const headers = { "X-CSRF-Token": await getCsrfToken(page) };
+  const created = await requireJsonResponse<
+    { id: string; containerIdentifier: string }[]
+  >(
+    "Inoculate fixture culture",
+    await page.request.post(root, {
+      headers,
+      data: {
+        sourceSampleItemId: seeded.sampleItemId,
+        containerIdentifier: "AST-FIXTURE-GROWTH",
+        mediumItemId: medium.id,
+        lotId: lot.id,
+        atmosphereId: atmosphere.id,
+        duration: 24,
+        durationUnit: "HOURS",
+        inoculatedAt: Date.parse(seeded.collectionDate),
+      },
+    }),
+  );
+  const row = created.find(
+    (r) => r.containerIdentifier === "AST-FIXTURE-GROWTH",
+  );
+  if (!row) throw new Error("Fixture culture missing after inoculation");
+  await requireJsonResponse(
+    "Record fixture growth",
+    await page.request.post(`${root}/${row.id}/outcome`, {
+      headers,
+      data: { outcome: "GROWTH" },
+    }),
+  );
+  return row.id;
+}
+
+async function createWorkspaceIsolate(
+  page: Page,
+  seeded: SeededMicrobiologyCase,
+  colonyMorphology: string,
+  significance = "CLINICALLY_SIGNIFICANT",
+): Promise<MicrobiologyIsolateFixture> {
+  const cultureId = await ensureWorkspaceGrowthCulture(page, seeded);
+  const workspace = await requireJsonResponse<{
+    isolates: {
+      id: string;
+      label: string;
+      gramStain: string;
+      colonyMorphology: string;
+      significance: string;
+    }[];
+  }>(
+    "Pick fixture isolate",
+    await page.request.post(
+      `${API_PREFIX}/rest/microbiology/cases/${seeded.caseId}/isolates`,
+      {
+        headers: { "X-CSRF-Token": await getCsrfToken(page) },
+        data: {
+          cultureId,
+          gramStain: "Gram negative rods",
+          colonyMorphology,
+          significance:
+            significance === "CLINICALLY_SIGNIFICANT"
+              ? "SIGNIFICANT"
+              : significance,
+        },
+      },
+    ),
+  );
+  const isolate = workspace.isolates.find(
+    (i) => i.colonyMorphology === colonyMorphology,
+  );
+  if (!isolate) throw new Error("Fixture isolate missing after pick");
+  return {
+    ...isolate,
+    isolateLabel: isolate.label,
+    organismId: "",
+    identificationStatus: "PRELIMINARY",
+  };
+}
+
+async function identifyWorkspaceIsolate(
+  page: Page,
+  seeded: SeededMicrobiologyCase,
+  isolateId: string,
+  organismId: string,
+  significance = "CLINICALLY_SIGNIFICANT",
+) {
+  const root = `${API_PREFIX}/rest/microbiology/cases/${seeded.caseId}/isolates`;
+  const workspace = await requireJsonResponse<{
+    isolates: { id: string; version: string; organismId: string }[];
+  }>("Load fixture identification", await page.request.get(root));
+  const isolate = workspace.isolates.find((i) => i.id === isolateId);
+  if (!isolate || !seeded.methodId || !seeded.collectionDate)
+    throw new Error("Fixture identification data missing");
+  await requireJsonResponse(
+    "Identify fixture isolate",
+    await page.request.post(
+      `${root}/${isolateId}/${isolate.organismId ? "reidentify" : "identify"}`,
+      {
+        headers: { "X-CSRF-Token": await getCsrfToken(page) },
+        data: {
+          organismId,
+          identificationStatus: "FINAL",
+          identificationMethod: seeded.methodId,
+          confidence: 99.5,
+          identifiedAt: Date.parse(seeded.collectionDate),
+          significance:
+            significance === "CLINICALLY_SIGNIFICANT"
+              ? "SIGNIFICANT"
+              : significance,
+          version: isolate.version,
+          reason: "Prepare reviewed AST fixture",
+        },
+      },
+    ),
+  );
+}
+
 async function ensureReviewedAstIsolate(
   page: Page,
   seeded: SeededMicrobiologyReferenceAdmin,
@@ -338,40 +484,23 @@ async function ensureReviewedAstIsolate(
   const headers = { "X-CSRF-Token": await getCsrfToken(page) };
   const isolate =
     existing ||
-    (await requireJsonResponse<MicrobiologyIsolateFixture>(
-      `Create ${isolateLabel}`,
-      await page.request.post(`${API_PREFIX}/rest/microbiology/isolates`, {
-        headers,
-        data: {
-          caseId: seeded.caseId,
-          isolateLabel,
-          gramStain: "Gram negative rods",
-          colonyMorphology: "Lactose fermenting colonies",
-          significance,
-        },
-      }),
+    (await createWorkspaceIsolate(
+      page,
+      seeded,
+      `Lactose fermenting colonies (${isolateLabel})`,
+      significance,
     ));
   if (
     isolate.organismId !== organismId ||
     isolate.identificationStatus !== "CONFIRMED" ||
     isolate.significance !== significance
   ) {
-    await requireJsonResponse(
-      `Confirm ${isolateLabel}`,
-      await page.request.put(
-        `${API_PREFIX}/rest/microbiology/isolates/${isolate.id}/identification`,
-        {
-          headers,
-          data: {
-            organismId,
-            preliminaryOrganismText: organismText,
-            significance,
-            identificationStatus: "CONFIRMED",
-            identificationMethod: "MALDI_TOF",
-            identificationConfidence: 99.5,
-          },
-        },
-      ),
+    await identifyWorkspaceIsolate(
+      page,
+      seeded,
+      isolate.id,
+      organismId,
+      significance,
     );
   }
 
@@ -382,6 +511,13 @@ async function ensureReviewedAstIsolate(
       hasAllAntibiotics(candidate, antibiotics),
   );
   if (reviewed) {
+    await requireJsonResponse(
+      `Select ${isolateLabel} AST results for reporting`,
+      await page.request.post(
+        `${API_PREFIX}/rest/microbiology/ast/runs/${reviewed.id}/reportable`,
+        { headers, data: {} },
+      ),
+    );
     return;
   }
 
@@ -427,6 +563,13 @@ async function ensureReviewedAstIsolate(
       { headers, data: {} },
     ),
   );
+  await requireJsonResponse(
+    `Select ${isolateLabel} AST results for reporting`,
+    await page.request.post(
+      `${API_PREFIX}/rest/microbiology/ast/runs/${run.id}/reportable`,
+      { headers, data: {} },
+    ),
+  );
 }
 
 interface WhonetExportScenarioOptions {
@@ -469,7 +612,7 @@ async function seedMicrobiologyWhonetExportScenario(
   page: Page,
   {
     scenarioKey,
-    culturePurpose = "CLINICAL_DIAGNOSTIC",
+    culturePurpose = "DIAGNOSTIC",
     patientOrigin,
     specimenWhonetCode,
     unmappedSignificance = "CLINICALLY_SIGNIFICANT",
@@ -520,10 +663,10 @@ async function seedMicrobiologyWhonetExportScenario(
     ),
   );
   const mappedExisting = caseDetail.isolates.find(
-    (isolate) => isolate.isolateLabel === "WHONET-MAPPED",
+    (isolate) => isolate.organismId === reference.organismId,
   );
   const unmappedExisting = caseDetail.isolates.find(
-    (isolate) => isolate.isolateLabel === "WHONET-UNMAPPED",
+    (isolate) => isolate.organismId === reference.unmappedOrganismId,
   );
 
   if (
@@ -558,7 +701,8 @@ async function seedMicrobiologyWhonetExportScenario(
           data: {
             culturePurpose,
             cultureMethodId: reference.methodId,
-            patientOrigin: patientOrigin || "",
+            patientOrigin:
+              patientOrigin || caseDetail.orderDetail?.patientOrigin || "",
             admissionDate: patientOrigin ? "2026-08-17" : null,
             numberOfSets: 1,
             clinicalHistory: "Synthetic WHONET export filter fixture",
@@ -569,26 +713,26 @@ async function seedMicrobiologyWhonetExportScenario(
     );
   }
 
-  await ensureReviewedAstIsolate(
-    page,
-    reference,
-    reference.organismId,
-    "WHONET-MAPPED",
-    "Reference organism (UAT)",
-    antibiotics,
-    mappedExisting,
-  );
-  await ensureReviewedAstIsolate(
-    page,
-    reference,
-    reference.unmappedOrganismId,
-    "WHONET-UNMAPPED",
-    "WHONET mapping pending (UAT)",
-    antibiotics,
-    unmappedExisting,
-    unmappedSignificance,
-  );
   if (caseDetail.finalReleaseState !== "FINAL_RELEASED") {
+    await ensureReviewedAstIsolate(
+      page,
+      reference,
+      reference.organismId,
+      "WHONET-MAPPED",
+      "Reference organism (UAT)",
+      antibiotics,
+      mappedExisting,
+    );
+    await ensureReviewedAstIsolate(
+      page,
+      reference,
+      reference.unmappedOrganismId,
+      "WHONET-UNMAPPED",
+      "WHONET mapping pending (UAT)",
+      antibiotics,
+      unmappedExisting,
+      unmappedSignificance,
+    );
     const headers = { "X-CSRF-Token": await getCsrfToken(page) };
     const release = await requireJsonResponse<MicrobiologyReleaseFixture>(
       "Release M4 case for WHONET export",
@@ -617,7 +761,7 @@ export function seedMicrobiologyWhonetExport(
   page: Page,
 ): Promise<SeededMicrobiologyWhonetExport> {
   return seedMicrobiologyWhonetExportScenario(page, {
-    scenarioKey: "playwright-m4-whonet-export-r11",
+    scenarioKey: `playwright-m4-whonet-export-r11-${randomUUID()}`,
   });
 }
 
@@ -625,7 +769,7 @@ export function seedMicrobiologyWhonetExportFilters(
   page: Page,
 ): Promise<SeededMicrobiologyWhonetExport> {
   return seedMicrobiologyWhonetExportScenario(page, {
-    scenarioKey: "playwright-r9-whonet-export-filters-r11",
+    scenarioKey: `playwright-r9-whonet-export-filters-r11-${randomUUID()}`,
     patientOrigin: "INPATIENT",
     specimenWhonetCode: "BLD",
     unmappedSignificance: "CONTAMINANT",
@@ -636,23 +780,23 @@ export async function seedMicrobiologyCulturePurposeWhonetPopulation(
   page: Page,
 ) {
   const clinical = await seedMicrobiologyWhonetExportScenario(page, {
-    scenarioKey: "playwright-r11-culture-purpose-clinical",
-    culturePurpose: "CLINICAL_DIAGNOSTIC",
+    scenarioKey: `playwright-r11-culture-purpose-clinical-${randomUUID()}`,
+    culturePurpose: "DIAGNOSTIC",
     specimenWhonetCode: "BLD",
   });
   const screening = await seedMicrobiologyWhonetExportScenario(page, {
-    scenarioKey: "playwright-r11-culture-purpose-screening",
-    culturePurpose: "ACTIVE_SCREENING",
+    scenarioKey: `playwright-r11-culture-purpose-screening-${randomUUID()}`,
+    culturePurpose: "SCREENING",
     specimenWhonetCode: "BLD",
   });
-  const unspecified = await seedMicrobiologyWhonetExportScenario(page, {
-    scenarioKey: "playwright-r11-culture-purpose-unspecified",
-    culturePurpose: null,
+  const survey = await seedMicrobiologyWhonetExportScenario(page, {
+    scenarioKey: `playwright-r11-culture-purpose-survey-${randomUUID()}`,
+    culturePurpose: "SURVEY_OR_STUDY",
     specimenWhonetCode: "BLD",
   });
   if (
     clinical.exportDate !== screening.exportDate ||
-    clinical.exportDate !== unspecified.exportDate
+    clinical.exportDate !== survey.exportDate
   ) {
     throw new Error(
       "Culture-purpose WHONET fixtures must share an export date",
@@ -661,7 +805,7 @@ export async function seedMicrobiologyCulturePurposeWhonetPopulation(
   return {
     clinical,
     screening,
-    unspecified,
+    survey,
     exportDate: clinical.exportDate,
   };
 }
@@ -725,43 +869,18 @@ async function prepareMicrobiologyAstCase(
   }
   const headers = { "X-CSRF-Token": await getCsrfToken(page) };
 
-  const isolate = await requireJsonResponse<{ id: string }>(
-    "Create microbiology isolate",
-    await page.request.post(`${API_PREFIX}/rest/microbiology/isolates`, {
-      headers,
-      data: {
-        caseId: seeded.caseId,
-        isolateLabel: "ISO-1",
-        gramStain: "Gram negative rods",
-        colonyMorphology: "Synthetic lactose-fermenting colonies",
-        preliminaryOrganismText: "Escherichia coli",
-        significance: "CLINICALLY_SIGNIFICANT",
-      },
-    }),
+  const isolate = await createWorkspaceIsolate(
+    page,
+    seeded,
+    "Synthetic lactose-fermenting colonies",
   );
-  await requireJsonResponse(
-    "Confirm microbiology isolate",
-    await page.request.put(
-      `${API_PREFIX}/rest/microbiology/isolates/${isolate.id}/identification`,
-      {
-        headers,
-        data: {
-          organismId: seeded.organismId,
-          preliminaryOrganismText: "Escherichia coli",
-          significance: "CLINICALLY_SIGNIFICANT",
-          identificationStatus: "CONFIRMED",
-          identificationMethod: "MALDI_TOF",
-          identificationConfidence: 99.5,
-        },
-      },
-    ),
-  );
+  await identifyWorkspaceIsolate(page, seeded, isolate.id, seeded.organismId);
 
   const [panels, standards, antibiotics] = await Promise.all([
     requireJsonResponse<MicrobiologyReferenceOption[]>(
       "Load AST panels",
       await page.request.get(
-        `${API_PREFIX}/rest/microbiology/reference/ast-panels?workflowType=BACTERIOLOGY`,
+        `${API_PREFIX}/rest/microbiology/reference/ast-panels`,
       ),
     ),
     requireJsonResponse<MicrobiologyReferenceOption[]>(
@@ -868,7 +987,7 @@ export async function seedMicrobiologyWhonetWorklistHandoffCase(
       {
         headers: { "X-CSRF-Token": await getCsrfToken(page) },
         data: {
-          culturePurpose: "CLINICAL_DIAGNOSTIC",
+          culturePurpose: "DIAGNOSTIC",
           cultureMethodId: seeded.methodId,
           patientOrigin: "INPATIENT",
           admissionDate: null,
@@ -1002,7 +1121,7 @@ export async function seedDenseMicrobiologyCase(
     requireJsonResponse<MicrobiologyReferenceOption[]>(
       "Load AST panels",
       await page.request.get(
-        `${API_PREFIX}/rest/microbiology/reference/ast-panels?workflowType=BACTERIOLOGY`,
+        `${API_PREFIX}/rest/microbiology/reference/ast-panels`,
       ),
     ),
     requireJsonResponse<MicrobiologyReferenceOption[]>(
@@ -1034,35 +1153,16 @@ export async function seedDenseMicrobiologyCase(
   const isolateIds: string[] = [];
   let astReadingCount = 0;
   for (let isolateIndex = 1; isolateIndex <= 5; isolateIndex += 1) {
-    const isolate = await requireJsonResponse<{ id: string }>(
-      "Create dense-case isolate",
-      await page.request.post(`${API_PREFIX}/rest/microbiology/isolates`, {
-        headers,
-        data: {
-          caseId: seeded.caseId,
-          isolateLabel: `QISO-${isolateIndex}`,
-          gramStain: "Gram negative rods",
-          colonyMorphology: `Qualification morphology ${isolateIndex}`,
-          significance: "CLINICALLY_SIGNIFICANT",
-        },
-      }),
+    const isolate = await createWorkspaceIsolate(
+      page,
+      seeded,
+      `Qualification morphology ${isolateIndex}`,
     );
-    await requireJsonResponse(
-      "Identify dense-case isolate",
-      await page.request.put(
-        `${API_PREFIX}/rest/microbiology/isolates/${isolate.id}/identification`,
-        {
-          headers,
-          data: {
-            organismId: seeded.organismId,
-            preliminaryOrganismText: `Qualification organism ${isolateIndex}`,
-            significance: "CLINICALLY_SIGNIFICANT",
-            identificationStatus: "CONFIRMED",
-            identificationMethod: "MALDI_TOF",
-            identificationConfidence: 99.5,
-          },
-        },
-      ),
+    await identifyWorkspaceIsolate(
+      page,
+      seeded,
+      isolate.id,
+      seeded.organismId!,
     );
     isolateIds.push(isolate.id);
     for (let runIndex = 0; runIndex < 8; runIndex += 1) {
@@ -1135,3 +1235,36 @@ export async function seedFinalizedMicrobiologyCase(
 
   return seeded;
 }
+
+export function seedMicrobiologyInitialTestingCase(
+  page: Page,
+): Promise<SeededMicrobiologyCase> {
+  return provisionMicrobiologyScenario(page, "INITIAL_TESTING");
+}
+
+export const seedMicrobiologyNoGrowthReporting = (page: Page) =>
+  provisionMicrobiologyScenario(page, "NO_GROWTH_REPORTING");
+
+export const seedMicrobiologyCultureWorkspace = (page: Page) =>
+  provisionMicrobiologyScenario(page, "CULTURE_WORKSPACE");
+
+export const seedMicrobiologyIsolateWorkspace = (
+  page: Page,
+  received = false,
+) =>
+  provisionMicrobiologyScenario(
+    page,
+    received ? "RECEIVED_ISOLATE" : "ISOLATE_WORKSPACE",
+  );
+
+export const seedMicrobiologyAstReporting = (page: Page) =>
+  provisionMicrobiologyScenario(page, "AST_REPORTING");
+
+export const seedMicrobiologyAutomation = (page: Page) =>
+  provisionMicrobiologyScenario(page, "AUTOMATION_BENCH");
+
+export const seedMicrobiologyEnvironmental = (page: Page) =>
+  provisionMicrobiologyScenario(page, "M8");
+
+export const seedMicrobiologyMissingContext = (page: Page) =>
+  provisionMicrobiologyScenario(page, "UX_CONTEXT");

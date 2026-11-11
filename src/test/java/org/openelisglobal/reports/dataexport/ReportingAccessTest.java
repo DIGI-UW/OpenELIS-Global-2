@@ -13,6 +13,8 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.reports.dataexport.service.ReportingAccess;
 import org.openelisglobal.reports.dataexport.service.ReportingException;
+import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -25,13 +27,18 @@ public class ReportingAccessTest {
     private SystemUserService users;
     private UserService userService;
     private ReportingAccess access;
+    private RoleService roleService;
 
     @Before
     public void setUp() {
         roles = mock(UserRoleService.class);
         users = mock(SystemUserService.class);
         userService = mock(UserService.class);
-        access = new ReportingAccess(roles, users, userService);
+        roleService = mock(RoleService.class);
+        Role reports = new Role();
+        reports.setId("reporting-role");
+        when(roleService.getRoleByName(Constants.ROLE_REPORTS)).thenReturn(reports);
+        access = new ReportingAccess(roles, users, userService, roleService);
     }
 
     @Test
@@ -51,7 +58,7 @@ public class ReportingAccessTest {
     public void ordinaryActiveReportUserReceivesExistingSectionsWithoutExtraSetup() {
         allowReports("42");
         List<IdValuePair> sections = List.of(new IdValuePair("7", "Virology"));
-        when(userService.getUserTestSections("42", null)).thenReturn(sections);
+        when(userService.getUserTestSections("42", "reporting-role")).thenReturn(sections);
 
         assertEquals(sections, access.requestSections("42"));
     }
@@ -84,6 +91,41 @@ public class ReportingAccessTest {
                 () -> access.requireScope("42", List.of("7", "8")));
         assertEquals(403, changed.status());
         assertEquals("reporting.access.scopeChanged", changed.getMessage());
+    }
+
+    @Test
+    public void otherLabUnitRolesCannotExpandReportsScope() {
+        allowReports("42");
+        LabUnitRoleMap reports = new LabUnitRoleMap();
+        reports.setLabUnit("7");
+        reports.setRoles(Set.of("reporting-role"));
+        LabUnitRoleMap reception = new LabUnitRoleMap();
+        reception.setLabUnit("AllLabUnits");
+        reception.setRoles(Set.of("reception-role"));
+        UserLabUnitRoles mapping = new UserLabUnitRoles();
+        mapping.setLabUnitRoleMap(Set.of(reports, reception));
+        when(roles.getUserLabUnitRoles("42")).thenReturn(mapping);
+
+        access.requireScope("42", List.of("7"));
+        assertEquals(403,
+                assertThrows(ReportingException.class, () -> access.requireScope("42", List.of("8"))).status());
+        assertEquals(403,
+                assertThrows(ReportingException.class, () -> access.requireScope("42", List.of("AllLabUnits")))
+                        .status());
+    }
+
+    @Test
+    public void allUnitReportsGrantAllowsUnrestrictedExports() {
+        allowReports("42");
+        LabUnitRoleMap reports = new LabUnitRoleMap();
+        reports.setLabUnit("AllLabUnits");
+        reports.setRoles(Set.of("reporting-role"));
+        UserLabUnitRoles mapping = new UserLabUnitRoles();
+        mapping.setLabUnitRoleMap(Set.of(reports));
+        when(roles.getUserLabUnitRoles("42")).thenReturn(mapping);
+
+        access.requireScope("42", List.of("AllLabUnits"));
+        access.requireScope("42", List.of("7", "8"));
     }
 
     private void allowReports(String owner) {

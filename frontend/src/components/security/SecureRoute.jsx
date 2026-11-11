@@ -7,7 +7,7 @@ import { confirmAlert } from "react-confirm-alert";
 import "react-confirm-alert/src/react-confirm-alert.css"; // Import css
 import { Loading, Modal } from "@carbon/react/";
 import config from "../../config.json";
-import { Roles } from "../utils/Utils";
+import { Roles, hasPermission } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 
 const idleTimeout = 1000 * 60 * 30; // milliseconds until idle warning will appear
@@ -45,7 +45,7 @@ function SecureRoute(props) {
     }
 
     if (userSessionDetails.authenticated) {
-      const allowed = hasPermission(userSessionDetails);
+      const allowed = routeAccessAllowed(userSessionDetails);
       setPermissionGranted(allowed);
       if (allowed) {
         if (
@@ -77,12 +77,15 @@ function SecureRoute(props) {
     }
   }, [userSessionDetails, errorLoadingSessionDetails, location.pathname]);
 
-  const hasPermission = (userDetails = userSessionDetails) => {
-    var hasRole =
-      !props.role ||
-      []
-        .concat(props.role)
-        .some((role) => userDetails.roles && userDetails.roles.includes(role));
+  const routeAccessAllowed = (userDetails = userSessionDetails) => {
+    // role and permission are OR'd: either grants access. With neither prop,
+    // any authenticated user passes (existing behavior).
+    var roleMatches = props.role
+      ? []
+          .concat(props.role)
+          .some((role) => userDetails.roles && userDetails.roles.includes(role))
+      : !props.permission;
+    var hasRole = roleMatches || hasPermission(userDetails, props.permission);
     var containsLabUnitRole = false;
     if (props.labUnitRole) {
       Object.keys(props.labUnitRole).forEach((labunit) => {

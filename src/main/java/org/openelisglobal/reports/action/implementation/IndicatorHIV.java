@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
+import java.io.ByteArrayOutputStream;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,8 +21,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
@@ -29,6 +28,7 @@ import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.MathUtil;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -40,6 +40,12 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
+import org.openpdf.text.Document;
+import org.openpdf.text.Font;
+import org.openpdf.text.Paragraph;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
 
 public class IndicatorHIV extends IndicatorReport implements IReportCreator, IReportParameterSetter {
 
@@ -141,24 +147,13 @@ public class IndicatorHIV extends IndicatorReport implements IReportCreator, IRe
     }
 
     @Override
-    protected String reportFileName() {
-        return "HIVSummary";
-    }
-
-    @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(testData);
-    }
-
-    @Override
     public void initializeReport(ReportForm form) {
         super.initializeReport();
         setDateRange(form);
 
         findAnalysis();
 
-        setReportParameters();
+        countPopulation();
 
         setHIVByTest();
     }
@@ -287,23 +282,27 @@ public class IndicatorHIV extends IndicatorReport implements IReportCreator, IRe
         return value == 0 ? 0.0 : ((int) (value / total * 10000.0)) / 100.0;
     }
 
-    protected void setReportParameters() {
-        super.createReportParameters();
+    private int male;
+    private int female;
+    private int infant;
+    private int populationTotal;
 
+    /** The patients tested in the period, by sex and whether they are children. */
+    protected void countPopulation() {
         Set<String> patientSet = new HashSet<>();
         List<PatientTestDate> patientTestList = new ArrayList<>();
 
         for (Analysis analysis : analysisList) {
             Patient patient = sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample());
-            if (!patientSet.contains(patient.getId())) {
+            if (patient != null && !patientSet.contains(patient.getId())) {
                 patientSet.add(patient.getId());
                 patientTestList.add(new PatientTestDate(patient, analysis.getCompletedDate()));
             }
         }
         // This is dependent on the outcome of the results
-        int male = 0;
-        int female = 0;
-        int infant = 0;
+        male = 0;
+        female = 0;
+        infant = 0;
 
         for (PatientTestDate patientTestDate : patientTestList) {
             if ("M".equals(patientTestDate.patient.getGender())) {
@@ -317,10 +316,65 @@ public class IndicatorHIV extends IndicatorReport implements IReportCreator, IRe
             }
         }
 
-        reportParameters.put("male", String.valueOf(male));
-        reportParameters.put("female", String.valueOf(female));
-        reportParameters.put("infant", String.valueOf(infant));
-        reportParameters.put("populationTotal", String.valueOf(patientSet.size()));
+        populationTotal = patientSet.size();
+    }
+
+    @Override
+    protected byte[] renderReport() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Document document = startPdf(out, MessageUtil.getMessage("report.from") + " " + lowerDateRange + " "
+                + MessageUtil.getMessage("report.to") + " " + upperDateRange);
+
+        document.add(heading("report.accounTestsByAgeAndSex"));
+        PdfPTable population = new PdfPTable(new float[] { 2, 1, 1, 1, 1 });
+        population.setWidthPercentage(80);
+        population.setHorizontalAlignment(PdfPTable.ALIGN_LEFT);
+        PdfExportSupport.addHeaderRow(population, HEADER_FONT, 3, MessageUtil.getMessage("report.population"),
+                MessageUtil.getMessage("report.men"), MessageUtil.getMessage("report.women"),
+                MessageUtil.getMessage("report.children"), MessageUtil.getMessage("report.total"));
+        for (String value : new String[] { MessageUtil.getMessage("report.total"), String.valueOf(male),
+                String.valueOf(female), String.valueOf(infant), String.valueOf(populationTotal) }) {
+            population.addCell(new Phrase(value, CELL_FONT));
+        }
+        document.add(population);
+
+        document.add(heading("report.accountHivTypeTest"));
+        PdfPTable tests = new PdfPTable(new float[] { 2, 1, 1, 1, 1, 1 });
+        tests.setWidthPercentage(100);
+        tests.setHeaderRows(1);
+        PdfExportSupport.addHeaderRow(tests, HEADER_FONT, 3, "", MessageUtil.getMessage("report.positive"),
+                MessageUtil.getMessage("report.negative"), MessageUtil.getMessage("report.undetermined"),
+                MessageUtil.getMessage("report.waiting"), MessageUtil.getMessage("report.total"));
+        for (HaitiHIVSummaryData test : testData) {
+            PdfPCell name = new PdfPCell(new Phrase(test.getTestName(), LABEL_FONT));
+            name.setColspan(6);
+            tests.addCell(name);
+            for (String value : new String[] { MessageUtil.getMessage("report.account"),
+                    String.valueOf(test.getPositive()), String.valueOf(test.getNegative()),
+                    String.valueOf(test.getIndeterminate()), String.valueOf(test.getPending()),
+                    String.valueOf(test.getTotal()) }) {
+                tests.addCell(new Phrase(value, CELL_FONT));
+            }
+            for (String value : new String[] { MessageUtil.getMessage("report.percentage"),
+                    String.valueOf(test.getPositivePer()), String.valueOf(test.getNegativePer()),
+                    String.valueOf(test.getIndeterminatePer()), String.valueOf(test.getPendingPer()), "" }) {
+                tests.addCell(new Phrase(value, CELL_FONT));
+            }
+        }
+        document.add(tests);
+        document.close();
+        return out.toByteArray();
+    }
+
+    private static final Font HEADER_FONT = new Font(Font.HELVETICA, 8, Font.BOLD);
+    private static final Font LABEL_FONT = new Font(Font.HELVETICA, 9, Font.BOLD);
+    private static final Font CELL_FONT = new Font(Font.HELVETICA, 9);
+
+    private static Paragraph heading(String key) {
+        Paragraph heading = new Paragraph(MessageUtil.getMessage(key), new Font(Font.HELVETICA, 11, Font.BOLD));
+        heading.setSpacingBefore(10);
+        heading.setSpacingAfter(4);
+        return heading;
     }
 
     private boolean patientIsEnfant(PatientTestDate patientTestDate) {

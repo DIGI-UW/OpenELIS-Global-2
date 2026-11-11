@@ -1,0 +1,126 @@
+# Milestone 4: Culture rows and media tracking
+
+This slice extends the existing inoculation row and hosts culture work in the
+Milestone 3 case shell. Choose Culture rows in Testing to inoculate, append
+readings, extend incubation, record outcomes, attach catalog tests, and create
+subcultures. Tests render beneath their culture before nested subcultures. The
+Gram shortcut preselects the lab unit's configured active test only for source
+specimen types that allow it. Ordinary result entry and validation remain the
+Milestone 3 pipeline.
+
+## Service and HTTP contract
+
+| Endpoint                                                           | Behavior                                                                                                                                                                                                           |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /rest/microbiology/culture-catalog`                           | Active coded choices, tagged media and currently usable lots                                                                                                                                                       |
+| `GET /rest/microbiology/cases/{caseId}/cultures`                   | Culture tree rows with immutable reading/extension histories, proposals and calculated timing                                                                                                                      |
+| `GET /rest/microbiology/cases/{caseId}/cultures/options`           | Case-member specimens and descendant aliquots, media-link defaults, lab tracking policy and source-compatible Gram configuration                                                                                   |
+| `POST /rest/microbiology/cases/{caseId}/cultures`                  | Inoculate with `sourceSampleItemId`, optional `parentId`/`subculturePurpose`, container, medium/lot or `notTracked`, atmosphere, duration/unit, optional temperature/check interval/loop volume and `inoculatedAt` |
+| `POST /rest/microbiology/cases/{caseId}/cultures/{rowId}/{action}` | Append `reading` or `extension`; record `outcome`; edit `inoculated-time`/`positive-time`; append `negative-proposal`                                                                                              |
+| `POST /rest/microbiology/cases/{caseId}/analyses`                  | Existing test chooser additionally accepts `placement=CULTURE` and `cultureId`; source must match that row                                                                                                         |
+
+Reading inputs are `readingId`, optional `quantityId` and `note`. Extension
+inputs are positive `extendBy`, `unit`, required coded `reasonId` and optional
+`note`. The service records actor, time and incubation day. Outcome inputs are
+`GROWTH`, `NO_GROWTH` or `CONTAMINATED`, with optional `positiveAt` and a pending
+`proposalId` when confirming an instrument-negative proposal. A proposal stores
+its signal and receipt attribution without changing the outcome.
+
+Every mutation locks the current case, checks Results rights in its current lab
+unit and rejects terminal/final locks. Direct links retain the M2 read-only
+exception. Controllers compile no entity relationships and define no
+transactions. The service builds DTOs inside its transaction; separate HQL
+collection fetches initialize histories without multiple-bag/cartesian joins.
+The existing inoculation DAO owns eager row and specimen queries. Typed
+reading, extension and proposal DAOs extend the repository persistence base;
+there is no generic history insertion helper. Architecture regressions cover
+both culture controllers and require typed DAO inheritance.
+Foreign sources, rows, parent links and culture-test source mismatches are
+rejected. Two cultures may independently carry the same catalog test.
+
+The inoculation clock must be between source receipt and now, remains editable
+until the first reading, and respects parent/child and positivity chronology.
+Positivity must be between inoculation and now; manual changes record USER as
+source. Original inoculation time anchors both extensions and check intervals.
+Growth can continue incubating and receiving readings/extensions. No Growth
+and Contamination close the row; late growth can reopen No Growth while the
+case remains mutable. Other rows retain their own histories and outcomes.
+
+## Configuration and persistence
+
+Inventory items gain a Microbiology-medium tag, lot-tracking setting and usual
+atmosphere/temperature fields. The inventory item form exposes the two flags.
+The existing test-catalog reagent link supports optional incubation defaults;
+its media-defaults modal edits timing/environment values while preserving usage
+metadata. Changing medium or source refreshes matching defaults; a specific
+specimen type takes precedence over a generic link. Selecting culture media
+never decrements stock.
+
+The lab-unit editor configures `requireTrackedMedia` and its Gram stain test.
+The engineering spec scopes mandatory tracking to the lab unit, default off.
+A tracked item or a unit requiring tracking forbids Not tracked; otherwise the
+user can choose it. Tracked selections require a matching active/in-use,
+QC-passed, unexpired lot with positive current quantity. Duration, duration
+unit and atmosphere are required. Temperature, check
+interval and loop volume are optional; supplied values are validated before
+persistence to prevent silent rounding.
+
+Liquibase migration 121 adds nullable fields for historic rows and three
+append-only history tables, foreign keys/indexes and coded choice seeds. Both
+application and test persistence units register all new mappings. Structural
+rollback removes M4 additions while retaining prior inoculation history and
+catalog vocabulary, including values present before the migration. Older
+inoculation-table rollback tests unwind M4 dependencies before dropping that
+table and reapply them afterward.
+
+## Evidence and remaining work
+
+Focused tests cover real PostgreSQL migrations and persisted histories,
+source/lot/permission/final-lock rejection, temporal and precision boundaries,
+aliquots, culture tests, growth continuation, proposals and eager loading.
+Media defaults are editable only for inventory items tagged as microbiology
+media. Administrators can choose a specimen type or clear it to apply defaults
+to all specimen types. Historical rows without an available source retain their
+readings and outcomes, but hide subculture and culture-test actions.
+
+Component tests exercise actual Carbon controls, source-scoped Gram selection,
+media prefill, failed drafts, read-only controls and configuration payloads.
+The property-gated CULTURE_WORKSPACE browser scenario uses a unique case, lab
+unit, tests, medium and lot for its inoculate/read/extend/Gram/subculture/outcome
+journey and reload checks. Executed local checks: 61 frontend tests across eight
+files; 42 backend culture, ORM, migration, rollback and scenario tests across six
+files; 36 existing case/result/access regression tests across three files; and a
+final 41-test correction run covering culture persistence, rollback, architecture
+and scenario setup. The final culture journey and existing initial-testing
+journey both passed in one 19.8-second run, with desktop and narrow-viewport
+screenshots reviewed.
+Removing the duration-precision guard and reverting source-scoped Gram selection
+each caused the intended regression test to fail; the restored guards passed.
+Additional regression checks preserve medium environment defaults on inventory
+edits and classify inoculation defaults as timestamps in the date guard.
+The synthetic culture scenario uses an independent specimen catalog and appends
+its lab unit after existing units; catalog visibility refreshes after commit.
+Spotless, Prettier and focused lint on the new culture UI/browser source passed.
+A broader lint check also reports existing inventory component hook rules and
+missing Vitest globals, reproduced unchanged on the parent branch. On revision
+ef5fb7f3b4, GitHub Frontend, E2E and submodule gates passed; Backend
+failed because fixture-created dictionary categories omitted an abbreviation.
+The local full run passed all Playwright shards and Cypress core but failed the
+same backend setup and the Cypress independent Site Information toggle. The
+review corrections passed 65 frontend tests across eight files and 46 backend
+tests, including a missing-category regression that reproduced the backend
+error before the correction. A fresh full run must verify all gates again.
+The DAO consolidation passed 60 backend tests across six classes: culture
+persistence, case results/workspace, timing, ORM mappings and architecture.
+The new DAO architecture guard failed on the removed generic helper before
+the correction. Both culture controllers now participate in the transaction
+and role-boundary regressions.
+Full local CI and GitHub checkpoint results remain separate gates, reported in
+the PR. Owner acceptance is pending.
+
+Incoming instrument adapters, isolates and AST remain later roadmap slices.
+The retained workbench mutation path is scheduled for priority removal in
+[issue #4675](https://github.com/DIGI-UW/OpenELIS-Global-2/issues/4675), including
+its query routes and migration of existing behavior tests. M4 adds no features
+to that old path. Historic incomplete rows remain readable with unavailable
+metrics; they are not automatically invented or rewritten by this migration.

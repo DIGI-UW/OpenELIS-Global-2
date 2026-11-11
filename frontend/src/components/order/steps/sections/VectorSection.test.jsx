@@ -7,8 +7,14 @@ import messages from "../../../../languages/en.json";
 import VectorSection from "./VectorSection";
 import { ConfigurationContext } from "../../../layout/Layout";
 
-const { getFromOpenElisServerMock } = vi.hoisted(() => ({
+const { getFromOpenElisServerMock, orderContextMock } = vi.hoisted(() => ({
   getFromOpenElisServerMock: vi.fn(),
+  orderContextMock: {
+    samples: [{}],
+    setSamples: vi.fn(),
+    hydrateOrderData: vi.fn(),
+    hydrateSamples: vi.fn(),
+  },
 }));
 
 vi.mock("../../../utils/Utils", () => ({
@@ -16,7 +22,7 @@ vi.mock("../../../utils/Utils", () => ({
 }));
 
 vi.mock("../../OrderContext", () => ({
-  useOrderContext: () => ({ samples: [{}], setSamples: vi.fn() }),
+  useOrderContext: () => orderContextMock,
 }));
 
 function renderSection({
@@ -287,5 +293,90 @@ describe("VectorSection — Sampling Site", () => {
 
       expect(screen.queryByText("Edit details")).not.toBeInTheDocument();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OGC-1192 — reopening a saved environmental order. The lot Collection Date
+// was fixed at mount, so it showed today instead of the saved date, and the
+// site lookup and the default-date fill marked the untouched order as having
+// unsaved changes (the page then prompted before every navigation).
+// ---------------------------------------------------------------------------
+describe("VectorSection — reopening a saved order (OGC-1192)", () => {
+  const savedSite = {
+    id: "3",
+    code: "IDN-BKS-01",
+    name: "Bekasi Riverside",
+    type: "Water Source",
+  };
+
+  beforeEach(() => {
+    getFromOpenElisServerMock.mockReset();
+    getFromOpenElisServerMock.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/vector/dictionary/sampling-site-types")) {
+        callback([]);
+      }
+      if (url.startsWith("/rest/admin/vector/sampling-sites/3")) {
+        callback(savedSite);
+      }
+    });
+    orderContextMock.samples = [{}];
+    orderContextMock.setSamples = vi.fn();
+    orderContextMock.hydrateOrderData = vi.fn();
+    orderContextMock.hydrateSamples = vi.fn();
+  });
+
+  const savedOrder = {
+    sampleOrderItems: {
+      environmentalFields: {
+        samplingSiteId: "3",
+        samplingSiteName: "Bekasi Riverside",
+      },
+    },
+  };
+
+  test("shows the saved collection date once the order's samples load", () => {
+    const view = renderSection();
+    expect(document.getElementById("vec-collection-date").value).not.toBe(
+      "2026-09-27",
+    );
+
+    orderContextMock.samples = [{ collectionDate: "2026-09-27" }];
+    view.rerender(
+      <ConfigurationContext.Provider value={{ configurationProperties: {} }}>
+        <IntlProvider locale="en" messages={messages}>
+          <VectorSection
+            orderData={savedOrder}
+            setOrderData={vi.fn()}
+            isReadOnly={false}
+            workflowType="environmental"
+          />
+        </IntlProvider>
+      </ConfigurationContext.Provider>,
+    );
+
+    expect(document.getElementById("vec-collection-date").value).toBe(
+      "2026-09-27",
+    );
+  });
+
+  test("restoring the saved site does not mark the order as edited", async () => {
+    const setOrderData = vi.fn();
+    orderContextMock.samples = [{ collectionDate: "2026-09-27" }];
+
+    renderSection({ orderData: savedOrder, setOrderData });
+
+    await waitFor(() =>
+      expect(orderContextMock.hydrateOrderData).toHaveBeenCalled(),
+    );
+    expect(setOrderData).not.toHaveBeenCalled();
+    expect(orderContextMock.setSamples).not.toHaveBeenCalled();
+  });
+
+  test("defaulting a blank sample's collection date does not mark it edited", () => {
+    renderSection();
+
+    expect(orderContextMock.hydrateSamples).toHaveBeenCalled();
+    expect(orderContextMock.setSamples).not.toHaveBeenCalled();
   });
 });

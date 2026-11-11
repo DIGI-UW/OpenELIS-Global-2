@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+<changeSet id="amr-v2-m5-isolates-referral" author="openelis">
+<addColumn schemaName="clinlims" tableName="micro_isolate">
+<column name="source_culture_id" type="varchar(36)"/>
+<column name="source_sample_item_id" type="numeric(10)"/>
+<column name="sample_item_id" type="numeric(10)"/>
+<column name="received_from_organization_id" type="numeric(10)"/>
+<column name="reported_organism_id" type="varchar(36)"/>
+<column name="reported_organism_text" type="varchar(255)"/>
+<column name="created_by" type="varchar(20)"/>
+<column name="identified_at" type="timestamp"/>
+<column name="mismatch_acknowledged_by" type="varchar(20)"/>
+<column name="mismatch_acknowledged_at" type="timestamp"/>
+</addColumn>
+<addColumn schemaName="clinlims" tableName="micro_isolate_identification_event"><column name="event_sequence" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column><column name="identified_at" type="timestamp"/><column name="previous_identified_at" type="timestamp"/><column name="previous_mismatch_acknowledged_by" type="varchar(20)"/><column name="previous_mismatch_acknowledged_at" type="timestamp"/></addColumn>
+<addColumn schemaName="clinlims" tableName="type_of_sample"><column name="microbiology_isolate" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column></addColumn>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate" baseColumnNames="source_culture_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case_inoculation" referencedColumnNames="id" constraintName="fk_micro_isolate_source_culture_id"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate" baseColumnNames="source_sample_item_id" referencedTableSchemaName="clinlims" referencedTableName="sample_item" referencedColumnNames="id" constraintName="fk_micro_isolate_source_sample_item_id"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate" baseColumnNames="sample_item_id" referencedTableSchemaName="clinlims" referencedTableName="sample_item" referencedColumnNames="id" constraintName="fk_micro_isolate_sample_item_id"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate" baseColumnNames="received_from_organization_id" referencedTableSchemaName="clinlims" referencedTableName="organization" referencedColumnNames="id" constraintName="fk_micro_isolate_received_from_organization_id"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate" baseColumnNames="reported_organism_id" referencedTableSchemaName="clinlims" referencedTableName="micro_organism" referencedColumnNames="id" constraintName="fk_micro_isolate_reported_organism_id"/>
+<createIndex schemaName="clinlims" tableName="micro_isolate" indexName="idx_micro_isolate_source"><column name="case_id"/><column name="source_sample_item_id"/></createIndex>
+<sql>ALTER TABLE clinlims.micro_isolate DROP CONSTRAINT micro_isolate_significance_chk; ALTER TABLE clinlims.micro_isolate ADD CONSTRAINT micro_isolate_significance_chk CHECK (significance IN ('UNKNOWN', 'CLINICALLY_SIGNIFICANT', 'CONTAMINANT', 'COLONIZER', 'NORMAL_FLORA'));</sql>
+<rollback>
+<sql>ALTER TABLE clinlims.micro_isolate DROP CONSTRAINT micro_isolate_significance_chk; ALTER TABLE clinlims.micro_isolate ADD CONSTRAINT micro_isolate_significance_chk CHECK (significance IN ('UNKNOWN', 'CLINICALLY_SIGNIFICANT', 'CONTAMINANT', 'NORMAL_FLORA'));</sql>
+<dropIndex schemaName="clinlims" tableName="micro_isolate" indexName="idx_micro_isolate_source"/>
+<dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate" constraintName="fk_micro_isolate_source_culture_id"/>
+<dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate" constraintName="fk_micro_isolate_source_sample_item_id"/>
+<dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate" constraintName="fk_micro_isolate_sample_item_id"/>
+<dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate" constraintName="fk_micro_isolate_received_from_organization_id"/>
+<dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate" constraintName="fk_micro_isolate_reported_organism_id"/>
+<dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="source_culture_id"/>
+<dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="source_sample_item_id"/>
+<dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="sample_item_id"/>
+<dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="received_from_organization_id"/>
+<dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="reported_organism_id"/>
+<dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="reported_organism_text"/>
+<dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="created_by"/>
+<dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="identified_at"/>
+<dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="mismatch_acknowledged_by"/>
+<dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="mismatch_acknowledged_at"/>
+<dropColumn schemaName="clinlims" tableName="micro_isolate_identification_event" columnName="event_sequence"/><dropColumn schemaName="clinlims" tableName="micro_isolate_identification_event" columnName="previous_identified_at"/><dropColumn schemaName="clinlims" tableName="micro_isolate_identification_event" columnName="previous_mismatch_acknowledged_by"/><dropColumn schemaName="clinlims" tableName="micro_isolate_identification_event" columnName="previous_mismatch_acknowledged_at"/><dropColumn schemaName="clinlims" tableName="micro_isolate_identification_event" columnName="identified_at"/>
+<dropColumn schemaName="clinlims" tableName="type_of_sample" columnName="microbiology_isolate"/>
+</rollback></changeSet></databaseChangeLog>

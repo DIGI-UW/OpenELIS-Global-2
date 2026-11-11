@@ -13,6 +13,7 @@ import org.openelisglobal.notification.service.DefaultPayloadTemplates;
 import org.openelisglobal.notification.service.EventVariableRegistry;
 import org.openelisglobal.notification.service.NotificationLogService;
 import org.openelisglobal.notification.service.NotificationPayloadTemplateService;
+import org.openelisglobal.notification.service.NotificationPayloadTemplateServiceImpl;
 import org.openelisglobal.notification.service.NotificationTriggerConfigService;
 import org.openelisglobal.notification.valueholder.NotificationChannel;
 import org.openelisglobal.notification.valueholder.NotificationLog;
@@ -53,7 +54,7 @@ public class NotificationTriggerConfigRestController {
         Map<String, Object> response = new HashMap<>();
         response.put("triggers", configs.stream().map(this::toDto).collect(Collectors.toList()));
         response.put("availableChannels", Arrays.asList(NotificationChannel.values()));
-        response.put("availableRecipientTypes", Arrays.asList(NotificationRecipientType.values()));
+        response.put("availableRecipientTypes", NotificationRecipientType.offeredToTriggers());
         return response;
     }
 
@@ -101,7 +102,14 @@ public class NotificationTriggerConfigRestController {
         }
         existing.setSubjectTemplate(body.subjectTemplate() == null ? "" : body.subjectTemplate());
         existing.setMessageTemplate(body.messageTemplate() == null ? "" : body.messageTemplate());
-        payloadTemplateService.updatePayloadTemplateMessagesAndSubject(existing, sysUserId);
+        try {
+            payloadTemplateService.updatePayloadTemplateMessagesAndSubject(existing, sysUserId);
+        } catch (NotificationPayloadTemplateServiceImpl.DisallowedFieldException e) {
+            Map<String, Object> refused = new HashMap<>();
+            refused.put("error", e.getMessage());
+            refused.put("disallowedFields", e.getFields());
+            return refused;
+        }
         return toTemplateDto(type);
     }
 

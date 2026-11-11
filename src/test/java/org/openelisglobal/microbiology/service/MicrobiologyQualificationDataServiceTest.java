@@ -29,7 +29,6 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicrobiologyQualificationDataServiceTest {
@@ -55,19 +54,22 @@ public class MicrobiologyQualificationDataServiceTest {
     @Mock
     private MicroCaseService caseService;
 
+    @Mock
+    private org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures fixtures;
+
     private MicrobiologyQualificationDataService service;
 
     @Before
     public void setUp() {
         service = new MicrobiologyQualificationDataService(scenarioService, referenceService, breakpointService,
-                configurationService, isolateService, astService, caseService, true);
+                configurationService, isolateService, astService, caseService, fixtures, true);
     }
 
     @Test
     public void ordinaryDeploymentCannotBuildQualificationData() {
         MicrobiologyQualificationDataService disabled = new MicrobiologyQualificationDataService(scenarioService,
                 referenceService, breakpointService, configurationService, isolateService, astService, caseService,
-                false);
+                fixtures, false);
 
         try {
             disabled.buildWorklist("run-a", 200, "7");
@@ -99,7 +101,7 @@ public class MicrobiologyQualificationDataServiceTest {
         MicroAstPanel panel = new MicroAstPanel();
         panel.setId("panel-generated");
         panel.setName("Gram negative AST panel (UAT)");
-        when(referenceService.getActiveAstPanels(MicroWorkflowType.BACTERIOLOGY)).thenReturn(List.of(panel));
+        when(referenceService.getActiveAstPanels(null)).thenReturn(List.of(panel));
         MicroBreakpointStandard standard = new MicroBreakpointStandard();
         standard.setId("standard-generated");
         standard.setAuthority("CLSI");

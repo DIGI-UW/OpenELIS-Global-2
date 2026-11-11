@@ -12,14 +12,9 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
         --allow-releaseinfo-change -y update \
     && apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=60 \
         -y --no-install-recommends install \
-        git apache2-utils
+        git
 
 
-# OE Default Password
-ARG DEFAULT_PW="adminADMIN!"
-COPY ./install/createDefaultPassword.sh /build/install/createDefaultPassword.sh
-WORKDIR /build
-RUN ./install/createDefaultPassword.sh -c -p ${DEFAULT_PW}
 
 ##
 # Build DataExport
@@ -39,33 +34,58 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     && cp -r /root/.m2/repository/org/itech /build/dataexport-m2/org/
 
 ##
+# Build the module contracts (openelis-spi, openelis-module-api), which the WAR depends on
+#
+COPY ./module-contracts /build/module-contracts
+WORKDIR /build/module-contracts
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn clean install -DskipTests \
+    && mkdir -p /build/dataexport-m2/org/openelisglobal \
+    && cp -r /root/.m2/repository/org/openelisglobal/. /build/dataexport-m2/org/openelisglobal/
+
+##
 # Build the Project
 #
-# NOTE: Each step overlays dataexport artifacts into the cache mount. The
-# org/itech directory may already exist without the required dataexport
-# versions, so checking only for that parent directory is insufficient.
+# NOTE: Each step overlays dataexport and module-contract artifacts into the
+# cache mount. The org/itech directory may already exist without the required
+# dataexport versions, so checking only for that parent directory is
+# insufficient.
 #
 WORKDIR /build
 
 COPY ./pom.xml /build/pom.xml
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mkdir -p /root/.m2/repository/org/itech \
+    mkdir -p /root/.m2/repository/org/itech /root/.m2/repository/org/openelisglobal \
     && cp -r /build/dataexport-m2/org/itech/. /root/.m2/repository/org/itech/ \
+    && cp -r /build/dataexport-m2/org/openelisglobal/. /root/.m2/repository/org/openelisglobal/ \
     && mvn dependency:go-offline
 
 ARG SKIP_SPOTLESS="false"
 COPY ./src /build/src
+# The interface's translation catalogue, packaged into the WAR for the reports
+# that print their labels from it (see the pom's ui-languages resource).
+COPY ./frontend/src/languages /build/frontend/src/languages
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mkdir -p /root/.m2/repository/org/itech \
+    mkdir -p /root/.m2/repository/org/itech /root/.m2/repository/org/openelisglobal \
     && cp -r /build/dataexport-m2/org/itech/. /root/.m2/repository/org/itech/ \
+    && cp -r /build/dataexport-m2/org/openelisglobal/. /root/.m2/repository/org/openelisglobal/ \
     && mvn clean install -Dmaven.test.skip=true -DskipITs=true -Dspotless.check.skip=${SKIP_SPOTLESS}
+
+##
+# Tomcat's client certificate trust manager (see tomcat/oe_server.xml)
+#
+FROM maven:3-eclipse-temurin-21 AS tomcat-lib
+COPY ./tomcat/client-certificates /build/client-certificates
+RUN mkdir -p /build/classes \
+    && javac --release 21 -d /build/classes $(find /build/client-certificates -name '*.java') \
+    && jar cf /build/openelis-client-certificates.jar -C /build/classes .
 
 ##
 # Run Stage
 #
 FROM tomcat:10-jre21
 
-COPY install/createDefaultPassword.sh ./
+COPY --from=tomcat-lib /build/openelis-client-certificates.jar /usr/local/tomcat/lib/
 
 
 #Clean out unneccessary files from tomcat (especially pre-existing applications) 
@@ -83,6 +103,8 @@ COPY --from=build /build/target/OpenELIS-Global.war /usr/local/tomcat/webapps/Op
 #    org.apache.tomcat.util.buf.UDecoder.ALLOW_ENCODED_SLASH=false
 #    org.apache.coyote.USE_CUSTOM_STATUS_MSG_IN_HEADER=false
 COPY install/tomcat-resources/catalina.properties /usr/local/tomcat/conf/catalina.properties
+COPY tomcat/runtime-credentials.properties /tmp/runtime-credentials.properties
+RUN cat /tmp/runtime-credentials.properties >> /usr/local/tomcat/conf/catalina.properties && rm /tmp/runtime-credentials.properties
 COPY install/tomcat-resources/logging.properties /usr/local/tomcat/conf/logging.properties
 
 #replace ServerInfo.properties with a less informative one
@@ -114,7 +136,11 @@ RUN groupadd tomcat; \
     mkdir -p /var/lib/openelis-global/properties/; \
     chown -R tomcat_admin:tomcat /var/lib/openelis-global/properties/; \
     mkdir -p /var/lib/openelis-global/configuration/; \
-    chown -R tomcat_admin:tomcat /var/lib/openelis-global/configuration/;
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/configuration/; \
+    mkdir -p /var/lib/openelis-global/modules/ /var/lib/openelis-global/modules-config/ \
+        /var/lib/openelis-global/modules-data/ /var/lib/openelis-global/modules-cache/; \
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/modules/ /var/lib/openelis-global/modules-config/ \
+        /var/lib/openelis-global/modules-data/ /var/lib/openelis-global/modules-cache/;
 
 
 COPY install/openelis_healthcheck.sh /healthcheck.sh

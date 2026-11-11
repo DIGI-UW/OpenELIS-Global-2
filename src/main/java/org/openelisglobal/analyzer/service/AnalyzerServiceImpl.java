@@ -27,14 +27,14 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     @Override
     @Transactional(readOnly = true)
-    public List<Analyzer> getAllWithBindings() {
-        return baseObjectDAO.findAllWithBindings();
+    public List<Analyzer> getAllWithMapping() {
+        return baseObjectDAO.findAllWithMapping();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Analyzer> getWithBinding(String id) {
-        return baseObjectDAO.findByIdWithBinding(id);
+    public Optional<Analyzer> getWithMapping(String id) {
+        return baseObjectDAO.findByIdWithMapping(id);
     }
 
     @Override
@@ -93,6 +93,12 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional
     public Optional<Analyzer> findByBridgeConnectionIdForUpdate(String bridgeConnectionId) {
         return baseObjectDAO.findByBridgeConnectionIdForUpdate(bridgeConnectionId);
+    }
+
+    @Override
+    @Transactional
+    public Optional<Analyzer> findByIdForUpdate(String id) {
+        return baseObjectDAO.findByIdForUpdate(id);
     }
 
     @Override

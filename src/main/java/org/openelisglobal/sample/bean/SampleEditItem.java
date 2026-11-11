@@ -25,6 +25,9 @@ public class SampleEditItem {
     private String sampleItemId;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { SampleEditForm.SampleEdit.class })
+    private String sampleTypeId;
+
+    @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { SampleEditForm.SampleEdit.class })
     private String testId;
 
     private boolean canCancel = false;
@@ -86,6 +89,14 @@ public class SampleEditItem {
 
     public void setSampleItemId(String sampleItemId) {
         this.sampleItemId = sampleItemId;
+    }
+
+    public String getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(String sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
     }
 
     public String getTestId() {

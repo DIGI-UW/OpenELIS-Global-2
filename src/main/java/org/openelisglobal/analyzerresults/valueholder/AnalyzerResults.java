@@ -20,6 +20,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
+import java.util.Set;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
@@ -90,20 +91,87 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     // types and the message carried no specimen; the review page's chooser
     // resolves it.
     public static final String IMPORT_ISSUE_AWAITING_SPECIMEN = "awaiting_specimen";
+    public static final String IMPORT_ISSUE_AWAITING_PLACEMENT = "awaiting_placement";
     public static final String IMPORT_ISSUE_UNKNOWN_TEST = "unknown_analyzer_test";
     public static final String IMPORT_ISSUE_TEST_MAPPING_NOT_READY = "test_mapping_not_ready";
+    /** Setup samples supply mapping evidence and never become clinical results. */
+    public static final String IMPORT_ISSUE_SETUP_CAPTURE = "setup_capture";
     public static final String IMPORT_ISSUE_UNKNOWN_RESULT_VALUE = "unknown_analyzer_result_value";
     public static final String IMPORT_ISSUE_RESULT_MAPPING_NOT_READY = "result_mapping_not_ready";
+    public static final String IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING = "conflicting_answer_mapping";
     public static final String IMPORT_ISSUE_INVALID_RESULT_MAPPING = "invalid_result_mapping";
+    /** The run produced no value (ERROR, NO RESULT); never a patient result. */
+    public static final String IMPORT_ISSUE_RUN_FAILED = "run_failed";
+    /** A control that reports an answer, for a test and level with no QC target. */
+    public static final String IMPORT_ISSUE_QC_LOT_MISSING = "qc_lot_missing";
+    public static final String IMPORT_ISSUE_QC_VALUE_UNSUPPORTED = "qc_value_unsupported";
+    public static final String IMPORT_ISSUE_QC_TARGET_MISSING = "qc_target_missing";
+    /**
+     * Historical hold reason, retained only so existing rows can recover locally.
+     */
+    public static final String IMPORT_ISSUE_OTHER_REVISION = "arrived_under_other_revision";
+    /** For an assay the analyzer's setup says this instrument does not run. */
+    public static final String IMPORT_ISSUE_ASSAY_NOT_ENABLED = "assay_not_enabled";
+    /**
+     * Historical row-reading hold; new deliveries do not produce this reason.
+     */
+    public static final String IMPORT_ISSUE_READING_CHANGED = "reading_changed";
+    /**
+     * Historical type-reading hold; new deliveries do not produce this reason.
+     */
+    public static final String IMPORT_ISSUE_TYPE_READING_CHANGED = "type_reading_changed";
+    /** Mapping evidence; setup captures are retained but never recovered. */
+    public static final Set<String> MAPPING_IMPORT_ISSUES = Set.of(IMPORT_ISSUE_UNKNOWN_TEST,
+            IMPORT_ISSUE_TEST_MAPPING_NOT_READY, IMPORT_ISSUE_SETUP_CAPTURE, IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
+            IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING,
+            IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING, IMPORT_ISSUE_QC_TARGET_MISSING, IMPORT_ISSUE_QC_LOT_MISSING,
+            IMPORT_ISSUE_QC_VALUE_UNSUPPORTED, IMPORT_ISSUE_OTHER_REVISION, IMPORT_ISSUE_ASSAY_NOT_ENABLED,
+            IMPORT_ISSUE_READING_CHANGED, IMPORT_ISSUE_TYPE_READING_CHANGED);
 
     @Column(name = "import_issue_reason", length = 200)
     private String importIssueReason;
+
+    @Column(name = "instrument_specimen_id", length = 255)
+    private String instrumentSpecimenId;
+
+    @Column(name = "instrument_patient_id", length = 255)
+    private String instrumentPatientId;
+
+    @Column(name = "instrument_patient_name", length = 255)
+    private String instrumentPatientName;
+
+    @Column(name = "instrument_note", columnDefinition = "TEXT")
+    private String instrumentNote;
+
+    /** The instrument's flags as sent, never interpreted. */
+    @Column(name = "instrument_flags", length = 255)
+    private String instrumentFlags;
+
+    /**
+     * The warnings the instrument raised about this result's sample, by the names
+     * it sent, the same on every result of the sample.
+     */
+    @Column(name = "instrument_sample_flags", length = 1024)
+    private String instrumentSampleFlags;
+
+    @Column(name = "assay_name", length = 255)
+    private String assayName;
+
+    @Column(name = "assay_version", length = 64)
+    private String assayVersion;
+
+    @Column(name = "instrument_operator", length = 255)
+    private String instrumentOperator;
 
     @Column(name = "source_message_id", length = 255)
     private String sourceMessageId;
 
     @Column(name = "source_connection_id", length = 255)
     private String sourceConnectionId;
+
+    /** OGC-1200: the run of the message this value arrived in. */
+    @Column(name = "run_id")
+    private Long runId;
 
     @Column(name = "source_profile_id", length = 128)
     private String sourceProfileId;
@@ -119,6 +187,10 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     @Column(name = "raw_test_code", length = 255)
     private String rawTestCode;
+
+    /** Empty for a test's main record. */
+    @Column(name = "raw_sub_identity", length = 255, nullable = false)
+    private String rawSubIdentity = "";
 
     @Column(name = "raw_result_value", columnDefinition = "TEXT")
     private String rawResultValue;
@@ -138,19 +210,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     @Column(name = "source_payload", columnDefinition = "TEXT")
     private String sourcePayload;
 
-    // QC metadata propagated from the analyzer-bridge for control samples.
-    // Transient — only carried in-memory from FHIR ingest
-    // (AnalyzerFhirImportController) through to QCResultProcessingService.
-    // Not persisted on analyzer_results because the matched lot is
-    // already recorded on the qc_result row (control_lot_id FK).
-    // - lotNumber: canonical qc_control_lot.lot_number when the bridge
-    // extracted it (ASTM Q-segment field 3 component 2)
-    // - controlLevel: clinical level identifier (LPC/HPC/CNEG/CPOS/etc.)
-    // — ASTM Q-segment field 3 component 3, OR matched FILE qcRule's
-    // SPECIMEN_ID_PREFIX operand
-    @jakarta.persistence.Transient
-    private String lotNumber;
+    /**
+     * Historical parsing snapshot retained for audit only. Import and recovery do
+     * not read it.
+     */
+    @Column(name = "arrival_reading", columnDefinition = "TEXT")
+    private String arrivalReading;
 
+    // Rehydrated from the retained normalized observation during recovery.
     @jakarta.persistence.Transient
     private String controlLevel;
 
@@ -160,6 +227,90 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setImportIssueReason(String importIssueReason) {
         this.importIssueReason = importIssueReason;
+    }
+
+    /** The specimen ID as the instrument reported it: an accession or a tube ID. */
+    public String getInstrumentSpecimenId() {
+        return instrumentSpecimenId;
+    }
+
+    public void setInstrumentSpecimenId(String instrumentSpecimenId) {
+        this.instrumentSpecimenId = instrumentSpecimenId;
+    }
+
+    /**
+     * The patient ID the instrument reported, as reported. Not an OpenELIS patient.
+     */
+    public String getInstrumentPatientId() {
+        return instrumentPatientId;
+    }
+
+    public void setInstrumentPatientId(String instrumentPatientId) {
+        this.instrumentPatientId = instrumentPatientId;
+    }
+
+    public String getInstrumentPatientName() {
+        return instrumentPatientName;
+    }
+
+    public void setInstrumentPatientName(String instrumentPatientName) {
+        this.instrumentPatientName = instrumentPatientName;
+    }
+
+    public String getInstrumentFlags() {
+        return instrumentFlags;
+    }
+
+    public void setInstrumentFlags(String instrumentFlags) {
+        this.instrumentFlags = instrumentFlags;
+    }
+
+    public String getInstrumentSampleFlags() {
+        return instrumentSampleFlags;
+    }
+
+    public void setInstrumentSampleFlags(String instrumentSampleFlags) {
+        this.instrumentSampleFlags = instrumentSampleFlags;
+    }
+
+    public String getAssayName() {
+        return assayName;
+    }
+
+    public void setAssayName(String assayName) {
+        this.assayName = assayName;
+    }
+
+    public String getAssayVersion() {
+        return assayVersion;
+    }
+
+    public void setAssayVersion(String assayVersion) {
+        this.assayVersion = assayVersion;
+    }
+
+    public String getInstrumentOperator() {
+        return instrumentOperator;
+    }
+
+    public void setInstrumentOperator(String instrumentOperator) {
+        this.instrumentOperator = instrumentOperator;
+    }
+
+    public String getInstrumentNote() {
+        return instrumentNote;
+    }
+
+    public void setInstrumentNote(String instrumentNote) {
+        this.instrumentNote = instrumentNote;
+    }
+
+    public Long getRunId() {
+        return runId;
+    }
+
+    public void setRunId(Long runId) {
+        this.runId = runId;
     }
 
     public String getSourceMessageId() {
@@ -218,6 +369,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
         this.rawTestCode = rawTestCode;
     }
 
+    public String getRawSubIdentity() {
+        return rawSubIdentity;
+    }
+
+    public void setRawSubIdentity(String rawSubIdentity) {
+        this.rawSubIdentity = rawSubIdentity == null ? "" : rawSubIdentity;
+    }
+
     public String getRawResultValue() {
         return rawResultValue;
     }
@@ -266,12 +425,12 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
         this.sourcePayload = sourcePayload;
     }
 
-    public String getLotNumber() {
-        return lotNumber;
+    public String getArrivalReading() {
+        return arrivalReading;
     }
 
-    public void setLotNumber(String lotNumber) {
-        this.lotNumber = lotNumber;
+    public void setArrivalReading(String arrivalReading) {
+        this.arrivalReading = arrivalReading;
     }
 
     public String getControlLevel() {

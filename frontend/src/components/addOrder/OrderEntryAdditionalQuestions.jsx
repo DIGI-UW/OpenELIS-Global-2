@@ -1,5 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Select, SelectItem, Column, Grid } from "@carbon/react";
+import {
+  Select,
+  SelectItem,
+  Column,
+  Grid,
+  InlineNotification,
+} from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../../index.css";
 import "../Style.css";
@@ -12,26 +18,77 @@ import Questionnaire from "../common/Questionnaire";
  */
 const ROUTINE_PROGRAM_CODE = "ROUTINE";
 
+/**
+ * Maps the order form's one-letter domain code onto the catalog domain the
+ * program picker filters by (OGC-781 FR-6). The clinical patient flow leaves
+ * the code unset.
+ */
+export const programDomainForOrder = (orderFormValues) => {
+  const raw = orderFormValues?.sampleOrderItems?.domain;
+  if (raw === "E") return "ENVIRONMENTAL";
+  if (raw === "V") return "VECTOR";
+  return "CLINICAL";
+};
+
 export const ProgramSelect = ({
   programChange = () => {
     console.debug("default programChange function does nothing");
   },
   orderFormValues,
   editable,
+  domain,
 }) => {
   const componentMounted = useRef(false);
 
   const intl = useIntl();
 
   const [programs, setPrograms] = useState([]);
+  const [programsLoaded, setProgramsLoaded] = useState(false);
+  const appendedProgramIdRef = useRef(null);
+  const currentProgramId = orderFormValues?.sampleOrderItems?.programId;
 
   const fetchPrograms = (programsList) => {
     if (componentMounted.current) {
       // Anything but a list leaves the select empty rather than letting a
       // later find() throw and take the whole order page down with it.
       setPrograms(Array.isArray(programsList) ? programsList : []);
+      setProgramsLoaded(true);
     }
   };
+
+  // An existing order may name a program the picker no longer offers (it was
+  // deactivated or belongs to another domain); keep showing it.
+  useEffect(() => {
+    if (!programsLoaded || !currentProgramId) {
+      return;
+    }
+    const known = programs.some(
+      (program) => String(program.id) === String(currentProgramId),
+    );
+    if (known || appendedProgramIdRef.current === String(currentProgramId)) {
+      return;
+    }
+    appendedProgramIdRef.current = String(currentProgramId);
+    getFromOpenElisServer(`/rest/program/${currentProgramId}`, (response) => {
+      if (!componentMounted.current || !response?.program?.programName) {
+        return;
+      }
+      setPrograms((previous) =>
+        previous.some(
+          (program) => String(program.id) === String(currentProgramId),
+        )
+          ? previous
+          : [
+              ...previous,
+              {
+                id: String(response.program.id || currentProgramId),
+                value: response.program.programName,
+                code: response.program.code,
+              },
+            ],
+      );
+    });
+  }, [programsLoaded, programs, currentProgramId]);
 
   useEffect(() => {
     if (!orderFormValues?.sampleOrderItems?.programId) {
@@ -47,16 +104,38 @@ export const ProgramSelect = ({
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/user-programs", fetchPrograms);
+    const url = domain
+      ? `/rest/user-programs?domain=${encodeURIComponent(domain)}`
+      : "/rest/user-programs";
+    getFromOpenElisServer(url, fetchPrograms);
     return () => {
       componentMounted.current = false;
     };
-  }, []);
+  }, [domain]);
 
   return (
     <>
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
+          {programsLoaded && programs.length === 0 && (
+            <InlineNotification
+              kind="info"
+              lowContrast
+              hideCloseButton
+              title={
+                domain
+                  ? intl.formatMessage(
+                      { id: "orderEntry.programPicker.empty.domain" },
+                      {
+                        domain: intl.formatMessage({
+                          id: `label.domain.${domain}`,
+                        }),
+                      },
+                    )
+                  : intl.formatMessage({ id: "orderEntry.programPicker.empty" })
+              }
+            />
+          )}
           {programs.length > 0 && (
             <Select
               id="additionalQuestionsSelect"
@@ -310,6 +389,7 @@ const OrderEntryAdditionalQuestions = ({
             <ProgramSelect
               programChange={handleProgramSelection}
               orderFormValues={orderFormValues}
+              domain={programDomainForOrder(orderFormValues)}
             />
             <Questionnaire
               questionnaire={questionnaire}

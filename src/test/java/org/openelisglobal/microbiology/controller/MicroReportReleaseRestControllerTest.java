@@ -23,21 +23,21 @@ public class MicroReportReleaseRestControllerTest {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
         when(releaseService.releasePreliminary("case-1", "42")).thenReturn(microCase);
-        when(releaseService.releaseFinal("case-1", "42")).thenReturn(microCase);
-        when(releaseService.releaseAmended("case-1", "42")).thenReturn(microCase);
+        when(releaseService.releaseFinal("case-1", "42", java.util.List.of())).thenReturn(microCase);
+        when(releaseService.releaseAmended("case-1", "42", java.util.List.of())).thenReturn(microCase);
         MicroReportReleaseRestController controller = new MicroReportReleaseRestController(releaseService,
                 projectionService);
 
         controller.releasePreliminary("case-1", requestFor("42"));
-        controller.releaseFinal("case-1", requestFor("42"));
-        controller.releaseAmended("case-1", requestFor("42"));
+        controller.releaseFinal("case-1", null, requestFor("42"));
+        controller.releaseAmended("case-1", null, requestFor("42"));
 
         verify(releaseService).releasePreliminary("case-1", "42");
-        verify(releaseService).releaseFinal("case-1", "42");
-        verify(releaseService).releaseAmended("case-1", "42");
-        PreAuthorize authorization = MicroReportReleaseRestController.class
-                .getMethod("releaseAmended", String.class, jakarta.servlet.http.HttpServletRequest.class)
-                .getAnnotation(PreAuthorize.class);
+        verify(releaseService).releaseFinal("case-1", "42", java.util.List.of());
+        verify(releaseService).releaseAmended("case-1", "42", java.util.List.of());
+        PreAuthorize authorization = MicroReportReleaseRestController.class.getMethod("releaseAmended", String.class,
+                org.openelisglobal.microbiology.form.MicroReportReleaseRequestForm.class,
+                jakarta.servlet.http.HttpServletRequest.class).getAnnotation(PreAuthorize.class);
         assertEquals("hasAnyRole('ADMIN', 'VALIDATION')", authorization.value());
     }
 

@@ -1,6 +1,6 @@
 package org.openelisglobal.result.service;
 
-import jakarta.annotation.PostConstruct;
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,6 +15,7 @@ import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.internationalization.UiMessages;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.result.dao.ResultDAO;
 import org.openelisglobal.result.daoimpl.ResultDAOImpl;
@@ -39,25 +40,35 @@ import org.springframework.transaction.annotation.Transactional;
 @DependsOn({ "springContext" })
 public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, String> implements ResultService {
 
-    private static String TABLE_REFERENCE_ID;
-
-    private static ResultDAO baseObjectDAO = SpringContext.getBean(ResultDAO.class);
-    private static DictionaryService dictionaryService = SpringContext.getBean(DictionaryService.class);
-    private static ResultSignatureService signatureService = SpringContext.getBean(ResultSignatureService.class);
-
-    @Autowired
-    private ReferenceTablesService referenceTablesService = SpringContext.getBean(ReferenceTablesService.class);
-
-    @Autowired
-    private TypeOfSampleService typeOfSampleService = SpringContext.getBean(TypeOfSampleService.class);
-
-    @Autowired
-    private ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
-
-    @PostConstruct
-    private void initializeGlobalVariables() {
-        TABLE_REFERENCE_ID = referenceTablesService.getReferenceTableByName("RESULT").getId();
+    private String numericDisplay(Result result, boolean printable) {
+        String display = result.getDisplayValue();
+        if (printable) {
+            try {
+                if (new BigDecimal(result.getValue().trim()).compareTo(new BigDecimal(display.trim())) != 0) {
+                    return display + " (" + UiMessages.current().get("label.results.clinicalValue").replace("{value}",
+                            result.getEnteredValue()) + ")";
+                }
+            } catch (NumberFormatException qualifiedOrScientificRepresentation) {
+                // Qualified bounds and written scientific notation are preserved as supplied.
+            }
+        }
+        return display;
     }
+
+    @Autowired
+    private ResultDAO baseObjectDAO;
+
+    @Autowired
+    private DictionaryService dictionaryService;
+
+    @Autowired
+    private ResultSignatureService signatureService;
+
+    @Autowired
+    private TypeOfSampleService typeOfSampleService;
+
+    @Autowired
+    private ResultLimitService resultLimitService;
 
     ResultServiceImpl() {
         super(Result.class);
@@ -78,7 +89,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
     }
 
     public static String getTableReferenceId() {
-        return TABLE_REFERENCE_ID;
+        return SpringContext.getBean(ReferenceTablesService.class).getReferenceTableByName("RESULT").getId();
     }
 
     @Override
@@ -140,7 +151,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
      */
     @Override
     @Transactional(readOnly = true)
-    public String getSimpleResultValue(Result result) {
+    public String formatSimpleResultForDisplay(Result result) {
         if (GenericValidator.isBlankOrNull(result.getValue())) {
             return "";
         }
@@ -148,25 +159,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
         if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(getTestType(result))) {
             return getDictEntry(result);
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
-            int significantPlaces = result.getSignificantDigits();
-            if (significantPlaces == 0) {
-                return result.getValue().split("\\.")[0];
-            }
-            StringBuilder value = new StringBuilder();
-            value.append(result.getValue());
-            int startFill = 0;
-
-            if (!result.getValue().contains(".")) {
-                value.append(".");
-            } else {
-                startFill = result.getValue().length() - result.getValue().lastIndexOf(".") - 1;
-            }
-
-            for (int i = startFill; i < significantPlaces; i++) {
-                value.append("0");
-            }
-
-            return value.toString();
+            return result.getDisplayValue();
         } else if (TypeOfTestResultServiceImpl.ResultType.ALPHA.matches(result.getResultType())
                 && !GenericValidator.isBlankOrNull(result.getValue())) {
             return result.getValue().split("\\(")[0].trim();
@@ -186,13 +179,13 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
      */
     @Override
     @Transactional(readOnly = true)
-    public String getResultValue(Result result, boolean printable) {
-        return getResultValue(result, ",", printable, false);
+    public String formatResultForDisplay(Result result, boolean printable) {
+        return formatResultForDisplay(result, ",", printable, false);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public String getResultValue(Result result, String separator, boolean printable, boolean includeUOM) {
+    public String formatResultForDisplay(Result result, String separator, boolean printable, boolean includeUOM) {
         if (GenericValidator.isBlankOrNull(result.getValue())) {
             return "";
         }
@@ -260,28 +253,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             }
             return buffer.toString();
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
-            int significantPlaces = result.getSignificantDigits();
-            if (significantPlaces == -1) {
-                return result.getValue() + appendUOM(result, includeUOM);
-            }
-            if (significantPlaces == 0) {
-                return result.getValue().split("\\.")[0] + appendUOM(result, includeUOM);
-            }
-            StringBuilder value = new StringBuilder();
-            value.append(result.getValue());
-            int startFill = 0;
-
-            if (!result.getValue().contains(".")) {
-                value.append(".");
-            } else {
-                startFill = result.getValue(true).length() - result.getValue(true).lastIndexOf(".") - 1;
-            }
-
-            for (int i = startFill; i < significantPlaces; i++) {
-                value.append("0");
-            }
-
-            return value.toString() + appendUOM(result, includeUOM);
+            return numericDisplay(result, printable) + appendUOM(result, includeUOM);
         } else if (TypeOfTestResultServiceImpl.ResultType.ALPHA.matches(result.getResultType())
                 && !GenericValidator.isBlankOrNull(result.getValue())) {
             return result.getValue().split("\\(")[0].trim();
@@ -359,28 +331,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             }
             return buffer.toString();
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
-            int significantPlaces = result.getSignificantDigits();
-            if (significantPlaces == -1) {
-                return result.getValue() + appendUOM(result, includeUOM);
-            }
-            if (significantPlaces == 0) {
-                return result.getValue().split("\\.")[0] + appendUOM(result, includeUOM);
-            }
-            StringBuilder value = new StringBuilder();
-            value.append(result.getValue());
-            int startFill = 0;
-
-            if (!result.getValue().contains(".")) {
-                value.append(".");
-            } else {
-                startFill = result.getValue(true).length() - result.getValue(true).lastIndexOf(".") - 1;
-            }
-
-            for (int i = startFill; i < significantPlaces; i++) {
-                value.append("0");
-            }
-
-            return value.toString() + appendUOM(result, includeUOM);
+            return numericDisplay(result, printable) + appendUOM(result, includeUOM);
         } else if (TypeOfTestResultServiceImpl.ResultType.ALPHA.matches(result.getResultType())
                 && !GenericValidator.isBlankOrNull(result.getValue())) {
             return result.getValue().split("\\(")[0].trim();
@@ -492,7 +443,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             if (result.getMinNormal() != null && result.getMaxNormal() != null
                     && !result.getMinNormal().equals(result.getMaxNormal())) {
                 range = SpringContext.getBean(ResultLimitService.class).getDisplayNormalRange(result.getMinNormal(),
-                        result.getMaxNormal(), String.valueOf(result.getSignificantDigits()), "-");
+                        result.getMaxNormal(), String.valueOf(result.getReportingDecimalPlaces()), "-");
             }
         } else if (includeSelectList
                 && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())) {
@@ -518,11 +469,17 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
                 && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())) {
             List<ResultLimit> limits = getResultLimits(result);
             if (!limits.isEmpty()) {
-                return !result.getValue().equals(limits.get(0).getDictionaryNormalId());
+                return !result.getValue().equals(limits.get(0).getDictionaryNormalId()) && !isNormalOption(result);
             }
         }
 
         return false;
+    }
+
+    private boolean isNormalOption(Result result) {
+        TestResult option = result.getTestResult();
+        return option != null && result.getValue().equals(option.getValue())
+                && Boolean.TRUE.equals(option.getIsNormal());
     }
 
     @Override
@@ -539,16 +496,22 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
     }
 
     public static List<Result> getResultsInTimePeriodWithTest(Date startDate, Date endDate, String testId) {
-        return baseObjectDAO.getResultsForTestInDateRange(testId, startDate, DateUtil.addDaysToSQLDate(endDate, 1));
+        return currentResultDAO().getResultsForTestInDateRange(testId, startDate,
+                DateUtil.addDaysToSQLDate(endDate, 1));
     }
 
     public static List<Result> getResultsInTimePeriodInPanel(Date lowDate, Date highDate, String panelId) {
-        return baseObjectDAO.getResultsForPanelInDateRange(panelId, lowDate, DateUtil.addDaysToSQLDate(highDate, 1));
+        return currentResultDAO().getResultsForPanelInDateRange(panelId, lowDate,
+                DateUtil.addDaysToSQLDate(highDate, 1));
     }
 
     public static List<Result> getResultsInTimePeriodInTestSection(Date lowDate, Date highDate, String testSectionId) {
-        return baseObjectDAO.getResultsForTestSectionInDateRange(testSectionId, lowDate,
+        return currentResultDAO().getResultsForTestSectionInDateRange(testSectionId, lowDate,
                 DateUtil.addDaysToSQLDate(highDate, 1));
+    }
+
+    private static ResultDAO currentResultDAO() {
+        return SpringContext.getBean(ResultDAO.class);
     }
 
     public static String getJSONStringForMultiSelect(List<Result> resultList) {

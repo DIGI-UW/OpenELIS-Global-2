@@ -10,6 +10,10 @@
         a batch also gates that batch's release (S-08). The result limit has no gender
         and default ages so it applies without a patient. -->
 
+    <!-- Required validation permissions belong to this rollback-owned fixture. -->
+    <system_role id="9400" name="Validation"
+        description="Validate results" display_key="role.validator"
+        active="true" editable="false" />
     <system_user id="1" login_name="testUser" last_name="Doe"
         first_name="John" is_active="Y" is_employee="Y"
         lastupdated="2025-01-01 12:00:00" />
@@ -48,7 +52,7 @@
         guid="test-lead-001" name_localization_id="1" />
 
     <test_result id="1" test_id="1" result_group="1"
-        tst_rslt_type="N" significant_digits="2"
+        tst_rslt_type="N" reporting_decimal_places="2"
         lastupdated="2025-01-01 12:00:00" sort_order="1"
         is_quantifiable="false" is_active="true" is_normal="true" />
 

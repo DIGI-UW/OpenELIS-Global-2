@@ -1,0 +1,95 @@
+# Local CI parity keeps the CI images and service configuration while giving each
+# worktree its own Compose resources and loopback ports.
+services:
+  certs:
+    container_name: !reset null
+    image: ${CI_PARITY_IMAGE_PREFIX}-certs:ci
+
+  db.openelis.org:
+    container_name: !reset null
+    image: ${CI_PARITY_IMAGE_PREFIX}-db:ci
+    ports: !override
+      - target: 5432
+        published: "0"
+        host_ip: 127.0.0.1
+
+  oe.openelis.org:
+    container_name: !reset null
+    image: ${CI_PARITY_IMAGE_PREFIX}-oe:ci
+    ports: !override
+      - target: 8080
+        published: "0"
+        host_ip: 127.0.0.1
+      - target: 8443
+        published: "0"
+        host_ip: 127.0.0.1
+    networks: !override
+      default: {}
+      analyzer-net:
+        aliases:
+          - oe.openelis.org
+
+  fhir.openelis.org:
+    container_name: !reset null
+    image: ${CI_PARITY_IMAGE_PREFIX}-fhir:ci
+    ports: !override
+      - target: 8080
+        published: "0"
+        host_ip: 127.0.0.1
+      - target: 8443
+        published: "0"
+        host_ip: 127.0.0.1
+
+  frontend.openelis.org:
+    container_name: !reset null
+    image: ${CI_PARITY_IMAGE_PREFIX}-frontend:ci
+
+  proxy:
+    container_name: !reset null
+    image: ${CI_PARITY_IMAGE_PREFIX}-proxy:ci
+    ports: !override
+      - target: 80
+        published: "0"
+        host_ip: 127.0.0.1
+      - target: 443
+        published: "0"
+        host_ip: 127.0.0.1
+
+  astm-simulator:
+    container_name: !reset null
+    image: ${CI_PARITY_IMAGE_PREFIX}-mock:ci
+    ports: !override
+      - target: 9600
+        published: "0"
+        host_ip: 127.0.0.1
+      - target: 8080
+        published: "0"
+        host_ip: 127.0.0.1
+      - target: 5380
+        published: "0"
+        host_ip: 127.0.0.1
+    environment:
+      BRIDGE_CONTAINER_NAME: ${CI_PARITY_COMPOSE_PROJECT}-openelis-analyzer-bridge-1
+      MOCK_CONTAINER_NAME: ${CI_PARITY_COMPOSE_PROJECT}-astm-simulator-1
+      ANALYZER_NETWORK_NAMESPACE: ${CI_PARITY_COMPOSE_PROJECT}
+      ANALYZER_SUBNET_PREFIX: ${CI_PARITY_ANALYZER_SUBNET_PREFIX}
+
+  openelis-analyzer-bridge:
+    container_name: !reset null
+    image: ${CI_PARITY_IMAGE_PREFIX}-bridge:ci
+    ports: !override
+      - target: 8443
+        published: "0"
+        host_ip: 127.0.0.1
+      - target: 12001
+        published: "0"
+        host_ip: 127.0.0.1
+      - target: 2575
+        published: "0"
+        host_ip: 127.0.0.1
+
+networks:
+  default:
+    ipam: !reset null
+  analyzer-net:
+    ipam: !reset null

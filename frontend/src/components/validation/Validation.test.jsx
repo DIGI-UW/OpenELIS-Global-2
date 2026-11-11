@@ -5,7 +5,7 @@
  */
 import React from "react";
 import { vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
@@ -35,10 +35,15 @@ vi.mock("../esignature/ESignatureButton", () => ({
   SignatureMeaning: { VALIDATED_AND_RELEASED: "VALIDATED_AND_RELEASED" },
 }));
 
+vi.mock("../esignature/api", () => ({
+  isEsigEnabled: vi.fn(() => Promise.resolve({ enabled: false })),
+}));
+
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
+import { isEsigEnabled } from "../esignature/api";
 
 const row = (id, overrides = {}) => ({
   id,
@@ -66,11 +71,12 @@ const renderValidation = (
   rows,
   configurationProperties = { AccessionFormat: "" },
   params = "",
+  addNotification = vi.fn(),
 ) =>
   render(
     <ConfigurationContext.Provider value={{ configurationProperties }}>
       <NotificationContext.Provider
-        value={{ setNotificationVisible: vi.fn(), addNotification: vi.fn() }}
+        value={{ setNotificationVisible: vi.fn(), addNotification }}
       >
         <IntlProvider locale="en" messages={messages}>
           <Validation
@@ -117,6 +123,24 @@ describe("Validation — result flags in the row (OGC-1121)", () => {
     expect(screen.getByTestId("check-before-release-2")).toHaveTextContent(
       "Critical",
     );
+  });
+});
+
+describe("Validation — result value stays on one line", () => {
+  it("keeps a flagged scientific-notation value unbroken beside its flag", () => {
+    renderValidation([
+      row(0, {
+        result: "1.5 x 10^4",
+        normal: false,
+        critical: true,
+        resultFlag: "CRITICAL",
+      }),
+    ]);
+
+    const value = screen.getByTestId("validation-result-value-0");
+    expect(value).toHaveTextContent("1.5 x 10^4");
+    expect(value.style.whiteSpace).toBe("nowrap");
+    expect(value.querySelector('[data-testid^="flag-"]')).toBeNull();
   });
 });
 
@@ -319,6 +343,39 @@ describe("Validation — Check before release (OGC-1027)", () => {
     );
   });
 
+  it("the confirm dialog promises no e-signature when the site does not ask for one (OGC-1361)", async () => {
+    isEsigEnabled.mockResolvedValueOnce({ enabled: false });
+    renderValidation([row(0)], BULK_ON);
+
+    fireEvent.click(screen.getByTestId("release-all-clear"));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(isEsigEnabled).toHaveBeenCalled();
+    expect(screen.getByTestId("release-all-clear-body")).toHaveTextContent(
+      "This 1 result is in the Clear lane",
+    );
+    expect(screen.getByTestId("release-all-clear-body")).toHaveTextContent(
+      "A result that stops being clear before the release is skipped.",
+    );
+    expect(screen.queryByTestId("release-all-clear-esig")).toBeNull();
+    expect(screen.getByTestId("release-all-clear-modal")).not.toHaveTextContent(
+      "e-signature",
+    );
+  });
+
+  it("the confirm dialog names the one e-signature when the site asks for it (OGC-1361)", async () => {
+    isEsigEnabled.mockResolvedValueOnce({ enabled: true });
+    renderValidation([row(0)], BULK_ON);
+
+    fireEvent.click(screen.getByTestId("release-all-clear"));
+
+    expect(
+      await screen.findByTestId("release-all-clear-esig"),
+    ).toHaveTextContent("Releasing commits one e-signature for the whole set.");
+  });
+
   it("the confirm list holds only Clear-lane rows and the signed release posts them with the page's search key (OGC-1029)", () => {
     postToOpenElisServerJsonResponse.mockReset();
     renderValidation(
@@ -343,6 +400,32 @@ describe("Validation — Check before release (OGC-1027)", () => {
     expect(payload.doRange).toBe(false);
     expect(payload.accessionNumber).toBe("ACC0");
     expect(payload.rows.map((r) => r.analysisId)).toEqual(["100", "102"]);
+  });
+
+  it("a bulk release that only validates part of a test says the test stays open (OGC-1608)", () => {
+    postToOpenElisServerJsonResponse.mockReset();
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>
+      callback({ released: [], accepted: ["100"], skipped: [] }),
+    );
+    const addNotification = vi.fn();
+    renderValidation(
+      [row(0)],
+      BULK_ON,
+      "?type=order&accessionNumber=ACC0",
+      addNotification,
+    );
+    fireEvent.click(screen.getByTestId("release-all-clear"));
+    fireEvent.click(
+      screen.getByTestId("release-all-clear-sign").querySelector("button"),
+    );
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "success",
+        message:
+          "1 result(s) validated on tests that stay open until their other components are resulted and validated.",
+      }),
+    );
   });
 
   it("a needs-review row offers 'Review →' which opens its panel (OGC-1029)", () => {
@@ -396,6 +479,36 @@ describe("Validation — Check before release (OGC-1027)", () => {
       "Auto-validated",
     );
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+  });
+
+  it("'Include auto-validated' stays reachable when nothing on the accession awaits validation (OGC-1361)", () => {
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: BULK_ON }}
+      >
+        <NotificationContext.Provider
+          value={{ setNotificationVisible: vi.fn(), addNotification: vi.fn() }}
+        >
+          <IntlProvider locale="en" messages={messages}>
+            <Validation
+              params="?type=order&accessionNumber=ACC0"
+              results={{ resultList: [], qcFailureList: [], searched: true }}
+            />
+          </IntlProvider>
+        </NotificationContext.Provider>
+      </ConfigurationContext.Provider>,
+    );
+
+    expect(screen.getByTestId("auto-validated-toggle")).toHaveTextContent(
+      "Include auto-validated",
+    );
+  });
+
+  it("'Include auto-validated' is not offered before a search or for a non-accession search", () => {
+    renderValidation([], BULK_ON, "?type=order&accessionNumber=ACC0");
+    expect(screen.queryByTestId("auto-validated-toggle")).toBeNull();
+    renderValidation([row(0)], BULK_ON, "?type=testDate&testDate=01/09/2026");
+    expect(screen.queryByTestId("auto-validated-toggle")).toBeNull();
   });
 
   it("a patient result with no QC verdict sits in the Clear lane when the server says so (OGC-1226 FR-3)", () => {

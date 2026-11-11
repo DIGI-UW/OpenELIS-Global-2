@@ -3,6 +3,7 @@ import {
   Button,
   Checkbox,
   Column,
+  DefinitionTooltip,
   Grid,
   InlineNotification,
   Modal,
@@ -13,6 +14,7 @@ import {
 } from "@carbon/react";
 import { Copy, Launch, WarningAltFilled } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
+import { displayRange } from "../common/rangeNotApplied";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationKinds } from "../common/CustomNotification";
 import {
@@ -24,14 +26,21 @@ import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
+import {
+  serverPageArrowsProps,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
+import { isEsigEnabled } from "../esignature/api";
 import {
   FILTERS,
   LANE_CLEAR,
   bulkOutcomeKey,
   bulkReleaseRequest,
+  bulkSuccessMessages,
   bulkUnavailableReasons,
   clearRows,
   countByFilter,
@@ -39,9 +48,22 @@ import {
   triageRows,
 } from "./validationTriage";
 import ValidationReviewPanel from "./ValidationReviewPanel";
+import {
+  isSingleLabNumber,
+  parseLabNumberSearch,
+  searchFromLocation,
+} from "./validationSearch";
 import { flagFor } from "./validationReview";
 import { FlagChip, accentClass } from "../resultPage/unified/flags";
 import "../resultPage/unified/unified-results.scss";
+
+/**
+ * OGC-1608: a part validated on a test that stays open (another part still to
+ * be resulted or validated) has its own message.
+ */
+const ROW_OUTCOME_MESSAGES = {
+  accepted: "label.validation.review.success.partValidated",
+};
 
 const Validation = (props) => {
   const componentMounted = useRef(false);
@@ -90,13 +112,12 @@ const Validation = (props) => {
     return "on-time";
   };
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
   const [qcAckChecked, setQcAckChecked] = useState(false);
   const [qcJustification, setQcJustification] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkEsigEnabled, setBulkEsigEnabled] = useState(false);
   const [expandedRowIds, setExpandedRowIds] = useState([]);
   // OGC-1030 (FR-A4): auto-validated rows live behind a toggle, read-only.
   const [includeAutoValidated, setIncludeAutoValidated] = useState(false);
@@ -122,6 +143,10 @@ const Validation = (props) => {
   const visibleRows = filterTriaged(triaged, activeFilter).map(
     (item) => item.row,
   );
+  const arrows = serverPageArrowsProps({
+    paging: props.results?.paging,
+    onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+  });
   const triageByRowId = new Map(triaged.map((item) => [item.row.id, item]));
   const clearLaneCount = triaged.filter(
     (item) => item.lane === LANE_CLEAR,
@@ -149,6 +174,11 @@ const Validation = (props) => {
         return intl.formatMessage({
           id: "label.validation.emptyState.queueEmpty",
         });
+      case "rangeNotApplied":
+        return intl.formatMessage(
+          { id: "label.validation.emptyState.rangeNotApplied" },
+          { count: reason.count },
+        );
       case "noReference":
         return `${intl.formatMessage(
           { id: "label.validation.emptyState.noReference" },
@@ -204,8 +234,9 @@ const Validation = (props) => {
     {
       id: "normalRange",
       name: intl.formatMessage({ id: "column.name.normalRange" }),
-      selector: (row) => row.normalRange,
+      selector: (row) => displayRange(intl, row),
       sortable: true,
+      wrap: true,
       width: "8rem",
     },
     {
@@ -249,48 +280,57 @@ const Validation = (props) => {
    * batch that has now been released.
    */
   const refreshQueue = () => {
-    setPage(1);
     setExpandedRowIds([]);
     setQcAckChecked(false);
     setQcJustification("");
-    props.refreshResults?.();
+    props.refreshResults?.(Number(props.results?.paging?.currentPage) || 1);
+  };
+
+  const notifyAndRefresh = (kind, message) => {
+    addNotification({
+      kind,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message,
+    });
+    setNotificationVisible(true);
+    refreshQueue();
   };
 
   /**
    * OGC-1030 (FR-J1) — another validator acted on the row since this page
    * loaded: say who and when, then refresh so nobody works from a stale queue.
    */
-  const handleStale = (response) => {
-    addNotification({
-      kind: NotificationKinds.warning,
-      title: intl.formatMessage({ id: "notification.title" }),
-      message: intl.formatMessage(
+  const handleStale = (response) =>
+    notifyAndRefresh(
+      NotificationKinds.warning,
+      intl.formatMessage(
         { id: "label.validation.review.error.stale" },
         {
           who: response?.modifiedBy || "",
           when: response?.modifiedAt || "",
         },
       ),
-    });
-    setNotificationVisible(true);
-    refreshQueue();
-  };
+    );
+
+  const handleQcHold = () =>
+    notifyAndRefresh(
+      NotificationKinds.error,
+      intl.formatMessage({ id: "label.validation.review.error.qcHold" }),
+    );
 
   /**
    * OGC-1028 — a per-row action (release / modify / retest / reject) succeeded:
    * refresh the queue so the row's new state is served fresh.
    */
-  const handleRowActionDone = (outcome) => {
-    addNotification({
-      kind: NotificationKinds.success,
-      title: intl.formatMessage({ id: "notification.title" }),
-      message: intl.formatMessage({
-        id: `label.validation.review.success.${outcome}`,
+  const handleRowActionDone = (outcome) =>
+    notifyAndRefresh(
+      NotificationKinds.success,
+      intl.formatMessage({
+        id:
+          ROW_OUTCOME_MESSAGES[outcome] ||
+          `label.validation.review.success.${outcome}`,
       }),
-    });
-    setNotificationVisible(true);
-    refreshQueue();
-  };
+    );
 
   /**
    * Posts the QC failure acknowledgment for the current batch. Resolves on 2xx,
@@ -337,28 +377,15 @@ const Validation = (props) => {
     }
   };
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
-  };
-
   /**
    * OGC-1030 (FR-A4) — the accession's auto-validated results, fetched only when
    * the validator asks for them; an accession search is the only scope served.
    */
-  const accessionSearch = new URLSearchParams(
-    (props.params || "").replace(/^\?/, ""),
-  );
-  const autoValidatedAccession =
-    accessionSearch.get("type") === "order"
-      ? props.results?.accessionNumber ||
-        accessionSearch.get("accessionNumber") ||
-        ""
-      : "";
+  const currentSearch = searchFromLocation("/validation", props.params);
+  const autoValidatedAccession = isSingleLabNumber(currentSearch)
+    ? props.results?.accessionNumber ||
+      parseLabNumberSearch(currentSearch.labNumber).labNumberFrom
+    : "";
   useEffect(() => {
     if (!includeAutoValidated || !autoValidatedAccession) {
       return;
@@ -370,6 +397,25 @@ const Validation = (props) => {
       (rows) => setAutoValidatedRows(Array.isArray(rows) ? rows : []),
     );
   }, [includeAutoValidated, autoValidatedAccession]);
+
+  /**
+   * OGC-1361 — the bulk dialog promises an e-signature only when the site
+   * actually asks for one.
+   */
+  useEffect(() => {
+    if (!bulkOpen) {
+      return undefined;
+    }
+    let active = true;
+    Promise.resolve(isEsigEnabled())
+      .then(
+        (response) => active && setBulkEsigEnabled(response?.enabled === true),
+      )
+      .catch(() => active && setBulkEsigEnabled(false));
+    return () => {
+      active = false;
+    };
+  }, [bulkOpen]);
 
   /**
    * OGC-1028 — the review panel's composer is the single note input for a row.
@@ -407,8 +453,8 @@ const Validation = (props) => {
       (response) => {
         setBulkBusy(false);
         const released = response?.released?.length || 0;
-        const skipped = response?.skipped?.length || 0;
-        if (response?.error || released === 0) {
+        const accepted = response?.accepted?.length || 0;
+        if (response?.error || (released === 0 && accepted === 0)) {
           addNotification({
             kind: NotificationKinds.error,
             title: intl.formatMessage({ id: "notification.title" }),
@@ -420,15 +466,9 @@ const Validation = (props) => {
         addNotification({
           kind: NotificationKinds.success,
           title: intl.formatMessage({ id: "notification.title" }),
-          message: skipped
-            ? intl.formatMessage(
-                { id: "label.validation.bulk.partial" },
-                { released, skipped },
-              )
-            : intl.formatMessage(
-                { id: "label.validation.bulk.success" },
-                { count: released },
-              ),
+          message: bulkSuccessMessages(response)
+            .map((part) => intl.formatMessage({ id: part.id }, part.values))
+            .join(" "),
         });
         setNotificationVisible(true);
         setBulkOpen(false);
@@ -528,6 +568,24 @@ const Validation = (props) => {
                   height="15"
                 />
               </picture>
+            )}
+            {/* OGC-1147: a control covering this result failed. A tag rather
+                than another icon — the reason has to be readable, or a tech clears
+                the hold out of confusion and the safety argument evaporates.
+                DefinitionTooltip, not a title prop: Carbon's Tag swallows title
+                and renders its own wrapper, so the reason never showed. */}
+            {row.qcHold && (
+              <DefinitionTooltip
+                definition={intl.formatMessage({
+                  id: "validation.qcHold.tooltip",
+                })}
+                align="bottom"
+                openOnHover
+              >
+                <Tag type="red" size="sm">
+                  <FormattedMessage id="label.validation.review.qc.FAIL" />
+                </Tag>
+              </DefinitionTooltip>
             )}
           </>
         );
@@ -690,7 +748,12 @@ const Validation = (props) => {
                 style={{ padding: "2px", ...holdingStyle }}
                 data-testid={`validation-result-${row.id}`}
               >
-                {row.result}
+                <span
+                  style={{ whiteSpace: "nowrap" }}
+                  data-testid={`validation-result-value-${row.id}`}
+                >
+                  {row.displayResult ?? row.result}
+                </span>
                 <FlagChip flag={flag === "NORMAL" ? undefined : flag} />
               </div>
             );
@@ -726,6 +789,13 @@ const Validation = (props) => {
                 <b>
                   {" "}
                   <FormattedMessage id="validation.label.nonconform" />
+                </b>
+                <Tag type="red" size="sm" style={{ marginLeft: "1rem" }}>
+                  <FormattedMessage id="label.validation.review.qc.FAIL" />
+                </Tag>
+                <b>
+                  {" "}
+                  <FormattedMessage id="validation.legend.qcHold" />
                 </b>
               </>
             )}
@@ -782,10 +852,20 @@ const Validation = (props) => {
           onRequestClose={() => setBulkOpen(false)}
         >
           <div data-testid="release-all-clear-modal">
-            <p>
+            <p data-testid="release-all-clear-body">
               {intl.formatMessage(
-                { id: "label.validation.bulk.body" },
+                { id: "label.validation.bulk.bodyClear" },
                 { count: clearLaneRows.length },
+              )}
+              {bulkEsigEnabled && (
+                <>
+                  {" "}
+                  <span data-testid="release-all-clear-esig">
+                    {intl.formatMessage({
+                      id: "label.validation.bulk.bodyEsig",
+                    })}
+                  </span>
+                </>
               )}
             </p>
             <p data-testid="release-all-clear-scope">
@@ -824,7 +904,7 @@ const Validation = (props) => {
                         : row.accessionNumber}
                     </td>
                     <td>{row.testName}</td>
-                    <td>{row.result}</td>
+                    <td>{row.displayResult ?? row.result}</td>
                     <td>{row.normalRange}</td>
                   </tr>
                 ))}
@@ -902,10 +982,7 @@ const Validation = (props) => {
               kind={activeFilter === filter ? "primary" : "tertiary"}
               aria-pressed={activeFilter === filter}
               data-testid={`triage-filter-${filter}`}
-              onClick={() => {
-                setActiveFilter(filter);
-                setPage(1);
-              }}
+              onClick={() => setActiveFilter(filter)}
             >
               {intl.formatMessage({ id: `label.validation.filter.${filter}` })}{" "}
               ({filterCounts[filter]})
@@ -926,7 +1003,7 @@ const Validation = (props) => {
           </span>
         </div>
       )}
-      {triaged.length > 0 && autoValidatedAccession && (
+      {showBulkBar && autoValidatedAccession && (
         <div
           data-testid="auto-validated-toggle"
           style={{ margin: "0 0 0.5rem 0" }}
@@ -952,8 +1029,9 @@ const Validation = (props) => {
       <>
         <>
           <>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
-              data={visibleRows.slice((page - 1) * pageSize, page * pageSize)}
+              data={visibleRows}
               columns={columns}
               isSortable
               expandableRows
@@ -980,46 +1058,17 @@ const Validation = (props) => {
                 onActionDone: handleRowActionDone,
                 onNoteChange: handleRowNoteChange,
                 onStale: handleStale,
+                onQcHold: handleQcHold,
               }}
             ></DataTable>
             <Pagination
-              onChange={handlePageChange}
-              page={page}
-              pageSize={pageSize}
-              pageSizes={[10, 20, 30, 50, 100]}
-              totalItems={visibleRows.length}
-              forwardText={intl.formatMessage({ id: "pagination.forward" })}
-              backwardText={intl.formatMessage({ id: "pagination.backward" })}
-              itemRangeText={(min, max, total) =>
-                intl.formatMessage(
-                  { id: "pagination.item-range" },
-                  { min: min, max: max, total: total },
-                )
-              }
-              itemsPerPageText={intl.formatMessage({
-                id: "pagination.items-per-page",
+              {...serverPaginationProps({
+                paging: props.results?.paging,
+                rowsOnPage: visibleRows.length,
+                pageSize: props.serverPageSize,
+                onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+                intl,
               })}
-              itemText={(min, max) =>
-                intl.formatMessage(
-                  { id: "pagination.item" },
-                  { min: min, max: max },
-                )
-              }
-              pageNumberText={intl.formatMessage({
-                id: "pagination.page-number",
-              })}
-              pageRangeText={(_current, total) =>
-                intl.formatMessage(
-                  { id: "pagination.page-range" },
-                  { total: total },
-                )
-              }
-              pageText={(page, pagesUnknown) =>
-                intl.formatMessage(
-                  { id: "pagination.page" },
-                  { page: pagesUnknown ? "" : page },
-                )
-              }
             />
 
             {qcAckRequired && (
@@ -1173,7 +1222,7 @@ const Validation = (props) => {
                               : row.accessionNumber}
                           </td>
                           <td>{row.testName}</td>
-                          <td>{row.result}</td>
+                          <td>{row.displayResult ?? row.result}</td>
                           <td>{row.normalRange}</td>
                           <td>{row.resultDate}</td>
                           <td>

@@ -429,7 +429,7 @@ const LanguageManagement = () => {
                             disabled={locale.fallback}
                           />
                           <Button
-                            kind="danger--ghost"
+                            kind="ghost"
                             size="sm"
                             hasIconOnly
                             renderIcon={TrashCan}

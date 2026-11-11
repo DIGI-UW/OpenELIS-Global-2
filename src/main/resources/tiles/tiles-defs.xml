@@ -1341,12 +1341,6 @@
             value="/pages/common/emptyPlaceHolder.jsp" />
     </definition>
 
-    <definition name="ListPluginsPageDefinition"
-        extends="masterListsPageDefinition">
-        <put-attribute name="bodyFragment"
-            value="/pages/plugin/listPlugin.jsp" />
-    </definition>
-
     <definition name="PrintBarcodeDefinition"
         extends="baseDefinition">
         <put-attribute name="bodyFragment"

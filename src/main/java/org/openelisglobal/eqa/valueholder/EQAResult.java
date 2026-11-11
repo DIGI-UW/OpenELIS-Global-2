@@ -14,7 +14,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.UUID;
@@ -26,8 +25,10 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 @Getter
 @Setter
 @Entity
-@Table(name = "eqa_result", uniqueConstraints = @UniqueConstraint(name = "uk_eqa_result_dist_org_test", columnNames = {
-        "eqa_distribution_id", "participant_organization_id", "test_id" }))
+// Uniqueness is two partial indexes (qa/047): one row per panel sample, or one
+// per test for a result that answers no sample. A table-level constraint here
+// would have Hibernate recreate the single-test rule over them.
+@Table(name = "eqa_result")
 public class EQAResult extends BaseObject<Long> {
 
     @Id
@@ -50,8 +51,21 @@ public class EQAResult extends BaseObject<Long> {
     @Column(name = "test_id", nullable = false)
     private Long testId;
 
+    /**
+     * The panel sample this result answers. Null for a result with no sample behind
+     * it: a V1 row, or a test the cycle's panel sealed nothing for.
+     */
+    @Column(name = "eqa_panel_sample_id")
+    private Long panelSampleId;
+
     @Column(name = "result_value", precision = 15, scale = 5)
     private BigDecimal resultValue;
+
+    /**
+     * A qualitative reported value ("Reactive"); filled when result_value is not.
+     */
+    @Column(name = "result_text", length = 255)
+    private String resultText;
 
     @Column(name = "target_value", precision = 15, scale = 5)
     private BigDecimal targetValue;

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Upgrade path from 3.2.2.0: that release already allows and writes CRITICAL_RESULT
+    alerts, but 036, 057-referral-alert-types and 057-alert-entity-ref each redeclare
+    chk_alert_type from a list that lacks it, so the first ADD CONSTRAINT rejects the
+    existing rows and Liquibase stops. Park every alert whose type is outside the ten
+    types all three lists share as OTHER until 058-alert-type-union has restored the
+    full list; 058-1-restore-upgrade-alert-types puts the original types back.
+    Only runs on databases that have not run 036 yet, so databases already on this
+    branch are untouched.
+    -->
+    <changeSet id="3.5.0-036-0-stash-upgrade-alert-types" author="mozzy11">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="alert"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM databasechangelog
+                WHERE id = 'OGC-625-2026-06-02-1' AND author = 'reagan-meant'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE clinlims.alert ADD COLUMN IF NOT EXISTS upgrade_stashed_alert_type VARCHAR(50);
+            UPDATE clinlims.alert
+               SET upgrade_stashed_alert_type = alert_type,
+                   alert_type = 'OTHER'
+             WHERE alert_type NOT IN (
+                'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+                'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED'
+             );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

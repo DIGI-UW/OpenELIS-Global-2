@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-1363 (Locations and Organizations, FRS v0.3, Dependencies 1 to 5,
+         11, 12, 14, 15): the fuller organization profile shared by facilities,
+         wards, sampling sites and geographic areas (GPS, contact, description,
+         category, ownership, ward service type, registry source, referral-lab
+         review), labelled identifiers with one reporting code, a per-record
+         change log, and the one-to-one link from each sampling site to the
+         organization that now carries its shared fields. -->
+
+    <changeSet author="mozzy11" id="OGC-1363-organization-name-length">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims' AND table_name = 'organization' AND column_name = 'name'
+                  AND character_maximum_length &lt; 200
+            </sqlCheck>
+        </preConditions>
+        <comment>Facility and sampling-site names are longer than the 80 characters the column allowed</comment>
+        <modifyDataType schemaName="clinlims" tableName="organization" columnName="name" newDataType="varchar(200)"/>
+    </changeSet>
+
+    <changeSet author="mozzy11" id="OGC-1363-organization-profile-columns">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="organization" columnName="gps_latitude"/>
+            </not>
+        </preConditions>
+        <comment>GPS, contact, description, category, ownership, ward service type, source and referral-lab review fields on organization</comment>
+        <addColumn schemaName="clinlims" tableName="organization">
+            <column name="gps_latitude" type="numeric(10,7)"/>
+            <column name="gps_longitude" type="numeric(10,7)"/>
+            <column name="contact_name" type="varchar(100)"/>
+            <column name="description" type="varchar(1000)"/>
+            <column name="category_id" type="numeric(10)"/>
+            <column name="ownership_id" type="numeric(10)"/>
+            <column name="service_type" type="varchar(30)"/>
+            <column name="source" type="varchar(20)"/>
+            <column name="approval_status" type="varchar(30)"/>
+            <column name="accreditation_body" type="varchar(100)"/>
+            <column name="accreditation_number" type="varchar(50)"/>
+            <column name="accreditation_expiry" type="date"/>
+            <column name="last_review_date" type="date"/>
+            <column name="next_review_due" type="date"/>
+            <column name="review_notes" type="varchar(1000)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="organization_category_fk" baseTableSchemaName="clinlims"
+            baseTableName="organization" baseColumnNames="category_id" referencedTableSchemaName="clinlims"
+            referencedTableName="dictionary" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="organization_ownership_fk" baseTableSchemaName="clinlims"
+            baseTableName="organization" baseColumnNames="ownership_id" referencedTableSchemaName="clinlims"
+            referencedTableName="dictionary" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet author="mozzy11" id="OGC-1363-organization-identifier">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="organization_identifier"/>
+            </not>
+        </preConditions>
+        <comment>Labelled identifiers per organization, one of them the reporting code</comment>
+        <createSequence schemaName="clinlims" sequenceName="organization_identifier_seq" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="organization_identifier">
+            <column name="id" type="numeric(10)">
+                <constraints primaryKey="true" primaryKeyName="organization_identifier_pk" nullable="false"/>
+            </column>
+            <column name="organization_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_reporting" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="timestamp"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="organization_identifier_org_fk" baseTableSchemaName="clinlims"
+            baseTableName="organization_identifier" baseColumnNames="organization_id"
+            referencedTableSchemaName="clinlims" referencedTableName="organization" referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        <addUniqueConstraint schemaName="clinlims" tableName="organization_identifier"
+            columnNames="organization_id, label" constraintName="organization_identifier_label_uk"/>
+        <sql>CREATE INDEX organization_identifier_value_idx ON clinlims.organization_identifier (lower(label), lower(value));</sql>
+    </changeSet>
+
+    <changeSet author="mozzy11" id="OGC-1363-organization-identifier-migrate-codes">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.organization_identifier</sqlCheck>
+        </preConditions>
+        <comment>Each stored code becomes the identifier "Code" (the reporting code) and each CLIA number the identifier "CLIA"</comment>
+        <sql>
+            INSERT INTO clinlims.organization_identifier (id, organization_id, label, value, is_reporting, lastupdated)
+            SELECT nextval('clinlims.organization_identifier_seq'), o.id, 'Code', trim(o.code), true, now()
+            FROM clinlims.organization o
+            WHERE o.code IS NOT NULL AND trim(o.code) &lt;&gt; '';
+        </sql>
+        <sql>
+            INSERT INTO clinlims.organization_identifier (id, organization_id, label, value, is_reporting, lastupdated)
+            SELECT nextval('clinlims.organization_identifier_seq'), o.id, 'CLIA', trim(o.clia_num), false, now()
+            FROM clinlims.organization o
+            WHERE o.clia_num IS NOT NULL AND trim(o.clia_num) &lt;&gt; '';
+        </sql>
+    </changeSet>
+
+    <changeSet author="mozzy11" id="OGC-1363-organization-change-log">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="organization_change"/>
+            </not>
+        </preConditions>
+        <comment>Who changed each organization, when, what, and from what value (ISO 15189 7.11 and 8.4)</comment>
+        <createSequence schemaName="clinlims" sequenceName="organization_change_seq" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="organization_change">
+            <column name="id" type="numeric(10)">
+                <constraints primaryKey="true" primaryKeyName="organization_change_pk" nullable="false"/>
+            </column>
+            <column name="organization_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="changed_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="numeric(10)"/>
+            <column name="actor" type="varchar(100)"/>
+            <column name="action" type="varchar(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="changes" type="text"/>
+            <column name="lastupdated" type="timestamp"/>
+        </createTable>
+        <addForeignKeyConstraint constraintName="organization_change_org_fk" baseTableSchemaName="clinlims"
+            baseTableName="organization_change" baseColumnNames="organization_id"
+            referencedTableSchemaName="clinlims" referencedTableName="organization" referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        <createIndex schemaName="clinlims" tableName="organization_change" indexName="organization_change_org_idx">
+            <column name="organization_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="mozzy11" id="OGC-1363-facility-category-list">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.dictionary_category WHERE name = 'Facility category'
+            </sqlCheck>
+        </preConditions>
+        <comment>Admin-managed facility categories offered on organizations</comment>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Kinds of facility an organization can be"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="FACCAT"/>
+            <column name="name" value="Facility category"/>
+        </insert>
+        <sql>
+            INSERT INTO clinlims.dictionary (id, is_active, dict_entry, lastupdated, local_abbrev, dictionary_category_id, sort_order)
+            SELECT nextval('clinlims.dictionary_seq'), 'Y', v.entry, now(), v.abbrev,
+                   (SELECT id FROM clinlims.dictionary_category WHERE name = 'Facility category'), v.sort_order
+            FROM (VALUES ('National referral hospital', 'FC-NATREF', 1), ('Provincial hospital', 'FC-PROV', 2),
+                         ('District hospital', 'FC-DIST', 3), ('Health centre', 'FC-HC', 4),
+                         ('Urban clinic', 'FC-URBAN', 5), ('Aid post', 'FC-AIDPOST', 6),
+                         ('Laboratory', 'FC-LAB', 7)) AS v(entry, abbrev, sort_order);
+        </sql>
+    </changeSet>
+
+    <changeSet author="mozzy11" id="OGC-1363-facility-ownership-list">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.dictionary_category WHERE name = 'Facility ownership'
+            </sqlCheck>
+        </preConditions>
+        <comment>Admin-managed ownership list offered on organizations</comment>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Who owns or runs a facility"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="FACOWN"/>
+            <column name="name" value="Facility ownership"/>
+        </insert>
+        <sql>
+            INSERT INTO clinlims.dictionary (id, is_active, dict_entry, lastupdated, local_abbrev, dictionary_category_id, sort_order)
+            SELECT nextval('clinlims.dictionary_seq'), 'Y', v.entry, now(), v.abbrev,
+                   (SELECT id FROM clinlims.dictionary_category WHERE name = 'Facility ownership'), v.sort_order
+            FROM (VALUES ('Government', 'FO-GOV', 1), ('Church', 'FO-CHURCH', 2), ('Private', 'FO-PRIVATE', 3),
+                         ('NGO', 'FO-NGO', 4), ('Other', 'FO-OTHER', 5)) AS v(entry, abbrev, sort_order);
+        </sql>
+    </changeSet>
+
+    <changeSet author="mozzy11" id="OGC-1363-sampling-site-organization-link">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="vector_sampling_site" columnName="organization_id"/>
+            </not>
+        </preConditions>
+        <comment>Each sampling site is linked one-to-one to an organization of type "sampling site"</comment>
+        <addColumn schemaName="clinlims" tableName="vector_sampling_site">
+            <column name="organization_id" type="numeric(10)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="vector_sampling_site_org_fk" baseTableSchemaName="clinlims"
+            baseTableName="vector_sampling_site" baseColumnNames="organization_id"
+            referencedTableSchemaName="clinlims" referencedTableName="organization" referencedColumnNames="id"/>
+        <addUniqueConstraint schemaName="clinlims" tableName="vector_sampling_site" columnNames="organization_id"
+            constraintName="vector_sampling_site_org_uk"/>
+    </changeSet>
+
+    <changeSet author="mozzy11" id="OGC-1363-sampling-site-organization-backfill">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.vector_sampling_site WHERE organization_id IS NULL
+                  AND NOT EXISTS (SELECT 1 FROM clinlims.vector_sampling_site)
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM clinlims.organization_type WHERE short_name = 'sampling site'
+            </sqlCheck>
+        </preConditions>
+        <comment>Every existing sampling site gets a linked organization carrying its code, name, status, contact, GPS, description and location</comment>
+        <sql splitStatements="false">
+            DO $$
+            DECLARE
+                site record;
+                new_id numeric;
+                site_type_id numeric;
+            BEGIN
+                SELECT id INTO site_type_id FROM clinlims.organization_type WHERE short_name = 'sampling site';
+                FOR site IN SELECT * FROM clinlims.vector_sampling_site WHERE organization_id IS NULL ORDER BY id LOOP
+                    new_id := nextval('clinlims.organization_seq');
+                    INSERT INTO clinlims.organization (id, name, code, short_name, is_active, mls_sentinel_lab_flag,
+                        phone, contact_name, gps_latitude, gps_longitude, description, org_id, lastupdated, fhir_uuid,
+                        source)
+                    VALUES (new_id, left(site.name, 200), left(site.code, 20), left(site.code, 15),
+                        CASE WHEN coalesce(site.active, true) THEN 'Y' ELSE 'N' END, 'N',
+                        left(site.contact_phone, 20), left(site.contact_name, 100),
+                        CASE WHEN site.gps_latitude ~ '^\s*-?[0-9]+(\.[0-9]+)?\s*$' THEN trim(site.gps_latitude)::numeric ELSE NULL END,
+                        CASE WHEN site.gps_longitude ~ '^\s*-?[0-9]+(\.[0-9]+)?\s*$' THEN trim(site.gps_longitude)::numeric ELSE NULL END,
+                        left(site.description, 1000),
+                        CASE WHEN site.location_org_id ~ '^[0-9]+$'
+                                  AND EXISTS (SELECT 1 FROM clinlims.organization p WHERE p.id = site.location_org_id::numeric)
+                             THEN site.location_org_id::numeric ELSE NULL END,
+                        now(), gen_random_uuid(), coalesce(site.source, 'LOCAL'));
+                    INSERT INTO clinlims.organization_organization_type (org_id, org_type_id) VALUES (new_id, site_type_id);
+                    IF site.code IS NOT NULL AND trim(site.code) &lt;&gt; '' THEN
+                        INSERT INTO clinlims.organization_identifier (id, organization_id, label, value, is_reporting, lastupdated)
+                        VALUES (nextval('clinlims.organization_identifier_seq'), new_id, 'Code', trim(site.code), true, now());
+                    END IF;
+                    UPDATE clinlims.vector_sampling_site SET organization_id = new_id WHERE id = site.id;
+                END LOOP;
+            END $$;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

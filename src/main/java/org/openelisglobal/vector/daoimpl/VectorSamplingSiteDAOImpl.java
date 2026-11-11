@@ -77,4 +77,39 @@ public class VectorSamplingSiteDAOImpl extends BaseDAOImpl<VectorSamplingSite, I
             throw new LIMSRuntimeException("Error in VectorSamplingSiteDAOImpl.search()", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public VectorSamplingSite getByOrganizationId(Integer organizationId) throws LIMSRuntimeException {
+        if (organizationId == null) {
+            return null;
+        }
+        try {
+            TypedQuery<VectorSamplingSite> query = entityManager.createQuery(
+                    "select s from VectorSamplingSite s where s.organizationId = :orgId", VectorSamplingSite.class);
+            query.setParameter("orgId", organizationId);
+            List<VectorSamplingSite> list = query.getResultList();
+            return list.isEmpty() ? null : list.get(0);
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in VectorSamplingSiteDAOImpl.getByOrganizationId()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VectorSamplingSite> getByOrganizationIds(List<Integer> organizationIds) throws LIMSRuntimeException {
+        if (organizationIds == null || organizationIds.isEmpty()) {
+            return List.of();
+        }
+        try {
+            TypedQuery<VectorSamplingSite> query = entityManager.createQuery(
+                    "select s from VectorSamplingSite s where s.organizationId in (:orgIds)", VectorSamplingSite.class);
+            query.setParameter("orgIds", organizationIds);
+            return query.getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in VectorSamplingSiteDAOImpl.getByOrganizationIds()", e);
+        }
+    }
 }

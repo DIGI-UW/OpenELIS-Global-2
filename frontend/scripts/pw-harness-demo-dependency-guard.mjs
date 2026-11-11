@@ -193,6 +193,13 @@ export function findHarnessDemoDependencyViolations({
         ) {
           continue;
         }
+        // The canonical helper only paces video projects; readiness still uses UI assertions.
+        if (
+          dependencyRelativePath === "playwright/helpers/video-pause.ts" &&
+          message.messageId === "arbitraryWait"
+        ) {
+          continue;
+        }
         violations.push({
           column: message.column,
           dependencyPath: dependencyRelativePath,

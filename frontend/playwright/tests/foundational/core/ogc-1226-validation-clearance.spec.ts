@@ -121,7 +121,7 @@ const recordedNotifications = (page: Page) =>
 const openQueueFor = async (page: Page, accessionNumber: string) => {
   await page.goto("/validation?type=order", { waitUntil: "domcontentloaded" });
   const main = page.getByRole("main");
-  const search = main.getByPlaceholder(/accession|lab no/i);
+  const search = main.locator("#validationSearch");
   await expect(search).toBeVisible({ timeout: NAV_TIMEOUT });
   await search.fill(accessionNumber);
   const loaded = page.waitForResponse(
@@ -130,7 +130,7 @@ const openQueueFor = async (page: Page, accessionNumber: string) => {
       response.request().method() === "GET",
     { timeout: LONG_TIMEOUT },
   );
-  await main.getByRole("button", { name: /search/i }).click();
+  await main.getByTestId("validation-load").click();
   await loaded;
   await expect(page.getByTestId("release-all-clear")).toBeVisible({
     timeout: LONG_TIMEOUT,
@@ -199,6 +199,21 @@ test.describe("Validation clearance rule (OGC-1226)", () => {
     expect((await recordedNotifications(page)).join("\n")).toContain(
       "1 clear result(s) released.",
     );
+
+    // OGC-1361: a result the validator released is not "auto-validated".
+    const autoValidated = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/AccessionValidation/auto-validated") &&
+        response.request().method() === "GET",
+      { timeout: LONG_TIMEOUT },
+    );
+    await page.locator('label[for="include-auto-validated"]').click();
+    await autoValidated;
+    const section = page.getByTestId("auto-validated-section");
+    await expect(section).toContainText("Auto-validated results (0)", {
+      timeout: UI_TIMEOUT,
+    });
+    await expect(page.getByTestId("auto-validated-empty")).toBeVisible();
   });
 
   test("an abnormal result is held, and the queue says why the bulk release is unavailable", async ({

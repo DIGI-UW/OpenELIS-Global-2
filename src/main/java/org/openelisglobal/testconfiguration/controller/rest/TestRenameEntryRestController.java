@@ -12,6 +12,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testconfiguration.form.TestRenameEntryForm;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -68,12 +69,12 @@ public class TestRenameEntryRestController extends BaseController {
     }
 
     @PostMapping(value = "/TestRenameEntry")
-    public TestRenameEntryForm updateTestRenameEntry(HttpServletRequest request,
+    public ResponseEntity<?> updateTestRenameEntry(HttpServletRequest request,
             @RequestBody @Valid TestRenameEntryForm form, BindingResult result, RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
             // saveErrors(result);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         form.setCancelAction("CancelDictionary");
@@ -88,7 +89,7 @@ public class TestRenameEntryRestController extends BaseController {
         updateTestNames(testId, nameEnglish, nameFrench, reportNameEnglish, reportNameFrench, userId);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private void updateTestNames(String testId, String nameEnglish, String nameFrench, String reportNameEnglish,

@@ -4,7 +4,7 @@ public class MicroReferenceAdminQueryForm {
     public String q;
     public String status;
     public String category;
-    public String workflow;
+    public String organismGroup;
     public String authority;
     public String organism;
     public String antibiotic;
@@ -38,12 +38,12 @@ public class MicroReferenceAdminQueryForm {
         this.category = category;
     }
 
-    public String getWorkflow() {
-        return workflow;
+    public String getOrganismGroup() {
+        return organismGroup;
     }
 
-    public void setWorkflow(String workflow) {
-        this.workflow = workflow;
+    public void setOrganismGroup(String organismGroup) {
+        this.organismGroup = organismGroup;
     }
 
     public String getAuthority() {
