@@ -32,20 +32,15 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping(value = "/rest/")
 public class CommonValidationsRestController {
 
-    private ResponseObject responseObject;
-
     @Autowired
     protected ProjectService projectService;
 
     protected SearchResultsService searchResultsService = SpringContext.getBean(SearchResultsService.class);
 
-    public CommonValidationsRestController() {
-        this.responseObject = new ResponseObject();
-    }
-
     @GetMapping(value = "SampleEntryAccessionNumberValidation", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseObject getAccessionNumberValidation(HttpServletRequest request) {
+        ResponseObject responseObject = new ResponseObject();
         String accessionNumber = request.getParameter("accessionNumber");
         String field = request.getParameter("field");
         String recordType = request.getParameter("recordType");
@@ -121,6 +116,7 @@ public class CommonValidationsRestController {
     public ResponseObject accessionNumberGenerator(@RequestParam(required = false) String programCode,
             @RequestParam(defaultValue = "false") Boolean noIncrement,
             @RequestParam(required = false) AccessionFormat format) {
+        ResponseObject responseObject = new ResponseObject();
 
         String nextNumber = null;
         String error = null;
@@ -170,6 +166,7 @@ public class CommonValidationsRestController {
     @GetMapping(value = "PhoneNumberValidationProvider", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseObject getPhoneNumberValidation(HttpServletRequest request) {
+        ResponseObject responseObject = new ResponseObject();
 
         String field = request.getParameter("fieldId");
         String phoneNumber = request.getParameter("value");
@@ -192,6 +189,7 @@ public class CommonValidationsRestController {
     @ResponseBody
     public ResponseObject validateSubjectNumberAndNationalId(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        ResponseObject responseObject = new ResponseObject();
 
         String fieldId = request.getParameter("fieldId");
         String number = request.getParameter("subjectNumber");
