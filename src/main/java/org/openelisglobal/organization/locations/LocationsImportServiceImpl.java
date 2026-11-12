@@ -1396,13 +1396,14 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             identifiers.set(0, new Identifier(first.id(), first.label(), first.value(), true));
         }
         Referral referral = current != null && current.referral() != null ? current.referral()
-                : new Referral(null, null, null, null, null, null, null);
+                : new Referral(null, null, null, null, null, null, null, null);
         referral = new Referral(value(csv, "approvalStatus", referral.approvalStatus()),
                 value(csv, "accreditationBody", referral.accreditationBody()),
                 value(csv, "accreditationNumber", referral.accreditationNumber()),
                 value(csv, "accreditationExpiry", referral.accreditationExpiry()),
                 value(csv, "lastReviewDate", referral.lastReviewDate()),
-                value(csv, "nextReviewDue", referral.nextReviewDue()), referral.reviewNotes());
+                value(csv, "nextReviewDue", referral.nextReviewDue()), referral.reviewNotes(),
+                value(csv, "fhirId", referral.fhirId()));
         Site site = current != null && current.site() != null ? current.site() : new Site(null, null, null, null);
         site = new Site(site.siteId(), value(csv, "siteType", site.siteType()), value(csv, "subtype", site.subtype()),
                 value(csv, "environmentalZone", site.environmentalZone()));

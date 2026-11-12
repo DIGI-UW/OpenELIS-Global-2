@@ -43,6 +43,7 @@ const EMPTY_REFERRAL = {
   lastReviewDate: "",
   nextReviewDue: "",
   reviewNotes: "",
+  fhirId: "",
 };
 
 const emptyForm = (kind) => ({
@@ -98,6 +99,7 @@ const fromDetail = (detail) => ({
       ? ""
       : String(detail.gpsLongitude),
   positionManaged: !!detail.positionManaged,
+  fhirId: detail.fhirId || "",
   contactName: detail.contactName || "",
   phone: detail.phone || "",
   fax: detail.fax || "",
@@ -186,6 +188,7 @@ const FIELD_ELEMENT = {
   "referral.lastReviewDate": "ref-last",
   "referral.nextReviewDue": "ref-next",
   "referral.reviewNotes": "ref-notes",
+  "referral.fhirId": "ref-fhir-id",
 };
 
 /** The label a message uses for a field, by its form or error key. */
@@ -851,6 +854,14 @@ const RecordForm = ({
         <p className="cds--form__helper-text">
           <FormattedMessage id="help.locations.identifiers" />
         </p>
+        {form.fhirId && (
+          <p className="cds--form__helper-text" data-testid="locations-fhir-id">
+            {intl.formatMessage(
+              { id: "label.locations.fhirId.readOnly" },
+              { fhirId: form.fhirId },
+            )}
+          </p>
+        )}
       </FormGroup>
 
       <FormGroup
@@ -1153,6 +1164,21 @@ const RecordForm = ({
                 invalid={!!errorFor("referral.reviewNotes")}
                 invalidText={errorFor("referral.reviewNotes")}
                 onChange={setReferral("reviewNotes")}
+              />
+            </Column>
+            <Column lg={8} md={4} sm={4}>
+              <TextInput
+                id={`ref-fhir-id-${id || "new"}`}
+                labelText={intl.formatMessage({
+                  id: "label.locations.referral.fhirId",
+                })}
+                helperText={intl.formatMessage({
+                  id: "help.locations.referral.fhirId",
+                })}
+                value={form.referral.fhirId || ""}
+                invalid={!!errorFor("referral.fhirId")}
+                invalidText={errorFor("referral.fhirId")}
+                onChange={setReferral("fhirId")}
               />
             </Column>
           </Grid>

@@ -262,6 +262,42 @@ describe("RecordForm (OGC-1363)", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the FHIR id and sends a reference lab's FHIR id with the save", async () => {
+    const lab = detail({
+      row: {
+        ...detail().row,
+        types: [{ id: "6", name: "referralLab", hierarchyLevel: null }],
+      },
+      fhirId: "6ad4712d-0da1-442f-9666-e2ed59db5862",
+      referral: {
+        approvalStatus: "Approved",
+        fhirId: "6ad4712d-0da1-442f-9666-e2ed59db5862",
+      },
+    });
+    api.getOrganization.mockResolvedValue(lab);
+    api.updateOrganization.mockResolvedValue({ detail: lab, warnings: [] });
+    wrap(
+      <RecordForm
+        id="4"
+        kind="facility"
+        lists={LISTS}
+        onCancel={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+    expect(await screen.findByTestId("locations-fhir-id")).toHaveTextContent(
+      "FHIR id: 6ad4712d-0da1-442f-9666-e2ed59db5862",
+    );
+    fireEvent.change(screen.getByLabelText("FHIR id at the reference lab"), {
+      target: { value: "980cef27-2539-419f-befd-5565d07a3a94" },
+    });
+    fireEvent.click(screen.getByTestId("locations-save"));
+    await waitFor(() => expect(api.updateOrganization).toHaveBeenCalled());
+    expect(api.updateOrganization.mock.calls[0][1].referral.fhirId).toBe(
+      "980cef27-2539-419f-befd-5565d07a3a94",
+    );
+  });
+
   it("shows the server's field errors on a refused save", async () => {
     api.getOrganization.mockResolvedValue(detail());
     api.updateOrganization.mockRejectedValue(

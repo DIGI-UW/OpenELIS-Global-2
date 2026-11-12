@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -525,7 +526,7 @@ public class LocationsServiceImpl implements LocationsService {
                 ? new Referral(organization.getApprovalStatus(), organization.getAccreditationBody(),
                         organization.getAccreditationNumber(), text(organization.getAccreditationExpiry()),
                         text(organization.getLastReviewDate()), text(organization.getNextReviewDue()),
-                        organization.getReviewNotes())
+                        organization.getReviewNotes(), organization.getFhirUuidAsString())
                 : null;
         Site site = null;
         if (LocationsApi.KIND_SITE.equals(kindOf(organization))) {
@@ -542,7 +543,8 @@ public class LocationsServiceImpl implements LocationsService {
                 organization.getInternetAddress(), organization.getContactName(), organization.getDescription(),
                 organization.getGpsLatitude(), organization.getGpsLongitude(), organization.getServiceType(),
                 organization.getSource(), identifiers, wards, referral, site, millis(organization),
-                changeService.getForOrganization(numericId).size(), isFacilityPosition(organization));
+                changeService.getForOrganization(numericId).size(), isFacilityPosition(organization),
+                organization.getFhirUuidAsString());
     }
 
     /**
@@ -553,6 +555,34 @@ public class LocationsServiceImpl implements LocationsService {
     private static boolean isFacilityPosition(Organization organization) {
         return organization.getId() != null
                 && FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME.equals(organization.getShortName());
+    }
+
+    /**
+     * A reference lab's FHIR id is the id referrals are addressed to. Set it to the
+     * reference lab's own facility id (shown on its facility record in Locations)
+     * so the reference lab picks the referrals up.
+     */
+    private void applyReferralFhirId(Organization organization, String fhirId, Map<String, String> errors) {
+        if (GenericValidator.isBlankOrNull(fhirId)) {
+            return;
+        }
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(fhirId.trim());
+        } catch (IllegalArgumentException e) {
+            errors.put("referral.fhirId", "Enter the reference lab's FHIR id as shown on its own system (a UUID)");
+            return;
+        }
+        if (uuid.equals(organization.getFhirUuid())) {
+            return;
+        }
+        Organization other = organizationService.getOrganizationByFhirId(uuid.toString());
+        if (other != null && !other.getId().equals(organization.getId())) {
+            errors.put("referral.fhirId",
+                    "Another organization already uses this FHIR id: " + other.getOrganizationName());
+            return;
+        }
+        organization.setFhirUuid(uuid);
     }
 
     private static String text(LocalDate date) {
@@ -873,6 +903,7 @@ public class LocationsServiceImpl implements LocationsService {
             organization.setNextReviewDue(date(referral.nextReviewDue(), "referral.nextReviewDue", errors));
             organization.setReviewNotes(
                     limited(referral.reviewNotes(), 1000, "referral.reviewNotes", "Review notes", errors));
+            applyReferralFhirId(organization, referral.fhirId(), errors);
         }
         if (LocationsApi.KIND_SITE.equals(kind) && reporting == null) {
             errors.put("identifiers", "A sampling site needs a code");
