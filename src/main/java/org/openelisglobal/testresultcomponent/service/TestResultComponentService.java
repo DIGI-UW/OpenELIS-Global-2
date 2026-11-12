@@ -62,4 +62,7 @@ public interface TestResultComponentService extends BaseObjectService<TestResult
     void syncPrimaryComponentFromLegacy(String testId, String sysUserId);
 
     void syncDictionaryNormals(String testId, String sysUserId);
+
+    /** The id of the translations of a component's label, created on first use. */
+    String labelLocalizationId(String componentId, String sysUserId);
 }

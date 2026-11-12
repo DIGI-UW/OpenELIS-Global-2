@@ -1,6 +1,7 @@
 package org.openelisglobal.testresultcomponent.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,7 @@ import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.LoadedRow;
 import org.openelisglobal.configuration.service.RowTransactionRunner;
+import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
@@ -35,6 +37,7 @@ import org.springframework.stereotype.Component;
  * letters (N numeric, D dictionary, A alpha, R remark, T titer, M/C
  * multi-select). {@code isRequired} (Y/N) left blank makes a new component
  * required only when it is the primary, and leaves an existing one as it is.
+ * {@code localization:<language>} columns translate the label.
  */
 @Component
 public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandler {
@@ -48,6 +51,9 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
 
     @Autowired
     private CatalogReferenceResolver resolver;
+
+    @Autowired
+    private LocalizationValueService localizationValueService;
 
     @Override
     public String getDomainName() {
@@ -140,7 +146,20 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
             }
             rowOutcomes.add(created ? CsvLoadSummary.Outcome.CREATED : CsvLoadSummary.Outcome.UPDATED);
         }
-        componentService.saveSampleResults(test.getId(), new ArrayList<>(byCode.values()), null, null, SYS_USER_ID);
+        Map<String, String> savedIdByCode = new HashMap<>();
+        for (TestResultComponent saved : componentService.saveSampleResults(test.getId(),
+                new ArrayList<>(byCode.values()), null, null, SYS_USER_ID)) {
+            savedIdByCode.put(saved.getCode().toUpperCase(), saved.getId());
+        }
+        for (CsvRow row : group) {
+            Map<String, String> translations = row.translations();
+            if (!translations.isEmpty()) {
+                String localizationId = componentService
+                        .labelLocalizationId(savedIdByCode.get(row.get("code").toUpperCase()), SYS_USER_ID);
+                translations.forEach((language, label) -> localizationValueService.setTranslation(localizationId,
+                        language, label, SYS_USER_ID));
+            }
+        }
         for (CsvLoadSummary.Outcome outcome : rowOutcomes) {
             outcomes.add(outcome == CsvLoadSummary.Outcome.CREATED ? LoadedRow.created(test.getId())
                     : LoadedRow.updated(test.getId()));

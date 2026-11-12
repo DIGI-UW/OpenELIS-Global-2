@@ -2,12 +2,18 @@ package org.openelisglobal.testresultcomponent.valueholder;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.UUID;
+import org.apache.commons.validator.GenericValidator;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.localization.valueholder.Localization;
+import org.springframework.context.i18n.LocaleContextHolder;
 
 /**
  * OGC-949 M5 / OGC-937 — a labeled result field of a test (e.g. systolic vs.
@@ -42,6 +48,10 @@ public class TestResultComponent extends BaseObject<String> {
 
     @Column(name = "label", nullable = false, length = 255)
     private String label;
+
+    @OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "label_localization_id", referencedColumnName = "id")
+    private Localization labelLocalization;
 
     @Column(name = "display_order", nullable = false)
     private Integer displayOrder = 0;
@@ -151,6 +161,21 @@ public class TestResultComponent extends BaseObject<String> {
 
     public void setLabel(String label) {
         this.label = label;
+    }
+
+    public Localization getLabelLocalization() {
+        return labelLocalization;
+    }
+
+    public void setLabelLocalization(Localization labelLocalization) {
+        this.labelLocalization = labelLocalization;
+    }
+
+    /** The label in the user's language, else the label as entered. */
+    public String getLocalizedLabel() {
+        String translated = labelLocalization == null ? null
+                : labelLocalization.getValuesAsMap().get(LocaleContextHolder.getLocale().getLanguage());
+        return GenericValidator.isBlankOrNull(translated) ? label : translated;
     }
 
     public Integer getDisplayOrder() {

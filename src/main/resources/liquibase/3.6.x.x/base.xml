@@ -64,6 +64,7 @@
   <include relativeToChangelogFile="true" file="038-result-run-event.xml"/>
   <!-- OGC-1200 slice 5: a held test's Retest, Reject or Accept despite -->
   <include relativeToChangelogFile="true" file="039-result-run-test-disposition.xml"/>
+  <include relativeToChangelogFile="true" file="040-component-label-translations.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>

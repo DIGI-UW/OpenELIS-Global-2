@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-1610-component-label-localization" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="test_result_component" columnName="label_localization_id"/>
+            </not>
+        </preConditions>
+        <comment>A result component's label can be translated, as a test's name is.</comment>
+        <addColumn schemaName="clinlims" tableName="test_result_component">
+            <column name="label_localization_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint
+            constraintName="fk_test_result_component_label_localization"
+            baseTableSchemaName="clinlims"
+            baseTableName="test_result_component"
+            baseColumnNames="label_localization_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="localization"
+            referencedColumnNames="id"/>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="test_result_component" columnName="label_localization_id"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

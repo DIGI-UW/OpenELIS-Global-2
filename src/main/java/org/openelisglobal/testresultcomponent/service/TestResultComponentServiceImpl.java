@@ -11,6 +11,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.service.TestService;
@@ -70,6 +72,9 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     @Lazy
     @Autowired
     private TestQcTargetService qcTargetService;
+
+    @Autowired
+    private LocalizationService localizationService;
 
     TestResultComponentServiceImpl() {
         super(TestResultComponent.class);
@@ -764,6 +769,22 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    @Override
+    @Transactional
+    public String labelLocalizationId(String componentId, String sysUserId) {
+        TestResultComponent component = get(componentId);
+        if (component.getLabelLocalization() == null) {
+            Localization localization = new Localization();
+            localization.setDescription("result component label");
+            localization.setSysUserId(sysUserId);
+            localization.setId(localizationService.insert(localization));
+            component.setLabelLocalization(localization);
+            component.setSysUserId(sysUserId);
+            update(component);
+        }
+        return component.getLabelLocalization().getId();
     }
 
     @Override

@@ -563,10 +563,17 @@ public class TestCatalogEditorRestController {
     public static class LocalizationFieldRef {
         public String field;
         public String localizationId;
+        // Names a field the page has no message for, such as a result component.
+        public String label;
 
         public LocalizationFieldRef(String field, String localizationId) {
             this.field = field;
             this.localizationId = localizationId;
+        }
+
+        public LocalizationFieldRef(String field, String localizationId, String label) {
+            this(field, localizationId);
+            this.label = label;
         }
     }
 
@@ -576,7 +583,8 @@ public class TestCatalogEditorRestController {
     }
 
     @GetMapping(value = "/tests/{testId}/localization", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<LocalizationRefs> getLocalizationRefs(@PathVariable String testId) {
+    public ResponseEntity<LocalizationRefs> getLocalizationRefs(@PathVariable String testId,
+            HttpServletRequest request) {
         Test test = testService.getTestById(testId);
         if (test == null) {
             return ResponseEntity.notFound().build();
@@ -589,6 +597,11 @@ public class TestCatalogEditorRestController {
             if (localizationId != null) {
                 refs.fields.add(new LocalizationFieldRef(field, localizationId));
             }
+        }
+        for (TestResultComponent component : componentService.getActiveComponentsByTestId(testId)) {
+            refs.fields.add(new LocalizationFieldRef("component:" + component.getCode(),
+                    componentService.labelLocalizationId(component.getId(), ControllerUtills.getSysUserId(request)),
+                    component.getLabel()));
         }
         return ResponseEntity.ok(refs);
     }
