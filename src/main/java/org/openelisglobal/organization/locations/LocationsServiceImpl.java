@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -24,7 +25,6 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
-import org.openelisglobal.dataexchange.fhir.service.FhirFacilityOrganizationService;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.organization.locations.LocationsApi.ActiveRequest;
@@ -48,6 +48,7 @@ import org.openelisglobal.organization.locations.LocationsApi.Row;
 import org.openelisglobal.organization.locations.LocationsApi.SaveRequest;
 import org.openelisglobal.organization.locations.LocationsApi.SaveResult;
 import org.openelisglobal.organization.locations.LocationsApi.Site;
+import org.openelisglobal.organization.locations.LocationsApi.ThisLaboratory;
 import org.openelisglobal.organization.locations.LocationsApi.TypeRef;
 import org.openelisglobal.organization.locations.LocationsApi.Usage;
 import org.openelisglobal.organization.locations.LocationsApi.UsageDetail;
@@ -58,6 +59,7 @@ import org.openelisglobal.organization.service.OrganizationChangeService.FieldCh
 import org.openelisglobal.organization.service.OrganizationIdentifierService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.service.OrganizationTypeService;
+import org.openelisglobal.organization.service.ThisLaboratoryService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.organization.valueholder.OrganizationChange;
 import org.openelisglobal.organization.valueholder.OrganizationIdentifier;
@@ -89,6 +91,8 @@ public class LocationsServiceImpl implements LocationsService {
 
     @Autowired
     private OrganizationService organizationService;
+    @Autowired
+    private ThisLaboratoryService thisLaboratoryService;
     @Autowired
     private OrganizationTypeService organizationTypeService;
     @Autowired
@@ -504,6 +508,17 @@ public class LocationsServiceImpl implements LocationsService {
         return detail(organization);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public ThisLaboratory thisLaboratory() {
+        Organization organization = thisLaboratoryService.find();
+        if (organization == null) {
+            return null;
+        }
+        return new ThisLaboratory(organization.getId(), organization.getOrganizationName(),
+                organization.getFhirUuidAsString());
+    }
+
     private Organization require(String id) {
         Organization organization = GenericValidator.isBlankOrNull(id) || !id.trim().matches("\\d+") ? null
                 : organizationService.getOrganizationById(id.trim());
@@ -525,7 +540,7 @@ public class LocationsServiceImpl implements LocationsService {
                 ? new Referral(organization.getApprovalStatus(), organization.getAccreditationBody(),
                         organization.getAccreditationNumber(), text(organization.getAccreditationExpiry()),
                         text(organization.getLastReviewDate()), text(organization.getNextReviewDue()),
-                        organization.getReviewNotes())
+                        organization.getReviewNotes(), organization.getFhirUuidAsString())
                 : null;
         Site site = null;
         if (LocationsApi.KIND_SITE.equals(kindOf(organization))) {
@@ -542,7 +557,8 @@ public class LocationsServiceImpl implements LocationsService {
                 organization.getInternetAddress(), organization.getContactName(), organization.getDescription(),
                 organization.getGpsLatitude(), organization.getGpsLongitude(), organization.getServiceType(),
                 organization.getSource(), identifiers, wards, referral, site, millis(organization),
-                changeService.getForOrganization(numericId).size(), isFacilityPosition(organization));
+                changeService.getForOrganization(numericId).size(), isFacilityPosition(organization),
+                organization.getFhirUuidAsString());
     }
 
     /**
@@ -550,9 +566,43 @@ public class LocationsServiceImpl implements LocationsService {
      * location (Site Information) and registered in the facility registry, so the
      * Locations screen shows it read-only and a save keeps the stored one.
      */
-    private static boolean isFacilityPosition(Organization organization) {
-        return organization.getId() != null
-                && FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME.equals(organization.getShortName());
+    private boolean isFacilityPosition(Organization organization) {
+        return organization.getId() != null && thisLaboratoryService.isThisLaboratory(organization);
+    }
+
+    /**
+     * A reference lab's FHIR id is the id referrals are addressed to. Set it to the
+     * reference lab's own facility id (shown on its facility record in Locations)
+     * so the reference lab picks the referrals up.
+     */
+    private void applyReferralFhirId(Organization organization, String fhirId, Map<String, String> errors) {
+        if (GenericValidator.isBlankOrNull(fhirId)) {
+            return;
+        }
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(fhirId.trim());
+        } catch (IllegalArgumentException e) {
+            errors.put("referral.fhirId", "Enter the reference lab's FHIR id as shown on its own system (a UUID)");
+            return;
+        }
+        if (uuid.equals(organization.getFhirUuid())) {
+            return;
+        }
+        if (thisLaboratoryService.isThisLaboratory(organization)) {
+            errors.put("referral.fhirId",
+                    "This laboratory's own FHIR id cannot be changed: other labs address referrals to it");
+            return;
+        }
+        Organization other = organizationService.getOrganizationByFhirId(uuid.toString());
+        if (other != null && !other.getId().equals(organization.getId())) {
+            errors.put("referral.fhirId",
+                    "Another organization already uses this FHIR id: " + other.getOrganizationName()
+                            + ". To refer to that lab, add the referralLab type to " + other.getOrganizationName()
+                            + " instead.");
+            return;
+        }
+        organization.setFhirUuid(uuid);
     }
 
     private static String text(LocalDate date) {
@@ -873,6 +923,7 @@ public class LocationsServiceImpl implements LocationsService {
             organization.setNextReviewDue(date(referral.nextReviewDue(), "referral.nextReviewDue", errors));
             organization.setReviewNotes(
                     limited(referral.reviewNotes(), 1000, "referral.reviewNotes", "Review notes", errors));
+            applyReferralFhirId(organization, referral.fhirId(), errors);
         }
         if (LocationsApi.KIND_SITE.equals(kind) && reporting == null) {
             errors.put("identifiers", "A sampling site needs a code");

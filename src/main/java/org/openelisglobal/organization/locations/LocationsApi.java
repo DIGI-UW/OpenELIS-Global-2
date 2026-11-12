@@ -68,7 +68,8 @@ public final class LocationsApi {
     }
 
     public record Referral(String approvalStatus, String accreditationBody, String accreditationNumber,
-            String accreditationExpiry, String lastReviewDate, String nextReviewDue, String reviewNotes) {
+            String accreditationExpiry, String lastReviewDate, String nextReviewDue, String reviewNotes,
+            String fhirId) {
     }
 
     public record Site(Integer siteId, String siteType, String subtype, String environmentalZone) {
@@ -83,7 +84,7 @@ public final class LocationsApi {
             String phone, String fax, String email, String internetAddress, String contactName, String description,
             BigDecimal gpsLatitude, BigDecimal gpsLongitude, String serviceType, String source,
             List<Identifier> identifiers, List<Ward> wards, Referral referral, Site site, Long lastupdated,
-            int historyCount, boolean positionManaged) {
+            int historyCount, boolean positionManaged, String fhirId) {
     }
 
     public record SaveRequest(String id, String kind, String name, String shortName, List<String> typeIds,
@@ -123,6 +124,13 @@ public final class LocationsApi {
     }
 
     public record HistoryEntry(Integer id, String when, String user, String action, List<FieldChange> changes) {
+    }
+
+    /**
+     * This laboratory's own facility organization: the record other OpenELIS labs
+     * address referrals to, by its FHIR id.
+     */
+    public record ThisLaboratory(String id, String name, String fhirId) {
     }
 
     public record Lists(List<ListRef> categories, List<ListRef> ownerships, List<ListRef> serviceTypes,

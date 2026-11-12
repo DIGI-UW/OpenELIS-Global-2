@@ -11,8 +11,12 @@ import org.hl7.fhir.r4.model.Reference;
  */
 public interface FhirFacilityOrganizationService {
 
-    /** Short name of the organization row that represents this facility. */
-    String FACILITY_ORG_SHORT_NAME = "FACILITY_ORG";
+    /**
+     * Short name the system gives the organization row that represents this
+     * facility. The row is found through {@code ThisLaboratoryService}, so an
+     * administrator may rename it.
+     */
+    String FACILITY_ORG_SHORT_NAME = org.openelisglobal.organization.service.ThisLaboratoryService.FACILITY_ORG_SHORT_NAME;
 
     /**
      * Generates the FHIR Organization resource for this facility. Uses facility

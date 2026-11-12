@@ -396,6 +396,28 @@ public class LocationsImportRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
+     * A reference lab's FHIR id is an import column: not reported as ignored, and
+     * every template row has the header's number of cells.
+     */
+    @Test
+    public void aReferenceLabsFhirId_isAKnownColumn() throws Exception {
+        JsonNode plan = json(preview("organizations-referral.csv",
+                ("type,name,approvalStatus,fhirId\nreferralLab,Central Reference Laboratory,Approved,"
+                        + "5d6b0a5e-8c1f-4f7a-9b2e-3c4d5e6f7a8b\n").getBytes(StandardCharsets.UTF_8),
+                "merge"));
+        assertEquals(0, plan.get("ignoredColumns").size());
+
+        String template = mockMvc.perform(get("/rest/locations/import/template").param("area", "organizations"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String[] lines = template.split("\n");
+        assertTrue(lines[0].contains(",fhirId,"));
+        int columns = lines[0].split(",", -1).length;
+        for (int i = 1; i < lines.length; i++) {
+            assertEquals("template row " + i, columns, lines[i].split(",", -1).length);
+        }
+    }
+
+    /**
      * OGC-1600: a geographic levels file reports a column it does not use, like the
      * organizations file does.
      */
