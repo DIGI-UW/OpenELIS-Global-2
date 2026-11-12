@@ -382,7 +382,7 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setComponentId(result.getComponentId());
         if (!GenericValidator.isBlankOrNull(result.getComponentId())) {
             resultItem.setComponentLabel(testResultComponentService.getMatch("id", result.getComponentId())
-                    .map(TestResultComponent::getLabel).orElse(null));
+                    .map(TestResultComponent::getLocalizedLabel).orElse(null));
         }
         resultItem.setCompleteDate(result.getCompleteDateForDisplay());
         resultItem.setLastUpdated(result.getLastupdated());

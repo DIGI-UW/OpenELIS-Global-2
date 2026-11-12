@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import javax.sql.DataSource;
@@ -12,8 +13,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -52,6 +56,9 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
     @Autowired
     @Qualifier("testResultConfigurationHandler")
     private DomainConfigurationHandler testResultHandler;
+
+    @Autowired
+    private TestResultComponentService componentService;
 
     @Autowired
     private DataSource dataSource;
@@ -164,6 +171,34 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
                 String.class, other));
     }
 
+    @Test
+    public void aComponentLabelShowsInTheUsersLanguageAndAReloadKeepsOneTranslationEach() throws Exception {
+        String translations = "testName,code,localization:fr,localization:es\n" + TEST + ",call,Appel,Llamada\n";
+        load(componentHandler, translations, "translate-call.csv");
+        load(componentHandler, translations, "translate-call-again.csv");
+
+        assertEquals("Appel", labelIn(Locale.FRENCH, "call"));
+        assertEquals("Llamada", labelIn(Locale.forLanguageTag("es"), "call"));
+        assertEquals("Call", labelIn(Locale.ENGLISH, "call"));
+        assertEquals("Viral load", labelIn(Locale.FRENCH, "PRIMARY"));
+        assertEquals(List.of("es:Llamada", "fr:Appel"),
+                jdbc.queryForList("SELECT v.locale || ':' || v.value FROM clinlims.localization_value v"
+                        + " JOIN clinlims.test_result_component c ON c.label_localization_id = v.localization_id"
+                        + " WHERE c.code = 'call' AND c.test_id = (SELECT id FROM clinlims.test WHERE description = ?)"
+                        + " ORDER BY v.locale", String.class, TEST));
+    }
+
+    private String labelIn(Locale locale, String code) {
+        String testId = jdbc.queryForObject("SELECT id FROM clinlims.test WHERE description = ?", String.class, TEST);
+        TestResultComponent component = componentService.getByTestIdAndCode(testId, code);
+        LocaleContextHolder.setLocale(locale);
+        try {
+            return component.getLocalizedLabel();
+        } finally {
+            LocaleContextHolder.resetLocaleContext();
+        }
+    }
+
     private Boolean required(String code) {
         return jdbc.queryForObject(
                 "SELECT is_required FROM clinlims.test_result_component WHERE is_active = 'Y'"
@@ -268,7 +303,13 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
             jdbc.update("DELETE FROM clinlims.test_terminology_mapping WHERE test_id = ?", testId);
             jdbc.update("DELETE FROM clinlims.result_limits WHERE test_id = ?", testId);
             jdbc.update("DELETE FROM clinlims.test_result WHERE test_id = ?", testId);
+            List<Long> labels = jdbc.queryForList("SELECT label_localization_id FROM clinlims.test_result_component"
+                    + " WHERE test_id = ? AND label_localization_id IS NOT NULL", Long.class, testId);
             jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", testId);
+            for (Long label : labels) {
+                jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id = ?", label);
+                jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", label);
+            }
             jdbc.update("DELETE FROM clinlims.sampletype_test WHERE test_id = ?", testId);
             jdbc.update("DELETE FROM clinlims.test WHERE id = ?", testId);
         }

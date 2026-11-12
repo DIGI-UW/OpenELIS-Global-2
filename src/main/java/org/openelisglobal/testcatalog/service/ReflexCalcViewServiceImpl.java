@@ -173,7 +173,7 @@ public class ReflexCalcViewServiceImpl implements ReflexCalcViewService {
             return null;
         }
         return testResultComponentService.getActiveComponentsByTestId(test.getId()).stream()
-                .filter(component -> componentId.equals(component.getId())).map(TestResultComponent::getLabel)
+                .filter(component -> componentId.equals(component.getId())).map(TestResultComponent::getLocalizedLabel)
                 .findFirst().orElse(null);
     }
 

@@ -557,8 +557,8 @@ public class ResultsValidationUtility {
         }
         for (org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component : components) {
             if (component.getId().equals(result.getTestResult().getComponentId())
-                    && !GenericValidator.isBlankOrNull(component.getLabel())) {
-                return displayTestName + " — " + component.getLabel();
+                    && !GenericValidator.isBlankOrNull(component.getLocalizedLabel())) {
+                return displayTestName + " — " + component.getLocalizedLabel();
             }
         }
         return displayTestName;
@@ -1019,7 +1019,7 @@ public class ResultsValidationUtility {
                     .componentOf(testResultComponentService.getComponentsByTestId(testResultItem.getTestId()),
                             componentId);
             if (component != null) {
-                analysisResultItem.setComponentLabel(component.getLabel());
+                analysisResultItem.setComponentLabel(component.getLocalizedLabel());
                 analysisResultItem.setComponentDisplayOrder(component.getDisplayOrder());
             }
         }

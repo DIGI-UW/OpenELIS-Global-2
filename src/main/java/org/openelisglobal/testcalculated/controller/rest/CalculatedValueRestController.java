@@ -149,7 +149,7 @@ public class CalculatedValueRestController {
                 testService.getResultType(testService.get(testId)));
         if (!"N".equals(destinationType) && (calculation.getResult() == null || calculation.getResult().isBlank())) {
             throw new CalculationRuleViolation(DESTINATION_NOT_NUMERIC,
-                    Map.of("component", String.valueOf(destination.getLabel())));
+                    Map.of("component", String.valueOf(destination.getLocalizedLabel())));
         }
     }
 
