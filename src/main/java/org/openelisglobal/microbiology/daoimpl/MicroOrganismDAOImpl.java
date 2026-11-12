@@ -39,34 +39,34 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
         return query.list();
     }
 
-    private static final String OLDER_NAME = " from clinlims.micro_whonet_organism w where w.taxonomic_status = 'O'"
-            + " and (lower(w.whonet_org_code) = lower(o.whonet_code) or lower(w.replaced_by) = lower(o.whonet_code))"
-            + " and (lower(w.organism) like :fragment or lower(w.whonet_org_code) like :prefix)";
-    private static final String OWN_NAME_OR_CODE = "lower(o.display_name) like :fragment or lower(o.whonet_code) like :prefix";
+    private static final String OLDER_NAME = " from MicroWhonetOrganism w where w.taxonomicStatus = 'O'"
+            + " and (lower(w.whonetOrgCode) = lower(o.whonetCode) or lower(w.replacedBy) = lower(o.whonetCode))"
+            + " and (lower(w.organism) like :fragment escape '!' or lower(w.whonetOrgCode) like :prefix escape '!')";
+    private static final String OWN_NAME_OR_CODE = "lower(o.displayName) like :fragment escape '!'"
+            + " or lower(o.whonetCode) like :prefix escape '!'";
+
+    // An exact WHONET code first, then the organisms WHONET marks common, then
+    // names that start with the text.
+    private static final String SEARCH = "select o, case when " + OWN_NAME_OR_CODE + " then 1 else 0 end,"
+            + " (select min(w.organism)" + OLDER_NAME + ")" + " from MicroOrganism o where o.isActive = 'Y'" + " and ("
+            + OWN_NAME_OR_CODE + " or exists (select w.id" + OLDER_NAME + "))"
+            + " order by case when lower(o.whonetCode) = :q then 0 else 1 end,"
+            + " case when exists (select c.id from MicroWhonetOrganism c"
+            + " where lower(c.whonetOrgCode) = lower(o.whonetCode) and c.taxonomicStatus = 'C' and c.common = 'X')"
+            + " then 0 else 1 end,"
+            + " case when lower(o.displayName) like :prefix escape '!' then 0 else 1 end, lower(o.displayName)";
 
     @Override
     @Transactional(readOnly = true)
     public List<MicroOrganismMatch> searchActive(String text, int limit) {
         String q = text == null ? "" : text.trim().toLowerCase(java.util.Locale.ROOT);
-        String pattern = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-        @SuppressWarnings("unchecked")
-        List<Object[]> found = entityManager
-                .createNativeQuery("select o.id, case when " + OWN_NAME_OR_CODE
-                        + " then null else (select min(w.organism)" + OLDER_NAME + ") end"
-                        + " from clinlims.micro_organism o where o.is_active = 'Y' and (" + OWN_NAME_OR_CODE
-                        + " or exists (select 1" + OLDER_NAME + "))"
-                        + " order by case when lower(o.whonet_code) = :q then 0 else 1 end,"
-                        + " case when exists (select 1 from clinlims.micro_whonet_organism c"
-                        + " where lower(c.whonet_org_code) = lower(o.whonet_code) and c.taxonomic_status = 'C'"
-                        + " and c.common = 'X') then 0 else 1 end,"
-                        + " case when lower(o.display_name) like :prefix then 0 else 1 end," + " lower(o.display_name)")
+        String pattern = q.replace("!", "!!").replace("%", "!%").replace("_", "!_");
+        List<Object[]> found = entityManager.unwrap(Session.class).createQuery(SEARCH, Object[].class)
                 .setParameter("q", q).setParameter("fragment", "%" + pattern + "%")
-                .setParameter("prefix", pattern + "%").setMaxResults(limit).getResultList();
-        java.util.Map<String, MicroOrganism> organisms = new java.util.HashMap<>();
-        getByIds(found.stream().map(row -> (String) row[0]).toList())
-                .forEach(organism -> organisms.put(organism.getId(), organism));
-        return found.stream().map(row -> new MicroOrganismMatch(organisms.get((String) row[0]), (String) row[1]))
-                .toList();
+                .setParameter("prefix", pattern + "%").setMaxResults(limit).list();
+        // An organism found by its own name or code shows no older name.
+        return found.stream().map(row -> new MicroOrganismMatch((MicroOrganism) row[0],
+                ((Number) row[1]).intValue() == 1 ? null : (String) row[2])).toList();
     }
 
     @Override
