@@ -780,7 +780,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
         self.context = self.dev_stack.make_context(REPO_ROOT)
         self.environment = self.dev_stack.build_environment(self.context)
 
-    def pull(self, changed_submodules=(), run=None, differences=(), backend_differences=()):
+    def pull(self, changed_submodules=(), run=None, differences=(), backend_differences=(), always=True):
         printed = io.StringIO()
         with (
             patch.object(self.dev_stack, "run", side_effect=run) as mocked_run,
@@ -789,8 +789,40 @@ class DevStackPublishedImagesTest(unittest.TestCase):
             contextlib.redirect_stdout(printed),
             contextlib.redirect_stderr(printed),
         ):
-            self.dev_stack.pull_images(self.context, self.environment, changed_submodules)
+            self.dev_stack.pull_images(self.context, self.environment, changed_submodules, always=always)
         return [call.args[0] for call in mocked_run.call_args_list], printed.getvalue()
+
+    @staticmethod
+    def images_on_machine(*present):
+        """A docker stub where only the named images exist locally."""
+
+        def run(command, **_):
+            if command[:3] == ["docker", "image", "inspect"]:
+                if command[-1] in present:
+                    return subprocess.CompletedProcess(command, 0, stdout="2026-11-10T08:00:00Z\n")
+                raise subprocess.CalledProcessError(1, command)
+            return subprocess.CompletedProcess(command, 0, stdout="")
+
+        return run
+
+    def test_up_uses_the_images_already_on_the_machine_without_pulling(self):
+        present = [self.environment[variable] for _, variable, _, _ in self.dev_stack.APPLICATION_IMAGES]
+        commands, printed = self.pull(run=self.images_on_machine(*present), always=False)
+
+        self.assertFalse([command for command in commands if command[:2] == ["docker", "pull"]])
+        self.assertIn("up --pull", printed)
+
+    def test_up_pulls_only_the_images_missing_from_the_machine(self):
+        backend = self.environment["DEV_STACK_BACKEND_IMAGE"]
+        present = [
+            self.environment[variable]
+            for _, variable, _, _ in self.dev_stack.APPLICATION_IMAGES
+            if self.environment[variable] != backend
+        ]
+        commands, _ = self.pull(run=self.images_on_machine(*present), always=False)
+
+        self.assertEqual([command for command in commands if command[:2] == ["docker", "pull"]],
+                         [["docker", "pull", backend]])
 
     def test_compose_files_run_the_published_development_images(self):
         harness = REPO_ROOT / "projects" / "analyzer-harness"
@@ -884,6 +916,29 @@ class DevStackPublishedImagesTest(unittest.TestCase):
         self.assertFalse([command for command in commands if "build" in command])
         self.assertIn("using the copy already on this machine", printed)
 
+    def up_raw(self, *arguments):
+        with (
+            patch.object(self.dev_stack, "doctor"),
+            patch.object(self.dev_stack, "ensure_local_tls_trust"),
+            patch.object(self.dev_stack, "ensure_local_env"),
+            patch.object(self.dev_stack, "ensure_mkcert"),
+            patch.object(self.dev_stack, "ensure_submodules", return_value=()),
+            patch.object(self.dev_stack, "bootstrap_analyzer_harness"),
+            patch.object(self.dev_stack, "service_is_running", return_value=False),
+            patch.object(self.dev_stack, "heal_war_mount"),
+            patch.object(self.dev_stack, "build_application"),
+            patch.object(self.dev_stack, "build_images"),
+            patch.object(self.dev_stack, "record_images"),
+            patch.object(self.dev_stack, "record_setup"),
+            patch.object(self.dev_stack, "start_services"),
+            patch.object(self.dev_stack, "reload_proxy"),
+            patch.object(self.dev_stack, "configure_tls"),
+            patch.object(self.dev_stack, "verify_tls"),
+            patch.object(self.dev_stack, "print_endpoints"),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            self.dev_stack.main(["up", "--no-wait", "--no-scenarios", *arguments])
+
     def up(self, *arguments):
         with (
             patch.object(self.dev_stack, "doctor"),
@@ -898,6 +953,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
             patch.object(self.dev_stack, "build_images") as build_images,
             patch.object(self.dev_stack, "pull_images") as pull_images,
             patch.object(self.dev_stack, "record_images") as record_images,
+            patch.object(self.dev_stack, "mark_terminal_pulled"),
             patch.object(self.dev_stack, "record_setup"),
             patch.object(self.dev_stack, "start_services"),
             patch.object(self.dev_stack, "reload_proxy"),
@@ -993,6 +1049,89 @@ class DevStackPublishedImagesTest(unittest.TestCase):
         self.assertTrue(self.dev_stack.parse_args(["up", "--build"]).build)
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.dev_stack.parse_args(["up", "--skip-build", "--build"])
+
+    def test_pull_is_off_by_default_and_cannot_be_combined_with_build_or_skip_build(self):
+        self.assertFalse(self.dev_stack.parse_args(["up"]).pull)
+        self.assertTrue(self.dev_stack.parse_args(["up", "--pull"]).pull)
+        for other in ("--build", "--skip-build"):
+            with self.subTest(other=other), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                self.dev_stack.parse_args(["up", "--pull", other])
+
+    def test_up_pulls_on_the_first_run_in_a_terminal_and_reuses_images_after(self):
+        with patch.object(self.dev_stack, "first_up_in_terminal", return_value=True):
+            _, _, pull_images = self.up()
+        self.assertTrue(pull_images.call_args.kwargs["always"])
+
+        with patch.object(self.dev_stack, "first_up_in_terminal", return_value=False):
+            _, _, pull_images = self.up()
+        self.assertFalse(pull_images.call_args.kwargs["always"])
+
+    def test_pull_flag_pulls_even_later_in_the_same_terminal(self):
+        with patch.object(self.dev_stack, "first_up_in_terminal", return_value=False):
+            _, _, pull_images = self.up("--pull")
+        self.assertTrue(pull_images.call_args.kwargs["always"])
+
+    def test_failed_pull_reports_that_not_every_image_is_current(self):
+        def run(command, **_):
+            if command[:2] == ["docker", "pull"]:
+                raise subprocess.CalledProcessError(1, command)
+            return subprocess.CompletedProcess(command, 0, stdout="")
+
+        with patch.object(self.dev_stack, "run", side_effect=run), contextlib.redirect_stderr(io.StringIO()):
+            self.assertFalse(self.dev_stack.pull_image(self.context, self.environment, "image:tag"))
+        with patch.object(self.dev_stack, "run", return_value=subprocess.CompletedProcess([], 0, stdout="")):
+            self.assertTrue(self.dev_stack.pull_image(self.context, self.environment, "image:tag"))
+
+    def test_terminal_is_marked_only_when_every_pull_succeeded(self):
+        for succeeded in (True, False):
+            with self.subTest(succeeded=succeeded), \
+                    patch.object(self.dev_stack, "first_up_in_terminal", return_value=True), \
+                    patch.object(self.dev_stack, "pull_images", return_value=succeeded), \
+                    patch.object(self.dev_stack, "mark_terminal_pulled") as mark:
+                self.up_raw()
+            self.assertEqual(mark.called, succeeded)
+
+    def test_a_light_pull_does_not_count_for_a_later_full_up(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        light = self.context._replace(repo_root=pathlib.Path(directory.name), setup="light")
+        full = light._replace(setup="full")
+
+        with patch.object(self.dev_stack, "terminal_session_key", return_value="101:start"):
+            self.dev_stack.mark_terminal_pulled(light)
+            self.assertFalse(self.dev_stack.first_up_in_terminal(light))
+            self.assertTrue(self.dev_stack.first_up_in_terminal(full))
+            self.dev_stack.mark_terminal_pulled(full)
+            self.assertFalse(self.dev_stack.first_up_in_terminal(full))
+            self.assertFalse(self.dev_stack.first_up_in_terminal(light), "a full pull covers the light setup")
+
+    def test_a_terminal_counts_as_pulled_only_after_its_own_pull(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        context = self.context._replace(repo_root=pathlib.Path(directory.name))
+
+        with patch.object(self.dev_stack, "terminal_session_key", return_value="101:Thu Nov 12 08:00:00 2026"):
+            self.assertTrue(self.dev_stack.first_up_in_terminal(context))
+            self.dev_stack.mark_terminal_pulled(context)
+            self.assertFalse(self.dev_stack.first_up_in_terminal(context))
+        with patch.object(self.dev_stack, "terminal_session_key", return_value="202:Thu Nov 12 09:00:00 2026"):
+            self.assertTrue(self.dev_stack.first_up_in_terminal(context))
+            self.dev_stack.mark_terminal_pulled(context)
+        with patch.object(self.dev_stack, "terminal_session_key", return_value="101:Thu Nov 12 08:00:00 2026"):
+            self.assertFalse(self.dev_stack.first_up_in_terminal(context), "the first terminal is still remembered")
+        with patch.object(self.dev_stack, "terminal_session_key", return_value=None):
+            self.assertTrue(self.dev_stack.first_up_in_terminal(context))
+
+    def test_terminal_session_key_names_the_session_and_its_start(self):
+        with (
+            patch.object(self.dev_stack.os, "getsid", return_value=4242),
+            patch.object(self.dev_stack, "run",
+                         return_value=subprocess.CompletedProcess([], 0, stdout="Thu Nov 12 08:00:00 2026\n")) as run,
+        ):
+            self.assertEqual(self.dev_stack.terminal_session_key(), "4242:Thu Nov 12 08:00:00 2026")
+        self.assertEqual(run.call_args.args[0], ["ps", "-o", "lstart=", "-p", "4242"])
+        with patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(1, "ps")):
+            self.assertIsNone(self.dev_stack.terminal_session_key())
 
 
 class DevStackModuleTest(unittest.TestCase):
