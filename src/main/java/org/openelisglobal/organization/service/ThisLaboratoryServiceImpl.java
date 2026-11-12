@@ -49,13 +49,24 @@ public class ThisLaboratoryServiceImpl implements ThisLaboratoryService {
         if (organization == null || organization.getId() == null) {
             return;
         }
+        String sysUserId = GenericValidator.isBlankOrNull(organization.getSysUserId()) ? SYSTEM_USER
+                : organization.getSysUserId();
         SiteInformation setting = siteInformationService.getSiteInformationByName(SETTING);
-        if (setting == null || organization.getId().equals(setting.getValue())) {
+        if (setting == null) {
+            setting = new SiteInformation();
+            setting.setName(SETTING);
+            setting.setDescription("Id of the organization record that is this laboratory. Set by the system.");
+            setting.setValueType("text");
+            setting.setValue(organization.getId());
+            setting.setSysUserId(sysUserId);
+            siteInformationService.insert(setting);
+            return;
+        }
+        if (organization.getId().equals(setting.getValue())) {
             return;
         }
         setting.setValue(organization.getId());
-        setting.setSysUserId(GenericValidator.isBlankOrNull(organization.getSysUserId()) ? SYSTEM_USER
-                : organization.getSysUserId());
+        setting.setSysUserId(sysUserId);
         siteInformationService.update(setting);
     }
 

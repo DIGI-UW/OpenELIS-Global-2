@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
@@ -82,9 +83,13 @@ public class ThisLaboratoryServiceTest {
     }
 
     @Test
-    public void withoutTheSettingRowNothingIsWritten() {
+    public void aMissingSettingRowIsCreatedWithTheId() {
         when(siteInformationService.getSiteInformationByName(ThisLaboratoryService.SETTING)).thenReturn(null);
         service.record(organization("7", ThisLaboratoryService.FACILITY_ORG_SHORT_NAME));
+        ArgumentCaptor<SiteInformation> created = ArgumentCaptor.forClass(SiteInformation.class);
+        verify(siteInformationService).insert(created.capture());
+        assertEquals(ThisLaboratoryService.SETTING, created.getValue().getName());
+        assertEquals("7", created.getValue().getValue());
         verify(siteInformationService, never()).update(any());
     }
 }
