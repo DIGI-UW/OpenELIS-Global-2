@@ -56,6 +56,8 @@
   <include relativeToChangelogFile="true" file="034-result-analyzer-reported-value.xml"/>
   <!-- OGC-1611 P2: tests name their expected containers; sample types a default container -->
   <include relativeToChangelogFile="true" file="035-test-expected-containers.xml"/>
+  <!-- OGC-1611 P4: a clinical sample records the container type it was taken in -->
+  <include relativeToChangelogFile="true" file="036-sample-item-container-type.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>

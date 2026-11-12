@@ -68,7 +68,7 @@ public class SampleItemServiceImpl extends AuditableBaseObjectServiceImpl<Sample
         criteria.put("sample.id", id);
         criteria.put("voided", false);
 
-        return baseObjectDAO.getAllMatching(criteria);
+        return baseObjectDAO.getAllMatchingOrdered(criteria, List.of("sortOrder", "id"), false);
     }
 
     @Override
