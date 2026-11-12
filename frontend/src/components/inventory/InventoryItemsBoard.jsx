@@ -933,7 +933,7 @@ const InventoryItemsBoard = () => {
           className="board-log-usage"
           onClick={() => setAction({ kind: "quickLog" })}
         >
-          <FormattedMessage id="inventory.logUsage.button" />
+          <FormattedMessage id="usage.record.button" />
         </Button>
         <Button
           kind="tertiary"

@@ -1190,7 +1190,7 @@ describe("InventoryItemsBoard", () => {
   describe("quick log usage", () => {
     const openQuickLog = async () => {
       await renderBoard();
-      fireEvent.click(screen.getByRole("button", { name: "Log usage" }));
+      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
     };
 
     it("posts a consumption for the chosen item, not an adjustment", async () => {
@@ -1202,7 +1202,11 @@ describe("InventoryItemsBoard", () => {
       fireEvent.change(screen.getByRole("spinbutton"), {
         target: { value: "7" },
       });
-      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Record Usage",
+        }),
+      );
 
       await waitFor(() =>
         expect(InventoryManagementAPI.consume).toHaveBeenCalledWith({
@@ -1219,8 +1223,16 @@ describe("InventoryItemsBoard", () => {
       InventoryManagementAPI.consume.mockResolvedValue({});
       await renderBoard();
       await openRowMenu(CARTRIDGE.name);
-      fireEvent.click(screen.getByText("Record Usage"));
-      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+      fireEvent.click(
+        screen
+          .getAllByText("Record Usage")
+          .find((el) => el.closest('[role="menu"]')),
+      );
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Record Usage",
+        }),
+      );
 
       await waitFor(() =>
         expect(InventoryManagementAPI.consume).toHaveBeenCalledWith({
@@ -1237,7 +1249,11 @@ describe("InventoryItemsBoard", () => {
       fireEvent.change(screen.getByRole("spinbutton"), {
         target: { value: "0.5" },
       });
-      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Record Usage",
+        }),
+      );
 
       expect(
         screen.getByText("Enter a whole number of units, at least 1."),
@@ -1252,7 +1268,11 @@ describe("InventoryItemsBoard", () => {
       await openQuickLog();
       fireEvent.click(screen.getByRole("combobox", { name: /Item Name/i }));
       fireEvent.click(screen.getByText(`${MALARIA.name} (${MALARIA.code})`));
-      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Record Usage",
+        }),
+      );
 
       await waitFor(() =>
         expect(
