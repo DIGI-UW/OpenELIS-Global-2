@@ -116,17 +116,22 @@ const LocationsPage = () => {
    * stays at least ten seconds (FR-L3). An error with no wording of its own (no
    * answer from the server) says so in the user's language. `source` names the
    * form a message is about: its success clears that form's earlier errors and
-   * warnings, which no longer apply.
+   * warnings, which no longer apply, and a new error replaces that form's
+   * earlier error (the form was submitted again, so the old reason is gone).
    */
   const notify = useCallback(
     (message, kind = "success", action = null, source = null) => {
       const key = `${Date.now()}-${Math.random()}`;
-      if (source && (kind === "success" || kind === "info")) {
+      if (
+        source &&
+        (kind === "success" || kind === "info" || kind === "error")
+      ) {
         setToasts((current) =>
           current.filter((toast) => {
             const stale =
               toast.source === source &&
-              (toast.kind === "error" || toast.kind === "warning");
+              (toast.kind === "error" ||
+                (kind !== "error" && toast.kind === "warning"));
             if (stale) {
               clearTimeout(toastTimers.current.get(toast.key));
               toastTimers.current.delete(toast.key);
