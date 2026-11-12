@@ -7,4 +7,5 @@ public class MicroAstRunAntibioticForm {
     public Integer displayOrder;
     public Integer tier;
     public String reportBehavior;
+    public boolean reported, reportManual;
 }
