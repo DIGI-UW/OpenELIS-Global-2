@@ -78,7 +78,7 @@ const OrganismPicker = ({ id, titleText, value, onChange, ...rest }) => {
         clearTimeout(pause.current);
         // Choosing a row writes its text here; that is not a new search.
         if (
-          text === organismText(selected) ||
+          (selected && text === organismText(selected)) ||
           matches.some((organism) => organismText(organism) === text)
         )
           return;
@@ -88,8 +88,11 @@ const OrganismPicker = ({ id, titleText, value, onChange, ...rest }) => {
         pause.current = setTimeout(() => search(text), TYPING_PAUSE_MS);
       }}
       onChange={({ selectedItem }) => {
+        const chosen = selectedItem?.id || "";
+        // Carbon also reports the selection it was just given; only a new choice is a change.
+        if (chosen === (value || "")) return;
         setKnown(selectedItem || null);
-        onChange(selectedItem?.id || "");
+        onChange(chosen);
       }}
       {...rest}
     />

@@ -109,6 +109,47 @@ it("withdraws the earlier rows as soon as the text changes", async () => {
   ).toBeVisible();
 });
 
+it("offers the common organisms again when the text is erased", async () => {
+  show(
+    <OrganismPicker
+      id="picker"
+      titleText="Organism"
+      value=""
+      onChange={vi.fn()}
+    />,
+  );
+  const input = screen.getByRole("combobox", { name: "Organism" });
+  fireEvent.change(input, { target: { value: "kleb" } });
+  expect(
+    await screen.findByRole("option", { name: /Klebsiella sp\./ }),
+  ).toBeVisible();
+  fireEvent.change(input, { target: { value: "" } });
+  expect(
+    await screen.findByRole("option", { name: /Escherichia coli/ }),
+  ).toBeVisible();
+  expect(screen.queryByRole("option", { name: /Klebsiella sp\./ })).toBeNull();
+});
+
+it("does not report a change when its value is cleared from outside", async () => {
+  const onChange = vi.fn();
+  const picker = (value) => (
+    <IntlProvider locale="en" messages={messages}>
+      <OrganismPicker
+        id="picker"
+        titleText="Organism"
+        value={value}
+        onChange={onChange}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(picker("e"));
+  const input = screen.getByRole("combobox", { name: "Organism" });
+  await waitFor(() => expect(input).toHaveValue("Escherichia coli (eco)"));
+  rerender(picker(""));
+  await waitFor(() => expect(input).toHaveValue(""));
+  expect(onChange).not.toHaveBeenCalled();
+});
+
 it("shows an organism it was given only by id", async () => {
   show(
     <OrganismPicker
