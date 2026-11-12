@@ -7,15 +7,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.ControllerUtills;
-import org.openelisglobal.sampleitem.dao.SampleItemDAO;
-import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
-import org.openelisglobal.storage.dao.SampleStorageMovementDAO;
 import org.openelisglobal.storage.form.SampleAssignmentForm;
 import org.openelisglobal.storage.form.SampleDisposalForm;
 import org.openelisglobal.storage.form.SampleMovementForm;
@@ -23,7 +17,6 @@ import org.openelisglobal.storage.form.SampleUsageForm;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageLocationService;
-import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -57,15 +50,6 @@ public class SampleStorageRestController extends BaseRestController {
 
     @Autowired
     private StorageLocationService storageLocationService;
-
-    @Autowired
-    private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
-
-    @Autowired
-    private SampleStorageMovementDAO sampleStorageMovementDAO;
-
-    @Autowired
-    private SampleItemDAO sampleItemDAO;
 
     @Autowired
     private StorageDashboardService storageDashboardService;
@@ -112,45 +96,8 @@ public class SampleStorageRestController extends BaseRestController {
             }
 
             if ("true".equals(countOnly)) {
-                // Return count metrics only
-                List<SampleStorageAssignment> allAssignments = sampleStorageAssignmentDAO.getAll();
-
-                long totalSampleItems = allAssignments.stream()
-                        .filter(assignment -> assignment.getSampleItemId() != null).count();
-                long active = 0;
-                long disposed = 0;
-
-                // Load SampleItem for each assignment to check status
-                // sampleItem is now @Transient, so we need to load it manually
-                // assignment.getSampleItemId() is Integer, sampleItemDAO.get() expects String
-                for (SampleStorageAssignment assignment : allAssignments) {
-                    if (assignment.getSampleItemId() != null) {
-                        String sampleItemIdStr = assignment.getSampleItemId().toString();
-                        Optional<SampleItem> sampleItemOpt = sampleItemDAO.get(sampleItemIdStr);
-                        if (sampleItemOpt.isPresent()) {
-                            SampleItem sampleItem = sampleItemOpt.get();
-                            if (sampleItem.getStatusId() == null
-                                    || !statusService.matches(sampleItem.getStatusId(), SampleStatus.Disposed)) {
-                                active++;
-                            } else {
-                                disposed++;
-                            }
-                        }
-                    }
-                }
-
-                // Count unique storage locations (rooms, devices, shelves, racks)
-                long storageLocations = storageLocationService.getRooms().size()
-                        + storageLocationService.getAllDevices().size() + storageLocationService.getAllShelves().size()
-                        + storageLocationService.getAllRacks().size();
-
-                Map<String, Object> metrics = new HashMap<>();
-                metrics.put("totalSampleItems", totalSampleItems);
-                metrics.put("active", active);
-                metrics.put("disposed", disposed);
-                metrics.put("storageLocations", storageLocations);
-
-                List<Map<String, Object>> response = new ArrayList<>();
+                Map<String, Long> metrics = sampleStorageService.getStorageMetrics();
+                List<Map<String, Long>> response = new ArrayList<>();
                 response.add(metrics);
                 return ResponseEntity.ok(response);
             } else if (StringUtils.hasText(location) || StringUtils.hasText(status)) {

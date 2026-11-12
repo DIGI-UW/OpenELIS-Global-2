@@ -41,4 +41,6 @@ public interface SampleStorageAssignmentDAO extends BaseDAO<SampleStorageAssignm
      * @return Page of SampleStorageAssignment entities
      */
     Page<SampleStorageAssignment> findAll(Pageable pageable);
+
+    Map<String, Long> countSampleItemAssignmentMetrics(String disposedStatusId);
 }
