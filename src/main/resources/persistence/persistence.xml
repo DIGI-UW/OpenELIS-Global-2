@@ -80,6 +80,7 @@
         <!-- Microbiology MVP reference/config entities (OGC-782 M1) -->
         <class>org.openelisglobal.microbiology.valueholder.MicroOrganism</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroWhonetOrganism</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroWhonetAntibiotic</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAntibiotic</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstPanel</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic</class>

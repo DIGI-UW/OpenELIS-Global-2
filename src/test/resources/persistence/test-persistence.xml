@@ -48,6 +48,7 @@
         <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplanQcRelease</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroOrganism</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroWhonetOrganism</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroWhonetAntibiotic</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAntibiotic</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstPanel</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic</class>

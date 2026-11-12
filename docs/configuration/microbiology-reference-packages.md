@@ -10,6 +10,7 @@ read release archives, download metadata or run R.
 | Folder under `configuration/backend/` | Required columns                         | Order |
 | ------------------------------------- | ---------------------------------------- | ----- |
 | `microbiology-whonet-organisms/`      | WHONET's `Organisms.txt`, see below      | 305   |
+| `microbiology-whonet-antibiotics/`    | WHONET's `Antibiotics.txt`, see below    | 306   |
 | `microbiology-organisms/`             | `source,code,displayName,whonetCode`     | 310   |
 | `microbiology-antimicrobials/`        | `source,code,displayName,whonetCode`     | 320   |
 | `microbiology-breakpoints/`           | Existing breakpoint import columns below | 330   |
@@ -42,6 +43,21 @@ only: Import Catalog does not offer this domain.
   no code takes the code.
 - If WHONET's name for a code already belongs to an organism with a different
   code, the file is not loaded and the report names both codes.
+
+## WHONET's antibiotic list
+
+`microbiology-whonet-antibiotics/` takes `Antibiotics.txt` the same way:
+tab-separated, WHONET's columns, configuration folder only.
+
+- The whole table is kept. WHONET lists a code once per disk potency, so
+  amoxicillin/clavulanic acid (`AMC`) has a row for 20/10µg, 2/1µg and others.
+- Each code is one antibiotic, identified by its WHONET code and named after the
+  code's first WHONET entry (lowest `ABX_NUMBER`). Its class comes from that
+  entry when the laboratory has not set one.
+- An antibiotic the laboratory already has under a WHONET code keeps its record
+  and notes and takes WHONET's name. One with the same name and no code takes
+  the code. A name that belongs to an antibiotic with a different code fails the
+  file, naming both codes.
 
 Breakpoint files use the existing administrator CSV importer:
 
