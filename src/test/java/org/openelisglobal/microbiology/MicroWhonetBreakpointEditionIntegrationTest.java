@@ -229,20 +229,20 @@ public class MicroWhonetBreakpointEditionIntegrationTest extends BaseWebContextS
         String amikacin = antibiotics.findByWhonetCodeIgnoreCase("AMK").orElseThrow().getId();
 
         MicroBreakpointRule mic = breakpoints.findWhonetBreakpointRule(edition("CLSI", "2026-2026.4").getId(),
-                klebsiella, amikacin, "MIC", null, false);
+                klebsiella, amikacin, "MIC", null, null, null);
         assertEquals(MicroAstInterpretation.SUSCEPTIBLE, interpreter.interpret(mic, MicroAstMethod.MIC, value("4")));
         assertEquals(MicroAstInterpretation.INTERMEDIATE, interpreter.interpret(mic, MicroAstMethod.MIC, value("8")));
         assertEquals(MicroAstInterpretation.RESISTANT, interpreter.interpret(mic, MicroAstMethod.MIC, value("16")));
 
         MicroBreakpointRule zone = breakpoints.findWhonetBreakpointRule(edition("CLSI", "2026-2026.4").getId(),
-                klebsiella, amikacin, "ZONE", "30 mcg", false);
+                klebsiella, amikacin, "ZONE", "30 mcg", null, null);
         assertEquals(MicroAstInterpretation.SUSCEPTIBLE, interpreter.interpret(zone, MicroAstMethod.ZONE, value("20")));
         assertEquals(MicroAstInterpretation.INTERMEDIATE,
                 interpreter.interpret(zone, MicroAstMethod.ZONE, value("17")));
         assertEquals(MicroAstInterpretation.RESISTANT, interpreter.interpret(zone, MicroAstMethod.ZONE, value("16")));
 
         MicroBreakpointRule eucast = breakpoints.findWhonetBreakpointRule(edition("EUCAST", "2026-2026.4").getId(),
-                klebsiella, amikacin, "MIC", null, false);
+                klebsiella, amikacin, "MIC", null, null, null);
         assertNull(eucast.getSiteOfInfection());
         assertEquals(MicroAstInterpretation.SUSCEPTIBLE,
                 interpreter.interpret(eucast, MicroAstMethod.MIC, value("8"), "EUCAST"));
@@ -258,12 +258,12 @@ public class MicroWhonetBreakpointEditionIntegrationTest extends BaseWebContextS
         String amoxicillinClavulanate = antibiotics.findByWhonetCodeIgnoreCase("AMC").orElseThrow().getId();
 
         MicroBreakpointRule systemic = breakpoints.findWhonetBreakpointRule(eucast, klebsiella, amoxicillinClavulanate,
-                "MIC", null, false);
+                "MIC", null, null, null);
         assertEquals("Intravenous", systemic.getSiteOfInfection());
         assertEquals(0, new BigDecimal("8").compareTo(systemic.getSusceptibleValue()));
 
         MicroBreakpointRule urinary = breakpoints.findWhonetBreakpointRule(eucast, klebsiella, amoxicillinClavulanate,
-                "MIC", null, true);
+                "MIC", null, "ur", null);
         assertEquals("Oral, Uncomplicated urinary tract infection", urinary.getSiteOfInfection());
         assertEquals(0, new BigDecimal("32").compareTo(urinary.getSusceptibleValue()));
     }
@@ -274,7 +274,7 @@ public class MicroWhonetBreakpointEditionIntegrationTest extends BaseWebContextS
         String klebsiella = organisms.findByWhonetCodeIgnoreCase("kpn").orElseThrow().getId();
         String amikacin = antibiotics.findByWhonetCodeIgnoreCase("AMK").orElseThrow().getId();
         MicroBreakpointRule eucast = breakpoints.findWhonetBreakpointRule(edition("EUCAST", "2026-2026.4").getId(),
-                klebsiella, amikacin, "MIC", null, false);
+                klebsiella, amikacin, "MIC", null, null, null);
 
         // EUCAST's "R > 8" is held as WHONET writes it, R at 16.
         assertEquals(MicroAstInterpretation.RESISTANT,

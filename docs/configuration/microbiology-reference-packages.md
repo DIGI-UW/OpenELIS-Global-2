@@ -87,6 +87,11 @@ tab-separated, WHONET's columns, configuration folder only.
   sample type carries WHONET's specimen code `ur`. Any other specimen never
   takes a urinary rule: when the closest level has no other rule the reading has
   "No breakpoint".
+- A spinal fluid specimen (WHONET specimen code `sf`) takes a rule for
+  meningitis and never one for infections other than meningitis. Any other
+  specimen never takes a meningitis rule, and takes a non-meningitis rule only
+  when the run's clinical indication says so. With the indication unspecified,
+  such a reading has "No breakpoint" unless the same level has a general rule.
 - WHONET writes `R` as the first resistant value, so an MIC at or above it and a
   zone at or below it are resistant. An MIC between dilutions is read at the
   next dilution.

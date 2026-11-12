@@ -25,9 +25,9 @@ public interface MicroBreakpointService {
             String diskContent);
 
     /**
-     * The closest WHONET organism level decides, then WHONET's order of sites. A
-     * urinary rule applies only to a urine specimen, which prefers it.
+     * The closest WHONET organism level decides, then the specimen (its WHONET
+     * specimen code) and the indication, then WHONET's order of sites.
      */
     MicroBreakpointRule findWhonetBreakpointRule(String standardId, String organismId, String antibioticId,
-            String breakpointType, String diskContent, boolean urineSpecimen);
+            String breakpointType, String diskContent, String specimenCode, String clinicalContext);
 }

@@ -57,9 +57,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MicroAstServiceImpl implements MicroAstService {
-    /** WHONET's specimen code for urine, as set on a sample type. */
-    private static final String WHONET_URINE = "ur";
-
     @org.springframework.beans.factory.annotation.Autowired
     private MicroCaseAuthorizationService authorization;
     @org.springframework.beans.factory.annotation.Autowired
@@ -997,12 +994,12 @@ public class MicroAstServiceImpl implements MicroAstService {
         boolean ntm = organism != null && "NTM".equals(organism.getSusceptibilityProtocol());
         String organismGroup = organism == null || ntm ? null : organism.getOrganismGroup();
         String specimenTypeId = null;
-        boolean urineSpecimen = false;
+        String specimenCode = null;
         if (microCase.getSampleItemId() != null) {
             SampleItem sampleItem = sampleItemService.getData(microCase.getSampleItemId());
             specimenTypeId = sampleItem == null ? null : sampleItemService.getTypeOfSampleId(sampleItem);
-            urineSpecimen = sampleItem != null && sampleItem.getTypeOfSample() != null
-                    && WHONET_URINE.equalsIgnoreCase(sampleItem.getTypeOfSample().getWhonetCode());
+            specimenCode = sampleItem == null || sampleItem.getTypeOfSample() == null ? null
+                    : sampleItem.getTypeOfSample().getWhonetCode();
         }
         String technique = run.getTechnique();
         if (technique != null && !technique.isBlank() && !MicroAstTechnique.valueOf(technique).isLegacyUnspecified()) {
@@ -1016,7 +1013,8 @@ public class MicroAstServiceImpl implements MicroAstService {
                 specimenTypeId, method.name());
         if (rule == null && !ntm) {
             return breakpointService.findWhonetBreakpointRule(standardId, isolate.getOrganismId(), antibioticId,
-                    method.name(), diskContent(run, antibioticId, method.name()), urineSpecimen);
+                    method.name(), diskContent(run, antibioticId, method.name()), specimenCode,
+                    run.getClinicalContext());
         }
         return rule != null && ntm && !isolate.getOrganismId().equals(rule.getOrganismId()) ? null : rule;
     }

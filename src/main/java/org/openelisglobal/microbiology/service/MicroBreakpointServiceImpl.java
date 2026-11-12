@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.service;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -126,7 +127,7 @@ public class MicroBreakpointServiceImpl implements MicroBreakpointService {
     @Override
     @Transactional(readOnly = true)
     public MicroBreakpointRule findWhonetBreakpointRule(String standardId, String organismId, String antibioticId,
-            String breakpointType, String diskContent, boolean urineSpecimen) {
+            String breakpointType, String diskContent, String specimenCode, String clinicalContext) {
         MicroWhonetOrganism organism = organismId == null ? null
                 : organismDAO.get(organismId).map(MicroOrganism::getWhonetCode).filter(code -> !code.isBlank())
                         .flatMap(whonetOrganismDAO::findCurrentByCode).orElse(null);
@@ -138,14 +139,29 @@ public class MicroBreakpointServiceImpl implements MicroBreakpointService {
                         ? disk(rule.getDiskContent()) != null && disk(rule.getDiskContent()).equals(disk(diskContent))
                         : rule.getDiskContent() == null)
                 .toList();
+        boolean urine = URINE.equalsIgnoreCase(specimenCode), spinalFluid = SPINAL_FLUID.equalsIgnoreCase(specimenCode);
+        boolean nonMeningitis = "NON_MENINGITIS".equals(clinicalContext);
         // A broader rule never stands in for a closer one that does not apply to this
-        // specimen.
+        // specimen or indication.
         int closest = rules.stream().mapToInt(rule -> level(rule, organism)).min().orElse(NO_LEVEL);
-        return rules.stream().filter(
-                rule -> closest < NO_LEVEL && level(rule, organism) == closest && (urineSpecimen || !urinary(rule)))
-                .min(Comparator.comparingInt((MicroBreakpointRule rule) -> urineSpecimen && urinary(rule) ? 0 : 1)
+        return rules.stream().filter(rule -> closest < NO_LEVEL && level(rule, organism) == closest)
+                .filter(rule -> urine || !urinary(rule))
+                .filter(rule -> spinalFluid ? !names(rule, "non-meningitis")
+                        : !names(rule, "meningitis") && (nonMeningitis || !names(rule, "non-meningitis")))
+                .min(Comparator.comparingInt((MicroBreakpointRule rule) -> urine && urinary(rule) ? 0 : 1)
+                        .thenComparingInt(rule -> spinalFluid && names(rule, "meningitis") ? 0 : 1)
                         .thenComparingInt(rule -> site(rule.getSiteOfInfection())))
                 .orElse(null);
+    }
+
+    /**
+     * WHONET's specimen codes for urine and spinal fluid, as set on a sample type.
+     */
+    private static final String URINE = "ur", SPINAL_FLUID = "sf";
+
+    private static boolean names(MicroBreakpointRule rule, String site) {
+        return rule.getSiteOfInfection() != null && Arrays.stream(rule.getSiteOfInfection().split(","))
+                .anyMatch(named -> named.trim().equalsIgnoreCase(site));
     }
 
     // "30ug", "30 µg" and "30 mcg" are one disk.

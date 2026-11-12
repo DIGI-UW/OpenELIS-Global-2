@@ -73,13 +73,13 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
     }
 
     private MicroBreakpointRule match(String whonetCode) {
-        return match(whonetCode, false);
+        return match(whonetCode, null, null);
     }
 
-    private MicroBreakpointRule match(String whonetCode, boolean urineSpecimen) {
+    private MicroBreakpointRule match(String whonetCode, String specimenCode, String clinicalContext) {
         MicroOrganism organism = organisms.findByWhonetCodeIgnoreCase(whonetCode).orElseThrow();
         return breakpoints.findWhonetBreakpointRule(standardId, organism.getId(), antibioticId, "MIC", null,
-                urineSpecimen);
+                specimenCode, clinicalContext);
     }
 
     @Test
@@ -111,9 +111,9 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
 
     @Test
     public void amongRulesOfOneLevelWhonetsSiteOrderDecides() {
-        rule("FAMILY_CODE", "EBC", "Meningitis", "1");
-        String nonMeningitis = rule("FAMILY_CODE", "EBC", "Non-meningitis", "2");
-        assertEquals(nonMeningitis, match("kpn").getId());
+        rule("FAMILY_CODE", "EBC", "Intravenous", "1");
+        String parenteral = rule("FAMILY_CODE", "EBC", "Parenteral", "2");
+        assertEquals(parenteral, match("kpn").getId());
 
         rule("GENUS_CODE", "KL-", "Uncomplicated urinary tract infection", "3");
         String general = rule("GENUS_CODE", "KL-", null, "4");
@@ -126,8 +126,8 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
         String urinary = rule("FAMILY_CODE", "EBC", "Oral, Uncomplicated urinary tract infection", "32");
         rule("FAMILY_CODE", "EBC", "Oral, Infections originating from the urinary tract", "1");
 
-        assertEquals(intravenous, match("kpn", false).getId());
-        assertEquals(urinary, match("kpn", true).getId());
+        assertEquals(intravenous, match("kpn", "bl", null).getId());
+        assertEquals(urinary, match("kpn", "ur", null).getId());
     }
 
     @Test
@@ -135,15 +135,50 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
         rule("FAMILY_CODE", "EBC", null, "2");
         String urinary = rule("GENUS_CODE", "KL-", "Uncomplicated urinary tract infection", "3");
 
-        assertNull(match("kpn", false));
-        assertEquals(urinary, match("kpn", true).getId());
+        assertNull(match("kpn", "bl", null));
+        assertEquals(urinary, match("kpn", "ur", null).getId());
     }
 
     @Test
     public void aUrineSpecimenWithoutAUrinaryRuleUsesTheGeneralOne() {
         String general = rule("FAMILY_CODE", "EBC", null, "2");
 
-        assertEquals(general, match("kpn", true).getId());
+        assertEquals(general, match("kpn", "ur", null).getId());
+    }
+
+    @Test
+    public void aSpinalFluidSpecimenTakesTheMeningitisRule() {
+        String meningitis = rule("FAMILY_CODE", "EBC", "Meningitis, Endocarditis", "1");
+        rule("FAMILY_CODE", "EBC", "Non-meningitis, Non-endocarditis", "2");
+
+        assertEquals(meningitis, match("kpn", "sf", null).getId());
+        assertEquals(meningitis, match("kpn", "SF", "NON_MENINGITIS").getId());
+    }
+
+    @Test
+    public void anotherSpecimenTakesTheNonMeningitisRuleOnlyWhenTheRunSaysSo() {
+        rule("FAMILY_CODE", "EBC", "Meningitis", "1");
+        String nonMeningitis = rule("FAMILY_CODE", "EBC", "Non-meningitis", "2");
+
+        assertNull(match("kpn", "bl", null));
+        assertNull(match("kpn", null, null));
+        assertEquals(nonMeningitis, match("kpn", "bl", "NON_MENINGITIS").getId());
+    }
+
+    @Test
+    public void aGeneralRuleBesideTheMeningitisOnesNeedsNoIndication() {
+        rule("FAMILY_CODE", "EBC", "Meningitis", "1");
+        rule("FAMILY_CODE", "EBC", "Non-meningitis", "2");
+        String general = rule("FAMILY_CODE", "EBC", null, "3");
+
+        assertEquals(general, match("kpn", "bl", null).getId());
+    }
+
+    @Test
+    public void aSpinalFluidSpecimenNeverTakesANonMeningitisRule() {
+        rule("FAMILY_CODE", "EBC", "Non-meningitis", "2");
+
+        assertNull(match("kpn", "sf", null));
     }
 
     @Test
@@ -157,7 +192,8 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
     public void anOrganismWithoutAWhonetCodeHasNoWhonetRule() {
         rule("ALL", "Gen", null, "1");
 
-        assertNull(breakpoints.findWhonetBreakpointRule(standardId, "lab-uncoded", antibioticId, "MIC", null, false));
+        assertNull(
+                breakpoints.findWhonetBreakpointRule(standardId, "lab-uncoded", antibioticId, "MIC", null, null, null));
     }
 
     @Test
@@ -177,9 +213,11 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
         String organismId = organisms.findByWhonetCodeIgnoreCase("kpn").orElseThrow().getId();
 
         assertEquals(zone.getId(), breakpoints
-                .findWhonetBreakpointRule(standardId, organismId, antibioticId, "ZONE", "5 mcg", false).getId());
-        assertNull(breakpoints.findWhonetBreakpointRule(standardId, organismId, antibioticId, "ZONE", "10 mcg", false));
-        assertNull(breakpoints.findWhonetBreakpointRule(standardId, organismId, antibioticId, "ZONE", null, false));
+                .findWhonetBreakpointRule(standardId, organismId, antibioticId, "ZONE", "5 mcg", null, null).getId());
+        assertNull(breakpoints.findWhonetBreakpointRule(standardId, organismId, antibioticId, "ZONE", "10 mcg", null,
+                null));
+        assertNull(
+                breakpoints.findWhonetBreakpointRule(standardId, organismId, antibioticId, "ZONE", null, null, null));
     }
 
     @Test
@@ -192,8 +230,10 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
 
         for (String spelling : new String[] { "5ug", "5 µg", "5mcg", "5 MCG" }) {
             assertEquals(spelling, zone.getId(), breakpoints
-                    .findWhonetBreakpointRule(standardId, organismId, antibioticId, "ZONE", spelling, false).getId());
+                    .findWhonetBreakpointRule(standardId, organismId, antibioticId, "ZONE", spelling, null, null)
+                    .getId());
         }
-        assertNull(breakpoints.findWhonetBreakpointRule(standardId, organismId, antibioticId, "ZONE", "50 mcg", false));
+        assertNull(breakpoints.findWhonetBreakpointRule(standardId, organismId, antibioticId, "ZONE", "50 mcg", null,
+                null));
     }
 }
