@@ -1,16 +1,15 @@
 package org.openelisglobal.storage.service;
 
 import java.io.ByteArrayOutputStream;
-import javax.sql.DataSource;
 import org.openelisglobal.barcode.BarcodeLabelMaker;
 import org.openelisglobal.barcode.labeltype.StorageLocationLabel;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.storage.dao.StorageLocationPrintHistoryDAO;
 import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StorageLocationPrintHistory;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
-import org.openelisglobal.storage.valueholder.StorageLocationPrintHistory;
-import org.openelisglobal.storage.dao.StorageLocationPrintHistoryDAO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -224,12 +223,15 @@ public class LabelManagementServiceImpl implements LabelManagementService {
         history.setPrintedBy(userId);
         history.setPrintedDate(new java.util.Date());
         history.setPrintCount(1);
-        printHistoryDAO.save(history);
+        printHistoryDAO.insert(history);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Object getLocationById(String type, String id) {
+        if (type == null || id == null) {
+            return null;
+        }
         try {
             Integer locationId = Integer.parseInt(id);
             switch (type) {

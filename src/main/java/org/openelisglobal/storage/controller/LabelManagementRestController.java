@@ -1,12 +1,12 @@
 package org.openelisglobal.storage.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
-import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.storage.service.LabelManagementService;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
@@ -17,7 +17,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * REST Controller for Label Management Handles short code updates, label
@@ -37,8 +41,8 @@ public class LabelManagementRestController extends BaseRestController {
      * Validates code exists before printing, returns error if missing
      */
     @PostMapping(value = "/{type}/{id}/print-label", produces = MediaType.APPLICATION_PDF_VALUE)
-    public void printLabel(@PathVariable String type, @PathVariable String id, jakarta.servlet.http.HttpServletRequest request, HttpServletResponse response)
-            throws IOException {
+    public void printLabel(@PathVariable String type, @PathVariable String id, HttpServletRequest request,
+            HttpServletResponse response) throws IOException {
         try {
             // Validate type
             if (!"device".equals(type) && !"shelf".equals(type) && !"rack".equals(type)) {
@@ -70,7 +74,7 @@ public class LabelManagementRestController extends BaseRestController {
 
             // Generate label (uses code from entity)
             ByteArrayOutputStream pdfStream;
-            String userId = ControllerUtills.getSysUserId(request); // Get from security context
+            String userId = getCurrentUserId(request);
 
             if (location instanceof StorageDevice) {
                 pdfStream = labelManagementService.generateLabel((StorageDevice) location);
@@ -170,6 +174,16 @@ public class LabelManagementRestController extends BaseRestController {
         }
         return null;
     }
+
+    /**
+     * Get current user ID from request session or security context. Falls back to
+     * default system user if unauthenticated.
+     */
+    private String getCurrentUserId(HttpServletRequest request) {
+        String userId = request != null ? getSysUserId(request) : getSysUserId();
+        if (userId != null && !userId.isBlank()) {
+            return userId;
+        }
+        return "1";
+    }
 }
-
-

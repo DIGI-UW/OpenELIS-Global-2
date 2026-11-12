@@ -47,6 +47,11 @@ public class StorageLocationPrintHistory extends BaseObject<UUID> {
         this.id = id;
     }
 
+    @Override
+    public String getStringId() {
+        return id != null ? id.toString() : null;
+    }
+
     public String getLocationType() {
         return locationType;
     }

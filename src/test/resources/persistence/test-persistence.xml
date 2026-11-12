@@ -113,6 +113,7 @@
         <class>org.openelisglobal.storage.valueholder.StorageBox</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageAssignment</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageMovement</class>
+        <class>org.openelisglobal.storage.valueholder.StorageLocationPrintHistory</class>
 
         <!-- Cold Storage/Freezer Monitoring entities -->
         <class>org.openelisglobal.coldstorage.valueholder.Freezer</class>
