@@ -79,6 +79,14 @@ public class MicroOrganismSearchIntegrationTest extends BaseWebContextSensitiveT
     }
 
     @Test
+    public void aNameThatStartsWithTheTextComesBeforeOneThatOnlyContainsIt() {
+        organism("Azzgenus klebtestii", "Y");
+        organism("Klebtest zzspecies", "Y");
+        assertEquals(List.of("Klebtest zzspecies", "Azzgenus klebtestii"),
+                names(reference.searchOrganisms("klebtest", 10)));
+    }
+
+    @Test
     public void searchTreatsWildcardCharactersAsText() {
         assertEquals(List.of(), names(reference.searchOrganisms("%", 10)));
         assertEquals(List.of(), names(reference.searchOrganisms("k_e", 10)));

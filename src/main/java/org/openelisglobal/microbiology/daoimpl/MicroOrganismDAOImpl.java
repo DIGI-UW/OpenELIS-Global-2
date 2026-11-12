@@ -51,14 +51,15 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
         String pattern = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
         @SuppressWarnings("unchecked")
         List<Object[]> found = entityManager
-                .createNativeQuery(
-                        "select o.id, case when " + OWN_NAME_OR_CODE + " then null else (select min(w.organism)"
-                                + OLDER_NAME + ") end" + " from clinlims.micro_organism o where o.is_active = 'Y' and ("
-                                + OWN_NAME_OR_CODE + " or exists (select 1" + OLDER_NAME + "))"
-                                + " order by case when lower(o.whonet_code) = :q then 0 else 1 end,"
-                                + " case when exists (select 1 from clinlims.micro_whonet_organism c"
-                                + " where lower(c.whonet_org_code) = lower(o.whonet_code) and c.taxonomic_status = 'C'"
-                                + " and c.common = 'X') then 0 else 1 end, lower(o.display_name)")
+                .createNativeQuery("select o.id, case when " + OWN_NAME_OR_CODE
+                        + " then null else (select min(w.organism)" + OLDER_NAME + ") end"
+                        + " from clinlims.micro_organism o where o.is_active = 'Y' and (" + OWN_NAME_OR_CODE
+                        + " or exists (select 1" + OLDER_NAME + "))"
+                        + " order by case when lower(o.whonet_code) = :q then 0 else 1 end,"
+                        + " case when exists (select 1 from clinlims.micro_whonet_organism c"
+                        + " where lower(c.whonet_org_code) = lower(o.whonet_code) and c.taxonomic_status = 'C'"
+                        + " and c.common = 'X') then 0 else 1 end,"
+                        + " case when lower(o.display_name) like :prefix then 0 else 1 end," + " lower(o.display_name)")
                 .setParameter("q", q).setParameter("fragment", "%" + pattern + "%")
                 .setParameter("prefix", pattern + "%").setMaxResults(limit).getResultList();
         java.util.Map<String, MicroOrganism> organisms = new java.util.HashMap<>();
