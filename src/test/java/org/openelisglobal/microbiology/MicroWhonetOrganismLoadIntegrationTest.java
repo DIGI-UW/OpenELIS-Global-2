@@ -12,12 +12,14 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.configuration.service.CatalogImportServiceImpl;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroWhonetOrganismDAO;
 import org.openelisglobal.microbiology.service.MicroWhonetOrganismConfigurationHandler;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroWhonetOrganism;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 
 /** Loads rows cut unchanged from WHONET's Organisms.txt, release v26.3.26. */
 public class MicroWhonetOrganismLoadIntegrationTest extends BaseWebContextSensitiveTest {
@@ -29,6 +31,8 @@ public class MicroWhonetOrganismLoadIntegrationTest extends BaseWebContextSensit
     private MicroOrganismDAO organisms;
     @Autowired
     private MicroWhonetOrganismDAO whonetTable;
+    @Autowired
+    private ApplicationContext context;
 
     @Before
     public void laboratoryOrganisms() throws Exception {
@@ -127,5 +131,13 @@ public class MicroWhonetOrganismLoadIntegrationTest extends BaseWebContextSensit
         assertTrue(failure.getMessage().contains("kl-"));
         assertEquals(9, whonetTable.getAll().size());
         assertFalse(organisms.findByWhonetCodeIgnoreCase("zzz").isPresent());
+    }
+
+    @Test
+    public void importCatalogDoesNotOfferTheTable() {
+        CatalogImportServiceImpl catalogImport = new CatalogImportServiceImpl();
+        context.getAutowireCapableBeanFactory().autowireBean(catalogImport);
+
+        assertFalse(catalogImport.getImportableDomains().contains(handler.getDomainName()));
     }
 }

@@ -36,6 +36,15 @@ public class MicroWhonetOrganismConfigurationHandler extends AbstractCatalogCsvH
         return 305;
     }
 
+    /**
+     * The table comes with the reference package, so Import Catalog does not offer
+     * it.
+     */
+    @Override
+    public boolean supportsDryRun() {
+        return false;
+    }
+
     @Override
     protected String[] requiredColumns() {
         return new String[] { "WHONET_ORG_CODE", "ORGANISM", "TAXONOMIC_STATUS" };

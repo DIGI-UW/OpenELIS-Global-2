@@ -25,9 +25,10 @@ panels, routing, significance or clinical protocol.
 
 `microbiology-whonet-organisms/` takes `Organisms.txt` exactly as
 [WHONET publishes it](https://github.com/AClark-WHONET/AMRIE): tab-separated,
-with WHONET's column names. The `amr-reference` package carries the file
-unchanged, so OpenELIS offers the organisms, names and codes a WHONET user
-knows.
+with WHONET's column names. The `amr-reference-eucast` and `amr-reference-clsi`
+packages carry the file unchanged, so OpenELIS offers the organisms, names and
+codes a WHONET user knows. The table arrives through the configuration folder
+only: Import Catalog does not offer this domain.
 
 - The whole table is kept, every row and column, including the older names a
   code has carried and codes WHONET has replaced. Loading a file replaces the
