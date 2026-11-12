@@ -51,6 +51,7 @@ test("preserves the original AST reading and reports the explicitly selected ret
     .getByLabel("Testing section", { exact: true })
     .selectOption("REPORT");
   await page
+    .locator("#case-scope-REPORT")
     .getByRole("button", { name: "Release partial report", exact: true })
     .click();
   await expect(
