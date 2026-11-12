@@ -71,6 +71,11 @@ public class ControllerSetupExceptionHandlingTest {
         public String refused() {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "paging.currentPage must name a loaded page");
         }
+
+        @GetMapping("/bad-argument")
+        public String badArgument() {
+            throw new IllegalArgumentException("testId must be a number");
+        }
     }
 
     private MockMvc mockMvc;
@@ -92,6 +97,13 @@ public class ControllerSetupExceptionHandlingTest {
         mockMvc.perform(get("/attachment-invalid")).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.messageKey").value("clinicalAttachment.uploadHint"));
+    }
+
+    @Test
+    public void illegalArgumentException_answers400WithMessage() throws Exception {
+        mockMvc.perform(get("/bad-argument")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400)).andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("testId must be a number"));
     }
 
     @Test

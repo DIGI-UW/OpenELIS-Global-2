@@ -79,6 +79,19 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
+    /**
+     * Keeps argument validation failures on 400: handleRuntimeException would
+     * otherwise claim them, since IllegalArgumentException is a RuntimeException.
+     * Debug-level, because bad client input is a client error, not a server crash.
+     */
+    @ExceptionHandler(value = { IllegalArgumentException.class })
+    protected ResponseEntity<Object> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request) {
+        LogEvent.logDebug(this.getClass().getName(), "handleIllegalArgumentException", ex.getMessage());
+        Map<String, Object> body = buildGenericErrorBody(HttpStatus.BAD_REQUEST);
+        body.put("message", ex.getMessage());
+        return new ResponseEntity<>(body, new HttpHeaders(), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(value = { RuntimeException.class })
     protected ResponseEntity<Object> handleRuntimeException(RuntimeException ex, WebRequest request) {
         LogEvent.logError(ex);
