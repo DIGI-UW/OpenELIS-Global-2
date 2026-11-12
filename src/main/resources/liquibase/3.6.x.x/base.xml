@@ -51,6 +51,7 @@
   <include relativeToChangelogFile="true" file="031-container-types.xml"/>
   <!-- OGC-1364: validation policy (lab-wide default replaces "validate all results" behind useMultiLevelValidation) -->
   <include relativeToChangelogFile="true" file="032-validation-policy.xml"/>
+  <include relativeToChangelogFile="true" file="033-organization-gps-source.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>
