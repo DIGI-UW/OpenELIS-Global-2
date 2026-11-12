@@ -112,6 +112,32 @@ public class ReferringOrganizationImportTest extends BaseWebContextSensitiveTest
                 .contains(TableIdService.getInstance().REFERRING_ORG_TYPE_ID));
     }
 
+    @Test
+    public void aReferringLabKnownByItsFhirIdBecomesAReferringClinicToo() {
+        String referringId = "4e5f6a7b-8c9d-4e0f-a1b2-c3d4e5f6a7b8";
+        org.openelisglobal.organization.valueholder.Organization referenceLab = new org.openelisglobal.organization.valueholder.Organization();
+        referenceLab.setOrganizationName("Gulu Regional Laboratory");
+        referenceLab.setIsActive(IActionConstants.YES);
+        referenceLab.setMlsLabFlag(IActionConstants.NO);
+        referenceLab.setMlsSentinelLabFlag(IActionConstants.NO);
+        referenceLab.setFhirUuid(java.util.UUID.fromString(referringId));
+        String referenceLabId = organizationService.insert(referenceLab);
+
+        FhirApiWorkFlowServiceImpl service = AopTestUtils.getTargetObject(workflowService);
+        Organization referring = new Organization();
+        referring.setId(referringId);
+        referring.setName("Gulu Regional Laboratory");
+        Task task = new Task();
+        task.setRestriction(new TaskRestrictionComponent().addRecipient(new Reference("Organization/" + referringId)));
+
+        service.importReferringOrganization(remoteReturning(referringId, referring), task, new FhirOperations());
+        service.importReferringOrganization(remoteReturning(referringId, referring), task, new FhirOperations());
+
+        assertEquals(referenceLabId, organizationService.getOrganizationByFhirId(referringId).getId());
+        assertEquals(1, organizationService.getTypeIdsForOrganizationId(referenceLabId).stream()
+                .filter(TableIdService.getInstance().REFERRING_ORG_TYPE_ID::equals).count());
+    }
+
     private IGenericClient remoteReturning(String id, Organization organization) {
         IGenericClient remote = mock(IGenericClient.class);
         IRead read = mock(IRead.class);

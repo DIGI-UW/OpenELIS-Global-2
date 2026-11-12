@@ -597,7 +597,9 @@ public class LocationsServiceImpl implements LocationsService {
         Organization other = organizationService.getOrganizationByFhirId(uuid.toString());
         if (other != null && !other.getId().equals(organization.getId())) {
             errors.put("referral.fhirId",
-                    "Another organization already uses this FHIR id: " + other.getOrganizationName());
+                    "Another organization already uses this FHIR id: " + other.getOrganizationName()
+                            + ". To refer to that lab, add the referralLab type to " + other.getOrganizationName()
+                            + " instead.");
             return;
         }
         organization.setFhirUuid(uuid);

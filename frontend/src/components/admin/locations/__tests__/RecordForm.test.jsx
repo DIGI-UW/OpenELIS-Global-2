@@ -298,6 +298,30 @@ describe("RecordForm (OGC-1363)", () => {
     );
   });
 
+  it("fills a new reference lab's FHIR id with the id the record already has", async () => {
+    const clinic = detail({
+      row: {
+        ...detail().row,
+        types: [{ id: "6", name: "referralLab", hierarchyLevel: null }],
+      },
+      fhirId: "ca21f60d-1d77-4411-b8e1-367b86776593",
+      referral: null,
+    });
+    api.getOrganization.mockResolvedValue(clinic);
+    wrap(
+      <RecordForm
+        id="4"
+        kind="facility"
+        lists={LISTS}
+        onCancel={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+    expect(
+      await screen.findByLabelText("FHIR id at the reference lab"),
+    ).toHaveValue("ca21f60d-1d77-4411-b8e1-367b86776593");
+  });
+
   it("shows the server's field errors on a refused save", async () => {
     api.getOrganization.mockResolvedValue(detail());
     api.updateOrganization.mockRejectedValue(

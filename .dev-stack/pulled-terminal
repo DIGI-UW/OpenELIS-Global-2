@@ -1,6 +1,0 @@
-20193:Thu Nov 12 10:20:23 2026
-20193:<MagicMock name='run().stdout.strip()' id='4361729904'>
-20861:Thu Nov 12 10:20:46 2026 full
-20861:<MagicMock name='run().stdout.strip()' id='4388124528'> full
-22630:Thu Nov 12 10:28:02 2026 full
-22630:<MagicMock name='run().stdout.strip()' id='4396279728'> full

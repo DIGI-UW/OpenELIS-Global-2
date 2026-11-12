@@ -982,7 +982,11 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
             return;
         }
         fhirOperations.updateResources.put(fhirId, remoteOrganization);
-        if (organizationService.getOrganizationByFhirId(fhirId) != null) {
+        Organization known = organizationService.getOrganizationByFhirId(fhirId);
+        if (known != null) {
+            if (!thisLaboratoryService.isThisLaboratory(known)) {
+                ensureReferringClinicType(known);
+            }
             return;
         }
         UUID uuid;
@@ -996,11 +1000,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
         if (sameName != null) {
             sameName.setFhirUuid(uuid);
             organizationService.update(sameName);
-            if (!organizationService.getTypeIdsForOrganizationId(sameName.getId())
-                    .contains(TableIdService.getInstance().REFERRING_ORG_TYPE_ID)) {
-                organizationService.linkOrganizationAndType(sameName,
-                        TableIdService.getInstance().REFERRING_ORG_TYPE_ID);
-            }
+            ensureReferringClinicType(sameName);
             return;
         }
         Organization newOrg = new Organization();
@@ -1011,6 +1011,17 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
         newOrg.setMlsSentinelLabFlag(IActionConstants.NO);
         organizationService.save(newOrg);
         organizationService.linkOrganizationAndType(newOrg, TableIdService.getInstance().REFERRING_ORG_TYPE_ID);
+    }
+
+    /**
+     * The referring lab is offered as the order's site only when it is a referring
+     * clinic; a lab first recorded as a reference lab gets that type too.
+     */
+    private void ensureReferringClinicType(Organization organization) {
+        String referringType = TableIdService.getInstance().REFERRING_ORG_TYPE_ID;
+        if (!organizationService.getTypeIdsForOrganizationId(organization.getId()).contains(referringType)) {
+            organizationService.linkOrganizationAndType(organization, referringType);
+        }
     }
 
     /**

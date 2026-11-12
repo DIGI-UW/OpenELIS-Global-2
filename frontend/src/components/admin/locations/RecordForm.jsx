@@ -109,7 +109,11 @@ const fromDetail = (detail) => ({
     detail.identifiers && detail.identifiers.length
       ? detail.identifiers.map((i) => ({ ...i }))
       : [{ label: "Code", value: "", reporting: true }],
-  referral: { ...EMPTY_REFERRAL, ...(detail.referral || {}) },
+  referral: {
+    ...EMPTY_REFERRAL,
+    ...(detail.referral || {}),
+    fhirId: (detail.referral && detail.referral.fhirId) || detail.fhirId || "",
+  },
   site: {
     siteType: (detail.site && detail.site.siteType) || "",
     subtype: (detail.site && detail.site.subtype) || "",
