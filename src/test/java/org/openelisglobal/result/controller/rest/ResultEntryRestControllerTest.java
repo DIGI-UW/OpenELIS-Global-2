@@ -22,7 +22,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -280,6 +282,185 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                 .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
                 .andExpect(status().isOk());
         assertEquals("90.0", resultService.get("3").getValue());
+    }
+
+    /**
+     * OGC-1200 slice 3 (FR-E10, FR-E10a, FR-E13): a value waiting in a run is
+     * accepted through the Results Entry save. The technician's value is saved, the
+     * run and the analyzer's own reading are kept on the result, and the staged
+     * value leaves the run, which completes once nothing is left.
+     */
+    @Test
+    public void accept_ofTheRunsOwnRow_savesTheEnteredValue_keepsTheAnalyzerValue_andLeavesStaging() throws Exception {
+        jdbc.update("UPDATE clinlims.result SET value = NULL WHERE analysis_id = 1");
+        long run = openRun();
+        String staged = stage(run, "12345", "91");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(runAcceptBody("92.0", currentToken("1"), staged, "")).session(session))
+                .andExpect(status().isOk());
+
+        java.util.Map<String, Object> result = jdbc
+                .queryForMap("SELECT value, run_id, analyzer_reported_value FROM clinlims.result WHERE id = 3");
+        assertEquals("the value the technician accepted", "92.0", result.get("value"));
+        assertEquals(run, ((Number) result.get("run_id")).longValue());
+        assertEquals("the analyzer's reading is kept beside it", "91", result.get("analyzer_reported_value"));
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, staged));
+        assertEquals("COMPLETE",
+                jdbc.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, run));
+    }
+
+    @Test
+    public void accept_ofARowThatNamesAnotherOrder_isRefused409_andWritesNothing() throws Exception {
+        jdbc.update("UPDATE clinlims.result SET value = NULL WHERE analysis_id = 1");
+        long run = openRun();
+        stage(run, "12345", "91");
+        String otherOrder = stage(run, "13333", "88");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(runAcceptBody("88", currentToken("1"), otherOrder, "")).session(session))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value(
+                        "This value is no longer waiting in an open run for this test. Reload the run to see what is"
+                                + " left to accept."));
+
+        assertEquals(null, resultService.get("3").getValue());
+        assertEquals(Integer.valueOf(2), jdbc
+                .queryForObject("SELECT count(*) FROM clinlims.analyzer_results WHERE run_id = ?", Integer.class, run));
+    }
+
+    /**
+     * FR-E7: a critical value accepted from a run owes the acknowledgement Results
+     * Entry asks for, is recorded as an analyzer review, and raises the critical
+     * alert.
+     */
+    @Test
+    public void accept_ofACriticalValue_owesTheAcknowledgement_andRecordsItAsAnAnalyzerReview() throws Exception {
+        seedNumericResultLimit();
+        jdbc.update("UPDATE clinlims.result SET value = NULL WHERE analysis_id = 1");
+        long run = openRun();
+        String staged = stage(run, "12345", "500");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(runAcceptBody("500", currentToken("1"), staged, "")).session(session))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, staged));
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(runAcceptBody("500", currentToken("1"), staged, ",\"criticalAcknowledged\":true"))
+                .session(session)).andExpect(status().isOk());
+
+        assertEquals("ANALYZER_REVIEW", jdbc.queryForObject(
+                "SELECT source FROM clinlims.result_entry_acknowledgement WHERE analysis_id = 1", String.class));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.alert WHERE alert_type = 'CRITICAL_RESULT'", Integer.class));
+    }
+
+    /**
+     * FR-E9: an accept made from a stale page loses like any Results Entry save.
+     */
+    @Test
+    public void accept_fromAStalePage_isRejected409_andTheValueStaysInTheRun() throws Exception {
+        jdbc.update("UPDATE clinlims.result SET value = NULL WHERE analysis_id = 1");
+        long run = openRun();
+        String staged = stage(run, "12345", "91");
+        String staleToken = String.valueOf(analysisService.get("1").getLastupdated().getTime() - 60_000L);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(runAcceptBody("91", staleToken, staged, "")).session(session)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("error.results.staleSave"));
+
+        assertEquals(null, resultService.get("3").getValue());
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, staged));
+    }
+
+    /**
+     * The import stages a test's main value without a component; the worklist shows
+     * it on the primary component's row, and it is accepted from there.
+     */
+    @Test
+    public void accept_ofAMainValueStagedWithoutAComponent_isAcceptedFromThePrimaryRow() throws Exception {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_active,"
+                + " lastupdated, is_primary) VALUES ('rrun-main', 1, 'VL', 'Viral load', 0, 'Y', NOW(), true),"
+                + " ('rrun-call', 1, 'CALL', 'Call', 1, 'Y', NOW(), false)");
+        jdbc.update("UPDATE clinlims.result SET value = NULL WHERE analysis_id = 1");
+        long run = openRun();
+        String staged = stage(run, "12345", "1009.64");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(
+                        runAcceptBody("1009.64", currentToken("1"), staged, ",\"testResultComponentId\":\"rrun-main\""))
+                .session(session)).andExpect(status().isOk());
+
+        assertEquals("1009.64", resultService.get("3").getValue());
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, staged));
+    }
+
+    /**
+     * A part still waiting in a run is resulted from the run even once another part
+     * of the same test has a value: typing over it would leave the run's value
+     * behind with nothing left to accept it into.
+     */
+    @Test
+    public void save_ofAPartWhoseValueWaitsInARun_isRefused_onceAnotherPartIsResulted() throws Exception {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_active,"
+                + " lastupdated, is_primary) VALUES ('rrun-ct', 1, 'CT', 'Ct', 0, 'Y', NOW(), true),"
+                + " ('rrun-delta', 1, 'DCT', 'Delta Ct', 1, 'Y', NOW(), false)");
+        long run = openRun();
+        jdbc.update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                + " iscontrol, test_id, component_id, run_id, raw_sub_identity, last_updated) VALUES"
+                + " (nextval('analyzer_results_seq'), 9201, '12345', 'Waiting', '3.1', false, 1, 'rrun-delta', ?,"
+                + " '', NOW())", run);
+        Integer resultsBefore = jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1",
+                Integer.class);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "", "1", "200", currentToken("1"),
+                        "\"note\":\"\",\"testResultComponentId\":\"rrun-delta\""))
+                .session(session)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.waitingRun.label").value("RUN-" + run));
+
+        assertEquals(resultsBefore,
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = 1", Integer.class));
+    }
+
+    /**
+     * Two saves of the same row at once: the one that loses answers as a stale
+     * save, whichever layer noticed the conflict, instead of a bare server error.
+     */
+    @Test
+    public void aSaveThatLostToAnotherSave_isAStaleSave() {
+        assertTrue(ResultEntryRestController.isConcurrentWrite(
+                new org.springframework.orm.ObjectOptimisticLockingFailureException(Analysis.class, "1")));
+        assertTrue(ResultEntryRestController.isConcurrentWrite(new LIMSRuntimeException("save failed",
+                new jakarta.persistence.OptimisticLockException(new org.hibernate.StaleStateException("row count")))));
+        assertTrue(ResultEntryRestController.isConcurrentWrite(
+                new LIMSRuntimeException("save failed", new org.hibernate.StaleObjectStateException("Analysis", "1"))));
+        assertFalse(ResultEntryRestController.isConcurrentWrite(new LIMSRuntimeException("save failed")));
+    }
+
+    private long openRun() {
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, analyzer_id, row_count, opened_at,"
+                + " last_activity_at) VALUES (?, 'ANALYZER', 'OPEN', 9201, 1, NOW(), NOW())", run);
+        return run;
+    }
+
+    private String stage(long run, String accessionNumber, String value) {
+        return jdbc.queryForObject("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number,"
+                + " test_name, result, iscontrol, test_id, run_id, raw_sub_identity, last_updated) VALUES"
+                + " (nextval('analyzer_results_seq'), 9201, ?, 'Waiting', ?, false, 1, ?, '', NOW()) RETURNING id::text",
+                String.class, accessionNumber, value, run);
+    }
+
+    private String runAcceptBody(String value, String token, String runRowId, String extraItemFields) {
+        String body = saveBodyWithExtras("1", "3", "1", value, token, "\"note\":\"\"" + extraItemFields);
+        return body.substring(0, body.length() - 1) + ",\"runRowId\":\"" + runRowId + "\"}";
     }
 
     @Test

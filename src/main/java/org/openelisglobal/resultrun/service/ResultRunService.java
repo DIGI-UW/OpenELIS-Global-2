@@ -73,14 +73,26 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
 
     Optional<WaitingRun> findWaiting(String accessionNumber, String testId);
 
-    /** Names, on each pending worklist row, the run its analyzer value waits in. */
+    /**
+     * Names, on each pending worklist row, the run its analyzer value waits in: a
+     * value of that row's part, the main value counting as the primary part's.
+     */
     void markWaiting(List<TestResultItem> items);
 
     /**
-     * The run an analysis with no stored result has a value waiting in. Such an
-     * analysis is resulted from its run, not entered around it (FR-D3).
+     * The run a value of this analysis's component waits in while that component
+     * has no stored result. Such a component is resulted from its run, not entered
+     * around it (FR-D3). A missing component is the test's primary one.
      */
-    Optional<WaitingRun> waitingFor(Analysis analysis);
+    Optional<WaitingRun> waitingFor(Analysis analysis, String componentId);
+
+    /**
+     * The staged value a run row holds, when that row is still in an open run and
+     * names this analysis's order, test and component, and is not a control, a
+     * duplicate or an import exception. Accepting it is a Results Entry save of
+     * this analysis (FR-E10, FR-E13).
+     */
+    Optional<AnalyzerResults> stagedValueFor(String runRowId, Analysis analysis, String componentId);
 
     static String waitingKey(String accessionNumber, String testId) {
         return accessionNumber + "|" + testId;

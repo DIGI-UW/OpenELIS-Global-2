@@ -19,6 +19,7 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.dao.AnalyzerDeliveryReceiptDAO;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt;
+import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.result.service.ResultService;
@@ -47,6 +48,7 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,6 +74,9 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     private TestResultComponentService testResultComponentService;
     @Autowired
     private ResultRunRowClassifier rowClassifier;
+    @Lazy
+    @Autowired
+    private AnalyzerResultsDAO analyzerResultsDAO;
 
     public ResultRunServiceImpl() {
         super(ResultRun.class);
@@ -295,12 +300,11 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     public Map<String, WaitingRun> findWaiting(Collection<String> accessionNumbers) {
         List<String> accessions = accessionNumbers.stream().filter(StringUtils::isNotBlank).distinct().toList();
         List<AnalyzerResults> waiting = baseObjectDAO.getWaitingRowsForAccessions(accessions);
-        Map<Long, ResultRun> runs = new HashMap<>();
+        Map<Long, WaitingRun> runs = new HashMap<>();
         Map<String, WaitingRun> byKey = new LinkedHashMap<>();
         for (AnalyzerResults row : waiting) {
-            ResultRun run = runs.computeIfAbsent(row.getRunId(), this::get);
             byKey.putIfAbsent(ResultRunService.waitingKey(row.getAccessionNumber(), row.getTestId()),
-                    new WaitingRun(run.getId(), run.getLabel(), run.getSource().name(), iso(run.getOpenedAt())));
+                    runs.computeIfAbsent(row.getRunId(), this::waitingRun));
         }
         return byKey;
     }
@@ -322,26 +326,60 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         if (pending.isEmpty()) {
             return;
         }
-        Map<String, WaitingRun> waiting = findWaiting(
-                pending.stream().map(TestResultItem::getAccessionNumber).collect(Collectors.toSet()));
+        List<String> accessions = pending.stream().map(TestResultItem::getAccessionNumber)
+                .filter(StringUtils::isNotBlank).distinct().toList();
+        Map<Long, WaitingRun> runs = new HashMap<>();
+        Map<String, WaitingRun> byPart = new HashMap<>();
+        for (AnalyzerResults row : baseObjectDAO.getWaitingRowsForAccessions(accessions)) {
+            byPart.putIfAbsent(partKey(row.getAccessionNumber(), row.getTestId(), row.getComponentId()),
+                    runs.computeIfAbsent(row.getRunId(), this::waitingRun));
+        }
         for (TestResultItem item : pending) {
-            item.setWaitingRun(waiting.get(ResultRunService.waitingKey(item.getAccessionNumber(), item.getTestId())));
+            item.setWaitingRun(
+                    byPart.get(partKey(item.getAccessionNumber(), item.getTestId(), item.getTestResultComponentId())));
         }
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<WaitingRun> waitingFor(Analysis analysis) {
+    public Optional<WaitingRun> waitingFor(Analysis analysis, String componentId) {
         if (analysis == null || analysis.getTest() == null || analysis.getSampleItem() == null
                 || analysis.getSampleItem().getSample() == null) {
             return Optional.empty();
         }
+        String testId = analysis.getTest().getId();
+        String component = componentOf(testId, componentId);
         boolean resulted = resultService.getResultsByAnalysis(analysis).stream()
-                .anyMatch(result -> StringUtils.isNotBlank(result.getValue()));
+                .filter(result -> StringUtils.isNotBlank(result.getValue()))
+                .anyMatch(result -> Objects.equals(component, componentOf(testId,
+                        result.getTestResult() == null ? null : result.getTestResult().getComponentId())));
         if (resulted) {
             return Optional.empty();
         }
-        return findWaiting(analysis.getSampleItem().getSample().getAccessionNumber(), analysis.getTest().getId());
+        return baseObjectDAO
+                .getWaitingRowsForAccessions(List.of(analysis.getSampleItem().getSample().getAccessionNumber()))
+                .stream()
+                .filter(row -> testId.equals(row.getTestId())
+                        && Objects.equals(component, componentOf(testId, row.getComponentId())))
+                .findFirst().map(row -> waitingRun(row.getRunId()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<AnalyzerResults> stagedValueFor(String runRowId, Analysis analysis, String componentId) {
+        if (StringUtils.isBlank(runRowId) || analysis == null || analysis.getTest() == null
+                || analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+            return Optional.empty();
+        }
+        String accessionNumber = analysis.getSampleItem().getSample().getAccessionNumber();
+        return analyzerResultsDAO.get(runRowId).filter(row -> row.getRunId() != null && !row.getIsControl()
+                && row.getDuplicateAnalyzerResultId() == null && StringUtils.isBlank(row.getImportIssueReason()))
+                .filter(row -> Objects.equals(accessionNumber, row.getAccessionNumber())
+                        && Objects.equals(analysis.getTest().getId(), row.getTestId())
+                        && Objects.equals(componentOf(row.getTestId(), componentId),
+                                componentOf(row.getTestId(), row.getComponentId())))
+                .filter(row -> baseObjectDAO.get(row.getRunId()).filter(run -> run.getState() == ResultRunState.OPEN)
+                        .isPresent());
     }
 
     static boolean isPending(TestResultItem item) {
@@ -438,7 +476,40 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                         .orElse(null);
         return new ResultRunRow(row.getId(), row.getAccessionNumber(), row.getTestName(), part, value, row.getUnits(),
                 row.getIsControl(), row.getDuplicateAnalyzerResultId() != null, row.getImportIssueReason(),
-                row.getInstrumentFlags(), iso(row.getCompleteDate()), classified.flag(), classified.category());
+                row.getInstrumentFlags(), iso(row.getCompleteDate()), classified.flag(), classified.category(),
+                row.getTestId(), row.getTestId() == null ? StringUtils.trimToNull(row.getComponentId())
+                        : componentOf(row.getTestId(), row.getComponentId()),
+                row.getResult());
+    }
+
+    private String partKey(String accessionNumber, String testId, String componentId) {
+        return ResultRunService.waitingKey(accessionNumber, testId) + "|"
+                + StringUtils.defaultString(componentOf(testId, componentId));
+    }
+
+    private WaitingRun waitingRun(Long runId) {
+        ResultRun run = get(runId);
+        return new WaitingRun(run.getId(), run.getLabel(), run.getSource().name(), iso(run.getOpenedAt()));
+    }
+
+    /**
+     * The worklist row a value belongs to, named the way the worklist names it: a
+     * test with one part has a single row and no part, and on a test with several a
+     * value names its own part, or the primary one when it names none, the way the
+     * import treats a test's main value.
+     */
+    private String componentOf(String testId, String componentId) {
+        if (testId == null) {
+            return StringUtils.trimToNull(componentId);
+        }
+        List<TestResultComponent> components = testResultComponentService.getActiveComponentsByTestId(testId);
+        if (components == null || components.size() <= 1) {
+            return null;
+        }
+        String own = StringUtils.trimToNull(componentId);
+        return own != null ? own
+                : components.stream().filter(component -> Boolean.TRUE.equals(component.getIsPrimary()))
+                        .map(TestResultComponent::getId).findFirst().orElse(null);
     }
 
     private static String iso(Timestamp timestamp) {

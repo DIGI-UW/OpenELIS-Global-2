@@ -13,6 +13,23 @@ const { utilsMock } = vi.hoisted(() => ({
 
 vi.mock("../../../utils/Utils", () => utilsMock);
 vi.mock("../../../common/PageBreadCrumb", () => ({ default: () => <div /> }));
+vi.mock("../UnifiedResults", () => ({
+  default: ({ runEntry, accessionNumber }: any) => (
+    <div
+      data-testid="embedded-entry"
+      data-accession={accessionNumber}
+      data-run-row={runEntry.runRowId}
+      data-value={runEntry.value}
+      data-reported={runEntry.reported}
+      data-test={runEntry.testId}
+      data-component={runEntry.componentId}
+    >
+      <button type="button" onClick={runEntry.onAccepted}>
+        accept-stub
+      </button>
+    </div>
+  ),
+}));
 
 import RunView, { prettyJson } from "./RunView";
 
@@ -47,6 +64,8 @@ const ROWS = {
       units: "mmol/L",
       control: false,
       duplicate: false,
+      testId: "61",
+      componentId: "8",
     },
     {
       id: "42",
@@ -59,12 +78,12 @@ const ROWS = {
   ],
 };
 
-const wire = (header: unknown) =>
+const wire = (header: unknown, rows: unknown = ROWS) =>
   utilsMock.getFromOpenElisServer.mockImplementation(
     (endPoint: string, callback: (response: unknown) => void) => {
       if (endPoint === "/rest/result-runs/7") return callback(header);
       if (endPoint.startsWith("/rest/result-runs/7/rows"))
-        return callback(header ? ROWS : undefined);
+        return callback(header ? rows : undefined);
       if (endPoint === "/rest/result-runs/7/raw")
         return callback({ resourceType: "Bundle" });
       if (endPoint.startsWith("/rest/result-runs"))
@@ -364,5 +383,94 @@ describe("OGC-1200 slice 2: chips, paging and selection", () => {
     expect(screen.getByTestId("run-selection")).toHaveTextContent(
       "Selected values: 1 (0 critical, 0 abnormal, 1 normal).",
     );
+  });
+
+  describe("slice 3: a row expands into its Results Entry row", () => {
+    const rowsRequests = () =>
+      utilsMock.getFromOpenElisServer.mock.calls.filter(([endPoint]) =>
+        String(endPoint).startsWith("/rest/result-runs/7/rows"),
+      ).length;
+
+    it("opens the order's pending row with the analyzer value, under the run's provenance", () => {
+      wire(HEADER);
+      renderRun();
+
+      fireEvent.click(screen.getByTestId("run-row-expand-41"));
+
+      const entry = screen.getByTestId("embedded-entry");
+      expect(entry).toHaveAttribute("data-accession", "DEV0126000000000400");
+      expect(entry).toHaveAttribute("data-run-row", "41");
+      expect(entry).toHaveAttribute("data-value", "5.4");
+      expect(entry).toHaveAttribute("data-test", "61");
+      expect(entry).toHaveAttribute("data-component", "8");
+      expect(screen.getByTestId("run-row-provenance")).toHaveTextContent(
+        "From RUN-7, analyzer Mindray BS-200: HIVVL — Log viral load reported 5.4 mmol/L.",
+      );
+      expect(screen.getByTestId("run-row-provenance")).toHaveTextContent(
+        "No reagent lot is recorded on this run.",
+      );
+    });
+
+    it("prefills a dictionary value with the choice the import resolved, keeping the instrument's text", () => {
+      wire(HEADER, {
+        ...ROWS,
+        rows: [
+          {
+            ...ROWS.rows[0],
+            testName: "SARS-CoV-2",
+            part: null,
+            value: "POS",
+            units: null,
+            stagedResult: "1398",
+          },
+        ],
+      });
+      renderRun();
+
+      fireEvent.click(screen.getByTestId("run-row-expand-41"));
+
+      const entry = screen.getByTestId("embedded-entry");
+      expect(entry).toHaveAttribute("data-value", "1398");
+      expect(entry).toHaveAttribute("data-reported", "POS");
+      expect(screen.getByTestId("run-row-provenance")).toHaveTextContent(
+        "SARS-CoV-2 reported POS.",
+      );
+    });
+
+    it("explains a control instead of offering to accept it", () => {
+      wire(HEADER);
+      renderRun();
+
+      fireEvent.click(screen.getByTestId("run-row-expand-42"));
+
+      expect(screen.getByTestId("run-row-entry-42")).toHaveTextContent(
+        "A control is recorded with the run's quality control",
+      );
+      expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
+    });
+
+    it("offers nothing to accept in a held run", () => {
+      wire({ ...HEADER, state: "HELD" });
+      renderRun();
+
+      fireEvent.click(screen.getByTestId("run-row-expand-41"));
+
+      expect(screen.getByTestId("run-row-entry-41")).toHaveTextContent(
+        "This run is held.",
+      );
+      expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
+    });
+
+    it("reloads the run and closes the row once the value is accepted", () => {
+      wire(HEADER);
+      renderRun();
+      fireEvent.click(screen.getByTestId("run-row-expand-41"));
+      const before = rowsRequests();
+
+      fireEvent.click(screen.getByRole("button", { name: "accept-stub" }));
+
+      expect(rowsRequests()).toBe(before + 1);
+      expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
+    });
   });
 });
