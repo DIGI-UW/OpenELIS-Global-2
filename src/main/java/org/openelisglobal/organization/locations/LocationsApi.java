@@ -83,7 +83,7 @@ public final class LocationsApi {
             String phone, String fax, String email, String internetAddress, String contactName, String description,
             BigDecimal gpsLatitude, BigDecimal gpsLongitude, String serviceType, String source,
             List<Identifier> identifiers, List<Ward> wards, Referral referral, Site site, Long lastupdated,
-            int historyCount) {
+            int historyCount, boolean positionManaged) {
     }
 
     public record SaveRequest(String id, String kind, String name, String shortName, List<String> typeIds,

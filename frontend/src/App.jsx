@@ -9,6 +9,7 @@ import {
 import RedirectOldUI from "./RedirectOldUI";
 import ModuleRoutes from "./modules/ModuleRoutes";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
+import FacilityAutoLocation from "./components/admin/generalConfig/facilityLocation/FacilityAutoLocation";
 import { Admin } from "./components";
 import ChangePassword from "./components/ChangePassword";
 import Home from "./components/Home";
@@ -478,6 +479,7 @@ export default function App() {
         }}
       >
         <>
+          <FacilityAutoLocation />
           <Router>
             <Layout onChangeLanguage={onChangeLanguage}>
               <Switch>

@@ -322,13 +322,13 @@ rtn = new RtnProjectChecker();
 				<c:out value="${disease.value}" />
 			</td>
 			<td>
-				<form:select path='observations.${disease.name}'
+				<form:select path='observations.${disease.key}'
 					onchange="makeDirty();compareAllObservationHistoryFields(true)"
-					id='rtn.${disease.name}'>
+					id='rtn.${disease.key}'>
 					<option value=""></option>
 					<form:options items="${form.dictionaryLists['YES_NO_UNKNOWN_NA_NOTSPEC'].list}" itemLabel="localizedName" itemValue="id" />
 				</form:select>
-				<div id='rtn.${disease.name}.Message' class="blank"></div>
+				<div id='rtn.${disease.key}.Message' class="blank"></div>
 			</td>
 		</tr>
 	</c:forEach>
@@ -341,13 +341,13 @@ rtn = new RtnProjectChecker();
 				<c:out value="${disease.value}" />
 			</td>
 			<td>
-				<form:select path='observations.${disease.name}'
+				<form:select path='observations.${disease.key}'
 					onchange="makeDirty();compareAllObservationHistoryFields(true)"
-					id='rtn.${disease.name}'>
+					id='rtn.${disease.key}'>
 					<option value=""></option>
 					<form:options items="${form.dictionaryLists['YES_NO_UNKNOWN_NA_NOTSPEC'].list}" itemLabel="localizedName" itemValue="id" />
 				</form:select>
-				<div id='rtn.${disease.name}.Message' class="blank"></div>
+				<div id='rtn.${disease.key}.Message' class="blank"></div>
 			</td>
 		</tr>
 	</c:forEach>

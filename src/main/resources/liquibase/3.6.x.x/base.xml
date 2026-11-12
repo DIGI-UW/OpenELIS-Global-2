@@ -51,6 +51,9 @@
   <include relativeToChangelogFile="true" file="031-container-types.xml"/>
   <!-- OGC-1364: validation policy (lab-wide default replaces "validate all results" behind useMultiLevelValidation) -->
   <include relativeToChangelogFile="true" file="032-validation-policy.xml"/>
+  <include relativeToChangelogFile="true" file="033-organization-gps-source.xml"/>
+  <!-- OGC-1200 slice 3: an accepted run row keeps the analyzer-reported value beside the accepted one -->
+  <include relativeToChangelogFile="true" file="034-result-analyzer-reported-value.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>

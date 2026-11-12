@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   Button,
   InlineNotification,
@@ -84,6 +84,7 @@ const Index = () => {
   const [isLoadingReferral, setIsLoadingReferral] = useState(false);
   const isEQAFromUrl =
     new URLSearchParams(window.location.search).get("isEQA") === "true";
+  const loadedReferralId = useRef(null);
   const [orderFormValues, setOrderFormValues] = useState(
     createSampleOrderFormValues,
   );
@@ -158,7 +159,10 @@ const Index = () => {
   }, [orderFormValues.sampleOrderItems.externalOrderNumber]);
 
   const checkOrderReferral = (externalOrderNumber) => {
-    if (externalOrderNumber) {
+    if (
+      externalOrderNumber &&
+      externalOrderNumber !== loadedReferralId.current
+    ) {
       getLabOrder(externalOrderNumber, processLabOrderSuccess);
     }
   };
@@ -303,6 +307,7 @@ const Index = () => {
           labNo: labNumber,
         },
       };
+      loadedReferralId.current = externalId;
       setOrderFormValues(newOrderFormValues);
       // A pure awaiting-specimen order carries no pre-bound sample types; keep
       // the blank sample entry so the Add Sample step stays usable while the

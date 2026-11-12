@@ -97,6 +97,7 @@ const fromDetail = (detail) => ({
     detail.gpsLongitude === null || detail.gpsLongitude === undefined
       ? ""
       : String(detail.gpsLongitude),
+  positionManaged: !!detail.positionManaged,
   contactName: detail.contactName || "",
   phone: detail.phone || "",
   fax: detail.fax || "",
@@ -936,8 +937,11 @@ const RecordForm = ({
               })}
               value={form.gpsLatitude}
               placeholder="-9.4705"
+              readOnly={form.positionManaged}
               helperText={intl.formatMessage({
-                id: "help.locations.field.gps",
+                id: form.positionManaged
+                  ? "help.locations.field.gps.facility"
+                  : "help.locations.field.gps",
               })}
               invalid={!!errorFor("gpsLatitude")}
               invalidText={errorFor("gpsLatitude")}
@@ -952,6 +956,7 @@ const RecordForm = ({
               })}
               value={form.gpsLongitude}
               placeholder="147.1597"
+              readOnly={form.positionManaged}
               invalid={!!errorFor("gpsLongitude")}
               invalidText={errorFor("gpsLongitude")}
               onChange={set("gpsLongitude")}

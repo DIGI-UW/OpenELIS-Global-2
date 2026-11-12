@@ -108,9 +108,6 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      */
     private static final String CASE_REFERENCE_TABLE = "PATHOLOGY_SAMPLE";
 
-    /** The lab unit a case's referral to immunohistochemistry is tested in. */
-    private static final String IMMUNOHISTOCHEMISTRY_SECTION = "Immunohistochemistry";
-
     /** A slide cut in a save, named by its block and its designation under it. */
     private record SlideCut(Integer blockId, String designation) {
     }
@@ -358,6 +355,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         if (form.getReports() != null)
             form.getReports().stream().forEach(e -> e.setId(null));
         pathologySample.getReports().addAll(form.getReports());
+        if (form.getReferToImmunoHistoChemistry()) {
+            referToImmunoHistoChemistry(pathologySample, form);
+        }
         if (form.getRelease()) {
             if (storedCase.getStatus() == PathologyStatus.COMPLETED) {
                 // Already at Completed, so there is no stage to enter; the release is
@@ -369,9 +369,6 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                         pathologySample.getSysUserId());
             }
             validatePathologySample(pathologySample, form);
-        }
-        if (form.getReferToImmunoHistoChemistry()) {
-            referToImmunoHistoChemistry(pathologySample, form);
         }
         try {
             baseObjectDAO.evict(storedCase);
@@ -848,13 +845,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             return false;
         }
         List<Analysis> analyses = analysisService.getAnalysesBySampleId(sample.getId());
-        return analyses != null && analyses.stream().filter(analysis -> !isReferredToImmunohistochemistry(analysis))
-                .anyMatch(analysis -> analysis.getReleasedDate() != null);
-    }
-
-    private static boolean isReferredToImmunohistochemistry(Analysis analysis) {
-        return analysis.getTestSection() != null
-                && IMMUNOHISTOCHEMISTRY_SECTION.equals(analysis.getTestSection().getTestSectionName());
+        return analyses != null
+                && analyses.stream().filter(analysis -> !ProgramCaseAnalyses.isImmunohistochemistryReferral(analysis))
+                        .anyMatch(analysis -> analysis.getReleasedDate() != null);
     }
 
     /**
@@ -1386,19 +1379,28 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                 form.getNumSlideLabels(), form.getNumFreezerLabels());
     }
 
+    /**
+     * The sign-out reports the case's own tests. Tests an immunohistochemistry
+     * referral added to the order wait for the referral's release, and the order is
+     * finished only once every test on it is reported.
+     */
     private void validatePathologySample(PathologySample pathologySample, PathologySampleForm form) {
         Sample sample = pathologySample.getSample();
         Patient patient = sampleService.getPatient(sample);
         ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(form.getSystemUserId());
+        boolean referred = immunohistochemistrySampleService.getByPathologySampleId(pathologySample.getId()) != null;
 
         ResultsLoadUtility resultsUtility = SpringContext.getBean(ResultsLoadUtility.class);
         List<TestResultItem> testResultItems = resultsUtility.getGroupedTestsForSample(sample);
         for (TestResultItem testResultItem : testResultItems) {
             if (!testResultItem.getIsGroupSeparator()) {
+                Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
+                if (referred && ProgramCaseAnalyses.isImmunohistochemistryReferral(analysis)) {
+                    continue;
+                }
                 if (ResultType.isTextOnlyVariant(testResultItem.getResultType())) {
                     testResultItem.setResultValue(MessageUtil.getMessage("result.pathology.seereport"));
                 }
-                Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
                 ResultSaveBean bean = ResultSaveBeanAdapter.fromTestResultItem(testResultItem);
                 ResultSaveService resultSaveService = new ResultSaveService(analysis, form.getSystemUserId());
                 List<Result> results = resultSaveService.createResultsFromTestResultItem(bean, new ArrayList<>());
@@ -1456,7 +1458,13 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
         logbookResultsPersistService.persistDataSet(actionDataSet, ResultUpdateRegister.getRegisteredUpdaters(),
                 form.getSystemUserId());
-        sample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Finished));
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        if (ProgramCaseAnalyses.allFinished(analysisService.getAnalysesBySampleId(sample.getId()), statusService)) {
+            Sample storedOrder = sampleService.get(sample.getId());
+            storedOrder.setStatusId(statusService.getStatusID(OrderStatus.Finished));
+            storedOrder.setSysUserId(form.getSystemUserId());
+            sampleService.update(storedOrder);
+        }
     }
 
     private void referToImmunoHistoChemistry(PathologySample pathologySample, PathologySampleForm form) {
@@ -1507,7 +1515,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
         analysis.setParentAnalysis(currentAnalysis);
         analysis.setSampleItem(currentAnalysis.getSampleItem());
-        TestSection testSection = testSectionService.getTestSectionByName(IMMUNOHISTOCHEMISTRY_SECTION);
+        TestSection testSection = testSectionService
+                .getTestSectionByName(ProgramCaseAnalyses.IMMUNOHISTOCHEMISTRY_SECTION);
         analysis.setTestSection(testSection);
         analysis.setSampleTypeName(currentAnalysis.getSampleTypeName());
         analysis.setSysUserId(systemUserId);

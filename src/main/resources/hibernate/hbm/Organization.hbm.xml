@@ -87,6 +87,8 @@
             type="java.math.BigDecimal" precision="10" scale="7" />
         <property name="gpsLongitude" column="gps_longitude"
             type="java.math.BigDecimal" precision="10" scale="7" />
+        <property name="gpsSource" column="gps_source"
+            type="java.lang.String" />
         <property name="contactName" column="contact_name"
             type="java.lang.String" length="100" />
         <property name="description" column="description"

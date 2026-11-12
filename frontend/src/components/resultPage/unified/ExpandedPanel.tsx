@@ -368,6 +368,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                 row={row}
                 editable={editable}
                 onValueChange={onValueChange}
+                scope="panel"
               />
               {row.unitsOfMeasure && <span>{row.unitsOfMeasure}</span>}
               <FlagChip flag={flag} />

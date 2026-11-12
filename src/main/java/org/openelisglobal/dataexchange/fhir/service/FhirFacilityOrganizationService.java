@@ -11,6 +11,9 @@ import org.hl7.fhir.r4.model.Reference;
  */
 public interface FhirFacilityOrganizationService {
 
+    /** Short name of the organization row that represents this facility. */
+    String FACILITY_ORG_SHORT_NAME = "FACILITY_ORG";
+
     /**
      * Generates the FHIR Organization resource for this facility. Uses facility
      * properties for address and BANNER_TEXT for name.
@@ -72,4 +75,12 @@ public interface FhirFacilityOrganizationService {
      * application startup.
      */
     void initialize();
+
+    /**
+     * Rebuilds the facility Organization when the facility name (BANNER_TEXT) has
+     * changed since it was built, and syncs it like {@link #initialize()}.
+     *
+     * @return true when the name had changed
+     */
+    boolean refreshName();
 }

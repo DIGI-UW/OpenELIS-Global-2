@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import java.util.Optional;
 import org.junit.Test;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.action.IActionConstants;
@@ -15,6 +16,7 @@ import org.openelisglobal.compliance.service.ComplianceEvaluationService;
 import org.openelisglobal.compliance.service.ComplianceReportArchiveService;
 import org.openelisglobal.compliance.service.ComplianceReportGenerationService;
 import org.openelisglobal.compliance.service.LhuAmendmentService;
+import org.openelisglobal.compliance.valueholder.ComplianceReportArchive;
 import org.openelisglobal.esig.service.ElectronicSignatureService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
@@ -56,7 +58,7 @@ public class ComplianceCertificateMicrobiologyGateTest extends SecuritySliceMock
                 .contentType(MediaType.APPLICATION_JSON).content("{\"sampleId\":1}")).andReturn();
 
         assertEquals(409, refused.getResponse().getStatus());
-        assertEquals("The microbiology report must be released before the certificate is generated",
+        assertEquals("The microbiology report must be released before the report is generated",
                 refused.getResponse().getErrorMessage());
     }
 
@@ -69,7 +71,7 @@ public class ComplianceCertificateMicrobiologyGateTest extends SecuritySliceMock
                 .andReturn();
 
         assertEquals(409, refused.getResponse().getStatus());
-        assertEquals("The microbiology report must be released before the certificate is reissued",
+        assertEquals("The microbiology report must be released before the report is reissued",
                 refused.getResponse().getContentAsString());
     }
 
@@ -127,7 +129,9 @@ public class ComplianceCertificateMicrobiologyGateTest extends SecuritySliceMock
 
         @Bean
         ComplianceEvaluationService complianceEvaluationService() {
-            return mock(ComplianceEvaluationService.class);
+            ComplianceEvaluationService evaluation = mock(ComplianceEvaluationService.class);
+            when(evaluation.orderedTestCount(any())).thenReturn(1);
+            return evaluation;
         }
 
         @Bean
@@ -162,7 +166,10 @@ public class ComplianceCertificateMicrobiologyGateTest extends SecuritySliceMock
 
         @Bean
         ComplianceReportArchiveService archiveService() {
-            return mock(ComplianceReportArchiveService.class);
+            ComplianceReportArchiveService archives = mock(ComplianceReportArchiveService.class);
+            when(archives.findBySampleIdAndAmendmentNumber(1L, 0))
+                    .thenReturn(Optional.of(new ComplianceReportArchive()));
+            return archives;
         }
 
         @Bean

@@ -74,7 +74,7 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
     private String configuredFacilityId;
 
     /** Constant short name used to identify the facility org row in the DB. */
-    private static final String SHORT_NAME = "FACILITY_ORG";
+    private static final String SHORT_NAME = FACILITY_ORG_SHORT_NAME;
 
     private Organization facilityOrganization;
     private String facilityUuid;
@@ -123,6 +123,15 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
             initialize();
         }
         return Optional.ofNullable(facilityOrganization);
+    }
+
+    @Override
+    public boolean refreshName() {
+        if (facilityOrganization == null || resolveFacilityName().equals(facilityOrganization.getName())) {
+            return false;
+        }
+        initialize();
+        return true;
     }
 
     /**
