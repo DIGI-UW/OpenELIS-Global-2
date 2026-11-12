@@ -308,15 +308,7 @@ const Index = () => {
         },
       };
       loadedReferralId.current = externalId;
-      setOrderFormValues((prev) => ({
-        ...newOrderFormValues,
-        patientProperties:
-          prev.patientProperties?.guid &&
-          prev.patientProperties.guid ===
-            newOrderFormValues.patientProperties?.guid
-            ? prev.patientProperties
-            : newOrderFormValues.patientProperties,
-      }));
+      setOrderFormValues(newOrderFormValues);
       // A pure awaiting-specimen order carries no pre-bound sample types; keep
       // the blank sample entry so the Add Sample step stays usable while the
       // chooser below resolves the specimens.
