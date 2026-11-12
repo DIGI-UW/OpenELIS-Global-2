@@ -28,6 +28,7 @@ import {
   Sprout,
   ListChecked,
   Chemistry,
+  TextShortParagraph,
   WarningAlt,
   Plug,
 } from "@carbon/icons-react";
@@ -326,6 +327,13 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
         </SideNavMenuItem>
       </SideNavMenu>
+      <SideNavLink
+        data-testid="text-macro-library"
+        renderIcon={TextShortParagraph}
+        {...navProps(`${path}/MacroLibrary`)}
+      >
+        <FormattedMessage id="textMacro.admin.title" />
+      </SideNavLink>
       <SideNavMenu
         data-testid="microbiology-reference-menu"
         renderIcon={Chemistry}

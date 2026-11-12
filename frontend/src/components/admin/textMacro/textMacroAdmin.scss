@@ -1,0 +1,152 @@
+@use "@carbon/react/scss/spacing" as *;
+@use "@carbon/react/scss/theme" as *;
+
+.text-macro-admin {
+  padding-block-end: $spacing-09;
+
+  h1 {
+    margin-block-start: $spacing-05;
+  }
+
+  &__subtitle {
+    max-inline-size: 48rem;
+    margin-block: $spacing-03 $spacing-06;
+    color: $text-secondary;
+  }
+
+  &__form,
+  &__contexts {
+    display: grid;
+    gap: $spacing-05;
+  }
+
+  &__contexts {
+    padding: $spacing-04;
+    border: 1px solid $border-subtle-01;
+  }
+
+  &__empty {
+    display: grid;
+    min-block-size: 8rem;
+    place-items: center;
+    background: $layer-01;
+    color: $text-secondary;
+  }
+
+  &__mobile-status {
+    display: none;
+  }
+
+  .cds--toolbar-content > .cds--search {
+    flex: 1 1 16rem;
+    min-inline-size: 16rem;
+  }
+}
+
+@media (max-width: 42rem) {
+  .text-macro-admin {
+    .cds--table-toolbar,
+    .cds--toolbar-content {
+      block-size: auto;
+    }
+
+    .cds--toolbar-content {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .cds--toolbar-content > .cds--search,
+    .cds--toolbar-content > .cds--select,
+    .cds--toolbar-content > .cds--btn {
+      inline-size: 100%;
+      max-inline-size: none;
+      min-inline-size: 0;
+    }
+
+    &__table {
+      inline-size: 100%;
+      table-layout: fixed;
+
+      td {
+        overflow-wrap: anywhere;
+      }
+
+      th,
+      td {
+        padding-inline: $spacing-03;
+      }
+
+      th:nth-child(1),
+      td:nth-child(1) {
+        inline-size: 3rem;
+      }
+
+      th:nth-child(4),
+      td:nth-child(4),
+      th:nth-child(5),
+      td:nth-child(5),
+      th:nth-child(6),
+      td:nth-child(6),
+      th:nth-child(7),
+      td:nth-child(7) {
+        display: none;
+      }
+
+      th:nth-child(2),
+      td:nth-child(2) {
+        inline-size: 6rem;
+      }
+
+      th:nth-child(8),
+      td:nth-child(8) {
+        inline-size: 2.5rem;
+      }
+    }
+
+    &__phrase-cell {
+      display: grid;
+      gap: $spacing-02;
+    }
+
+    &__mobile-status {
+      display: inline-flex;
+      inline-size: fit-content;
+    }
+
+    .text-macro-admin__toolbar--batch {
+      > .cds--table-toolbar {
+        block-size: 3rem;
+        min-block-size: 3rem;
+      }
+
+      .cds--toolbar-content {
+        display: none;
+      }
+
+      .cds--batch-actions {
+        overflow: hidden;
+        block-size: 3rem;
+      }
+
+      .cds--batch-summary {
+        flex: 1 1 auto;
+        min-inline-size: 0;
+        padding-inline: $spacing-03;
+      }
+
+      .cds--action-list {
+        flex: 0 0 auto;
+      }
+    }
+
+    &__batch-action {
+      min-inline-size: 3rem;
+      inline-size: 3rem;
+      padding-inline: $spacing-04;
+    }
+
+    &__batch-label {
+      display: none;
+    }
+  }
+}

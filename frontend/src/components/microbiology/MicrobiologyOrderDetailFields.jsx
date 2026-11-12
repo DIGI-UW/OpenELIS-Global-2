@@ -8,10 +8,10 @@ import {
   Select,
   SelectItem,
   Tag,
-  TextArea,
 } from "@carbon/react";
 import { format } from "date-fns";
 import { useIntl } from "react-intl";
+import MacroTextArea from "../common/textMacro/MacroTextArea";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
 import {
@@ -244,8 +244,9 @@ const MicrobiologyOrderDetailFields = ({
         disabled={isReadOnly}
       />
       <div className="microbiology-order-detail-fields__wide">
-        <TextArea
+        <MacroTextArea
           id={`${idPrefix}-clinical-history`}
+          context="MICROBIOLOGY_CLINICAL_HISTORY"
           labelText={intl.formatMessage({
             id: "microbiology.orderDetail.clinicalHistory",
           })}
