@@ -699,16 +699,19 @@ def local_image_created(context: StackContext, environment: dict[str, str], imag
     return created[:10] or "unknown date"
 
 
-def pull_image(context: StackContext, environment: dict[str, str], image: str, always: bool = True) -> None:
-    """Pull an image (only when missing unless `always`); on failure keep an existing copy or explain the way out."""
+def pull_image(context: StackContext, environment: dict[str, str], image: str, always: bool = True) -> bool:
+    """Pull an image (only when missing unless `always`); on failure keep an existing copy or explain the way out.
+
+    Returns False when a pull failed and the copy already on this machine is used instead.
+    """
     if not always:
         created = local_image_created(context, environment, image)
         if created is not None:
             print(f"Using {image} already on this machine (built {created}); run up --pull for a newer one")
-            return
+            return True
     try:
         run(["docker", "pull", image], cwd=context.repo_root, environment=environment)
-        return
+        return True
     except subprocess.CalledProcessError:
         try:
             run(["docker", "image", "inspect", image], cwd=context.repo_root, environment=environment, capture=True)
@@ -718,6 +721,7 @@ def pull_image(context: StackContext, environment: dict[str, str], image: str, a
                 "or rerun with --build to build the images from this checkout."
             ) from None
     print(f"Warning: could not pull {image}; using the copy already on this machine", file=sys.stderr)
+    return False
 
 
 def backend_image_differences(
@@ -767,23 +771,25 @@ def terminal_pull_record(context: StackContext) -> Path:
 
 
 def first_up_in_terminal(context: StackContext) -> bool:
-    """True until `up` has pulled the published images once in this terminal."""
+    """True until `up` has pulled this setup's images once in this terminal (a full pull covers light)."""
     key = terminal_session_key()
     record = terminal_pull_record(context)
     if key is None or not record.is_file():
         return True
-    return key not in record.read_text(encoding="utf-8").splitlines()
+    known = record.read_text(encoding="utf-8").splitlines()
+    return f"{key} {context.setup}" not in known and f"{key} full" not in known
 
 
 def mark_terminal_pulled(context: StackContext) -> None:
-    """Remember this terminal (and the most recent others) as having pulled."""
+    """Remember this terminal and setup (and the most recent others) as having pulled."""
     key = terminal_session_key()
     if key is None:
         return
+    entry = f"{key} {context.setup}"
     record = terminal_pull_record(context)
     record.parent.mkdir(parents=True, exist_ok=True)
     known = record.read_text(encoding="utf-8").splitlines() if record.is_file() else []
-    known = [line for line in known if line and line != key][-(REMEMBERED_TERMINALS - 1):] + [key]
+    known = [line for line in known if line and line != entry][-(REMEMBERED_TERMINALS - 1):] + [entry]
     record.write_text("\n".join(known) + "\n", encoding="utf-8")
 
 
@@ -814,12 +820,16 @@ def reuse_recorded_images(context: StackContext, environment: dict[str, str]) ->
 
 def pull_images(
     context: StackContext, environment: dict[str, str], changed_submodules: Sequence[str], always: bool = True
-) -> None:
-    """Pull the published development images (missing ones only unless `always`) and say what they cannot reflect."""
+) -> bool:
+    """Pull the published development images (missing ones only unless `always`) and say what they cannot reflect.
+
+    Returns True when every image is the published one or was already here, False when a pull failed.
+    """
+    pulled = True
     for service, variable, _, _ in APPLICATION_IMAGES:
         if context.setup == "light" and service in FULL_ONLY_SERVICES:
             continue
-        pull_image(context, environment, environment[variable], always=always)
+        pulled &= pull_image(context, environment, environment[variable], always=always)
     images = {service: environment[variable] for service, variable, _, _ in APPLICATION_IMAGES}
     for path, service in SUBMODULE_SERVICES.items():
         if path in changed_submodules and not (context.setup == "light" and service in FULL_ONLY_SERVICES):
@@ -844,6 +854,7 @@ def pull_images(
             "Rerun with --build if the backend runtime needs them.",
             file=sys.stderr,
         )
+    return pulled
 
 
 def published_port(context: StackContext, service: str, target: int, environment: dict[str, str]) -> int:
@@ -1296,8 +1307,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.build:
                 build_images(context, environment)
             else:
-                pull_images(context, environment, changed_submodules, always=pull_latest)
-                if pull_latest:
+                if pull_images(context, environment, changed_submodules, always=pull_latest) and pull_latest:
                     mark_terminal_pulled(context)
             record_images(context, environment)
         elif not (context.repo_root / "target" / "OpenELIS-Global.war").is_file():

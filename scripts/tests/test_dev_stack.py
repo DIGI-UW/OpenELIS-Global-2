@@ -916,6 +916,29 @@ class DevStackPublishedImagesTest(unittest.TestCase):
         self.assertFalse([command for command in commands if "build" in command])
         self.assertIn("using the copy already on this machine", printed)
 
+    def up_raw(self, *arguments):
+        with (
+            patch.object(self.dev_stack, "doctor"),
+            patch.object(self.dev_stack, "ensure_local_tls_trust"),
+            patch.object(self.dev_stack, "ensure_local_env"),
+            patch.object(self.dev_stack, "ensure_mkcert"),
+            patch.object(self.dev_stack, "ensure_submodules", return_value=()),
+            patch.object(self.dev_stack, "bootstrap_analyzer_harness"),
+            patch.object(self.dev_stack, "service_is_running", return_value=False),
+            patch.object(self.dev_stack, "heal_war_mount"),
+            patch.object(self.dev_stack, "build_application"),
+            patch.object(self.dev_stack, "build_images"),
+            patch.object(self.dev_stack, "record_images"),
+            patch.object(self.dev_stack, "record_setup"),
+            patch.object(self.dev_stack, "start_services"),
+            patch.object(self.dev_stack, "reload_proxy"),
+            patch.object(self.dev_stack, "configure_tls"),
+            patch.object(self.dev_stack, "verify_tls"),
+            patch.object(self.dev_stack, "print_endpoints"),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            self.dev_stack.main(["up", "--no-wait", "--no-scenarios", *arguments])
+
     def up(self, *arguments):
         with (
             patch.object(self.dev_stack, "doctor"),
@@ -1047,6 +1070,40 @@ class DevStackPublishedImagesTest(unittest.TestCase):
         with patch.object(self.dev_stack, "first_up_in_terminal", return_value=False):
             _, _, pull_images = self.up("--pull")
         self.assertTrue(pull_images.call_args.kwargs["always"])
+
+    def test_failed_pull_reports_that_not_every_image_is_current(self):
+        def run(command, **_):
+            if command[:2] == ["docker", "pull"]:
+                raise subprocess.CalledProcessError(1, command)
+            return subprocess.CompletedProcess(command, 0, stdout="")
+
+        with patch.object(self.dev_stack, "run", side_effect=run), contextlib.redirect_stderr(io.StringIO()):
+            self.assertFalse(self.dev_stack.pull_image(self.context, self.environment, "image:tag"))
+        with patch.object(self.dev_stack, "run", return_value=subprocess.CompletedProcess([], 0, stdout="")):
+            self.assertTrue(self.dev_stack.pull_image(self.context, self.environment, "image:tag"))
+
+    def test_terminal_is_marked_only_when_every_pull_succeeded(self):
+        for succeeded in (True, False):
+            with self.subTest(succeeded=succeeded), \
+                    patch.object(self.dev_stack, "first_up_in_terminal", return_value=True), \
+                    patch.object(self.dev_stack, "pull_images", return_value=succeeded), \
+                    patch.object(self.dev_stack, "mark_terminal_pulled") as mark:
+                self.up_raw()
+            self.assertEqual(mark.called, succeeded)
+
+    def test_a_light_pull_does_not_count_for_a_later_full_up(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        light = self.context._replace(repo_root=pathlib.Path(directory.name), setup="light")
+        full = light._replace(setup="full")
+
+        with patch.object(self.dev_stack, "terminal_session_key", return_value="101:start"):
+            self.dev_stack.mark_terminal_pulled(light)
+            self.assertFalse(self.dev_stack.first_up_in_terminal(light))
+            self.assertTrue(self.dev_stack.first_up_in_terminal(full))
+            self.dev_stack.mark_terminal_pulled(full)
+            self.assertFalse(self.dev_stack.first_up_in_terminal(full))
+            self.assertFalse(self.dev_stack.first_up_in_terminal(light), "a full pull covers the light setup")
 
     def test_a_terminal_counts_as_pulled_only_after_its_own_pull(self):
         directory = tempfile.TemporaryDirectory()
