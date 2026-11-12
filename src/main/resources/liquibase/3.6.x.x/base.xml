@@ -54,6 +54,8 @@
   <include relativeToChangelogFile="true" file="033-organization-gps-source.xml"/>
   <!-- OGC-1200 slice 3: an accepted run row keeps the analyzer-reported value beside the accepted one -->
   <include relativeToChangelogFile="true" file="034-result-analyzer-reported-value.xml"/>
+  <!-- OGC-1611 P2: tests name their expected containers; sample types a default container -->
+  <include relativeToChangelogFile="true" file="035-test-expected-containers.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>
