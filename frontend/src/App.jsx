@@ -948,7 +948,7 @@ export default function App() {
                   path="/Alerts"
                   exact
                   render={() => <AlertsDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                  role={[Roles.GLOBAL_ADMIN, Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/dashboards/management"
