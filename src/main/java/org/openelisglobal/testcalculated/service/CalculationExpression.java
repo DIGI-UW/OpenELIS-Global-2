@@ -27,10 +27,25 @@ public final class CalculationExpression {
     private final SpelNode root;
     private final Map<String, Binding> bindings;
 
-    public record Operand(double value, Double minimum, Double maximum) {
+    public record Operand(double value, Double minimum, Double maximum, boolean coded) {
         public Operand(double value) {
-            this(value, null, null);
+            this(value, null, null, false);
         }
+
+        public Operand(double value, Double minimum, Double maximum) {
+            this(value, minimum, maximum, false);
+        }
+
+        public static Operand answer(double answerId) {
+            return new Operand(answerId, null, null, true);
+        }
+    }
+
+    private record Answer(double id) {
+    }
+
+    private enum Kind {
+        NUMBER, OPERAND, ANSWER, CONDITION
     }
 
     private enum Bound {
@@ -40,14 +55,27 @@ public final class CalculationExpression {
     private record Binding(Operation operation, Double constant, Bound bound) {
         Object resolve(Function<Operation, Operand> resolver) {
             if (constant != null)
-                return constant;
+                return kind() == Kind.ANSWER ? new Answer(constant) : constant;
             Operand operand = resolver.apply(operation);
             if (operand == null)
                 throw invalid("A required operand is missing");
+            if (operand.coded()) {
+                if (bound != Bound.VALUE)
+                    throw invalid("A coded result has no normal range");
+                return new Answer(operand.value());
+            }
             return switch (bound) {
             case VALUE -> finite(operand.value());
             case MINIMUM -> operand.minimum() == null ? Double.NEGATIVE_INFINITY : finite(operand.minimum());
             case MAXIMUM -> operand.maximum() == null ? Double.POSITIVE_INFINITY : finite(operand.maximum());
+            };
+        }
+
+        Kind kind() {
+            return switch (operation.getType()) {
+            case ANSWER -> Kind.ANSWER;
+            case TEST_RESULT -> Kind.OPERAND;
+            default -> Kind.NUMBER;
             };
         }
     }
@@ -83,13 +111,11 @@ public final class CalculationExpression {
                     throw invalid("Unsupported patient attribute");
                 binding = new Binding(operation, null, Bound.VALUE);
                 break;
+            case ANSWER:
+                binding = new Binding(operation, (double) positiveId(value, "Invalid answer"), Bound.VALUE);
+                break;
             case TEST_RESULT:
-                try {
-                    if (Integer.parseInt(value) <= 0)
-                        throw invalid("Invalid operand test");
-                } catch (NumberFormatException e) {
-                    throw invalid("Invalid operand test");
-                }
+                positiveId(value, "Invalid operand test");
                 String range = null;
                 if (i + 1 < operations.size()) {
                     Operation next = operations.get(i + 1);
@@ -128,6 +154,18 @@ public final class CalculationExpression {
         }
     }
 
+    private static int positiveId(String value, String reason) {
+        int id;
+        try {
+            id = Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            throw invalid(reason);
+        }
+        if (id <= 0)
+            throw invalid(reason);
+        return id;
+    }
+
     private static String bind(Map<String, Binding> bindings, Binding binding) {
         String variable = "#operand" + bindings.size();
         bindings.put(variable, binding);
@@ -141,9 +179,10 @@ public final class CalculationExpression {
     }
 
     /**
-     * Validate structure and operand types without evaluating placeholder values.
+     * Validate structure and operand types without evaluating placeholder values. A
+     * test result may turn out coded, and an answer compares only with one.
      */
-    private boolean type(SpelNode node, int depth) {
+    private Kind type(SpelNode node, int depth) {
         if (depth > MAX_DEPTH)
             throw invalid("Calculation nesting exceeds 32 levels");
         String kind = node.getClass().getSimpleName();
@@ -151,7 +190,7 @@ public final class CalculationExpression {
             Binding binding = bindings.get(node.toStringAST());
             if (binding == null)
                 throw invalid("Unknown operand");
-            return false;
+            return binding.kind();
         }
         if (!Set.of("OpPlus", "OpMinus", "OpMultiply", "OpDivide", "OpEQ", "OpNE", "OpGE", "OpLE", "OpAnd", "OpOr")
                 .contains(kind))
@@ -159,30 +198,40 @@ public final class CalculationExpression {
         int count = node.getChildCount();
         if (count != 2 && !(count == 1 && ("OpPlus".equals(kind) || "OpMinus".equals(kind))))
             throw invalid("Invalid operator arity");
-        boolean left = type(node.getChild(0), depth + 1);
-        boolean right = count == 2 && type(node.getChild(1), depth + 1);
+        Kind left = type(node.getChild(0), depth + 1);
+        Kind right = count == 2 ? type(node.getChild(1), depth + 1) : Kind.NUMBER;
         return switch (kind) {
         case "OpAnd", "OpOr" -> {
-            if (!left || !right)
+            if (left != Kind.CONDITION || right != Kind.CONDITION)
                 throw invalid("Logical operators require conditions");
-            yield true;
+            yield Kind.CONDITION;
         }
         case "OpEQ", "OpNE" -> {
-            if (left != right)
+            if (!comparable(left, right))
                 throw invalid("Comparison operands must have the same type");
-            yield true;
+            yield Kind.CONDITION;
         }
         case "OpGE", "OpLE" -> {
-            if (left || right)
+            if (!numeric(left) || !numeric(right))
                 throw invalid("Ordered comparisons require numbers");
-            yield true;
+            yield Kind.CONDITION;
         }
         default -> {
-            if (left || right)
+            if (!numeric(left) || !numeric(right))
                 throw invalid("Arithmetic requires numbers");
-            yield false;
+            yield Kind.NUMBER;
         }
         };
+    }
+
+    private static boolean numeric(Kind kind) {
+        return kind == Kind.NUMBER || kind == Kind.OPERAND;
+    }
+
+    private static boolean comparable(Kind left, Kind right) {
+        if (left == Kind.ANSWER || right == Kind.ANSWER)
+            return (left == Kind.ANSWER || left == Kind.OPERAND) && (right == Kind.ANSWER || right == Kind.OPERAND);
+        return left == right || (numeric(left) && numeric(right));
     }
 
     /**
@@ -219,14 +268,16 @@ public final class CalculationExpression {
         if ("OpOr".equals(kind))
             return (Boolean) left || (Boolean) evaluate(node.getChild(1), resolver);
         if (node.getChildCount() == 1)
-            return "OpMinus".equals(kind) ? -(Double) left : left;
+            return "OpMinus".equals(kind) ? -arithmetic(left) : arithmetic(left);
         Object right = evaluate(node.getChild(1), resolver);
         if ("OpEQ".equals(kind) || "OpNE".equals(kind)) {
+            if (left.getClass() != right.getClass())
+                throw invalid("A coded result compares only with an answer");
             boolean equal = left instanceof Double ? ((Double) left).doubleValue() == ((Double) right).doubleValue()
                     : left.equals(right);
             return "OpEQ".equals(kind) ? equal : !equal;
         }
-        double a = (Double) left, b = (Double) right;
+        double a = arithmetic(left), b = arithmetic(right);
         return switch (kind) {
         case "OpPlus" -> finite(a + b);
         case "OpMinus" -> finite(a - b);
@@ -236,6 +287,12 @@ public final class CalculationExpression {
         case "OpLE" -> a <= b;
         default -> throw invalid("Unsupported calculation syntax");
         };
+    }
+
+    private static double arithmetic(Object value) {
+        if (value instanceof Answer)
+            throw invalid("A coded result cannot be used in arithmetic");
+        return (Double) value;
     }
 
     private static double finite(double value) {

@@ -122,27 +122,28 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
     @Override
     @Transactional
-    public void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId) {
-        acceptAndPersist(allResults, sysUserId, List.of());
+    public List<Result> acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId) {
+        return acceptAndPersist(allResults, sysUserId, List.of());
     }
 
     @Override
     @Transactional
-    public void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId, List<ResultEntryAlert> alerts) {
+    public List<Result> acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId,
+            List<ResultEntryAlert> alerts) {
         List<AnalyzerResultItem> actionableResults = extractActionableResult(allResults);
         retainResolvableResults(actionableResults);
         applyRedirects(actionableResults, sysUserId);
         keepGroupingsOnOneOrder(actionableResults);
 
         if (actionableResults.isEmpty()) {
-            return;
+            return List.of();
         }
 
         // A result whose specimen ID matches several analyses has no placement
         // until the reviewer chooses one; its row stays staged, the rest proceed.
         holdRowsAwaitingPlacement(actionableResults, sysUserId);
         if (actionableResults.isEmpty()) {
-            return;
+            return List.of();
         }
 
         // OGC-1145 FR-8 — never first-match a specimen: any accepted grouping
@@ -151,14 +152,14 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         // chooser; everything else in the batch proceeds normally.
         holdGroupsAwaitingSpecimen(actionableResults, sysUserId);
         if (actionableResults.isEmpty()) {
-            return;
+            return List.of();
         }
 
         // Only the explicit review action transfers staged observations to a case.
         var routed = microbiology.acceptReviewed(actionableResults, sysUserId);
         actionableResults.removeIf(item -> routed.contains(item.getId()));
         if (actionableResults.isEmpty())
-            return;
+            return List.of();
 
         List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults);
 
@@ -183,8 +184,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                     "Analyzer review would remove " + expectedResults + " observations but persist " + builtResults);
         }
 
-        analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList, sysUserId);
+        List<Result> recorded = analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList,
+                sysUserId);
         recordAcknowledgements(alerts, sampleGroupList, sysUserId);
+        return recorded;
     }
 
     /** Each acknowledged value names the analysis and result it was saved as. */

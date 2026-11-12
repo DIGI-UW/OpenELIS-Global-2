@@ -937,6 +937,73 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                 "SELECT message FROM clinlims.result_entry_acknowledgement WHERE analysis_id = 1", String.class));
     }
 
+    @Test
+    public void save_criticalCodedAnswer_isRefusedUntilAcknowledged_thenRaisesTheCriticalAlert() throws Exception {
+        String detected = codedAnswer("OGC1610 Detected", true);
+        String notDetected = codedAnswer("OGC1610 Not detected", false);
+        storeCodedAnswer(notDetected);
+        try {
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(detected, "")).session(session)).andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"))
+                    .andExpect(jsonPath("$.acknowledgementRequired[0].value").value("OGC1610 Detected"));
+            assertEquals(notDetected, resultService.get("3").getValue());
+
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(detected, ",\"criticalAcknowledged\":true")).session(session))
+                    .andExpect(status().isOk());
+            assertEquals(detected, resultService.get("3").getValue());
+            assertEquals(Integer.valueOf(1), acknowledgementCount());
+            assertEquals("OGC1610 Detected",
+                    jdbc.queryForObject(
+                            "SELECT context_data->>'value' FROM clinlims.alert WHERE alert_type ="
+                                    + " 'CRITICAL_RESULT' AND alert_entity_type = 'ANALYSIS' AND alert_entity_id = 1",
+                            String.class));
+
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(detected, "")).session(session)).andExpect(status().isOk());
+            assertEquals("the stored answer was acknowledged when it was saved", Integer.valueOf(1),
+                    acknowledgementCount());
+        } finally {
+            jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry LIKE 'OGC1610 %'");
+        }
+    }
+
+    @Test
+    public void save_codedAnswerNotMarkedCritical_owesNothing() throws Exception {
+        String notDetected = codedAnswer("OGC1610 Not detected", false);
+        storeCodedAnswer(codedAnswer("OGC1610 Detected", true));
+        try {
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(notDetected, "")).session(session)).andExpect(status().isOk());
+            assertEquals(notDetected, resultService.get("3").getValue());
+            assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                    "SELECT count(*) FROM clinlims.alert WHERE alert_type = 'CRITICAL_RESULT'", Integer.class));
+        } finally {
+            jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry LIKE 'OGC1610 %'");
+        }
+    }
+
+    private String codedAnswer(String entry, boolean critical) {
+        String id = jdbc.queryForObject("SELECT nextval('clinlims.dictionary_seq')::text", String.class);
+        jdbc.update("INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated) VALUES (?::numeric, ?,"
+                + " 'Y', NOW())", id, entry);
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, sort_order, is_active,"
+                + " is_critical, lastupdated) VALUES (nextval('clinlims.test_result_seq'), 1, 'D', ?, 1, true, ?,"
+                + " NOW())", id, critical);
+        return id;
+    }
+
+    private void storeCodedAnswer(String answer) {
+        jdbc.update("UPDATE clinlims.result SET result_type = 'D', value = ?, test_result_id = (SELECT id FROM"
+                + " clinlims.test_result WHERE test_id = 1 AND value = ?) WHERE id = 3", answer, answer);
+    }
+
+    private String codedSaveBody(String answer, String extras) {
+        return saveBodyWithExtras("1", "3", "1", answer, currentToken("1"), "\"note\":\"\"" + extras)
+                .replace("\"resultType\":\"N\"", "\"resultType\":\"D\"");
+    }
+
     /**
      * OGC-1417 — a value outside the valid range is confirmed only when Result
      * Configuration asks for it; with the setting off it saves as before.

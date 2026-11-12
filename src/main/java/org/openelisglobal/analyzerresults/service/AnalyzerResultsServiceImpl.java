@@ -17,6 +17,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
@@ -26,6 +27,7 @@ import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testcalculated.action.util.TestCalculatedUtil;
 import org.openelisglobal.testreflex.action.util.TestReflexBean;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -136,11 +138,11 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
 
     @Override
     @Transactional
-    public void persistAnalyzerResults(List<AnalyzerResults> deletableAnalyzerResults,
+    public List<Result> persistAnalyzerResults(List<AnalyzerResults> deletableAnalyzerResults,
             List<SampleGrouping> sampleGroupList, String sysUserId) {
         removeHandledResultsFromAnalyzerResults(deletableAnalyzerResults, sysUserId);
 
-        insertResults(sampleGroupList, sysUserId);
+        return insertResults(sampleGroupList, sysUserId);
     }
 
     private void removeHandledResultsFromAnalyzerResults(List<AnalyzerResults> deletableAnalyzerResults,
@@ -150,7 +152,7 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
         }
     }
 
-    private boolean insertResults(List<SampleGrouping> sampleGroupList, String sysUserId) {
+    private List<Result> insertResults(List<SampleGrouping> sampleGroupList, String sysUserId) {
         for (SampleGrouping grouping : sampleGroupList) {
             if (grouping.addSample) {
                 // try {
@@ -221,8 +223,27 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
 
         TestReflexUtil testReflexUtil = new TestReflexUtil();
         testReflexUtil.addNewTestsToDBForReflexTests(convertGroupListToTestReflexBeans(sampleGroupList), sysUserId);
+        List<ResultSet> accepted = acceptedResultSets(sampleGroupList);
+        TestCalculatedUtil calculations = new TestCalculatedUtil();
+        calculations.addNewTestsToDBForCalculatedTests(accepted, sysUserId);
 
-        return true;
+        List<Result> recorded = new ArrayList<>();
+        accepted.forEach(resultSet -> recorded.add(resultSet.result));
+        recorded.addAll(calculations.getCalculatedResults());
+        return recorded;
+    }
+
+    private List<ResultSet> acceptedResultSets(List<SampleGrouping> sampleGroupList) {
+        List<ResultSet> resultSets = new ArrayList<>();
+        for (SampleGrouping sampleGroup : sampleGroupList) {
+            if (sampleGroup.accepted) {
+                for (Result result : sampleGroup.resultList) {
+                    resultSets.add(new ResultSet(result, null, null, sampleGroup.patient, sampleGroup.sample,
+                            sampleGroup.triggersToSelectedReflexesMap, false));
+                }
+            }
+        }
+        return resultSets;
     }
 
     /**

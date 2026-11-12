@@ -1078,10 +1078,10 @@ public abstract class PatientReport extends Report {
                 status = componentAwaitingValidationText();
             }
             if (status != null) {
-                results.append(component.getLabel()).append(": ").append(status).append("\n");
+                results.append(component.getLocalizedLabel()).append(": ").append(status).append("\n");
                 uoms.append("\n");
                 ranges.append("\n");
-                lines.add(new ReportComponentLine(component.getLabel(), status, "", "", ""));
+                lines.add(new ReportComponentLine(component.getLocalizedLabel(), status, "", "", ""));
                 continue;
             }
             Result first = componentResults.get(0);
@@ -1090,7 +1090,7 @@ public abstract class PatientReport extends Report {
             String letter = ResultAlertFlags.componentLetter(limit, first.getResultType(),
                     StringUtil.getActualNumericValue(first.getValue()));
             alerts.add(letter);
-            results.append(component.getLabel()).append(": ").append(componentValue);
+            results.append(component.getLocalizedLabel()).append(": ").append(componentValue);
             if (!letter.isEmpty()) {
                 results.append(" <b>").append(letter).append("</b>");
             }
@@ -1104,7 +1104,7 @@ public abstract class PatientReport extends Report {
             String range = limit == null ? ""
                     : resultLimitService.getDisplayReferenceRange(limit, reportingDecimalPlaces, " - ");
             ranges.append(range).append("\n");
-            lines.add(new ReportComponentLine(component.getLabel(), componentValue, letter, range, uom));
+            lines.add(new ReportComponentLine(component.getLocalizedLabel(), componentValue, letter, range, uom));
         }
         data.setComponents(lines);
         trimTrailingNewline(results);
@@ -1176,7 +1176,7 @@ public abstract class PatientReport extends Report {
             if (GenericValidator.isBlankOrNull(componentValue)) {
                 continue;
             }
-            reportBuilder.append(component.getLabel()).append(": ").append(componentValue).append("\n");
+            reportBuilder.append(component.getLocalizedLabel()).append(": ").append(componentValue).append("\n");
         }
         if (reportBuilder.length() > 0) {
             reportBuilder.setLength(reportBuilder.length() - 1);

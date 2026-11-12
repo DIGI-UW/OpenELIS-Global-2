@@ -37,6 +37,7 @@ public class TestResult extends BaseObject<String> {
     private ValueHolderInterface scriptlet;
     private Boolean isQuantifiable = false;
     private Boolean isNormal = false;
+    private Boolean isCritical = false;
     private Boolean isActive = true;
     // Surveillance result classification (POSITIVE / NEGATIVE / INDETERMINATE),
     // catalog-configured per (test, value). Null when not configured.
@@ -213,6 +214,14 @@ public class TestResult extends BaseObject<String> {
 
     public void setIsNormal(Boolean normal) {
         isNormal = normal;
+    }
+
+    public Boolean getIsCritical() {
+        return isCritical;
+    }
+
+    public void setIsCritical(Boolean isCritical) {
+        this.isCritical = isCritical;
     }
 
     public String getSignificance() {

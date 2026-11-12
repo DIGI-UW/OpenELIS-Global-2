@@ -91,6 +91,8 @@ const mathFunction: IdValue = {
   value: null,
 };
 
+const OPERAND_TYPES = ["N", "D"];
+
 /** A component of a test, with what it reports and the values it offers. */
 interface TestComponent {
   id: string;
@@ -291,12 +293,8 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     }
     switch (field) {
       case "TEST_RESULT":
-        // A test qualifies when any of its components reports a number. Asking
-        // the test itself returns its primary component's type, which hid
-        // every test whose numeric parts sit under a coded primary - COVID-19
-        // PCR reporting an interpretation beside two Ct values.
         results[field][index][item_index] =
-          resultList.filter(hasNumericComponent);
+          resultList.filter(hasOperandComponent);
         break;
       case "FINAL_RESULT":
         results[field][index] = resultList;
@@ -325,22 +323,18 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     setCalculationList(list);
   }
 
-  /** A test is usable here when any component of it reports a number. */
-  const hasNumericComponent = (test: any) =>
+  // The test's own result type is only its primary component's.
+  const hasOperandComponent = (test: any) =>
     Array.isArray(test?.resultTypes) && test.resultTypes.length
-      ? test.resultTypes.includes("N")
-      : test?.resultType === "N";
+      ? test.resultTypes.some((type: string) => OPERAND_TYPES.includes(type))
+      : OPERAND_TYPES.includes(test?.resultType);
 
-  /** Only the components that report a number may be chosen as the operand. */
-  const numericComponents = (test: any) =>
-    (test?.components || [])
-      .filter((c: any) => (c.resultType || test?.resultType) === "N")
-      .map((c: any) => ({ id: c.id, value: c.value }));
+  const operandComponents = (test: any) =>
+    allComponents(test).filter((c) => OPERAND_TYPES.includes(c.resultType));
 
   /**
    * Every component of a test, each carrying what it reports and the options it
-   * offers. The operands are restricted to numbers because arithmetic needs
-   * them; the final result is not, and must be able to name a coded component.
+   * offers.
    */
   const allComponents = (test: any): TestComponent[] =>
     (test?.components || []).map((c: any) => ({
@@ -360,8 +354,21 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     list[index].operations[operationIndex].value = id;
     // Changing the test invalidates the component chosen under the old one.
     list[index].operations[operationIndex].componentId = null;
+    clearAnswersAfter(list[index].operations, operationIndex);
     setCalculationList(list);
   }
+
+  // An answer belongs to the operand before it; a new operand voids it.
+  const clearAnswersAfter = (operations: any[], operandIndex: number) => {
+    for (let i = operandIndex + 1; i < operations.length; i++) {
+      if (operations[i].type === "TEST_RESULT") {
+        break;
+      }
+      if (operations[i].type === "ANSWER") {
+        operations[i].value = "";
+      }
+    }
+  };
 
   /**
    * The components the final result may be written to, read from the test the
@@ -370,8 +377,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
    * a test.
    *
    * <p>Every component, not just the numeric ones: a calculation may set a coded
-   * interpretation, and restricting this list to numbers - the rule the operands
-   * follow - left those components unselectable.
+   * interpretation.
    */
   const destinationComponentsFor = (index: number) => {
     const tests = sampleTestList["FINAL_RESULT"][index] || [];
@@ -410,8 +416,40 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     const test = tests.find(
       (t: any) => String(t.id) === String(operand?.value),
     );
-    return numericComponents(test);
+    return operandComponents(test);
   };
+
+  const answersFor = (index: number, operationIndex: number): IdValue[] => {
+    const operations = calculationList[index]?.operations || [];
+    const operandIndex = operations
+      .slice(0, operationIndex)
+      .map((operation) => operation.type)
+      .lastIndexOf("TEST_RESULT");
+    if (operandIndex < 0) {
+      return [];
+    }
+    const components = operandComponentsFor(index, operandIndex);
+    const chosen = operations[operandIndex].componentId;
+    const component =
+      components.find((c) => String(c.id) === String(chosen)) || components[0];
+    return component?.resultList || [];
+  };
+
+  const componentSuffix = (
+    index: number,
+    operationIndex: number,
+    componentId: any,
+  ) => {
+    const component = operandComponentsFor(index, operationIndex).find(
+      (c) => String(c.id) === String(componentId),
+    );
+    return component ? " / " + component.value : "";
+  };
+
+  const answerLabel = (index: number, operationIndex: number, value: any) =>
+    answersFor(index, operationIndex).find(
+      (answer) => String(answer.id) === String(value),
+    )?.value ?? value;
 
   const handleCalculationFieldChange = (e: any, index: number) => {
     const { name, value } = e.target;
@@ -434,6 +472,9 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     const { name, value } = e.target;
     const list = [...calculationList];
     list[index]["operations"][operationIndex][name] = value;
+    if (name === "componentId") {
+      clearAnswersAfter(list[index].operations, operationIndex);
+    }
     setCalculationList(list);
   };
 
@@ -573,9 +614,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
             <Column lg={3} md={2} sm={1}>
               <AutoComplete
                 id={index + "_" + operationIndex + "_testresult"}
-                label={
-                  <FormattedMessage id="testcalculation.label.searchNumericTest" />
-                }
+                label={<FormattedMessage id="rulebuilder.label.searchTest" />}
                 name="operationtestName"
                 value={operation.value}
                 onSelect={(id) =>
@@ -664,6 +703,35 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                   handleOperationFieldChange(e, index, operationIndex);
                 }}
               />
+            </Column>
+            <Column lg={5}> </Column>
+          </>
+        );
+      case "ANSWER":
+        return (
+          <>
+            <Column lg={5}>
+              <Select
+                id={index + "_" + operationIndex + "_answer"}
+                name="value"
+                labelText={
+                  <FormattedMessage id="testcalculation.label.answer" />
+                }
+                value={operation.value ?? ""}
+                onChange={(e) => {
+                  handleOperationFieldChange(e, index, operationIndex);
+                }}
+                required
+              >
+                <SelectItem text="" value="" />
+                {answersFor(index, operationIndex).map((answer, a_index) => (
+                  <SelectItem
+                    text={answer.value}
+                    value={answer.id}
+                    key={a_index}
+                  />
+                ))}
+              </Select>
             </Column>
             <Column lg={5}> </Column>
           </>
@@ -953,6 +1021,27 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                     : "0.5rem",
                                 marginRight:
                                   window.innerWidth < 768 ? "0.3rem" : "0.5rem",
+                              }}
+                              renderIcon={Add}
+                              id={index + "_answer"}
+                              kind="tertiary"
+                              size="sm"
+                              onClick={() => addOperation(index, "ANSWER")}
+                            >
+                              <FormattedMessage id="testcalculation.label.answer" />
+                            </Button>
+                          </div>
+                          <div>&nbsp; &nbsp;</div>
+                          <div>
+                            <Button
+                              style={{
+                                marginLeft:
+                                  window.innerWidth > 500 &&
+                                  window.innerWidth < 1800
+                                    ? "0.3rem"
+                                    : "0.5rem",
+                                marginRight:
+                                  window.innerWidth < 768 ? "0.3rem" : "0.5rem",
                                 width: window.innerWidth < 1200 && "7rem",
                               }}
                               renderIcon={Add}
@@ -990,9 +1079,21 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                           ]?.filter(
                                             (test) =>
                                               test.id == operation.value,
-                                          )[0]?.value + "'"
+                                          )[0]?.value +
+                                          componentSuffix(
+                                            index,
+                                            operationIndex,
+                                            operation.componentId,
+                                          ) +
+                                          "'"
                                         : ""
-                                      : operation.value}{" "}
+                                      : operation.type === "ANSWER"
+                                        ? answerLabel(
+                                            index,
+                                            operationIndex,
+                                            operation.value,
+                                          )
+                                        : operation.value}{" "}
                                     &nbsp;
                                   </div>
                                 ),
@@ -1077,6 +1178,12 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                     <SelectItem
                                       text="Integer"
                                       value="INTEGER"
+                                    />
+                                    <SelectItem
+                                      text={intl.formatMessage({
+                                        id: "testcalculation.label.answer",
+                                      })}
+                                      value="ANSWER"
                                     />
                                     <SelectItem
                                       text="Patient Attribute"

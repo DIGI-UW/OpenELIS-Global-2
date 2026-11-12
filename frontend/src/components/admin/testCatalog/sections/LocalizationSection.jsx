@@ -166,6 +166,7 @@ const LocalizationSection = ({
             }
             resolved[index] = {
               field: ref.field,
+              label: ref.label,
               localizationId: ref.localizationId,
               translations: (loc && loc.translations) || {},
             };
@@ -298,6 +299,14 @@ const LocalizationSection = ({
     );
   }
 
+  const fieldName = (entry) =>
+    entry.label
+      ? intl.formatMessage(
+          { id: "label.testCatalog.localization.field.component" },
+          { label: entry.label },
+        )
+      : copy(`field.${entry.field}`);
+
   // True exactly when the input is empty and so showing the English placeholder.
   const isFallback = (entry) => locale !== FALLBACK_LOCALE && !valueFor(entry);
 
@@ -372,15 +381,17 @@ const LocalizationSection = ({
                 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
               >
                 <span className="cds--label" aria-hidden="true">
-                  {copy(`field.${entry.field}`)}
+                  {fieldName(entry)}
                 </span>
                 {fallbackTag(entry)}
               </div>
               <TextInput
                 id={`localization-input-${entry.field}`}
-                labelText={copy(`field.${entry.field}`)}
+                labelText={fieldName(entry)}
                 hideLabel
-                placeholder={entry.translations[FALLBACK_LOCALE] || ""}
+                placeholder={
+                  entry.translations[FALLBACK_LOCALE] || entry.label || ""
+                }
                 value={valueFor(entry)}
                 onChange={(e) => {
                   // Read the value before the updater runs: by then React has

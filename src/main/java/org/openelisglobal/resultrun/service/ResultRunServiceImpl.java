@@ -472,8 +472,8 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         AnalyzerResults row = classified.row();
         String value = StringUtils.isNotBlank(row.getRawResultValue()) ? row.getRawResultValue() : row.getResult();
         String part = StringUtils.isBlank(row.getComponentId()) ? null
-                : testResultComponentService.getMatch("id", row.getComponentId()).map(TestResultComponent::getLabel)
-                        .orElse(null);
+                : testResultComponentService.getMatch("id", row.getComponentId())
+                        .map(TestResultComponent::getLocalizedLabel).orElse(null);
         return new ResultRunRow(row.getId(), row.getAccessionNumber(), row.getTestName(), part, value, row.getUnits(),
                 row.getIsControl(), row.getDuplicateAnalyzerResultId() != null, row.getImportIssueReason(),
                 row.getInstrumentFlags(), iso(row.getCompleteDate()), classified.flag(), classified.category(),

@@ -743,7 +743,8 @@ public class DisplayListController extends BaseRestController {
             return beans;
         }
         for (TestResultComponent component : components) {
-            String label = StringUtils.isNotBlank(component.getLabel()) ? component.getLabel() : component.getCode();
+            String label = StringUtils.isNotBlank(component.getLocalizedLabel()) ? component.getLocalizedLabel()
+                    : component.getCode();
             String type = StringUtils.isNotBlank(component.getResultType()) ? component.getResultType() : testLevelType;
             beans.add(new TestDisplayBean.ComponentBean(component.getId(), label, type, component.getIsPrimary(),
                     optionsByComponent.get(component.getId())));

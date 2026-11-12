@@ -557,8 +557,8 @@ public class ResultsValidationUtility {
         }
         for (org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component : components) {
             if (component.getId().equals(result.getTestResult().getComponentId())
-                    && !GenericValidator.isBlankOrNull(component.getLabel())) {
-                return displayTestName + " — " + component.getLabel();
+                    && !GenericValidator.isBlankOrNull(component.getLocalizedLabel())) {
+                return displayTestName + " — " + component.getLocalizedLabel();
             }
         }
         return displayTestName;
@@ -704,7 +704,10 @@ public class ResultsValidationUtility {
         setResultLimitDependencies(resultLimit, testItem, testResults);
         testItem.setRangeNotAppliedReason(
                 rangeSelection.isRangeNotApplied() ? rangeSelection.getReason().getMessageKey() : null);
-        testItem.setCritical(ValidationSignals.isCritical(resultLimit, result));
+        boolean criticalAnswer = result != null && testResultService.isCriticalAnswer(test.getId(),
+                result.getTestResult() == null ? null : result.getTestResult().getComponentId(), result.getResultType(),
+                result.getValue());
+        testItem.setCritical(criticalAnswer || ValidationSignals.isCritical(resultLimit, result));
         testItem.setAnalysisMethod(analysis.getAnalysisType());
         testItem.setResult(result);
         testItem.setDictionaryResults(
@@ -717,8 +720,9 @@ public class ResultsValidationUtility {
         } else {
             testItem.setResultType(getTestResultType(testResults));
         }
-        testItem.setResultFlag(ValidationSignals.resultFlag(resultLimit, testItem.getResultType(),
-                result == null ? null : result.getValue()));
+        testItem.setResultFlag(criticalAnswer ? ValidationSignals.FLAG_CRITICAL
+                : ValidationSignals.resultFlag(resultLimit, testItem.getResultType(),
+                        result == null ? null : result.getValue()));
         testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType()));
         testItem.setTestSortNumber(test.getSortOrder());
         testItem.setReflexGroup(analysis.getTriggeredReflex());
@@ -1015,7 +1019,7 @@ public class ResultsValidationUtility {
                     .componentOf(testResultComponentService.getComponentsByTestId(testResultItem.getTestId()),
                             componentId);
             if (component != null) {
-                analysisResultItem.setComponentLabel(component.getLabel());
+                analysisResultItem.setComponentLabel(component.getLocalizedLabel());
                 analysisResultItem.setComponentDisplayOrder(component.getDisplayOrder());
             }
         }

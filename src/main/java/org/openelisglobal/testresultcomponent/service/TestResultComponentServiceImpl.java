@@ -9,7 +9,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.service.TestService;
@@ -69,6 +72,9 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     @Lazy
     @Autowired
     private TestQcTargetService qcTargetService;
+
+    @Autowired
+    private LocalizationService localizationService;
 
     TestResultComponentServiceImpl() {
         super(TestResultComponent.class);
@@ -387,6 +393,13 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
      * stopped offering are left to {@link #dropUnreachableDictionaryRanges}. Legacy
      * limits without a component id belong to the primary.
      */
+    @Override
+    @Transactional
+    public void syncDictionaryNormals(String testId, String sysUserId) {
+        syncDictionaryNormals(testId, baseObjectDAO.getActiveComponentsByTestId(testId).stream()
+                .map(TestResultComponent::getId).collect(Collectors.toSet()), sysUserId);
+    }
+
     private void syncDictionaryNormals(String testId, Set<String> savedComponentIds, String sysUserId) {
         List<TestResultComponent> components = baseObjectDAO.getActiveComponentsByTestId(testId);
         TestResultComponent primary = pickPrimary(components);
@@ -760,6 +773,22 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
 
     @Override
     @Transactional
+    public String labelLocalizationId(String componentId, String sysUserId) {
+        TestResultComponent component = get(componentId);
+        if (component.getLabelLocalization() == null) {
+            Localization localization = new Localization();
+            localization.setDescription("result component label");
+            localization.setSysUserId(sysUserId);
+            localization.setId(localizationService.insert(localization));
+            component.setLabelLocalization(localization);
+            component.setSysUserId(sysUserId);
+            update(component);
+        }
+        return component.getLabelLocalization().getId();
+    }
+
+    @Override
+    @Transactional
     public void copyComponentsFromTest(String sourceTestId, String targetTestId, String sysUserId) {
         Test target = testService.getTestById(targetTestId);
         List<TestResultComponent> sources = baseObjectDAO.getActiveComponentsByTestId(sourceTestId);
@@ -816,6 +845,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 co.setValue(so.getValue());
                 co.setSortOrder(so.getSortOrder());
                 co.setIsNormal(so.getIsNormal());
+                co.setIsCritical(so.getIsCritical());
                 co.setTestResultType(so.getTestResultType());
                 optionCopies.add(co);
             }
