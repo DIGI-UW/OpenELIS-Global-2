@@ -381,7 +381,7 @@ function PathologyDashboard() {
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
-      {loading && <Loading description="Loading Dasboard..." />}
+      {loading && <Loading description="Loading Dashboard..." />}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
 
       <Grid fullWidth={true}>
