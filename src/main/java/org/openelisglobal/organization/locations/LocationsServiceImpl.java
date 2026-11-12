@@ -579,10 +579,8 @@ public class LocationsServiceImpl implements LocationsService {
         if (GenericValidator.isBlankOrNull(fhirId)) {
             return;
         }
-        UUID uuid;
-        try {
-            uuid = UUID.fromString(fhirId.trim());
-        } catch (IllegalArgumentException e) {
+        UUID uuid = LocationsApi.parseFhirId(fhirId);
+        if (uuid == null) {
             errors.put("referral.fhirId", "Enter the reference lab's FHIR id as shown on its own system (a UUID)");
             return;
         }

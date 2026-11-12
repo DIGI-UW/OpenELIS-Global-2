@@ -20,6 +20,11 @@ import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.service.ThisLaboratoryService;
+import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.siteinformation.service.SiteInformationService;
+import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -47,6 +52,15 @@ public class LocationsImportRestControllerTest extends BaseWebContextSensitiveTe
 
     @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private OrganizationService organizationService;
+
+    @Autowired
+    private ThisLaboratoryService thisLaboratoryService;
+
+    @Autowired
+    private SiteInformationService siteInformationService;
 
     private JdbcTemplate jdbc;
 
@@ -414,6 +428,64 @@ public class LocationsImportRestControllerTest extends BaseWebContextSensitiveTe
         int columns = lines[0].split(",", -1).length;
         for (int i = 1; i < lines.length; i++) {
             assertEquals("template row " + i, columns, lines[i].split(",", -1).length);
+        }
+    }
+
+    /**
+     * A fhirId another organization uses, or one that is not a UUID, is refused in
+     * the preview with its reason, not offered as new.
+     */
+    @Test
+    public void aFhirIdInUseOrMalformed_isRejectedInThePreview() throws Exception {
+        organization(9131, "Mbale Regional Laboratory", null, null, 2);
+        String used = jdbc.queryForObject(
+                "SELECT CAST(fhir_uuid AS VARCHAR) FROM clinlims.organization WHERE id = 9131", String.class);
+        JsonNode plan = json(preview("organizations-fhir.csv",
+                ("type,name,approvalStatus,fhirId\nreferralLab,Soroti Reference Laboratory,Approved," + used
+                        + "\nreferralLab,Arua Reference Laboratory,Approved,not-a-uuid\n")
+                        .getBytes(StandardCharsets.UTF_8),
+                "merge"));
+        JsonNode rows = plan.get("rows");
+        assertEquals("rejected", rows.get(0).get("outcome").asText());
+        assertTrue(rows.get(0).get("reason").asText().contains("already used by Mbale Regional Laboratory"));
+        assertEquals("rejected", rows.get(1).get("outcome").asText());
+        assertTrue(rows.get(1).get("reason").asText().contains("is not a FHIR id"));
+    }
+
+    /**
+     * The preview catches what Apply would refuse: a short-form id, the same new id
+     * on two rows of one file, and a change of this laboratory's own FHIR id.
+     */
+    @Test
+    public void aFhirIdApplyWouldRefuse_isRejectedInThePreview() throws Exception {
+        String type = jdbc.queryForObject("SELECT short_name FROM clinlims.organization_type WHERE id = 2",
+                String.class);
+        organization(9132, "Iganga Facility Laboratory", null, null, 2);
+        Organization own = organizationService.get("9132");
+        SiteInformation setting = siteInformationService.getSiteInformationByName(ThisLaboratoryService.SETTING);
+        String previous = setting == null ? null : setting.getValue();
+        thisLaboratoryService.record(own);
+        try {
+            String fresh = "7f3e2d1c-0b9a-4876-9543-210fedcba987";
+            JsonNode rows = json(preview("organizations-fhir-apply.csv",
+                    ("type,name,approvalStatus,fhirId\n" + "referralLab,Kumi Reference Laboratory,Approved,1-2-3-4-5\n"
+                            + "referralLab,Tororo Reference Laboratory,Approved," + fresh + "\n"
+                            + "referralLab,Busia Reference Laboratory,Approved," + fresh + "\n" + type
+                            + ",Iganga Facility Laboratory,,a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d\n")
+                            .getBytes(StandardCharsets.UTF_8),
+                    "merge")).get("rows");
+            assertEquals("rejected", rows.get(0).get("outcome").asText());
+            assertTrue(rows.get(0).get("reason").asText().contains("is not a FHIR id"));
+            assertEquals("new", rows.get(1).get("outcome").asText());
+            assertEquals("rejected", rows.get(2).get("outcome").asText());
+            assertTrue(rows.get(2).get("reason").asText().contains("is also on line"));
+            assertEquals("rejected", rows.get(3).get("outcome").asText());
+            assertTrue(rows.get(3).get("reason").asText().contains("own FHIR id cannot be changed"));
+        } finally {
+            SiteInformation restore = siteInformationService.getSiteInformationByName(ThisLaboratoryService.SETTING);
+            restore.setValue(previous == null ? "" : previous);
+            restore.setSysUserId("1");
+            siteInformationService.update(restore);
         }
     }
 
