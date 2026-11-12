@@ -4,12 +4,15 @@
  * template fields name themselves.
  */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../languages/en.json";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import TestNotificationConfigMenu from "./TestNotificationConfigMenu";
 import TestNotificationConfigEdit from "./TestNotificationConfigEdit";
@@ -103,5 +106,55 @@ describe("test notification screens label their controls", () => {
     const messageFields = screen.getAllByLabelText("Message");
     expect(subjects.length).toBeGreaterThanOrEqual(2);
     expect(subjects.length + messageFields.length).toBe(textboxes.length);
+  }, 30000);
+
+  it("does not save a subject without a message, and says why", async () => {
+    renderAt(
+      "/MasterListsPage/testNotificationConfig?testId=1",
+      "/MasterListsPage/testNotificationConfig",
+      TestNotificationConfigEdit,
+    );
+    const subjects = await screen.findAllByRole(
+      "textbox",
+      { name: "Subject" },
+      { timeout: 10000 },
+    );
+
+    fireEvent.change(subjects[1], {
+      target: { value: "Results for [testName]" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
+
+    expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+    expect(
+      screen.getAllByText("Add a message: a subject alone is not saved.")
+        .length,
+    ).toBeGreaterThan(0);
+  }, 30000);
+
+  it("shows the test name as text, not as a message id", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/TestNotificationConfig")) {
+        return callback({ config: { ...channels, testId: "1" } });
+      }
+      if (url.startsWith("/rest/test-list")) {
+        return callback([{ id: "1", value: "Test One" }]);
+      }
+      return callback([]);
+    });
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    renderAt(
+      "/MasterListsPage/testNotificationConfig?testId=1",
+      "/MasterListsPage/testNotificationConfig",
+      TestNotificationConfigEdit,
+    );
+
+    expect(
+      await screen.findByText("Test One", {}, { timeout: 10000 }),
+    ).toBeInTheDocument();
+    expect(
+      errors.mock.calls.some((args) => String(args[0]).includes("Test One")),
+    ).toBe(false);
+    errors.mockRestore();
   }, 30000);
 });

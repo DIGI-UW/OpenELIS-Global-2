@@ -52,4 +52,19 @@ public class TestNotificationConfigRestControllerTest extends BaseWebContextSens
                 .andExpect(jsonPath("$.disallowedFields[0]").value("patientFirstName"))
                 .andExpect(jsonPath("$.disallowedFields[1]").value("patientLastNameInitial"));
     }
+
+    @Test
+    public void aTemplateWithASubjectButNoMessageIsRefusedInsteadOfDropped() throws Exception {
+        UserSessionData admin = new UserSessionData();
+        admin.setSytemUserId(1);
+
+        mockMvc.perform(post("/rest/TestNotificationConfig").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"config\":{\"patientEmail\":{\"notificationNature\":\"RESULT_VALIDATION\","
+                        + "\"notificationPersonType\":\"PATIENT\",\"notificationMethod\":\"EMAIL\",\"active\":true,"
+                        + "\"payloadTemplate\":{\"subjectTemplate\":\"Results for [testName]\",\"messageTemplate\":\"\"}}},"
+                        + "\"editSystemDefaultPayloadTemplate\":false}")
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, admin)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Add a message: a subject alone is not saved."));
+        Mockito.verify(testNotificationConfigService, Mockito.never()).saveStatusAndMessages(any(), anyString());
+    }
 }

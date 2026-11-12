@@ -8832,6 +8832,7 @@
   "testnotification.provider.email": "Provider Email",
   "testnotification.provider.sms": "Provider SMS",
   "testnotification.subjecttemplate": "Subject",
+  "testnotification.template.messageRequired": "Add a message: a subject alone is not saved.",
   "testnotification.systemdefault.template": "System Default Message",
   "testnotification.testdefault.editIcon": "Edit Test Notification",
   "testnotification.testdefault.template": "Default Message for Test",
