@@ -1835,3 +1835,45 @@
     margin: 0;
   }
 }
+
+// OGC-1611 FR-B24, B26: a clinical sample's container with its cap colour
+// and the Proposed, Draw and Edited tags.
+.sample-container-field {
+  .sample-container-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+    min-height: 1.5rem;
+  }
+
+  .containerTypeSwatch {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 1px solid var(--cds-border-strong, #8d8d8d);
+    border-radius: 50%;
+  }
+
+  .sample-container-proposed {
+    display: inline-flex;
+  }
+}
+
+// The Prepare Samples test picker shows each name in full. Carbon truncates a
+// long tag label and then wraps it in a tooltip button, which put a button
+// inside the clickable tag's own button.
+.available-tags,
+.selected-tags {
+  .cds--tag {
+    max-inline-size: none;
+    block-size: auto;
+  }
+
+  .cds--tag__label {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+  }
+}

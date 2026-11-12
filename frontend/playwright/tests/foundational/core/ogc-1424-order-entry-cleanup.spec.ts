@@ -260,9 +260,15 @@ test.describe("Order entry clean-up (OGC-1424)", () => {
         const now = new Date();
         const dd = String(now.getUTCDate()).padStart(2, "0");
         const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
-        await card
-          .locator("#receivedDate-0")
-          .fill(`${dd}/${mm}/${now.getUTCFullYear()}`);
+        const receivedDate = card.locator("#receivedDate-0");
+        const monthFirst = /^mm/i.test(
+          (await receivedDate.getAttribute("placeholder")) || "",
+        );
+        await receivedDate.fill(
+          monthFirst
+            ? `${mm}/${dd}/${now.getUTCFullYear()}`
+            : `${dd}/${mm}/${now.getUTCFullYear()}`,
+        );
         await page.keyboard.press("Escape");
         await card.locator("#receivedTime-0").fill("09:30");
         await page.keyboard.press("Tab");

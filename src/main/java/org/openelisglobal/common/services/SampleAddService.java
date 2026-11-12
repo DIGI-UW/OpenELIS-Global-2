@@ -180,6 +180,11 @@ public class SampleAddService {
                 item.setCultureSetNumber(GenericValidator.isBlankOrNull(setNumber) ? null : Integer.valueOf(setNumber));
                 item.setBodySite(sampleItem.attributeValue("bodySite"));
                 item.setContainer(sampleItem.attributeValue("container"));
+                String containerTypeId = StringUtils.trimToNull(sampleItem.attributeValue("containerTypeId"));
+                if (containerTypeId != null && !StringUtils.isNumeric(containerTypeId)) {
+                    throw new IllegalArgumentException("order.sample.container.refused");
+                }
+                item.setContainerTypeId(containerTypeId == null ? null : Long.valueOf(containerTypeId));
                 item.setLocationDetails(sampleItem.attributeValue("locationDetails"));
                 item.setGpsLatitude(sampleItem.attributeValue("gpsLatitude"));
                 item.setGpsLongitude(sampleItem.attributeValue("gpsLongitude"));
@@ -259,8 +264,8 @@ public class SampleAddService {
                 if (stc.sampleTypeRequestId != null && stc.sampleTypeRequestId < 1) {
                     throw new IllegalArgumentException("Requested specimen identity must be positive");
                 }
-                for (String field : List.of("cultureSetNumber", "container", "bodySite", "date", "time",
-                        "collectionLocationId")) {
+                for (String field : List.of("cultureSetNumber", "container", "containerTypeId", "bodySite", "date",
+                        "time", "collectionLocationId")) {
                     if (sampleItem.attributeValue(field) != null)
                         stc.suppliedCollectionFields.add(field);
                 }

@@ -113,6 +113,26 @@ describe("prepareSamplesToContinue — a sample with no tests (OGC-1443)", () =>
   });
 });
 
+describe("a container the catalog asks for (OGC-1611 FR-G8)", () => {
+  it("holds a sample whose tests name containers until one is chosen", () => {
+    expect(
+      itemsFor([serum({ containerRequired: true, containerTypeId: "" })]).map(
+        (item) => [item.id, item.targetId],
+      ),
+    ).toEqual([["container-0", "containerType-0"]]);
+    expect(
+      itemsFor([serum({ containerRequired: true, containerTypeId: "11" })]),
+    ).toEqual([]);
+  });
+
+  it("never holds a sample whose tests name no container, or a rejected one", () => {
+    expect(itemsFor([serum({ containerRequired: false })])).toEqual([]);
+    expect(
+      itemsFor([serum({ containerRequired: true, sampleRejected: true })]),
+    ).toEqual([]);
+  });
+});
+
 describe("consentApplies (OGC-1483)", () => {
   const required = { CONSENT_REQUIRED_FOR_COLLECTION: "true" };
 
