@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
@@ -521,6 +522,44 @@ public class LocationsImportServiceImpl implements LocationsImportService {
     // organizations file
 
     /** One parsed and resolved organizations row, before the match. */
+    /**
+     * A reference lab's fhirId must be a UUID that no other organization uses; the
+     * preview says so instead of offering the row as new or updated.
+     */
+    private String fhirIdProblem(ParsedRow row) {
+        String value = row.csv.has("fhirId") && row.csv.get("fhirId") != null ? row.csv.get("fhirId").trim() : "";
+        if (value.isEmpty()) {
+            return null;
+        }
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(value);
+        } catch (IllegalArgumentException e) {
+            return "fhirId '" + value + "' is not a FHIR id (a UUID)";
+        }
+        Organization other = organizationService.getOrganizationByFhirId(uuid.toString());
+        if (other != null && (row.matched == null || !other.getId().equals(row.matched.getId()))) {
+            return "fhirId '" + value + "' is already used by " + other.getOrganizationName();
+        }
+        return null;
+    }
+
+    /**
+     * The reason a row was not written: the record's own field messages when the
+     * save refused it, otherwise the deepest message in the failure.
+     */
+    static String rejectReason(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof LocationsValidationException validation && !validation.getFieldErrors().isEmpty()) {
+                return String.join("; ", validation.getFieldErrors().values());
+            }
+            if (cause.getCause() == cause) {
+                break;
+            }
+        }
+        return CsvLoadSummary.reason(failure);
+    }
+
     private static final class ParsedRow {
         CsvRow csv;
         List<OrganizationType> types = new ArrayList<>();
@@ -653,6 +692,9 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             }
             match(row, catalogue, options, matchedIds);
             String repeated = repeatedIdentifier(row, identifiersSeen);
+            if (repeated == null) {
+                repeated = fhirIdProblem(row);
+            }
             if (repeated != null) {
                 row.reject = repeated;
                 row.matched = null;
@@ -695,7 +737,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
                         return null;
                     });
                 } catch (RuntimeException e) {
-                    row.reject = CsvLoadSummary.reason(e);
+                    row.reject = rejectReason(e);
                     row.outcome = LocationsImportApi.OUTCOME_REJECTED;
                 }
             }

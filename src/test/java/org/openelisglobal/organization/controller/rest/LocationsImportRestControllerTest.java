@@ -418,6 +418,27 @@ public class LocationsImportRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     /**
+     * A fhirId another organization uses, or one that is not a UUID, is refused in
+     * the preview with its reason, not offered as new.
+     */
+    @Test
+    public void aFhirIdInUseOrMalformed_isRejectedInThePreview() throws Exception {
+        organization(9131, "Mbale Regional Laboratory", null, null, 2);
+        String used = jdbc.queryForObject(
+                "SELECT CAST(fhir_uuid AS VARCHAR) FROM clinlims.organization WHERE id = 9131", String.class);
+        JsonNode plan = json(preview("organizations-fhir.csv",
+                ("type,name,approvalStatus,fhirId\nreferralLab,Soroti Reference Laboratory,Approved," + used
+                        + "\nreferralLab,Arua Reference Laboratory,Approved,not-a-uuid\n")
+                        .getBytes(StandardCharsets.UTF_8),
+                "merge"));
+        JsonNode rows = plan.get("rows");
+        assertEquals("rejected", rows.get(0).get("outcome").asText());
+        assertTrue(rows.get(0).get("reason").asText().contains("already used by Mbale Regional Laboratory"));
+        assertEquals("rejected", rows.get(1).get("outcome").asText());
+        assertTrue(rows.get(1).get("reason").asText().contains("is not a FHIR id"));
+    }
+
+    /**
      * OGC-1600: a geographic levels file reports a column it does not use, like the
      * organizations file does.
      */
