@@ -9,6 +9,7 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.Resource;
 
 @Configuration
@@ -39,9 +40,26 @@ public class HttpClientConfig {
     private Integer socketTimeout;
 
     @Bean
+    @Primary
     public CloseableHttpClient httpClient() throws Exception {
+        return httpClientBuilder(sslConnectionSocketFactory()).build();
+    }
 
-        HttpClientBuilder httpBuilder = HttpClientBuilder.create().setSSLSocketFactory(sslConnectionSocketFactory());
+    @Bean
+    public CloseableHttpClient localFhirHttpClient() throws Exception {
+        return httpClientBuilder(sslConnectionSocketFactory()).disableRedirectHandling().build();
+    }
+
+    @Bean
+    public CloseableHttpClient partnerFhirHttpClient() throws Exception {
+        SSLContext trustOnly = SSLContextBuilder.create()
+                .loadTrustMaterial(trustStore.getFile(), trustStorePassword.toCharArray()).build();
+        return httpClientBuilder(new SSLConnectionSocketFactory(trustOnly)).disableRedirectHandling().build();
+    }
+
+    private HttpClientBuilder httpClientBuilder(SSLConnectionSocketFactory socketFactory) {
+
+        HttpClientBuilder httpBuilder = HttpClientBuilder.create().setSSLSocketFactory(socketFactory);
 
         if (connectionRequestTimeout != 0 || connectionTimeout != 0 || socketTimeout != 0) {
             final RequestConfig.Builder configBuilder = RequestConfig.custom();
@@ -57,7 +75,7 @@ public class HttpClientConfig {
             httpBuilder.setDefaultRequestConfig(configBuilder.build());
         }
 
-        return httpBuilder.setSSLSocketFactory(sslConnectionSocketFactory()).build();
+        return httpBuilder;
     }
 
     public SSLConnectionSocketFactory sslConnectionSocketFactory() throws Exception {

@@ -56,3 +56,74 @@ replace their values. Review the active configuration before restarting:
 Use synthetic data for acceptance. These default changes do not establish that
 all deployed sites have adopted the new configuration or that every integration
 uses the subscriber mechanism.
+
+## Separate credentials for partner FHIR servers
+
+The local FHIR store uses only `org.openelisglobal.fhirstore.username` and
+`org.openelisglobal.fhirstore.password`, plus the installation client
+certificate. Other destinations no longer inherit that login or certificate. An
+external server with no configured credentials receives an anonymous request.
+
+For remote imports, facility synchronization, provider imports and scheduled
+exports, configure each authenticated partner in a private mounted properties
+file. Its URI must match the base URL already configured for that workflow.
+Trailing slashes and default ports are normalized; different paths are different
+destinations.
+
+```properties
+org.openelisglobal.fhir.partners=consolidated,registry
+
+org.openelisglobal.fhir.partner.consolidated.uri=https://partner.example.org/fhir
+org.openelisglobal.fhir.partner.consolidated.username=lab-account
+org.openelisglobal.fhir.partner.consolidated.password=${PARTNER_FHIR_PASSWORD}
+
+org.openelisglobal.fhir.partner.registry.uri=https://registry.example.org/fhir
+org.openelisglobal.fhir.partner.registry.token=${REGISTRY_FHIR_TOKEN}
+```
+
+Provide those secrets through the deployment's existing private configuration
+mechanism. Do not commit them. Each partner uses either username/password or a
+Bearer token. Duplicate destinations, a partner matching the local store, and
+mixed authentication settings are rejected at startup. Configuration changes
+require a restart.
+
+The existing client-registry username/password settings and facility-registry
+token exchange remain explicit alternatives for their respective workflows. They
+take precedence when those callers supply credentials; they do not fall back to
+the local store login. Do not configure the same integration in both places.
+Token exchange credentials are JSON encoded and sent only to the configured
+HTTPS authentication endpoint.
+
+All external FHIR endpoints require HTTPS. The existing
+`subscriber.allowHTTP=true` override permits only the exact configured
+subscriber and only anonymous requests for isolated testing. It does not permit
+credentials over HTTP or enable plaintext for other partners.
+
+FHIR clients do not follow HTTP redirects. Configure the final base URL.
+Pagination must stay inside that same base URL; links to another origin or
+another base path are refused before sending a request. Metadata discovery uses
+the same partner identity and transport as the main request.
+
+### Compatibility before upgrading
+
+- A partner that previously accepted the internal store login now needs a
+  dedicated account in the named-partner configuration. Without it, requests are
+  anonymous and authenticated partners will reject them.
+- Partners requiring a TLS client certificate will no longer receive the
+  installation certificate. This change does not add partner-specific client
+  certificates. Such integrations need an explicit certificate configuration
+  before they can adopt this version; do not restore the shared identity.
+- Redirecting endpoints and pagination through a different hostname or base path
+  must be corrected at the partner or in the configured URL.
+- Existing mounted property files are retained. Adding an image does not
+  populate partner credentials or rotate credentials previously shared with a
+  partner. Provision the separate partner account and rotate any exposed
+  internal login.
+- FHIR server-managed subscriptions deliver from the FHIR server, rather than
+  this application's client. These new partner properties do not configure
+  authentication for that separate delivery mechanism.
+
+Validate with synthetic data: local store access, each configured partner,
+pagination, refusal by a partner when credentials are absent or incorrect, and
+certificate verification. A successful test deployment is not evidence that
+existing production installations have adopted these settings.
