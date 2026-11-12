@@ -65,7 +65,6 @@ class AdminPage {
     return new MenuConfigPage();
   }
 
-
   goToPatientConfigPage() {
     this.openMenuConfiguration();
     cy.get("[data-cy='patientMenuMgmnt']")
