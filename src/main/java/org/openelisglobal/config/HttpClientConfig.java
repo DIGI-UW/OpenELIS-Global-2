@@ -54,7 +54,8 @@ public class HttpClientConfig {
     public CloseableHttpClient partnerFhirHttpClient() throws Exception {
         SSLContext trustOnly = SSLContextBuilder.create()
                 .loadTrustMaterial(trustStore.getFile(), trustStorePassword.toCharArray()).build();
-        return httpClientBuilder(new SSLConnectionSocketFactory(trustOnly)).disableRedirectHandling().build();
+        return httpClientBuilder(new SSLConnectionSocketFactory(trustOnly)).disableRedirectHandling()
+                .disableCookieManagement().build();
     }
 
     private HttpClientBuilder httpClientBuilder(SSLConnectionSocketFactory socketFactory) {

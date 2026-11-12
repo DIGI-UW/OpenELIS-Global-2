@@ -99,6 +99,10 @@ All external FHIR endpoints require HTTPS. The existing
 subscriber and only anonymous requests for isolated testing. It does not permit
 credentials over HTTP or enable plaintext for other partners.
 
+Partner FHIR clients do not retain or send session cookies; identity comes from
+the configured Basic or Bearer credentials. Cookie-based partner login is not
+supported by this path.
+
 FHIR clients do not follow HTTP redirects. Configure the final base URL.
 Pagination must stay inside that same base URL; links to another origin or
 another base path are refused before sending a request. Metadata discovery uses

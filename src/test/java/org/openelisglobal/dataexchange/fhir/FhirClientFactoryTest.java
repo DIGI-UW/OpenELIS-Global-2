@@ -66,7 +66,7 @@ public class FhirClientFactoryTest {
     private final String facilityToken = java.util.UUID.randomUUID().toString();
     private final String explicitPassword = java.util.UUID.randomUUID().toString();
 
-    record Received(String path, List<String> authorization, boolean clientCertificate) {
+    record Received(String path, List<String> authorization, boolean clientCertificate, List<String> cookies) {
     }
 
     @Before
@@ -124,8 +124,12 @@ public class FhirClientFactoryTest {
             String path = exchange.getRequestURI().getPath();
             received.add(new Received(path,
                     new ArrayList<>(exchange.getRequestHeaders().getOrDefault("Authorization", List.of())),
-                    clientCertificate));
+                    clientCertificate,
+                    new ArrayList<>(exchange.getRequestHeaders().getOrDefault("Cookie", List.of()))));
             byte[] requestBody = exchange.getRequestBody().readAllBytes();
+            if (path.startsWith("/partner/")) {
+                exchange.getResponseHeaders().add("Set-Cookie", "partner-session=synthetic-session; Path=/; Secure");
+            }
             String body;
             int status = 200;
             if (path.endsWith("/metadata")) {
@@ -190,6 +194,7 @@ public class FhirClientFactoryTest {
         for (Received request : requests) {
             assertEquals(expected == null ? List.of() : List.of(expected), request.authorization);
             assertEquals("TLS client identity at " + request.path, certificate, request.clientCertificate);
+            assertTrue("No implicit cookie identity at " + request.path, request.cookies.isEmpty());
         }
     }
 
