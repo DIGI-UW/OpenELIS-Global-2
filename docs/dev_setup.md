@@ -59,9 +59,11 @@ the checkout and runs it, together with the frontend `src` and `public`
 directories, in the published development images named in
 `projects/analyzer-harness/docker-compose.dev.yml` and
 `docker-compose.worktree.yml` (`itechuw/openelis-global-2-dev`, `-frontend-dev`,
-`-analyzer-bridge` and `-analyzer-mock`, tag `develop`), which it pulls on each
-start. `DEV_STACK_IMAGE_NAMESPACE` and `DEV_STACK_IMAGE_TAG` select other
-published images.
+`-analyzer-bridge` and `-analyzer-mock`, tag `develop`). Like `docker run`, it
+pulls an image only when it is not on the machine yet, and otherwise uses the
+local copy and prints its build date. Run `up --pull` to get the latest
+published images. `DEV_STACK_IMAGE_NAMESPACE` and `DEV_STACK_IMAGE_TAG` select
+other published images.
 
 Run `up --build` to build those images from the checkout instead. That is only
 needed when a change lives inside an image rather than in the mounted WAR or

@@ -516,7 +516,7 @@ def require_module_support(context: StackContext, environment: dict[str, str]) -
     except subprocess.CalledProcessError:
         raise RuntimeError(
             f"The backend image {image} cannot load modules (its entrypoint predates the module runtime). "
-            "Pull newer development images (rerun up without --skip-build), or add --build to build "
+            "Pull newer development images (rerun up --pull), or add --build to build "
             "them from this checkout."
         ) from None
 
@@ -686,8 +686,26 @@ def frontend_image_differences(
     ]
 
 
-def pull_image(context: StackContext, environment: dict[str, str], image: str) -> None:
-    """Pull an image; on failure keep an existing copy or explain the way out."""
+def local_image_created(context: StackContext, environment: dict[str, str], image: str) -> str | None:
+    """The build date of an image already on this machine, or None when it is not here."""
+    try:
+        created = output(
+            ["docker", "image", "inspect", "--format", "{{.Created}}", image],
+            cwd=context.repo_root,
+            environment=environment,
+        )
+    except subprocess.CalledProcessError:
+        return None
+    return created[:10] or "unknown date"
+
+
+def pull_image(context: StackContext, environment: dict[str, str], image: str, always: bool = True) -> None:
+    """Pull an image (only when missing unless `always`); on failure keep an existing copy or explain the way out."""
+    if not always:
+        created = local_image_created(context, environment, image)
+        if created is not None:
+            print(f"Using {image} already on this machine (built {created}); run up --pull for a newer one")
+            return
     try:
         run(["docker", "pull", image], cwd=context.repo_root, environment=environment)
         return
@@ -755,13 +773,13 @@ def reuse_recorded_images(context: StackContext, environment: dict[str, str]) ->
 
 
 def pull_images(
-    context: StackContext, environment: dict[str, str], changed_submodules: Sequence[str]
+    context: StackContext, environment: dict[str, str], changed_submodules: Sequence[str], always: bool = True
 ) -> None:
-    """Pull the published development images and say what they cannot reflect."""
+    """Pull the published development images (missing ones only unless `always`) and say what they cannot reflect."""
     for service, variable, _, _ in APPLICATION_IMAGES:
         if context.setup == "light" and service in FULL_ONLY_SERVICES:
             continue
-        pull_image(context, environment, environment[variable])
+        pull_image(context, environment, environment[variable], always=always)
     images = {service: environment[variable] for service, variable, _, _ in APPLICATION_IMAGES}
     for path, service in SUBMODULE_SERVICES.items():
         if path in changed_submodules and not (context.setup == "light" and service in FULL_ONLY_SERVICES):
@@ -1138,6 +1156,11 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         action="store_true",
         help="Build the application images from this checkout instead of using the published ones.",
     )
+    images.add_argument(
+        "--pull",
+        action="store_true",
+        help="Pull the latest published images even when a copy is already on this machine.",
+    )
     up.add_argument(
         "--setup",
         choices=SETUPS,
@@ -1217,7 +1240,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.skip_build:
                 reuse_recorded_images(context, environment)
             else:
-                pull_image(context, environment, environment["DEV_STACK_BACKEND_IMAGE"])
+                pull_image(context, environment, environment["DEV_STACK_BACKEND_IMAGE"], always=args.pull)
             require_module_support(context, environment)
         if not args.skip_build:
             build_application(context, environment, install_for_modules=bool(modules))
@@ -1229,7 +1252,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.build:
                 build_images(context, environment)
             else:
-                pull_images(context, environment, changed_submodules)
+                pull_images(context, environment, changed_submodules, always=args.pull)
             record_images(context, environment)
         elif not (context.repo_root / "target" / "OpenELIS-Global.war").is_file():
             raise RuntimeError("--skip-build requires target/OpenELIS-Global.war")

@@ -780,7 +780,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
         self.context = self.dev_stack.make_context(REPO_ROOT)
         self.environment = self.dev_stack.build_environment(self.context)
 
-    def pull(self, changed_submodules=(), run=None, differences=(), backend_differences=()):
+    def pull(self, changed_submodules=(), run=None, differences=(), backend_differences=(), always=True):
         printed = io.StringIO()
         with (
             patch.object(self.dev_stack, "run", side_effect=run) as mocked_run,
@@ -789,8 +789,40 @@ class DevStackPublishedImagesTest(unittest.TestCase):
             contextlib.redirect_stdout(printed),
             contextlib.redirect_stderr(printed),
         ):
-            self.dev_stack.pull_images(self.context, self.environment, changed_submodules)
+            self.dev_stack.pull_images(self.context, self.environment, changed_submodules, always=always)
         return [call.args[0] for call in mocked_run.call_args_list], printed.getvalue()
+
+    @staticmethod
+    def images_on_machine(*present):
+        """A docker stub where only the named images exist locally."""
+
+        def run(command, **_):
+            if command[:3] == ["docker", "image", "inspect"]:
+                if command[-1] in present:
+                    return subprocess.CompletedProcess(command, 0, stdout="2026-11-10T08:00:00Z\n")
+                raise subprocess.CalledProcessError(1, command)
+            return subprocess.CompletedProcess(command, 0, stdout="")
+
+        return run
+
+    def test_up_uses_the_images_already_on_the_machine_without_pulling(self):
+        present = [self.environment[variable] for _, variable, _, _ in self.dev_stack.APPLICATION_IMAGES]
+        commands, printed = self.pull(run=self.images_on_machine(*present), always=False)
+
+        self.assertFalse([command for command in commands if command[:2] == ["docker", "pull"]])
+        self.assertIn("up --pull", printed)
+
+    def test_up_pulls_only_the_images_missing_from_the_machine(self):
+        backend = self.environment["DEV_STACK_BACKEND_IMAGE"]
+        present = [
+            self.environment[variable]
+            for _, variable, _, _ in self.dev_stack.APPLICATION_IMAGES
+            if self.environment[variable] != backend
+        ]
+        commands, _ = self.pull(run=self.images_on_machine(*present), always=False)
+
+        self.assertEqual([command for command in commands if command[:2] == ["docker", "pull"]],
+                         [["docker", "pull", backend]])
 
     def test_compose_files_run_the_published_development_images(self):
         harness = REPO_ROOT / "projects" / "analyzer-harness"
@@ -993,6 +1025,20 @@ class DevStackPublishedImagesTest(unittest.TestCase):
         self.assertTrue(self.dev_stack.parse_args(["up", "--build"]).build)
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.dev_stack.parse_args(["up", "--skip-build", "--build"])
+
+    def test_pull_is_off_by_default_and_cannot_be_combined_with_build_or_skip_build(self):
+        self.assertFalse(self.dev_stack.parse_args(["up"]).pull)
+        self.assertTrue(self.dev_stack.parse_args(["up", "--pull"]).pull)
+        for other in ("--build", "--skip-build"):
+            with self.subTest(other=other), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                self.dev_stack.parse_args(["up", "--pull", other])
+
+    def test_up_asks_for_a_pull_only_with_the_pull_flag(self):
+        _, _, pull_images = self.up()
+        self.assertFalse(pull_images.call_args.kwargs["always"])
+
+        _, _, pull_images = self.up("--pull")
+        self.assertTrue(pull_images.call_args.kwargs["always"])
 
 
 class DevStackModuleTest(unittest.TestCase):
