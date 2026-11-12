@@ -90,7 +90,7 @@ const OrganismPicker = ({ id, titleText, value, onChange, ...rest }) => {
       onChange={({ selectedItem }) => {
         const chosen = selectedItem?.id || "";
         // Carbon also reports the selection it was just given; only a new choice is a change.
-        if (chosen === (value || "")) return;
+        if (chosen === (selected?.id || "")) return;
         setKnown(selectedItem || null);
         onChange(chosen);
       }}

@@ -130,7 +130,7 @@ it("offers the common organisms again when the text is erased", async () => {
   expect(screen.queryByRole("option", { name: /Klebsiella sp\./ })).toBeNull();
 });
 
-it("does not report a change when its value is cleared from outside", async () => {
+it("does not report a change when its value is cleared or replaced from outside", async () => {
   const onChange = vi.fn();
   const picker = (value) => (
     <IntlProvider locale="en" messages={messages}>
@@ -145,6 +145,8 @@ it("does not report a change when its value is cleared from outside", async () =
   const { rerender } = render(picker("e"));
   const input = screen.getByRole("combobox", { name: "Organism" });
   await waitFor(() => expect(input).toHaveValue("Escherichia coli (eco)"));
+  rerender(picker("k"));
+  await waitFor(() => expect(input).toHaveValue("Klebsiella sp. (kl-)"));
   rerender(picker(""));
   await waitFor(() => expect(input).toHaveValue(""));
   expect(onChange).not.toHaveBeenCalled();
