@@ -2,6 +2,8 @@ package org.openelisglobal.organization.locations;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
+import java.util.regex.Pattern;
 import org.openelisglobal.organization.service.OrganizationChangeService.FieldChange;
 
 /**
@@ -29,6 +31,20 @@ public final class LocationsApi {
     public static final String SOURCE_REGISTRY = "REGISTRY";
     public static final String SOURCE_LOCAL = "LOCAL";
     public static final String SOURCE_IMPORT = "IMPORT";
+
+    private static final Pattern FHIR_ID = Pattern
+            .compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+
+    /**
+     * A FHIR id as OpenELIS writes it: a UUID in its full 8-4-4-4-12 form. Null for
+     * anything else, including the short forms UUID.fromString accepts.
+     */
+    public static UUID parseFhirId(String value) {
+        if (value == null || !FHIR_ID.matcher(value.trim()).matches()) {
+            return null;
+        }
+        return UUID.fromString(value.trim());
+    }
 
     public static final List<String> REFERRAL_STATUSES = List.of("Approved", "Under evaluation", "Suspended",
             "Not approved");
