@@ -35,6 +35,7 @@ import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirFacilityOrganizationService;
 import org.openelisglobal.facilityregistry.form.FacilityLocationStatus;
 import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.service.ThisLaboratoryService;
 import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -55,6 +56,9 @@ public class FacilityRegistryServiceImpl implements FacilityRegistryService {
 
     @Autowired
     private OrganizationService organizationService;
+
+    @Autowired
+    private ThisLaboratoryService thisLaboratoryService;
 
     @Autowired
     private FhirUtil fhirUtil;
@@ -370,8 +374,7 @@ public class FacilityRegistryServiceImpl implements FacilityRegistryService {
     }
 
     private org.openelisglobal.organization.valueholder.Organization facilityRow() {
-        return organizationService.getOrganizationByShortName(FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME,
-                false);
+        return thisLaboratoryService.find();
     }
 
     private String fingerprint() {

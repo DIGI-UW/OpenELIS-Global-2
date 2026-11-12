@@ -165,9 +165,9 @@ describe("OrganizationsView (OGC-1363)", () => {
     expect(screen.getByTestId("locations-this-lab-fhir-id")).toHaveTextContent(
       "161f4606-a361-4350-a87a-1a879ea9e5de",
     );
-    expect(screen.getByTestId("locations-this-lab-record-id")).toHaveTextContent(
-      "2",
-    );
+    expect(
+      screen.getByTestId("locations-this-lab-record-id"),
+    ).toHaveTextContent("2");
     const tags = await screen.findAllByTestId("locations-this-lab-tag");
     expect(tags).toHaveLength(1);
     expect(tags[0].closest("tr")).toHaveTextContent(
@@ -180,7 +180,9 @@ describe("OrganizationsView (OGC-1363)", () => {
     expect(await screen.findByText("Health Services Inc")).toBeInTheDocument();
     await waitFor(() => expect(api.getThisLaboratory).toHaveBeenCalled());
     expect(screen.queryByTestId("locations-this-lab")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("locations-this-lab-tag")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("locations-this-lab-tag"),
+    ).not.toBeInTheDocument();
   });
 
   // OGC-1448: the sort description is built from the header's children; an

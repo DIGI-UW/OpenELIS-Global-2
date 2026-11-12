@@ -18,6 +18,7 @@ import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.service.ThisLaboratoryService;
 import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,6 +52,9 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
 
     @Autowired
     private OrganizationService organizationService;
+
+    @Autowired
+    private ThisLaboratoryService thisLaboratoryService;
 
     @Autowired
     private DaemonContextExecutor daemonContextExecutor;
@@ -325,8 +329,7 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
         }
 
         try {
-            org.openelisglobal.organization.valueholder.Organization oeOrg = organizationService
-                    .getOrganizationByShortName(SHORT_NAME, false);
+            org.openelisglobal.organization.valueholder.Organization oeOrg = thisLaboratoryService.find();
 
             if (oeOrg == null) {
                 oeOrg = new org.openelisglobal.organization.valueholder.Organization();
@@ -340,7 +343,8 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
             oeOrg.setFhirUuid(UUID.fromString(facilityUuid));
             applyAddressToOeOrg(oeOrg);
 
-            organizationService.save(oeOrg);
+            oeOrg = organizationService.save(oeOrg);
+            thisLaboratoryService.record(oeOrg);
             LogEvent.logInfo(this.getClass().getSimpleName(), "syncToOpenElisDb",
                     "Synced OpenELIS Organization for facility: " + oeOrg.getId());
         } catch (Exception e) {
@@ -363,8 +367,7 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
 
             // Look up the facility org in the local DB by the constant short name.
             // This is the source of truth and is stable even when the facility ID changes.
-            org.openelisglobal.organization.valueholder.Organization dbOrg = organizationService
-                    .getOrganizationByShortName(SHORT_NAME, false);
+            org.openelisglobal.organization.valueholder.Organization dbOrg = thisLaboratoryService.find();
 
             if (dbOrg != null && dbOrg.getFhirUuid() != null) {
                 // Reuse the FHIR UUID from the DB record so we always PUT to the same resource

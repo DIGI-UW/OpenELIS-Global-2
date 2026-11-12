@@ -127,8 +127,8 @@ public final class LocationsApi {
     }
 
     /**
-     * This laboratory's own facility organization: the record other OpenELIS
-     * labs address referrals to, by its FHIR id.
+     * This laboratory's own facility organization: the record other OpenELIS labs
+     * address referrals to, by its FHIR id.
      */
     public record ThisLaboratory(String id, String name, String fhirId) {
     }

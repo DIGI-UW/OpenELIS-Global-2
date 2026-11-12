@@ -25,7 +25,6 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
-import org.openelisglobal.dataexchange.fhir.service.FhirFacilityOrganizationService;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.organization.locations.LocationsApi.ActiveRequest;
@@ -60,6 +59,7 @@ import org.openelisglobal.organization.service.OrganizationChangeService.FieldCh
 import org.openelisglobal.organization.service.OrganizationIdentifierService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.service.OrganizationTypeService;
+import org.openelisglobal.organization.service.ThisLaboratoryService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.organization.valueholder.OrganizationChange;
 import org.openelisglobal.organization.valueholder.OrganizationIdentifier;
@@ -91,6 +91,8 @@ public class LocationsServiceImpl implements LocationsService {
 
     @Autowired
     private OrganizationService organizationService;
+    @Autowired
+    private ThisLaboratoryService thisLaboratoryService;
     @Autowired
     private OrganizationTypeService organizationTypeService;
     @Autowired
@@ -509,8 +511,7 @@ public class LocationsServiceImpl implements LocationsService {
     @Override
     @Transactional(readOnly = true)
     public ThisLaboratory thisLaboratory() {
-        Organization organization = organizationService
-                .getOrganizationByShortName(FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME, false);
+        Organization organization = thisLaboratoryService.find();
         if (organization == null) {
             return null;
         }
@@ -565,9 +566,8 @@ public class LocationsServiceImpl implements LocationsService {
      * location (Site Information) and registered in the facility registry, so the
      * Locations screen shows it read-only and a save keeps the stored one.
      */
-    private static boolean isFacilityPosition(Organization organization) {
-        return organization.getId() != null
-                && FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME.equals(organization.getShortName());
+    private boolean isFacilityPosition(Organization organization) {
+        return organization.getId() != null && thisLaboratoryService.isThisLaboratory(organization);
     }
 
     /**
@@ -587,6 +587,11 @@ public class LocationsServiceImpl implements LocationsService {
             return;
         }
         if (uuid.equals(organization.getFhirUuid())) {
+            return;
+        }
+        if (thisLaboratoryService.isThisLaboratory(organization)) {
+            errors.put("referral.fhirId",
+                    "This laboratory's own FHIR id cannot be changed: other labs address referrals to it");
             return;
         }
         Organization other = organizationService.getOrganizationByFhirId(uuid.toString());

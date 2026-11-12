@@ -32,6 +32,7 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.organization.locations.LocationsApi;
 import org.openelisglobal.organization.locations.LocationsServiceImpl;
 import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.service.ThisLaboratoryService;
 import org.openelisglobal.referral.controller.rest.ReferralSubcontractDispatchRestController;
 import org.openelisglobal.referral.fhir.service.FhirReferralServiceImpl;
 import org.openelisglobal.referral.service.ReferralService;
@@ -106,7 +107,9 @@ public class ReferralAddressingTest {
     public void aReferenceLabsFhirIdIsValidatedAndSet() {
         LocationsServiceImpl locations = new LocationsServiceImpl();
         OrganizationService organizationService = mock(OrganizationService.class);
+        ThisLaboratoryService thisLaboratory = mock(ThisLaboratoryService.class);
         ReflectionTestUtils.setField(locations, "organizationService", organizationService);
+        ReflectionTestUtils.setField(locations, "thisLaboratoryService", thisLaboratory);
         org.openelisglobal.organization.valueholder.Organization lab = new org.openelisglobal.organization.valueholder.Organization();
         lab.setId("3");
         lab.setFhirUuid(UUID.fromString("6ad4712d-0da1-442f-9666-e2ed59db5862"));
@@ -128,13 +131,23 @@ public class ReferralAddressingTest {
         ReflectionTestUtils.invokeMethod(locations, "applyReferralFhirId", lab, taken, errors);
         assertTrue(errors.get("referral.fhirId").contains("Kisenyi Health Centre IV"));
         assertEquals("an id another organization uses is not taken", FACILITY, lab.getFhirUuidAsString());
+
+        org.openelisglobal.organization.valueholder.Organization own = new org.openelisglobal.organization.valueholder.Organization();
+        own.setId("2");
+        own.setFhirUuid(UUID.fromString(FACILITY));
+        when(thisLaboratory.isThisLaboratory(own)).thenReturn(true);
+        errors.clear();
+        ReflectionTestUtils.invokeMethod(locations, "applyReferralFhirId", own, "22222222-3333-4444-5555-666666666666",
+                errors);
+        assertNotNull("this laboratory's own FHIR id is not changed", errors.get("referral.fhirId"));
+        assertEquals(FACILITY, own.getFhirUuidAsString());
     }
 
     @Test
     public void thisLaboratoryIsTheOwnFacilityRecordWithItsFhirId() {
         LocationsServiceImpl locations = new LocationsServiceImpl();
-        OrganizationService organizationService = mock(OrganizationService.class);
-        ReflectionTestUtils.setField(locations, "organizationService", organizationService);
+        ThisLaboratoryService thisLaboratoryService = mock(ThisLaboratoryService.class);
+        ReflectionTestUtils.setField(locations, "thisLaboratoryService", thisLaboratoryService);
         assertNull(locations.thisLaboratory());
 
         org.openelisglobal.organization.valueholder.Organization own = new org.openelisglobal.organization.valueholder.Organization();
@@ -142,8 +155,7 @@ public class ReferralAddressingTest {
         own.setOrganizationName("Uganda National Reference Laboratory");
         own.setShortName(FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME);
         own.setFhirUuid(UUID.fromString(FACILITY));
-        when(organizationService.getOrganizationByShortName(FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME,
-                false)).thenReturn(own);
+        when(thisLaboratoryService.find()).thenReturn(own);
 
         LocationsApi.ThisLaboratory thisLab = locations.thisLaboratory();
         assertEquals("2", thisLab.id());

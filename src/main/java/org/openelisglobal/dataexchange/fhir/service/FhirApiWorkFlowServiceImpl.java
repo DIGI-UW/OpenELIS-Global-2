@@ -47,6 +47,7 @@ import org.openelisglobal.dataexchange.fhir.service.TaskWorker.TaskResult;
 import org.openelisglobal.dataexchange.order.action.DBOrderExistanceChecker;
 import org.openelisglobal.dataexchange.order.action.IOrderPersister;
 import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.service.ThisLaboratoryService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
@@ -77,6 +78,9 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
     private FhirTransformService fhirTransformService;
     @Autowired
     private OrganizationService organizationService;
+
+    @Autowired
+    private ThisLaboratoryService thisLaboratoryService;
     @Autowired
     private ProviderService providerService;
     @Autowired
@@ -994,7 +998,8 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
             organizationService.update(sameName);
             if (!organizationService.getTypeIdsForOrganizationId(sameName.getId())
                     .contains(TableIdService.getInstance().REFERRING_ORG_TYPE_ID)) {
-                organizationService.linkOrganizationAndType(sameName, TableIdService.getInstance().REFERRING_ORG_TYPE_ID);
+                organizationService.linkOrganizationAndType(sameName,
+                        TableIdService.getInstance().REFERRING_ORG_TYPE_ID);
             }
             return;
         }
@@ -1018,7 +1023,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
         probe.setOrganizationName(name);
         Organization found = organizationService.getOrganizationByName(probe, true);
         if (found == null || !IActionConstants.YES.equals(found.getIsActive())
-                || FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME.equals(found.getShortName())) {
+                || thisLaboratoryService.isThisLaboratory(found)) {
             return null;
         }
         return found;
