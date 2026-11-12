@@ -47,6 +47,17 @@ def isolated_git_environment(home):
     return environment
 
 
+def keep_terminal_record_out_of_the_checkout(test):
+    """An up in a test records the terminal in a temporary file, never in .dev-stack of the checkout."""
+    state = tempfile.TemporaryDirectory()
+    test.addCleanup(state.cleanup)
+    record = patch.object(
+        test.dev_stack, "terminal_pull_record", return_value=pathlib.Path(state.name) / "pulled-terminal"
+    )
+    record.start()
+    test.addCleanup(record.stop)
+
+
 class SubmoduleFixture:
     """A parent repository pinning tools/sub to the first of two commits."""
 
@@ -211,6 +222,9 @@ class DevStackContractTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.dev_stack = load_dev_stack()
+
+    def setUp(self):
+        keep_terminal_record_out_of_the_checkout(self)
 
     def test_project_identity_is_deterministic_per_worktree(self):
         first = self.dev_stack.make_context(REPO_ROOT)
@@ -779,6 +793,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
     def setUp(self):
         self.context = self.dev_stack.make_context(REPO_ROOT)
         self.environment = self.dev_stack.build_environment(self.context)
+        keep_terminal_record_out_of_the_checkout(self)
 
     def pull(self, changed_submodules=(), run=None, differences=(), backend_differences=(), always=True):
         printed = io.StringIO()
