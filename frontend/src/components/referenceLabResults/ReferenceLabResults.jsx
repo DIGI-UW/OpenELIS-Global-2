@@ -455,7 +455,7 @@ const ReferenceLabResults = () => {
               onChange={(id) => setFilterRefLab(id || null)}
             />
           </Column>
-          <Column lg={4} md={4} sm={4}>
+          <Column lg={6} md={4} sm={4}>
             <DatePicker
               dateFormat={siteDate.dateFormat}
               parseDate={siteDate.parseDate}
@@ -480,7 +480,7 @@ const ReferenceLabResults = () => {
               />
             </DatePicker>
           </Column>
-          <Column lg={4} md={4} sm={4}>
+          <Column lg={3} md={4} sm={4}>
             <MultiSelect
               id="priority-filter"
               titleText={intl.formatMessage({ id: "referral.filter.priority" })}
@@ -496,7 +496,7 @@ const ReferenceLabResults = () => {
             />
           </Column>
           {activeView === "outstanding" && (
-            <Column lg={3} md={4} sm={4}>
+            <Column lg={2} md={4} sm={4}>
               <Select
                 id="days-bucket-filter"
                 labelText={intl.formatMessage({
