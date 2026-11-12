@@ -455,7 +455,7 @@ const ReferenceLabResults = () => {
               onChange={(id) => setFilterRefLab(id || null)}
             />
           </Column>
-          <Column lg={4} md={4} sm={4}>
+          <Column lg={8} md={4} sm={4}>
             <DatePicker
               dateFormat={siteDate.dateFormat}
               parseDate={siteDate.parseDate}
@@ -496,7 +496,7 @@ const ReferenceLabResults = () => {
             />
           </Column>
           {activeView === "outstanding" && (
-            <Column lg={3} md={4} sm={4}>
+            <Column lg={4} md={4} sm={4}>
               <Select
                 id="days-bucket-filter"
                 labelText={intl.formatMessage({
@@ -522,7 +522,7 @@ const ReferenceLabResults = () => {
               </Select>
             </Column>
           )}
-          <Column lg={1} md={4} sm={4}>
+          <Column lg={2} md={4} sm={4}>
             <div className="reference-lab-results__clear">
               <Button kind="ghost" size="sm" onClick={clearFilters}>
                 <FormattedMessage id="referral.action.clearFilters" />
