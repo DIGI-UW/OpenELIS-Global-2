@@ -10,6 +10,10 @@
   padding: 50px;
 }
 .dashboard-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
   position: relative;
   padding: 20px;
   border-radius: 3px;
@@ -58,11 +62,17 @@
 
 .dashboard-tile__title {
   margin: 0;
+  padding: 0;
+  text-align: center;
+  text-wrap: balance;
+  line-height: 1.5rem;
+  min-height: 3rem;
   font-weight: var(--cds-body-01-font-weight, 400);
 }
 
 .dashboard-tile__subtitle {
   margin: 0.25rem 0 0;
+  text-align: center;
   min-height: 1.125rem;
   color: var(--cds-text-secondary, #525252);
   font-size: var(--cds-body-compact-01-font-size, 0.875rem);
@@ -72,7 +82,8 @@
 }
 
 .dashboard-tile__value {
-  margin: 0.5rem 0 0;
+  margin: auto 0 0;
+  padding-top: 0.5rem;
   font-size: var(--cds-heading-05-font-size, 2rem);
   font-weight: var(--cds-heading-05-font-weight, 400);
   line-height: var(--cds-heading-05-line-height, 1.25);
@@ -80,8 +91,8 @@
 
 .tile-icon {
   position: absolute;
-  top: 0.1rem;
-  right: 0.1rem;
+  top: var(--cds-spacing-03, 0.5rem);
+  right: var(--cds-spacing-03, 0.5rem);
 }
 
 .icon-wrapper {
