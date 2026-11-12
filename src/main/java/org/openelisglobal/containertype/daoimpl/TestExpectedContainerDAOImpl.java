@@ -27,6 +27,12 @@ public class TestExpectedContainerDAOImpl extends BaseDAOImpl<TestExpectedContai
     }
 
     @Override
+    public void lockTest(Integer testId) {
+        entityManager.createNativeQuery("SELECT id FROM clinlims.test WHERE id = :testId FOR UPDATE")
+                .setParameter("testId", testId).getResultList();
+    }
+
+    @Override
     public void deleteForTest(Integer testId) {
         entityManager.createQuery("DELETE FROM TestExpectedContainer c WHERE c.testId = :testId")
                 .setParameter("testId", testId).executeUpdate();

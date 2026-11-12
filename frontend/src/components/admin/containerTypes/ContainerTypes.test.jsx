@@ -35,6 +35,7 @@ const SST = {
   domains: ["CLINICAL"],
   sampleTypes: [{ id: "2", value: "Serum" }],
   samplesUsing: 3,
+  testsUsing: 2,
 };
 
 const listRequests = [];
@@ -75,6 +76,7 @@ describe("Container Types (OGC-1611 P1)", () => {
     expect(row).toHaveTextContent("Clinical");
     expect(row).toHaveTextContent("Gold");
     expect(row).toHaveTextContent("Serum");
+    expect(row).toHaveTextContent("Tests: 2");
     expect(row).toHaveTextContent("Samples: 3");
     expect(row).toHaveTextContent("Active");
   });

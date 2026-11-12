@@ -80,12 +80,15 @@ function ContainersSection({ sampleTypeId }) {
           setSaved(true);
           return;
         }
+        const code = response && response.code;
         setRefusal(
           intl.formatMessage({
             id:
-              response && response.code
-                ? `label.testCatalog.containers.error.${response.code}`
-                : "label.sampleType.containers.saveFailed",
+              code === "notFound"
+                ? "label.sampleType.containers.notFound"
+                : code
+                  ? `label.testCatalog.containers.error.${code}`
+                  : "label.sampleType.containers.saveFailed",
             defaultMessage: intl.formatMessage({
               id: "label.sampleType.containers.saveFailed",
             }),

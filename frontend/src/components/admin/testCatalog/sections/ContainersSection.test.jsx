@@ -161,6 +161,61 @@ describe("ContainersSection", () => {
     });
   });
 
+  it("reads a comma as the decimal point of a minimum volume", () => {
+    renderSection(view());
+    putToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>
+      callback(view()),
+    );
+    addContainer(6);
+
+    fireEvent.change(document.getElementById("container-volume-6"), {
+      target: { value: "1,5" },
+    });
+    fireEvent.click(screen.getByTestId("containers-save"));
+
+    expect(sentBody().containers[0]).toMatchObject({
+      minVolume: 1.5,
+      volumeUnit: "mL",
+    });
+  });
+
+  it("refuses a minimum volume or a count that is not a number before saving", () => {
+    renderSection(view());
+    addContainer(6);
+    const save = screen.getByTestId("containers-save");
+
+    fireEvent.change(document.getElementById("container-volume-6"), {
+      target: { value: "abc" },
+    });
+    expect(
+      document.getElementById("container-volume-6"),
+    ).toHaveAccessibleDescription(
+      "Enter the minimum volume as a number, for example 1.5.",
+    );
+    expect(save).toBeDisabled();
+
+    fireEvent.change(document.getElementById("container-volume-6"), {
+      target: { value: "0" },
+    });
+    expect(
+      document.getElementById("container-volume-6"),
+    ).toHaveAccessibleDescription("The minimum volume must be more than zero.");
+    expect(save).toBeDisabled();
+
+    fireEvent.change(document.getElementById("container-volume-6"), {
+      target: { value: "" },
+    });
+    expect(save).toBeEnabled();
+
+    fireEvent.change(document.getElementById("container-count-6"), {
+      target: { value: "" },
+    });
+    expect(screen.getByText("Enter a count from 1 to 99.")).toBeInTheDocument();
+    expect(save).toBeDisabled();
+    fireEvent.click(save);
+    expect(putToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+  });
+
   it("adds a container of another sample type as an Alternate used as the test's own, never Preferred", () => {
     renderSection(view());
     putToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>

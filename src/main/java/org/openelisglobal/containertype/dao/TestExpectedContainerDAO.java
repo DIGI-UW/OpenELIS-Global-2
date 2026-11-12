@@ -10,6 +10,12 @@ public interface TestExpectedContainerDAO extends BaseDAO<TestExpectedContainer,
     /** The test's expected containers in their order (FR-G5). */
     List<TestExpectedContainer> getForTest(Integer testId);
 
+    /**
+     * Locks the test's row until the transaction ends, so saves of one test's
+     * containers run one after the other.
+     */
+    void lockTest(Integer testId);
+
     void deleteForTest(Integer testId);
 
     /** The ids of the tests naming this container type. */

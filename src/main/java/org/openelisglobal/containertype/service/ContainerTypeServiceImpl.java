@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.containertype.dao.ContainerTypeDAO;
+import org.openelisglobal.containertype.dao.TestExpectedContainerDAO;
 import org.openelisglobal.containertype.form.ContainerTypeForm;
 import org.openelisglobal.containertype.form.ContainerTypeUsage;
 import org.openelisglobal.containertype.form.ContainerTypeView;
@@ -31,6 +32,8 @@ public class ContainerTypeServiceImpl implements ContainerTypeService {
 
     @Autowired
     private ContainerTypeDAO containerTypeDAO;
+    @Autowired
+    private TestExpectedContainerDAO expectedContainerDAO;
     @Lazy
     @Autowired
     private TypeOfSampleService typeOfSampleService;
@@ -179,7 +182,8 @@ public class ContainerTypeServiceImpl implements ContainerTypeService {
         return new ContainerTypeView(type.getId(), type.getCode(), type.getName(), type.getCategory(),
                 type.getAdditive(), type.getMaterial(), type.getNominalVolume(), type.getVolumeUnit(),
                 type.getCapColourHex(), type.getCapColourName(), type.getStandardCode(), type.isActive(), domains,
-                sampleTypes, samplesUsing);
+                sampleTypes, samplesUsing,
+                type.getId() == null ? 0 : expectedContainerDAO.testIdsUsing(type.getId()).size());
     }
 
     /** A value longer than its column is refused on its field, never stored. */

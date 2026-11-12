@@ -131,4 +131,20 @@ describe("Sample type ContainersSection", () => {
       screen.getByText("This container type does not yield this sample type."),
     ).toBeInTheDocument();
   });
+
+  it("says the sample type, not a test, no longer exists", () => {
+    renderSection();
+    putToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>
+      callback({ status: 404, field: "sampleTypeId", code: "notFound" }),
+    );
+
+    fireEvent.change(screen.getByLabelText("Default container type"), {
+      target: { value: "8" },
+    });
+    fireEvent.click(screen.getByTestId("sample-type-containers-save"));
+
+    expect(
+      screen.getByText("This sample type no longer exists."),
+    ).toBeInTheDocument();
+  });
 });

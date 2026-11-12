@@ -101,6 +101,14 @@
   width: 5.5rem;
 }
 
+.testContainerVolumeField .cds--form-requirement {
+  width: 11.5rem;
+}
+
+.testContainerCountField .cds--number input[type="number"] {
+  min-inline-size: 0;
+}
+
 .testContainerUnitField {
   width: 5.5rem;
 }

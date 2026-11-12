@@ -31,6 +31,35 @@ import "../../containerTypes/ContainerTypes.css";
 
 const UNITS = ["mL", "µL", "L"];
 
+const DECIMAL = /^(\d+([.,]\d*)?|[.,]\d+)$/;
+
+/** The minimum volume as typed: null when blank, NaN when not a number. */
+export const volumeOf = (text) => {
+  const trimmed = String(text ?? "").trim();
+  if (trimmed === "") {
+    return null;
+  }
+  return DECIMAL.test(trimmed) ? Number(trimmed.replace(",", ".")) : NaN;
+};
+
+/** The message id refusing a typed minimum volume, or null when it is fine. */
+export const volumeProblem = (text) => {
+  const volume = volumeOf(text);
+  if (volume === null) {
+    return null;
+  }
+  if (Number.isNaN(volume)) {
+    return "label.testCatalog.containers.error.volumeNotNumber";
+  }
+  return volume > 0 ? null : "label.testCatalog.containers.error.volumeInvalid";
+};
+
+export const countValid = (count) => {
+  const text = String(count ?? "").trim();
+  const value = Number(text);
+  return /^\d+$/.test(text) && value >= 1 && value <= 99;
+};
+
 const toRow = (row) => ({
   containerTypeId: row.containerTypeId,
   name: row.name,
@@ -112,6 +141,9 @@ const ContainersSection = ({ testId }) => {
       primaryTypes.some((primary) => primary.id === type.id),
     );
   const hasPreferred = rows.some((row) => row.role === "PREFERRED");
+  const rowsInvalid = rows.some(
+    (row) => !countValid(row.count) || volumeProblem(row.minVolume) !== null,
+  );
 
   const update = (index, changes) => {
     setRefusal(null);
@@ -174,9 +206,9 @@ const ContainersSection = ({ testId }) => {
       containers: rows.map((row) => ({
         containerTypeId: row.containerTypeId,
         role: row.role,
-        count: Number(row.count) || 1,
-        minVolume: row.minVolume === "" ? null : Number(row.minVolume),
-        volumeUnit: row.minVolume === "" ? null : row.volumeUnit,
+        count: Number(row.count),
+        minVolume: volumeOf(row.minVolume),
+        volumeUnit: volumeOf(row.minVolume) === null ? null : row.volumeUnit,
         usedAsSampleTypeId: row.usedAsSampleTypeId || null,
       })),
     };
@@ -344,6 +376,7 @@ const ContainersSection = ({ testId }) => {
               {rows.map((row, index) => {
                 const usedAs = isOther(row);
                 const refused = refusal && refusal.row === index;
+                const volumeMessage = volumeProblem(row.minVolume);
                 return (
                   <TableRow
                     key={row.containerTypeId}
@@ -472,6 +505,7 @@ const ContainersSection = ({ testId }) => {
                           min={1}
                           max={99}
                           value={row.count}
+                          invalid={!countValid(row.count)}
                           invalidText={intl.formatMessage({
                             id: "label.testCatalog.containers.error.countInvalid",
                           })}
@@ -499,6 +533,12 @@ const ContainersSection = ({ testId }) => {
                               id: "label.testCatalog.containers.optional",
                             })}
                             value={row.minVolume}
+                            invalid={volumeMessage !== null}
+                            invalidText={
+                              volumeMessage
+                                ? intl.formatMessage({ id: volumeMessage })
+                                : ""
+                            }
                             onChange={(event) =>
                               update(index, { minVolume: event.target.value })
                             }
@@ -652,7 +692,7 @@ const ContainersSection = ({ testId }) => {
         <Button
           kind="primary"
           onClick={save}
-          disabled={saving || (rows.length > 0 && !hasPreferred)}
+          disabled={saving || rowsInvalid || (rows.length > 0 && !hasPreferred)}
           data-testid="containers-save"
         >
           <FormattedMessage id="label.button.save" />

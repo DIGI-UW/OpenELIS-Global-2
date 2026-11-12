@@ -186,6 +186,9 @@ public class TestContainerServiceIntegrationTest extends BaseWebContextSensitive
         assertTrue("a deactivated container is not offered again",
                 kept.yieldingChoices().stream().noneMatch(choice -> choice.id().equals(redTop.id())));
         assertEquals(List.of(nameOf(glucose)), containerTypeService.usage(redTop.id()).orElseThrow().tests());
+        assertEquals("the list's Used by counts the tests too", 1,
+                containerTypeService.get(redTop.id()).orElseThrow().testsUsing());
+        assertEquals(0, containerTypeService.get(pst.id()).orElseThrow().testsUsing());
     }
 
     @Test

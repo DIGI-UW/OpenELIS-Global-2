@@ -63,6 +63,7 @@ public class TestContainerServiceImpl implements TestContainerService {
     public TestContainersView save(String testId, TestContainersForm form, String sysUserId) {
         Test test = findTest(testId).orElseThrow(() -> new TestContainersRefusedException("testId", "notFound", null));
         Integer id = Integer.valueOf(test.getId());
+        expectedContainerDAO.lockTest(id);
         Set<String> ownTypes = primarySampleTypeIds(test);
         Map<Long, ContainerTypeView> containers = containersById();
         Set<Long> listedBefore = new HashSet<>();
