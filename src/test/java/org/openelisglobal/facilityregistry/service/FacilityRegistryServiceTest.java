@@ -32,8 +32,13 @@ import org.openelisglobal.dataexchange.fhir.service.FhirFacilityOrganizationServ
 import org.openelisglobal.facilityregistry.form.FacilityLocationStatus;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.organization.locations.LocationsApi.Detail;
+import org.openelisglobal.organization.locations.LocationsApi.SaveRequest;
+import org.openelisglobal.organization.locations.LocationsService;
 import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.organization.valueholder.OrganizationType;
 import org.springframework.aop.framework.Advised;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -53,6 +58,12 @@ public class FacilityRegistryServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private LocalizationService localizationService;
+
+    @Autowired
+    private LocationsService locationsService;
+
+    @Autowired
+    private OrganizationTypeService organizationTypeService;
 
     private Object target;
     private Object serviceClient;
@@ -126,7 +137,7 @@ public class FacilityRegistryServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(FacilityRegistryService.FACILITY_LOCATION_PROFILE, location.at("/meta/profile/0").asText());
         assertEquals("active", location.at("/status").asText());
         assertFacilityTypes(location);
-        assertEquals(FacilityRegistryService.PHYSICAL_TYPE_SYSTEM,
+        assertEquals("http://terminology.hl7.org/CodeSystem/location-physical-type",
                 location.at("/physicalType/coding/0/system").asText());
         assertEquals("bu", location.at("/physicalType/coding/0/code").asText());
         assertEquals(0.3476, location.at("/position/latitude").asDouble(), 0.0000001);
@@ -196,6 +207,19 @@ public class FacilityRegistryServiceTest extends BaseWebContextSensitiveTest {
         requests.clear();
         service.synchronize();
         assertTrue("nothing changed, nothing sent again", puts().isEmpty());
+    }
+
+    @Test
+    public void theOutcomeMessageDoesNotRepeatTheOutcome() {
+        configure("", "0.3476", "32.5825");
+        service.register();
+        assertFalse(service.getStatus().getLastRegistrationMessage(),
+                service.getStatus().getLastRegistrationMessage().startsWith("Registered"));
+
+        registryStatus.set(500);
+        service.register();
+        assertFalse(service.getStatus().getLastRegistrationMessage(),
+                service.getStatus().getLastRegistrationMessage().startsWith("Registration"));
     }
 
     @Test
@@ -336,6 +360,26 @@ public class FacilityRegistryServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void aFailedLookupAtStartIsTriedAgainOnTheNextCycle() throws Exception {
+        configure("true", "", "");
+        ipResponse = null;
+        service.synchronize();
+        assertNull(service.getStatus().getLatitude());
+
+        ipResponse = "{\"latitude\": 0.3476, \"longitude\": 32.5825}";
+        requests.clear();
+        service.synchronize();
+
+        assertEquals(1, ipLookups().size());
+        assertEquals(FacilityRegistryService.SOURCE_IP, service.getStatus().getSource());
+        assertEquals(0.3476, JSON.readTree(puts().get(1).body()).at("/position/latitude").asDouble(), 0.0000001);
+
+        requests.clear();
+        service.synchronize();
+        assertTrue("a successful lookup is not repeated", ipLookups().isEmpty());
+    }
+
+    @Test
     public void switchingModesAndRestartingRegistersTheNewCoordinates() throws Exception {
         configure("true", "", "");
         service.synchronize();
@@ -357,6 +401,36 @@ public class FacilityRegistryServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(FacilityRegistryService.SOURCE_IP, service.getStatus().getSource());
         assertEquals(1, ipLookups().size());
         assertEquals(0.3476, JSON.readTree(puts().get(1).body()).at("/position/latitude").asDouble(), 0.0000001);
+    }
+
+    @Test
+    public void theLocationsScreenKeepsThePositionTheFacilityLocationOwns() {
+        configure("true", "", "");
+        service.recordBrowserLocation(new BigDecimal("0.0512"), new BigDecimal("32.4635"), "1");
+        Organization row = organizationService
+                .getOrganizationByShortName(FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME, false);
+        Detail detail = locationsService.get(row.getId());
+        assertTrue(detail.positionManaged());
+
+        OrganizationType type = organizationTypeService.getOrganizationTypeByName("registry test lab");
+        if (type == null) {
+            type = new OrganizationType();
+            type.setName("registry test lab");
+            type.setDescription("registry test lab");
+            type.setSysUserId("1");
+            organizationTypeService.insert(type);
+        }
+        locationsService.save(
+                new SaveRequest(row.getId(), null, detail.row().name(), detail.row().shortName(), List.of(type.getId()),
+                        null, null, null, null, null, null, null, null, new BigDecimal("-1.2921"),
+                        new BigDecimal("36.8219"), null, null, null, null, null, List.of(), null, null, null, null),
+                "1");
+
+        Organization saved = organizationService
+                .getOrganizationByShortName(FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME, false);
+        assertEquals(0, new BigDecimal("0.0512").compareTo(saved.getGpsLatitude()));
+        assertEquals(0, new BigDecimal("32.4635").compareTo(saved.getGpsLongitude()));
+        assertEquals(FacilityRegistryService.SOURCE_BROWSER, saved.getGpsSource());
     }
 
     @Test

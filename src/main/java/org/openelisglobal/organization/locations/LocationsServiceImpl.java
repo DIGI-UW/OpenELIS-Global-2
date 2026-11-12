@@ -24,6 +24,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
+import org.openelisglobal.dataexchange.fhir.service.FhirFacilityOrganizationService;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.organization.locations.LocationsApi.ActiveRequest;
@@ -541,7 +542,17 @@ public class LocationsServiceImpl implements LocationsService {
                 organization.getInternetAddress(), organization.getContactName(), organization.getDescription(),
                 organization.getGpsLatitude(), organization.getGpsLongitude(), organization.getServiceType(),
                 organization.getSource(), identifiers, wards, referral, site, millis(organization),
-                changeService.getForOrganization(numericId).size());
+                changeService.getForOrganization(numericId).size(), isFacilityPosition(organization));
+    }
+
+    /**
+     * This laboratory's own facility row: its position is kept by the facility
+     * location (Site Information) and registered in the facility registry, so the
+     * Locations screen shows it read-only and a save keeps the stored one.
+     */
+    private static boolean isFacilityPosition(Organization organization) {
+        return organization.getId() != null
+                && FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME.equals(organization.getShortName());
     }
 
     private static String text(LocalDate date) {
@@ -820,6 +831,7 @@ public class LocationsServiceImpl implements LocationsService {
 
     private void applyFields(Organization organization, SaveRequest request, String kind, Organization parent,
             List<Identifier> identifiers, Map<String, String> errors) {
+        boolean positionManaged = isFacilityPosition(organization);
         organization.setOrganizationName(limited(request.name(), 200, "name", "Name", errors));
         organization.setShortName(limited(request.shortName(), 15, "shortName", "Short name", errors));
         organization.setOrganization(parent);
@@ -830,8 +842,10 @@ public class LocationsServiceImpl implements LocationsService {
         organization.setCity(limited(request.city(), 30, "city", "City", errors));
         organization.setState(limited(request.state(), 100, "state", "State / Province", errors));
         organization.setZipCode(limited(request.zipCode(), 10, "zipCode", "Postal code", errors));
-        organization.setGpsLatitude(request.gpsLatitude());
-        organization.setGpsLongitude(request.gpsLongitude());
+        if (!positionManaged) {
+            organization.setGpsLatitude(request.gpsLatitude());
+            organization.setGpsLongitude(request.gpsLongitude());
+        }
         organization.setContactName(limited(request.contactName(), 100, "contactName", "Contact name", errors));
         organization.setPhone(limited(request.phone(), 20, "phone", "Phone", errors));
         organization.setFax(limited(request.fax(), 20, "fax", "Fax", errors));

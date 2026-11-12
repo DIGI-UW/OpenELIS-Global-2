@@ -12987,6 +12987,7 @@
   "help.locations.status.inactive": "Inactive records are hidden from order entry and other pickers. They still appear on existing orders and reports.",
   "help.locations.field.location": "Pick the most specific area you know. A district is fine if you don't know the LLG.",
   "help.locations.field.gps": "Decimal degrees, WGS84",
+  "help.locations.field.gps.facility": "This laboratory's position is set in Admin > General Configurations > Site Information > Facility location.",
   "help.locations.field.siteDescription": "Include directions so someone else can find the exact spot",
   "help.locations.identifiers": "Type any label, or pick one already used. The reporting code shows as Code in lists, exports and reports. Every identifier is searchable and used to match import rows.",
   "help.locations.ward": "Wards, departments or clinics inside this organization",

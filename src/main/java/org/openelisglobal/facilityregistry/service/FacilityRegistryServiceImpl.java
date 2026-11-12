@@ -184,11 +184,11 @@ public class FacilityRegistryServiceImpl implements FacilityRegistryService {
             put(base + "/" + ResourceType.Organization + "/" + organization.getIdPart(), organization, authorization);
             put(base + "/" + ResourceType.Location + "/" + location.getIdPart(), location, authorization);
             registeredFingerprint = fingerprint();
-            recordOutcome(true, "Registered " + organization.getName() + " in " + base
+            recordOutcome(true, organization.getName() + " in " + base
                     + (coordinates == null ? " without a position" : " at " + coordinates));
             return true;
         } catch (IOException | RuntimeException e) {
-            recordOutcome(false, "Registration in " + base + " failed: " + e.getMessage());
+            recordOutcome(false, base + ": " + e.getMessage());
             return false;
         }
     }
@@ -266,8 +266,10 @@ public class FacilityRegistryServiceImpl implements FacilityRegistryService {
                                 + " ignored; the position comes from detection");
             }
             if (!SOURCE_BROWSER.equals(row.getGpsSource()) && !ipLookupDone) {
-                ipLookupDone = true;
-                lookUpByIp().ifPresent(coordinates -> store(row, coordinates, null));
+                lookUpByIp().ifPresent(coordinates -> {
+                    store(row, coordinates, null);
+                    ipLookupDone = true;
+                });
             }
         } else {
             manualCoordinates().ifPresent(coordinates -> {
@@ -423,9 +425,9 @@ public class FacilityRegistryServiceImpl implements FacilityRegistryService {
         lastRegistrationAt = Instant.now();
         lastRegistrationMessage = message;
         if (success) {
-            LogEvent.logInfo(getClass().getSimpleName(), "register", message);
+            LogEvent.logInfo(getClass().getSimpleName(), "register", "Registered " + message);
         } else {
-            LogEvent.logError(getClass().getSimpleName(), "register", message);
+            LogEvent.logError(getClass().getSimpleName(), "register", "Registration failed in " + message);
         }
     }
 

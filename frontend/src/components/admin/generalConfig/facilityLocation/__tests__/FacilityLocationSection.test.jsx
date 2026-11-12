@@ -28,7 +28,8 @@ const manual = {
   registryConfigured: true,
   registryUrl: "http://gofr:4000/fhir/DEFAULT",
   lastRegistrationSuccess: true,
-  lastRegistrationMessage: "Registered Lab A",
+  lastRegistrationMessage:
+    "Lab A in http://registry/fhir at 0.3476,32.5825 (properties)",
 };
 
 const auto = {

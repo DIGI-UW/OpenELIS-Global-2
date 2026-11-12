@@ -236,6 +236,32 @@ describe("RecordForm (OGC-1363)", () => {
     expect(body.parentId).toBe("9101");
   });
 
+  it("shows this laboratory's own position read-only and says where it is set", async () => {
+    api.getOrganization.mockResolvedValue(
+      detail({
+        gpsLatitude: 0.3476,
+        gpsLongitude: 32.5825,
+        positionManaged: true,
+      }),
+    );
+    wrap(
+      <RecordForm
+        id="4"
+        kind="facility"
+        lists={LISTS}
+        onCancel={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+    expect(await screen.findByDisplayValue("0.3476")).toHaveAttribute(
+      "readonly",
+    );
+    expect(screen.getByDisplayValue("32.5825")).toHaveAttribute("readonly");
+    expect(
+      screen.getByText(/Site Information > Facility location/),
+    ).toBeInTheDocument();
+  });
+
   it("shows the server's field errors on a refused save", async () => {
     api.getOrganization.mockResolvedValue(detail());
     api.updateOrganization.mockRejectedValue(

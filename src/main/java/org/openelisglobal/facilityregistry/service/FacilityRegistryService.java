@@ -32,7 +32,7 @@ public interface FacilityRegistryService {
     String ROLE_CODE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-RoleCode";
     String MCSD_TYPE_SYSTEM = "urn:ietf:rfc:3986";
     String MCSD_FACILITY_CODE = "urn:ihe:iti:mcsd:2019:facility";
-    String PHYSICAL_TYPE_SYSTEM = "http://hl7.org/fhir/ValueSet/location-physical-type";
+    String PHYSICAL_TYPE_SYSTEM = "http://terminology.hl7.org/CodeSystem/location-physical-type";
     String PHYSICAL_TYPE_BUILDING = "bu";
 
     /**
