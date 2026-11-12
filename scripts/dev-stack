@@ -747,6 +747,46 @@ def backend_image_differences(
     ]
 
 
+REMEMBERED_TERMINALS = 20
+
+
+def terminal_session_key() -> str | None:
+    """Identify the terminal this command runs in: its session id and the session leader's start time."""
+    try:
+        session = os.getsid(0)
+        started = run(
+            ["ps", "-o", "lstart=", "-p", str(session)], cwd=Path.cwd(), environment=dict(os.environ), capture=True
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return f"{session}:{started}" if started else None
+
+
+def terminal_pull_record(context: StackContext) -> Path:
+    return context.repo_root / ".dev-stack" / "pulled-terminal"
+
+
+def first_up_in_terminal(context: StackContext) -> bool:
+    """True until `up` has pulled the published images once in this terminal."""
+    key = terminal_session_key()
+    record = terminal_pull_record(context)
+    if key is None or not record.is_file():
+        return True
+    return key not in record.read_text(encoding="utf-8").splitlines()
+
+
+def mark_terminal_pulled(context: StackContext) -> None:
+    """Remember this terminal (and the most recent others) as having pulled."""
+    key = terminal_session_key()
+    if key is None:
+        return
+    record = terminal_pull_record(context)
+    record.parent.mkdir(parents=True, exist_ok=True)
+    known = record.read_text(encoding="utf-8").splitlines() if record.is_file() else []
+    known = [line for line in known if line and line != key][-(REMEMBERED_TERMINALS - 1):] + [key]
+    record.write_text("\n".join(known) + "\n", encoding="utf-8")
+
+
 def image_record(context: StackContext) -> Path:
     return context.repo_root / ".dev-stack" / "images.json"
 
@@ -1159,7 +1199,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     images.add_argument(
         "--pull",
         action="store_true",
-        help="Pull the latest published images even when a copy is already on this machine.",
+        help="Pull the latest published images now. Without it, up pulls on its first run in each terminal and when an image is missing.",
     )
     up.add_argument(
         "--setup",
@@ -1236,11 +1276,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         heal_war_mount(context)
         modules_changed = False
+        pull_latest = args.pull or (not args.build and not args.skip_build and first_up_in_terminal(context))
+        if pull_latest and not args.pull:
+            print("First up in this terminal: pulling the latest published images "
+                  "(later runs here reuse them; up --pull pulls again)")
         if modules and not args.build:
             if args.skip_build:
                 reuse_recorded_images(context, environment)
             else:
-                pull_image(context, environment, environment["DEV_STACK_BACKEND_IMAGE"], always=args.pull)
+                pull_image(context, environment, environment["DEV_STACK_BACKEND_IMAGE"], always=pull_latest)
             require_module_support(context, environment)
         if not args.skip_build:
             build_application(context, environment, install_for_modules=bool(modules))
@@ -1252,7 +1296,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.build:
                 build_images(context, environment)
             else:
-                pull_images(context, environment, changed_submodules, always=args.pull)
+                pull_images(context, environment, changed_submodules, always=pull_latest)
+                if pull_latest:
+                    mark_terminal_pulled(context)
             record_images(context, environment)
         elif not (context.repo_root / "target" / "OpenELIS-Global.war").is_file():
             raise RuntimeError("--skip-build requires target/OpenELIS-Global.war")

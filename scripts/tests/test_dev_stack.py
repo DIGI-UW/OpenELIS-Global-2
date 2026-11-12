@@ -930,6 +930,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
             patch.object(self.dev_stack, "build_images") as build_images,
             patch.object(self.dev_stack, "pull_images") as pull_images,
             patch.object(self.dev_stack, "record_images") as record_images,
+            patch.object(self.dev_stack, "mark_terminal_pulled"),
             patch.object(self.dev_stack, "record_setup"),
             patch.object(self.dev_stack, "start_services"),
             patch.object(self.dev_stack, "reload_proxy"),
@@ -1033,12 +1034,47 @@ class DevStackPublishedImagesTest(unittest.TestCase):
             with self.subTest(other=other), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 self.dev_stack.parse_args(["up", "--pull", other])
 
-    def test_up_asks_for_a_pull_only_with_the_pull_flag(self):
-        _, _, pull_images = self.up()
+    def test_up_pulls_on_the_first_run_in_a_terminal_and_reuses_images_after(self):
+        with patch.object(self.dev_stack, "first_up_in_terminal", return_value=True):
+            _, _, pull_images = self.up()
+        self.assertTrue(pull_images.call_args.kwargs["always"])
+
+        with patch.object(self.dev_stack, "first_up_in_terminal", return_value=False):
+            _, _, pull_images = self.up()
         self.assertFalse(pull_images.call_args.kwargs["always"])
 
-        _, _, pull_images = self.up("--pull")
+    def test_pull_flag_pulls_even_later_in_the_same_terminal(self):
+        with patch.object(self.dev_stack, "first_up_in_terminal", return_value=False):
+            _, _, pull_images = self.up("--pull")
         self.assertTrue(pull_images.call_args.kwargs["always"])
+
+    def test_a_terminal_counts_as_pulled_only_after_its_own_pull(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        context = self.context._replace(repo_root=pathlib.Path(directory.name))
+
+        with patch.object(self.dev_stack, "terminal_session_key", return_value="101:Thu Nov 12 08:00:00 2026"):
+            self.assertTrue(self.dev_stack.first_up_in_terminal(context))
+            self.dev_stack.mark_terminal_pulled(context)
+            self.assertFalse(self.dev_stack.first_up_in_terminal(context))
+        with patch.object(self.dev_stack, "terminal_session_key", return_value="202:Thu Nov 12 09:00:00 2026"):
+            self.assertTrue(self.dev_stack.first_up_in_terminal(context))
+            self.dev_stack.mark_terminal_pulled(context)
+        with patch.object(self.dev_stack, "terminal_session_key", return_value="101:Thu Nov 12 08:00:00 2026"):
+            self.assertFalse(self.dev_stack.first_up_in_terminal(context), "the first terminal is still remembered")
+        with patch.object(self.dev_stack, "terminal_session_key", return_value=None):
+            self.assertTrue(self.dev_stack.first_up_in_terminal(context))
+
+    def test_terminal_session_key_names_the_session_and_its_start(self):
+        with (
+            patch.object(self.dev_stack.os, "getsid", return_value=4242),
+            patch.object(self.dev_stack, "run",
+                         return_value=subprocess.CompletedProcess([], 0, stdout="Thu Nov 12 08:00:00 2026\n")) as run,
+        ):
+            self.assertEqual(self.dev_stack.terminal_session_key(), "4242:Thu Nov 12 08:00:00 2026")
+        self.assertEqual(run.call_args.args[0], ["ps", "-o", "lstart=", "-p", "4242"])
+        with patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(1, "ps")):
+            self.assertIsNone(self.dev_stack.terminal_session_key())
 
 
 class DevStackModuleTest(unittest.TestCase):

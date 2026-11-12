@@ -59,10 +59,10 @@ the checkout and runs it, together with the frontend `src` and `public`
 directories, in the published development images named in
 `projects/analyzer-harness/docker-compose.dev.yml` and
 `docker-compose.worktree.yml` (`itechuw/openelis-global-2-dev`, `-frontend-dev`,
-`-analyzer-bridge` and `-analyzer-mock`, tag `develop`). Like `docker run`, it
-pulls an image only when it is not on the machine yet, and otherwise uses the
-local copy and prints its build date. Run `up --pull` to get the latest
-published images. `DEV_STACK_IMAGE_NAMESPACE` and `DEV_STACK_IMAGE_TAG` select
+`-analyzer-bridge` and `-analyzer-mock`, tag `develop`). It pulls the latest published images on the first `up` in each terminal, and
+any image that is not on the machine; later runs in the same terminal reuse the
+local images and print their build date. Run `up --pull` to pull again at any
+time. `DEV_STACK_IMAGE_NAMESPACE` and `DEV_STACK_IMAGE_TAG` select
 other published images.
 
 Run `up --build` to build those images from the checkout instead. That is only
