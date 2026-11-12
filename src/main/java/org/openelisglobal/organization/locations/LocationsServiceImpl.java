@@ -49,6 +49,7 @@ import org.openelisglobal.organization.locations.LocationsApi.Row;
 import org.openelisglobal.organization.locations.LocationsApi.SaveRequest;
 import org.openelisglobal.organization.locations.LocationsApi.SaveResult;
 import org.openelisglobal.organization.locations.LocationsApi.Site;
+import org.openelisglobal.organization.locations.LocationsApi.ThisLaboratory;
 import org.openelisglobal.organization.locations.LocationsApi.TypeRef;
 import org.openelisglobal.organization.locations.LocationsApi.Usage;
 import org.openelisglobal.organization.locations.LocationsApi.UsageDetail;
@@ -503,6 +504,18 @@ public class LocationsServiceImpl implements LocationsService {
     public Detail get(String id) {
         Organization organization = require(id);
         return detail(organization);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ThisLaboratory thisLaboratory() {
+        Organization organization = organizationService
+                .getOrganizationByShortName(FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME, false);
+        if (organization == null) {
+            return null;
+        }
+        return new ThisLaboratory(organization.getId(), organization.getOrganizationName(),
+                organization.getFhirUuidAsString());
     }
 
     private Organization require(String id) {

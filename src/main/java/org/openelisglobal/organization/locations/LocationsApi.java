@@ -126,6 +126,13 @@ public final class LocationsApi {
     public record HistoryEntry(Integer id, String when, String user, String action, List<FieldChange> changes) {
     }
 
+    /**
+     * This laboratory's own facility organization: the record other OpenELIS
+     * labs address referrals to, by its FHIR id.
+     */
+    public record ThisLaboratory(String id, String name, String fhirId) {
+    }
+
     public record Lists(List<ListRef> categories, List<ListRef> ownerships, List<ListRef> serviceTypes,
             List<ListRef> siteTypes, List<ListRef> environmentalZones, List<ListRef> referralStatuses,
             List<String> identifierLabels, List<TypeRef> facilityTypes, List<AreaLevel> areaLevels) {

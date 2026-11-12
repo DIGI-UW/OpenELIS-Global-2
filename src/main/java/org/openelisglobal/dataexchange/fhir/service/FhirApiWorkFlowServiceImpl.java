@@ -987,14 +987,41 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
         } catch (IllegalArgumentException e) {
             return;
         }
+        String name = remoteOrganization.hasName() ? remoteOrganization.getName() : fhirId;
+        Organization sameName = sameNamedOrganization(name);
+        if (sameName != null) {
+            sameName.setFhirUuid(uuid);
+            organizationService.update(sameName);
+            if (!organizationService.getTypeIdsForOrganizationId(sameName.getId())
+                    .contains(TableIdService.getInstance().REFERRING_ORG_TYPE_ID)) {
+                organizationService.linkOrganizationAndType(sameName, TableIdService.getInstance().REFERRING_ORG_TYPE_ID);
+            }
+            return;
+        }
         Organization newOrg = new Organization();
-        newOrg.setOrganizationName(remoteOrganization.hasName() ? remoteOrganization.getName() : fhirId);
+        newOrg.setOrganizationName(name);
         newOrg.setFhirUuid(uuid);
         newOrg.setIsActive(IActionConstants.YES);
         newOrg.setMlsLabFlag(IActionConstants.NO);
         newOrg.setMlsSentinelLabFlag(IActionConstants.NO);
         organizationService.save(newOrg);
         organizationService.linkOrganizationAndType(newOrg, TableIdService.getInstance().REFERRING_ORG_TYPE_ID);
+    }
+
+    /**
+     * An active organization already named like the referring lab, other than this
+     * lab's own facility: the record an administrator created for that lab before
+     * it sent its first referral.
+     */
+    private Organization sameNamedOrganization(String name) {
+        Organization probe = new Organization();
+        probe.setOrganizationName(name);
+        Organization found = organizationService.getOrganizationByName(probe, true);
+        if (found == null || !IActionConstants.YES.equals(found.getIsActive())
+                || FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME.equals(found.getShortName())) {
+            return null;
+        }
+        return found;
     }
 
     private Practitioner getPractitionerFromServer(IGenericClient fhirClient, Task remoteTask) {

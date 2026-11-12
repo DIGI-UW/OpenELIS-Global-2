@@ -17,6 +17,8 @@ import org.hl7.fhir.r4.model.Task;
 import org.hl7.fhir.r4.model.Task.TaskRestrictionComponent;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceServiceImpl.FhirOperations;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,5 +81,48 @@ public class ReferringOrganizationImportTest extends BaseWebContextSensitiveTest
         service.importReferringOrganization(remote, task, operations);
 
         assertTrue(operations.updateResources.isEmpty());
+    }
+
+    @Test
+    public void anOrganizationAlreadyNamedLikeTheReferringLabIsLinkedNotDuplicated() {
+        String referringId = "7c1d9e2b-4a6f-4b8e-9d0c-1e2f3a4b5c6d";
+        org.openelisglobal.organization.valueholder.Organization existing = new org.openelisglobal.organization.valueholder.Organization();
+        existing.setOrganizationName("Mbarara Regional Referral Laboratory");
+        existing.setIsActive(IActionConstants.YES);
+        existing.setMlsLabFlag(IActionConstants.NO);
+        existing.setMlsSentinelLabFlag(IActionConstants.NO);
+        String existingId = organizationService.insert(existing);
+
+        FhirApiWorkFlowServiceImpl service = AopTestUtils.getTargetObject(workflowService);
+        Organization referring = new Organization();
+        referring.setId(referringId);
+        referring.setName("Mbarara Regional Referral Laboratory");
+        Task task = new Task();
+        task.setRestriction(new TaskRestrictionComponent().addRecipient(new Reference("Organization/" + referringId)));
+
+        service.importReferringOrganization(remoteReturning(referringId, referring), task, new FhirOperations());
+
+        org.openelisglobal.organization.valueholder.Organization linked = organizationService
+                .getOrganizationByFhirId(referringId);
+        assertNotNull(linked);
+        assertEquals(existingId, linked.getId());
+        assertEquals(1, organizationService.getAll().stream()
+                .filter(o -> "Mbarara Regional Referral Laboratory".equals(o.getOrganizationName())).count());
+        assertTrue(organizationService.getTypeIdsForOrganizationId(existingId)
+                .contains(TableIdService.getInstance().REFERRING_ORG_TYPE_ID));
+    }
+
+    private IGenericClient remoteReturning(String id, Organization organization) {
+        IGenericClient remote = mock(IGenericClient.class);
+        IRead read = mock(IRead.class);
+        @SuppressWarnings("unchecked")
+        IReadTyped<Organization> typed = mock(IReadTyped.class);
+        @SuppressWarnings("unchecked")
+        IReadExecutable<Organization> executable = mock(IReadExecutable.class);
+        when(remote.read()).thenReturn(read);
+        when(read.resource(Organization.class)).thenReturn(typed);
+        when(typed.withId(id)).thenReturn(executable);
+        when(executable.execute()).thenReturn(organization);
+        return remote;
     }
 }

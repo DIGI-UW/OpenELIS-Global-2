@@ -29,6 +29,7 @@ import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.service.FhirFacilityOrganizationService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.organization.locations.LocationsApi;
 import org.openelisglobal.organization.locations.LocationsServiceImpl;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.referral.controller.rest.ReferralSubcontractDispatchRestController;
@@ -127,5 +128,26 @@ public class ReferralAddressingTest {
         ReflectionTestUtils.invokeMethod(locations, "applyReferralFhirId", lab, taken, errors);
         assertTrue(errors.get("referral.fhirId").contains("Kisenyi Health Centre IV"));
         assertEquals("an id another organization uses is not taken", FACILITY, lab.getFhirUuidAsString());
+    }
+
+    @Test
+    public void thisLaboratoryIsTheOwnFacilityRecordWithItsFhirId() {
+        LocationsServiceImpl locations = new LocationsServiceImpl();
+        OrganizationService organizationService = mock(OrganizationService.class);
+        ReflectionTestUtils.setField(locations, "organizationService", organizationService);
+        assertNull(locations.thisLaboratory());
+
+        org.openelisglobal.organization.valueholder.Organization own = new org.openelisglobal.organization.valueholder.Organization();
+        own.setId("2");
+        own.setOrganizationName("Uganda National Reference Laboratory");
+        own.setShortName(FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME);
+        own.setFhirUuid(UUID.fromString(FACILITY));
+        when(organizationService.getOrganizationByShortName(FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME,
+                false)).thenReturn(own);
+
+        LocationsApi.ThisLaboratory thisLab = locations.thisLaboratory();
+        assertEquals("2", thisLab.id());
+        assertEquals("Uganda National Reference Laboratory", thisLab.name());
+        assertEquals(FACILITY, thisLab.fhirId());
     }
 }
