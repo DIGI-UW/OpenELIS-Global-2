@@ -1,0 +1,80 @@
+GUIDELINES	YEAR	TEST_METHOD	POTENCY	ORGANISM_CODE	ORGANISM_CODE_TYPE	BREAKPOINT_TYPE	HOST	SITE_OF_INFECTION	REFERENCE_TABLE	REFERENCE_SEQUENCE	WHONET_ABX_CODE	WHONET_TEST	R	I	SDD	S	ECV_ECOFF	ECV_ECOFF_TENTATIVE	DATE_ENTERED	DATE_MODIFIED	COMMENTS
+EUCAST	2023	DISK	30µg	EBC	FAMILY_CODE	Human	Human		Enterobacterales	36	AMK	AMK_ED30	17	-		18			2023-04-05		
+EUCAST	2023	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Intravenous	Enterobacterales	4	AMC	AMC_ED20	18	-		19			2023-04-05		
+EUCAST	2023	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Oral, Uncomplicated urinary tract infection	Enterobacterales	5	AMC	AMC_ED20	15	-		16			2023-04-05		
+EUCAST	2023	MIC		EBC	FAMILY_CODE	Human	Human	Intravenous	Enterobacterales	4	AMC	AMC_EM	16			8			2023-04-05		
+EUCAST	2023	MIC		EBC	FAMILY_CODE	Human	Human	Oral, Uncomplicated urinary tract infection	Enterobacterales	5	AMC	AMC_EM	64			32			2023-04-05		
+EUCAST	2023	MIC		EBC	FAMILY_CODE	Human	Human		Enterobacterales	36	AMK	AMK_EM	16			8			2023-04-05		
+EUCAST	2023	DISK	30µg	EBC	FAMILY_CODE	Human	Human	Uncomplicated urinary tract infection	Enterobacterales	36	AMK	AMK_ED30	17	-		18			2023-04-05		
+EUCAST	2023	MIC		EBC	FAMILY_CODE	Human	Human	Uncomplicated urinary tract infection	Enterobacterales	36	AMK	AMK_EM	16			8			2023-04-05		
+EUCAST	2023	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Oral, Infections originating from the urinary tract	Enterobacterales	4	AMC	AMC_ED20	18	19-49		50			2023-04-05		
+EUCAST	2023	MIC		EBC	FAMILY_CODE	Human	Human	Oral, Infections originating from the urinary tract	Enterobacterales	4	AMC	AMC_EM	16			0.0001			2023-04-05	2023-06-27	
+EUCAST	2023	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Oral, Other indications	Enterobacterales	4	AMC	AMC_ED20	18	-		19			2023-04-05		
+EUCAST	2023	MIC		EBC	FAMILY_CODE	Human	Human	Oral, Other indications	Enterobacterales	4	AMC	AMC_EM	16			8			2023-04-05		
+CLSI	2023	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human		Table 2A		AMC	AMC_ND20	13	14-17		18					
+CLSI	2023	MIC		EBC	FAMILY_CODE	Human	Human		Table 2A		AMC	AMC_NM	32			8					
+CLSI	2023	DISK	30µg	EBC	FAMILY_CODE	Human	Human		Table 2A		AMK	AMK_ND30	16	17-19		20					
+CLSI	2023	MIC		EBC	FAMILY_CODE	Human	Human		Table 2A		AMK	AMK_NM	16			4					
+EUCAST	2024	DISK	30µg	EBC	FAMILY_CODE	Human	Human		Enterobacterales	36	AMK	AMK_ED30	17	-		18			2023-04-05		
+EUCAST	2024	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Intravenous	Enterobacterales	4	AMC	AMC_ED20	18	-		19			2023-04-05		
+EUCAST	2024	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Oral, Uncomplicated urinary tract infection	Enterobacterales	5	AMC	AMC_ED20	15	-		16			2023-04-05		
+EUCAST	2024	MIC		EBC	FAMILY_CODE	Human	Human	Intravenous	Enterobacterales	4	AMC	AMC_EM	16			8			2023-04-05		
+EUCAST	2024	MIC		EBC	FAMILY_CODE	Human	Human	Oral, Uncomplicated urinary tract infection	Enterobacterales	5	AMC	AMC_EM	64			32			2023-04-05		
+EUCAST	2024	MIC		EBC	FAMILY_CODE	Human	Human		Enterobacterales	36	AMK	AMK_EM	16			8			2023-04-05		
+EUCAST	2024	DISK	30µg	EBC	FAMILY_CODE	Human	Human	Uncomplicated urinary tract infection	Enterobacterales	36	AMK	AMK_ED30	17	-		18			2023-04-05		
+EUCAST	2024	MIC		EBC	FAMILY_CODE	Human	Human	Uncomplicated urinary tract infection	Enterobacterales	36	AMK	AMK_EM	16			8			2023-04-05		
+EUCAST	2024	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Oral, Infections originating from the urinary tract	Enterobacterales	4	AMC	AMC_ED20	18	19-49		50			2023-04-05		
+EUCAST	2024	MIC		EBC	FAMILY_CODE	Human	Human	Oral, Infections originating from the urinary tract	Enterobacterales	4	AMC	AMC_EM	16	<=8		0.0001			2023-04-05	2024-05-22	
+EUCAST	2024	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Oral, Other indications	Enterobacterales	4	AMC	AMC_ED20	18	-		19			2023-04-05		
+EUCAST	2024	MIC		EBC	FAMILY_CODE	Human	Human	Oral, Other indications	Enterobacterales	4	AMC	AMC_EM	16			8			2023-04-05		
+CLSI	2024	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human		Table 2A-1		AMC	AMC_ND20	13	14-17		18					
+CLSI	2024	MIC		EBC	FAMILY_CODE	Human	Human		Table 2A-1		AMC	AMC_NM	32	16		8				2024-05-22	
+CLSI	2024	DISK	30µg	EBC	FAMILY_CODE	Human	Human		Table 2A-1		AMK	AMK_ND30	16	17-19		20					
+CLSI	2024	MIC		EBC	FAMILY_CODE	Human	Human		Table 2A-1		AMK	AMK_NM	16	8		4				2024-05-22	
+CLSI	2024	DISK	20/10µg	SAL	GENUS_CODE	Human	Human		Table 2A-2		AMC	AMC_ND20							2024-04-15		Block EBC rules from unintentionally applying to SAL, SHI.
+CLSI	2024	MIC		SAL	GENUS_CODE	Human	Human		Table 2A-2		AMC	AMC_NM							2024-04-15		Block EBC rules from unintentionally applying to SAL, SHI.
+CLSI	2024	DISK	30µg	SAL	GENUS_CODE	Human	Human		Table 2A-2		AMK	AMK_ND30							2024-04-15		Block EBC rules from unintentionally applying to SAL, SHI.
+CLSI	2024	MIC		SAL	GENUS_CODE	Human	Human		Table 2A-2		AMK	AMK_NM							2024-04-15		Block EBC rules from unintentionally applying to SAL, SHI.
+EUCAST	2025	DISK	30µg	EBC	FAMILY_CODE	Human	Human		Enterobacterales	36	AMK	AMK_ED30	17	-		18			2023-04-05		
+EUCAST	2025	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Intravenous	Enterobacterales	4	AMC	AMC_ED20	18	-		19			2023-04-05		
+EUCAST	2025	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Oral, Uncomplicated urinary tract infection	Enterobacterales	5	AMC	AMC_ED20	15	-		16			2023-04-05		
+EUCAST	2025	MIC		EBC	FAMILY_CODE	Human	Human	Intravenous	Enterobacterales	4	AMC	AMC_EM	16			8			2023-04-05		
+EUCAST	2025	MIC		EBC	FAMILY_CODE	Human	Human	Oral, Uncomplicated urinary tract infection	Enterobacterales	5	AMC	AMC_EM	64			32			2023-04-05		
+EUCAST	2025	MIC		EBC	FAMILY_CODE	Human	Human		Enterobacterales	36	AMK	AMK_EM	16			8			2023-04-05		
+EUCAST	2025	DISK	30µg	EBC	FAMILY_CODE	Human	Human	Uncomplicated urinary tract infection	Enterobacterales	36	AMK	AMK_ED30	17	-		18			2023-04-05		
+EUCAST	2025	MIC		EBC	FAMILY_CODE	Human	Human	Uncomplicated urinary tract infection	Enterobacterales	36	AMK	AMK_EM	16			8			2023-04-05		
+EUCAST	2025	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Oral, Infections originating from the urinary tract	Enterobacterales	4	AMC	AMC_ED20	18	19-49		50			2023-04-05		
+EUCAST	2025	MIC		EBC	FAMILY_CODE	Human	Human	Oral, Infections originating from the urinary tract	Enterobacterales	4	AMC	AMC_EM	16	<=8		0.0001			2023-04-05	2024-05-22	
+EUCAST	2025	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Oral, Other indications	Enterobacterales	4	AMC	AMC_ED20	18	19-49		50			2023-04-05	2025-03-31	
+EUCAST	2025	MIC		EBC	FAMILY_CODE	Human	Human	Oral, Other indications	Enterobacterales	4	AMC	AMC_EM	16	<=8		0.0001			2023-04-05	2025-03-31	
+CLSI	2025	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human		Table 2A-1		AMC	AMC_ND20	13	14-17		18					
+CLSI	2025	MIC		EBC	FAMILY_CODE	Human	Human		Table 2A-1		AMC	AMC_NM	32	16		8				2024-05-22	
+CLSI	2025	DISK	30µg	EBC	FAMILY_CODE	Human	Human		Table 2A-1		AMK	AMK_ND30	16	17-19		20					
+CLSI	2025	MIC		EBC	FAMILY_CODE	Human	Human		Table 2A-1		AMK	AMK_NM	16	8		4				2024-05-22	
+CLSI	2025	DISK	20/10µg	SAL	GENUS_CODE	Human	Human		Table 2A-2		AMC	AMC_ND20							2024-04-15		Block EBC rules from unintentionally applying to SAL, SHI.
+CLSI	2025	MIC		SAL	GENUS_CODE	Human	Human		Table 2A-2		AMC	AMC_NM							2024-04-15		Block EBC rules from unintentionally applying to SAL, SHI.
+CLSI	2025	DISK	30µg	SAL	GENUS_CODE	Human	Human		Table 2A-2		AMK	AMK_ND30							2024-04-15		Block EBC rules from unintentionally applying to SAL, SHI.
+CLSI	2025	MIC		SAL	GENUS_CODE	Human	Human		Table 2A-2		AMK	AMK_NM							2024-04-15		Block EBC rules from unintentionally applying to SAL, SHI.
+EUCAST	2026	DISK	30µg	EBC	FAMILY_CODE	Human	Human		Enterobacterales	36	AMK	AMK_ED30	17	-		18			2023-04-05		
+EUCAST	2026	DISK	5µg	HIN	SEROVAR_GROUP	Human	Human		H. influenzae	220	FIX	FIX_ED5	25	-		26			2023-04-05	2025-12-16	
+EUCAST	2026	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Intravenous	Enterobacterales	4	AMC	AMC_ED20	18	-		19			2023-04-05		
+EUCAST	2026	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Oral, Uncomplicated urinary tract infection	Enterobacterales	5	AMC	AMC_ED20	15	-		16			2023-04-05		
+EUCAST	2026	MIC		EBC	FAMILY_CODE	Human	Human	Intravenous	Enterobacterales	4	AMC	AMC_EM	16			8			2023-04-05		
+EUCAST	2026	MIC		EBC	FAMILY_CODE	Human	Human	Oral, Uncomplicated urinary tract infection	Enterobacterales	5	AMC	AMC_EM	64			32			2023-04-05		
+EUCAST	2026	MIC		EBC	FAMILY_CODE	Human	Human		Enterobacterales	36	AMK	AMK_EM	16			8			2023-04-05		
+EUCAST	2026	DISK	30µg	EBC	FAMILY_CODE	Human	Human	Uncomplicated urinary tract infection	Enterobacterales	36	AMK	AMK_ED30	17	-		18			2023-04-05		
+EUCAST	2026	MIC		EBC	FAMILY_CODE	Human	Human	Uncomplicated urinary tract infection	Enterobacterales	36	AMK	AMK_EM	16			8			2023-04-05		
+EUCAST	2026	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Oral, Infections originating from the urinary tract	Enterobacterales	4	AMC	AMC_ED20	18	19-49		50			2023-04-05		
+EUCAST	2026	MIC		EBC	FAMILY_CODE	Human	Human	Oral, Infections originating from the urinary tract	Enterobacterales	4	AMC	AMC_EM	16	<=8		0.0001			2023-04-05	2024-05-22	
+EUCAST	2026	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human	Oral, Other indications	Enterobacterales	4	AMC	AMC_ED20	18	19-49		50			2023-04-05	2025-03-31	
+EUCAST	2026	MIC		EBC	FAMILY_CODE	Human	Human	Oral, Other indications	Enterobacterales	4	AMC	AMC_EM	16	<=8		0.0001			2023-04-05	2025-03-31	
+CLSI	2026	MIC		EBC	FAMILY_CODE	Animal	Dogs		VET01 Table 2A		AMK	AMK_NM	16	8		4				2024-05-22	
+CLSI	2026	DISK	20/10µg	EBC	FAMILY_CODE	Human	Human		Table 2A-1		AMC	AMC_ND20	13	14-17		18					
+CLSI	2026	MIC		EBC	FAMILY_CODE	Human	Human		Table 2A-1		AMC	AMC_NM	32	16		8				2024-05-22	
+CLSI	2026	DISK	30µg	EBC	FAMILY_CODE	Human	Human		Table 2A-1		AMK	AMK_ND30	16	17-19		20					
+CLSI	2026	MIC		EBC	FAMILY_CODE	Human	Human		Table 2A-1		AMK	AMK_NM	16	8		4				2024-05-22	
+CLSI	2026	DISK	20/10µg	SAL	GENUS_CODE	Human	Human		Table 2A-2		AMC	AMC_ND20							2024-04-15		Block EBC rules from unintentionally applying to SAL, SHI.
+CLSI	2026	MIC		SAL	GENUS_CODE	Human	Human		Table 2A-2		AMC	AMC_NM							2024-04-15		Block EBC rules from unintentionally applying to SAL, SHI.
+CLSI	2026	DISK	30µg	SAL	GENUS_CODE	Human	Human		Table 2A-2		AMK	AMK_ND30							2024-04-15		Block EBC rules from unintentionally applying to SAL, SHI.
+CLSI	2026	MIC		SAL	GENUS_CODE	Human	Human		Table 2A-2		AMK	AMK_NM							2024-04-15		Block EBC rules from unintentionally applying to SAL, SHI.
+CLSI	2026	MIC		aba	WHONET_ORG_CODE	ECOFF			Copied from EUCAST 2024		AMK	AMK_NM					8		2023-04-05		

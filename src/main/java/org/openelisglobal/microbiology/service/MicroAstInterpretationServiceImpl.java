@@ -24,7 +24,8 @@ public class MicroAstInterpretationServiceImpl implements MicroAstInterpretation
     @Override
     public MicroAstInterpretation interpret(MicroBreakpointRule rule, MicroAstMethod method, BigDecimal rawValue,
             String authority) {
-        if ("CLSI".equals(authority) && method == MicroAstMethod.MIC && rawValue != null && rule != null) {
+        boolean ladder = "CLSI".equals(authority) || (rule != null && rule.getOrganismCodeType() != null);
+        if (ladder && method == MicroAstMethod.MIC && rawValue != null && rule != null) {
             MicroBreakpointRule ladderRule = new MicroBreakpointRule();
             ladderRule.setSusceptibleValue(toDilution(rule.getSusceptibleValue()));
             ladderRule.setResistantValue(toDilution(rule.getResistantValue()));
@@ -40,8 +41,8 @@ public class MicroAstInterpretationServiceImpl implements MicroAstInterpretation
         if (value == null) {
             return null;
         }
-        // AMR for R's CLSI MIC path uses this conventional dilution ladder.
-        // Keep the measured value in the reading; normalize only for interpretation.
+        // CLSI MICs, and every MIC against a WHONET rule, are read at the next
+        // conventional dilution. The reading keeps the measured value.
         for (String dilution : new String[] { "0.0001", "0.0002", "0.0005", "0.001", "0.002", "0.004", "0.008", "0.016",
                 "0.032", "0.064", "0.125", "0.25", "0.5", "1", "2", "4", "8", "16", "32", "64", "128", "256", "512",
                 "1024", "2048", "4096" }) {

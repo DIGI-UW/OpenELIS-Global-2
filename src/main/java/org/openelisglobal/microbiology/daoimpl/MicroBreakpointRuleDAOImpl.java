@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule, String>
         implements MicroBreakpointRuleDAO {
-
     public MicroBreakpointRuleDAOImpl() {
         super(MicroBreakpointRule.class);
     }
@@ -41,7 +40,7 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
                         + " and (r.specimenTypeId is null or r.specimenTypeId = :specimenTypeId)"
                         + " and (r.organismId = :organismId or r.organismGroup = :organismGroup"
                         + " or (r.organismId is null and r.organismGroup is null))"
-                        + " order by case when r.organismId = :organismId then 0"
+                        + " and r.organismCodeType is null order by case when r.organismId = :organismId then 0"
                         + " when r.organismGroup = :organismGroup then 1 else 2 end,"
                         + " case when r.clinicalContext = :clinicalContext then 0 else 1 end,"
                         + " case when r.specimenTypeId = :specimenTypeId then 0 else 1 end,"
@@ -57,6 +56,19 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
         query.setParameter("diskContent", diskContent);
         query.setMaxResults(1);
         return query.uniqueResultOptional().orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroBreakpointRule> findWhonetRules(String standardId, String antibioticId, String breakpointType) {
+        return entityManager
+                .createQuery(
+                        "from MicroBreakpointRule r where r.isActive = 'Y'"
+                                + " and r.standardId = :standardId and r.antibioticId = :antibioticId"
+                                + " and r.breakpointType = :breakpointType and r.organismCodeType is not null",
+                        MicroBreakpointRule.class)
+                .setParameter("standardId", standardId).setParameter("antibioticId", antibioticId)
+                .setParameter("breakpointType", breakpointType).getResultList();
     }
 
     @Override

@@ -11,6 +11,7 @@ read release archives, download metadata or run R.
 | ------------------------------------- | ---------------------------------------- | ----- |
 | `microbiology-whonet-organisms/`      | WHONET's `Organisms.txt`, see below      | 305   |
 | `microbiology-whonet-antibiotics/`    | WHONET's `Antibiotics.txt`, see below    | 306   |
+| `microbiology-whonet-breakpoints/`    | WHONET's `Breakpoints.txt`, see below    | 307   |
 | `microbiology-organisms/`             | `source,code,displayName,whonetCode`     | 310   |
 | `microbiology-antimicrobials/`        | `source,code,displayName,whonetCode`     | 320   |
 | `microbiology-breakpoints/`           | Existing breakpoint import columns below | 330   |
@@ -58,6 +59,39 @@ tab-separated, WHONET's columns, configuration folder only.
   and notes and takes WHONET's name. One with the same name and no code takes
   the code. A name that belongs to an antibiotic with a different code fails the
   file, naming both codes.
+
+## WHONET's breakpoint table
+
+`microbiology-whonet-breakpoints/` takes `Breakpoints.txt` the same way:
+tab-separated, WHONET's columns, configuration folder only.
+
+- The whole table is kept as text, every row and column: each guideline, year,
+  host and breakpoint type WHONET lists, including animal and ECOFF rows.
+  Loading a file replaces the table with that file.
+- `GUIDELINES`, `YEAR`, `TEST_METHOD`, `ORGANISM_CODE` and `BREAKPOINT_TYPE` are
+  required. A row missing one fails the file, naming the line, and the table
+  keeps its earlier rows.
+- The human clinical breakpoints of the three latest CLSI and EUCAST years
+  become breakpoint editions, loaded inactive. An edition is named after its
+  year and the package version, as in `2026-2026.4`. A year whose rules an
+  edition already holds gets no second edition from a later package. Changed
+  rules under a version already loaded fail the file.
+- A rule keeps WHONET's organism level (serovar group, organism, species group,
+  genus, genus group, family, anaerobe or all organisms), site of infection and
+  disk potency. A reading takes the rule at the most specific level its organism
+  belongs to in WHONET's organism table, then the site WHONET prefers. A rule
+  without values at a closer level means "No breakpoint" and stops a broader
+  rule from applying.
+- A rule whose site of infection is a urinary tract infection applies only to a
+  urine specimen, and a urine specimen prefers it. A specimen is urine when its
+  sample type carries WHONET's specimen code `ur`. Any other specimen never
+  takes a urinary rule: when the closest level has no other rule the reading has
+  "No breakpoint".
+- WHONET writes `R` as the first resistant value, so an MIC at or above it and a
+  zone at or below it are resistant. An MIC between dilutions is read at the
+  next dilution.
+- A rule for an antibiotic code that `Antibiotics.txt` does not list is left
+  out and named in the log.
 
 Breakpoint files use the existing administrator CSV importer:
 
