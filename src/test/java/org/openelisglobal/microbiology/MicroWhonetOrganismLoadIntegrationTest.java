@@ -100,6 +100,8 @@ public class MicroWhonetOrganismLoadIntegrationTest extends BaseWebContextSensit
     @Test
     public void loadingTheSameFileAgainChangesNothing() throws Exception {
         load();
+        assertEquals(2, handler.getLastSummary().getUpdated());
+        assertEquals(7, handler.getLastSummary().getCreated());
         String klebsiella = coded("kl-").getId();
         int count = organisms.getAll().size();
 
@@ -108,7 +110,9 @@ public class MicroWhonetOrganismLoadIntegrationTest extends BaseWebContextSensit
         assertEquals(klebsiella, coded("kl-").getId());
         assertEquals(count, organisms.getAll().size());
         assertEquals(9, whonetTable.getAll().size());
-        assertEquals(9, handler.getLastSummary().getSkipped());
+        assertEquals(9, handler.getLastSummary().getCreated());
+        assertEquals(0, handler.getLastSummary().getUpdated());
+        assertEquals(0, handler.getLastSummary().getSkipped());
     }
 
     @Test

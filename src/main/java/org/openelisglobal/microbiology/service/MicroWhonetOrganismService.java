@@ -29,7 +29,11 @@ public class MicroWhonetOrganismService {
         this.organisms = organisms;
     }
 
-    /** The table is the file: loading one replaces every row with the file's. */
+    /**
+     * The table is the file: loading one replaces every row with the file's, so
+     * every row is reported as created. A row is reported as updated when it gave
+     * an existing organism WHONET's name or code.
+     */
     public List<LoadedRow<String>> load(List<CsvRow> rows) {
         whonetOrganisms.deleteAllRows();
         List<LoadedRow<String>> loaded = new ArrayList<>();
@@ -43,14 +47,19 @@ public class MicroWhonetOrganismService {
             entry.setSysUserId(ACTOR);
             whonetOrganisms.insert(entry);
             whonetOrganisms.evict(entry);
-            loaded.add(MicroWhonetOrganism.CURRENT.equals(entry.getTaxonomicStatus()) ? offer(entry)
-                    : LoadedRow.skipped("Older name of " + entry.getWhonetOrgCode()));
+            boolean renamed = MicroWhonetOrganism.CURRENT.equals(entry.getTaxonomicStatus()) && offer(entry);
+            loaded.add(renamed ? LoadedRow.updated(entry.getId()) : LoadedRow.created(entry.getId()));
         }
         return loaded;
     }
 
-    /** The organism of a WHONET code carries the code's current name. */
-    private LoadedRow<String> offer(MicroWhonetOrganism entry) {
+    /**
+     * The organism of a WHONET code carries the code's current name.
+     *
+     * @return whether an organism the laboratory already had took WHONET's name or
+     *         code
+     */
+    private boolean offer(MicroWhonetOrganism entry) {
         String code = entry.getWhonetOrgCode(), name = entry.getOrganism();
         var named = organisms.findByDisplayNameIgnoreCase(name);
         var coded = organisms.findByWhonetCodeIgnoreCase(code);
@@ -65,7 +74,7 @@ public class MicroWhonetOrganismService {
         if (!created && name.equals(organism.getDisplayName()) && code.equals(organism.getWhonetCode())
                 && SOURCE.equals(organism.getReferenceSource()) && code.equals(organism.getReferenceCode())) {
             organisms.evict(organism);
-            return LoadedRow.skipped("Unchanged");
+            return false;
         }
         organism.setDisplayName(name);
         organism.setWhonetCode(code);
@@ -80,7 +89,7 @@ public class MicroWhonetOrganismService {
             organisms.update(organism);
         }
         organisms.evict(organism);
-        return created ? LoadedRow.created(organism.getId()) : LoadedRow.updated(organism.getId());
+        return !created;
     }
 
     private static MicroWhonetOrganism of(CsvRow row) {
