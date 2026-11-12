@@ -34,6 +34,9 @@ public class ContainerTypeServiceImpl implements ContainerTypeService {
     @Lazy
     @Autowired
     private TypeOfSampleService typeOfSampleService;
+    @Lazy
+    @Autowired
+    private TestContainerService testContainerService;
 
     @Override
     @Transactional(readOnly = true)
@@ -133,8 +136,8 @@ public class ContainerTypeServiceImpl implements ContainerTypeService {
     @Override
     @Transactional(readOnly = true)
     public Optional<ContainerTypeUsage> usage(Long id) {
-        return find(id)
-                .map(type -> new ContainerTypeUsage(List.of(), containerTypeDAO.countSamplesUsing(type.getName())));
+        return find(id).map(type -> new ContainerTypeUsage(testContainerService.testNamesUsing(type.getId()),
+                containerTypeDAO.countSamplesUsing(type.getName())));
     }
 
     @Override

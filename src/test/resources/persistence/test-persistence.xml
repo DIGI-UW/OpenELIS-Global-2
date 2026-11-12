@@ -191,6 +191,7 @@
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.resultrun.valueholder.ResultRun</class>
         <class>org.openelisglobal.containertype.valueholder.ContainerType</class>
+        <class>org.openelisglobal.containertype.valueholder.TestExpectedContainer</class>
         <class>org.openelisglobal.validationpolicy.valueholder.ValidationPolicy</class>
 
         <!-- Westgard QC entities (003-westgard-qc) -->

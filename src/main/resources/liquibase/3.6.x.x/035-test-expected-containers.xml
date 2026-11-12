@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="035-test-expected-containers" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <tableExists schemaName="clinlims" tableName="test_expected_container"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1611 FR-G5 and G6: the containers each test expects, one Preferred and any number of Alternate, each with a count and an optional minimum volume. A container yielding another sample type can be used as the test's sample type.</comment>
+  <createSequence schemaName="clinlims" sequenceName="test_expected_container_seq" startValue="1" incrementBy="1"/>
+  <createTable schemaName="clinlims" tableName="test_expected_container">
+   <column name="id" type="BIGINT">
+    <constraints primaryKey="true" nullable="false" primaryKeyName="pk_test_expected_container"/>
+   </column>
+   <column name="test_id" type="numeric(10)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="container_type_id" type="BIGINT">
+    <constraints nullable="false"/>
+   </column>
+   <column name="role" type="VARCHAR(10)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="container_count" type="INTEGER" defaultValueNumeric="1">
+    <constraints nullable="false"/>
+   </column>
+   <column name="min_volume" type="NUMERIC(10,2)"/>
+   <column name="volume_unit" type="VARCHAR(10)"/>
+   <column name="used_as_type_of_sample_id" type="numeric(10)"/>
+   <column name="display_order" type="INTEGER" defaultValueNumeric="0">
+    <constraints nullable="false"/>
+   </column>
+   <column name="sys_user_id" type="numeric(10)"/>
+   <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+  </createTable>
+  <addUniqueConstraint schemaName="clinlims" tableName="test_expected_container"
+   columnNames="test_id, container_type_id" constraintName="uq_test_expected_container"/>
+  <addForeignKeyConstraint constraintName="fk_test_expected_container_test" baseTableSchemaName="clinlims"
+   baseTableName="test_expected_container" baseColumnNames="test_id" referencedTableSchemaName="clinlims"
+   referencedTableName="test" referencedColumnNames="id" onDelete="CASCADE"/>
+  <addForeignKeyConstraint constraintName="fk_test_expected_container_type" baseTableSchemaName="clinlims"
+   baseTableName="test_expected_container" baseColumnNames="container_type_id" referencedTableSchemaName="clinlims"
+   referencedTableName="container_type" referencedColumnNames="id"/>
+  <addForeignKeyConstraint constraintName="fk_test_expected_container_used_as" baseTableSchemaName="clinlims"
+   baseTableName="test_expected_container" baseColumnNames="used_as_type_of_sample_id"
+   referencedTableSchemaName="clinlims" referencedTableName="type_of_sample" referencedColumnNames="id"
+   onDelete="CASCADE"/>
+  <sql>
+   ALTER TABLE clinlims.test_expected_container ADD CONSTRAINT test_expected_container_role_chk CHECK (role IN ('PREFERRED', 'ALTERNATE'));
+   ALTER TABLE clinlims.test_expected_container ADD CONSTRAINT test_expected_container_count_chk CHECK (container_count &gt;= 1);
+   ALTER TABLE clinlims.test_expected_container ADD CONSTRAINT test_expected_container_volume_chk CHECK (min_volume IS NULL OR min_volume &gt; 0);
+   ALTER TABLE clinlims.test_expected_container ADD CONSTRAINT test_expected_container_used_as_chk CHECK (used_as_type_of_sample_id IS NULL OR role = 'ALTERNATE');
+   CREATE UNIQUE INDEX uq_test_expected_container_preferred ON clinlims.test_expected_container (test_id) WHERE role = 'PREFERRED';
+  </sql>
+  <rollback>
+   <dropTable schemaName="clinlims" tableName="test_expected_container"/>
+   <dropSequence schemaName="clinlims" sequenceName="test_expected_container_seq"/>
+  </rollback>
+ </changeSet>
+
+ <changeSet id="035-test-needs-own-container" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <columnExists schemaName="clinlims" tableName="test" columnName="needs_own_container"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1611 FR-G5: a test that needs its own container shares one only with tests of its own panel.</comment>
+  <addColumn schemaName="clinlims" tableName="test">
+   <column name="needs_own_container" type="BOOLEAN" defaultValueBoolean="false">
+    <constraints nullable="false"/>
+   </column>
+  </addColumn>
+ </changeSet>
+
+ <changeSet id="035-sample-type-default-container" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <columnExists schemaName="clinlims" tableName="type_of_sample" columnName="default_container_type_id"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1611 FR-G7: the container a sample type is taken in when a test names none.</comment>
+  <addColumn schemaName="clinlims" tableName="type_of_sample">
+   <column name="default_container_type_id" type="BIGINT"/>
+  </addColumn>
+  <addForeignKeyConstraint constraintName="fk_type_of_sample_default_container" baseTableSchemaName="clinlims"
+   baseTableName="type_of_sample" baseColumnNames="default_container_type_id" referencedTableSchemaName="clinlims"
+   referencedTableName="container_type" referencedColumnNames="id" onDelete="SET NULL"/>
+ </changeSet>
+</databaseChangeLog>

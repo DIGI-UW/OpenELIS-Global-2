@@ -19,6 +19,7 @@ import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import BasicInfoSection from "./sections/BasicInfoSection";
 import SampleResultsSection from "./sections/SampleResultsSection";
+import ContainersSection from "./sections/ContainersSection";
 import MethodsSection from "./sections/MethodsSection";
 import RangesSection from "./sections/RangesSection";
 import QcTargetsSection from "./sections/QcTargetsSection";
@@ -290,6 +291,8 @@ const TestCatalogEditor = () => {
                 <BasicInfoSection testId={testId} />
               ) : activeSection === "sample-results" ? (
                 <SampleResultsSection testId={testId} />
+              ) : activeSection === "containers" ? (
+                <ContainersSection testId={testId} />
               ) : activeSection === "methods" ? (
                 <MethodsSection testId={testId} />
               ) : activeSection === "ranges" ? (

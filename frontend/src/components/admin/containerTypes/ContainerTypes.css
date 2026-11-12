@@ -73,3 +73,44 @@
 .containerTypeActions {
   white-space: nowrap;
 }
+
+.testContainerVolume {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.testContainerName {
+  min-width: 12rem;
+}
+
+.testContainerUsedAsField {
+  width: 14rem;
+  margin-top: 0.25rem;
+}
+
+.testContainerRoleField {
+  width: 8.5rem;
+}
+
+.testContainerCountField {
+  width: 6.5rem;
+}
+
+.testContainerVolumeField {
+  width: 5.5rem;
+}
+
+.testContainerUnitField {
+  width: 5.5rem;
+}
+
+.testContainerActions {
+  display: flex;
+  flex-wrap: nowrap;
+}
+
+.testContainerTable {
+  overflow-x: auto;
+  max-width: 100%;
+}
