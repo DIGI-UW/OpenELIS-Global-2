@@ -383,9 +383,22 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   }));
   const ruleRows = rules.rows.map((rule) => ({
     id: rule.id,
-    organism: rule.organismName || rule.organismGroup,
+    organism: [
+      rule.organismName ||
+        rule.organismGroup ||
+        (rule.organismCodeType &&
+          intl.formatMessage(
+            {
+              id: `microbiology.admin.breakpoints.whonetLevel.${rule.organismCodeType.replace("+", "_")}`,
+            },
+            { code: rule.organismCode },
+          )),
+      rule.siteOfInfection,
+    ]
+      .filter(Boolean)
+      .join(", "),
     antibiotic: `${rule.antibioticName || ""} (${rule.antibioticCode || ""})`,
-    method: rule.method,
+    method: [rule.method, rule.diskContent].filter(Boolean).join(" "),
     susceptible: rule.susceptibleValue ?? "—",
     intermediate:
       rule.intermediateLowerValue == null && rule.intermediateUpperValue == null

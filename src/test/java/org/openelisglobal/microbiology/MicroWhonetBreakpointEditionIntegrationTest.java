@@ -19,7 +19,10 @@ import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointStandardDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.form.MicroBreakpointRuleAdminForm;
+import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
 import org.openelisglobal.microbiology.service.MicroAstInterpretationService;
+import org.openelisglobal.microbiology.service.MicroBreakpointAdminService;
 import org.openelisglobal.microbiology.service.MicroBreakpointService;
 import org.openelisglobal.microbiology.service.MicroWhonetAntibioticConfigurationHandler;
 import org.openelisglobal.microbiology.service.MicroWhonetBreakpointConfigurationHandler;
@@ -55,6 +58,8 @@ public class MicroWhonetBreakpointEditionIntegrationTest extends BaseWebContextS
     private MicroBreakpointService breakpoints;
     @Autowired
     private MicroAstInterpretationService interpreter;
+    @Autowired
+    private MicroBreakpointAdminService breakpointAdmin;
 
     @Before
     public void whonetOrganismsAndAntibiotics() throws Exception {
@@ -132,6 +137,61 @@ public class MicroWhonetBreakpointEditionIntegrationTest extends BaseWebContextS
                 "Oral, Infections originating from the urinary tract");
         assertEquals("20/10 mcg", urinary.getDiskContent());
         assertEquals(0, new BigDecimal("49").compareTo(urinary.getIntermediateUpperValue()));
+    }
+
+    @Test
+    public void theRulesListShowsWhonetsOrganismLevelSiteAndDisk() throws Exception {
+        load(fileText(), PACKAGE_FILE);
+
+        MicroBreakpointRuleAdminForm disk = adminRules("CLSI", "2026-2026.4").stream()
+                .filter(form -> "AMK".equals(form.antibioticCode) && "ZONE".equals(form.method)
+                        && "EBC".equals(form.organismCode))
+                .findFirst().orElseThrow();
+        assertEquals("FAMILY_CODE", disk.organismCodeType);
+        assertEquals("30 mcg", disk.diskContent);
+        assertTrue(adminRules("EUCAST", "2026-2026.4").stream()
+                .anyMatch(form -> "Oral, Infections originating from the urinary tract".equals(form.siteOfInfection)));
+
+        MicroBreakpointRule species = rule("CLSI", "2026-2026.4", "AMK", "MIC", null);
+        species.setOrganismCodeType("WHONET_ORG_CODE");
+        species.setOrganismCode("kpn");
+        rules.update(species);
+        assertEquals("Klebsiella pneumoniae ss. pneumoniae", adminRules("CLSI", "2026-2026.4").stream()
+                .filter(form -> species.getId().equals(form.id)).findFirst().orElseThrow().organismName);
+    }
+
+    @Test
+    public void theRulesListFindsWhonetRulesByCodeSiteDiskAndOrganism() throws Exception {
+        load(fileText(), PACKAGE_FILE);
+        String clsi = edition("CLSI", "2026-2026.4").getId();
+        String eucast = edition("EUCAST", "2026-2026.4").getId();
+        String klebsiella = organisms.findByWhonetCodeIgnoreCase("kpn").orElseThrow().getId();
+
+        assertEquals(4, rules.search(clsi, "ebc", null, null, null, null, 0, 50).size());
+        assertEquals(4, rules.search(clsi, "sal", null, null, null, null, 0, 50).size());
+        assertEquals(6, rules.search(eucast, "urinary", null, null, null, null, 0, 50).size());
+        assertEquals(2, rules.search(clsi, "20/10 mcg", null, null, null, null, 0, 50).size());
+        // Klebsiella is in the EBC family and not in the Salmonella genus.
+        List<MicroBreakpointRule> covering = rules.search(clsi, null, klebsiella, null, null, null, 0, 50);
+        assertEquals(4, covering.size());
+        assertTrue(covering.stream().allMatch(rule -> "EBC".equals(rule.getOrganismCode())));
+        assertEquals(4, rules.countSearch(clsi, null, klebsiella, null, null, null));
+    }
+
+    @Test
+    public void pagingTheRulesListShowsEveryRuleOnce() throws Exception {
+        load(fileText(), PACKAGE_FILE);
+        String eucast = edition("EUCAST", "2026-2026.4").getId();
+
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (int offset = 0; offset < 12; offset += 5) {
+            rules.search(eucast, null, null, null, null, null, offset, 5).forEach(rule -> seen.add(rule.getId()));
+        }
+        assertEquals(12, seen.size());
+    }
+
+    private List<MicroBreakpointRuleAdminForm> adminRules(String authority, String version) {
+        return breakpointAdmin.getRules(edition(authority, version).getId(), new MicroReferenceAdminQueryForm()).rows;
     }
 
     @Test

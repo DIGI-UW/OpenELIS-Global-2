@@ -296,6 +296,14 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         if (rule.getOrganismId() != null) {
             organismDAO.get(rule.getOrganismId()).ifPresent(organism -> form.organismName = organism.getDisplayName());
         }
+        form.organismCodeType = rule.getOrganismCodeType();
+        form.organismCode = rule.getOrganismCode();
+        form.siteOfInfection = rule.getSiteOfInfection();
+        form.diskContent = rule.getDiskContent();
+        if ("WHONET_ORG_CODE".equals(rule.getOrganismCodeType())) {
+            organismDAO.findByWhonetCodeIgnoreCase(rule.getOrganismCode())
+                    .ifPresent(organism -> form.organismName = organism.getDisplayName());
+        }
         form.antibioticId = rule.getAntibioticId();
         antibioticDAO.get(rule.getAntibioticId()).ifPresent(antibiotic -> {
             form.antibioticName = antibiotic.getDisplayName();

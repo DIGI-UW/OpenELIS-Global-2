@@ -8,6 +8,10 @@ public class MicroBreakpointRuleAdminForm {
     public String organismId;
     public String organismName;
     public String organismGroup;
+    public String organismCodeType;
+    public String organismCode;
+    public String siteOfInfection;
+    public String diskContent;
     public String antibioticId;
     public String antibioticName;
     public String antibioticCode;

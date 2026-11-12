@@ -709,6 +709,53 @@ describe("microbiology reference administration", () => {
     },
   );
 
+  it("names a WHONET rule by its organism level and site of infection", async () => {
+    getBreakpointStandard.mockResolvedValue({
+      id: "std-1",
+      authority: "CLSI",
+      version: "2026-2026.4",
+      lifecycleStatus: "LOADED",
+      configurationManaged: true,
+    });
+    getBreakpointRules.mockResolvedValue({
+      rows: [
+        {
+          id: "rule-1",
+          method: "ZONE",
+          organismCodeType: "FAMILY_CODE",
+          organismCode: "EBC",
+          siteOfInfection: "Meningitis",
+          diskContent: "30 mcg",
+          antibioticName: "Amikacin",
+          antibioticCode: "AMK",
+        },
+        {
+          id: "rule-2",
+          method: "MIC",
+          organismName: "Klebsiella pneumoniae",
+          organismCodeType: "WHONET_ORG_CODE",
+          organismCode: "kpn",
+          antibioticName: "Amikacin",
+          antibioticCode: "AMK",
+        },
+      ],
+      total: 2,
+    });
+    renderPage(
+      <BreakpointPage
+        standardId="std-1"
+        basePath="/MasterListsPage"
+        query={query}
+        setQuery={vi.fn()}
+      />,
+    );
+    expect(
+      await screen.findByText("Family EBC, Meningitis"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Klebsiella pneumoniae")).toBeInTheDocument();
+    expect(screen.getByText("ZONE 30 mcg")).toBeInTheDocument();
+  });
+
   it("loads a directly linked breakpoint correction and saves it as local", async () => {
     const user = userEvent.setup();
     const setQuery = vi.fn();
