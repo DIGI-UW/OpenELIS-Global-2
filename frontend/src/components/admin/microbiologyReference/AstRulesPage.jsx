@@ -19,6 +19,9 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import config from "../../../config.json";
+import OrganismPicker, {
+  OrganismName,
+} from "../../microbiology/OrganismPicker";
 import {
   getInterpretationRules,
   getReferenceOptions,
@@ -85,7 +88,6 @@ export default function AstRulesPage() {
   const [settings, setSettings] = useState({});
   const [options, setOptions] = useState({
     antibiotics: [],
-    organisms: [],
     organismGroups: [],
     sampleTypes: [],
   });
@@ -111,7 +113,6 @@ export default function AstRulesPage() {
       getReportingRuleSettings(controller.signal),
       getInterpretationRules(controller.signal),
       getReferenceOptions("antibiotics", controller.signal),
-      getReferenceOptions("organisms", controller.signal),
       getReferenceOptions("lab-organism-groups", controller.signal),
       getReferenceOptions("specimen-types", controller.signal),
     ])
@@ -121,7 +122,6 @@ export default function AstRulesPage() {
           nextSettings,
           nextInterpretationRules,
           antibiotics,
-          organisms,
           organismGroups,
           sampleTypes,
         ]) => {
@@ -130,7 +130,6 @@ export default function AstRulesPage() {
           setInterpretationRules(nextInterpretationRules || []);
           setOptions({
             antibiotics: antibiotics || [],
-            organisms: organisms || [],
             organismGroups: organismGroups || [],
             sampleTypes: sampleTypes || [],
           });
@@ -228,26 +227,38 @@ export default function AstRulesPage() {
 
   const selectorFor =
     (idPrefix, value, setValue) =>
-    (field, label, items, blank, reset = {}) => (
-      <Select
-        id={`${idPrefix}-${field}`}
-        labelText={t(label)}
-        value={value?.[field] || ""}
-        onChange={(event) =>
-          setValue({
-            ...value,
-            ...reset,
-            [field]: event.target.value,
-          })
-        }
-        disabled={busy}
-      >
-        {blank && <SelectItem value="" text={t(blank)} />}
-        {items.map((item) => (
-          <SelectItem key={item.id} value={item.id} text={item.label} />
-        ))}
-      </Select>
-    );
+    (field, label, items, blank, reset = {}) =>
+      field === "organismId" ? (
+        <OrganismPicker
+          id={`${idPrefix}-${field}`}
+          titleText={t(label)}
+          placeholder={t(blank)}
+          value={value?.[field] || ""}
+          onChange={(organismId) =>
+            setValue({ ...value, ...reset, organismId })
+          }
+          disabled={busy}
+        />
+      ) : (
+        <Select
+          id={`${idPrefix}-${field}`}
+          labelText={t(label)}
+          value={value?.[field] || ""}
+          onChange={(event) =>
+            setValue({
+              ...value,
+              ...reset,
+              [field]: event.target.value,
+            })
+          }
+          disabled={busy}
+        >
+          {blank && <SelectItem value="" text={t(blank)} />}
+          {items.map((item) => (
+            <SelectItem key={item.id} value={item.id} text={item.label} />
+          ))}
+        </Select>
+      );
 
   const selector = selectorFor("reporting-rule", draft, setDraft);
   const interpretationSelector = selectorFor(
@@ -278,10 +289,11 @@ export default function AstRulesPage() {
 
   const named = {
     antibioticId: options.antibiotics,
-    organismId: options.organisms,
     sampleTypeIds: options.sampleTypes,
   };
   const historyValue = (key, value) => {
+    if (key === "organismId" && value)
+      return <OrganismName id={value} fallback={value} />;
     const label = (id) =>
       named[key]?.find((item) => item.id === id)?.label ?? id;
     return displayValue(Array.isArray(value) ? value.map(label) : label(value));
@@ -522,7 +534,7 @@ export default function AstRulesPage() {
               {interpretationSelector(
                 "organismId",
                 "organism",
-                options.organisms,
+                [],
                 "chooseOrganism",
                 { organismGroup: "" },
               )}
@@ -590,13 +602,9 @@ export default function AstRulesPage() {
                 options.antibiotics,
                 "choose",
               )}
-              {selector(
-                "organismId",
-                "organism",
-                options.organisms,
-                "anyOrganism",
-                { organismGroup: "" },
-              )}
+              {selector("organismId", "organism", [], "anyOrganism", {
+                organismGroup: "",
+              })}
               {selector(
                 "organismGroup",
                 "organismGroup",
@@ -735,19 +743,12 @@ export default function AstRulesPage() {
       )}
       <h2>{t("preview")}</h2>
       <Stack gap={5}>
-        <Select
+        <OrganismPicker
           id="reporting-rule-preview-organism"
-          labelText={t("previewOrganism")}
+          titleText={t("previewOrganism")}
           value={preview.organismId}
-          onChange={(event) =>
-            changePreview({ ...preview, organismId: event.target.value })
-          }
-        >
-          <SelectItem value="" text={t("choose")} />
-          {options.organisms.map((item) => (
-            <SelectItem key={item.id} value={item.id} text={item.label} />
-          ))}
-        </Select>
+          onChange={(organismId) => changePreview({ ...preview, organismId })}
+        />
         <Select
           id="reporting-rule-preview-sample-type"
           labelText={t("previewSampleType")}
@@ -871,9 +872,7 @@ export default function AstRulesPage() {
                         {intl.formatMessage(
                           { id: "microbiology.m6.expertRuleLine" },
                           {
-                            organism: options.organisms.find(
-                              (item) => item.id === preview.organismId,
-                            )?.label,
+                            organism: <OrganismName id={preview.organismId} />,
                             antibiotic: row.antibioticName,
                           },
                         )}
