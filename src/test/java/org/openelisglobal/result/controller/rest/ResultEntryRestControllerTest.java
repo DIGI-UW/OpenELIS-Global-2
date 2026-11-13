@@ -1183,7 +1183,10 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
                 .content(saveBodyWithExtras("1", "3", "1", "90.0", currentToken("1"),
                         "\"note\":\"\",\"interpretation\":\"Fasting glucose within the reference range.\""))
-                .session(session)).andExpect(status().isOk());
+                .session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.analysisNotes").isArray())
+                .andExpect(jsonPath("$.analysisNotes[?(@.subject == 'Interpretation')].text")
+                        .value("Fasting glucose within the reference range."));
 
         Integer notes = jdbc.queryForObject("SELECT count(*) FROM clinlims.note WHERE reference_id = 1"
                 + " AND note_type = 'E' AND subject = 'Interpretation'"

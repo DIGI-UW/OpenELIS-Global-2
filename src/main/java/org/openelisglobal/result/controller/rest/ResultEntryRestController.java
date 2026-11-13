@@ -33,6 +33,7 @@ import org.openelisglobal.common.services.registration.ResultUpdateRegister;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.validator.CustomDateValidator;
@@ -43,6 +44,8 @@ import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.eqa.service.EQACycleSubmissionService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.note.service.NoteService;
+import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultUtil;
@@ -155,6 +158,8 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     private TestResultComponentService testResultComponentService;
     @Autowired
     private TestResultInterpretationService interpretationService;
+    @Autowired
+    private NoteService noteService;
     @Autowired
     private TestReagentLinkService testReagentLinkService;
     @Autowired
@@ -488,6 +493,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             if (!componentStatusIds.isEmpty()) {
                 body.put("componentStatusIds", componentStatusIds);
             }
+            body.put("analysisNotes", buildAnalysisNotes(persisted));
         }
         // The persisted result's id — the client's row must adopt it, or a row
         // saved from the blank placeholder state keeps a null resultId and every
@@ -820,6 +826,37 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             LogEvent.logError(e);
         }
         return MessageUtil.getMessage("label.results.anotherUser");
+    }
+
+    private List<TestResultItem.AnalysisNote> buildAnalysisNotes(Analysis analysis) {
+        List<TestResultItem.AnalysisNote> items = new ArrayList<>();
+        if (noteService == null || analysis == null) {
+            return items;
+        }
+        for (Note note : noteService.getNotes(analysis)) {
+            TestResultItem.AnalysisNote item = new TestResultItem.AnalysisNote();
+            item.setText(note.getText());
+            item.setNoteType(note.getNoteType());
+            item.setSubject(note.getSubject());
+            item.setAuthor(getNoteAuthorDisplayName(note));
+            item.setDate(
+                    note.getLastupdated() != null ? DateUtil.convertTimestampToStringDateAndTime(note.getLastupdated())
+                            : "");
+            item.setTestResultComponentId(note.getTestResultComponentId());
+            items.add(item);
+        }
+        return items;
+    }
+
+    private String getNoteAuthorDisplayName(Note note) {
+        if (note.getSystemUser() == null || GenericValidator.isBlankOrNull(note.getSystemUser().getId())) {
+            return "";
+        }
+        if (systemUserService == null) {
+            return "";
+        }
+        SystemUser author = systemUserService.get(note.getSystemUser().getId());
+        return author != null ? author.getDisplayName() : "";
     }
 
     @Override
