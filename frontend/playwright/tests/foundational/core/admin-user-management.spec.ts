@@ -370,34 +370,49 @@ test.describe("User Management", () => {
     );
     const suffix = letters(8);
     const login = `pw_ga_${suffix}`;
-    await seedUser(page, {
-      login,
-      first: "Playwright",
-      last: `Global ${suffix}`,
-      roles: [globalAdmin!.roleId],
-    });
+    try {
+      await seedUser(page, {
+        login,
+        first: "Playwright",
+        last: `Global ${suffix}`,
+        roles: [globalAdmin!.roleId],
+      });
 
-    await openUserList(page);
-    await search(page, login);
-    await expect(rowsWith(page, login)).toHaveCount(1);
+      await openUserList(page);
+      await search(page, login);
+      await expect(rowsWith(page, login)).toHaveCount(1);
 
-    const narrowed = page.waitForResponse(
-      (response) =>
-        response.url().includes("/rest/SearchUnifiedSystemUserMenu") &&
-        (new URL(response.url()).searchParams.get("filter") || "")
-          .split(",")
-          .includes("isAdmin"),
-    );
-    await page.locator('label[for="only-administrator"]').click();
-    await narrowed;
-    await expect(page.locator("#only-administrator")).toBeChecked();
-    await expect(rowsWith(page, login)).toHaveCount(0);
+      const narrowed = page.waitForResponse(
+        (response) =>
+          response.url().includes("/rest/SearchUnifiedSystemUserMenu") &&
+          (new URL(response.url()).searchParams.get("filter") || "")
+            .split(",")
+            .includes("isAdmin"),
+      );
+      await page.locator('label[for="only-administrator"]').click();
+      await narrowed;
+      await expect(page.locator("#only-administrator")).toBeChecked();
+      await expect(rowsWith(page, login)).toHaveCount(0);
 
-    await search(page, "admin");
-    const admin = page
-      .locator(".cds--data-table tbody tr")
-      .filter({ has: page.getByRole("cell", { name: "admin", exact: true }) });
-    await expect(admin).toHaveCount(1);
+      await search(page, "admin");
+      const admin = page.locator(".cds--data-table tbody tr").filter({
+        has: page.getByRole("cell", { name: "admin", exact: true }),
+      });
+      await expect(admin).toHaveCount(1);
+    } finally {
+      const id = await listedUser(page, login);
+      if (id) {
+        const removed = await page.request.post(
+          `${API}/rest/DeleteUnifiedSystemUser?ID=${id}&startingRecNo=1`,
+          {
+            headers: { "X-CSRF-Token": await csrfToken(page) },
+            data: { selectedIDs: [id] },
+          },
+        );
+        expect(removed.ok(), await removed.text()).toBeTruthy();
+        expect((await readUser(page, login)).accountActive).toBe("N");
+      }
+    }
   });
 
   test("Modify copies another user's permissions with Apply", async ({
