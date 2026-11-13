@@ -185,4 +185,30 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
         assertTrue("Should contain shelf 1", results.stream().anyMatch(s -> s.getLabel().equals("DT-Shelf-A")));
         assertTrue("Should contain shelf 2", results.stream().anyMatch(s -> s.getLabel().equals("DT-Shelf-B")));
     }
+
+    /**
+     * Test: findByCodeAndParentDevice - validates HQL query compiles and executes
+     */
+    @Test
+    public void testFindByCodeAndParentDevice_WithValidParams_ReturnsShelf() {
+        // Act: Execute HQL query
+        StorageShelf result = storageShelfDAO.findByCodeAndParentDevice("DT-SHF-A", testDevice);
+
+        // Assert
+        assertNotNull("Shelf should be found", result);
+        assertEquals("Label should match", "DT-Shelf-A", result.getLabel());
+        assertEquals("Code should match", "DT-SHF-A", result.getCode());
+    }
+
+    /**
+     * Test: findByCodeAndParentDevice - non-existent code returns null
+     */
+    @Test
+    public void testFindByCodeAndParentDevice_WithNonExistentCode_ReturnsNull() {
+        // Act
+        StorageShelf result = storageShelfDAO.findByCodeAndParentDevice("NONEXISTENT", testDevice);
+
+        // Assert
+        assertNull("Shelf should not be found", result);
+    }
 }

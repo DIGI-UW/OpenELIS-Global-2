@@ -64,6 +64,12 @@ public class StorageRackServiceImpl extends BaseObjectServiceImpl<StorageRack, I
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public StorageRack findByCodeAndParentShelf(String code, StorageShelf parentShelf) {
+        return storageRackDao.findByCodeAndParentShelf(code, parentShelf);
+    }
+
+    @Override
     public Optional<StorageRack> getRack(int id) {
         return storageRackDao.get(id);
     }

@@ -19,6 +19,8 @@ public interface StorageShelfService extends BaseObjectService<StorageShelf, Int
 
     StorageShelf findByCode(String code);
 
+    StorageShelf findByCodeAndParentDevice(String code, StorageDevice parentDevice);
+
     Optional<StorageShelf> getShelf(int id);
 
 }

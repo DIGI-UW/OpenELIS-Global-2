@@ -15,6 +15,7 @@ import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.dao.StorageRoomDAO;
 import org.openelisglobal.storage.dao.StorageShelfDAO;
 import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
 
@@ -185,24 +186,42 @@ public class CodeValidationServiceTest {
         assertTrue("Code should be unique for device within parent room", result.isValid());
 
         // Test Shelf context (unique within parent device)
-        // Note: DAO method findByCodeAndParentDevice will be added in implementation phase
-        // For now, test that validation requires parentId
         StorageDevice parentDevice = new StorageDevice();
         parentDevice.setId(1);
         when(storageDeviceDAO.get(1)).thenReturn(Optional.of(parentDevice));
-        // Shelf uniqueness check will be implemented when DAO method is added
+        when(storageShelfDAO.findByCodeAndParentDevice("SHA", parentDevice)).thenReturn(null);
         result = codeValidationService.validateUniqueness("SHA", "shelf", "2", "1");
-        assertTrue("Code validation should pass (uniqueness check placeholder)", result.isValid());
+        assertTrue("Code should be unique for shelf within parent device", result.isValid());
+
+        // Test Shelf conflict (different shelf)
+        StorageShelf existingShelf = new StorageShelf();
+        existingShelf.setId(99);
+        when(storageShelfDAO.findByCodeAndParentDevice("SHA", parentDevice)).thenReturn(existingShelf);
+        result = codeValidationService.validateUniqueness("SHA", "shelf", "2", "1");
+        assertFalse("Code should not be unique if exists for different shelf", result.isValid());
+
+        // Test Shelf update (same shelf)
+        result = codeValidationService.validateUniqueness("SHA", "shelf", "99", "1");
+        assertTrue("Code should be unique when updating same shelf", result.isValid());
 
         // Test Rack context (unique within parent shelf)
-        // Note: DAO method findByCodeAndParentShelf will be added in implementation phase
-        // For now, test that validation requires parentId
         StorageShelf parentShelf = new StorageShelf();
         parentShelf.setId(1);
         when(storageShelfDAO.get(1)).thenReturn(Optional.of(parentShelf));
-        // Rack uniqueness check will be implemented when DAO method is added
+        when(storageRackDAO.findByCodeAndParentShelf("RKR1", parentShelf)).thenReturn(null);
         result = codeValidationService.validateUniqueness("RKR1", "rack", "3", "1");
-        assertTrue("Code validation should pass (uniqueness check placeholder)", result.isValid());
+        assertTrue("Code should be unique for rack within parent shelf", result.isValid());
+
+        // Test Rack conflict (different rack)
+        StorageRack existingRack = new StorageRack();
+        existingRack.setId(99);
+        when(storageRackDAO.findByCodeAndParentShelf("RKR1", parentShelf)).thenReturn(existingRack);
+        result = codeValidationService.validateUniqueness("RKR1", "rack", "3", "1");
+        assertFalse("Code should not be unique if exists for different rack", result.isValid());
+
+        // Test Rack update (same rack)
+        result = codeValidationService.validateUniqueness("RKR1", "rack", "99", "1");
+        assertTrue("Code should be unique when updating same rack", result.isValid());
     }
 
     /**
