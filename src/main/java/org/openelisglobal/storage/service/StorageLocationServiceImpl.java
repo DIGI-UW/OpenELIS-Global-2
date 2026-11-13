@@ -2077,4 +2077,11 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         StorageRack existingRack = storageRackService.findByCode(trimmedCode);
         return existingRack == null || existingRack.getId().equals(excludeId);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countAllLocations() {
+        return storageRoomService.getCount() + storageDeviceService.getCount() + storageShelfService.getCount()
+                + storageRackService.getCount();
+    }
 }

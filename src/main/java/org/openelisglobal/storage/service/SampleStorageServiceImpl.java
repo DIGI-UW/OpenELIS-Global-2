@@ -2082,4 +2082,14 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         }
         return response;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> getStorageMetrics() {
+        String disposedStatusId = statusService
+                .getStatusID(org.openelisglobal.common.services.StatusService.SampleStatus.Disposed);
+        Map<String, Long> metrics = sampleStorageAssignmentDAO.countSampleItemAssignmentMetrics(disposedStatusId);
+        metrics.put("storageLocations", storageLocationService.countAllLocations());
+        return metrics;
+    }
 }
