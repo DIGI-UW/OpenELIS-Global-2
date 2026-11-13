@@ -148,11 +148,20 @@ describe("UserAddModify", () => {
     "explains unfiltered CSV access in %s without stale administrator-only guidance",
     async (locale) => {
       renderAt("/MasterListsPage/userEdit", createQueryClient(), locale);
-      expect(
-        await screen.findByText(
-          /CSV exports without a lab unit filter require the Reports role for All Lab Units or the Global Administrator role/,
-        ),
-      ).toBeInTheDocument();
+      // Expected text comes from the locale's own bundle so Transifex wording
+      // changes don't break the test; what matters is that the current key is
+      // rendered rather than a stale one. The instructions are sibling text
+      // nodes separated by <br>s, so match on content rather than an element.
+      const expected =
+        resolveMessagesForLocale(locale).messages[
+          "systemuserrole.instruction.labUnitRoles"
+        ];
+      expect(expected).toBeTruthy();
+      await waitFor(() =>
+        expect(document.body).toHaveTextContent(expected, {
+          normalizeWhitespace: true,
+        }),
+      );
       expect(
         screen.queryByText(
           /CSV export only Availbale for Global Administrators/,
