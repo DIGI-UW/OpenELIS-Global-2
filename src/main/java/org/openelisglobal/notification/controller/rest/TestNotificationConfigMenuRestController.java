@@ -15,6 +15,7 @@ import org.openelisglobal.notification.valueholder.TestNotificationConfig;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasRole('ADMIN')")
 public class TestNotificationConfigMenuRestController extends BaseMenuController<TestNotificationConfig> {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "menuList*.id", "menuList*.test.id",
