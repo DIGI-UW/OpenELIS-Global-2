@@ -1,4 +1,0 @@
-# m h  dom mon dow   command
-01 14 * * * root cd [% backups_dir %]; ./DatabaseBackup.pl 
-00 00 * * * root /var/lib/openelis-global/lib/logCleanup.sh 1> /dev/null 2> /var/lib/openelis-global/logs/logCleanup.err
-
