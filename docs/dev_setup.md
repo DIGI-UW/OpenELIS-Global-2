@@ -286,3 +286,16 @@ custom passwords are supported. Changing the variables does not re-encrypt
 existing stores: the script preserves an unreadable store and fails certificate
 setup before dependent services start. Keep the passwords that were used to
 create existing stores when upgrading.
+
+## Database access
+
+The deployment Compose files keep PostgreSQL inside the Docker network. They do
+not publish host port 15432. Use
+`docker compose exec db.openelis.org psql -U clinlims -d clinlims` on the server
+for administration, or run that command over SSH. An installation that requires
+a host connection must explicitly provide a Compose override; bind it to
+loopback and use an SSH tunnel for remote access.
+
+For source development, `scripts/dev-stack env` reports the database address.
+The development and analyzer test harnesses publish PostgreSQL only on
+`127.0.0.1`, so local database tools continue to work.
