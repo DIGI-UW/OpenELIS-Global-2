@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,6 +42,7 @@ public class ProviderRestController {
     private ProviderTitleService providerTitleService;
 
     @GetMapping(value = "/Provider/raw/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseBody
     public ResponseEntity<Provider> getProvider(@PathVariable String id) {
         Provider provider = providerService.get(id);
@@ -48,6 +50,7 @@ public class ProviderRestController {
     }
 
     @GetMapping(value = "/Provider/Person/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseBody
     public ResponseEntity<Person> getPerson(@PathVariable String id) {
         Person person = personService.get(id);
@@ -55,6 +58,7 @@ public class ProviderRestController {
     }
 
     @PostMapping(value = "/Provider/FhirUuid", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
     @ResponseBody
     public ResponseEntity<?> insertOrUpdateProviderByFhirUuid(@RequestParam(required = false) UUID fhirUuid,
             @RequestBody Provider provider) {
@@ -78,6 +82,7 @@ public class ProviderRestController {
      * size, so its start rows line up with what the DAO returns.
      */
     @GetMapping(value = "/provider/search", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAnyRole('RECEPTION', 'REPORTS', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> searchProviders(@RequestParam(required = false) String search,
             @RequestParam(required = false) String phone, @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize) {
