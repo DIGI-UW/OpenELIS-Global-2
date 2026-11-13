@@ -15,4 +15,12 @@ public class LegacyUserWriteRouteTest {
                         .param("systemUserId", "1").param("selectedRoles", "1"))
                 .andExpect(status().isMethodNotAllowed());
     }
+
+    @Test
+    public void legacyFormCannotDeleteAccounts() throws Exception {
+        MockMvcBuilders
+                .standaloneSetup(new UnifiedSystemUserMenuController()).build().perform(post("/DeleteUnifiedSystemUser")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED).param("selectedIDs", "4-7"))
+                .andExpect(status().isNotFound());
+    }
 }

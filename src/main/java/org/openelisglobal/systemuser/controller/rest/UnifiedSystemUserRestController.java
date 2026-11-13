@@ -539,14 +539,14 @@ public class UnifiedSystemUserRestController extends BaseController {
         formValidator.validate(form, result);
         Map<String, String> response = new HashMap<>();
 
-        Errors privilegeRefusal = privilegeRefusal(form, getSysUserId(request));
-        if (privilegeRefusal.hasErrors()) {
-            return ResponseEntity.badRequest().body(refusalBody(findForward(FWD_FAIL_INSERT), privilegeRefusal));
-        }
-
         Errors fieldRefusal = fieldRefusal(form, result);
         if (fieldRefusal.hasErrors()) {
             return ResponseEntity.badRequest().body(refusalBody(findForward(FWD_FAIL_INSERT), fieldRefusal));
+        }
+
+        Errors privilegeRefusal = privilegeRefusal(form, getSysUserId(request));
+        if (privilegeRefusal.hasErrors()) {
+            return ResponseEntity.badRequest().body(refusalBody(findForward(FWD_FAIL_INSERT), privilegeRefusal));
         }
 
         if (result.hasErrors()) {

@@ -62,6 +62,31 @@ public class UnifiedSystemUserPrivilegeBoundaryTest extends BaseWebContextSensit
     }
 
     @Test
+    public void malformedCopiedUserIdIsRejectedBeforeRoleLookup() throws Exception {
+        Map<String, Object> form = readForm(userAccountAdmin, BWHITE_FORM);
+        form.put("allowCopyUserRoles", IActionConstants.YES);
+        form.put("systemUserIdToCopy", "abc");
+        List<String> before = userRoleService.getRoleIdsForUser(BWHITE);
+
+        // This test exercises Jakarta field validation. Supply its interpolator
+        // explicitly because the test JVM does not provide Tomcat's EL runtime.
+        try (var validator = new org.springframework.validation.beanvalidation.LocalValidatorFactoryBean()) {
+            validator.setMessageInterpolator(
+                    new org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator());
+            validator.setApplicationContext(webApplicationContext);
+            validator.afterPropertiesSet();
+            var controller = webApplicationContext.getBean(UnifiedSystemUserRestController.class);
+            var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controller)
+                    .setValidator(validator).build();
+            mvc.perform(post("/rest/UnifiedSystemUser").session(userAccountAdmin)
+                    .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(form)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        assertEquals(before, userRoleService.getRoleIdsForUser(BWHITE));
+    }
+
+    @Test
     public void userAccountAdministrator_cannotGrantGlobalAdministrator() throws Exception {
         Map<String, Object> form = readForm(userAccountAdmin, BWHITE_FORM);
         form.put("selectedRoles", List.of(GLOBAL_ADMINISTRATOR));
