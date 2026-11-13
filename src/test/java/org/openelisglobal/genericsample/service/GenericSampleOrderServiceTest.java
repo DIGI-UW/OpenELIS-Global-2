@@ -20,6 +20,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.genericsample.form.GenericSampleImportResult;
+import org.openelisglobal.genericsample.form.GenericSampleImportResult.ImportRowError;
 import org.openelisglobal.genericsample.form.GenericSampleOrderForm;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -311,6 +312,43 @@ public class GenericSampleOrderServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(0, result.getTotalRows());
         assertEquals(0, result.getInvalidRows());
         assertEquals(0, result.getValidRows());
+    }
+
+    @Test
+    public void importSamplesFromFile_withAQuantityBeyondTheCap_refusesTheRowAndCreatesNothing() throws Exception {
+        int samplesBefore = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.sample", Integer.class);
+        String csv = "SampleType,Collector,CollectionDate,SampleQuantity\n" + "Serum,Dr. Smith,11/01/2023,1000000000\n";
+        InputStream stream = new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
+
+        Map<String, Object> result = genericSampleOrderService.importSamplesFromFile(stream, "huge.csv", "text/csv",
+                TEST_SYS_USER_ID);
+
+        assertEquals(0, result.get("totalCreated"));
+        java.util.List<?> errors = (java.util.List<?>) result.get("errors");
+        assertEquals(1, errors.size());
+        ImportRowError error = (ImportRowError) errors.get(0);
+        assertEquals("import.error.sampleQuantityLimit", error.getMessageKey());
+        assertEquals(Map.of("row", 2, "quantity", 1000000000, "maximum", 500), error.getMessageValues());
+        assertEquals(samplesBefore,
+                (int) jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.sample", Integer.class));
+    }
+
+    @Test
+    public void preview_excludesOverLimitRowsFromTheSampleCount() {
+        String csv = "SampleType,Collector,CollectionDate,SampleQuantity\n" + "Serum,Dr. Smith,11/01/2023,500\n"
+                + "Serum,Dr. Smith,11/01/2023,501\n";
+        GenericSampleImportResult result = genericSampleOrderService.validateImportFile(
+                new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)), "limits.csv", "text/csv");
+        assertEquals(false, result.isValid());
+        assertEquals(2, result.getTotalRows());
+        assertEquals(1, result.getValidRows());
+        assertEquals(1, result.getInvalidRows());
+        assertEquals(500, result.getTotalSamplesToCreate());
+        assertEquals(1, result.getPreviewRows().size());
+        assertEquals(500, result.getPreviewRows().get(0).getSampleQuantity());
+        assertEquals(1, result.getErrors().size());
+        assertEquals("import.error.sampleQuantityLimit", result.getErrors().get(0).getMessageKey());
+        assertEquals(Map.of("row", 3, "quantity", 501, "maximum", 500), result.getErrors().get(0).getMessageValues());
     }
 
     @Test

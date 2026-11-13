@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -151,6 +152,26 @@ public class EQAFhirExchangeIntegrationTest extends EQASpineTestBase {
         assertEquals(Integer.valueOf(1),
                 jdbc.queryForObject("SELECT count(*) FROM clinlims.eqa_result WHERE eqa_distribution_id = ?",
                         Integer.class, distributionId));
+    }
+
+    @Test
+    public void aReportedValueWithAnEnormousExponent_isRefusedAndNothingIsTakenIn() {
+        Map<String, Resource> resources = submissionService.participantSubmissionResources(participantCycle.getId(),
+                ENROLLMENT);
+        DiagnosticReport report = report(resources);
+        readdress(report, providerConsignment);
+        List<Observation> observations = observations(resources);
+        observations.get(0).getValueQuantity().setValue(new BigDecimal("1E+500000000"));
+
+        try {
+            exchangeService.applyParticipantReport(report, observations);
+            fail("a value with an exponent of half a billion was taken in");
+        } catch (IllegalArgumentException refused) {
+            assertTrue(refused.getMessage(), refused.getMessage().contains("bounded decimal"));
+        }
+
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.eqa_result WHERE submission_method = 'FHIR'", Integer.class));
     }
 
     @Test

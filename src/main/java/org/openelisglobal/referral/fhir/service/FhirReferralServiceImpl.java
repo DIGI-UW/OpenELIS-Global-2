@@ -44,6 +44,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.registration.ValidationUpdateRegister;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
+import org.openelisglobal.common.util.BoundedDecimal;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
@@ -774,6 +775,9 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         }
         if (value instanceof Quantity) {
             java.math.BigDecimal q = ((Quantity) value).getValue();
+            if (q != null && !BoundedDecimal.isBounded(q)) {
+                throw new IllegalArgumentException("A referred result must be a bounded decimal");
+            }
             return q == null ? null : q.toPlainString();
         }
         if (value instanceof CodeableConcept) {
