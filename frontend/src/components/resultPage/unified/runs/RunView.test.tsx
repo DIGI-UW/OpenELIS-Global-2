@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
+import { ConfigurationContext } from "../../../layout/Layout";
 
 const { utilsMock } = vi.hoisted(() => ({
   utilsMock: {
@@ -92,17 +93,21 @@ const wire = (header: unknown, rows: unknown = ROWS) =>
     },
   );
 
-const renderRun = (filtersReplaced = false) => {
+const renderRun = (filtersReplaced = false, dateLocale = "en-US") => {
   const onBack = vi.fn();
   render(
-    <IntlProvider locale="en" messages={messages}>
-      <RunView
-        runId={7}
-        filtersReplaced={filtersReplaced}
-        onBack={onBack}
-        onOpenRun={vi.fn()}
-      />
-    </IntlProvider>,
+    <ConfigurationContext.Provider
+      value={{ configurationProperties: { DEFAULT_DATE_LOCALE: dateLocale } }}
+    >
+      <IntlProvider locale="en" messages={messages}>
+        <RunView
+          runId={7}
+          filtersReplaced={filtersReplaced}
+          onBack={onBack}
+          onOpenRun={vi.fn()}
+        />
+      </IntlProvider>
+    </ConfigurationContext.Provider>,
   );
   return onBack;
 };
@@ -135,6 +140,16 @@ describe("OGC-1200 run view", () => {
     expect(
       screen.getByRole("link", { name: /analyzer import page/i }),
     ).toHaveAttribute("href", "/AnalyzerResults?id=3");
+  });
+
+  it("shows the run's times in the site date format", () => {
+    wire(HEADER);
+    renderRun(false, "fr-FR");
+
+    expect(screen.getByTestId("run-settings")).toHaveTextContent("04/11/2026");
+    expect(screen.getByTestId("run-settings")).not.toHaveTextContent(
+      "11/4/2026",
+    );
   });
 
   it("shows the raw message inline, not in a dialog", () => {
