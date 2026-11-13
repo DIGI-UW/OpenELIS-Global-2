@@ -59,11 +59,9 @@ public class LabUnitStaffServiceImplTest {
                 labRoles(14, Map.of(CYTOLOGY, Set.of(RESULTS))));
         when(userRoleService.getAllUserLabUnitRoles()).thenReturn(all);
         all.forEach(r -> when(userRoleService.getUserLabUnitRoles(String.valueOf(r.getId()))).thenReturn(r));
-        user("10", "Kayla", "Y");
-        user("11", "Andre", "Y");
-        user("12", "Kevin", "Y");
-        user("13", "Priya", "Y");
-        user("14", "Leaver", "N");
+        List<SystemUser> everyone = List.of(user("10", "Kayla", "Y"), user("11", "Andre", "Y"),
+                user("12", "Kevin", "Y"), user("13", "Priya", "Y"), user("14", "Leaver", "N"));
+        when(systemUserService.getAll()).thenReturn(everyone);
     }
 
     private void role(String id, String name) {
@@ -114,9 +112,27 @@ public class LabUnitStaffServiceImplTest {
     }
 
     @Test
-    public void unknownRoleOrUnit_listsNobody() {
-        assertTrue(service.getActiveUsersWithRole("Results", "No Such Unit").isEmpty());
+    public void unknownRole_listsNobody() {
+        // the role itself does not exist: a genuine caller error, not an
+        // unresolvable lab unit, so this must stay empty rather than fall back
         assertTrue(service.getActiveUsersWithRole("No Such Role", "Cytology").isEmpty());
+    }
+
+    /**
+     * Regression test for the PR #4684 review: a lab unit is looked up by its
+     * identifying test_section.NAME. Renaming or translating a unit through the
+     * admin UI only edits its Localization, never that name, so those sites still
+     * resolve; a site whose unit was created or seeded under a different name —
+     * here standing in as "No Such Unit", which {@code
+     * testSectionService} cannot resolve — must not end up with an empty technician
+     * list. Every newly chosen technician would otherwise be refused. This is also
+     * the inversion test: with the pre-fix lookup (unit not found -&gt; empty
+     * list), this assertion fails.
+     */
+    @Test
+    public void unresolvedLabUnit_fallsBackToEveryUserInsteadOfNobody() {
+        List<IdValuePair> fallback = service.getActiveUsersWithRole("Results", "No Such Unit");
+        assertEquals(Set.of("10", "11", "12", "13", "14"), ids(fallback));
     }
 
     @Test
@@ -125,6 +141,10 @@ public class LabUnitStaffServiceImplTest {
         assertFalse(service.hasRole("10", "Results", "Pathology"));
         assertTrue(service.hasRole("11", "Results", "Pathology"));
         assertFalse(service.hasRole("12", "Results", "Cytology"));
+        // hasRole() itself keeps reporting the literal, unresolved answer; the
+        // fallback policy for an unresolved unit lives in checkTechnician() and
+        // getActiveUsersWithRole(), not here.
+        assertFalse(service.hasRole("10", "Results", "No Such Unit"));
     }
 
     @Test
@@ -147,5 +167,17 @@ public class LabUnitStaffServiceImplTest {
     public void keepingTheTechnicianAlreadyOnTheCase_isAllowed() {
         // saved before this check existed: the case must stay editable
         service.checkTechnician("12", user("12", "Kevin", "Y"), "Cytology");
+    }
+
+    /**
+     * Regression test for the PR #4684 review, on the save side: when the lab unit
+     * cannot be resolved by name, the save must not refuse a technician who would
+     * otherwise have no Results role anywhere ("12" only has Reports). With the
+     * pre-fix check (unresolved unit -&gt; hasRole() false -&gt; refused), this
+     * throws; it must not.
+     */
+    @Test
+    public void unresolvedLabUnit_acceptsAnyNewTechnicianOnSave() {
+        service.checkTechnician("12", null, "No Such Unit");
     }
 }

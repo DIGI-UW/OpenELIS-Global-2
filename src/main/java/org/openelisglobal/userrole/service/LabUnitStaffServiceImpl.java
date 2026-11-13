@@ -36,9 +36,20 @@ public class LabUnitStaffServiceImpl implements LabUnitStaffService {
     @Transactional(readOnly = true)
     public List<IdValuePair> getActiveUsersWithRole(String roleName, String labUnitName) {
         Role role = roleService.getRoleByName(roleName);
-        TestSection labUnit = testSectionService.getTestSectionByName(labUnitName);
-        if (role == null || labUnit == null) {
+        if (role == null) {
             return List.of();
+        }
+        TestSection labUnit = testSectionService.getTestSectionByName(labUnitName);
+        if (labUnit == null) {
+            // The caller names the unit by its identifying test_section.NAME (PR
+            // #4684 review). Renaming or translating a unit through the admin UI
+            // only edits its Localization, never this name, so those sites still
+            // resolve; a site that never had a unit under this exact name (it
+            // created or seeded its own instead) would not. Offering nobody there
+            // would refuse every newly chosen technician, so this falls back to
+            // the unfiltered list the case pages used before this check existed,
+            // rather than making that site worse off than before.
+            return everyUser();
         }
         return userRoleService.getAllUserLabUnitRoles().stream()
                 .filter(roles -> covers(roles, labUnit.getId(), role.getId()))
@@ -46,6 +57,16 @@ public class LabUnitStaffServiceImpl implements LabUnitStaffService {
                 .filter(user -> user != null && "Y".equals(user.getIsActive()))
                 .sorted(Comparator.comparing(SystemUser::getDisplayName, String.CASE_INSENSITIVE_ORDER))
                 .map(user -> new IdValuePair(user.getId(), user.getDisplayName())).collect(Collectors.toList());
+    }
+
+    /**
+     * Every system user, unfiltered: the lab unit could not be resolved by name, so
+     * this mirrors the plain {@code /rest/users} list the case pages read before
+     * offering and accepting a technician was restricted to lab-unit staff.
+     */
+    private List<IdValuePair> everyUser() {
+        return systemUserService.getAll().stream().map(user -> new IdValuePair(user.getId(), user.getDisplayName()))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -63,6 +84,14 @@ public class LabUnitStaffServiceImpl implements LabUnitStaffService {
     @Transactional(readOnly = true)
     public void checkTechnician(String newTechnicianId, SystemUser currentTechnician, String labUnitName) {
         if (currentTechnician != null && newTechnicianId.equals(currentTechnician.getId())) {
+            return;
+        }
+        if (testSectionService.getTestSectionByName(labUnitName) == null) {
+            // Same unresolved-unit case as getActiveUsersWithRole: accept the
+            // technician instead of refusing every save on a site where this
+            // name does not resolve to a unit. hasRole() is left reporting the
+            // literal, unresolved "false" — this method is where the fallback
+            // policy belongs.
             return;
         }
         if (!hasRole(newTechnicianId, Constants.ROLE_RESULTS, labUnitName)) {

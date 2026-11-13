@@ -19,6 +19,8 @@ import org.openelisglobal.program.controller.pathology.PathologyController;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologyDisplayService;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.service.ProgramSampleLabUnitScope;
+import org.openelisglobal.sample.service.SampleLabUnitScopeService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -111,6 +113,24 @@ public class ProgramCaseExceptionHandlerTest extends SecuritySliceMockMvcTest {
         @Bean
         SystemUserService systemUserService() {
             return mock(SystemUserService.class);
+        }
+
+        // PathologyController's visibility check (added since this test was
+        // written, by #4757's lab-unit order scope); not stubbed, so it no-ops
+        // and every case stays visible, which is all these two tests need.
+        // ProgramSampleLabUnitScope is a concrete @Service, not an interface, so
+        // its Mockito mock is still a subclass carrying its own @Autowired
+        // field; Spring's bean post-processing tries to satisfy that field on
+        // every bean, mocked or not, so sampleLabUnitScopeService needs a
+        // candidate bean too, even though nothing here calls it.
+        @Bean
+        SampleLabUnitScopeService sampleLabUnitScopeService() {
+            return mock(SampleLabUnitScopeService.class);
+        }
+
+        @Bean
+        ProgramSampleLabUnitScope programSampleLabUnitScope() {
+            return mock(ProgramSampleLabUnitScope.class);
         }
 
         @Bean
