@@ -8,11 +8,10 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.http.conn.util.InetAddressUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,13 +28,66 @@ import org.springframework.stereotype.Component;
 public class LoginAttemptTracker {
 
     private static final int SWEEP_ABOVE = 5000;
+    private Instant nextSweep = Instant.MIN;
 
     private final int maxAttempts;
     private final int maxClientAttempts;
     private final Duration window;
     private final Clock clock;
     private final List<IpAddressMatcher> trustedProxies;
-    private final Map<String, Deque<Instant>> failures = new ConcurrentHashMap<>();
+    private final Map<String, Bucket> failures = new HashMap<>();
+
+    private static final class Bucket {
+        final Deque<Instant> failures = new ArrayDeque<>();
+        int active;
+    }
+
+    /**
+     * A reservation covers password verification without holding the tracker lock.
+     */
+    public final class Attempt implements AutoCloseable {
+        private final String login;
+        private final String client;
+        private boolean closed;
+
+        private Attempt(String login, String client) {
+            this.login = login;
+            this.client = client;
+        }
+
+        @Override
+        public void close() {
+            synchronized (LoginAttemptTracker.this) {
+                if (!closed) {
+                    closed = true;
+                    release(login);
+                    release(client);
+                }
+            }
+        }
+    }
+
+    public synchronized Attempt tryAcquire(String loginName, String client) {
+        sweepExpired();
+        if (isThrottled(loginName, client)) {
+            return null;
+        }
+        String login = loginKey(loginName);
+        String address = clientKey(client);
+        failures.computeIfAbsent(login, ignored -> new Bucket()).active++;
+        failures.computeIfAbsent(address, ignored -> new Bucket()).active++;
+        return new Attempt(login, address);
+    }
+
+    private void release(String key) {
+        Bucket bucket = failures.get(key);
+        if (bucket != null) {
+            bucket.active--;
+            if (bucket.active == 0 && bucket.failures.isEmpty()) {
+                failures.remove(key);
+            }
+        }
+    }
 
     @Autowired
     public LoginAttemptTracker(@Value("${org.openelisglobal.login.throttle.maxAttempts:10}") int maxAttempts,
@@ -58,33 +110,39 @@ public class LoginAttemptTracker {
                 .filter(value -> !value.isEmpty()).map(IpAddressMatcher::new).toList();
     }
 
-    public boolean isThrottled(String loginName, String client) {
+    public synchronized boolean isThrottled(String loginName, String client) {
         return recentFailures(loginKey(loginName)) >= maxAttempts
                 || recentFailures(clientKey(client)) >= maxClientAttempts;
     }
 
-    public void recordFailure(String loginName, String client) {
+    public synchronized void recordFailure(String loginName, String client) {
         Instant now = clock.instant();
         record(loginKey(loginName), now);
         record(clientKey(client), now);
-        if (failures.size() > SWEEP_ABOVE) {
-            failures.keySet().forEach(this::recentFailures);
-        }
+        sweepExpired();
     }
 
     /**
      * A sign-in proves the login's owner is present; the client keeps its count.
      */
-    public void recordSuccess(String loginName) {
-        failures.remove(loginKey(loginName));
+    public synchronized void recordSuccess(String loginName) {
+        Bucket bucket = failures.get(loginKey(loginName));
+        if (bucket != null) {
+            bucket.failures.clear();
+            if (bucket.active == 0)
+                failures.remove(loginKey(loginName));
+        }
     }
 
     public long windowMinutes() {
         return window.toMinutes();
     }
 
-    public void clear() {
-        failures.clear();
+    public synchronized void clear() {
+        failures.entrySet().removeIf(entry -> {
+            entry.getValue().failures.clear();
+            return entry.getValue().active == 0;
+        });
     }
 
     /** Only explicitly configured proxies may attest to a client address. */
@@ -113,25 +171,33 @@ public class LoginAttemptTracker {
     }
 
     private void record(String key, Instant now) {
-        failures.compute(key, (ignored, instants) -> {
-            if (instants == null) {
-                instants = new ArrayDeque<>();
-            }
-            expire(instants, now.minus(window));
-            instants.addLast(now);
-            return instants;
-        });
+        Bucket bucket = failures.computeIfAbsent(key, ignored -> new Bucket());
+        expire(bucket.failures, now.minus(window));
+        bucket.failures.addLast(now);
     }
 
     private int recentFailures(String key) {
-        AtomicInteger count = new AtomicInteger();
-        Instant cutoff = clock.instant().minus(window);
-        failures.computeIfPresent(key, (ignored, instants) -> {
-            expire(instants, cutoff);
-            count.set(instants.size());
-            return instants.isEmpty() ? null : instants;
+        Bucket bucket = failures.get(key);
+        if (bucket == null)
+            return 0;
+        expire(bucket.failures, clock.instant().minus(window));
+        int count = bucket.failures.size() + bucket.active;
+        if (count == 0)
+            failures.remove(key);
+        return count;
+    }
+
+    private void sweepExpired() {
+        Instant now = clock.instant();
+        if (failures.size() <= SWEEP_ABOVE || now.isBefore(nextSweep))
+            return;
+        nextSweep = now.plusSeconds(60);
+        Instant cutoff = now.minus(window);
+        failures.entrySet().removeIf(entry -> {
+            Bucket bucket = entry.getValue();
+            expire(bucket.failures, cutoff);
+            return bucket.active == 0 && bucket.failures.isEmpty();
         });
-        return count.get();
     }
 
     private static void expire(Deque<Instant> instants, Instant cutoff) {
