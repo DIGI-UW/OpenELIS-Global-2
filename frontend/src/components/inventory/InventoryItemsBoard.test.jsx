@@ -375,15 +375,16 @@ describe("InventoryItemsBoard", () => {
     ).toHaveTextContent("—");
   });
 
-  it("keeps the server's urgency ordering until a column is sorted", async () => {
+  it("keeps the server's urgency ordering until a column is sorted, and returns to it on a third click", async () => {
     await renderBoard();
-    expect(
-      bodyRows().map((row) => within(row).getAllByRole("cell")[1].textContent),
-    ).toEqual([
+    const urgencyOrder = [
       expect.stringContaining(CARTRIDGE.name),
       expect.stringContaining(SYPHILIS.name),
       expect.stringContaining(MALARIA.name),
-    ]);
+    ];
+    const itemOrder = () =>
+      bodyRows().map((row) => within(row).getAllByRole("cell")[1].textContent);
+    expect(itemOrder()).toEqual(urgencyOrder);
 
     const sortByOnHand = () =>
       fireEvent.click(
@@ -405,6 +406,12 @@ describe("InventoryItemsBoard", () => {
         within(row).getAllByRole("cell")[2].textContent.trim(),
       ),
     ).toEqual(["60 tests", "12 tests", "8 tests"]);
+
+    sortByOnHand();
+    expect(itemOrder()).toEqual(urgencyOrder);
+    expect(
+      screen.getByRole("columnheader", { name: /On hand/i }),
+    ).toHaveAttribute("aria-sort", "none");
   });
 
   it("narrows in place by status", async () => {
@@ -712,6 +719,37 @@ describe("InventoryItemsBoard", () => {
       );
       expect(ids).toContain("count-201");
       expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it("leaves used-up and disposed lots out of the count", async () => {
+      const spent = (overrides) =>
+        lot({
+          currentQuantity: 0,
+          availableForUse: false,
+          countsAsAvailableStock: false,
+          inventoryItem: { id: 2, name: SYPHILIS.name },
+          location: { hierarchicalPath: "Room 2" },
+          ...overrides,
+        });
+      await renderBoard(undefined, [
+        ...LOTS,
+        spent({ id: 202, lotNumber: "SYPH-12", status: "CONSUMED" }),
+        spent({ id: 203, lotNumber: "SYPH-31", status: "DISPOSED" }),
+      ]);
+      enterCountMode();
+
+      const row = rowNamed(SYPHILIS.name);
+      expect(within(row).getByRole("spinbutton")).toBeInTheDocument();
+      expect(row).toHaveTextContent("of 8 tests");
+
+      fireEvent.click(screen.getByRole("button", { name: SYPHILIS.name }));
+      expect(screen.getByRole("button", { name: "SYPH-77" })).toBeVisible();
+      expect(
+        screen.queryByRole("button", { name: "SYPH-12" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "SYPH-31" }),
+      ).not.toBeInTheDocument();
     });
 
     it("refuses to count an item with several lots from the row", async () => {
@@ -1152,7 +1190,7 @@ describe("InventoryItemsBoard", () => {
   describe("quick log usage", () => {
     const openQuickLog = async () => {
       await renderBoard();
-      fireEvent.click(screen.getByRole("button", { name: "Log usage" }));
+      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
     };
 
     it("posts a consumption for the chosen item, not an adjustment", async () => {
@@ -1164,7 +1202,11 @@ describe("InventoryItemsBoard", () => {
       fireEvent.change(screen.getByRole("spinbutton"), {
         target: { value: "7" },
       });
-      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Record Usage",
+        }),
+      );
 
       await waitFor(() =>
         expect(InventoryManagementAPI.consume).toHaveBeenCalledWith({
@@ -1181,8 +1223,16 @@ describe("InventoryItemsBoard", () => {
       InventoryManagementAPI.consume.mockResolvedValue({});
       await renderBoard();
       await openRowMenu(CARTRIDGE.name);
-      fireEvent.click(screen.getByText("Record Usage"));
-      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+      fireEvent.click(
+        screen
+          .getAllByText("Record Usage")
+          .find((el) => el.closest('[role="menu"]')),
+      );
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Record Usage",
+        }),
+      );
 
       await waitFor(() =>
         expect(InventoryManagementAPI.consume).toHaveBeenCalledWith({
@@ -1199,7 +1249,11 @@ describe("InventoryItemsBoard", () => {
       fireEvent.change(screen.getByRole("spinbutton"), {
         target: { value: "0.5" },
       });
-      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Record Usage",
+        }),
+      );
 
       expect(
         screen.getByText("Enter a whole number of units, at least 1."),
@@ -1214,7 +1268,11 @@ describe("InventoryItemsBoard", () => {
       await openQuickLog();
       fireEvent.click(screen.getByRole("combobox", { name: /Item Name/i }));
       fireEvent.click(screen.getByText(`${MALARIA.name} (${MALARIA.code})`));
-      fireEvent.click(screen.getByRole("button", { name: "Record Usage" }));
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Record Usage",
+        }),
+      );
 
       await waitFor(() =>
         expect(

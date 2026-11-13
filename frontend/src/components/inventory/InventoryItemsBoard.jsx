@@ -193,7 +193,9 @@ const InventoryItemsBoard = () => {
   const countableLots = (row) =>
     (lotsByItem.get(row.itemId) || []).filter(
       (lot) =>
-        !locationFilter || lot.location?.hierarchicalPath === locationFilter,
+        lot.status !== "CONSUMED" &&
+        lot.status !== "DISPOSED" &&
+        (!locationFilter || lot.location?.hierarchicalPath === locationFilter),
     );
 
   // Includes the expired and QC-failed lots that row.onHand leaves out.
@@ -419,11 +421,12 @@ const InventoryItemsBoard = () => {
     : visibleRows;
 
   const toggleSort = (key) =>
-    setSort((current) =>
-      current.key === key
-        ? { key, ascending: !current.ascending }
-        : { key, ascending: true },
-    );
+    setSort((current) => {
+      if (current.key !== key) return { key, ascending: true };
+      return current.ascending
+        ? { key, ascending: false }
+        : { key: null, ascending: true };
+    });
 
   const sortableHeader = (key, labelId, extraProps = {}) => (
     <TableHeader
@@ -930,7 +933,7 @@ const InventoryItemsBoard = () => {
           className="board-log-usage"
           onClick={() => setAction({ kind: "quickLog" })}
         >
-          <FormattedMessage id="inventory.logUsage.button" />
+          <FormattedMessage id="usage.record.button" />
         </Button>
         <Button
           kind="tertiary"

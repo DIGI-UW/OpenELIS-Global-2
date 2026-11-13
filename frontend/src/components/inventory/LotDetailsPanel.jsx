@@ -87,7 +87,7 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
           kind="ghost"
           size="sm"
           renderIcon={Close}
-          iconDescription="Close"
+          iconDescription={intl.formatMessage({ id: "button.close" })}
           onClick={onClose}
           hasIconOnly
         />
@@ -95,10 +95,15 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
 
       <div className="panel-content">
         {loading ? (
-          <Loading description="Loading lot details..." withOverlay={false} />
+          <Loading
+            description={intl.formatMessage({ id: "lot.details.loading" })}
+            withOverlay={false}
+          />
         ) : (
           <Tabs>
-            <TabList aria-label="Lot details tabs">
+            <TabList
+              aria-label={intl.formatMessage({ id: "lot.details.tabs" })}
+            >
               <Tab>
                 <FormattedMessage id="lot.details.tab.info" />
               </Tab>
@@ -350,7 +355,10 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
                               {formatDate(txn.transactionDate)}
                             </StructuredListCell>
                             <StructuredListCell>
-                              {txn.transactionType}
+                              {intl.formatMessage({
+                                id: `transaction.type.${txn.transactionType}`,
+                                defaultMessage: txn.transactionType,
+                              })}
                             </StructuredListCell>
                             <StructuredListCell>
                               {txn.quantityChange > 0 ? "+" : ""}
