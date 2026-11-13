@@ -169,7 +169,7 @@ public class LoginThrottleFilterTest extends SecuritySliceMockMvcTest {
                     .newInputStream(java.nio.file.Path.of("volume/properties/common.properties"))) {
                 shipped.load(input);
             }
-            return new LoginAttemptTracker(LIMIT, Duration.ofMinutes(15), Clock.systemUTC(),
+            return new LoginAttemptTracker(LIMIT, LIMIT, Duration.ofMinutes(15), Clock.systemUTC(),
                     shipped.getProperty("org.openelisglobal.login.throttle.trustedProxies"));
         }
 

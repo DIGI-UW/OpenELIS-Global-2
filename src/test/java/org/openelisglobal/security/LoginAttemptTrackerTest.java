@@ -18,7 +18,7 @@ public class LoginAttemptTrackerTest {
     private static final Duration WINDOW = Duration.ofMinutes(15);
 
     private final SteppingClock clock = new SteppingClock(Instant.parse("2026-11-07T10:00:00Z"));
-    private final LoginAttemptTracker tracker = new LoginAttemptTracker(LIMIT, WINDOW, clock);
+    private final LoginAttemptTracker tracker = new LoginAttemptTracker(LIMIT, LIMIT, WINDOW, clock, "");
 
     @Test
     public void failuresBelowTheLimit_doNotThrottle() {
@@ -74,7 +74,8 @@ public class LoginAttemptTrackerTest {
 
     @Test
     public void trustedProxy_usesTheNearestUntrustedHop_includingPrivateClients() {
-        LoginAttemptTracker proxied = new LoginAttemptTracker(LIMIT, WINDOW, clock, "172.16.0.5/32,172.16.0.6/32");
+        LoginAttemptTracker proxied = new LoginAttemptTracker(LIMIT, LIMIT, WINDOW, clock,
+                "172.16.0.5/32,172.16.0.6/32");
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRemoteAddr("172.16.0.5");
         request.addHeader("X-Forwarded-For", "203.0.113.7, 192.168.1.40, 172.16.0.6");
@@ -83,7 +84,7 @@ public class LoginAttemptTrackerTest {
 
     @Test
     public void multipleHeaderValues_areReadInOrder() {
-        LoginAttemptTracker proxied = new LoginAttemptTracker(LIMIT, WINDOW, clock, "172.16.0.5");
+        LoginAttemptTracker proxied = new LoginAttemptTracker(LIMIT, LIMIT, WINDOW, clock, "172.16.0.5");
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRemoteAddr("172.16.0.5");
         request.addHeader("X-Forwarded-For", "203.0.113.7");
@@ -93,7 +94,7 @@ public class LoginAttemptTrackerTest {
 
     @Test
     public void malformedProxyHeader_fallsBackToSocketPeer() {
-        LoginAttemptTracker proxied = new LoginAttemptTracker(LIMIT, WINDOW, clock, "172.16.0.5");
+        LoginAttemptTracker proxied = new LoginAttemptTracker(LIMIT, LIMIT, WINDOW, clock, "172.16.0.5");
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRemoteAddr("172.16.0.5");
         request.addHeader("X-Forwarded-For", "forged, unknown");
@@ -103,7 +104,7 @@ public class LoginAttemptTrackerTest {
     @Test
     public void concurrentFailureSuccessAndExpiry_doNotLoseTheClientFailures() throws Exception {
         int attempts = 2000;
-        LoginAttemptTracker concurrent = new LoginAttemptTracker(attempts, WINDOW, clock);
+        LoginAttemptTracker concurrent = new LoginAttemptTracker(attempts, attempts, WINDOW, clock, "");
         java.util.concurrent.ExecutorService workers = java.util.concurrent.Executors.newFixedThreadPool(3);
         java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
         try {
@@ -133,6 +134,36 @@ public class LoginAttemptTrackerTest {
         } finally {
             workers.shutdownNow();
         }
+    }
+
+    @Test
+    public void sharedAddressAllowsOrdinaryMistakesAcrossAccounts() {
+        LoginAttemptTracker shared = new LoginAttemptTracker(10, 100, WINDOW, clock, "");
+        for (int user = 0; user < 20; user++) {
+            for (int attempt = 0; attempt < 3; attempt++) {
+                shared.recordFailure("user" + user, "192.0.2.1");
+            }
+            assertFalse(shared.isThrottled("user" + user, "192.0.2.1"));
+            shared.recordSuccess("user" + user);
+        }
+        assertFalse(shared.isThrottled("another-user", "192.0.2.1"));
+        for (int attempt = 60; attempt < 100; attempt++) {
+            shared.recordFailure("guess" + attempt, "192.0.2.1");
+        }
+        assertTrue(shared.isThrottled("another-user", "192.0.2.1"));
+        assertFalse(shared.isThrottled("another-user", "192.0.2.2"));
+        shared.recordSuccess("known-account");
+        assertTrue(shared.isThrottled("another-user", "192.0.2.1"));
+    }
+
+    @Test
+    public void accountLimitStillAppliesBelowTheSharedAddressLimit() {
+        LoginAttemptTracker shared = new LoginAttemptTracker(10, 100, WINDOW, clock, "");
+        for (int attempt = 0; attempt < 10; attempt++) {
+            shared.recordFailure("target", "192.0.2.1");
+        }
+        assertTrue(shared.isThrottled("target", "192.0.2.2"));
+        assertFalse(shared.isThrottled("other", "192.0.2.1"));
     }
 
     private void fail(String login, String client, int times) {
