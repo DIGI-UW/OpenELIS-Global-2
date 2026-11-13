@@ -51,12 +51,13 @@ public class LabUnitStaffServiceImpl implements LabUnitStaffService {
             // rather than making that site worse off than before.
             return everyUser();
         }
-        return userRoleService.getAllUserLabUnitRoles().stream()
-                .filter(roles -> covers(roles, labUnit.getId(), role.getId()))
-                .map(roles -> systemUserService.get(String.valueOf(roles.getId())))
-                .filter(user -> user != null && "Y".equals(user.getIsActive()))
-                .sorted(Comparator.comparing(SystemUser::getDisplayName, String.CASE_INSENSITIVE_ORDER))
-                .map(user -> new IdValuePair(user.getId(), user.getDisplayName())).collect(Collectors.toList());
+        // One query, filtered by role and lab unit at the data-access level
+        // (mozzy11's PR #4684 review, optional improvement): the previous
+        // version loaded every user's lab-unit roles, then fetched each
+        // matching user one at a time.
+        return userRoleService.getActiveUsersWithRoleOnLabUnit(role.getId(), labUnit.getId()).stream()
+                .sorted(Comparator.comparing(IdValuePair::getValue, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
     }
 
     /**

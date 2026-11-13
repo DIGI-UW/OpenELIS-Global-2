@@ -3,6 +3,9 @@ package org.openelisglobal.userrole.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.HashSet;
@@ -51,14 +54,32 @@ public class LabUnitStaffServiceImplTest {
         role(REPORTS, "Reports");
         section(CYTOLOGY, "Cytology");
         section(PATHOLOGY, "Pathology");
+
+        // getActiveUsersWithRoleOnLabUnit is the one-query replacement for
+        // loading every user's lab-unit roles and checking them one at a time
+        // (PR #4684 review, optional improvement): the filtering by role and
+        // unit now happens in UserLabUnitRolesDAOImpl's SQL, which a plain
+        // Mockito unit test cannot exercise. These stubs stand in for what
+        // that query would answer for the fixture below; the "called once, not
+        // per candidate" contract is what the tests here actually check.
+        // 10: Results on Cytology; 11: Results on all units; 13: Results on
+        // Pathology.
+        when(userRoleService.getActiveUsersWithRoleOnLabUnit(RESULTS, CYTOLOGY))
+                .thenReturn(List.of(new IdValuePair("10", "Kayla"), new IdValuePair("11", "Andre")));
+        when(userRoleService.getActiveUsersWithRoleOnLabUnit(RESULTS, PATHOLOGY))
+                .thenReturn(List.of(new IdValuePair("11", "Andre"), new IdValuePair("13", "Priya")));
+
+        // hasRole() and checkTechnician() still look up one user's own
+        // lab-unit roles at a time (never a loop over every user), so that
+        // path is untouched and still exercised against this fixture.
         // 10: Results on Cytology; 11: Results on all units; 12: Reports on Cytology;
         // 13: Results on Pathology; 14: Results on Cytology but deactivated
         List<UserLabUnitRoles> all = List.of(labRoles(10, Map.of(CYTOLOGY, Set.of(RESULTS))),
                 labRoles(11, Map.of("AllLabUnits", Set.of(RESULTS, REPORTS))),
                 labRoles(12, Map.of(CYTOLOGY, Set.of(REPORTS))), labRoles(13, Map.of(PATHOLOGY, Set.of(RESULTS))),
                 labRoles(14, Map.of(CYTOLOGY, Set.of(RESULTS))));
-        when(userRoleService.getAllUserLabUnitRoles()).thenReturn(all);
         all.forEach(r -> when(userRoleService.getUserLabUnitRoles(String.valueOf(r.getId()))).thenReturn(r));
+
         List<SystemUser> everyone = List.of(user("10", "Kayla", "Y"), user("11", "Andre", "Y"),
                 user("12", "Kevin", "Y"), user("13", "Priya", "Y"), user("14", "Leaver", "N"));
         when(systemUserService.getAll()).thenReturn(everyone);
@@ -111,6 +132,23 @@ public class LabUnitStaffServiceImplTest {
         assertEquals(Set.of("11", "13"), ids(service.getActiveUsersWithRole("Results", "Pathology")));
     }
 
+    /**
+     * Regression test for mozzy11's optional PR #4684 scaling suggestion: the old
+     * implementation loaded every user's lab-unit roles ({@code
+     * getAllUserLabUnitRoles()}) and then fetched each matching user one at a time
+     * ({@code systemUserService.get(id)}) to read their active flag and display
+     * name. The fix answers both from a single query. If someone reverted the query
+     * and went back to that per-user loop, {@code systemUserService} would be hit
+     * again here and this fails; with the fix, nothing calls it.
+     */
+    @Test
+    public void activeUsersWithRole_isOneQueryNotOnePerCandidate() {
+        service.getActiveUsersWithRole("Results", "Cytology");
+
+        verify(userRoleService, times(1)).getActiveUsersWithRoleOnLabUnit(RESULTS, CYTOLOGY);
+        verifyZeroInteractions(systemUserService);
+    }
+
     @Test
     public void unknownRole_listsNobody() {
         // the role itself does not exist: a genuine caller error, not an
@@ -133,6 +171,9 @@ public class LabUnitStaffServiceImplTest {
     public void unresolvedLabUnit_fallsBackToEveryUserInsteadOfNobody() {
         List<IdValuePair> fallback = service.getActiveUsersWithRole("Results", "No Such Unit");
         assertEquals(Set.of("10", "11", "12", "13", "14"), ids(fallback));
+        // the fallback reads every user directly; it must not also query the
+        // lab-unit-scoped list for a unit that was never resolved
+        verifyZeroInteractions(userRoleService);
     }
 
     @Test
