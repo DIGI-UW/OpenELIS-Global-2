@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <micro_whonet_organism />
+    <micro_organism id="lab-klebsiella"
+        display_name="Klebsiella pneumoniae" whonet_code="KPN"
+        notes="Lab note" is_active="Y" seeded="false"
+        lastupdated="2026-01-01 00:00:00" last_updated="2026-01-01 00:00:00" />
+    <micro_organism id="lab-uncoded-ecoli"
+        display_name="Escherichia coli" is_active="Y" seeded="false"
+        lastupdated="2026-01-01 00:00:00" last_updated="2026-01-01 00:00:00" />
+</dataset>

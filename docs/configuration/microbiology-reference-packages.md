@@ -9,6 +9,7 @@ read release archives, download metadata or run R.
 
 | Folder under `configuration/backend/` | Required columns                         | Order |
 | ------------------------------------- | ---------------------------------------- | ----- |
+| `microbiology-whonet-organisms/`      | WHONET's `Organisms.txt`, see below      | 305   |
 | `microbiology-organisms/`             | `source,code,displayName,whonetCode`     | 310   |
 | `microbiology-antimicrobials/`        | `source,code,displayName,whonetCode`     | 320   |
 | `microbiology-breakpoints/`           | Existing breakpoint import columns below | 330   |
@@ -19,6 +20,28 @@ and database identifier. An existing source identity retains local values and
 activity. Unambiguous pre-existing name/code matches can adopt an identity;
 conflicting matches fail the catalog import. These files do not choose a site's
 panels, routing, significance or clinical protocol.
+
+## WHONET's organism list
+
+`microbiology-whonet-organisms/` takes `Organisms.txt` exactly as
+[WHONET publishes it](https://github.com/AClark-WHONET/AMRIE): tab-separated,
+with WHONET's column names. The `amr-reference-eucast` and `amr-reference-clsi`
+packages carry the file unchanged, so OpenELIS offers the organisms, names and
+codes a WHONET user knows. The table arrives through the configuration folder
+only: Import Catalog does not offer this domain.
+
+- The whole table is kept, every row and column, including the older names a
+  code has carried and codes WHONET has replaced. Loading a file replaces the
+  table with that file.
+- Each current entry (`TAXONOMIC_STATUS` of `C`) is an organism, under WHONET's
+  name and identified by its WHONET code. "Klebsiella sp." is `kl-`;
+  "Escherichia coli" (`eco`) and "Escherichia coli O157:H7" (`157`) are separate
+  organisms.
+- An organism the laboratory already has under a WHONET code keeps its record,
+  panel and notes, and takes WHONET's current name. One with the same name and
+  no code takes the code.
+- If WHONET's name for a code already belongs to an organism with a different
+  code, the file is not loaded and the report names both codes.
 
 Breakpoint files use the existing administrator CSV importer:
 
