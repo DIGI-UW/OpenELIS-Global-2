@@ -64,13 +64,19 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
       waitUntil: "domcontentloaded",
     });
     await expect(
-      page.getByRole("heading", { name: "Microbiology case" }),
+      page.getByRole("heading", {
+        level: 1,
+        name: `Case ${seeded.accessionNumber}`,
+      }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
     await attachViewportEvidence(
       page,
       testInfo,
       "microbiology-case-overview",
-      page.getByRole("heading", { name: "Microbiology case" }),
+      page.getByRole("heading", {
+        level: 1,
+        name: `Case ${seeded.accessionNumber}`,
+      }),
     );
     await expectNoWcag21AaViolations(
       page,
@@ -85,13 +91,13 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     const seeded = await seedReviewedMicrobiologyCase(page);
     const surfaces = [
       ["isolates", "Isolates", "microbiology-isolates"],
-      ["ast", "Manual AST", "microbiology-ast"],
+      ["ast", "AST / DST", "microbiology-ast"],
       [
         "critical-communication",
         "Critical communication",
         "microbiology-critical-communication",
       ],
-      ["reports", "Report readiness", "microbiology-reporting"],
+      ["reports", "Report and release", "microbiology-reporting"],
     ] as const;
 
     for (const [section, heading, evidenceName] of surfaces) {
@@ -100,61 +106,41 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
           `/Microbiology/cases/${seeded.caseId}?section=${section}`,
           { waitUntil: "domcontentloaded" },
         );
-        await expect(page.getByRole("heading", { name: heading })).toBeVisible({
+        await expect(
+          page.getByRole("heading", { name: heading, exact: true }),
+        ).toBeVisible({
           timeout: LONG_TIMEOUT,
         });
         await attachViewportEvidence(
           page,
           testInfo,
           evidenceName,
-          page.getByRole("heading", { name: heading }),
+          page.getByRole("heading", { name: heading, exact: true }),
         );
         await expectNoWcag21AaViolations(page, testInfo, evidenceName);
       });
     }
   });
 
-  test("shared reagent lot picker in culture and AST", async ({
-    page,
-  }, testInfo) => {
+  test("shared reagent lot picker in AST", async ({ page }, testInfo) => {
     const seeded = await seedMicrobiologyMvpCase(page);
-
-    await page.goto(`/Microbiology/cases/${seeded.caseId}?section=setup`, {
+    await page.goto(`/Microbiology/cases/${seeded.caseId}?view=workbench`, {
       waitUntil: "domcontentloaded",
     });
-    const setup = page.getByRole("region", { name: "Inoculation" });
-    await setup.getByRole("button", { name: "Start inoculation" }).click();
-    await expect(
-      setup.getByRole("searchbox", { name: "Scan or enter lot number" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(setup.getByText("FEFO - use first").first()).toBeVisible();
-    await expect(setup.getByText("QC passed").first()).toBeVisible();
-    await attachViewportEvidence(
-      page,
-      testInfo,
-      "microbiology-reagent-picker-culture",
-      setup.getByRole("searchbox", { name: "Scan or enter lot number" }),
-    );
-    await expectNoWcag21AaViolations(
-      page,
-      testInfo,
-      "microbiology-reagent-picker-culture",
-    );
-    await setup.getByRole("button", { name: "Cancel" }).click();
-
     await createAndIdentifyMicrobiologyIsolate(page, seeded);
     await openMicrobiologyCaseSection(page, "Manual AST");
-    const ast = page.getByTestId("microbiology-ast-card");
-    await expect(
-      ast.getByRole("searchbox", { name: "Scan or enter lot number" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(ast.getByText("FEFO - use first").first()).toBeVisible();
-    await expect(ast.getByText("QC passed").first()).toBeVisible();
+    await page.getByRole("button", { name: "Start AST run" }).click();
+    const lotSearch = page.getByRole("searchbox", {
+      name: "Scan or enter lot number",
+    });
+    await expect(lotSearch).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(page.getByText("FEFO - use first").first()).toBeVisible();
+    await expect(page.getByText("QC passed").first()).toBeVisible();
     await attachViewportEvidence(
       page,
       testInfo,
       "microbiology-reagent-picker-ast",
-      ast.getByRole("searchbox", { name: "Scan or enter lot number" }),
+      lotSearch,
     );
     await expectNoWcag21AaViolations(
       page,

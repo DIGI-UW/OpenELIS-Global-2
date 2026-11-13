@@ -4,7 +4,6 @@ import {
   MICROBIOLOGY_CASE_READY_MARK,
   MICROBIOLOGY_WORKLIST_READY_MARK,
 } from "../../../../src/components/microbiology/MicrobiologyPerformance";
-import { parseMicrobiologyWorklistSearch } from "../../../../src/components/microbiology/MicrobiologyRoutes";
 import {
   seedDenseMicrobiologyCase,
   seedMicrobiologyAstWorklistCases,
@@ -74,8 +73,7 @@ const measureSummaryFilter = async (
   const startedAt = await page.evaluate(() => performance.now());
   await Promise.all([
     page.waitForURL(
-      (url) =>
-        parseMicrobiologyWorklistSearch(url.search).status === expectedStatus,
+      (url) => (url.searchParams.get("status") ?? "") === expectedStatus,
     ),
     page.getByTestId(activate ? activeTestId : allTestId).click(),
   ]);

@@ -1165,20 +1165,37 @@ export async function seedDenseMicrobiologyCase(
       seeded.organismId!,
     );
     isolateIds.push(isolate.id);
+    let run: { id: string } | undefined;
     for (let runIndex = 0; runIndex < 8; runIndex += 1) {
-      const run = await requireJsonResponse<{ id: string }>(
+      // One active run per panel; later runs repeat the reviewed one.
+      run = await requireJsonResponse<{ id: string }>(
         "Start dense-case AST run",
-        await page.request.post(`${API_PREFIX}/rest/microbiology/ast/runs`, {
-          headers,
-          data: {
-            isolateId: isolate.id,
-            panelId: panel.id,
-            panelAdjustmentReason:
-              "Qualification fixture exercises the seeded two-drug panel",
-            breakpointStandardId: standard.id,
-            technique: "BROTH_MICRODILUTION",
-          },
-        }),
+        run
+          ? await page.request.post(
+              `${API_PREFIX}/rest/microbiology/ast/runs/${run.id}/attempts`,
+              {
+                headers,
+                data: {
+                  attemptType: "REPEAT",
+                  reason: "Qualification fixture repeat",
+                  technique: "BROTH_MICRODILUTION",
+                },
+              },
+            )
+          : await page.request.post(
+              `${API_PREFIX}/rest/microbiology/ast/runs`,
+              {
+                headers,
+                data: {
+                  isolateId: isolate.id,
+                  panelId: panel.id,
+                  panelAdjustmentReason:
+                    "Qualification fixture exercises the seeded two-drug panel",
+                  breakpointStandardId: standard.id,
+                  technique: "BROTH_MICRODILUTION",
+                },
+              },
+            ),
       );
       for (const [readingIndex, antibiotic] of readingAntibiotics.entries()) {
         await requireJsonResponse(

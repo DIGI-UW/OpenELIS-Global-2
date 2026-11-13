@@ -10,6 +10,8 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { labTimestamp } from "./MicrobiologyTime";
+import { MODAL_FIRST_FIELD, ReturnFocus } from "./returnFocus";
+import OfflineNotice, { useOnline } from "./OfflineNotice";
 
 export default function CaseAttachmentNotes({
   detail,
@@ -21,6 +23,7 @@ export default function CaseAttachmentNotes({
 }) {
   const intl = useIntl(),
     t = (id, values) => intl.formatMessage({ id }, values);
+  const online = useOnline();
   const [open, setOpen] = useState(false),
     [text, setText] = useState(""),
     [external, setExternal] = useState(false),
@@ -57,20 +60,23 @@ export default function CaseAttachmentNotes({
       >
         {t("microbiology.testing.notesCount", { count: notes.length })}
       </Button>
+      {open && <ReturnFocus />}
       {open && (
         <Modal
           open
           passiveModal={!detail.canWrite}
+          selectorPrimaryFocus={MODAL_FIRST_FIELD}
           modalHeading={t("microbiology.testing.notes")}
           closeButtonLabel={t("label.button.close")}
           primaryButtonText={t("microbiology.testing.saveNote")}
           secondaryButtonText={t("label.button.close")}
-          primaryButtonDisabled={busy || !text.trim()}
+          primaryButtonDisabled={busy || !text.trim() || !online}
           onRequestSubmit={save}
           onRequestClose={() => setOpen(false)}
           onSecondarySubmit={() => setOpen(false)}
         >
           <Stack gap={4}>
+            <OfflineNotice />
             {notes.map((note) => (
               <div key={note.id}>
                 <Tag>

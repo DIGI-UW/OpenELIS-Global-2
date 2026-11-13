@@ -296,6 +296,8 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
   const loading = !responseMatchesLocation || requestState.status === "loading";
   const hasLoadError =
     responseMatchesLocation && requestState.status === "error";
+  const showsLastLoadedRows =
+    hasLoaded && hasLoadError && worklistState.sourceSearch !== location.search;
 
   useEffect(() => {
     if (location.pathname !== MICROBIOLOGY_WORKLIST_PATH) {
@@ -377,10 +379,16 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
   }, [newPositiveRowIds]);
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setRefreshGeneration((generation) => generation + 1);
-    }, MICROBIOLOGY_WORKLIST_REFRESH_INTERVAL_MS);
-    return () => window.clearInterval(intervalId);
+    const refresh = () => setRefreshGeneration((generation) => generation + 1);
+    const intervalId = window.setInterval(
+      refresh,
+      MICROBIOLOGY_WORKLIST_REFRESH_INTERVAL_MS,
+    );
+    window.addEventListener("online", refresh);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("online", refresh);
+    };
   }, [location.search, service]);
 
   useEffect(() => {
@@ -1147,7 +1155,9 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                 </h2>
                 <p>
                   {intl.formatMessage({
-                    id: "microbiology.worklist.table.hint",
+                    id: showsLastLoadedRows
+                      ? "microbiology.worklist.table.lastLoaded"
+                      : "microbiology.worklist.table.hint",
                   })}
                 </p>
               </div>

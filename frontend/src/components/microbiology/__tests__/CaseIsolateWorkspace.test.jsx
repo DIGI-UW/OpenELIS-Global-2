@@ -194,6 +194,32 @@ it("keeps a failed pick open and shows the error inside the active dialog", asyn
   ).toBeEnabled();
 });
 
+it("says the server did not answer when a pick gets no response", async () => {
+  const service = api([]);
+  service.pickIsolate.mockRejectedValue(
+    Object.assign(new Error("request failed"), { response: { status: 0 } }),
+  );
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Pick isolate" }));
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText("Source culture row"), {
+    target: { value: "r1" },
+  });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  expect(
+    await within(dialog).findByText(
+      "The server did not answer, and the change may not be saved. Check the connection, then reload the case before you try again.",
+    ),
+  ).toBeVisible();
+  expect(
+    within(dialog).queryByText(
+      messages["microbiology.isolateWorkspace.saveError"],
+    ),
+  ).not.toBeInTheDocument();
+});
+
 it("requires a reason and valid confidence before submitting a versioned reidentification", async () => {
   const service = api([
     {
@@ -402,4 +428,56 @@ it("shows a preopened pick load failure and lets the user close it", async () =>
     screen.getByRole("button", { name: messages["label.button.cancel"] }),
   );
   expect(close).toHaveBeenCalledTimes(1);
+});
+it("moves keyboard focus into the pick dialog and back to Pick isolate after saving", async () => {
+  show(api([]));
+  const trigger = await screen.findByRole("button", { name: "Pick isolate" });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const dialog = screen.getByRole("dialog");
+  const culture = within(dialog).getByLabelText("Source culture row");
+  expect(culture).toHaveFocus();
+  fireEvent.change(culture, { target: { value: "r1" } });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Pick isolate" })).toHaveFocus(),
+  );
+});
+it("lets keyboard users focus and scroll the referrals table", async () => {
+  show(api());
+  expect(
+    await screen.findByRole("table", {
+      name: messages["microbiology.isolateWorkspace.referrals"],
+    }),
+  ).toHaveAttribute("tabindex", "0");
+});
+it("keeps the isolate Save disabled and says why while the browser is offline", async () => {
+  const onLine = vi
+    .spyOn(window.navigator, "onLine", "get")
+    .mockReturnValue(false);
+  try {
+    show(api([]));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Pick isolate" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Source culture row"), {
+      target: { value: "r1" },
+    });
+    expect(
+      within(dialog).getByRole("button", { name: "Save", exact: true }),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByText(
+        "Working offline; refresh when network returns.",
+      ),
+    ).toBeVisible();
+  } finally {
+    onLine.mockRestore();
+  }
 });

@@ -35,6 +35,8 @@ import {
   TextInput,
   Tile,
 } from "@carbon/react";
+import { MODAL_FIRST_FIELD, useReturnFocus } from "./returnFocus";
+import OfflineNotice, { useOnline } from "./OfflineNotice";
 
 const units = ["HOURS", "DAYS", "WEEKS"];
 const outcomes = ["GROWTH", "NO_GROWTH", "CONTAMINATED"];
@@ -86,6 +88,8 @@ function CultureActionForm({
   saving,
 }) {
   const intl = useIntl();
+  const online = useOnline();
+  useReturnFocus();
   const t = (key, values) =>
     intl.formatMessage({ id: `microbiology.culture.${key}` }, values);
   const [draft, setDraft] = useState(action.draft);
@@ -251,7 +255,8 @@ function CultureActionForm({
       modalHeading={t(`action.${action.kind}`)}
       primaryButtonText={t("save")}
       secondaryButtonText={t("cancel")}
-      primaryButtonDisabled={!valid || saving || !detail.canWrite}
+      primaryButtonDisabled={!valid || saving || !detail.canWrite || !online}
+      selectorPrimaryFocus={MODAL_FIRST_FIELD}
       onRequestSubmit={submit}
       onRequestClose={() => {
         if (!saving) onClose();
@@ -259,6 +264,7 @@ function CultureActionForm({
       preventCloseOnClickOutside
     >
       <Stack gap={5}>
+        <OfflineNotice />
         {action.kind === "inoculate" && (
           <>
             {action.chooseParent &&

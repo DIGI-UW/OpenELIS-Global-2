@@ -18,6 +18,9 @@ import {
   TableRow,
   Tile,
 } from "@carbon/react";
+import { returnFocus } from "./returnFocus";
+import { useOnline } from "./OfflineNotice";
+import { serverUnreachable } from "../utils/requestOutcome";
 
 export function MicrobiologyReportBlock({ report }) {
   const intl = useIntl(),
@@ -86,7 +89,7 @@ export function MicrobiologyReportBlock({ report }) {
             key={isolate.id}
             title={`${isolate.label}: ${isolate.organism}`}
           >
-            <Table aria-label={`${isolate.label} ${t("ast")}`}>
+            <Table tabIndex={0} aria-label={`${isolate.label} ${t("ast")}`}>
               <TableHead>
                 <TableRow>
                   {["agent", "raw", "interpretation", "breakpoint"].map(
@@ -146,6 +149,7 @@ export function MicrobiologyReportBlock({ report }) {
   );
 }
 export default function CaseReportWorkspace({ detail, service, onChanged }) {
+  const online = useOnline();
   const intl = useIntl(),
     t = (key) => intl.formatMessage({ id: `microbiology.m6.${key}` });
   const [state, setState] = useState(null),
@@ -187,6 +191,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
         : current.current.canValidate)
     )
       return;
+    const trigger = document.activeElement;
     setBusy(true);
     setError(false);
     try {
@@ -199,10 +204,11 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       setState(next);
       setVersionId(next.versions[next.versions.length - 1].id);
       onChanged?.();
-    } catch {
-      setError(true);
+    } catch (failure) {
+      setError(serverUnreachable(failure.response) ? "unreachable" : true);
     } finally {
       setBusy(false);
+      returnFocus(trigger);
     }
   };
   const select = async (analysisId, selected) => {
@@ -247,7 +253,13 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       {error && (
         <InlineNotification
           kind="error"
-          title={t("saveError")}
+          title={
+            error === "unreachable"
+              ? intl.formatMessage({
+                  id: "microbiology.case.serverUnreachable",
+                })
+              : t("saveError")
+          }
           hideCloseButton
         />
       )}
@@ -351,7 +363,9 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
             {detail.canWrite && !detail.amendmentOpen && (
               <Button
                 kind="tertiary"
-                disabled={busy || state.report.validatedResults === 0}
+                disabled={
+                  busy || !online || state.report.validatedResults === 0
+                }
                 onClick={() => release("preliminary")}
               >
                 {t("partialRelease")}
@@ -361,6 +375,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
               <Button
                 disabled={
                   busy ||
+                  !online ||
                   !state.readiness.finalReleaseReady ||
                   ((state.readiness.pendingIncomingIds || []).length > 0 &&
                     !confirmIncoming)

@@ -110,6 +110,21 @@ it("allows partial release by a results technician without final-release rights"
     screen.queryByRole("button", { name: t("finalRelease") }),
   ).not.toBeInTheDocument();
 });
+it("says the server did not answer when a release gets a gateway error", async () => {
+  const service = show({ canWrite: true, canValidate: false });
+  service.releaseReport.mockRejectedValue(
+    Object.assign(new Error("request failed"), { response: { status: 502 } }),
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("partialRelease") }),
+  );
+  expect(
+    await screen.findByText(
+      "The server did not answer, and the change may not be saved. Check the connection, then reload the case before you try again.",
+    ),
+  ).toBeVisible();
+  expect(screen.queryByText(t("saveError"))).not.toBeInTheDocument();
+});
 it("offers no release or selection controls for direct-link readers", async () => {
   show({ canWrite: false, canValidate: false });
   await screen.findByText("Microbiology unit");
@@ -174,4 +189,26 @@ it("allows a partial report from no-growth-ready without requiring final release
     screen.getByRole("button", { name: t("partialRelease") }),
   ).toBeEnabled();
   expect(screen.getByRole("button", { name: t("finalRelease") })).toBeEnabled();
+});
+it("lets keyboard users focus and scroll each isolate's AST table", async () => {
+  show();
+  expect(
+    await screen.findByRole("table", { name: "ISO-1: E. coli" }),
+  ).toHaveAttribute("tabindex", "0");
+});
+it("disables report release while the browser is offline", async () => {
+  const onLine = vi
+    .spyOn(window.navigator, "onLine", "get")
+    .mockReturnValue(false);
+  try {
+    show({ canWrite: true, canValidate: true }, { finalReleaseReady: true });
+    expect(
+      await screen.findByRole("button", { name: t("partialRelease") }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: t("finalRelease") }),
+    ).toBeDisabled();
+  } finally {
+    onLine.mockRestore();
+  }
 });

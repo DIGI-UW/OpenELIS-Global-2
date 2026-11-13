@@ -23,6 +23,8 @@ import {
 import ResultAlertModal, {
   acknowledgementRefusal,
 } from "../resultPage/ResultAlertModal";
+import { MODAL_FIRST_FIELD, ReturnFocus } from "./returnFocus";
+import OfflineNotice, { useOnline } from "./OfflineNotice";
 
 export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
   const intl = useIntl();
@@ -40,6 +42,7 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
     [destinationSearch, setDestinationSearch] = useState(""),
     [destinations, setDestinations] = useState([]),
     [destination, setDestination] = useState(null);
+  const online = useOnline();
   useEffect(() => {
     if (!destinationSearch.trim()) {
       setDestinations([]);
@@ -203,7 +206,7 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
                   {detail.canWrite && row.state !== "PLACED" && (
                     <Button
                       size="sm"
-                      disabled={navigator.onLine === false}
+                      disabled={!online}
                       onClick={() => {
                         setSelected(row);
                         setAlerts(null);
@@ -227,10 +230,12 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
         </Table>
       </TableContainer>
       {!loading && !rows.length && <p>{t("microbiology.incoming.empty")}</p>}
+      {selected && <ReturnFocus />}
       {selected && (
         <Modal
           open={!alerts}
           passiveModal
+          selectorPrimaryFocus={MODAL_FIRST_FIELD}
           modalHeading={selected.testName}
           onRequestClose={() => {
             if (!saving) setSelected(null);
@@ -238,6 +243,7 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
           closeButtonLabel={t("button.close")}
         >
           <Stack gap={4}>
+            <OfflineNotice />
             <h4>{selected.testName}</h4>
             <p>{selected.rawResultValue}</p>
             <TextInput
@@ -287,14 +293,14 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
               onChange={(e) => setReason(e.target.value)}
             />
             <Button
-              disabled={saving || !sample || navigator.onLine === false}
+              disabled={saving || !sample || !online}
               onClick={() => place()}
             >
               {t("microbiology.incoming.place")}
             </Button>
             <Button
               kind="danger--tertiary"
-              disabled={saving || !reason.trim() || navigator.onLine === false}
+              disabled={saving || !reason.trim() || !online}
               onClick={() => place(true)}
             >
               {t("microbiology.incoming.fail")}

@@ -476,6 +476,60 @@ describe("MicrobiologyWorklist", () => {
     ).not.toHaveClass("microbiology-worklist__row--new-positive");
   });
 
+  it("labels the last loaded rows when a filter fails and reloads when the network returns", async () => {
+    const user = userEvent.setup();
+    const worklistRow = (caseId) => ({
+      caseId,
+      sampleItemId: caseId,
+      accessionNumber: `LAB-${caseId}`,
+      stage: "INCUBATING",
+      dueAction: "SETUP",
+      urgency: "ROUTINE",
+    });
+    const page = (caseId) => ({
+      rows: [worklistRow(caseId)],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+    });
+    const service = {
+      getWorklistRows: vi
+        .fn()
+        .mockResolvedValueOnce(page("1001"))
+        .mockRejectedValueOnce(new Error("Worklist could not be loaded"))
+        .mockResolvedValueOnce(page("1002")),
+    };
+    const lastLoaded =
+      "These rows are from the last list that loaded, not this filter.";
+
+    renderWorklist(service);
+    await screen.findByTestId("microbiology-worklist-row-1001");
+    await user.click(
+      screen.getByTestId("microbiology-worklist-summary-growth"),
+    );
+
+    expect(await screen.findByText(lastLoaded)).toBeVisible();
+    expect(
+      screen.getByTestId("microbiology-worklist-row-1001"),
+    ).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new Event("online"));
+    });
+
+    expect(
+      await screen.findByTestId("microbiology-worklist-row-1002"),
+    ).toBeInTheDocument();
+    expect(service.getWorklistRows).toHaveBeenCalledTimes(3);
+    expect(service.getWorklistRows).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "growth" }),
+    );
+    expect(screen.queryByText(lastLoaded)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Unable to load microbiology worklist"),
+    ).not.toBeInTheDocument();
+  });
+
   it("opens a culture case when a non-interactive row cell is clicked", async () => {
     const user = userEvent.setup();
     const service = {
