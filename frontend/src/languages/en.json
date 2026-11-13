@@ -3598,6 +3598,8 @@
   "error.import.patient": "Error While Importing Patient into OpenELIS",
   "error.invalid.email": "Invalid Email",
   "error.invalidcredentials": "Username or Password are incorrect",
+  "login.error.throttled": "Too many sign-in attempts. Wait a few minutes and try again.",
+  "error.throttled": "Too many sign-in attempts. Wait a few minutes and try again.",
   "error.locale.format": "Invalid format. Use: en, fr, es, or en-US, fr-CA, etc.",
   "error.no.patient.data": "No Patient Data to Import",
   "error.nonconform.report": "Please Enter Value",

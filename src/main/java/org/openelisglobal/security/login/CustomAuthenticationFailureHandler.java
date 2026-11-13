@@ -10,6 +10,8 @@ import org.json.JSONObject;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.validator.BaseErrors;
+import org.openelisglobal.security.LoginAttemptTracker;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.security.authentication.DisabledException;
@@ -22,20 +24,18 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
 
 public class CustomAuthenticationFailureHandler implements AuthenticationFailureHandler {
 
+    @Autowired
+    private LoginAttemptTracker loginAttemptTracker;
+
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
             AuthenticationException exception) throws IOException, ServletException {
-        // get the X-Forwarded-For header so that we know if the request is from a proxy
-        final String xfHeader = request.getHeader("X-Forwarded-For");
-        if (xfHeader == null) {
-            // no proxy
-            LogEvent.logInfo(this.getClass().getSimpleName(), "onFailure",
-                    "Unsuccessful login attempt from " + request.getRemoteAddr());
-        } else {
-            // from proxy
-            LogEvent.logInfo(this.getClass().getSimpleName(), "onFailure",
-                    "Unsuccessful login attempt from " + xfHeader.split(",")[0]);
+        String clientAddress = loginAttemptTracker.clientAddress(request);
+        if (!(exception instanceof LoginThrottledException)) {
+            loginAttemptTracker.recordFailure(request.getParameter("loginName"), clientAddress);
         }
+        LogEvent.logInfo(this.getClass().getSimpleName(), "onFailure",
+                "Unsuccessful login attempt from " + clientAddress);
         if ("true".equals(request.getParameter("apiCall"))) {
             this.handleApiLogin(request, response, exception);
             return;
@@ -51,6 +51,10 @@ public class CustomAuthenticationFailureHandler implements AuthenticationFailure
                 errors.reject("login.error.account.disable");
             } else if (exception instanceof LockedException) {
                 errors.reject("login.error.account.lock");
+            } else if (exception instanceof LoginThrottledException) {
+                errors.reject("login.error.throttled",
+                        new Object[] { ((LoginThrottledException) exception).getWindowMinutes() },
+                        "login.error.throttled");
             } else {
                 exception.printStackTrace();
                 errors.reject("login.error.generic");
@@ -79,6 +83,8 @@ public class CustomAuthenticationFailureHandler implements AuthenticationFailure
             sessionDetails.put("error", "error.disabledCredentials");
         } else if (exception instanceof LockedException) {
             sessionDetails.put("error", "error.lockedCredentials");
+        } else if (exception instanceof LoginThrottledException) {
+            sessionDetails.put("error", "error.throttled");
         } else {
             sessionDetails.put("error", "error.generic");
         }
