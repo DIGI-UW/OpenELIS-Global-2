@@ -283,15 +283,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                     .sorted(Comparator.comparing(Method::getMethodName, String.CASE_INSENSITIVE_ORDER))
                     .map(method -> option(method.getId(), method.getMethodName(), method.getCode())).toList();
         }
-        if ("organisms".equals(resource)) {
-            return organismDAO.getActiveOrganisms().stream()
-                    .map(organism -> option(organism.getId(), organism.getDisplayName(), organism.getWhonetCode()))
-                    .toList();
-        }
         if ("organism-groups".equals(resource)) {
-            return organismDAO.getActiveOrganisms().stream().map(MicroOrganism::getOrganismGroup)
-                    .filter(group -> group != null && !group.isBlank()).distinct().sorted(String.CASE_INSENSITIVE_ORDER)
-                    .map(group -> option(group, group, null)).toList();
+            return organismDAO.getActiveOrganismGroups().stream().filter(group -> !group.isBlank())
+                    .sorted(String.CASE_INSENSITIVE_ORDER).map(group -> option(group, group, null)).toList();
         }
         if ("antibiotics".equals(resource)) {
             return antibioticDAO.getActiveAntibiotics().stream().map(
