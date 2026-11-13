@@ -1,5 +1,6 @@
 package org.openelisglobal.storage.controller;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -14,11 +15,19 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.storage.dao.StorageDeviceDAO;
 import org.openelisglobal.storage.service.LabelManagementService;
 import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -34,6 +43,9 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
 
     @Autowired
     private StorageDeviceDAO storageDeviceDAO;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
@@ -118,7 +130,7 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
 
         StorageDevice device = storageDeviceDAO.get(Integer.parseInt(deviceId)).orElse(null);
         assertNotNull("Device should exist", device);
-        assertTrue("Device should have empty code", device.getCode() == null || device.getCode().isEmpty());
+        assertTrue("Device code should have empty code", device.getCode() == null || device.getCode().isEmpty());
 
         MvcResult result = mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label"))
                 .andExpect(status().isBadRequest()).andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -137,11 +149,60 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         assertNotNull("Device should have code", device.getCode());
         assertTrue("Device code should start with FRZ01", device.getCode().startsWith("FRZ01"));
 
+        int beforeCount = countRowsInTable("storage_location_print_history");
+
         mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")).andExpect(status().isOk());
 
-        Integer count = countRowsInTable("storage_location_print_history");
-        assertNotNull("Print history should be recorded", count);
-        assertTrue("Print history count should be > 0", count > 0);
+        int afterCount = countRowsInTable("storage_location_print_history");
+        assertEquals("Print history count should increase by exactly one", beforeCount + 1, afterCount);
+    }
+
+    @Test
+    public void printHistory_ShouldRecordAuthenticatedUserId_WhenUserSessionPresent() throws Exception {
+        String deviceId = String.valueOf(TEST_STORAGE_DEVICE_ID);
+        int expectedUserId = 999;
+        UserSessionData sessionData = new UserSessionData();
+        sessionData.setSytemUserId(expectedUserId);
+
+        int beforeCount = countRowsInTableWhere("storage_location_print_history",
+                "location_id = '" + deviceId + "' AND printed_by = '" + expectedUserId + "'");
+
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionData)).andExpect(status().isOk());
+
+        int afterCount = countRowsInTableWhere("storage_location_print_history",
+                "location_id = '" + deviceId + "' AND printed_by = '" + expectedUserId + "'");
+        assertEquals("Print history count should increase by exactly one for session user",
+                beforeCount + 1, afterCount);
+    }
+
+    @Test
+    public void printHistory_ShouldRecordAuthenticatedUserId_WhenSecurityContextPresentWithoutSession()
+            throws Exception {
+        String deviceId = String.valueOf(TEST_STORAGE_DEVICE_ID);
+        SystemUser adminUser = systemUserService.getDataForLoginUser("admin");
+        assertNotNull("Admin SystemUser must exist", adminUser);
+        String expectedUserId = adminUser.getId();
+
+        SecurityContext previousContext = SecurityContextHolder.getContext();
+        try {
+            SecurityContext ctx = SecurityContextHolder.createEmptyContext();
+            ctx.setAuthentication(new UsernamePasswordAuthenticationToken("admin", "pass",
+                    AuthorityUtils.createAuthorityList("ROLE_ADMIN")));
+            SecurityContextHolder.setContext(ctx);
+
+            int beforeCount = countRowsInTableWhere("storage_location_print_history",
+                    "location_id = '" + deviceId + "' AND printed_by = '" + expectedUserId + "'");
+
+            mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")).andExpect(status().isOk());
+
+            int afterCount = countRowsInTableWhere("storage_location_print_history",
+                    "location_id = '" + deviceId + "' AND printed_by = '" + expectedUserId + "'");
+            assertEquals("Print history count should increase by exactly one for SecurityContext user",
+                    beforeCount + 1, afterCount);
+        } finally {
+            SecurityContextHolder.setContext(previousContext);
+        }
     }
 
     @Test
