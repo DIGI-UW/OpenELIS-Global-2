@@ -31,7 +31,7 @@ const TrendLineBackground = ({ ...props }) => (
 );
 
 const TrendlineHeader = ({
-  patientUuid,
+  patientUuid: _patientUuid,
   title,
   context,
   referenceRange,
@@ -82,7 +82,7 @@ interface TrendlineProps {
 const Trendline: React.FC<TrendlineProps> = ({
   patientUuid,
   trendKey,
-  basePath,
+  basePath: _basePath,
   hideTrendlineHeader = false,
   showBackToTimelineButton = false,
   onBackToTimeline,

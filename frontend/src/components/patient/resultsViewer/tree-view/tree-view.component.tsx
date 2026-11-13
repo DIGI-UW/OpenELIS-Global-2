@@ -24,10 +24,10 @@ interface TreeViewProps {
 const TreeView: React.FC<TreeViewProps> = ({
   patientUuid,
   basePath,
-  testUuid,
+  testUuid: _testUuid,
   loading,
-  expanded,
-  type,
+  expanded: _expanded,
+  type: _type,
 }) => {
   const tablet = useLayoutType() === "tablet";
   const [showTreeOverlay, setShowTreeOverlay] = useState(false);

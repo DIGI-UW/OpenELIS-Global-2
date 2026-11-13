@@ -14,7 +14,7 @@ import { useGetManyObstreeData } from "./grouped-timeline";
 import "./results-viewer.styles.scss";
 import { Link, useParams } from "react-router-dom";
 import TreeViewWrapper from "./tree-view";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../config.json";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PatientHeader from "../../common/PatientHeader";
