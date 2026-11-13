@@ -3,6 +3,7 @@ package org.openelisglobal.facilityregistry.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -118,6 +119,8 @@ public class FacilityRegistryServiceTest extends BaseWebContextSensitiveTest {
         partnerTransport = HttpClients.custom().setSSLContext(tls).disableRedirectHandling().disableCookieManagement()
                 .build();
         serviceClient = ReflectionTestUtils.getField(target, "httpClient");
+        assertSame("Registry uploads must use the partner transport from Spring",
+                webApplicationContext.getBean("partnerFhirHttpClient"), serviceClient);
         contextFhirUtil = ReflectionTestUtils.getField(target, "fhirUtil");
         FhirUtil fhirUtil = new FhirUtil();
         FhirContext context = FhirContext.forR4Cached();
