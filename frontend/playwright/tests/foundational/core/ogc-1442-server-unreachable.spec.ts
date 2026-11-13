@@ -66,6 +66,15 @@ test.describe("Server unreachable while a page loads (OGC-1442)", () => {
       /Trying again in \d+ s/,
     );
 
+    // The app's first retries come 1, 2 and 4 s apart, close enough that one
+    // could answer between the unroute and the click and take the notice
+    // away mid-click. Wait for the 8 s gap that follows the fourth failed
+    // attempt, so the click is the attempt that reconnects.
+    await expect(page.getByTestId("server-reconnect-countdown")).toContainText(
+      /Trying again in (?:[89]|1\d) s/,
+      { timeout: 30_000 },
+    );
+
     await page.unroute(ALL_API, down);
     await page.getByRole("button", { name: "Try now" }).click();
 
