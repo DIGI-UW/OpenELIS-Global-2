@@ -10,6 +10,7 @@ import org.openelisglobal.address.service.PersonAddressService;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
@@ -302,9 +303,9 @@ public class TbSampleServiceImpl implements TbSampleService {
     }
 
     private String persistSampleData(SampleTbEntryForm formData) {
-        Sample sample = new Sample();
         if (ObjectUtils.isEmpty(formData.getSampleId())) {
             // create a new Sample
+            Sample sample = new Sample();
             sample.setAccessionNumber(formData.getLabNo());
             sample.setCollectionDateForDisplay(formData.getRequestDate());
             sample.setCollectionDate(DateUtil.convertStringDateToTruncatedTimestamp(formData.getRequestDate()));
@@ -319,6 +320,10 @@ public class TbSampleServiceImpl implements TbSampleService {
             return sampleService.insert(sample);
         } else {
             // update
+            Sample sample = sampleService.get(formData.getSampleId());
+            if (sample == null) {
+                throw new LIMSRuntimeException("Sample not found for id: " + formData.getSampleId());
+            }
             sample.setCollectionDateForDisplay(formData.getRequestDate());
             sample.setCollectionDate(DateUtil.convertStringDateToTruncatedTimestamp(formData.getRequestDate()));
             sample.setReceivedDateForDisplay(formData.getReceivedDate());
