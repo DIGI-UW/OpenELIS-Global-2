@@ -307,6 +307,11 @@ const ESignatureModal = ({
           id: "esig.meaning.rejected",
           defaultMessage: "Rejected",
         });
+      case SignatureMeaning.REVIEWED:
+        return intl.formatMessage({
+          id: "esig.meaning.reviewed",
+          defaultMessage: "Reviewed",
+        });
       default:
         return meaning;
     }

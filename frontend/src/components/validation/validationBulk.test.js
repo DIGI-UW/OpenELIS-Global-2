@@ -39,6 +39,20 @@ describe("clearRows", () => {
     expect(clearRows(triaged).map((r) => r.id)).toEqual([0, 2, 3]);
     expect(clearRows(undefined)).toEqual([]);
   });
+
+  it("leaves out rows at an earlier review level or that this user cannot sign (OGC-1364 v2)", () => {
+    const triaged = triageRows([
+      row(0, { reviewLevels: 2, reviewLevel: 1 }),
+      row(1, { reviewLevels: 2, reviewLevel: 2 }),
+      row(2, {
+        reviewLevels: 2,
+        reviewLevel: 2,
+        reviewBlockedReason: "alreadySigned",
+      }),
+      row(3),
+    ]);
+    expect(clearRows(triaged).map((r) => r.id)).toEqual([1, 3]);
+  });
 });
 
 describe("bulkReleaseRequest", () => {

@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.Map;
 import org.junit.After;
@@ -24,6 +26,8 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.resultvalidation.controller.rest.AccessionValidationRestController;
+import org.openelisglobal.resultvalidation.service.ResultValidationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
@@ -33,6 +37,8 @@ import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -126,6 +132,40 @@ public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveT
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("notAwaitingValidation"));
         entityManager.flush();
         entityManager.clear();
+    }
+
+    /**
+     * OGC-1364 v2 review: two validators release the same row at once; the second
+     * save loses the analysis's optimistic lock and is told the row went stale.
+     */
+    @Test
+    public void release_thatLosesTheOptimisticLockToAnotherValidator_returns409Stale() throws Exception {
+        Object controller = AopTestUtils
+                .getTargetObject(webApplicationContext.getBean(AccessionValidationRestController.class));
+        ResultValidationService real = (ResultValidationService) ReflectionTestUtils.getField(controller,
+                "resultValidationService");
+        ResultValidationService losesTheLock = (ResultValidationService) Proxy.newProxyInstance(
+                getClass().getClassLoader(), new Class<?>[] { ResultValidationService.class },
+                (proxy, method, args) -> {
+                    if ("persistdata".equals(method.getName())) {
+                        throw new org.springframework.orm.ObjectOptimisticLockingFailureException(Analysis.class,
+                                ANALYSIS_ID);
+                    }
+                    try {
+                        return method.invoke(real, args);
+                    } catch (InvocationTargetException e) {
+                        throw e.getCause();
+                    }
+                });
+        ReflectionTestUtils.setField(controller, "resultValidationService", losesTheLock);
+        try {
+            mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
+                    .contentType(MediaType.APPLICATION_JSON).content(rowBody("10.5", "", "", "VALIDATION")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("stale"))
+                    .andExpect(jsonPath("$.analysisId").value(ANALYSIS_ID));
+        } finally {
+            ReflectionTestUtils.setField(controller, "resultValidationService", real);
+        }
     }
 
     @Test

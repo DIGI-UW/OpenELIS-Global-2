@@ -21,17 +21,21 @@ vi.mock("../utils/Utils", async (importOriginal) => {
 });
 
 vi.mock("../esignature/ESignatureButton", () => ({
-  default: ({ children, onSign, disabled, ariaDescribedBy }) => (
+  default: ({ children, onSign, disabled, ariaDescribedBy, meaning }) => (
     <button
       type="button"
       disabled={disabled}
       aria-describedby={ariaDescribedBy}
-      onClick={() => onSign && onSign()}
+      data-meaning={meaning}
+      onClick={() => onSign && onSign(globalThis.__nextSignature)}
     >
       {children}
     </button>
   ),
-  SignatureMeaning: { VALIDATED_AND_RELEASED: "VALIDATED_AND_RELEASED" },
+  SignatureMeaning: {
+    VALIDATED_AND_RELEASED: "VALIDATED_AND_RELEASED",
+    REVIEWED: "REVIEWED",
+  },
 }));
 
 vi.mock("../nonconform/common/InlineNceForm", () => ({
@@ -628,4 +632,100 @@ test("the entry actor sees why validation is disabled", () => {
   expect(
     screen.getByText(messages["microbiology.testing.selfValidationBlocked"]),
   ).toBeInTheDocument();
+});
+
+describe("ValidationReviewPanel sequential sign-off (OGC-1364 v2)", () => {
+  beforeEach(() => {
+    postToOpenElisServerJsonResponse.mockReset();
+    window.localStorage.clear();
+    globalThis.__nextSignature = undefined;
+  });
+
+  const signOff = (level, name, extra = {}) => ({
+    level,
+    levels: 2,
+    signerName: name,
+    roleName: "Validation",
+    signedAt: "2026-11-13T09:02:00Z",
+    ...extra,
+  });
+
+  it("an earlier level is signed as a review, not a release, with the e-signature it carries", () => {
+    globalThis.__nextSignature = { signatureId: 55 };
+    renderPanel(row({ reviewLevels: 2, reviewLevel: 1 }));
+
+    const sign = screen.getByRole("button", { name: "Sign level 1 of 2" });
+    expect(sign).toHaveAttribute("data-meaning", "REVIEWED");
+    expect(screen.getByTestId("review-sign-offs")).toHaveTextContent(
+      "No levels signed in this pass.",
+    );
+    fireEvent.click(sign);
+
+    const [url, body] = lastPost();
+    expect(url).toBe("/rest/AccessionValidation/analysis/100/release");
+    expect(JSON.parse(body).signatureId).toBe(55);
+  });
+
+  it("the last level validates and releases, and lists who signed before", () => {
+    renderPanel(
+      row({
+        reviewLevels: 2,
+        reviewLevel: 2,
+        signOffs: [signOff(1, "Ama Kila")],
+      }),
+    );
+
+    const release = screen.getByRole("button", {
+      name: "Validate & release",
+    });
+    expect(release).toHaveAttribute("data-meaning", "VALIDATED_AND_RELEASED");
+    expect(screen.getByTestId("review-sign-off-1")).toHaveTextContent(
+      /Level 1 of 2: Ama Kila, Validation/,
+    );
+  });
+
+  it("a level this person cannot sign is disabled and says why", () => {
+    renderPanel(
+      row({
+        reviewLevels: 2,
+        reviewLevel: 2,
+        reviewRoleName: "Pathologist",
+        reviewBlockedReason: "roleRequired",
+      }),
+    );
+
+    expect(screen.getByTestId("review-level-blocked")).toHaveTextContent(
+      "Level 2 requires Pathologist.",
+    );
+    expect(
+      screen.getByRole("button", { name: "Validate & release" }),
+    ).toBeDisabled();
+  });
+
+  it("signatures a modification superseded stay listed, struck through", () => {
+    renderPanel(
+      row({
+        reviewLevels: 2,
+        reviewLevel: 1,
+        supersededSignOffs: [
+          signOff(1, "John Doe", { supersededReason: "MODIFIED" }),
+        ],
+      }),
+    );
+
+    const superseded = screen.getByTestId("review-sign-off-superseded");
+    expect(superseded).toHaveTextContent(
+      /Level 1 of 2: John Doe, .*\(superseded, value modified\)/,
+    );
+    expect(superseded.querySelector("s")).not.toBeNull();
+  });
+
+  it("a single-level row keeps today's release without a sign-off list", () => {
+    renderPanel(row());
+
+    expect(
+      screen.getByRole("button", { name: "Validate & release" }),
+    ).toBeEnabled();
+    expect(screen.queryByTestId("review-sign-offs")).not.toBeInTheDocument();
+  });
 });

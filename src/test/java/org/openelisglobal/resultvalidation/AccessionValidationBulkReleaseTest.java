@@ -293,4 +293,48 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
         entityManager.flush();
         entityManager.clear();
     }
+
+    @Test
+    public void withSequentialSignOffOnlyRowsAtTheirLastLevelAreBulkReleased() throws Exception {
+        org.openelisglobal.validationpolicy.service.ValidationPolicyService policies = org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.validationpolicy.service.ValidationPolicyService.class);
+        ConfigurationProperties configuration = ConfigurationProperties.getInstance();
+        String flagBefore = configuration.getPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION);
+        try {
+            configuration.setPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION, "true");
+            policies.saveLabWideDefault(
+                    new org.openelisglobal.validationpolicy.form.ValidationPolicyForm("NEEDS_REVIEW", 2, null), "1");
+            entityManager.flush();
+            entityManager.clear();
+
+            mockMvc.perform(post("/rest/AccessionValidation/release-clear").session(session)
+                    .contentType(MediaType.APPLICATION_JSON).content(requestBody(rowJson(CLEAR_ID, "", ""))))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.released.length()").value(0))
+                    .andExpect(jsonPath("$.skipped[0].reason").value("earlierLevel"));
+            entityManager.flush();
+            entityManager.clear();
+            assertEquals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
+                    analysisService.get(CLEAR_ID).getStatusId());
+
+            policies.saveLabWideDefault(
+                    new org.openelisglobal.validationpolicy.form.ValidationPolicyForm("NEEDS_REVIEW", 1, null), "1");
+            entityManager.flush();
+            entityManager.clear();
+            mockMvc.perform(post("/rest/AccessionValidation/release-clear").session(session)
+                    .contentType(MediaType.APPLICATION_JSON).content(requestBody(rowJson(CLEAR_ID, "", ""))))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.released[0]").value(CLEAR_ID));
+            entityManager.flush();
+            entityManager.clear();
+            assertEquals(statusService.getStatusID(AnalysisStatus.Finalized),
+                    analysisService.get(CLEAR_ID).getStatusId());
+            List<Map<String, Object>> signOffs = jdbcTemplate
+                    .queryForList("SELECT level, review_levels, signer_id FROM clinlims.analysis_review_sign_off"
+                            + " WHERE analysis_id = ?", Integer.valueOf(CLEAR_ID));
+            assertEquals("the release records its one sign-off", 1, signOffs.size());
+            assertEquals(1, ((Number) signOffs.get(0).get("review_levels")).intValue());
+        } finally {
+            configuration.setPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION,
+                    flagBefore == null ? "false" : flagBefore);
+        }
+    }
 }
