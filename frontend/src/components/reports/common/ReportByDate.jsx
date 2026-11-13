@@ -71,7 +71,7 @@ const ReportByDate = (props) => {
     }));
 
     setLoading(true);
-    let baseParams = "";
+    let baseParams;
 
     if (
       props.report === "activityReportByTest" ||
