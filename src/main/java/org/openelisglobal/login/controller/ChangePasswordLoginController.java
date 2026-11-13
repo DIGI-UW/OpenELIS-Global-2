@@ -79,69 +79,72 @@ public class ChangePasswordLoginController extends BaseController {
             return apiCall ? writeApiResponse(response, result) : findForward(FWD_FAIL_INSERT, form);
         }
         String client = loginAttemptTracker.clientAddress(request);
-        if (loginAttemptTracker.isThrottled(form.getLoginName(), client)) {
-            result.reject("login.error.throttled", new Object[] { loginAttemptTracker.windowMinutes() },
-                    "login.error.throttled");
-            saveErrors(result);
-            return apiCall ? writeApiResponse(response, result) : findForward(FWD_FAIL_INSERT, form);
-        }
-
-        // Login newLogin = new Login();
-        // // populate valueholder from form
-        // PropertyUtils.copyProperties(newLogin, form);
-        try {
-            LoginUser login;
-            // get user information if password correct
-            Optional<LoginUser> matchedLogin = loginService.getValidatedLogin(form.getLoginName(), form.getPassword());
-            if (!matchedLogin.isPresent()) {
-                loginAttemptTracker.recordFailure(form.getLoginName(), client);
-                result.reject("login.error.password.current.incorrect");
-            } else {
-                login = matchedLogin.get();
-                // update fields of login before validating again
-                loginService.hashPassword(login, form.getNewPassword());
-                Errors loginResult = new BeanPropertyBindingResult(login, "loginInfo");
-                loginValidator.unauthenticatedPasswordUpdateValidate(login, loginResult);
-
-                if (loginResult.hasErrors()) {
-                    saveErrors(loginResult);
-                    return apiCall ? writeApiResponse(response, loginResult) : findForward(FWD_FAIL_INSERT, form);
-                }
-                // The change-password-before-login flow has no SecurityContext
-                // (user has no session yet), but we've just validated their
-                // credentials. Set a transient SecurityContext to the user
-                // themselves so the audit row is attributed to the user changing
-                // their own password rather than the update failing for lack of
-                // a user context.
-                SecurityContext previous = SecurityContextHolder.getContext();
-                try {
-                    SecurityContext authCtx = SecurityContextHolder.createEmptyContext();
-                    authCtx.setAuthentication(new UsernamePasswordAuthenticationToken(login.getLoginName(), null,
-                            AuthorityUtils.NO_AUTHORITIES));
-                    SecurityContextHolder.setContext(authCtx);
-                    loginService.update(login);
-                } finally {
-                    SecurityContextHolder.setContext(previous);
-                }
-                loginAttemptTracker.recordSuccess(form.getLoginName());
+        try (LoginAttemptTracker.Attempt attempt = loginAttemptTracker.tryAcquire(form.getLoginName(), client)) {
+            if (attempt == null) {
+                result.reject("login.error.throttled", new Object[] { loginAttemptTracker.windowMinutes() },
+                        "login.error.throttled");
+                saveErrors(result);
+                return apiCall ? writeApiResponse(response, result) : findForward(FWD_FAIL_INSERT, form);
             }
 
-        } catch (LIMSRuntimeException e) {
-            // bugzilla 2154
-            LogEvent.logError(e);
-            result.reject("login.error.update.message");
-        }
-        if (result.hasErrors()) {
-            saveErrors(result);
-            return apiCall ? writeApiResponse(response, result) : findForward(FWD_FAIL_INSERT, form);
-        }
+            // Login newLogin = new Login();
+            // // populate valueholder from form
+            // PropertyUtils.copyProperties(newLogin, form);
+            try {
+                LoginUser login;
+                // get user information if password correct
+                Optional<LoginUser> matchedLogin = loginService.getValidatedLogin(form.getLoginName(),
+                        form.getPassword());
+                if (!matchedLogin.isPresent()) {
+                    loginAttemptTracker.recordFailure(form.getLoginName(), client);
+                    result.reject("login.error.password.current.incorrect");
+                } else {
+                    login = matchedLogin.get();
+                    // update fields of login before validating again
+                    loginService.hashPassword(login, form.getNewPassword());
+                    Errors loginResult = new BeanPropertyBindingResult(login, "loginInfo");
+                    loginValidator.unauthenticatedPasswordUpdateValidate(login, loginResult);
 
-        if (apiCall) {
-            return writeApiResponse(response, null);
+                    if (loginResult.hasErrors()) {
+                        saveErrors(loginResult);
+                        return apiCall ? writeApiResponse(response, loginResult) : findForward(FWD_FAIL_INSERT, form);
+                    }
+                    // The change-password-before-login flow has no SecurityContext
+                    // (user has no session yet), but we've just validated their
+                    // credentials. Set a transient SecurityContext to the user
+                    // themselves so the audit row is attributed to the user changing
+                    // their own password rather than the update failing for lack of
+                    // a user context.
+                    SecurityContext previous = SecurityContextHolder.getContext();
+                    try {
+                        SecurityContext authCtx = SecurityContextHolder.createEmptyContext();
+                        authCtx.setAuthentication(new UsernamePasswordAuthenticationToken(login.getLoginName(), null,
+                                AuthorityUtils.NO_AUTHORITIES));
+                        SecurityContextHolder.setContext(authCtx);
+                        loginService.update(login);
+                    } finally {
+                        SecurityContextHolder.setContext(previous);
+                    }
+                    loginAttemptTracker.recordSuccess(form.getLoginName());
+                }
+
+            } catch (LIMSRuntimeException e) {
+                // bugzilla 2154
+                LogEvent.logError(e);
+                result.reject("login.error.update.message");
+            }
+            if (result.hasErrors()) {
+                saveErrors(result);
+                return apiCall ? writeApiResponse(response, result) : findForward(FWD_FAIL_INSERT, form);
+            }
+
+            if (apiCall) {
+                return writeApiResponse(response, null);
+            }
+            redirectAttributes.addFlashAttribute(Constants.SUCCESS_MSG,
+                    MessageUtil.getMessage("login.success.changePass.message"));
+            return findForward(FWD_SUCCESS_INSERT, form);
         }
-        redirectAttributes.addFlashAttribute(Constants.SUCCESS_MSG,
-                MessageUtil.getMessage("login.success.changePass.message"));
-        return findForward(FWD_SUCCESS_INSERT, form);
     }
 
     /**

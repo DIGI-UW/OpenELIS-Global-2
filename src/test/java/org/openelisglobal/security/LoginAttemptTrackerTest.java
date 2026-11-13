@@ -21,6 +21,58 @@ public class LoginAttemptTrackerTest {
     private final LoginAttemptTracker tracker = new LoginAttemptTracker(LIMIT, LIMIT, WINDOW, clock, "");
 
     @Test
+    public void simultaneousPasswordChecksCannotExceedEitherBudget() throws Exception {
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(12);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var reservations = new java.util.ArrayList<LoginAttemptTracker.Attempt>();
+        try {
+            var pending = new java.util.ArrayList<java.util.concurrent.Future<LoginAttemptTracker.Attempt>>();
+            for (int i = 0; i < 12; i++) {
+                pending.add(pool.submit(() -> {
+                    start.await();
+                    return tracker.tryAcquire("jdoe", "10.0.0.1");
+                }));
+            }
+            start.countDown();
+            for (var result : pending) {
+                var attempt = result.get(5, java.util.concurrent.TimeUnit.SECONDS);
+                if (attempt != null)
+                    reservations.add(attempt);
+            }
+            assertEquals(LIMIT, reservations.size());
+            assertTrue(tracker.isThrottled("jdoe", "10.0.0.2"));
+            assertTrue(tracker.isThrottled("other", "10.0.0.1"));
+            // A success must not erase other password checks still in progress.
+            tracker.recordSuccess("jdoe");
+            assertTrue(tracker.isThrottled("jdoe", "10.0.0.2"));
+            clock.advance(WINDOW.plusSeconds(1));
+            assertTrue(tracker.isThrottled("jdoe", "10.0.0.2"));
+        } finally {
+            start.countDown();
+            reservations.forEach(LoginAttemptTracker.Attempt::close);
+            pool.shutdownNow();
+        }
+        assertFalse(tracker.isThrottled("jdoe", "10.0.0.1"));
+    }
+
+    @Test
+    public void completedFailuresRemainCountedButSuccessfulReservationsAreReleased() {
+        for (int i = 0; i < 100; i++) {
+            try (var attempt = tracker.tryAcquire("jdoe", "10.0.0.1")) {
+                org.junit.Assert.assertNotNull(attempt);
+                tracker.recordSuccess("jdoe");
+            }
+        }
+        for (int i = 0; i < LIMIT; i++) {
+            try (var attempt = tracker.tryAcquire("jdoe", "10.0.0.1")) {
+                org.junit.Assert.assertNotNull(attempt);
+                tracker.recordFailure("jdoe", "10.0.0.1");
+            }
+        }
+        assertTrue(tracker.isThrottled("jdoe", "10.0.0.1"));
+    }
+
+    @Test
     public void failuresBelowTheLimit_doNotThrottle() {
         fail("jdoe", "10.0.0.1", LIMIT - 1);
 
