@@ -43,4 +43,14 @@ public interface StorageShelfDAO extends BaseDAO<StorageShelf, Integer> {
      */
     StorageShelf findByCode(String code);
 
+    /**
+     * Find shelf by code and parent device (for code uniqueness validation within
+     * parent container)
+     *
+     * @param code         Shelf code
+     * @param parentDevice Parent device entity
+     * @return StorageShelf or null if not found
+     */
+    StorageShelf findByCodeAndParentDevice(String code, StorageDevice parentDevice);
+
 }

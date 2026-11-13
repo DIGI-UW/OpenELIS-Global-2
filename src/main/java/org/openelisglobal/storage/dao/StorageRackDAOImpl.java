@@ -125,4 +125,24 @@ public class StorageRackDAOImpl extends BaseDAOImpl<StorageRack, Integer> implem
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public StorageRack findByCodeAndParentShelf(String code,
+            org.openelisglobal.storage.valueholder.StorageShelf parentShelf) {
+        try {
+            if (parentShelf == null || code == null || code.trim().isEmpty()) {
+                return null;
+            }
+            String hql = "FROM StorageRack r WHERE r.code = :code AND r.parentShelf.id = :shelfId";
+            Query<StorageRack> query = entityManager.unwrap(Session.class).createQuery(hql, StorageRack.class);
+            query.setParameter("code", code.trim());
+            query.setParameter("shelfId", parentShelf.getId());
+            query.setMaxResults(1);
+            List<StorageRack> results = query.list();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error finding StorageRack by code and parent shelf", e);
+        }
+    }
+
 }

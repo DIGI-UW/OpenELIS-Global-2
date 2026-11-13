@@ -199,4 +199,30 @@ public class StorageRackDAOTest extends BaseWebContextSensitiveTest {
         assertTrue("Should contain rack 1", results.stream().anyMatch(r -> r.getLabel().equals("Rack 1")));
         assertTrue("Should contain rack 2", results.stream().anyMatch(r -> r.getLabel().equals("Rack 2")));
     }
+
+    /**
+     * Test: findByCodeAndParentShelf - validates HQL query compiles and executes
+     */
+    @Test
+    public void testFindByCodeAndParentShelf_WithValidParams_ReturnsRack() {
+        // Act: Execute HQL query
+        StorageRack result = storageRackDAO.findByCodeAndParentShelf("RACK-1", testShelf);
+
+        // Assert
+        assertNotNull("Rack should be found", result);
+        assertEquals("Label should match", "Rack 1", result.getLabel());
+        assertEquals("Code should match", "RACK-1", result.getCode());
+    }
+
+    /**
+     * Test: findByCodeAndParentShelf - non-existent code returns null
+     */
+    @Test
+    public void testFindByCodeAndParentShelf_WithNonExistentCode_ReturnsNull() {
+        // Act
+        StorageRack result = storageRackDAO.findByCodeAndParentShelf("NONEXISTENT", testShelf);
+
+        // Assert
+        assertNull("Rack should not be found", result);
+    }
 }
