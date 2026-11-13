@@ -143,7 +143,7 @@ export const RoutineReportsMenu = {
       SideNavMenuItem: [
         {
           link: "/LaporanHasil",
-          label: <FormattedMessage id="sideNav.label.laporanHasil" defaultMessage="Laporan Hasil (Compliance)" />,
+          label: <FormattedMessage id="sideNav.label.laporanHasil" defaultMessage="Compliance Report" />,
         },
       ],
     },

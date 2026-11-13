@@ -5,7 +5,7 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 import { readFile, writeFile } from "node:fs/promises";
 
-test("routes a site subject, records environmental culture context and releases a Laporan Hasil certificate", async ({
+test("routes a site subject, records environmental culture context and releases an environmental certificate", async ({
   page,
 }, testInfo) => {
   const seeded = await seedMicrobiologyEnvironmental(page);
@@ -98,7 +98,7 @@ test("routes a site subject, records environmental culture context and releases 
   const downloaded = page.waitForEvent("download");
   await page
     .getByRole("button", {
-      name: "Download Laporan Hasil certificate",
+      name: "Download certificate of test results",
       exact: true,
     })
     .click();
@@ -118,7 +118,7 @@ test("routes a site subject, records environmental culture context and releases 
         .map((item) => ("str" in item ? item.str : ""))
         .join(" ");
     }
-    expect(text).toContain("LAPORAN HASIL");
+    expect(text).toMatch(/CERTIFICATE OF TEST RESULTS|TEST RESULTS REPORT/);
     expect(text).toContain(seeded.accessionNumber);
     expect(text).toContain("M8 water sampling site");
     expect(text).toContain("M8-WATER-PLATE");
