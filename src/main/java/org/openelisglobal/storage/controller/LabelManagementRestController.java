@@ -5,7 +5,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.storage.dao.StorageDeviceDAO;
 import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.dao.StorageShelfDAO;
@@ -43,6 +46,9 @@ public class LabelManagementRestController extends BaseRestController {
     @Autowired
     private StorageRackDAO storageRackDAO;
 
+    @Autowired
+    private UserContextHolder userContextHolder;
+
     /**
      * Generate and return PDF label POST /rest/storage/{type}/{id}/print-label
      * Validates code exists before printing, returns error if missing
@@ -79,9 +85,19 @@ public class LabelManagementRestController extends BaseRestController {
                 return;
             }
 
+            String userId;
+            try {
+                userId = getCurrentUserId();
+            } catch (LIMSRuntimeException e) {
+                logger.error("Could not resolve acting user for label print", e);
+                response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.getWriter().write("{\"error\":\"Authentication required to print label\"}");
+                return;
+            }
+
             // Generate label (uses code from entity)
             ByteArrayOutputStream pdfStream;
-            String userId = getCurrentUserId(); // Get from security context
 
             if (location instanceof StorageDevice) {
                 pdfStream = labelManagementService.generateLabel((StorageDevice) location);
@@ -198,12 +214,9 @@ public class LabelManagementRestController extends BaseRestController {
     }
 
     /**
-     * Get current user ID from security context TODO: Implement proper security
-     * context retrieval
+     * Get current user ID from security context
      */
     private String getCurrentUserId() {
-        // Placeholder: should get from Spring Security context
-        // For now, return default system user
-        return "1";
+        return userContextHolder.requireSysUserId();
     }
 }
