@@ -171,6 +171,8 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
             return ResponseEntity.ok(toRoomResponse(room));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             logger.error("Error getting room by id", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
