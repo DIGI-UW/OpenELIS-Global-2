@@ -137,19 +137,145 @@ const checkedPolicy = async (page: Page) => {
   throw new Error("no review trigger is selected");
 };
 
+const API = "/api/OpenELIS-Global";
+const SEEDED_TEST_ID = "13";
+
+interface LabUnitOverride {
+  id: number;
+  testSectionId: string;
+  labUnitName: string;
+  trigger: string;
+  levels: number;
+  active: boolean;
+}
+
+const seededTestLabUnit = async (page: Page) => {
+  const response = await page.request.get(
+    `${API}/rest/test-catalog/tests/${SEEDED_TEST_ID}/basic-info`,
+  );
+  expect(response.ok(), "the seeded test's basic info").toBeTruthy();
+  const body = (await response.json()) as { labUnitId?: string };
+  expect(body.labUnitId, "the seeded test has a lab unit").toBeTruthy();
+  return String(body.labUnitId);
+};
+
+const overrideFor = async (page: Page, labUnitId: string) => {
+  const response = await page.request.get(
+    `${API}/rest/validation-policy/lab-units`,
+  );
+  expect(response.ok(), "the lab unit overrides").toBeTruthy();
+  const body = (await response.json()) as { overrides: LabUnitOverride[] };
+  return body.overrides.find(
+    (override) => override.testSectionId === labUnitId,
+  );
+};
+
+const csrfHeaders = async (page: Page) => ({
+  "X-CSRF-Token": await page.evaluate(() => localStorage.getItem("CSRF") || ""),
+});
+
+const setOverrideActive = async (page: Page, id: number, active: boolean) => {
+  const response = await page.request.put(
+    `${API}/rest/validation-policy/lab-units/${id}/active`,
+    { headers: await csrfHeaders(page), data: { active } },
+  );
+  expect(response.ok(), "the override's state is set").toBeTruthy();
+};
+
+/**
+ * Puts the seeded unit's override back as it was before the test: its rule and
+ * whether it was active, or deactivated when the test added it.
+ */
+const restoreOverride = async (
+  page: Page,
+  labUnitId: string,
+  before: LabUnitOverride | undefined,
+) => {
+  if (!labUnitId) {
+    return;
+  }
+  const now = await overrideFor(page, labUnitId);
+  if (!now) {
+    return;
+  }
+  if (before) {
+    if (!now.active) {
+      await setOverrideActive(page, now.id, true);
+    }
+    const response = await page.request.put(
+      `${API}/rest/validation-policy/lab-units/${now.id}`,
+      {
+        headers: await csrfHeaders(page),
+        data: { trigger: before.trigger, levels: before.levels },
+      },
+    );
+    expect(response.ok(), "the override's rule is restored").toBeTruthy();
+  }
+  const wanted = before ? before.active : false;
+  if (!wanted) {
+    await setOverrideActive(page, now.id, false);
+  }
+};
+
+const overrideToNoReview = async (page: Page, labUnitId: string) => {
+  await openResultConfiguration(page);
+  const overrides = page.getByTestId("validation-overrides");
+  await expect(overrides).toBeVisible({ timeout: NAV_TIMEOUT });
+  const existing = await overrideFor(page, labUnitId);
+  if (existing && !existing.active) {
+    await overrides
+      .locator('label[for="validation-overrides-show-deactivated"]')
+      .click();
+    await overrides
+      .getByTestId(`validation-override-reactivate-${labUnitId}`)
+      .click();
+    await expect(overrides.getByText(/reactivated\.$/)).toBeVisible({
+      timeout: UI_TIMEOUT,
+    });
+  }
+  if (existing) {
+    await overrides
+      .getByTestId(`validation-override-edit-${labUnitId}`)
+      .click();
+  } else {
+    await overrides
+      .getByRole("button", { name: "Add lab unit override" })
+      .click();
+  }
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible({ timeout: UI_TIMEOUT });
+  if (!existing) {
+    await dialog.getByLabel("Lab unit").selectOption(labUnitId);
+  }
+  await dialog.locator("label", { hasText: /^No review$/ }).click();
+  await dialog.getByRole("button", { name: "Save override" }).click();
+  await expect(dialog).toBeHidden({ timeout: UI_TIMEOUT });
+  await expect(
+    overrides.getByTestId(`validation-override-${labUnitId}`),
+  ).toContainText("No review", { timeout: UI_TIMEOUT });
+};
+
 test.describe("OGC-1364 validation policy", () => {
   test.describe.configure({ timeout: 300_000 });
   let flagBefore = "false";
   let policyBefore = "";
+  let labUnitId = "";
+  let overrideBefore: LabUnitOverride | undefined;
 
   test.beforeEach(async ({ page }) => {
     flagBefore = await flagValue(page);
     await setFlag(page, true);
     await openResultConfiguration(page);
     policyBefore = await checkedPolicy(page);
+    labUnitId = await seededTestLabUnit(page);
+    overrideBefore = await overrideFor(page, labUnitId);
+    if (overrideBefore?.active) {
+      await setOverrideActive(page, overrideBefore.id, false);
+    }
   });
 
   test.afterEach(async ({ page }) => {
+    await restoreOverride(page, labUnitId, overrideBefore);
     await openResultConfiguration(page);
     if (policyBefore) {
       await choosePolicy(page, policyBefore);
@@ -206,6 +332,56 @@ test.describe("OGC-1364 validation policy", () => {
     await test.step("Under All results an in-range result waits for a validator", async () => {
       await openResultConfiguration(page);
       await choosePolicy(page, "All results");
+      const order = await createEsigSampleOrder(page);
+      expect(order, "a sample order is needed").toBeTruthy();
+      await enterResult(page, order!.accessionNumber, "6");
+      await openQueueFor(page, order!.accessionNumber);
+      await expect(page.getByTestId("validation-lane-summary")).toContainText(
+        "Clear: 1",
+        { timeout: LONG_TIMEOUT },
+      );
+    });
+  });
+
+  test("a lab unit override decides for its unit, and deactivating it hands the unit back", async ({
+    page,
+  }) => {
+    await test.step("The lab-wide default is All results", async () => {
+      await openResultConfiguration(page);
+      await choosePolicy(page, "All results");
+    });
+
+    await test.step("The seeded test's unit is overridden to No review", async () => {
+      await overrideToNoReview(page, labUnitId);
+      await expect(
+        page.getByTestId(`validation-effective-${labUnitId}`),
+      ).toContainText("released at entry");
+    });
+
+    await test.step("Under the override an abnormal result is released at entry", async () => {
+      const order = await createEsigSampleOrder(page);
+      expect(order, "a sample order is needed").toBeTruthy();
+      await enterResult(page, order!.accessionNumber, "15");
+      await openQueueFor(page, order!.accessionNumber);
+      await expect(
+        page.getByTestId("release-all-clear-why-queueEmpty"),
+      ).toContainText("Nothing is waiting for validation.", {
+        timeout: LONG_TIMEOUT,
+      });
+    });
+
+    await test.step("Deactivated, the unit follows All results again", async () => {
+      await openResultConfiguration(page);
+      const overrides = page.getByTestId("validation-overrides");
+      await overrides
+        .getByTestId(`validation-override-deactivate-${labUnitId}`)
+        .click();
+      await expect(overrides.getByText(/deactivated\./)).toBeVisible({
+        timeout: UI_TIMEOUT,
+      });
+      await expect(
+        page.getByTestId(`validation-effective-${labUnitId}`),
+      ).toContainText("Lab-wide default");
       const order = await createEsigSampleOrder(page);
       expect(order, "a sample order is needed").toBeTruthy();
       await enterResult(page, order!.accessionNumber, "6");

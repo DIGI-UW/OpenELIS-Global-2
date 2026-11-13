@@ -97,12 +97,12 @@ public class ValidationPolicyServiceIntegrationTest extends BaseWebContextSensit
         String previous = configuration.getPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION);
         try {
             configuration.setPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION, "false");
-            assertFalse(validationPolicyService.entryReviewTrigger().isPresent());
+            assertFalse(validationPolicyService.entryReviewTrigger(null).isPresent());
             assertFalse(validationPolicyService.getLabWideDefault().enabled());
 
             configuration.setPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION, "true");
             validationPolicyService.saveLabWideDefault(new ValidationPolicyForm("NONE", 0, null), "1");
-            assertEquals(ReviewTrigger.NONE, validationPolicyService.entryReviewTrigger().get());
+            assertEquals(ReviewTrigger.NONE, validationPolicyService.entryReviewTrigger(null).get());
             assertTrue(validationPolicyService.getLabWideDefault().enabled());
         } finally {
             configuration.setPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION, previous);

@@ -168,6 +168,31 @@ public class ResultUtilAutoValidationTest extends BaseWebContextSensitiveTest {
         }
     }
 
+    @Test
+    public void theLabUnitsActiveOverrideDecidesForItsResults() {
+        underPolicy("ALL", true, () -> {
+            jdbcTemplate.update("INSERT INTO clinlims.validation_policy (id, test_section_id, review_trigger,"
+                    + " review_levels, is_active) VALUES (nextval('clinlims.validation_policy_seq'), 1, 'NONE', 0,"
+                    + " true)");
+            try {
+                assertEquals("the Environmental unit releases at entry", status(AnalysisStatus.Finalized), ResultUtil
+                        .getStatusForTestResult(entered("100", "N", "25.0"), false, analysisService.get("100")));
+                TestResultItem withoutAnalysis = entered(null, "N", "25.0");
+                withoutAnalysis.setTestId("1");
+                assertEquals("a result not yet tied to an analysis follows its test's unit",
+                        status(AnalysisStatus.Finalized), ResultUtil.getStatusForTestResult(withoutAnalysis, false));
+
+                jdbcTemplate
+                        .update("UPDATE clinlims.validation_policy SET is_active = false WHERE test_section_id = 1");
+                assertEquals("deactivated, the unit follows the lab-wide default again",
+                        status(AnalysisStatus.TechnicalAcceptance), ResultUtil.getStatusForTestResult(
+                                entered("100", "N", "10.5"), false, analysisService.get("100")));
+            } finally {
+                jdbcTemplate.update("DELETE FROM clinlims.validation_policy WHERE test_section_id = 1");
+            }
+        });
+    }
+
     private void underPolicy(String trigger, boolean flagOn, Runnable check) {
         var configuration = org.openelisglobal.common.util.ConfigurationProperties.getInstance();
         var flag = org.openelisglobal.common.util.ConfigurationProperties.Property.USE_MULTI_LEVEL_VALIDATION;

@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../../../languages/en.json";
 
 vi.mock("../../../../utils/Utils", () => ({
+  fetchFromOpenElisServer: vi.fn(async () => ({ labUnits: [], overrides: [] })),
+  postToOpenElisServerFullResponse: vi.fn(),
   putToOpenElisServerFullResponse: vi.fn(),
 }));
 
