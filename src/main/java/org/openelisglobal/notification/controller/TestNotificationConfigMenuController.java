@@ -72,7 +72,7 @@ public class TestNotificationConfigMenuController extends BaseMenuController<Tes
         } catch (RuntimeException e) {
             LogEvent.logError("could not save result notification configs", e);
             Errors errors = new BaseErrors();
-            errors.reject("alert.error", "An error occured while saving");
+            errors.reject("alert.error", "An error occurred while saving");
             saveErrors(errors);
             return displayNotificationConfig();
         }
