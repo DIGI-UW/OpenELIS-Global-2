@@ -21,12 +21,16 @@ import {
   postToOpenElisServerFullResponse,
   putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
-import { useInvalidateServerData } from "../../../utils/useServerData";
+import {
+  useInvalidateServerData,
+  useServerData,
+} from "../../../utils/useServerData";
 import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
 import "./ValidationPolicy.scss";
 import ValidationPolicyEditor, {
   policyError,
-  roleNameOf,
+  draftPayload,
+  levelRolesUrl,
   toDraft,
 } from "./ValidationPolicyEditor";
 
@@ -70,6 +74,9 @@ function OverrideModal({
   const [draft, setDraft] = useState(() => toDraft(editing || labDefault));
   const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState(null);
+  const { data: roleOptions } = useServerData(
+    levelRolesUrl(editing ? editing.testSectionId : labUnitId || null),
+  );
 
   const error = policyError(draft, labDefault.maxLevels);
   const unitName = editing
@@ -94,7 +101,7 @@ function OverrideModal({
       }
       setRefusal(await refusalCode(response));
     };
-    const policy = { trigger: draft.trigger, levels: draft.levels };
+    const policy = draftPayload(draft);
     if (editing) {
       putToOpenElisServerFullResponse(
         `${LAB_UNIT_POLICIES_API}/${editing.id}`,
@@ -170,7 +177,8 @@ function OverrideModal({
             setRefusal(null);
           }}
           maxLevels={labDefault.maxLevels}
-          roleName={roleNameOf(editing || labDefault)}
+          roleOptions={roleOptions}
+          labUnitName={unitName}
         />
         {turnsReviewOff && unitName && (
           <InlineNotification

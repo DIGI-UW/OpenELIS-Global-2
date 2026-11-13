@@ -269,6 +269,84 @@ public class AnalysisItem implements Serializable {
         selfValidationBlocked = blocked;
     }
 
+    /** OGC-1364 v2: the e-signature the validator gave for this sign-off. */
+    private Long signatureId;
+    /** OGC-1364 v2: the reviews the analysis needs (1 without the policy). */
+    private int reviewLevels = 1;
+    /** OGC-1364 v2: the level the next signature signs. */
+    private int reviewLevel = 1;
+    private String reviewRoleName;
+    /** OGC-1364 v2: why this user cannot sign the next level, or null. */
+    private String reviewBlockedReason;
+    private List<org.openelisglobal.validationpolicy.form.ReviewState.SignOff> signOffs = new ArrayList<>();
+    private List<org.openelisglobal.validationpolicy.form.ReviewState.SignOff> supersededSignOffs = new ArrayList<>();
+
+    public Long getSignatureId() {
+        return signatureId;
+    }
+
+    public void setSignatureId(Long signatureId) {
+        this.signatureId = signatureId;
+    }
+
+    public int getReviewLevels() {
+        return reviewLevels;
+    }
+
+    public int getReviewLevel() {
+        return reviewLevel;
+    }
+
+    public String getReviewRoleName() {
+        return reviewRoleName;
+    }
+
+    public String getReviewBlockedReason() {
+        return reviewBlockedReason;
+    }
+
+    public List<org.openelisglobal.validationpolicy.form.ReviewState.SignOff> getSignOffs() {
+        return signOffs;
+    }
+
+    public List<org.openelisglobal.validationpolicy.form.ReviewState.SignOff> getSupersededSignOffs() {
+        return supersededSignOffs;
+    }
+
+    public void setReviewLevels(int reviewLevels) {
+        this.reviewLevels = reviewLevels;
+    }
+
+    public void setReviewLevel(int reviewLevel) {
+        this.reviewLevel = reviewLevel;
+    }
+
+    public void setReviewRoleName(String reviewRoleName) {
+        this.reviewRoleName = reviewRoleName;
+    }
+
+    public void setReviewBlockedReason(String reviewBlockedReason) {
+        this.reviewBlockedReason = reviewBlockedReason;
+    }
+
+    public void setSignOffs(List<org.openelisglobal.validationpolicy.form.ReviewState.SignOff> signOffs) {
+        this.signOffs = signOffs == null ? new ArrayList<>() : signOffs;
+    }
+
+    public void setSupersededSignOffs(
+            List<org.openelisglobal.validationpolicy.form.ReviewState.SignOff> supersededSignOffs) {
+        this.supersededSignOffs = supersededSignOffs == null ? new ArrayList<>() : supersededSignOffs;
+    }
+
+    public void applyReviewState(org.openelisglobal.validationpolicy.form.ReviewState state) {
+        reviewLevels = state.levels();
+        reviewLevel = state.nextLevel();
+        reviewRoleName = state.nextRoleName();
+        reviewBlockedReason = state.blockedReason();
+        signOffs = new ArrayList<>(state.signOffs());
+        supersededSignOffs = new ArrayList<>(state.superseded());
+    }
+
     private String enteredDate;
 
     private String componentLabel;

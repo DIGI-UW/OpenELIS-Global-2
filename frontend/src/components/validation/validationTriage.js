@@ -191,12 +191,39 @@ export function filterTriaged(triaged, filter) {
   );
 }
 
-/** OGC-1029 (FR-B2) — the rows "Release all clear" may touch: the Clear lane only. */
+/**
+ * OGC-1364 v2: where a row stands in its sequential review. A row without the
+ * policy needs one review.
+ */
+export function reviewStateOf(row) {
+  const levels = Math.max(Number(row?.reviewLevels) || 1, 1);
+  const level = Math.min(Math.max(Number(row?.reviewLevel) || 1, 1), levels);
+  return {
+    levels,
+    level,
+    finalLevel: level >= levels,
+    roleName: row?.reviewRoleName || "",
+    blockedReason: row?.reviewBlockedReason || null,
+    signOffs: row?.signOffs || [],
+    superseded: row?.supersededSignOffs || [],
+  };
+}
+
+/**
+ * OGC-1029 (FR-B2) — the rows "Release all clear" may touch: the Clear lane
+ * only, at their last review level and signable by this user (OGC-1364 v2).
+ */
 export function clearRows(triaged) {
   return (triaged || [])
-    .filter(
-      (item) => item.lane === LANE_CLEAR && !item.row.selfValidationBlocked,
-    )
+    .filter((item) => {
+      const review = reviewStateOf(item.row);
+      return (
+        item.lane === LANE_CLEAR &&
+        !item.row.selfValidationBlocked &&
+        review.finalLevel &&
+        !review.blockedReason
+      );
+    })
     .map((item) => item.row);
 }
 

@@ -34,7 +34,7 @@ const labDefault = (overrides = {}) => ({
   levels: 1,
   levelRoles: [{ level: 1, roleId: 10, roleName: "Validation" }],
   enabled: true,
-  maxLevels: 1,
+  maxLevels: 5,
   blockSelfValidation: false,
   ...overrides,
 });
@@ -93,6 +93,17 @@ describe("Lab unit overrides on Result Configuration (OGC-1364 v1 slice 2)", () 
     vi.mocked(fetchFromOpenElisServer).mockImplementation(async (url) => {
       if (url === LAB_UNITS) {
         return served;
+      }
+      if (url.startsWith("/rest/validation-policy/roles")) {
+        return [
+          { id: 10, name: "Validation", labUnitRole: true, signers: 4 },
+          {
+            id: 72,
+            name: "Pathologist",
+            labUnitRole: false,
+            signers: url.endsWith("labUnitId=1") ? 0 : 2,
+          },
+        ];
       }
       throw new Error(`unexpected read ${url}`);
     });
@@ -218,6 +229,7 @@ describe("Lab unit overrides on Result Configuration (OGC-1364 v1 slice 2)", () 
       testSectionId: "1",
       trigger: "NONE",
       levels: 0,
+      roleIds: [],
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(
@@ -277,7 +289,11 @@ describe("Lab unit overrides on Result Configuration (OGC-1364 v1 slice 2)", () 
     const [url, body] = vi.mocked(putToOpenElisServerFullResponse).mock
       .calls[0];
     expect(url).toBe(`${LAB_UNITS}/7`);
-    expect(JSON.parse(body)).toEqual({ trigger: "ALL", levels: 1 });
+    expect(JSON.parse(body)).toEqual({
+      trigger: "ALL",
+      levels: 1,
+      roleIds: [10],
+    });
   });
 
   it("refuses a contradictory override in the dialog", async () => {
@@ -363,6 +379,65 @@ describe("Lab unit overrides on Result Configuration (OGC-1364 v1 slice 2)", () 
         "This turns review off for every lab unit without an override. Their results will be released without a validator.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("flags a level nobody can sign for the chosen unit and saves each level's role", async () => {
+    vi.mocked(postToOpenElisServerFullResponse).mockImplementation(
+      (url, body, callback) =>
+        callback(
+          respond(
+            override({
+              id: 9,
+              testSectionId: "1",
+              labUnitName: "Hematology",
+              trigger: "ALL",
+              levels: 2,
+              levelRoles: [
+                { level: 1, roleId: 10, roleName: "Validation" },
+                { level: 2, roleId: 72, roleName: "Pathologist" },
+              ],
+            }),
+          ),
+        ),
+    );
+    renderSection();
+
+    await screen.findByTestId("validation-override-3");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add lab unit override" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/^Lab unit/), {
+      target: { value: "1" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Number of reviews"), {
+      target: { value: "2" },
+    });
+    const levelTwo = await within(dialog).findByLabelText("Level 2 role");
+    await waitFor(() =>
+      expect(within(levelTwo).getAllByRole("option")).toHaveLength(2),
+    );
+    fireEvent.change(levelTwo, { target: { value: "72" } });
+
+    expect(
+      await within(dialog).findByTestId(
+        "validation-override-level-2-no-signer",
+      ),
+    ).toHaveTextContent(
+      "No active user holds Pathologist with Validation rights for Hematology.",
+    );
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Save override" }),
+    );
+
+    await screen.findByText("Override for Hematology saved.");
+    const [, body] = vi.mocked(postToOpenElisServerFullResponse).mock.calls[0];
+    expect(JSON.parse(body)).toEqual({
+      testSectionId: "1",
+      trigger: "ALL",
+      levels: 2,
+      roleIds: [10, 72],
+    });
   });
 
   it("says when the overrides could not be loaded", async () => {

@@ -8,7 +8,7 @@ import {
   Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { policyOutcomes, roleNameOf } from "./ValidationPolicyEditor";
+import { policyOutcomes, roleNamesOf } from "./ValidationPolicyEditor";
 
 /**
  * The policy each active lab unit follows: its active override, otherwise the
@@ -18,7 +18,8 @@ export default function EffectivePolicy({
   labUnits,
   overrides,
   labDefault,
-  roleName,
+  labDefaultRoleNames,
+  roleOptions,
   blockSelfValidation,
 }) {
   const intl = useIntl();
@@ -29,11 +30,16 @@ export default function EffectivePolicy({
     const outcomes = override
       ? policyOutcomes(
           override,
-          roleNameOf(override),
+          roleNamesOf(override, roleOptions),
           blockSelfValidation,
           intl,
         )
-      : policyOutcomes(labDefault, roleName, blockSelfValidation, intl);
+      : policyOutcomes(
+          labDefault,
+          labDefaultRoleNames,
+          blockSelfValidation,
+          intl,
+        );
     return { unit, override, outcomes };
   });
 

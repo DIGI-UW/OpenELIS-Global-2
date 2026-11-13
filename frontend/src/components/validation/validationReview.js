@@ -25,6 +25,14 @@ const KNOWN_ERRORS = [
   "retestNoteRequired",
   "rejectionDisabled",
   "qcHold",
+  "alreadySigned",
+  "levelAlreadySigned",
+  "roleRequired",
+  "validationRightsRequired",
+  "earlierLevelsUnsigned",
+  "resultChanged",
+  "signatureMismatch",
+  "signatureUnknown",
 ];
 
 export const NOTE_CONTEXT_RETEST = "VALIDATION";

@@ -1,6 +1,7 @@
 package org.openelisglobal.validationpolicy.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -8,6 +9,7 @@ import org.openelisglobal.validationpolicy.form.LabUnitActiveForm;
 import org.openelisglobal.validationpolicy.form.LabUnitPoliciesView;
 import org.openelisglobal.validationpolicy.form.LabUnitPolicyForm;
 import org.openelisglobal.validationpolicy.form.LabUnitPolicyView;
+import org.openelisglobal.validationpolicy.form.LevelRoleOption;
 import org.openelisglobal.validationpolicy.form.ValidationPolicyForm;
 import org.openelisglobal.validationpolicy.form.ValidationPolicyView;
 import org.openelisglobal.validationpolicy.service.ValidationPolicyRefusedException;
@@ -47,6 +49,12 @@ public class ValidationPolicyRestController extends BaseRestController {
         ValidationPolicyView saved = validationPolicyService.saveLabWideDefault(form, getSysUserId(request));
         ConfigurationProperties.loadDBValuesIntoConfiguration();
         return saved;
+    }
+
+    @GetMapping(value = "/roles", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<LevelRoleOption> getLevelRoleOptions(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String labUnitId) {
+        return validationPolicyService.levelRoleOptions(labUnitId);
     }
 
     @GetMapping(value = "/lab-units", produces = MediaType.APPLICATION_JSON_VALUE)

@@ -81,4 +81,10 @@ public interface ResultDAO extends BaseDAO<Result, String> {
             throws LIMSRuntimeException;
 
     List<Result> getResultsByPatientUuid(String patientUuid) throws LIMSRuntimeException;
+
+    /**
+     * The value stored for the result, read without flushing the changes the caller
+     * is about to save; null when the row does not exist.
+     */
+    String getStoredValue(String resultId);
 }
