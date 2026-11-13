@@ -3,6 +3,7 @@ package org.openelisglobal.facilityregistry.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -11,22 +12,43 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsServer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.cert.X509Certificate;
+import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 import org.apache.http.HttpRequestInterceptor;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.asn1.x509.GeneralNames;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.dataexchange.fhir.FhirClientFactory;
+import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirFacilityOrganizationService;
 import org.openelisglobal.facilityregistry.form.FacilityLocationStatus;
@@ -41,6 +63,7 @@ import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.organization.valueholder.OrganizationType;
 import org.springframework.aop.framework.Advised;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.test.util.ReflectionTestUtils;
 
 public class FacilityRegistryServiceTest extends BaseWebContextSensitiveTest {
@@ -68,7 +91,9 @@ public class FacilityRegistryServiceTest extends BaseWebContextSensitiveTest {
     private Object target;
     private Object serviceClient;
     private Object contextFhirUtil;
-    private HttpServer server;
+    private HttpsServer server;
+    private HttpServer ipServer;
+    private CloseableHttpClient partnerTransport;
     private String base;
     private final List<Recorded> requests = new CopyOnWriteArrayList<>();
     private final AtomicInteger registryStatus = new AtomicInteger(200);
@@ -82,28 +107,48 @@ public class FacilityRegistryServiceTest extends BaseWebContextSensitiveTest {
     public void setUp() throws Exception {
         target = service instanceof Advised ? ((Advised) service).getTargetSource().getTarget() : service;
         facilityOrganizationService.initialize();
-        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        SSLContext tls = receiverTls();
+        server = HttpsServer.create(new InetSocketAddress("localhost", 0), 0);
+        server.setHttpsConfigurator(new HttpsConfigurator(tls));
         server.createContext("/", this::handle);
         server.start();
-        base = "http://127.0.0.1:" + server.getAddress().getPort();
+        base = "https://localhost:" + server.getAddress().getPort();
+        ipServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        ipServer.createContext("/ip", this::handle);
+        ipServer.start();
+        partnerTransport = HttpClients.custom().setSSLContext(tls).disableRedirectHandling().disableCookieManagement()
+                .build();
         serviceClient = ReflectionTestUtils.getField(target, "httpClient");
+        assertSame("Registry uploads must use the partner transport from Spring",
+                webApplicationContext.getBean("partnerFhirHttpClient"), serviceClient);
         contextFhirUtil = ReflectionTestUtils.getField(target, "fhirUtil");
         FhirUtil fhirUtil = new FhirUtil();
-        ReflectionTestUtils.setField(fhirUtil, "fhirContext", FhirContext.forR4Cached());
-        ReflectionTestUtils.setField(fhirUtil, "closeableHttpClient", HttpClients.createDefault());
-        ReflectionTestUtils.setField(target, "httpClient", HttpClients.createDefault());
+        FhirContext context = FhirContext.forR4Cached();
+        FhirClientFactory clients = new FhirClientFactory(new FhirConfig(), context, partnerTransport,
+                new MockEnvironment());
+        clients.configurePartners();
+        ReflectionTestUtils.setField(fhirUtil, "fhirContext", context);
+        ReflectionTestUtils.setField(fhirUtil, "clients", clients);
+        ReflectionTestUtils.setField(fhirUtil, "partnerHttpClient", partnerTransport);
+        ReflectionTestUtils.setField(target, "httpClient", partnerTransport);
         ReflectionTestUtils.setField(target, "fhirUtil", fhirUtil);
         configure("", "", "");
         ReflectionTestUtils.setField(target, "registryUrl", base + "/fhir/DEFAULT");
         ReflectionTestUtils.setField(target, "registryAuth", "");
-        ReflectionTestUtils.setField(target, "autolocationUrl", base + "/ip");
+        ReflectionTestUtils.setField(target, "autolocationUrl",
+                "http://127.0.0.1:" + ipServer.getAddress().getPort() + "/ip");
         resetState();
         clearStoredCoordinates();
     }
 
     @After
-    public void tearDown() {
-        server.stop(0);
+    public void tearDown() throws Exception {
+        if (server != null)
+            server.stop(0);
+        if (ipServer != null)
+            ipServer.stop(0);
+        if (partnerTransport != null)
+            partnerTransport.close();
         ReflectionTestUtils.setField(target, "httpClient", serviceClient);
         ReflectionTestUtils.setField(target, "fhirUtil", contextFhirUtil);
         ReflectionTestUtils.setField(target, "registryUrl", "");
@@ -173,8 +218,8 @@ public class FacilityRegistryServiceTest extends BaseWebContextSensitiveTest {
         assertTrue(puts().isEmpty());
         FacilityLocationStatus status = service.getStatus();
         assertEquals(Boolean.FALSE, status.getLastRegistrationSuccess());
-        assertTrue(status.getLastRegistrationMessage(),
-                status.getLastRegistrationMessage().contains("answered HTTP 401"));
+        assertTrue(status.getLastRegistrationMessage(), status.getLastRegistrationMessage()
+                .contains("FHIR authentication endpoint did not accept the request"));
     }
 
     @Test
@@ -498,13 +543,44 @@ public class FacilityRegistryServiceTest extends BaseWebContextSensitiveTest {
         requests.add(
                 new Recorded(exchange.getRequestMethod(), path, exchange.getRequestHeaders().getFirst("Content-Type"),
                         exchange.getRequestHeaders().getFirst("Authorization"), body));
-        if ("/auth/token".equals(path)) {
+        if (path.endsWith("/metadata")) {
+            respond(exchange, 200,
+                    "{\"resourceType\":\"CapabilityStatement\",\"status\":\"active\",\"date\":\"2026-01-01\",\"kind\":\"instance\",\"fhirVersion\":\"4.0.1\",\"format\":[\"json\"]}");
+        } else if ("/auth/token".equals(path)) {
             respond(exchange, tokenStatus.get(), "{\"access_token\":\"token-123\"}");
         } else if ("/ip".equals(path)) {
             respond(exchange, ipResponse == null ? 503 : 200, ipResponse == null ? "{}" : ipResponse);
         } else {
             respond(exchange, registryStatus.get(), body);
         }
+    }
+
+    private static SSLContext receiverTls() throws Exception {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+        generator.initialize(2048);
+        var pair = generator.generateKeyPair();
+        X500Name name = new X500Name("CN=localhost");
+        Instant now = Instant.now();
+        var builder = new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(System.nanoTime()),
+                Date.from(now.minusSeconds(60)), Date.from(now.plusSeconds(3600)), name, pair.getPublic());
+        builder.addExtension(Extension.subjectAlternativeName, false,
+                new GeneralNames(new GeneralName(GeneralName.dNSName, "localhost")));
+        X509Certificate certificate = new JcaX509CertificateConverter()
+                .getCertificate(builder.build(new JcaContentSignerBuilder("SHA256withRSA").build(pair.getPrivate())));
+        char[] password = java.util.UUID.randomUUID().toString().toCharArray();
+        KeyStore keys = KeyStore.getInstance("PKCS12");
+        keys.load(null, null);
+        keys.setKeyEntry("receiver", pair.getPrivate(), password, new X509Certificate[] { certificate });
+        KeyManagerFactory km = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        km.init(keys, password);
+        KeyStore trust = KeyStore.getInstance("PKCS12");
+        trust.load(null, null);
+        trust.setCertificateEntry("receiver", certificate);
+        TrustManagerFactory tm = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        tm.init(trust);
+        SSLContext tls = SSLContext.getInstance("TLS");
+        tls.init(km.getKeyManagers(), tm.getTrustManagers(), null);
+        return tls;
     }
 
     private static void respond(HttpExchange exchange, int status, String body) throws IOException {
