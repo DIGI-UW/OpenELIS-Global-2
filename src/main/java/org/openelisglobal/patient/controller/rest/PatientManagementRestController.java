@@ -238,7 +238,7 @@ public class PatientManagementRestController extends BaseRestController {
         if (updated != null) {
             return ResponseEntity.ok(Map.of("status", "success"));
         }
-        return ResponseEntity.ok(Map.of("status", "not_found"));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("status", "not_found"));
     }
 
     @DeleteMapping("patient-id-documents/{documentId}")
