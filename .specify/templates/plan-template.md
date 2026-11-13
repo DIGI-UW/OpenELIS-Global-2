@@ -70,9 +70,11 @@ Verify compliance with
       dates with frozen or injected clocks when current time is used. Document
       these choices in Test Data Management below.
 - [ ] **Schema Management**: Schema changes and historical-data conversions via
-      Liquibase; concepts, catalogs, and defaults via configuration loaders.
-      No Liquibase concept seeds. Test fresh installation, reload, and upgrades
-      while preserving referenced IDs and local customizations.
+      Liquibase (new migrations in `changes/` named `YYYYMMDDTHHMM-<ticket>-<slug>.xml` with
+      `logicalFilePath` and `id` matching file stem; do NOT edit `base.xml`);
+      concepts, catalogs, and defaults via configuration loaders. No Liquibase
+      concept seeds. Test fresh installation, reload, and upgrades while
+      preserving referenced IDs and local customizations.
 - [ ] **Internationalization**: All UI strings use React Intl (no hardcoded
       text)
 - [ ] **Security & Compliance**: RBAC, audit trail, input validation included
