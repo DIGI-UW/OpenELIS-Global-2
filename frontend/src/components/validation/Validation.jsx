@@ -45,6 +45,7 @@ import {
   clearRows,
   countByFilter,
   filterTriaged,
+  reviewStateOf,
   triageRows,
 } from "./validationTriage";
 import ValidationReviewPanel from "./ValidationReviewPanel";
@@ -440,16 +441,17 @@ const Validation = (props) => {
    * and the server re-derives the lane before releasing anything. Skipped rows
    * (no longer clear) are reported, never released.
    */
-  const handleReleaseAllClear = () => {
+  const handleReleaseAllClear = (signature) => {
     if (bulkBusy) {
       return;
     }
     setBulkBusy(true);
     postToOpenElisServerJsonResponse(
       "/rest/AccessionValidation/release-clear",
-      JSON.stringify(
-        bulkReleaseRequest(props.results, props.params, clearLaneRows),
-      ),
+      JSON.stringify({
+        ...bulkReleaseRequest(props.results, props.params, clearLaneRows),
+        signatureId: signature?.signatureId ?? null,
+      }),
       (response) => {
         setBulkBusy(false);
         const released = response?.released?.length || 0;
@@ -619,8 +621,12 @@ const Validation = (props) => {
         if (!triage) {
           return null;
         }
-        const needsReview = triage.lane !== LANE_CLEAR;
-        if (triage.chips.length === 0 && !needsReview) {
+        const review = reviewStateOf(row);
+        const needsReview =
+          triage.lane !== LANE_CLEAR ||
+          !review.finalLevel ||
+          Boolean(review.blockedReason);
+        if (triage.chips.length === 0 && !needsReview && review.levels < 2) {
           return null;
         }
         return (
@@ -652,6 +658,18 @@ const Validation = (props) => {
                   </Tag>
                 ))}
               </div>
+            )}
+            {review.levels > 1 && (
+              <Tag
+                type={review.finalLevel ? "purple" : "blue"}
+                size="sm"
+                data-testid={`review-level-${row.id}`}
+              >
+                <FormattedMessage
+                  id="label.validation.review.level.tag"
+                  values={{ level: review.level, levels: review.levels }}
+                />
+              </Tag>
             )}
             {needsReview && (
               <Button

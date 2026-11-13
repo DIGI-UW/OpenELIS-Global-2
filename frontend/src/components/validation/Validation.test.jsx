@@ -27,12 +27,15 @@ vi.mock("../esignature/ESignatureButton", () => ({
     <button
       type="button"
       disabled={disabled}
-      onClick={() => onSign && onSign()}
+      onClick={() => onSign && onSign(globalThis.__nextSignature)}
     >
       {children}
     </button>
   ),
-  SignatureMeaning: { VALIDATED_AND_RELEASED: "VALIDATED_AND_RELEASED" },
+  SignatureMeaning: {
+    VALIDATED_AND_RELEASED: "VALIDATED_AND_RELEASED",
+    REVIEWED: "REVIEWED",
+  },
 }));
 
 vi.mock("../esignature/api", () => ({
@@ -400,6 +403,23 @@ describe("Validation — Check before release (OGC-1027)", () => {
     expect(payload.doRange).toBe(false);
     expect(payload.accessionNumber).toBe("ACC0");
     expect(payload.rows.map((r) => r.analysisId)).toEqual(["100", "102"]);
+    expect(payload.signatureId).toBeNull();
+  });
+
+  it("a bulk release carries the e-signature the validator gave (OGC-1364 v2)", () => {
+    postToOpenElisServerJsonResponse.mockReset();
+    globalThis.__nextSignature = { signatureId: 77 };
+    try {
+      renderValidation([row(0)], BULK_ON, "?type=order&accessionNumber=ACC0");
+      fireEvent.click(screen.getByTestId("release-all-clear"));
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+      const [, body] = postToOpenElisServerJsonResponse.mock.calls[0];
+      expect(JSON.parse(body).signatureId).toBe(77);
+    } finally {
+      globalThis.__nextSignature = undefined;
+    }
   });
 
   it("a bulk release that only validates part of a test says the test stays open (OGC-1608)", () => {
@@ -532,6 +552,39 @@ describe("Validation — Check before release (OGC-1027)", () => {
     );
     expect(screen.getByTestId("validation-lane-summary")).toHaveTextContent(
       "Needs review: 1",
+    );
+  });
+});
+
+describe("Validation — sequential sign-off (OGC-1364 v2)", () => {
+  it("tags each row with its review level and offers Review where bulk release cannot help", () => {
+    renderValidation(
+      [
+        row(0, { reviewLevels: 2, reviewLevel: 1 }),
+        row(1, {
+          reviewLevels: 2,
+          reviewLevel: 2,
+          reviewRoleName: "Pathologist",
+          reviewBlockedReason: "roleRequired",
+        }),
+        row(2, { reviewLevels: 2, reviewLevel: 2 }),
+        row(3),
+      ],
+      BULK_ON,
+    );
+
+    expect(screen.getByTestId("review-level-0")).toHaveTextContent(
+      "Level 1 of 2",
+    );
+    expect(screen.getByTestId("review-level-1")).toHaveTextContent(
+      "Level 2 of 2",
+    );
+    expect(screen.queryByTestId("review-level-3")).toBeNull();
+    expect(screen.getByTestId("review-row-0")).toBeInTheDocument();
+    expect(screen.getByTestId("review-row-1")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-row-2")).toBeNull();
+    expect(screen.getByTestId("release-all-clear")).toHaveTextContent(
+      "Release all clear (2)",
     );
   });
 });

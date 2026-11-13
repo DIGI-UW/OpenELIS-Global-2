@@ -15,6 +15,7 @@
  */
 package org.openelisglobal.result.daoimpl;
 
+import jakarta.persistence.FlushModeType;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Date;
 import java.util.ArrayList;
@@ -457,4 +458,15 @@ public class ResultDAOImpl extends BaseDAOImpl<Result, String> implements Result
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public String getStoredValue(String resultId) {
+        if (resultId == null || !resultId.trim().matches("\\d+")) {
+            return null;
+        }
+        List<?> values = entityManager.createNativeQuery("SELECT value FROM clinlims.result WHERE id = :id")
+                .setParameter("id", Integer.valueOf(resultId.trim())).setFlushMode(FlushModeType.COMMIT)
+                .getResultList();
+        return values.isEmpty() || values.get(0) == null ? null : values.get(0).toString();
+    }
 }

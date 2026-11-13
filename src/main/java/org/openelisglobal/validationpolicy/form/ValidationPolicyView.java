@@ -16,6 +16,10 @@ import java.util.List;
 public record ValidationPolicyView(String trigger, int levels, List<Level> levelRoles, boolean enabled, int maxLevels,
         boolean blockSelfValidation) {
 
-    public record Level(int level, Integer roleId, String roleName) {
+    /**
+     * @param signers how many active users could sign this level: Validation rights
+     *                for the lab unit (any unit for the default) and the role
+     */
+    public record Level(int level, Integer roleId, String roleName, int signers) {
     }
 }

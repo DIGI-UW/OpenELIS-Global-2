@@ -12,9 +12,12 @@ import {
   useServerData,
 } from "../../../utils/useServerData";
 import ValidationPolicyEditor, {
+  draftPayload,
+  levelRolesUrl,
   policyError,
   policyOutcomes,
-  roleNameOf,
+  roleNamesOf,
+  sameDraft,
   toDraft,
 } from "./ValidationPolicyEditor";
 import LabUnitOverrides, { LAB_UNIT_POLICIES_API } from "./LabUnitOverrides";
@@ -30,6 +33,7 @@ export default function ValidationPolicySection({ policy: loaded }) {
   const { data: labUnitPolicies, isError: labUnitsFailed } = useServerData(
     LAB_UNIT_POLICIES_API,
   );
+  const { data: roleOptions } = useServerData(levelRolesUrl(null));
   const [policy, setPolicy] = useState(loaded);
   const [draft, setDraft] = useState(() => toDraft(loaded));
   const [saving, setSaving] = useState(false);
@@ -39,21 +43,20 @@ export default function ValidationPolicySection({ policy: loaded }) {
   if (loaded !== seen) {
     setSeen(loaded);
     setPolicy(loaded);
-    if (draft.trigger === policy.trigger && draft.levels === policy.levels) {
+    if (sameDraft(draft, toDraft(policy))) {
       setDraft(toDraft(loaded));
     }
   }
 
   const error = policyError(draft, policy.maxLevels);
-  const changed =
-    draft.trigger !== policy.trigger || draft.levels !== policy.levels;
-  const roleName = roleNameOf(policy);
+  const changed = !sameDraft(draft, toDraft(policy));
+  const roleNames = roleNamesOf(draft, roleOptions);
   const message = (code, values) =>
     intl.formatMessage({ id: `admin.validationPolicy.${code}` }, values);
 
   const { clean, flagged } = policyOutcomes(
     draft,
-    roleName,
+    roleNames,
     policy.blockSelfValidation,
     intl,
   );
@@ -71,7 +74,7 @@ export default function ValidationPolicySection({ policy: loaded }) {
     setNotice(null);
     putToOpenElisServerFullResponse(
       VALIDATION_POLICY_API,
-      JSON.stringify({ trigger: draft.trigger, levels: draft.levels }),
+      JSON.stringify(draftPayload(draft)),
       async (response) => {
         setSaving(false);
         if (response && response.ok) {
@@ -116,7 +119,7 @@ export default function ValidationPolicySection({ policy: loaded }) {
             draft={draft}
             onChange={editDraft}
             maxLevels={policy.maxLevels}
-            roleName={roleName}
+            roleOptions={roleOptions}
           />
           {blocked && (
             <InlineNotification
@@ -182,7 +185,10 @@ export default function ValidationPolicySection({ policy: loaded }) {
             labUnits={labUnitPolicies.labUnits}
             overrides={labUnitPolicies.overrides}
             labDefault={error ? toDraft(policy) : draft}
-            roleName={roleName}
+            labDefaultRoleNames={
+              error ? roleNamesOf(policy, roleOptions) : roleNames
+            }
+            roleOptions={roleOptions}
             blockSelfValidation={policy.blockSelfValidation}
           />
         )}

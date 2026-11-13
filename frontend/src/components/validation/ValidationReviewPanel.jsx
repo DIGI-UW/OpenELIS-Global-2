@@ -38,7 +38,7 @@ import {
 } from "../resultPage/unified/sectionLayout";
 import "../resultPage/unified/unified-results.scss";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
-import { triageRows } from "./validationTriage";
+import { reviewStateOf, triageRows } from "./validationTriage";
 import { displayRange } from "../common/rangeNotApplied";
 import {
   NOTE_CONTEXT_MODIFICATION,
@@ -100,6 +100,76 @@ const Field = ({ labelKey, value, testId }) => (
  */
 const modifyStartValue = (row) =>
   row.displayResultAsLog ? displayResult(row) : (row.result ?? "");
+
+const signedWhen = (value) => {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+};
+
+/**
+ * OGC-1364 v2: who signed which review level in this pass, and the signatures
+ * a modification, retest or rejection superseded.
+ */
+const SignOffs = ({ review, intl }) => (
+  <div className="validationSignOffs" data-testid="review-sign-offs">
+    <h6>
+      <FormattedMessage id="label.validation.review.signOffs.title" />
+    </h6>
+    {review.signOffs.length === 0 ? (
+      <p className="cds--label">
+        <FormattedMessage id="label.validation.review.signOffs.empty" />
+      </p>
+    ) : (
+      <ul>
+        {review.signOffs.map((signOff) => (
+          <li
+            key={`current-${signOff.level}`}
+            data-testid={`review-sign-off-${signOff.level}`}
+          >
+            {intl.formatMessage(
+              { id: "label.validation.review.signOffs.entry" },
+              {
+                level: signOff.level,
+                levels: signOff.levels,
+                name: signOff.signerName,
+                role: signOff.roleName,
+                when: signedWhen(signOff.signedAt),
+              },
+            )}
+          </li>
+        ))}
+      </ul>
+    )}
+    {review.superseded.length > 0 && (
+      <ul>
+        {review.superseded.map((signOff, index) => (
+          <li
+            key={`superseded-${index}`}
+            data-testid="review-sign-off-superseded"
+          >
+            <s>
+              {intl.formatMessage(
+                { id: "label.validation.review.signOffs.superseded" },
+                {
+                  level: signOff.level,
+                  levels: signOff.levels,
+                  name: signOff.signerName,
+                  when: signedWhen(signOff.signedAt),
+                  reason: intl.formatMessage({
+                    id: `label.validation.review.signOffs.reason.${signOff.supersededReason}`,
+                  }),
+                },
+              )}
+            </s>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+);
 
 const ValidationReviewPanel = ({
   data: row,
@@ -257,15 +327,15 @@ const ValidationReviewPanel = ({
       nceNumber: nceNumber || "",
     });
 
-  const release = () =>
-    submit(
-      "release",
-      actionPayload(row, {
+  const release = (signature) =>
+    submit("release", {
+      ...actionPayload(row, {
         note: noteText,
         noteVisibility,
         noteContext: NOTE_CONTEXT_VALIDATION,
       }),
-    );
+      signatureId: signature?.signatureId ?? null,
+    });
 
   const saveModification = () =>
     submit(
@@ -283,8 +353,14 @@ const ValidationReviewPanel = ({
     row.qcHold === true &&
     configurationProperties?.QC_FAIL_BLOCKS_VALIDATION === "true";
   const selfValidationBlocked = row.selfValidationBlocked === true;
+  const review = reviewStateOf(row);
+  const reviewBlocked = Boolean(review.blockedReason) && !selfValidationBlocked;
   const releaseBlocked =
-    busy || qcAckBlocksRelease || qcHoldBlocksRelease || selfValidationBlocked;
+    busy ||
+    qcHoldBlocksRelease ||
+    selfValidationBlocked ||
+    reviewBlocked ||
+    (review.finalLevel && qcAckBlocksRelease);
   const reasonMissing = notesRequired && !noteText.trim();
   const modificationBlocked =
     busy || !editableHere || !String(newValue ?? "").trim() || reasonMissing;
@@ -292,13 +368,24 @@ const ValidationReviewPanel = ({
   const retestBlocked = busy || retestNoteMissing;
   const inSideMode = modifying || retesting || rejecting;
 
-  const signContext = intl.formatMessage(
-    {
-      id: "esig.context.validateSingle",
-      defaultMessage: "Validate and release {test} for accession {accession}",
-    },
-    { test: row.testName, accession },
-  );
+  const signContext = review.finalLevel
+    ? intl.formatMessage(
+        {
+          id: "esig.context.validateSingle",
+          defaultMessage:
+            "Validate and release {test} for accession {accession}",
+        },
+        { test: row.testName, accession },
+      )
+    : intl.formatMessage(
+        { id: "esig.context.reviewLevel" },
+        {
+          test: row.testName,
+          accession,
+          level: review.level,
+          levels: review.levels,
+        },
+      );
 
   return (
     <div
@@ -634,6 +721,10 @@ const ValidationReviewPanel = ({
           </div>
         )}
 
+        {(review.levels > 1 || review.superseded.length > 0) && (
+          <SignOffs review={review} intl={intl} />
+        )}
+
         <div
           className="unifiedWorkZoneActions"
           style={{
@@ -653,8 +744,25 @@ const ValidationReviewPanel = ({
                   })}
                 </p>
               )}
+              {reviewBlocked && (
+                <p
+                  id={`review-level-hint-${row.id}`}
+                  data-testid="review-level-blocked"
+                >
+                  {intl.formatMessage(
+                    {
+                      id: `label.validation.review.level.blocked.${review.blockedReason}`,
+                    },
+                    { level: review.level, role: review.roleName },
+                  )}
+                </p>
+              )}
               <ESignatureButton
-                meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
+                meaning={
+                  review.finalLevel
+                    ? SignatureMeaning.VALIDATED_AND_RELEASED
+                    : SignatureMeaning.REVIEWED
+                }
                 context={signContext}
                 recordType="VALIDATION_BATCH"
                 recordId={Number(row.analysisId)}
@@ -667,13 +775,21 @@ const ValidationReviewPanel = ({
                     qcHoldBlocksRelease && `review-qc-hold-hint-${row.id}`,
                     selfValidationBlocked &&
                       `review-self-validation-hint-${row.id}`,
+                    reviewBlocked && `review-level-hint-${row.id}`,
                   ]
                     .filter(Boolean)
                     .join(" ") || undefined
                 }
                 size="sm"
               >
-                <FormattedMessage id="label.validation.review.action.release" />
+                {review.finalLevel ? (
+                  <FormattedMessage id="label.validation.review.action.release" />
+                ) : (
+                  <FormattedMessage
+                    id="label.validation.review.action.signLevel"
+                    values={{ level: review.level, levels: review.levels }}
+                  />
+                )}
               </ESignatureButton>
             </span>
           )}

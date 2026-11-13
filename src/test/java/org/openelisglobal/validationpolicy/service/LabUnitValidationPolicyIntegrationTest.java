@@ -145,7 +145,7 @@ public class LabUnitValidationPolicyIntegrationTest extends BaseWebContextSensit
         assertRefused("levels", "noReviewWithReviews", () -> validationPolicyService
                 .addLabUnitOverride(new LabUnitPolicyForm(waterQuality, "NONE", 1, null), "1"));
         assertRefused("levels", "levelsOutOfRange", () -> validationPolicyService
-                .addLabUnitOverride(new LabUnitPolicyForm(waterQuality, "ALL", 2, null), "1"));
+                .addLabUnitOverride(new LabUnitPolicyForm(waterQuality, "ALL", 6, null), "1"));
         assertTrue("a refused add saves nothing", validationPolicyService.getLabUnitPolicies().overrides().isEmpty());
 
         Long id = validationPolicyService.addLabUnitOverride(new LabUnitPolicyForm(waterQuality, "ALL", 1, null), "1")

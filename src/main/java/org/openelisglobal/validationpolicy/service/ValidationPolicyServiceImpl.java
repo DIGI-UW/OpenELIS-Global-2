@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -19,6 +20,7 @@ import org.openelisglobal.validationpolicy.dao.ValidationPolicyDAO;
 import org.openelisglobal.validationpolicy.form.LabUnitPoliciesView;
 import org.openelisglobal.validationpolicy.form.LabUnitPolicyForm;
 import org.openelisglobal.validationpolicy.form.LabUnitPolicyView;
+import org.openelisglobal.validationpolicy.form.LevelRoleOption;
 import org.openelisglobal.validationpolicy.form.ValidationPolicyForm;
 import org.openelisglobal.validationpolicy.form.ValidationPolicyView;
 import org.openelisglobal.validationpolicy.valueholder.ReviewTrigger;
@@ -46,6 +48,9 @@ public class ValidationPolicyServiceImpl implements ValidationPolicyService {
     @Lazy
     @Autowired
     private TestSectionService testSectionService;
+    @Lazy
+    @Autowired
+    private AnalysisReviewService analysisReviewService;
 
     @Override
     @Transactional(readOnly = true)
@@ -132,6 +137,12 @@ public class ValidationPolicyServiceImpl implements ValidationPolicyService {
     @Override
     @Transactional(readOnly = true)
     public Optional<ReviewTrigger> entryReviewTrigger(String testSectionId) {
+        return effectivePolicy(testSectionId).map(ValidationPolicy::getReviewTrigger);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ValidationPolicy> effectivePolicy(String testSectionId) {
         if (!isEnabled()) {
             return Optional.empty();
         }
@@ -139,7 +150,7 @@ public class ValidationPolicyServiceImpl implements ValidationPolicyService {
                 ? validationPolicyDAO.findByTestSectionId(Integer.valueOf(testSectionId))
                         .filter(ValidationPolicy::isActive)
                 : Optional.empty();
-        return Optional.of(override.orElseGet(this::labWideDefault).getReviewTrigger());
+        return Optional.of(override.orElseGet(this::labWideDefault));
     }
 
     private ValidationPolicy labWideDefault() {
@@ -213,17 +224,41 @@ public class ValidationPolicyServiceImpl implements ValidationPolicyService {
 
     private Map<Integer, Integer> levelRoles(int levels, List<Integer> roleIds) {
         Integer validationRoleId = validationRoleId();
+        java.util.Set<Integer> available = signableRoles().stream().map(LevelRoleOption::id)
+                .collect(java.util.stream.Collectors.toSet());
         Map<Integer, Integer> roles = new HashMap<>();
         for (int level = 1; level <= levels; level++) {
             Integer roleId = roleIds == null || roleIds.size() < level || roleIds.get(level - 1) == null
                     ? validationRoleId
                     : roleIds.get(level - 1);
-            if (!roleId.equals(validationRoleId)) {
+            if (!available.contains(roleId)) {
                 throw new ValidationPolicyRefusedException("roleIds", "roleNotAvailable");
             }
             roles.put(level, roleId);
         }
         return roles;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LevelRoleOption> levelRoleOptions(String labUnitId) {
+        return signableRoles().stream().map(role -> new LevelRoleOption(role.id(), role.name(), role.labUnitRole(),
+                analysisReviewService.signerCount(labUnitId, role.id()))).toList();
+    }
+
+    private List<LevelRoleOption> signableRoles() {
+        Role labUnitRoles = roleService.getRoleByName(AnalysisReviewServiceImpl.LAB_UNIT_ROLES);
+        String labUnitRolesId = labUnitRoles == null ? null : labUnitRoles.getId();
+        return roleService.getAllActiveRoles().stream().filter(role -> StringUtils.isNumeric(role.getId())
+                && (role.getGroupingParent() != null || LEVEL_ROLE_NAME.equals(StringUtils.trim(role.getName()))))
+                .map(role -> new LevelRoleOption(Integer.valueOf(role.getId()), StringUtils.trim(role.getName()),
+                        LEVEL_ROLE_NAME.equals(StringUtils.trim(role.getName()))
+                                || Objects.equals(role.getGroupingParent(), labUnitRolesId),
+                        0))
+                .sorted(java.util.Comparator
+                        .comparing((LevelRoleOption option) -> !LEVEL_ROLE_NAME.equals(option.name()))
+                        .thenComparing(LevelRoleOption::name, String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     private Integer validationRoleId() {
@@ -263,12 +298,14 @@ public class ValidationPolicyServiceImpl implements ValidationPolicyService {
     }
 
     private List<ValidationPolicyView.Level> levels(ValidationPolicy policy) {
+        String labUnitId = policy.getTestSectionId() == null ? null : policy.getTestSectionId().toString();
         List<ValidationPolicyView.Level> levels = new ArrayList<>();
         for (int level = 1; level <= policy.getReviewLevels(); level++) {
             Integer roleId = policy.getLevelRoleIds().get(level);
             Role role = roleId == null ? null : roleService.getRoleById(roleId.toString());
             levels.add(new ValidationPolicyView.Level(level, roleId,
-                    role == null ? null : StringUtils.trim(role.getName())));
+                    role == null ? null : StringUtils.trim(role.getName()),
+                    analysisReviewService.signerCount(labUnitId, roleId)));
         }
         return levels;
     }

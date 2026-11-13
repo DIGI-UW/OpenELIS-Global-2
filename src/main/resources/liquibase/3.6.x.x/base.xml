@@ -58,6 +58,8 @@
   <include relativeToChangelogFile="true" file="035-test-expected-containers.xml"/>
   <!-- OGC-1611 P4: a clinical sample records the container type it was taken in -->
   <include relativeToChangelogFile="true" file="036-sample-item-container-type.xml"/>
+  <!-- OGC-1364 v2: sequential sign-off, one signature per review level -->
+  <include relativeToChangelogFile="true" file="037-analysis-review-sign-off.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>
