@@ -101,15 +101,6 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
     @Autowired
     private FhirUtil fhirUtil;
 
-    private Task task = null;
-    private Practitioner requesterPerson = null;
-    private Practitioner collector = null;
-    private org.hl7.fhir.r4.model.Organization referringOrganization = null;
-    private Location location = null;
-    private ServiceRequest serviceRequest = null;
-    private Specimen specimen = null;
-    private Patient fhirPatient = null;
-    private Encounter encounter = null;
     private static String OPENMRS_SYSTEM_URL = "https://openmrs.org";
     public static final String REFERRING_ORG_TYPE = "referring clinic";
     public static final String ARV_ORG_TYPE = "ARV Service Loc";
@@ -182,6 +173,15 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                     eOrder = eOrders.get(eOrders.size() - 1);
                 if (eOrder != null) {
                     form.setElectronicOrder(eOrder);
+                    Task task = null;
+                    Practitioner requesterPerson = null;
+                    Practitioner collector = null;
+                    org.hl7.fhir.r4.model.Organization referringOrganization = null;
+                    Location location = null;
+                    ServiceRequest serviceRequest = null;
+                    Specimen specimen = null;
+                    Patient fhirPatient = null;
+                    Encounter encounter = null;
                     IGenericClient localFhirClient = fhirUtil.getLocalFhirClient();
                     IGenericClient remoteFhirClient = fhirUtil.getFhirClient(defaultRemoteServer);
                     for (String remotePath : fhirConfig.getRemoteStorePaths()) {
@@ -216,18 +216,19 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                     if (serviceRequest != null) {
                         LogEvent.logDebug(this.getClass().getName(), "processRequest",
                                 "found matching serviceRequest " + serviceRequest.getIdElement().getIdPart());
+                        fhirPatient = FhirUtil.refersToPatient(serviceRequest.getSubject()) ? localFhirClient.read() //
+                                .resource(Patient.class) //
+                                .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()) //
+                                .execute() : null;
+                        encounter = remoteFhirClient.read().resource(Encounter.class)
+                                .withId(serviceRequest.getEncounter().getReferenceElement().getIdPart()).execute();
+                        if (ObjectUtils.isEmpty(encounter)) {
+                            LogEvent.logDebug(this.getClass().getName(), "processRequest",
+                                    "Not found matching Ecounter "
+                                            + serviceRequest.getEncounter().getReferenceElement().getIdPart());
+                        }
                     } else {
                         LogEvent.logDebug(this.getClass().getName(), "processRequest", "no matching serviceRequest");
-                    }
-                    fhirPatient = FhirUtil.refersToPatient(serviceRequest.getSubject()) ? localFhirClient.read() //
-                            .resource(Patient.class) //
-                            .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()) //
-                            .execute() : null;
-                    encounter = remoteFhirClient.read().resource(Encounter.class)
-                            .withId(serviceRequest.getEncounter().getReferenceElement().getIdPart()).execute();
-                    if (ObjectUtils.isEmpty(encounter)) {
-                        LogEvent.logDebug(this.getClass().getName(), "processRequest", "Not found matching Ecounter "
-                                + serviceRequest.getEncounter().getReferenceElement().getIdPart());
                     }
 
                     if (fhirPatient != null) {
@@ -299,7 +300,8 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
                         }
                     }
                     if (fhirPatient != null) {
-                        loadDataInForm(form);
+                        loadDataInForm(form, task, requesterPerson, collector, referringOrganization, location,
+                                serviceRequest, specimen, fhirPatient, encounter);
                     }
                 }
             }
@@ -308,7 +310,9 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
         }
     }
 
-    private void loadDataInForm(SampleEntryByProjectForm form) {
+    private void loadDataInForm(SampleEntryByProjectForm form, Task task, Practitioner requesterPerson,
+            Practitioner collector, org.hl7.fhir.r4.model.Organization referringOrganization, Location location,
+            ServiceRequest serviceRequest, Specimen specimen, Patient fhirPatient, Encounter encounter) {
         ProjectData projectData = new ProjectData();
         ObservationData observationData = new ObservationData();
         form.setBirthDateForDisplay(DateUtil.formatDateAsText(fhirPatient.getBirthDate()));
@@ -657,12 +661,14 @@ public class SampleEntryByProjectController extends BaseSampleEntryController {
             }
         }
 
-        requesterPerson.getName().forEach(humanName -> {
-            String lastName = humanName.getFamily();
-            String firstName = String.join("",
-                    humanName.getGiven().stream().map(e -> e.asStringValue()).collect(Collectors.toList()));
-            observationData.setNameOfDoctor(lastName + " " + firstName);
-        });
+        if (requesterPerson != null) {
+            requesterPerson.getName().forEach(humanName -> {
+                String lastName = humanName.getFamily();
+                String firstName = String.join("",
+                        humanName.getGiven().stream().map(e -> e.asStringValue()).collect(Collectors.toList()));
+                observationData.setNameOfDoctor(lastName + " " + firstName);
+            });
+        }
 
         projectData.setViralLoadTest(true);
         form.setProjectData(projectData);
