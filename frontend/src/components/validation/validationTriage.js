@@ -228,6 +228,65 @@ export function clearRows(triaged) {
 }
 
 /**
+ * OGC-1364 v2: a row whose next level someone else must sign. Only rows the
+ * server marked for sequential sign-off (the policy is on) can wait for others.
+ */
+export function waitingForOthers(row) {
+  if (!row || row.sequentialSignOff !== true) {
+    return false;
+  }
+  return Boolean(row.reviewBlockedReason) || row.selfValidationBlocked === true;
+}
+
+/** The queue scoped to what this person can sign, unless the rest is asked for. */
+export function scopeToSignable(triaged, showWaiting) {
+  const items = triaged || [];
+  return showWaiting
+    ? items
+    : items.filter((item) => !waitingForOthers(item.row));
+}
+
+/**
+ * OGC-1364 v2: the rows "Sign level k for all clear" may touch: the Clear lane
+ * at a level before their last, signable by this person.
+ */
+export function earlierLevelClearRows(triaged) {
+  return (triaged || [])
+    .filter((item) => {
+      const review = reviewStateOf(item.row);
+      return (
+        item.lane === LANE_CLEAR &&
+        item.row.sequentialSignOff === true &&
+        !review.finalLevel &&
+        !waitingForOthers(item.row)
+      );
+    })
+    .map((item) => item.row);
+}
+
+/** The level a bulk signature signs when every row is at the same one, else null. */
+export function nextLevelOf(rows) {
+  const levels = new Set((rows || []).map((row) => reviewStateOf(row).level));
+  return levels.size === 1 ? [...levels][0] : null;
+}
+
+/** The message after "Sign level k for all clear": signed, partly, or nothing. */
+export function signClearMessages(response) {
+  const signed = response?.signed?.length || 0;
+  const skipped = response?.skipped?.length || 0;
+  if (signed === 0) {
+    return { id: "label.validation.bulk.error.nothingSigned", values: {} };
+  }
+  if (skipped > 0) {
+    return {
+      id: "label.validation.bulk.signedPartial",
+      values: { signed, skipped },
+    };
+  }
+  return { id: "label.validation.bulk.signed", values: { count: signed } };
+}
+
+/**
  * OGC-1029 / OGC-1418 — the bulk request: the page's whole search (so the
  * server reloads the same queue and re-derives the lane itself) plus the
  * candidate rows with the validator's note. `params` is the page's query

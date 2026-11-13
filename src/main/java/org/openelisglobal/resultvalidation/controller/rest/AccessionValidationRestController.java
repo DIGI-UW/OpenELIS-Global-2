@@ -903,6 +903,16 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             AnalysisItem item) {
         org.openelisglobal.validationpolicy.form.ReviewState state = analysisReviewService.signEarlierLevel(analysis,
                 getSysUserId(request), item.getSignatureId());
+        saveReviewNote(analysis, item);
+        Map<String, Object> body = new HashMap<>();
+        body.put("analysisId", analysis.getId());
+        body.put("outcome", "levelSigned");
+        body.put("level", state.signOffs().size());
+        body.put("levels", state.levels());
+        return org.springframework.http.ResponseEntity.ok(body);
+    }
+
+    private void saveReviewNote(Analysis analysis, AnalysisItem item) {
         if (!isBlankOrNull(item.getNote())) {
             Note note = noteService.createSavableNote(analysis, noteTypeFor(item), item.getNote(),
                     VALIDATION_NOTE_SUBJECT, getSysUserId(request));
@@ -910,12 +920,6 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                 noteService.insert(note);
             }
         }
-        Map<String, Object> body = new HashMap<>();
-        body.put("analysisId", analysis.getId());
-        body.put("outcome", "levelSigned");
-        body.put("level", state.signOffs().size());
-        body.put("levels", state.levels());
-        return org.springframework.http.ResponseEntity.ok(body);
     }
 
     private org.springframework.http.ResponseEntity<Map<String, Object>> reviewRefusal(
@@ -1216,42 +1220,14 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         }
 
         List<AnalysisItem> serverRows = loadValidationRows(body);
-        Map<String, List<AnalysisItem>> serverRowsByAnalysis = new LinkedHashMap<>();
-        for (AnalysisItem row : serverRows) {
-            serverRowsByAnalysis.computeIfAbsent(row.getAnalysisId(), key -> new ArrayList<>()).add(row);
-        }
-        Map<String, AnalysisItem> requested = new LinkedHashMap<>();
-        for (AnalysisItem clientRow : body.getRows()) {
-            if (clientRow != null && !isBlankOrNull(clientRow.getAnalysisId())) {
-                requested.putIfAbsent(clientRow.getAnalysisId(), clientRow);
-            }
-        }
+        Map<String, List<AnalysisItem>> serverRowsByAnalysis = groupByAnalysis(serverRows);
 
         List<String> released = new ArrayList<>();
         List<Map<String, Object>> skipped = new ArrayList<>();
         Map<String, Analysis> reviewed = new HashMap<>();
-        for (Map.Entry<String, AnalysisItem> entry : requested.entrySet()) {
+        for (Map.Entry<String, AnalysisItem> entry : clearCandidates(body, serverRowsByAnalysis, skipped).entrySet()) {
             List<AnalysisItem> group = serverRowsByAnalysis.get(entry.getKey());
-            if (group == null) {
-                skipped.add(skipReason(entry.getKey(), "notFound"));
-                continue;
-            }
-            if (group.stream().anyMatch(AnalysisItem::isSelfValidationBlocked)) {
-                skipped.add(skipReason(entry.getKey(), "selfValidationBlocked"));
-                continue;
-            }
-            if (!org.openelisglobal.resultvalidation.util.ValidationSignals.allClear(group)) {
-                skipped.add(skipReason(entry.getKey(), "notClear"));
-                continue;
-            }
             AnalysisItem clientRow = entry.getValue();
-            String servedToken = group.get(0).getAnalysisLastupdated();
-            if (!isBlankOrNull(clientRow.getAnalysisLastupdated()) && !isBlankOrNull(servedToken)
-                    && !clientRow.getAnalysisLastupdated().trim().equals(servedToken.trim())) {
-                auditStaleConflict(findAnalysis(entry.getKey()), clientRow.getAnalysisLastupdated());
-                skipped.add(skipReason(entry.getKey(), "stale"));
-                continue;
-            }
             if (analysisReviewService.isEnabled()) {
                 Analysis analysis = findAnalysis(entry.getKey());
                 org.openelisglobal.validationpolicy.form.ReviewState state = analysisReviewService.stateOf(analysis,
@@ -1347,6 +1323,103 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             LogEvent.logError(e);
         }
         return org.springframework.http.ResponseEntity.ok(result);
+    }
+
+    /**
+     * OGC-1364 v2 — signs the next review level of every requested row that the
+     * SERVER finds in the Clear lane, under one e-signature meaning Reviewed. Only
+     * levels before the last are signed here; the rows stay awaiting validation and
+     * the last level is released with "Release all clear". A row at its last level,
+     * one this person cannot sign, or one no longer clear is skipped and reported
+     * by reason. Gated like the bulk release, and refused while sequential sign-off
+     * is off.
+     */
+    @PostMapping(value = "AccessionValidation/sign-clear", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<Map<String, Object>> signAllClear(
+            @RequestBody BulkReleaseRequest body) {
+        if (!ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(ConfigurationProperties.Property.ALLOW_BULK_RELEASE_CLEAR, "true")) {
+            return errorResponse(403, "bulkReleaseDisabled");
+        }
+        if (!analysisReviewService.isEnabled()) {
+            return errorResponse(409, "sequentialSignOffOff");
+        }
+        if (body == null || body.getRows() == null || body.getRows().isEmpty()) {
+            return errorResponse(400, "noRows");
+        }
+        String sysUserId = getSysUserId(request);
+        try {
+            analysisReviewService.checkReviewSignature(body.getSignatureId(), sysUserId);
+        } catch (org.openelisglobal.validationpolicy.service.ReviewSignRefusedException e) {
+            return reviewRefusal(e);
+        }
+        List<String> signed = new ArrayList<>();
+        List<Map<String, Object>> skipped = new ArrayList<>();
+        for (Map.Entry<String, AnalysisItem> entry : clearCandidates(body, groupByAnalysis(loadValidationRows(body)),
+                skipped).entrySet()) {
+            Analysis analysis = findAnalysis(entry.getKey());
+            try {
+                analysisReviewService.signEarlierLevel(analysis, sysUserId, body.getSignatureId());
+                saveReviewNote(analysis, entry.getValue());
+                signed.add(entry.getKey());
+            } catch (org.openelisglobal.validationpolicy.service.ReviewSignRefusedException e) {
+                skipped.add(skipReason(entry.getKey(), e.getCode()));
+            }
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("signed", signed);
+        result.put("skipped", skipped);
+        return org.springframework.http.ResponseEntity.ok(result);
+    }
+
+    private static Map<String, List<AnalysisItem>> groupByAnalysis(List<AnalysisItem> serverRows) {
+        Map<String, List<AnalysisItem>> byAnalysis = new LinkedHashMap<>();
+        for (AnalysisItem row : serverRows) {
+            byAnalysis.computeIfAbsent(row.getAnalysisId(), key -> new ArrayList<>()).add(row);
+        }
+        return byAnalysis;
+    }
+
+    /**
+     * The requested rows a bulk action may touch: served to this user in the Clear
+     * lane, not blocked by self-validation and not changed since the page loaded.
+     * Each other row is added to {@code skipped} with its reason.
+     */
+    private Map<String, AnalysisItem> clearCandidates(BulkReleaseRequest body,
+            Map<String, List<AnalysisItem>> serverRowsByAnalysis, List<Map<String, Object>> skipped) {
+        Map<String, AnalysisItem> requested = new LinkedHashMap<>();
+        for (AnalysisItem clientRow : body.getRows()) {
+            if (clientRow != null && !isBlankOrNull(clientRow.getAnalysisId())) {
+                requested.putIfAbsent(clientRow.getAnalysisId(), clientRow);
+            }
+        }
+        Map<String, AnalysisItem> candidates = new LinkedHashMap<>();
+        for (Map.Entry<String, AnalysisItem> entry : requested.entrySet()) {
+            List<AnalysisItem> group = serverRowsByAnalysis.get(entry.getKey());
+            if (group == null) {
+                skipped.add(skipReason(entry.getKey(), "notFound"));
+                continue;
+            }
+            if (group.stream().anyMatch(AnalysisItem::isSelfValidationBlocked)) {
+                skipped.add(skipReason(entry.getKey(), "selfValidationBlocked"));
+                continue;
+            }
+            if (!org.openelisglobal.resultvalidation.util.ValidationSignals.allClear(group)) {
+                skipped.add(skipReason(entry.getKey(), "notClear"));
+                continue;
+            }
+            AnalysisItem clientRow = entry.getValue();
+            String servedToken = group.get(0).getAnalysisLastupdated();
+            if (!isBlankOrNull(clientRow.getAnalysisLastupdated()) && !isBlankOrNull(servedToken)
+                    && !clientRow.getAnalysisLastupdated().trim().equals(servedToken.trim())) {
+                auditStaleConflict(findAnalysis(entry.getKey()), clientRow.getAnalysisLastupdated());
+                skipped.add(skipReason(entry.getKey(), "stale"));
+                continue;
+            }
+            candidates.put(entry.getKey(), clientRow);
+        }
+        return candidates;
     }
 
     private Map<String, Object> skipReason(String analysisId, String reason) {

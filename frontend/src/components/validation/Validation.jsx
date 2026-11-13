@@ -44,9 +44,14 @@ import {
   bulkUnavailableReasons,
   clearRows,
   countByFilter,
+  earlierLevelClearRows,
   filterTriaged,
+  nextLevelOf,
   reviewStateOf,
+  scopeToSignable,
+  signClearMessages,
   triageRows,
+  waitingForOthers,
 } from "./validationTriage";
 import ValidationReviewPanel from "./ValidationReviewPanel";
 import {
@@ -117,6 +122,8 @@ const Validation = (props) => {
   const [qcJustification, setQcJustification] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkMode, setBulkMode] = useState("release");
+  const [showWaiting, setShowWaiting] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkEsigEnabled, setBulkEsigEnabled] = useState(false);
   const [expandedRowIds, setExpandedRowIds] = useState([]);
@@ -139,7 +146,12 @@ const Validation = (props) => {
     props.results?.accessionNumber ||
     props.results?.resultList?.[0]?.accessionNumber;
 
-  const triaged = triageRows(props.results?.resultList);
+  const allTriaged = triageRows(props.results?.resultList);
+  const waitingCount = allTriaged.filter((item) =>
+    waitingForOthers(item.row),
+  ).length;
+  // OGC-1364 v2: the queue shows what this person can sign; the rest on request.
+  const triaged = scopeToSignable(allTriaged, showWaiting);
   const filterCounts = countByFilter(triaged);
   const visibleRows = filterTriaged(triaged, activeFilter).map(
     (item) => item.row,
@@ -148,16 +160,19 @@ const Validation = (props) => {
     paging: props.results?.paging,
     onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
   });
-  const triageByRowId = new Map(triaged.map((item) => [item.row.id, item]));
+  const triageByRowId = new Map(allTriaged.map((item) => [item.row.id, item]));
   const clearLaneCount = triaged.filter(
     (item) => item.lane === LANE_CLEAR,
   ).length;
-  const clearLaneRows = clearRows(triaged);
+  const clearLaneRows = clearRows(allTriaged);
+  const earlierRows = earlierLevelClearRows(allTriaged);
+  const earlierLevel = nextLevelOf(earlierRows);
+  const bulkRows = bulkMode === "sign" ? earlierRows : clearLaneRows;
   // OGC-1029 (FR-B4): the whole bulk capability is an admin switch.
   const bulkAllowed =
     configurationProperties?.ALLOW_BULK_RELEASE_CLEAR === "true";
   // OGC-1226 (FR-13): a disabled bulk button always says why, next to itself.
-  const bulkReasons = bulkUnavailableReasons(triaged, { bulkAllowed });
+  const bulkReasons = bulkUnavailableReasons(allTriaged, { bulkAllowed });
 
   const signalName = (key) =>
     intl.formatMessage({
@@ -478,6 +493,59 @@ const Validation = (props) => {
       },
     );
   };
+  /**
+   * OGC-1364 v2 — signs the next review level of the clear rows at an earlier
+   * level, under one e-signature meaning Reviewed. The server re-derives the
+   * lane and each row's level, and reports what it skipped.
+   */
+  const handleSignAllClear = (signature) => {
+    if (bulkBusy) {
+      return;
+    }
+    setBulkBusy(true);
+    postToOpenElisServerJsonResponse(
+      "/rest/AccessionValidation/sign-clear",
+      JSON.stringify({
+        ...bulkReleaseRequest(props.results, props.params, earlierRows),
+        signatureId: signature?.signatureId ?? null,
+      }),
+      (response) => {
+        setBulkBusy(false);
+        const outcome = response?.error
+          ? { id: bulkOutcomeKey(response), values: {} }
+          : signClearMessages(response);
+        const signed = response?.signed?.length || 0;
+        addNotification({
+          kind:
+            signed > 0 ? NotificationKinds.success : NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({ id: outcome.id }, outcome.values),
+        });
+        setNotificationVisible(true);
+        if (signed > 0) {
+          setBulkOpen(false);
+          refreshQueue();
+        }
+      },
+    );
+  };
+
+  const signAllClearLabel = () =>
+    earlierLevel
+      ? intl.formatMessage(
+          { id: "label.validation.bulk.signLevelAllClear" },
+          { level: earlierLevel, count: earlierRows.length },
+        )
+      : intl.formatMessage(
+          { id: "label.validation.bulk.signNextLevelAllClear" },
+          { count: earlierRows.length },
+        );
+
+  const openBulk = (mode) => {
+    setBulkMode(mode);
+    setBulkOpen(true);
+  };
+
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
     const fullTestName = row.testName;
@@ -833,13 +901,24 @@ const Validation = (props) => {
               size="sm"
               data-testid="release-all-clear"
               disabled={!bulkAllowed || clearLaneRows.length === 0 || bulkBusy}
-              onClick={() => setBulkOpen(true)}
+              onClick={() => openBulk("release")}
             >
               {intl.formatMessage(
                 { id: "label.validation.bulk.releaseAllClear" },
                 { count: clearLaneRows.length },
               )}
             </Button>
+            {bulkAllowed && earlierRows.length > 0 && (
+              <Button
+                size="sm"
+                kind="secondary"
+                data-testid="sign-all-clear"
+                disabled={bulkBusy}
+                onClick={() => openBulk("sign")}
+              >
+                {signAllClearLabel()}
+              </Button>
+            )}
             {bulkReasons.length > 0 && (
               <div
                 className="cds--label"
@@ -872,8 +951,13 @@ const Validation = (props) => {
           <div data-testid="release-all-clear-modal">
             <p data-testid="release-all-clear-body">
               {intl.formatMessage(
-                { id: "label.validation.bulk.bodyClear" },
-                { count: clearLaneRows.length },
+                {
+                  id:
+                    bulkMode === "sign"
+                      ? "label.validation.bulk.bodySign"
+                      : "label.validation.bulk.bodyClear",
+                },
+                { count: bulkRows.length },
               )}
               {bulkEsigEnabled && (
                 <>
@@ -911,7 +995,7 @@ const Validation = (props) => {
                 </tr>
               </thead>
               <tbody>
-                {clearLaneRows.map((row) => (
+                {bulkRows.map((row) => (
                   <tr
                     key={row.id}
                     data-testid={`release-all-clear-row-${row.id}`}
@@ -928,7 +1012,7 @@ const Validation = (props) => {
                 ))}
               </tbody>
             </table>
-            {qcAckRequired && !qcAckSatisfied && (
+            {bulkMode === "release" && qcAckRequired && !qcAckSatisfied && (
               <p data-testid="release-all-clear-qc-hint">
                 <FormattedMessage id="label.validation.review.release.qcAckFirst" />
               </p>
@@ -936,34 +1020,47 @@ const Validation = (props) => {
             <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
               <span data-testid="release-all-clear-sign">
                 <ESignatureButton
-                  meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
+                  meaning={
+                    bulkMode === "sign"
+                      ? SignatureMeaning.REVIEWED
+                      : SignatureMeaning.VALIDATED_AND_RELEASED
+                  }
                   context={intl.formatMessage(
                     {
-                      id: "esig.context.releaseAllClear",
-                      defaultMessage:
-                        "Release {count} clear result(s) for {accession}",
+                      id:
+                        bulkMode === "sign"
+                          ? "esig.context.signAllClear"
+                          : "esig.context.releaseAllClear",
                     },
                     {
-                      count: clearLaneRows.length,
+                      count: bulkRows.length,
                       accession:
                         props.results?.accessionNumber ||
-                        clearLaneRows[0]?.accessionNumber ||
+                        bulkRows[0]?.accessionNumber ||
                         "",
                     },
                   )}
                   recordType="VALIDATION_BATCH"
-                  recordId={Number(clearLaneRows[0]?.analysisId) || 0}
+                  recordId={Number(bulkRows[0]?.analysisId) || 0}
                   onBeforeSign={handleBeforeSign}
-                  onSign={handleReleaseAllClear}
+                  onSign={
+                    bulkMode === "sign"
+                      ? handleSignAllClear
+                      : handleReleaseAllClear
+                  }
                   disabled={
-                    bulkBusy || !qcAckSatisfied || clearLaneRows.length === 0
+                    bulkBusy ||
+                    bulkRows.length === 0 ||
+                    (bulkMode === "release" && !qcAckSatisfied)
                   }
                   size="sm"
                 >
-                  {intl.formatMessage(
-                    { id: "label.validation.bulk.releaseAllClear" },
-                    { count: clearLaneRows.length },
-                  )}
+                  {bulkMode === "sign"
+                    ? signAllClearLabel()
+                    : intl.formatMessage(
+                        { id: "label.validation.bulk.releaseAllClear" },
+                        { count: clearLaneRows.length },
+                      )}
                 </ESignatureButton>
               </span>
               <Button
@@ -1019,6 +1116,32 @@ const Validation = (props) => {
               {triaged.length - clearLaneCount}
             </Tag>
           </span>
+        </div>
+      )}
+      {waitingCount > 0 && (
+        <div
+          data-testid="show-waiting-toggle"
+          style={{ margin: "0 0 0.5rem 0" }}
+        >
+          <Toggle
+            id="show-waiting-for-others"
+            size="sm"
+            labelText={intl.formatMessage(
+              { id: "label.validation.review.showWaiting" },
+              { count: waitingCount },
+            )}
+            hideLabel
+            labelA={intl.formatMessage(
+              { id: "label.validation.review.showWaiting" },
+              { count: waitingCount },
+            )}
+            labelB={intl.formatMessage(
+              { id: "label.validation.review.showWaiting" },
+              { count: waitingCount },
+            )}
+            toggled={showWaiting}
+            onToggle={(checked) => setShowWaiting(checked)}
+          />
         </div>
       )}
       {showBulkBar && autoValidatedAccession && (

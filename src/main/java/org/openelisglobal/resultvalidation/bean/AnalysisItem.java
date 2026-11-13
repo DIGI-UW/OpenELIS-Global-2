@@ -271,6 +271,11 @@ public class AnalysisItem implements Serializable {
 
     /** OGC-1364 v2: the e-signature the validator gave for this sign-off. */
     private Long signatureId;
+    /**
+     * OGC-1364 v2: whether sequential sign-off decorated this row; the level fields
+     * mean nothing while it is off.
+     */
+    private boolean sequentialSignOff;
     /** OGC-1364 v2: the reviews the analysis needs (1 without the policy). */
     private int reviewLevels = 1;
     /** OGC-1364 v2: the level the next signature signs. */
@@ -287,6 +292,14 @@ public class AnalysisItem implements Serializable {
 
     public void setSignatureId(Long signatureId) {
         this.signatureId = signatureId;
+    }
+
+    public boolean isSequentialSignOff() {
+        return sequentialSignOff;
+    }
+
+    public void setSequentialSignOff(boolean sequentialSignOff) {
+        this.sequentialSignOff = sequentialSignOff;
     }
 
     public int getReviewLevels() {
@@ -339,6 +352,7 @@ public class AnalysisItem implements Serializable {
     }
 
     public void applyReviewState(org.openelisglobal.validationpolicy.form.ReviewState state) {
+        sequentialSignOff = true;
         reviewLevels = state.levels();
         reviewLevel = state.nextLevel();
         reviewRoleName = state.nextRoleName();

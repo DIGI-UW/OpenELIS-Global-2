@@ -123,6 +123,12 @@ public class AnalysisReviewServiceImpl implements AnalysisReviewService {
 
     @Override
     @Transactional(readOnly = true)
+    public void checkReviewSignature(Long signatureId, String sysUserId) {
+        checkSignature(signatureId, sysUserId, SignatureMeaning.REVIEWED);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public IResultUpdate finalLevelRecorder(Analysis analysis, String sysUserId, Long signatureId) {
         if (!isEnabled()) {
             return NO_STEP;

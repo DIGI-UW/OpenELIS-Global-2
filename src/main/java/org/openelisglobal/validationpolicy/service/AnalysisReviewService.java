@@ -34,6 +34,14 @@ public interface AnalysisReviewService {
     ReviewState signEarlierLevel(Analysis analysis, String sysUserId, Long signatureId);
 
     /**
+     * Checks, before a batch is signed, that the e-signature is the user's and
+     * means Reviewed.
+     *
+     * @throws ReviewSignRefusedException signatureUnknown or signatureMismatch
+     */
+    void checkReviewSignature(Long signatureId, String sysUserId);
+
+    /**
      * Checks the user may sign the last level, then returns the step that records
      * that signature inside the release transaction.
      *

@@ -23,9 +23,10 @@ vi.mock("../utils/Utils", async (importOriginal) => {
 });
 
 vi.mock("../esignature/ESignatureButton", () => ({
-  default: ({ children, onSign, disabled }) => (
+  default: ({ children, onSign, disabled, meaning }) => (
     <button
       type="button"
+      data-meaning={meaning}
       disabled={disabled}
       onClick={() => onSign && onSign(globalThis.__nextSignature)}
     >
@@ -560,14 +561,15 @@ describe("Validation — sequential sign-off (OGC-1364 v2)", () => {
   it("tags each row with its review level and offers Review where bulk release cannot help", () => {
     renderValidation(
       [
-        row(0, { reviewLevels: 2, reviewLevel: 1 }),
+        row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 }),
         row(1, {
+          sequentialSignOff: true,
           reviewLevels: 2,
           reviewLevel: 2,
           reviewRoleName: "Pathologist",
           reviewBlockedReason: "roleRequired",
         }),
-        row(2, { reviewLevels: 2, reviewLevel: 2 }),
+        row(2, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 2 }),
         row(3),
       ],
       BULK_ON,
@@ -576,15 +578,114 @@ describe("Validation — sequential sign-off (OGC-1364 v2)", () => {
     expect(screen.getByTestId("review-level-0")).toHaveTextContent(
       "Level 1 of 2",
     );
-    expect(screen.getByTestId("review-level-1")).toHaveTextContent(
-      "Level 2 of 2",
-    );
     expect(screen.queryByTestId("review-level-3")).toBeNull();
     expect(screen.getByTestId("review-row-0")).toBeInTheDocument();
-    expect(screen.getByTestId("review-row-1")).toBeInTheDocument();
     expect(screen.queryByTestId("review-row-2")).toBeNull();
     expect(screen.getByTestId("release-all-clear")).toHaveTextContent(
       "Release all clear (2)",
     );
+
+    expect(screen.queryByTestId("review-level-1")).toBeNull();
+    const toggle = screen.getByRole("switch", {
+      name: "Show results waiting for others (1)",
+    });
+    fireEvent.click(toggle);
+    expect(screen.getByTestId("review-level-1")).toHaveTextContent(
+      "Level 2 of 2",
+    );
+    expect(screen.getByTestId("review-row-1")).toBeInTheDocument();
+  });
+
+  it("hides nothing and offers no switch while sequential sign-off is off", () => {
+    renderValidation(
+      [
+        row(0, {
+          reviewLevels: 1,
+          reviewLevel: 1,
+          selfValidationBlocked: true,
+        }),
+      ],
+      BULK_ON,
+    );
+    expect(screen.queryByTestId("show-waiting-toggle")).toBeNull();
+    expect(screen.getByText("1 item on this page")).toBeInTheDocument();
+  });
+
+  it("offers no waiting-for-others switch when nothing waits for others", () => {
+    renderValidation(
+      [
+        row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 }),
+        row(1),
+      ],
+      BULK_ON,
+    );
+    expect(screen.queryByTestId("show-waiting-toggle")).toBeNull();
+  });
+
+  it("signs level 1 of every clear row at an earlier level under one Reviewed signature", () => {
+    postToOpenElisServerJsonResponse.mockReset();
+    globalThis.__nextSignature = { signatureId: 91 };
+    try {
+      renderValidation(
+        [
+          row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 }),
+          row(1, { sequentialSignOff: true, reviewLevels: 3, reviewLevel: 1 }),
+          row(2, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 2 }),
+          row(3, {
+            reviewLevels: 2,
+            reviewLevel: 1,
+            clear: false,
+            normal: false,
+          }),
+        ],
+        BULK_ON,
+        "?type=order&accessionNumber=ACC0",
+      );
+      const open = screen.getByTestId("sign-all-clear");
+      expect(open).toHaveTextContent("Sign level 1 for all clear (2)");
+      expect(screen.getByTestId("release-all-clear")).toHaveTextContent(
+        "Release all clear (1)",
+      );
+      fireEvent.click(open);
+      expect(screen.getByTestId("release-all-clear-row-0")).toBeInTheDocument();
+      expect(screen.getByTestId("release-all-clear-row-1")).toBeInTheDocument();
+      expect(screen.queryByTestId("release-all-clear-row-2")).toBeNull();
+      const sign = screen
+        .getByTestId("release-all-clear-sign")
+        .querySelector("button");
+      expect(sign).toHaveAttribute("data-meaning", "REVIEWED");
+      fireEvent.click(sign);
+      const [url, body] = postToOpenElisServerJsonResponse.mock.calls[0];
+      expect(url).toBe("/rest/AccessionValidation/sign-clear");
+      const payload = JSON.parse(body);
+      expect(payload.rows.map((r) => r.analysisId)).toEqual(["100", "101"]);
+      expect(payload.signatureId).toBe(91);
+    } finally {
+      globalThis.__nextSignature = undefined;
+    }
+  });
+
+  it("names no single level when the clear rows are at different earlier levels", () => {
+    renderValidation(
+      [
+        row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 }),
+        row(1, { sequentialSignOff: true, reviewLevels: 3, reviewLevel: 2 }),
+      ],
+      BULK_ON,
+    );
+    expect(screen.getByTestId("sign-all-clear")).toHaveTextContent(
+      "Sign the next level for all clear (2)",
+    );
+  });
+
+  it("the release modal still signs Validated and Released", () => {
+    renderValidation(
+      [row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 2 })],
+      BULK_ON,
+    );
+    fireEvent.click(screen.getByTestId("release-all-clear"));
+    expect(
+      screen.getByTestId("release-all-clear-sign").querySelector("button"),
+    ).toHaveAttribute("data-meaning", "VALIDATED_AND_RELEASED");
   });
 });

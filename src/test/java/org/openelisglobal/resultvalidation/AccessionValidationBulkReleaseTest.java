@@ -337,4 +337,121 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
                     flagBefore == null ? "false" : flagBefore);
         }
     }
+
+    @Test
+    public void signClear_signsTheNextLevelOfEveryClearRowAndLeavesThemInReview() throws Exception {
+        withTwoReviews(() -> {
+            mockMvc.perform(post("/rest/AccessionValidation/sign-clear").session(session)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody(rowJson(CLEAR_ID, "Looks fine", "I"), rowJson(ABNORMAL_ID, "", ""))))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.signed[0]").value(CLEAR_ID))
+                    .andExpect(jsonPath("$.signed.length()").value(1))
+                    .andExpect(jsonPath("$.skipped[0].analysisId").value(ABNORMAL_ID))
+                    .andExpect(jsonPath("$.skipped[0].reason").value("notClear"));
+            entityManager.flush();
+            entityManager.clear();
+            assertEquals("level 1 of 2 keeps the result in review",
+                    statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
+                    analysisService.get(CLEAR_ID).getStatusId());
+            List<Map<String, Object>> signOffs = signOffsOf(CLEAR_ID);
+            assertEquals(1, signOffs.size());
+            assertEquals(1, ((Number) signOffs.get(0).get("level")).intValue());
+            assertEquals(1, ((Number) signOffs.get(0).get("signer_id")).intValue());
+            assertEquals(0, signOffsOf(ABNORMAL_ID).size());
+            assertEquals(1,
+                    jdbcTemplate.queryForObject(
+                            "SELECT COUNT(*) FROM clinlims.note WHERE reference_id = ?" + " AND text = 'Looks fine'",
+                            Integer.class, Integer.valueOf(CLEAR_ID)).intValue());
+        });
+    }
+
+    @Test
+    public void signClear_skipsARowThePersonAlreadySignedAndARowAtItsLastLevel() throws Exception {
+        withTwoReviews(() -> {
+            signClear(null).andExpect(status().isOk()).andExpect(jsonPath("$.signed[0]").value(CLEAR_ID));
+            signClear(null).andExpect(status().isOk()).andExpect(jsonPath("$.signed.length()").value(0))
+                    .andExpect(jsonPath("$.skipped[0].reason").value("alreadySigned"));
+
+            jdbcTemplate.update("DELETE FROM clinlims.analysis_review_sign_off WHERE analysis_id = ?",
+                    Integer.valueOf(CLEAR_ID));
+            jdbcTemplate.update("DELETE FROM clinlims.analysis_review_plan WHERE analysis_id = ?",
+                    Integer.valueOf(CLEAR_ID));
+            policies().saveLabWideDefault(
+                    new org.openelisglobal.validationpolicy.form.ValidationPolicyForm("NEEDS_REVIEW", 1, null), "1");
+            entityManager.flush();
+            entityManager.clear();
+            signClear(null).andExpect(status().isOk()).andExpect(jsonPath("$.signed.length()").value(0))
+                    .andExpect(jsonPath("$.skipped[0].reason").value("finalLevel"));
+        });
+    }
+
+    @Test
+    public void signClear_refusesASignatureThatDoesNotMeanReviewedAndSignsNothing() throws Exception {
+        withTwoReviews(() -> {
+            Long releaseSignature = jdbcTemplate.queryForObject("INSERT INTO clinlims.electronic_signature (id,"
+                    + " signer_id, signer_name_printed, signature_meaning, signed_at, record_type, record_id,"
+                    + " session_signing_sequence, auth_method) VALUES (nextval('clinlims.electronic_signature_seq'),"
+                    + " 1, 'Signer', 'VALIDATED_AND_RELEASED', now(), 'VALIDATION_BATCH', 100, 1, 'LOCAL')"
+                    + " RETURNING id", Long.class);
+            signClear(releaseSignature).andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error").value("signatureMismatch"));
+            assertEquals(0, signOffsOf(CLEAR_ID).size());
+        });
+    }
+
+    @Test
+    public void signClear_withoutSequentialSignOff_isRefused() throws Exception {
+        signClear(null).andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("sequentialSignOffOff"));
+        assertEquals(0, signOffsOf(CLEAR_ID).size());
+    }
+
+    @Test
+    public void signClear_whenBulkActionsAreOff_returns403() throws Exception {
+        withTwoReviews(() -> {
+            ConfigurationProperties.getInstance().setPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR, "false");
+            signClear(null).andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error").value("bulkReleaseDisabled"));
+        });
+    }
+
+    private interface Steps {
+        void run() throws Exception;
+    }
+
+    private void withTwoReviews(Steps steps) throws Exception {
+        ConfigurationProperties configuration = ConfigurationProperties.getInstance();
+        String flagBefore = configuration.getPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION);
+        try {
+            configuration.setPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION, "true");
+            policies().saveLabWideDefault(
+                    new org.openelisglobal.validationpolicy.form.ValidationPolicyForm("NEEDS_REVIEW", 2, null), "1");
+            entityManager.flush();
+            entityManager.clear();
+            steps.run();
+        } finally {
+            configuration.setPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION,
+                    flagBefore == null ? "false" : flagBefore);
+        }
+    }
+
+    private org.openelisglobal.validationpolicy.service.ValidationPolicyService policies() {
+        return org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.validationpolicy.service.ValidationPolicyService.class);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions signClear(Long signatureId) throws Exception {
+        String body = requestBody(rowJson(CLEAR_ID, "", ""));
+        if (signatureId != null) {
+            body = body.substring(0, body.length() - 1) + ",\"signatureId\":" + signatureId + "}";
+        }
+        return mockMvc.perform(post("/rest/AccessionValidation/sign-clear").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(body));
+    }
+
+    private List<Map<String, Object>> signOffsOf(String analysisId) {
+        return jdbcTemplate.queryForList(
+                "SELECT level, signer_id FROM clinlims.analysis_review_sign_off"
+                        + " WHERE analysis_id = ? AND superseded_at IS NULL ORDER BY level",
+                Integer.valueOf(analysisId));
+    }
 }

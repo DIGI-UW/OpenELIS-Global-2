@@ -526,8 +526,20 @@ test.describe("OGC-1364 validation policy", () => {
       await main.locator('[data-testid^="review-row-"]').first().click();
       await main.getByRole("button", { name: "Sign level 1 of 2" }).click();
       await signIfAsked(page);
+      await expect(main.getByTestId("show-waiting-toggle")).toContainText(
+        "Show results waiting for others (1)",
+        { timeout: LONG_TIMEOUT },
+      );
+      await expect(main.locator('[data-testid^="review-level-"]')).toHaveCount(
+        0,
+      );
+      await main
+        .getByTestId("show-waiting-toggle")
+        .locator("label")
+        .first()
+        .click();
       await expect(main.getByText("Level 2 of 2")).toBeVisible({
-        timeout: LONG_TIMEOUT,
+        timeout: UI_TIMEOUT,
       });
       await main.locator('[data-testid^="review-row-"]').first().click();
       await expect(main.getByTestId("review-level-blocked")).toContainText(
@@ -552,6 +564,84 @@ test.describe("OGC-1364 validation policy", () => {
         });
         await main.getByRole("button", { name: "Expand Row" }).first().click();
         await main.getByRole("button", { name: "Validate & release" }).click();
+        await signIfAsked(second.page);
+        await openQueueFor(second.page, accession);
+        await expect(
+          second.page.getByTestId("release-all-clear-why-queueEmpty"),
+        ).toContainText("Nothing is waiting for validation.", {
+          timeout: LONG_TIMEOUT,
+        });
+      } finally {
+        await second.context.close();
+      }
+    });
+  });
+
+  test("one Reviewed signature signs level 1 of the clear results, and another validator releases them all clear", async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
+    let accession = "";
+
+    await test.step("The lab-wide default asks for two reviews", async () => {
+      await restoreLabDefault(page, {
+        trigger: "ALL",
+        levels: 2,
+        levelRoles: [],
+      });
+    });
+
+    await test.step("Sign level 1 for all clear signs it and the result waits for others", async () => {
+      const order = await createEsigSampleOrder(page);
+      expect(order, "a sample order is needed").toBeTruthy();
+      accession = order!.accessionNumber;
+      await enterResult(page, accession, "6");
+      await openQueueFor(page, accession);
+      const main = page.getByRole("main");
+      const sign = main.getByTestId("sign-all-clear");
+      await expect(sign).toHaveText("Sign level 1 for all clear (1)", {
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(main.getByTestId("release-all-clear")).toHaveText(
+        "Release all clear (0)",
+      );
+      await sign.click();
+      const modal = page.getByTestId("release-all-clear-modal");
+      await expect(modal.getByTestId("release-all-clear-body")).toContainText(
+        "Your signature signs that level only",
+      );
+      await modal
+        .getByTestId("release-all-clear-sign")
+        .getByRole("button")
+        .click();
+      await signIfAsked(page);
+      await expect(
+        page.getByText("Signed the next review level of 1 result."),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(main.getByTestId("sign-all-clear")).toBeHidden({
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(main.getByTestId("show-waiting-toggle")).toContainText(
+        "Show results waiting for others (1)",
+      );
+    });
+
+    await test.step("Another validator releases it all clear at level 2", async () => {
+      const username = await createValidator(page);
+      const second = await signInAs(browser, baseURL!, username);
+      try {
+        await openQueueFor(second.page, accession);
+        const main = second.page.getByRole("main");
+        const release = main.getByTestId("release-all-clear");
+        await expect(release).toHaveText("Release all clear (1)", {
+          timeout: LONG_TIMEOUT,
+        });
+        await release.click();
+        await second.page
+          .getByTestId("release-all-clear-sign")
+          .getByRole("button")
+          .click();
         await signIfAsked(second.page);
         await openQueueFor(second.page, accession);
         await expect(
