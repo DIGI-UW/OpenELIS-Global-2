@@ -5,9 +5,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.constants.Constants;
@@ -21,6 +24,7 @@ import org.openelisglobal.storage.form.response.StorageDeviceResponse;
 import org.openelisglobal.storage.form.response.StorageRackResponse;
 import org.openelisglobal.storage.form.response.StorageRoomResponse;
 import org.openelisglobal.storage.form.response.StorageShelfResponse;
+import org.openelisglobal.storage.service.CodeGenerationService;
 import org.openelisglobal.storage.service.DeletionValidationResult;
 import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageDeviceService;
@@ -63,6 +67,9 @@ public class StorageLocationRestController extends BaseRestController {
 
     @Autowired
     private StorageDeviceService storageDeviceService;
+
+    @Autowired
+    private CodeGenerationService codeGenerationService;
 
     @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
@@ -1379,83 +1386,41 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Helper Methods ==========
 
     /**
-     * Generate a unique room code from the room name. If the base code already
-     * exists, appends a numeric suffix.
-     * 
+     * Generate a unique room code from the room name, within the 10-character limit
+     * that CodeValidationService enforces on save. If the code is taken, a numeric
+     * suffix is appended.
+     *
      * @param name Room name
-     * @return Unique code (max 50 characters)
+     * @return Unique code (max 10 characters)
      */
     private String generateUniqueRoomCode(String name) {
-        // Generate base code from name: uppercase, alphanumeric only, max 45 chars
-        String baseCode = name.substring(0, Math.min(45, name.length())).toUpperCase().replaceAll("[^A-Z0-9]", "");
-
-        // If base code is empty (name had no alphanumeric chars), use default
-        if (baseCode.isEmpty()) {
-            baseCode = "ROOM";
-        }
-
-        String code = baseCode;
-        int suffix = 1;
-
-        // Check for uniqueness and append suffix if needed
-        while (storageRoomService.findByCode(code) != null) {
-            String suffixStr = String.valueOf(suffix);
-            int maxBaseLength = 50 - suffixStr.length() - 1; // -1 for hyphen
-            if (maxBaseLength < 1) {
-                maxBaseLength = 1;
-            }
-            code = baseCode.substring(0, Math.min(maxBaseLength, baseCode.length())) + "-" + suffixStr;
-            suffix++;
-
-            // Safety check to prevent infinite loop
-            if (suffix > 9999) {
-                // Fallback to timestamp-based code
-                code = baseCode.substring(0, Math.min(30, baseCode.length())) + "-" + System.currentTimeMillis();
-                break;
-            }
-        }
-
-        return code;
+        return generateUniqueCode(name, "room", code -> storageRoomService.findByCode(code) != null);
     }
 
     /**
-     * Generate a unique device code from the device name within a room. If the base
-     * code already exists in the room, appends a numeric suffix.
-     * 
+     * Generate a unique device code from the device name within a room, within the
+     * 10-character limit that CodeValidationService enforces on save. If the code
+     * is taken in the room, a numeric suffix is appended.
+     *
      * @param name   Device name
      * @param roomId Parent room ID
-     * @return Unique code (max 50 characters)
+     * @return Unique code (max 10 characters)
      */
     private String generateUniqueDeviceCode(String name, Integer roomId) {
-        // Generate base code from name: uppercase, alphanumeric only, max 45 chars
-        String baseCode = name.substring(0, Math.min(45, name.length())).toUpperCase().replaceAll("[^A-Z0-9]", "");
+        return generateUniqueCode(name, "device",
+                code -> storageDeviceService.findByParentRoomIdAndCode(roomId, code) != null);
+    }
 
-        // If base code is empty (name had no alphanumeric chars), use default
-        if (baseCode.isEmpty()) {
-            baseCode = "DEVICE";
+    private String generateUniqueCode(String name, String context, Predicate<String> isTaken) {
+        // A name with no alphanumeric characters falls back to the level name
+        String source = name.matches(".*[A-Za-z0-9].*") ? name : context;
+        Set<String> taken = new HashSet<>();
+        String code = codeGenerationService.generateCodeFromName(source, context);
+        // Stops once a free code is found, or when the generator runs out of
+        // suffixes and repeats a taken one (save then reports the conflict)
+        while (isTaken.test(code) && taken.add(code)) {
+            code = codeGenerationService.generateCodeWithConflictResolution(source, context, taken);
         }
-
-        String code = baseCode;
-        int suffix = 1;
-
-        // Check for uniqueness within the room and append suffix if needed
-        while (storageDeviceService.findByParentRoomIdAndCode(roomId, code) != null) {
-            String suffixStr = String.valueOf(suffix);
-            int maxBaseLength = 50 - suffixStr.length() - 1; // -1 for hyphen
-            if (maxBaseLength < 1) {
-                maxBaseLength = 1;
-            }
-            code = baseCode.substring(0, Math.min(maxBaseLength, baseCode.length())) + "-" + suffixStr;
-            suffix++;
-
-            // Safety check to prevent infinite loop
-            if (suffix > 9999) {
-                // Fallback to timestamp-based code
-                code = baseCode.substring(0, Math.min(30, baseCode.length())) + "-" + System.currentTimeMillis();
-                break;
-            }
-        }
-
         return code;
     }
 
