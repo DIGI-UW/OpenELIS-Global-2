@@ -14,13 +14,13 @@ jobs:
     name: Bridge and mock contracts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -43,7 +43,7 @@ jobs:
     name: Bridge acceptance with the mock
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       # Builds the Bridge image and drives it with traffic the mock replays,
@@ -59,7 +59,7 @@ jobs:
         run: docker compose -f docker-compose.test.yml logs --no-color --tail=400 > e2e-service-logs.txt || true
       - name: Upload service logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bridge-acceptance-logs
           path: tools/openelis-analyzer-bridge/e2e-service-logs.txt
