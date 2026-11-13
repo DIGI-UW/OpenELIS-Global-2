@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
  * section defines them.
  * <p>
  * Columns:
- * {@code testName,sampleType,code,label,resultType,unitOfMeasure,reportingDecimalPlaces,displayOrder,isPrimary,showOnReport,displayLog10,log10SourceComponentCode,defaultResult,allowMultipleReadings}.
+ * {@code testName,sampleType,code,label,resultType,unitOfMeasure,reportingDecimalPlaces,displayOrder,isPrimary,showOnReport,isRequired,displayLog10,log10SourceComponentCode,defaultResult,allowMultipleReadings}.
  * {@code testName} and {@code code} are required; {@code sampleType} only
  * disambiguates a legacy {@code Name(Specimen)} record. The rows of one test
  * are one unit of work, written through
@@ -33,7 +33,8 @@ import org.springframework.stereotype.Component;
  * interpretations are not touched here; options come from the
  * {@code test-results} domain. {@code resultType} is one of the result type
  * letters (N numeric, D dictionary, A alpha, R remark, T titer, M/C
- * multi-select).
+ * multi-select). {@code isRequired} (Y/N) left blank makes a new component
+ * required only when it is the primary, and leaves an existing one as it is.
  */
 @Component
 public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandler {
@@ -121,6 +122,9 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
                 byCode.put(code.toUpperCase(), component);
             }
             applyRow(row, component, fileName);
+            if (created && row.isBlank("isRequired")) {
+                component.setIsRequired(component.getIsPrimary());
+            }
             rowOutcomes.add(created ? CsvLoadSummary.Outcome.CREATED : CsvLoadSummary.Outcome.UPDATED);
         }
         componentService.saveSampleResults(test.getId(), new ArrayList<>(byCode.values()), null, null, SYS_USER_ID);
@@ -176,6 +180,9 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
         }
         if (!row.isBlank("showOnReport")) {
             component.setShowOnReport(row.flag("showOnReport", true));
+        }
+        if (!row.isBlank("isRequired")) {
+            component.setIsRequired(row.flag("isRequired", false));
         }
         if (!row.isBlank("defaultResult")) {
             component.setDefaultResult(row.get("defaultResult"));

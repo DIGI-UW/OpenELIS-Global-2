@@ -4,12 +4,14 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -17,17 +19,24 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.dao.AnalyzerDeliveryReceiptDAO;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt;
+import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.resultrun.dao.ResultRunDAO;
+import org.openelisglobal.resultrun.form.ResultRunChip;
+import org.openelisglobal.resultrun.form.ResultRunChipCounts;
 import org.openelisglobal.resultrun.form.ResultRunHeader;
 import org.openelisglobal.resultrun.form.ResultRunListResponse;
 import org.openelisglobal.resultrun.form.ResultRunRow;
+import org.openelisglobal.resultrun.form.ResultRunRowCategory;
 import org.openelisglobal.resultrun.form.ResultRunRowsPage;
+import org.openelisglobal.resultrun.form.ResultRunSelection;
+import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
 import org.openelisglobal.resultrun.form.ResultRunSummary;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.form.WaitingRun;
+import org.openelisglobal.resultrun.service.ResultRunRowClassifier.ClassifiedRow;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultrun.valueholder.ResultRunSource;
 import org.openelisglobal.resultrun.valueholder.ResultRunState;
@@ -39,6 +48,7 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +72,11 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     private ResultService resultService;
     @Autowired
     private TestResultComponentService testResultComponentService;
+    @Autowired
+    private ResultRunRowClassifier rowClassifier;
+    @Lazy
+    @Autowired
+    private AnalyzerResultsDAO analyzerResultsDAO;
 
     public ResultRunServiceImpl() {
         super(ResultRun.class);
@@ -205,23 +220,72 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                     run.getAnalyzerId(), analyzer.map(Analyzer::getName).orElse(null), method, labUnits,
                     run.getOperatorName(), iso(run.getOpenedAt()), iso(run.getLastActivityAt()),
                     iso(run.getCompletedAt()), Math.max(0, run.getRowCount() - seen.staged().size()), run.getRowCount(),
-                    run.getDeliveryReceiptId() != null);
+                    run.getDeliveryReceiptId() != null, chipCounts(classifyVisible(seen, viewer)));
         });
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<ResultRunRowsPage> getRows(Long runId, RunViewer viewer, int page, int pageSize) {
+    public Optional<ResultRunRowsPage> getRows(Long runId, RunViewer viewer, ResultRunChip chip, int page,
+            int pageSize) {
         return visibleRun(runId, viewer).map(seen -> {
             int size = PAGE_SIZES.contains(pageSize) ? pageSize : DEFAULT_PAGE_SIZE;
-            List<AnalyzerResults> visible = seen.staged().stream()
-                    .filter(row -> isVisible(row, seen.analyzerUnits(), viewer)).toList();
-            int pages = Math.max(1, (visible.size() + size - 1) / size);
+            List<ClassifiedRow> matching = inReviewOrder(classifyVisible(seen, viewer)).stream()
+                    .filter(row -> chip.matches(row.category())).toList();
+            int pages = Math.max(1, (matching.size() + size - 1) / size);
             int current = Math.min(Math.max(page, 1), pages);
-            List<ResultRunRow> rows = visible.stream().skip((long) (current - 1) * size).limit(size).map(this::toRow)
+            List<ResultRunRow> rows = matching.stream().skip((long) (current - 1) * size).limit(size).map(this::toRow)
                     .toList();
-            return new ResultRunRowsPage(rows, current, size, visible.size());
+            return new ResultRunRowsPage(rows, current, size, matching.size());
         });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ResultRunSelectionSummary> summarizeSelection(Long runId, RunViewer viewer,
+            ResultRunSelection selection) {
+        return visibleRun(runId, viewer).map(seen -> {
+            ResultRunChip chip = ResultRunChip.fromRequest(selection.chip());
+            Set<String> ids = selection.ids() == null ? Set.of() : Set.copyOf(selection.ids());
+            Set<String> excluded = selection.excluded() == null ? Set.of() : Set.copyOf(selection.excluded());
+            List<ClassifiedRow> selected = inReviewOrder(classifyVisible(seen, viewer)).stream()
+                    .filter(row -> ids.contains(row.row().getId())
+                            || selection.all() && chip.matches(row.category()) && !excluded.contains(row.row().getId()))
+                    .toList();
+            List<ResultRunSelectionSummary.SkippedRow> skipped = selected.stream()
+                    .filter(row -> SKIPPED.contains(row.category()))
+                    .map(row -> new ResultRunSelectionSummary.SkippedRow(row.row().getId(),
+                            row.row().getAccessionNumber(), row.row().getTestName(), row.category()))
+                    .toList();
+            return new ResultRunSelectionSummary(selected.size(), count(selected, ResultRunRowCategory.CRITICAL),
+                    count(selected, ResultRunRowCategory.ABNORMAL), count(selected, ResultRunRowCategory.NORMAL),
+                    skipped);
+        });
+    }
+
+    private static final Set<ResultRunRowCategory> SKIPPED = Set.of(ResultRunRowCategory.EXCEPTION,
+            ResultRunRowCategory.HELD, ResultRunRowCategory.CONTROL);
+
+    private List<ClassifiedRow> classifyVisible(VisibleRun seen, RunViewer viewer) {
+        List<AnalyzerResults> visible = seen.staged().stream()
+                .filter(row -> isVisible(row, seen.analyzerUnits(), viewer)).toList();
+        return rowClassifier.classify(seen.run(), visible);
+    }
+
+    private static List<ClassifiedRow> inReviewOrder(List<ClassifiedRow> rows) {
+        return rows.stream().sorted(Comparator.comparing(ClassifiedRow::category)).toList();
+    }
+
+    private static int count(List<ClassifiedRow> rows, ResultRunRowCategory category) {
+        return (int) rows.stream().filter(row -> row.category() == category).count();
+    }
+
+    private static ResultRunChipCounts chipCounts(List<ClassifiedRow> rows) {
+        return new ResultRunChipCounts(rows.size(),
+                (int) rows.stream().filter(row -> ResultRunChip.NEEDS_REVIEW.matches(row.category())).count(),
+                count(rows, ResultRunRowCategory.CRITICAL), count(rows, ResultRunRowCategory.ABNORMAL),
+                count(rows, ResultRunRowCategory.EXCEPTION), count(rows, ResultRunRowCategory.HELD),
+                count(rows, ResultRunRowCategory.NORMAL));
     }
 
     @Override
@@ -236,12 +300,11 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     public Map<String, WaitingRun> findWaiting(Collection<String> accessionNumbers) {
         List<String> accessions = accessionNumbers.stream().filter(StringUtils::isNotBlank).distinct().toList();
         List<AnalyzerResults> waiting = baseObjectDAO.getWaitingRowsForAccessions(accessions);
-        Map<Long, ResultRun> runs = new HashMap<>();
+        Map<Long, WaitingRun> runs = new HashMap<>();
         Map<String, WaitingRun> byKey = new LinkedHashMap<>();
         for (AnalyzerResults row : waiting) {
-            ResultRun run = runs.computeIfAbsent(row.getRunId(), this::get);
             byKey.putIfAbsent(ResultRunService.waitingKey(row.getAccessionNumber(), row.getTestId()),
-                    new WaitingRun(run.getId(), run.getLabel(), run.getSource().name(), iso(run.getOpenedAt())));
+                    runs.computeIfAbsent(row.getRunId(), this::waitingRun));
         }
         return byKey;
     }
@@ -263,26 +326,60 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         if (pending.isEmpty()) {
             return;
         }
-        Map<String, WaitingRun> waiting = findWaiting(
-                pending.stream().map(TestResultItem::getAccessionNumber).collect(Collectors.toSet()));
+        List<String> accessions = pending.stream().map(TestResultItem::getAccessionNumber)
+                .filter(StringUtils::isNotBlank).distinct().toList();
+        Map<Long, WaitingRun> runs = new HashMap<>();
+        Map<String, WaitingRun> byPart = new HashMap<>();
+        for (AnalyzerResults row : baseObjectDAO.getWaitingRowsForAccessions(accessions)) {
+            byPart.putIfAbsent(partKey(row.getAccessionNumber(), row.getTestId(), row.getComponentId()),
+                    runs.computeIfAbsent(row.getRunId(), this::waitingRun));
+        }
         for (TestResultItem item : pending) {
-            item.setWaitingRun(waiting.get(ResultRunService.waitingKey(item.getAccessionNumber(), item.getTestId())));
+            item.setWaitingRun(
+                    byPart.get(partKey(item.getAccessionNumber(), item.getTestId(), item.getTestResultComponentId())));
         }
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<WaitingRun> waitingFor(Analysis analysis) {
+    public Optional<WaitingRun> waitingFor(Analysis analysis, String componentId) {
         if (analysis == null || analysis.getTest() == null || analysis.getSampleItem() == null
                 || analysis.getSampleItem().getSample() == null) {
             return Optional.empty();
         }
+        String testId = analysis.getTest().getId();
+        String component = componentOf(testId, componentId);
         boolean resulted = resultService.getResultsByAnalysis(analysis).stream()
-                .anyMatch(result -> StringUtils.isNotBlank(result.getValue()));
+                .filter(result -> StringUtils.isNotBlank(result.getValue()))
+                .anyMatch(result -> Objects.equals(component, componentOf(testId,
+                        result.getTestResult() == null ? null : result.getTestResult().getComponentId())));
         if (resulted) {
             return Optional.empty();
         }
-        return findWaiting(analysis.getSampleItem().getSample().getAccessionNumber(), analysis.getTest().getId());
+        return baseObjectDAO
+                .getWaitingRowsForAccessions(List.of(analysis.getSampleItem().getSample().getAccessionNumber()))
+                .stream()
+                .filter(row -> testId.equals(row.getTestId())
+                        && Objects.equals(component, componentOf(testId, row.getComponentId())))
+                .findFirst().map(row -> waitingRun(row.getRunId()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<AnalyzerResults> stagedValueFor(String runRowId, Analysis analysis, String componentId) {
+        if (StringUtils.isBlank(runRowId) || analysis == null || analysis.getTest() == null
+                || analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+            return Optional.empty();
+        }
+        String accessionNumber = analysis.getSampleItem().getSample().getAccessionNumber();
+        return analyzerResultsDAO.get(runRowId).filter(row -> row.getRunId() != null && !row.getIsControl()
+                && row.getDuplicateAnalyzerResultId() == null && StringUtils.isBlank(row.getImportIssueReason()))
+                .filter(row -> Objects.equals(accessionNumber, row.getAccessionNumber())
+                        && Objects.equals(analysis.getTest().getId(), row.getTestId())
+                        && Objects.equals(componentOf(row.getTestId(), componentId),
+                                componentOf(row.getTestId(), row.getComponentId())))
+                .filter(row -> baseObjectDAO.get(row.getRunId()).filter(run -> run.getState() == ResultRunState.OPEN)
+                        .isPresent());
     }
 
     static boolean isPending(TestResultItem item) {
@@ -371,14 +468,48 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         return StringUtils.isNotBlank(localized) ? localized : section.getTestSectionName();
     }
 
-    private ResultRunRow toRow(AnalyzerResults row) {
+    private ResultRunRow toRow(ClassifiedRow classified) {
+        AnalyzerResults row = classified.row();
         String value = StringUtils.isNotBlank(row.getRawResultValue()) ? row.getRawResultValue() : row.getResult();
         String part = StringUtils.isBlank(row.getComponentId()) ? null
                 : testResultComponentService.getMatch("id", row.getComponentId()).map(TestResultComponent::getLabel)
                         .orElse(null);
         return new ResultRunRow(row.getId(), row.getAccessionNumber(), row.getTestName(), part, value, row.getUnits(),
                 row.getIsControl(), row.getDuplicateAnalyzerResultId() != null, row.getImportIssueReason(),
-                row.getInstrumentFlags(), iso(row.getCompleteDate()));
+                row.getInstrumentFlags(), iso(row.getCompleteDate()), classified.flag(), classified.category(),
+                row.getTestId(), row.getTestId() == null ? StringUtils.trimToNull(row.getComponentId())
+                        : componentOf(row.getTestId(), row.getComponentId()),
+                row.getResult());
+    }
+
+    private String partKey(String accessionNumber, String testId, String componentId) {
+        return ResultRunService.waitingKey(accessionNumber, testId) + "|"
+                + StringUtils.defaultString(componentOf(testId, componentId));
+    }
+
+    private WaitingRun waitingRun(Long runId) {
+        ResultRun run = get(runId);
+        return new WaitingRun(run.getId(), run.getLabel(), run.getSource().name(), iso(run.getOpenedAt()));
+    }
+
+    /**
+     * The worklist row a value belongs to, named the way the worklist names it: a
+     * test with one part has a single row and no part, and on a test with several a
+     * value names its own part, or the primary one when it names none, the way the
+     * import treats a test's main value.
+     */
+    private String componentOf(String testId, String componentId) {
+        if (testId == null) {
+            return StringUtils.trimToNull(componentId);
+        }
+        List<TestResultComponent> components = testResultComponentService.getActiveComponentsByTestId(testId);
+        if (components == null || components.size() <= 1) {
+            return null;
+        }
+        String own = StringUtils.trimToNull(componentId);
+        return own != null ? own
+                : components.stream().filter(component -> Boolean.TRUE.equals(component.getIsPrimary()))
+                        .map(TestResultComponent::getId).findFirst().orElse(null);
     }
 
     private static String iso(Timestamp timestamp) {

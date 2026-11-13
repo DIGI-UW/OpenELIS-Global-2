@@ -72,18 +72,20 @@ function ExternalConnectionAddModify() {
   useEffect(() => {
     componentMounted.current = true;
     setLoading(true);
+    let redirectTimer;
     if (ID) {
       getFromOpenElisServer(
         `/rest/ExternalConnection?ID=${ID}`,
         handleFormData,
       );
     } else {
-      setTimeout(() => {
+      redirectTimer = setTimeout(() => {
         history.replace("/MasterListsPage/externalConnections");
       }, 1000);
     }
     return () => {
       componentMounted.current = false;
+      clearTimeout(redirectTimer);
     };
   }, [ID]);
 
@@ -162,14 +164,8 @@ function ExternalConnectionAddModify() {
         programmedConnection: programmedConnection || null,
         activeAuthenticationType: authType || "NONE",
         uri: uri || null,
-        nameLocalization: {
-          ...(existingConn ? existingConn.nameLocalization : {}),
-          localizedValue: connectionName,
-        },
-        descriptionLocalization: {
-          ...(existingConn ? existingConn.descriptionLocalization : {}),
-          localizedValue: connectionDescription,
-        },
+        nameLocalization: { localizedValue: connectionName },
+        descriptionLocalization: { localizedValue: connectionDescription },
       },
       basicAuthenticationData:
         authType === "BASIC"
@@ -190,6 +186,19 @@ function ExternalConnectionAddModify() {
   }
 
   const submitCallback = (res) => {
+    if (res && typeof res.status === "number" && res.status >= 400) {
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage(
+          { id: "externalconnections.save.failed" },
+          { reason: res.message || res.error || res.status },
+        ),
+        kind: NotificationKinds.error,
+      });
+      setNotificationVisible(true);
+      setLoading(true);
+      return;
+    }
     setLoading(false);
     addNotification({
       title: intl.formatMessage({ id: "notification.title" }),
@@ -286,10 +295,10 @@ function ExternalConnectionAddModify() {
 
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="connection-description">
                       <FormattedMessage id="externalconnections.description" />{" "}
                       :
-                    </>
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextArea
@@ -331,16 +340,17 @@ function ExternalConnectionAddModify() {
                   <>
                     <Grid fullWidth={true}>
                       <Column lg={8} md={4} sm={4}>
-                        <>
+                        <label htmlFor="basic-auth-username">
                           <FormattedMessage id="externalconnections.authtype.basic.username" />{" "}
                           :
-                        </>
+                        </label>
                       </Column>
                       <Column lg={8} md={4} sm={4}>
                         <TextInput
                           id="basic-auth-username"
                           type="text"
                           labelText=""
+                          maxLength={255}
                           value={username}
                           onChange={handleFieldChange(setUsername)}
                         />
@@ -348,10 +358,10 @@ function ExternalConnectionAddModify() {
                     </Grid>
                     <Grid fullWidth={true}>
                       <Column lg={8} md={4} sm={4}>
-                        <>
+                        <label htmlFor="basic-auth-password">
                           <FormattedMessage id="externalconnections.authtype.basic.password" />{" "}
                           :
-                        </>
+                        </label>
                       </Column>
                       <Column lg={8} md={4} sm={4}>
                         <PasswordInput
@@ -390,6 +400,7 @@ function ExternalConnectionAddModify() {
                         id: "externalconnections.uri.placeholder",
                       })}
                       required={true}
+                      maxLength={255}
                       value={uri}
                       onChange={handleFieldChange(setUri)}
                     />

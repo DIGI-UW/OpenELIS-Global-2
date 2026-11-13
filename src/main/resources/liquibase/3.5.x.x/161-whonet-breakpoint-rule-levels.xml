@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="161-whonet-breakpoint-rule-levels" author="openelis">
+  <addColumn schemaName="clinlims" tableName="micro_breakpoint_rule">
+   <column name="organism_code_type" type="varchar(40)" remarks="WHONET organism level of the rule, such as GENUS_CODE"/>
+   <column name="organism_code" type="varchar(40)"/>
+   <column name="site_of_infection" type="varchar(255)"/>
+  </addColumn>
+  <rollback>
+   <dropColumn schemaName="clinlims" tableName="micro_breakpoint_rule" columnName="organism_code_type"/>
+   <dropColumn schemaName="clinlims" tableName="micro_breakpoint_rule" columnName="organism_code"/>
+   <dropColumn schemaName="clinlims" tableName="micro_breakpoint_rule" columnName="site_of_infection"/>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

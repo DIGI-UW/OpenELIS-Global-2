@@ -703,6 +703,7 @@
   <include relativeToChangelogFile="true" file="145-optional-reporting-decimal-places.xml"/>
   <include relativeToChangelogFile="true" file="146-explicit-log-display.xml"/>
   <include relativeToChangelogFile="true" file="147-log-display-source-and-seed.xml"/>
+  <include relativeToChangelogFile="true" file="148-facility-organization-id.xml"/>
   <include file="148-amr-v3-report-tick.xml" relativeToChangelogFile="true"/>
   <include file="149-amr-v3-reporting-rules.xml" relativeToChangelogFile="true"/>
   <include file="150-amr-v3-rule-notes.xml" relativeToChangelogFile="true"/>
@@ -712,5 +713,12 @@
   <include file="154-amr-v3-critical-outcome.xml" relativeToChangelogFile="true"/>
   <include file="155-amr-v3-panel-report-cleanup.xml" relativeToChangelogFile="true"/>
   <include file="156-amr-v3-organism-groups.xml" relativeToChangelogFile="true"/>
+  <!-- WHONET's organism table, held as published (OGC-1629). -->
+  <include relativeToChangelogFile="true" file="157-whonet-organisms.xml"/>
+  <!-- WHONET's antibiotic table, held as published (OGC-1629). -->
+  <include relativeToChangelogFile="true" file="158-whonet-antibiotics.xml"/>
   <include file="159-amr-v3-panel-default-claims.xml" relativeToChangelogFile="true"/>
+  <!-- WHONET's breakpoint table, and the organism level its rules are matched on (OGC-1629). -->
+  <include relativeToChangelogFile="true" file="160-whonet-breakpoints.xml"/>
+  <include relativeToChangelogFile="true" file="161-whonet-breakpoint-rule-levels.xml"/>
 </databaseChangeLog>

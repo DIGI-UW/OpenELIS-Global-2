@@ -13,6 +13,7 @@
 export const V1_SECTIONS = [
   "basic-info",
   "sample-results",
+  "containers",
   "methods",
   "ranges",
   "qc-targets",

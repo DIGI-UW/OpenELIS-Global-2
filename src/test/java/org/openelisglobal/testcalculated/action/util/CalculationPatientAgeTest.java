@@ -33,10 +33,11 @@ public class CalculationPatientAgeTest {
     }
 
     private static Patient patient(boolean withBirthDate) {
-        Patient patient = new Patient();
-        if (withBirthDate) {
-            patient.setBirthDate(Timestamp.valueOf("1990-01-01 00:00:00"));
-        }
+        // This unit test needs the birth date, not the display-date formatter's Spring
+        // context.
+        Patient patient = org.mockito.Mockito.mock(Patient.class);
+        org.mockito.Mockito.when(patient.getBirthDate())
+                .thenReturn(withBirthDate ? Timestamp.valueOf("1990-01-01 00:00:00") : null);
         return patient;
     }
 

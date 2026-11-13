@@ -25,6 +25,7 @@ import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
+import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.ServiceRequest;
 import org.hl7.fhir.r4.model.ServiceRequest.ServiceRequestStatus;
 import org.hl7.fhir.r4.model.Specimen;
@@ -49,6 +50,7 @@ import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingExcepti
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirApiWorkFlowServiceImpl.ReferralResultsImportObjects;
+import org.openelisglobal.dataexchange.fhir.service.FhirFacilityOrganizationService;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
@@ -85,6 +87,7 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -130,6 +133,9 @@ public class FhirReferralServiceImpl implements FhirReferralService {
     private FhirConfig fhirConfig;
     @Autowired
     private AlertService alertService;
+    @Autowired
+    @Lazy
+    private FhirFacilityOrganizationService facilityOrganizationService;
 
     private final String RESULT_SUBJECT = "Result Note";
     private String RESULT_TABLE_ID;
@@ -496,6 +502,21 @@ public class FhirReferralServiceImpl implements FhirReferralService {
                 .getFhirOrganizationByName(organization.getOrganizationName()).orElse(null));
     }
 
+    /**
+     * This laboratory's facility Organization: the reference lab reads it as the
+     * referring laboratory and addresses the results back to it.
+     */
+    private Reference referringLaboratory() {
+        try {
+            String facilityUuid = facilityOrganizationService.getFacilityUuid();
+            return facilityUuid == null ? null : new Reference(ResourceType.Organization + "/" + facilityUuid);
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "referringLaboratory",
+                    "this facility's Organization id is not available: " + e.getMessage());
+            return null;
+        }
+    }
+
     public Task createReferralTask(Organization referralOrganization, Patient patient, ServiceRequest serviceRequest,
             Optional<Practitioner> requester, Sample sample) {
         Bundle bundle = new Bundle();
@@ -510,9 +531,9 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         if (requester.isPresent()) {
             task.setRequester(fhirTransformService.createReferenceFor(requester.get()));
         }
-        if (!fhirConfig.getRemoteStoreIdentifier().isEmpty()) {
-            task.setRestriction(new TaskRestrictionComponent()
-                    .setRecipient(Arrays.asList(new Reference(fhirConfig.getRemoteStoreIdentifier().get(0)))));
+        Reference referringLab = referringLaboratory();
+        if (referringLab != null) {
+            task.setRestriction(new TaskRestrictionComponent().setRecipient(Arrays.asList(referringLab)));
         }
         task.setAuthoredOn(new Date());
         task.setStatus(TaskStatus.REQUESTED);

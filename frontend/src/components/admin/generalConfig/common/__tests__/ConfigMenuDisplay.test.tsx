@@ -200,6 +200,33 @@ describe("ConfigMenuDisplay", () => {
     expect(screen.getByText("Results only")).toBeInTheDocument();
   });
 
+  it("edits a stored setting key under its translated name and description", async () => {
+    const translated = {
+      ...config("false"),
+      name: "useMultiLevelValidation",
+      paramName: "useMultiLevelValidation",
+      description: "stored English text",
+    };
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url === `/rest/${MENU}`)
+          return callback({ menuList: [translated] });
+        if (url.startsWith(`/rest/${CONFIG}?ID=`)) return callback(translated);
+        return callback(undefined);
+      },
+    );
+
+    await openTheEditor();
+
+    expect(screen.getByText("Use the validation policy")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        messages["siteInformation.description.useMultiLevelValidation"],
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("stored English text")).not.toBeInTheDocument();
+  });
+
   it("names the menu in its breadcrumb with its translated title", async () => {
     const errors = vi.spyOn(console, "error");
     renderScreen();
@@ -239,6 +266,30 @@ describe("ConfigMenuDisplay", () => {
     );
     expect(await screen.findByText("true")).toBeInTheDocument();
     expect(reloadConfiguration).toHaveBeenCalledOnce();
+  });
+
+  it("reopens a just saved setting with the saved value", async () => {
+    await openTheEditor();
+    await userEvent.click(screen.getByLabelText("True"));
+    (postToOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, body: string, callback: (status: number) => void) => {
+        onServer = { value: "true" };
+        callback(200);
+      },
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("true")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("selectRow"));
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+    await screen.findByRole("heading", { name: "Edit Record" });
+
+    await waitFor(() => expect(screen.getByLabelText("True")).toBeChecked());
+    (postToOpenElisServer as ReturnType<typeof vi.fn>).mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    const [, body] = (postToOpenElisServer as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(JSON.parse(body).value).toBe("true");
   });
 
   it("does not refresh runtime configuration when saving fails", async () => {
@@ -336,11 +387,14 @@ describe("ConfigMenuDisplay with an image row", () => {
     (postToOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
   });
 
-  const renderImageMenu = () =>
-    render(
+  let queryClient: ReturnType<typeof createQueryClient>;
+
+  const renderImageMenu = () => {
+    queryClient = createQueryClient();
+    return render(
       <MemoryRouter>
         <IntlProvider locale="en" messages={messages}>
-          <QueryClientProvider client={createQueryClient()}>
+          <QueryClientProvider client={queryClient}>
             <NotificationContext.Provider
               value={{
                 notificationVisible: false,
@@ -357,6 +411,7 @@ describe("ConfigMenuDisplay with an image row", () => {
         </IntlProvider>
       </MemoryRouter>,
     );
+  };
 
   const openTheTextEditor = async () => {
     fireEvent.click((await screen.findAllByLabelText("selectRow"))[0]);
@@ -431,14 +486,30 @@ describe("ConfigMenuDisplay with an image row", () => {
       ).not.toBeInTheDocument(),
     );
 
-    // Cycle two: the record is served from the cache while it rereads.
-    input = await openTheTextEditor();
+    // Cycle two: the cached record is out of date, so the editor waits for
+    // the reread instead of offering the value it replaced.
+    fireEvent.click((await screen.findAllByLabelText("selectRow"))[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+    await waitFor(() => expect(pendingRereads.length).toBeGreaterThan(0));
+    expect(document.getElementById("textInput")).toBeNull();
+    await act(async () =>
+      pendingRereads.splice(0).forEach((deliver) => deliver()),
+    );
+    input = (await screen.findByDisplayValue("Dr B")) as HTMLInputElement;
+
+    // A later reread answering mid-edit leaves what is typed alone.
     await userEvent.clear(input);
     await userEvent.type(input, "Dr C");
-    expect(pendingRereads.length).toBeGreaterThan(0);
-    pendingRereads.forEach((deliver) => deliver());
+    onServerValue = "Dr D";
+    await act(async () => {
+      queryClient.invalidateQueries();
+    });
+    await waitFor(() => expect(pendingRereads.length).toBeGreaterThan(0));
+    await act(async () =>
+      pendingRereads.splice(0).forEach((deliver) => deliver()),
+    );
 
-    await waitFor(() => expect(input.isConnected).toBe(true));
+    expect(input.isConnected).toBe(true);
     expect(input.value).toBe("Dr C");
   });
 
@@ -588,5 +659,89 @@ describe("ConfigMenuDisplay behind a route", () => {
     expect(
       screen.queryByRole("heading", { name: "Edit Record" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * OGC-1364: on Result Configuration the validation policy replaces "validate
+ * all results" once "Use the validation policy" is on.
+ */
+describe("ConfigMenuDisplay on Result Configuration", () => {
+  const RESULT_MENU = "ResultConfigurationMenu";
+  const rows = [
+    {
+      id: "56",
+      name: "validate all results",
+      description: "all results should be validated even if normal",
+      value: "true",
+      valueType: "boolean",
+    },
+    {
+      id: "190",
+      name: "blockSelfValidation",
+      description: "Block self-validation",
+      value: "false",
+      valueType: "boolean",
+    },
+  ];
+
+  const renderResultMenu = (enabled: boolean) => {
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url === `/rest/${RESULT_MENU}`) return callback({ menuList: rows });
+        if (url === "/rest/validation-policy/default")
+          return callback({
+            trigger: "ALL",
+            levels: 1,
+            levelRoles: [{ level: 1, roleId: 10, roleName: "Validation" }],
+            enabled,
+            maxLevels: 1,
+            blockSelfValidation: false,
+          });
+        return callback(undefined);
+      },
+    );
+    render(
+      <MemoryRouter>
+        <IntlProvider locale="en" messages={messages}>
+          <QueryClientProvider client={createQueryClient()}>
+            <NotificationContext.Provider
+              value={{
+                notificationVisible: false,
+                setNotificationVisible: vi.fn(),
+                addNotification: vi.fn(),
+              }}
+            >
+              <ConfigurationContext.Provider
+                value={{ reloadConfiguration: vi.fn() }}
+              >
+                <ConfigMenuDisplay
+                  id="sidenav.label.admin.formEntry.resultConfig"
+                  menuType={RESULT_MENU}
+                />
+              </ConfigurationContext.Provider>
+            </NotificationContext.Provider>
+          </QueryClientProvider>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+  };
+
+  it("keeps validate all results while the policy is off", async () => {
+    renderResultMenu(false);
+
+    expect(await screen.findByText("validate all results")).toBeInTheDocument();
+    expect(screen.queryByTestId("validation-policy")).not.toBeInTheDocument();
+  });
+
+  it("shows the policy in place of validate all results while it is on", async () => {
+    renderResultMenu(true);
+
+    expect(await screen.findByTestId("validation-policy")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Block self-validation"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("validate all results")).not.toBeInTheDocument();
   });
 });

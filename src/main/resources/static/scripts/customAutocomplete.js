@@ -123,7 +123,7 @@ var autocompleteResultCallBack = null; // the callback for onchange
 			input.data( "ui-autocomplete" )._renderItem = function( ul, item ) {
 				return $( "<li></li>" )
 					.data( "ui-autocomplete-item", item )
-					.append( "<a>" + item.label + "</a>" )
+                    .append( $("<a></a>").text(item.label) )
 					.appendTo( ul );
 			};
 		},

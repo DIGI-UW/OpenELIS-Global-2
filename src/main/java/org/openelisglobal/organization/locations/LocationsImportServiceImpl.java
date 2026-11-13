@@ -85,7 +85,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             "parentType", "active", "streetAddress", "city", "state", "zipCode", "gpsLatitude", "gpsLongitude",
             "contactName", "phone", "email", "internetAddress", "category", "ownership", "serviceType", "siteType",
             "subtype", "environmentalZone", "description", "approvalStatus", "accreditationBody", "accreditationNumber",
-            "accreditationExpiry", "lastReviewDate", "nextReviewDue" };
+            "accreditationExpiry", "lastReviewDate", "nextReviewDue", "fhirId" };
     private static final String IDENTIFIER_PREFIX = "identifier:";
 
     @Value("${org.openelisglobal.configuration.dir:/var/lib/openelis-global/configuration/backend}")
@@ -1301,6 +1301,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         values.put("accreditationExpiry", text(organization.getAccreditationExpiry()));
         values.put("lastReviewDate", text(organization.getLastReviewDate()));
         values.put("nextReviewDue", text(organization.getNextReviewDue()));
+        values.put("fhirId", organization.getFhirUuidAsString());
         if (organization.getId().matches("\\d+")) {
             VectorSamplingSite site = samplingSiteService.getByOrganizationId(Integer.valueOf(organization.getId()));
             if (site != null) {
@@ -1396,13 +1397,14 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             identifiers.set(0, new Identifier(first.id(), first.label(), first.value(), true));
         }
         Referral referral = current != null && current.referral() != null ? current.referral()
-                : new Referral(null, null, null, null, null, null, null);
+                : new Referral(null, null, null, null, null, null, null, null);
         referral = new Referral(value(csv, "approvalStatus", referral.approvalStatus()),
                 value(csv, "accreditationBody", referral.accreditationBody()),
                 value(csv, "accreditationNumber", referral.accreditationNumber()),
                 value(csv, "accreditationExpiry", referral.accreditationExpiry()),
                 value(csv, "lastReviewDate", referral.lastReviewDate()),
-                value(csv, "nextReviewDue", referral.nextReviewDue()), referral.reviewNotes());
+                value(csv, "nextReviewDue", referral.nextReviewDue()), referral.reviewNotes(),
+                value(csv, "fhirId", referral.fhirId()));
         Site site = current != null && current.site() != null ? current.site() : new Site(null, null, null, null);
         site = new Site(site.siteId(), value(csv, "siteType", site.siteType()), value(csv, "subtype", site.subtype()),
                 value(csv, "environmentalZone", site.environmentalZone()));
@@ -1565,11 +1567,11 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         String header = String.join(",", BASE_COLUMNS) + ",identifier:DHIS2 ID\n";
         return header + "referring clinic;referralLab,PMGH,Port Moresby General Hospital,PMGH,,NCD-MS,,Y,Taurama"
                 + " Road,Port Moresby,,,-9.4705,147.1597,Dr. Anna Kila,+675 324 8200,lab@pmgh.gov.pg,,National"
-                + " referral hospital,Government,,,,,,Approved,,,,,,Rp1k2mPqH3x\n"
+                + " referral hospital,Government,,,,,,Approved,,,,,,,Rp1k2mPqH3x\n"
                 + "dept,PMGH-OPD,Outpatient Department,,PMGH,,,Y,,,,,,,Sister Ruth Moi,+675 324 8210,,,,,"
-                + "Outpatient,,,,,,,,,,,\n"
+                + "Outpatient,,,,,,,,,,,,\n"
                 + "sampling site,VT-LAE-03,Bumbu Settlement light trap,,,Lae Urban,LLG,Y,,,,,-6.7160,147.0010,John"
-                + " Wari,+675 7123 4567,,,,,,Vector trap,CDC light trap,Peri-urban settlement,Weekly collection,,,,,,,"
+                + " Wari,+675 7123 4567,,,,,,Vector trap,CDC light trap,Peri-urban settlement,Weekly collection,,,,,,,,"
                 + "\n";
     }
 
@@ -1658,6 +1660,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             values.put("accreditationExpiry", detail.referral().accreditationExpiry());
             values.put("lastReviewDate", detail.referral().lastReviewDate());
             values.put("nextReviewDue", detail.referral().nextReviewDue());
+            values.put("fhirId", detail.referral().fhirId());
         }
         for (Identifier identifier : detail.identifiers()) {
             values.put(IDENTIFIER_PREFIX + identifier.label(), identifier.value());

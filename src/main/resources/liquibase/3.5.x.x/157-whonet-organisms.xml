@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="157-whonet-organism-table" author="openelis">
+  <createTable schemaName="clinlims" tableName="micro_whonet_organism" remarks="WHONET's organism table as published, one row per name">
+   <column name="id" type="varchar(36)" defaultValueComputed="gen_random_uuid()::varchar">
+    <constraints primaryKey="true" nullable="false"/>
+   </column>
+   <column name="whonet_org_code" type="varchar(255)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="replaced_by" type="varchar(255)"/>
+   <column name="organism" type="varchar(255)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="taxonomic_status" type="varchar(255)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="common" type="varchar(255)"/>
+   <column name="common_commensal" type="varchar(255)"/>
+   <column name="organism_type" type="varchar(255)"/>
+   <column name="anaerobe" type="varchar(255)"/>
+   <column name="morphology" type="varchar(255)"/>
+   <column name="subkingdom_code" type="varchar(255)"/>
+   <column name="family_code" type="varchar(255)"/>
+   <column name="genus_group" type="varchar(255)"/>
+   <column name="genus_code" type="varchar(255)"/>
+   <column name="species_group" type="varchar(255)"/>
+   <column name="serovar_group" type="varchar(255)"/>
+   <column name="msf_grp_clin" type="varchar(255)"/>
+   <column name="sct_code" type="varchar(255)"/>
+   <column name="sct_text" type="varchar(255)"/>
+   <column name="gbif_taxon_id" type="varchar(255)"/>
+   <column name="gbif_dataset_id" type="varchar(255)"/>
+   <column name="gbif_taxonomic_status" type="varchar(255)"/>
+   <column name="kingdom" type="varchar(255)"/>
+   <column name="phylum" type="varchar(255)"/>
+   <column name="taxon_class" type="varchar(255)"/>
+   <column name="taxon_order" type="varchar(255)"/>
+   <column name="family" type="varchar(255)"/>
+   <column name="genus" type="varchar(255)"/>
+   <column name="last_updated" type="timestamp" defaultValueComputed="now()">
+    <constraints nullable="false"/>
+   </column>
+  </createTable>
+  <sql>CREATE INDEX idx_micro_whonet_organism_code ON clinlims.micro_whonet_organism (lower(whonet_org_code));
+   CREATE INDEX idx_micro_whonet_organism_name ON clinlims.micro_whonet_organism (lower(organism));</sql>
+  <rollback>
+   <dropTable schemaName="clinlims" tableName="micro_whonet_organism"/>
+  </rollback>
+ </changeSet>
+ <changeSet id="157-organism-name-and-code-lookup" author="openelis">
+  <sql>CREATE INDEX idx_micro_organism_display_name_lower ON clinlims.micro_organism (lower(display_name));
+   CREATE INDEX idx_micro_organism_whonet_code_lower ON clinlims.micro_organism (lower(whonet_code));</sql>
+  <rollback>
+   <sql>DROP INDEX clinlims.idx_micro_organism_display_name_lower;
+    DROP INDEX clinlims.idx_micro_organism_whonet_code_lower;</sql>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

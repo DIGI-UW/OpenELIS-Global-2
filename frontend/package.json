@@ -10,6 +10,8 @@
     "@carbon/charts-react": "^1.27.3",
     "@carbon/icons-react": "^11.17.0",
     "@carbon/react": "^1.15.0",
+    "@module-federation/runtime": "2.9.2",
+    "@module-federation/vite": "^1.23.8",
     "@tanstack/react-query": "^4.44.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^9.5.0",
@@ -39,6 +41,7 @@
     "react-intl": "^5.20.12",
     "react-router-dom": "^5.2.0",
     "rxjs": "6.x",
+    "semver": "^7.8.6",
     "single-spa": "5.x",
     "styled-components": "^5.3.6",
     "yup": "^0.29.2"
@@ -113,7 +116,7 @@
     "sass": "1.79.5",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.65.0",
-    "vite": "^8.0.6",
+    "vite": "^8.3.6",
     "vite-plugin-svgr": "^5.2.0",
     "vitest": "^4.1.4"
   },

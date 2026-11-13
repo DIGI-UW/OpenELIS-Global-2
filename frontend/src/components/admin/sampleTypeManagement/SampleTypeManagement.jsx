@@ -56,6 +56,7 @@ import LocalizationSection from "../testCatalog/sections/LocalizationSection";
 import DisplayOrderSection from "./sections/DisplayOrderSection";
 import DisposalSection from "./sections/DisposalSection";
 import AssociatedTestsSection from "./sections/AssociatedTestsSection";
+import ContainersSection from "./sections/ContainersSection";
 import {
   Add,
   Edit,
@@ -1740,6 +1741,33 @@ function SampleTypeManagement({ intl }) {
                         </p>
                       ) : (
                         <DisposalSection sampleTypeId={sampleTypeId} />
+                      )}
+                    </Tile>
+                  </div>
+                )}
+
+                {/* OGC-1611 FR-G7, FR-G6b: default container and the tests served. */}
+                {activeSection === "containers" && (
+                  <div>
+                    <Tile
+                      style={{
+                        padding: "var(--cds-spacing-07)",
+                        border: "1px solid var(--cds-border-subtle)",
+                        borderRadius: "var(--cds-border-radius)",
+                      }}
+                    >
+                      {view === "add" ? (
+                        <p
+                          style={{
+                            color: "var(--cds-text-secondary)",
+                            fontSize: "14px",
+                            margin: 0,
+                          }}
+                        >
+                          <FormattedMessage id="label.sampleType.containers.addHint" />
+                        </p>
+                      ) : (
+                        <ContainersSection sampleTypeId={sampleTypeId} />
                       )}
                     </Tile>
                   </div>

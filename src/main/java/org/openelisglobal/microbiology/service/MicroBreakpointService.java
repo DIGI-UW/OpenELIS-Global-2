@@ -23,4 +23,11 @@ public interface MicroBreakpointService {
     MicroBreakpointRule findContextualBreakpointRule(String standardId, String organismId, String organismGroup,
             String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext,
             String diskContent);
+
+    /**
+     * The closest WHONET organism level decides, then the specimen (its WHONET
+     * specimen code) and the indication, then WHONET's order of sites.
+     */
+    MicroBreakpointRule findWhonetBreakpointRule(String standardId, String organismId, String antibioticId,
+            String breakpointType, String diskContent, String specimenCode, String clinicalContext);
 }

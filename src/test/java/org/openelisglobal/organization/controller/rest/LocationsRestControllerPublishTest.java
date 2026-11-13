@@ -67,7 +67,7 @@ public class LocationsRestControllerPublishTest {
         Row row = new Row(id, "ACEH", null, null, null, List.of(), null, null, null, 0, null, null, true, false, false,
                 false, null);
         Detail detail = new Detail(row, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, List.of(), List.of(), null, null, null, 0);
+                null, null, List.of(), List.of(), null, null, null, 0, false, null);
         return new SaveResult(detail, List.of());
     }
 

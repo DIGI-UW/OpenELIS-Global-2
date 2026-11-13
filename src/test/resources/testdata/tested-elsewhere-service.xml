@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <organization id="987700" name="TEW Reference Laboratory"
+        is_active="Y" lastupdated="2026-10-01 12:00:00" />
+    <organization id="987701" name="Second Reference Lab"
+        is_active="Y" lastupdated="2026-10-01 12:00:00" />
+
+    <test id="987700" name="TEW Direct Test"
+        description="Directly ordered test" guid="tew-guid-987700"
+        is_active="Y" lastupdated="2026-10-01 12:00:00" />
+    <test id="987701" name="TEW Panel Member Test"
+        description="Test in panel" guid="tew-guid-987701" is_active="Y"
+        lastupdated="2026-10-01 12:00:00" />
+    <test id="987702" name="TEW Analysis Test"
+        description="Test from existing analysis" guid="tew-guid-987702"
+        is_active="Y" lastupdated="2026-10-01 12:00:00" />
+    <test id="987703" name="TEW Unrelated Test"
+        description="Not on order" guid="tew-guid-987703" is_active="Y"
+        lastupdated="2026-10-01 12:00:00" />
+
+    <panel id="987700" name="TEW Test Panel"
+        description="Panel with test 987701" is_active="Y"
+        name_localization_id="1" lastupdated="2026-10-01 12:00:00" />
+    <panel_item id="987700" panel_id="987700" test_id="987701"
+        sort_order="1" lastupdated="2026-10-01 12:00:00" />
+
+    <sample id="987700" accession_number="TEW0000000001"
+        entered_date="2026-10-01 12:00:00" received_date="2026-10-01 12:00:00"
+        lastupdated="2026-10-01 12:00:00" />
+    <sample id="987701" accession_number="TEW0000000002"
+        entered_date="2026-10-01 12:00:00" received_date="2026-10-01 12:00:00"
+        lastupdated="2026-10-01 12:00:00" />
+
+    <sample_type_request id="987700" sample_id="987700"
+        type_of_sample_id="1" requested_tests="987700"
+        requested_panels="987700" />
+
+    <sample_item id="987700" samp_id="987700" sort_order="1"
+        status_id="1" lastupdated="2026-10-01 12:00:00" />
+    <analysis id="987700" sampitem_id="987700" test_id="987702"
+        analysis_type="ROUTINE" revision="1" status_id="1"
+        lastupdated="2026-10-01 12:00:00" />
+
+    <order_test_tested_elsewhere id="987700"
+        sample_id="987700" test_id="987700" performing_lab_id="987700"
+        reported_value="Positive" sys_user_id="1"
+        last_updated="2026-10-01 12:00:00" />
+</dataset>

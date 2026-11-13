@@ -11,6 +11,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import OrganismPicker from "../../microbiology/OrganismPicker";
 
 const EMPTY_RULE = {
   organismId: "",
@@ -34,7 +35,6 @@ const numericOrNull = (value) =>
 
 const BreakpointRuleForm = ({
   value,
-  organisms,
   organismGroups,
   antibiotics,
   specimenTypes,
@@ -88,34 +88,20 @@ const BreakpointRuleForm = ({
       />
       <ModalBody>
         <div className="microbiology-admin__form-grid">
-          <Select
+          <OrganismPicker
             id="microbiology-breakpoint-rule-organism"
-            labelText={intl.formatMessage({
-              id: "microbiology.admin.breakpoints.organism",
+            titleText={intl.formatMessage({
+              id: "microbiology.isolate.organism",
             })}
             value={draft.organismId}
-            onChange={(event) =>
+            onChange={(organismId) =>
               setDraft((current) => ({
                 ...current,
-                organismId: event.target.value,
-                organismGroup: event.target.value ? "" : current.organismGroup,
+                organismId,
+                organismGroup: organismId ? "" : current.organismGroup,
               }))
             }
-          >
-            <SelectItem
-              value=""
-              text={intl.formatMessage({
-                id: "microbiology.admin.astRules.anyOrganism",
-              })}
-            />
-            {organisms.map((item) => (
-              <SelectItem
-                key={item.id}
-                value={item.id}
-                text={`${item.label}${item.code ? ` (${item.code})` : ""}`}
-              />
-            ))}
-          </Select>
+          />
           <Select
             id="microbiology-breakpoint-rule-group"
             labelText={intl.formatMessage({

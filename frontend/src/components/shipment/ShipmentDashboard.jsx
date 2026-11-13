@@ -36,11 +36,13 @@ import CancelReferralModal from "./CancelReferralModal";
 import MarkAsLostModal from "./MarkAsLostModal";
 import "./ShipmentDashboard.css";
 import ShipmentNavigation from "./ShipmentNavigation";
+import useSiteDateFormat from "../common/useSiteDateFormat";
 
 const TAB_ROUTES = ["boxes", "unassigned"];
 
 const ShipmentDashboard = () => {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const history = useHistory();
   const location = useLocation();
   const componentMounted = useRef(true);
@@ -668,13 +670,15 @@ const ShipmentDashboard = () => {
                     onChange={setFilterFacility}
                   />
                   <DatePicker
+                    dateFormat={siteDate.dateFormat}
+                    parseDate={siteDate.parseDate}
                     datePickerType="single"
                     onChange={([date]) => setFilterDateFrom(date)}
                     value={filterDateFrom}
                   >
                     <DatePickerInput
                       id="date-from"
-                      placeholder="mm/dd/yyyy"
+                      placeholder={siteDate.placeholder}
                       labelText={intl.formatMessage({
                         id: "shipment.filter.dateFrom",
                       })}
@@ -682,13 +686,15 @@ const ShipmentDashboard = () => {
                     />
                   </DatePicker>
                   <DatePicker
+                    dateFormat={siteDate.dateFormat}
+                    parseDate={siteDate.parseDate}
                     datePickerType="single"
                     onChange={([date]) => setFilterDateTo(date)}
                     value={filterDateTo}
                   >
                     <DatePickerInput
                       id="date-to"
-                      placeholder="mm/dd/yyyy"
+                      placeholder={siteDate.placeholder}
                       labelText={intl.formatMessage({
                         id: "shipment.filter.dateTo",
                       })}

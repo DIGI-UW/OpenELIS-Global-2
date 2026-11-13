@@ -228,9 +228,12 @@ test.describe("Microbiology keyboard-only workflow", () => {
       });
       await tabTo(page, organism);
       await page.keyboard.type("Escherichia coli (UAT)");
+      await expect(
+        dialog.getByRole("option", { name: /Escherichia coli \(UAT\)/ }),
+      ).toBeVisible();
       await page.keyboard.press("ArrowDown");
       await page.keyboard.press("Enter");
-      await expect(organism).toHaveValue("Escherichia coli (UAT)");
+      await expect(organism).toHaveValue(/^Escherichia coli \(UAT\)/);
       const idMethod = dialog.getByLabel("ID method", { exact: true });
       await tabTo(page, idMethod);
       await page.keyboard.type("UAT micro culture");

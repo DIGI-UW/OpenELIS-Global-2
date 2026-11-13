@@ -32,6 +32,10 @@ yarn-error.log*
 #Developer specific docker-compose
 /docker-compose.yml
 dev/
+# Track only the explicit test login fixture; other local dev files stay ignored.
+!/dev/
+/dev/*
+!/dev/initial-admin-password
 # Additional build files
 src/main/resources/adminPassword.txt
 /OEInstaller/
@@ -95,6 +99,8 @@ projects/*/volume/
 !src/main/resources/configuration/test-results/**
 !projects/analyzer-harness/dictionary/test-results/
 !projects/analyzer-harness/dictionary/test-results/**
+!volume/configuration/backend/test-results/
+!volume/configuration/backend/test-results/**
 # Note: frontend/playwright/ test sources are tracked (not ignored)
 *.pyc
 __pycache__/
@@ -142,6 +148,9 @@ docs/debug-local/
 # Playwright MCP / Java build metadata
 .playwright-mcp/
 META-INF/
+# The module contracts ship their manifest schema as a META-INF resource.
+!module-contracts/openelis-module-api/src/main/resources/META-INF/
+!module-test/src/test/resources/META-INF/
 
 # Vitest run logs + cache (local test-output scratch)
 frontend/vitest-*.log
@@ -161,3 +170,13 @@ volume/nce-attachments/
 # Generated local development certificates and private keys
 /.dev-stack/tls/
 /.dev-stack/images.json
+/.dev-stack/setup
+/.dev-stack/pulled-terminal
+# Module dev servers started by scripts/dev-stack up --module
+/.dev-stack/modules/
+# Installed module JARs (volume/modules/README.md stays)
+/volume/modules/*.jar
+/volume/modules/*.disabled
+
+# Local installation credentials
+/secrets/

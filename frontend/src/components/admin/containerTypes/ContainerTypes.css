@@ -1,0 +1,124 @@
+.containerTypesIntro {
+  margin: 0.5rem 0 1rem;
+}
+
+.containerTypesFilters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.containerTypesFilters > * {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.containerTypesFilters .cds--search {
+  flex: 1 1 18rem;
+}
+
+.containerTypesFilters .cds--select-input {
+  min-width: 12rem;
+}
+
+.containerTypeCap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.containerTypeSwatch {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--cds-border-strong, #8d8d8d);
+  border-radius: 50%;
+}
+
+.containerTypeForm {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.containerTypeVolume,
+.containerTypeColour {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.containerTypeColour input[type="color"] {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  background: none;
+}
+
+.containerTypeFormActions {
+  display: flex;
+  gap: 0.5rem;
+  grid-column: 1 / -1;
+}
+
+.containerTypeFieldError {
+  display: block;
+  color: var(--cds-text-error, #da1e28);
+}
+
+.containerTypeActions {
+  white-space: nowrap;
+}
+
+.testContainerVolume {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.testContainerName {
+  min-width: 12rem;
+}
+
+.testContainerUsedAsField {
+  width: 14rem;
+  margin-top: 0.25rem;
+}
+
+.testContainerRoleField {
+  width: 8.5rem;
+}
+
+.testContainerCountField {
+  width: 6.5rem;
+}
+
+.testContainerVolumeField {
+  width: 5.5rem;
+}
+
+.testContainerVolumeField .cds--form-requirement {
+  width: 11.5rem;
+}
+
+.testContainerCountField .cds--number input[type="number"] {
+  min-inline-size: 0;
+}
+
+.testContainerUnitField {
+  width: 5.5rem;
+}
+
+.testContainerActions {
+  display: flex;
+  flex-wrap: nowrap;
+}
+
+.testContainerTable {
+  overflow-x: auto;
+  max-width: 100%;
+}

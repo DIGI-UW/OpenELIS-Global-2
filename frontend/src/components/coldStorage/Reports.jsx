@@ -44,6 +44,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { endOfDay, startOfDay } from "date-fns";
 import { toLocalIsoDate } from "../utils/Utils";
 import { labNow, labTimeToInstant } from "../utils/labClock";
+import useSiteDateFormat from "../common/useSiteDateFormat";
 
 const REPORT_TYPES = ["Daily Log", "Weekly Log", "Monthly Log"];
 
@@ -51,8 +52,8 @@ const EXPORT_FORMATS = ["PDF"]; // CSV, XML, and Excel to be implemented in Phas
 
 const REPORT_TYPE_MAP = {
   "Daily Log": "freezerDailyLogReport",
-  "Weekly Log": "freezerDailyLogReport",
-  "Monthly Log": "freezerDailyLogReport",
+  "Weekly Log": "weeklylog",
+  "Monthly Log": "monthlylog",
 };
 
 const getExcursionHeaders = (intl) => [
@@ -217,7 +218,7 @@ const toIsoString = (value) => {
 const formatActionLabel = (value) => {
   const actionLabels = {
     ALERT_ACKNOWLEDGED: "Alert acknowledged",
-    CRITICAL_ALERT_RESOLVED: "Critical alert resolved",
+    ALERT_RESOLVED: "Alert resolved",
     CORRECTIVE_ACTION_LOGGED: "Corrective action logged",
     THRESHOLD_UPDATED: "Threshold updated",
     FREEZER_RENAMED: "Freezer renamed",
@@ -252,6 +253,7 @@ const mapAuditEvent = (event) => ({
 
 function Reports({ devices = [] }) {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const excursionHeaders = useMemo(() => getExcursionHeaders(intl), [intl]);
@@ -692,6 +694,8 @@ function Reports({ devices = [] }) {
       <Grid fullWidth className="reports-form">
         <Column lg={4} md={4} sm={4}>
           <DatePicker
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
             datePickerType="single"
             value={dateRange[0]}
             onChange={(dates) => {
@@ -704,7 +708,7 @@ function Reports({ devices = [] }) {
           >
             <DatePickerInput
               id="reports-start-date"
-              placeholder="mm/dd/yyyy"
+              placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({
                 id: "coldStorage.reports.startDate",
                 defaultMessage: "Start date",
@@ -715,6 +719,8 @@ function Reports({ devices = [] }) {
         </Column>
         <Column lg={4} md={4} sm={4}>
           <DatePicker
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
             datePickerType="single"
             value={dateRange[1]}
             onChange={(dates) => {
@@ -727,7 +733,7 @@ function Reports({ devices = [] }) {
           >
             <DatePickerInput
               id="reports-end-date"
-              placeholder="mm/dd/yyyy"
+              placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({
                 id: "coldStorage.reports.endDate",
                 defaultMessage: "End date",

@@ -27,6 +27,7 @@ import {
   InlineNotification,
   Modal,
   TextArea,
+  TextInput,
   InlineLoading,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -34,9 +35,9 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerForBlob,
   toLocalIsoDate,
-  parseIsoDate,
 } from "../../utils/Utils";
 import { labNow } from "../../utils/labClock";
+import useSiteDateFormat from "../../common/useSiteDateFormat";
 
 const STATUS_TAG_TYPE = {
   COMPLIANT: "green",
@@ -63,6 +64,7 @@ function statusTag(status, statusLabels) {
 
 export default function LaporanHasilReport() {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
 
   const generationStatusItems = [
     { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.all" }) },
@@ -83,6 +85,8 @@ export default function LaporanHasilReport() {
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [labNumber, setLabNumber] = useState("");
+  const [searchedLabNumber, setSearchedLabNumber] = useState("");
   const [standardFilter, setStandardFilter] = useState("all");
   const [complianceStatusFilter, setComplianceStatusFilter] = useState("all");
   const [generationStatusFilter, setGenerationStatusFilter] = useState("all");
@@ -126,6 +130,10 @@ export default function LaporanHasilReport() {
         setComplianceStatusItems([
           { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.all", defaultMessage: "All" }) },
           ...data,
+          {
+            id: "RESULTS",
+            text: intl.formatMessage({ id: "laporanHasil.status.resultsReport" }),
+          },
         ]);
       },
     );
@@ -150,6 +158,7 @@ export default function LaporanHasilReport() {
       const std = overrides.standardFilter ?? standardFilter;
       const cs = overrides.complianceStatusFilter ?? complianceStatusFilter;
       const gs = overrides.generationStatusFilter ?? generationStatusFilter;
+      const lab = (overrides.labNumber ?? labNumber).trim();
 
       setIsLoading(true);
       setError(null);
@@ -160,12 +169,14 @@ export default function LaporanHasilReport() {
       if (std && std !== "all") params.set("standardId", std);
       if (cs && cs !== "all") params.set("complianceStatus", cs);
       if (gs && gs !== "all") params.set("generationStatus", gs);
+      if (lab) params.set("labNumber", lab);
 
       getFromOpenElisServer(
         `/rest/complianceReport?${params.toString()}`,
         (data) => {
           if (data) {
             setReportData(data);
+            setSearchedLabNumber(lab);
           } else {
             setError(intl.formatMessage({ id: "laporanHasil.error" }));
           }
@@ -173,7 +184,15 @@ export default function LaporanHasilReport() {
         },
       );
     },
-    [dateFrom, dateTo, standardFilter, complianceStatusFilter, generationStatusFilter, intl],
+    [
+      dateFrom,
+      dateTo,
+      standardFilter,
+      complianceStatusFilter,
+      generationStatusFilter,
+      labNumber,
+      intl,
+    ],
   );
 
   const fetchReport = useCallback(() => doFetch(), [doFetch]);
@@ -198,10 +217,14 @@ export default function LaporanHasilReport() {
           const now = labNow().toLocaleString();
           setReportData((prev) => {
             if (!prev) return prev;
+            const firstTime = !prev.orders.find((o) => o.sampleId === sampleId)
+              ?.lastGenerated;
             return {
               ...prev,
-              generatedCount: prev.generatedCount + 1,
-              notYetGeneratedCount: Math.max(0, prev.notYetGeneratedCount - 1),
+              generatedCount: prev.generatedCount + (firstTime ? 1 : 0),
+              notYetGeneratedCount: firstTime
+                ? Math.max(0, prev.notYetGeneratedCount - 1)
+                : prev.notYetGeneratedCount,
               orders: prev.orders.map((o) =>
                 o.sampleId === sampleId ? { ...o, lastGenerated: now } : o,
               ),
@@ -211,10 +234,12 @@ export default function LaporanHasilReport() {
         },
         (err) => {
           setError(
-            intl.formatMessage(
-              { id: "laporanHasil.error.pdf", defaultMessage: "Failed to download PDF: {msg}" },
-              { msg: err.message },
-            ),
+            String(err?.message).includes("409")
+              ? intl.formatMessage({ id: "laporanHasil.error.notValidated" })
+              : intl.formatMessage(
+                  { id: "laporanHasil.error.pdf", defaultMessage: "Failed to download PDF: {msg}" },
+                  { msg: err.message },
+                ),
           );
           setGeneratingPdf(null);
         },
@@ -271,7 +296,9 @@ export default function LaporanHasilReport() {
         setAmendmentModal((prev) => ({
           ...prev,
           submitting: false,
-          error: err.message,
+          error: String(err?.message).includes("409")
+            ? intl.formatMessage({ id: "laporanHasil.error.notValidated" })
+            : err.message,
         }));
       },
     );
@@ -343,9 +370,26 @@ export default function LaporanHasilReport() {
 
       <Grid narrow style={{ marginBottom: "1.5rem", alignItems: "flex-end" }}>
         <Column lg={3} md={4} sm={4}>
+          <TextInput
+            id="filter-lab-number"
+            labelText={intl.formatMessage({ id: "laporanHasil.filter.labNumber" })}
+            helperText={intl.formatMessage({
+              id: "laporanHasil.filter.labNumber.help",
+            })}
+            value={labNumber}
+            onChange={(event) => setLabNumber(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                doFetch({ labNumber: event.currentTarget.value });
+              }
+            }}
+          />
+        </Column>
+        <Column lg={3} md={4} sm={4}>
           <DatePicker
-            dateFormat="Y-m-d"
-            parseDate={parseIsoDate}
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
             datePickerType="single"
             onChange={(dates) =>
               setDateFrom(
@@ -355,15 +399,15 @@ export default function LaporanHasilReport() {
           >
             <DatePickerInput
               id="filter-date-from"
-              placeholder="yyyy-mm-dd"
+              placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({ id: "laporanHasil.filter.dateFrom" })}
             />
           </DatePicker>
         </Column>
         <Column lg={3} md={4} sm={4}>
           <DatePicker
-            dateFormat="Y-m-d"
-            parseDate={parseIsoDate}
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
             datePickerType="single"
             onChange={(dates) =>
               setDateTo(dates[0] ? toLocalIsoDate(dates[0]) : "")
@@ -371,7 +415,7 @@ export default function LaporanHasilReport() {
           >
             <DatePickerInput
               id="filter-date-to"
-              placeholder="yyyy-mm-dd"
+              placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({ id: "laporanHasil.filter.dateTo" })}
             />
           </DatePicker>
@@ -456,6 +500,15 @@ export default function LaporanHasilReport() {
 
       {isLoading && <Loading withOverlay={false} />}
 
+      {!isLoading && reportData?.labNumberLimited && searchedLabNumber && (
+        <p style={{ marginTop: "1rem", color: "#525252" }}>
+          <FormattedMessage
+            id="laporanHasil.labNumber.limited"
+            values={{ labNumber: searchedLabNumber }}
+          />
+        </p>
+      )}
+
       {!isLoading && reportData && (
         <DataTable rows={tableRows} headers={tableHeaders}>
           {({
@@ -488,24 +541,36 @@ export default function LaporanHasilReport() {
                             if (cell.info.header === "complianceStatus") {
                               return (
                                 <TableCell key={cell.id}>
-                                  {statusTag(cell.value, statusLabels)}
+                                  {statusTag(cell.value, {
+                                    ...statusLabels,
+                                    INELIGIBLE: intl.formatMessage({
+                                      id: "laporanHasil.tile.ineligible",
+                                    }),
+                                    NONE: intl.formatMessage({
+                                      id:
+                                        order?.reportKind === "RESULTS"
+                                          ? "laporanHasil.status.resultsReport"
+                                          : "laporanHasil.status.notGraded",
+                                    }),
+                                  })}
                                 </TableCell>
                               );
                             }
                             if (cell.info.header === "actions") {
                               const isIneligible =
                                 order?.complianceStatus === "INELIGIBLE";
-                              const hasBeenReleased = !!order?.hasBeenReleased;
+                              const reportIssued = !!order?.reportIssued;
                               return (
                                 <TableCell key={cell.id}>
                                   {isIneligible ? (
                                     <span style={{ color: "#525252", fontSize: "0.875rem" }}>
-                                      <FormattedMessage
-                                        id="laporanHasil.status.ineligible"
-                                        defaultMessage="No standard linked"
-                                      />
+                                      {order?.ineligibleReason === "NO_TESTS" ? (
+                                        <FormattedMessage id="laporanHasil.status.noTests" />
+                                      ) : (
+                                        <FormattedMessage id="laporanHasil.status.notValidated" />
+                                      )}
                                     </span>
-                                  ) : hasBeenReleased ? (
+                                  ) : reportIssued ? (
                                     <Button
                                       size="sm"
                                       kind="tertiary"
@@ -552,8 +617,26 @@ export default function LaporanHasilReport() {
       )}
 
       {!isLoading && reportData && tableRows.length === 0 && (
-        <p style={{ marginTop: "1rem", color: "#525252" }}>
-          <FormattedMessage id="laporanHasil.empty" />
+        <p
+          style={{ marginTop: "1rem", color: "#525252" }}
+          data-testid="laporan-hasil-empty"
+        >
+          {searchedLabNumber && reportData.labNumberMatches > 0 ? (
+            <FormattedMessage
+              id="laporanHasil.labNumber.filteredOut"
+              values={{
+                labNumber: searchedLabNumber,
+                count: reportData.labNumberMatches,
+              }}
+            />
+          ) : searchedLabNumber ? (
+            <FormattedMessage
+              id="laporanHasil.labNumber.notFound"
+              values={{ labNumber: searchedLabNumber }}
+            />
+          ) : (
+            <FormattedMessage id="laporanHasil.empty" />
+          )}
         </p>
       )}
 
@@ -608,6 +691,16 @@ export default function LaporanHasilReport() {
 
 function OrderDetail({ order, statusLabels }) {
   const intl = useIntl();
+  const certificate = order.reportKind !== "RESULTS";
+  const resultHeaders = [
+    "laporanHasil.detail.sample",
+    "laporanHasil.detail.parameter",
+    "laporanHasil.detail.result",
+    "laporanHasil.detail.unit",
+    "laporanHasil.detail.method",
+    "laporanHasil.detail.guideline",
+    ...(certificate ? ["laporanHasil.detail.status"] : []),
+  ];
   return (
     <Grid narrow style={{ padding: "1rem 0" }}>
       <Column lg={5} md={4} sm={4}>
@@ -658,6 +751,7 @@ function OrderDetail({ order, statusLabels }) {
         </StructuredListWrapper>
       </Column>
 
+      {certificate ? (
       <Column lg={7} md={8} sm={4}>
         <h5 style={{ marginBottom: "0.5rem" }}>
           <FormattedMessage id="laporanHasil.detail.complianceSummary" />
@@ -712,6 +806,59 @@ function OrderDetail({ order, statusLabels }) {
               </TableContainer>
             )}
           </DataTable>
+        ) : (
+          <p style={{ color: "#525252", fontSize: "0.875rem" }}>–</p>
+        )}
+      </Column>
+      ) : (
+        <Column lg={7} md={8} sm={4}>
+          <h5 style={{ marginBottom: "0.5rem" }}>
+            <FormattedMessage id="laporanHasil.detail.complianceSummary" />
+          </h5>
+          <p
+            style={{ color: "#525252", fontSize: "0.875rem" }}
+            data-testid="laporan-hasil-results-only"
+          >
+            <FormattedMessage id="laporanHasil.detail.resultsOnly" />
+          </p>
+        </Column>
+      )}
+
+      <Column lg={16} md={8} sm={4} style={{ marginTop: "1rem" }}>
+        <h5 style={{ marginBottom: "0.5rem" }}>
+          <FormattedMessage id="laporanHasil.detail.results" />
+        </h5>
+        {order.reportRows && order.reportRows.length > 0 ? (
+          <Table size="sm" data-testid="laporan-hasil-report-rows">
+            <TableHead>
+              <TableRow>
+                {resultHeaders.map((id) => (
+                  <TableHeader key={id}>
+                    <FormattedMessage id={id} />
+                  </TableHeader>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {order.reportRows.map((row, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    {`${row.sampleNumber ?? "–"}. ${row.sampleType ?? ""}`}
+                  </TableCell>
+                  <TableCell>{row.parameter || "–"}</TableCell>
+                  <TableCell>{row.result || "–"}</TableCell>
+                  <TableCell>{row.unit || ""}</TableCell>
+                  <TableCell>{row.method || ""}</TableCell>
+                  <TableCell>{row.guideline || ""}</TableCell>
+                  {certificate && (
+                    <TableCell>
+                      {row.status ? statusTag(row.status, statusLabels) : ""}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         ) : (
           <p style={{ color: "#525252", fontSize: "0.875rem" }}>–</p>
         )}

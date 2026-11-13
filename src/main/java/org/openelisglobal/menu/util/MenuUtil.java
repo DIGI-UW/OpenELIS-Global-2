@@ -32,7 +32,15 @@ public class MenuUtil {
 
     private static List<MenuItem> root;
     private static final List<Menu> insertedMenus = new ArrayList<>();
-    private static final MenuService menuService = SpringContext.getBean(MenuService.class);
+
+    /**
+     * Looked up per call, not in the class initializer: the string checks of this
+     * class ({@link #isModuleEntry}) are used where no Spring context exists yet,
+     * and an eager lookup made the class unloadable in that case.
+     */
+    private static MenuService menuService() {
+        return SpringContext.getBean(MenuService.class);
+    }
 
     /**
      * The intent of this method is to allow menu items to be added outside of the
@@ -46,6 +54,25 @@ public class MenuUtil {
     }
 
     // Update Menu items added outside the database
+    /**
+     * Drops an in-memory entry (one added through {@link #addMenu}) and rebuilds
+     * the tree.
+     */
+    public static void removeMenu(String elementId) {
+        if (insertedMenus.removeIf(menu -> elementId != null && elementId.equals(menu.getElementId()))) {
+            forceRebuild();
+        }
+    }
+
+    /**
+     * Whether an entry with this element id was contributed in memory by a module
+     * (id {@code module:<elementId>}).
+     */
+    public static boolean isModuleEntry(String elementId) {
+        return elementId != null && insertedMenus.stream().anyMatch(menu -> elementId.equals(menu.getElementId())
+                && menu.getId() != null && menu.getId().startsWith("module:"));
+    }
+
     public static void updateMenu(Menu menu) {
         insertedMenus.forEach(insertedMenu -> {
             if (insertedMenu.getElementId().equals(menu.getElementId())) {
@@ -71,7 +98,7 @@ public class MenuUtil {
         }
 
         // Filtered here, not in MenuController, so banner.jsp gets the same tree.
-        return menuService.filterByPrivilege(root);
+        return menuService().filterByPrivilege(root);
     }
 
     public static List<MenuItem> getUnfilteredMenuTree() {
@@ -83,7 +110,7 @@ public class MenuUtil {
     }
 
     private static void createTree() {
-        List<Menu> menuList = new ArrayList<>(menuService.getAll());
+        List<Menu> menuList = new ArrayList<>(menuService().getAll());
 
         Map<String, Menu> idToMenuMap = new HashMap<>();
 

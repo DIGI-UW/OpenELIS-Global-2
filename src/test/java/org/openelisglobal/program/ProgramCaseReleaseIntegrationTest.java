@@ -1,18 +1,26 @@
 package org.openelisglobal.program;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.program.controller.cytology.CytologySampleForm;
 import org.openelisglobal.program.controller.immunohistochemistry.ImmunohistochemistrySampleForm;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
@@ -22,6 +30,7 @@ import org.openelisglobal.program.service.cytology.CytologySampleService;
 import org.openelisglobal.program.valueholder.cytology.CytologySample.CytologyStatus;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample.ImmunohistochemistryStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -37,6 +46,13 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
     private static final String CASE_SAMPLE_ID = "1";
     private static final String CASE_ANALYSIS_ID = "2";
     private static final String OTHER_ANALYSIS_ID = "1";
+    private static final int PATHOLOGY_CASE_ID = 1;
+    private static final int IMMUNOHISTOCHEMISTRY_CASE_ID = 2;
+
+    /** This class's own rows, outside the ids the fixture uses. */
+    private static final int REFERRAL_SECTION_ID = 9501;
+    private static final int REFERRAL_ANALYSIS_ID = 9501;
+    private static final String REFERRAL_ANALYSIS_ID_STRING = String.valueOf(REFERRAL_ANALYSIS_ID);
 
     @Autowired
     private PathologySampleService pathologySampleService;
@@ -53,6 +69,7 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
 
     @Before
     public void init() throws Exception {
+        removeOwnRows();
         executeDataSetWithStateManagement("testdata/program-case-release.xml");
         authenticateAs("technician1");
         Analysis caseAnalysis = analysisService.get(CASE_ANALYSIS_ID);
@@ -79,21 +96,105 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
         pathologySampleService.updateWithFormValues(1, form);
 
         assertEquals(PathologyStatus.COMPLETED, pathologySampleService.get(1).getStatus());
+        assertEquals("release records the case's entry onto Completed, as any other move does",
+                List.of(PathologyStatus.COMPLETED), pathologySampleService.getStageEvents(1).stream()
+                        .map(PathologyStageEvent::getStage).collect(Collectors.toList()));
         assertReleasedOnCaseAnalysisOnly();
+        assertTrue("with every test on it reported, the order is finished", isOrderFinished());
     }
 
+    /** An immunohistochemistry order of its own, not a pathology referral. */
     @Test
-    public void immunohistochemistryRelease_finalizesOnlyTheCasesAnalysis() {
-        ImmunohistochemistrySampleForm form = new ImmunohistochemistrySampleForm();
-        form.setSystemUserId("1001");
-        form.setStatus(ImmunohistochemistryStatus.COMPLETED);
-        form.setRelease(true);
-        form.setReports(new ArrayList<>());
+    public void standaloneImmunohistochemistryRelease_finalizesOnlyTheCasesAnalysis() {
+        jdbcTemplate.update("UPDATE clinlims.immunohistochemistry_sample SET pathology_sample_id = NULL WHERE id = 2");
 
-        immunohistochemistrySampleService.updateWithFormValues(2, form);
+        immunohistochemistrySampleService.updateWithFormValues(IMMUNOHISTOCHEMISTRY_CASE_ID,
+                immunohistochemistryReleaseForm());
 
-        assertEquals(ImmunohistochemistryStatus.COMPLETED, immunohistochemistrySampleService.get(2).getStatus());
+        assertEquals(ImmunohistochemistryStatus.COMPLETED,
+                immunohistochemistrySampleService.get(IMMUNOHISTOCHEMISTRY_CASE_ID).getStatus());
         assertReleasedOnCaseAnalysisOnly();
+        assertTrue("with every test on it reported, the order is finished", isOrderFinished());
+    }
+
+    /**
+     * The pathologist signs the case out while the referred immunohistochemistry is
+     * still to be done: the referral's test stays open and so does the order.
+     */
+    @Test
+    public void pathologyRelease_leavesTheImmunohistochemistryReferralOpen() {
+        addReferralAnalysis();
+        String referralStatusBefore = analysisService.get(REFERRAL_ANALYSIS_ID_STRING).getStatusId();
+
+        pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm());
+
+        assertCaseAnalysisReleased();
+        Analysis referral = analysisService.get(REFERRAL_ANALYSIS_ID_STRING);
+        assertNull("the referral's test is not released with the case", referral.getReleasedDate());
+        assertEquals("nor is its status changed", referralStatusBefore, referral.getStatusId());
+        assertEquals("nor does it gain the pathology report's result", 0, resultCount(REFERRAL_ANALYSIS_ID));
+        assertFalse("the order is not finished while the referral is open", isOrderFinished());
+    }
+
+    /**
+     * Released before the pathologist signs the case out, the referral reports its
+     * own test only.
+     */
+    @Test
+    public void referredImmunohistochemistryRelease_finalizesOnlyTheReferral() {
+        addReferralAnalysis();
+        String caseStatusBefore = analysisService.get(CASE_ANALYSIS_ID).getStatusId();
+
+        immunohistochemistrySampleService.updateWithFormValues(IMMUNOHISTOCHEMISTRY_CASE_ID,
+                immunohistochemistryReleaseForm());
+
+        Analysis referral = analysisService.get(REFERRAL_ANALYSIS_ID_STRING);
+        assertNotNull("the referral's test is released", referral.getReleasedDate());
+        assertTrue("and finalized", statusService.matches(referral.getStatusId(), AnalysisStatus.Finalized));
+        assertEquals("with the referral's result", 1, resultCount(REFERRAL_ANALYSIS_ID));
+        Analysis caseAnalysis = analysisService.get(CASE_ANALYSIS_ID);
+        assertNull("the pathology case's test waits for its sign-out", caseAnalysis.getReleasedDate());
+        assertEquals("its status unchanged", caseStatusBefore, caseAnalysis.getStatusId());
+        assertEquals("and no result written on it", 0, resultCount(Integer.parseInt(CASE_ANALYSIS_ID)));
+        assertFalse("the order is not finished while the case is open", isOrderFinished());
+        assertTrue("the case can still be signed out", isPathologyCaseReleasable());
+    }
+
+    /** The order finishes with the second of the two releases. */
+    @Test
+    public void pathologyAndReferralReleases_finishTheOrderTogether() {
+        addReferralAnalysis();
+
+        pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm());
+        assertFalse(isOrderFinished());
+        immunohistochemistrySampleService.updateWithFormValues(IMMUNOHISTOCHEMISTRY_CASE_ID,
+                immunohistochemistryReleaseForm());
+
+        assertCaseAnalysisReleased();
+        assertNotNull(analysisService.get(REFERRAL_ANALYSIS_ID_STRING).getReleasedDate());
+        assertTrue("both reported, the order is finished", isOrderFinished());
+    }
+
+    /**
+     * A referral made in the same save as the sign-out adds tests the release must
+     * leave open.
+     */
+    @Test
+    public void referralMadeWithTheRelease_staysOpen() {
+        addImmunohistochemistrySection();
+        PathologySampleForm form = pathologyReleaseForm();
+        form.setReferToImmunoHistoChemistry(true);
+        form.setImmunoHistoChemistryTestIds(List.of("2"));
+
+        pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, form);
+
+        assertCaseAnalysisReleased();
+        List<Map<String, Object>> referrals = jdbcTemplate.queryForList(
+                "SELECT id, released_date FROM clinlims.analysis WHERE parent_analysis_id = 2 AND test_sect_id = ?",
+                REFERRAL_SECTION_ID);
+        assertEquals("the referral adds its test", 1, referrals.size());
+        assertNull("which the sign-out does not release", referrals.get(0).get("released_date"));
+        assertFalse("and the order stays open for it", isOrderFinished());
     }
 
     @Test
@@ -109,6 +210,157 @@ public class ProgramCaseReleaseIntegrationTest extends BaseWebContextSensitiveTe
 
         assertEquals(CytologyStatus.COMPLETED, cytologySampleService.get(3).getStatus());
         assertReleasedOnCaseAnalysisOnly();
+        assertTrue("with every test on it reported, the order is finished", isOrderFinished());
+    }
+
+    @After
+    public void cleanUp() {
+        removeOwnRows();
+    }
+
+    /**
+     * A case set to Completed without a release, its analyses still unreleased, is
+     * released once. The release stamps the case's analysis, and the case is not
+     * offered a second.
+     */
+    @Test
+    public void pathologyCaseLeftAtCompletedWithUnreleasedAnalyses_isReleasedOnce() {
+        leavePathologyCaseAtCompleted();
+        assertTrue("a case never released reads as releasable", isPathologyCaseReleasable());
+
+        pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm());
+
+        assertNotNull("the release stamps the case's analysis",
+                analysisService.get(CASE_ANALYSIS_ID).getReleasedDate());
+        assertFalse("and the case no longer reads as releasable", isPathologyCaseReleasable());
+        assertSecondPathologyReleaseRefused();
+    }
+
+    /**
+     * A case released before releases were audited has no sign-out entry and no
+     * entry onto Completed. The released date its release stamped on the case's
+     * analysis is what records it.
+     */
+    @Test
+    public void pathologyCaseReleasedBeforeReleasesWereAudited_isRefusedASecondRelease() {
+        leavePathologyCaseAtCompleted();
+        jdbcTemplate.update("UPDATE clinlims.analysis SET released_date = now() WHERE id = ?",
+                Integer.parseInt(CASE_ANALYSIS_ID));
+
+        assertFalse("the case reads as released", isPathologyCaseReleasable());
+        assertSecondPathologyReleaseRefused();
+        assertEquals("the refused release writes no result on the case's analysis", Integer.valueOf(0), jdbcTemplate
+                .queryForObject("SELECT COUNT(*) FROM clinlims.result WHERE analysis_id = 2", Integer.class));
+    }
+
+    /**
+     * An immunohistochemistry referral adds its own analysis to the case's order.
+     * That analysis being released is the referral's release, not the case's.
+     */
+    @Test
+    public void releasedImmunohistochemistryAnalysis_isNotThePathologyCasesRelease() {
+        leavePathologyCaseAtCompleted();
+        addReferralAnalysis();
+        jdbcTemplate.update("UPDATE clinlims.analysis SET released_date = now() WHERE id = ?", REFERRAL_ANALYSIS_ID);
+
+        assertTrue("the case was never released, so it still reads as releasable", isPathologyCaseReleasable());
+    }
+
+    private void addImmunohistochemistrySection() {
+        jdbcTemplate.update("INSERT INTO clinlims.test_section (id, name, description, org_id, is_external,"
+                + " lastupdated, sort_order, name_localization_id, display_key, domain)"
+                + " SELECT ?, 'Immunohistochemistry', 'Referral section', org_id, is_external, now(), sort_order,"
+                + " name_localization_id, 'ReferralSectionKey', domain FROM clinlims.test_section WHERE id = 2",
+                REFERRAL_SECTION_ID);
+    }
+
+    /**
+     * The test a referral adds to the case's order, as the referral writes it: in
+     * the Immunohistochemistry section, under the case's analysis, unreleased.
+     */
+    private void addReferralAnalysis() {
+        addImmunohistochemistrySection();
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.analysis (id, sampitem_id, test_sect_id, test_id, revision,"
+                        + " status_id, analysis_type, lastupdated, started_date, type_of_sample_name,"
+                        + " fhir_uuid, parent_analysis_id, referred_out, corrected, result_calculated, reflex_trigger,"
+                        + " method_id) SELECT ?, sampitem_id, ?, test_id, revision, status_id, analysis_type, now(),"
+                        + " started_date, type_of_sample_name, gen_random_uuid(), id, false, corrected,"
+                        + " result_calculated, reflex_trigger, method_id FROM clinlims.analysis WHERE id = 2",
+                REFERRAL_ANALYSIS_ID, REFERRAL_SECTION_ID);
+    }
+
+    private ImmunohistochemistrySampleForm immunohistochemistryReleaseForm() {
+        ImmunohistochemistrySampleForm form = new ImmunohistochemistrySampleForm();
+        form.setSystemUserId("1001");
+        form.setStatus(ImmunohistochemistryStatus.COMPLETED);
+        form.setRelease(true);
+        form.setReports(new ArrayList<>());
+        return form;
+    }
+
+    private void assertCaseAnalysisReleased() {
+        Analysis caseAnalysis = analysisService.get(CASE_ANALYSIS_ID);
+        assertNotNull("the case's own analysis is released", caseAnalysis.getReleasedDate());
+        assertTrue("and finalized", statusService.matches(caseAnalysis.getStatusId(), AnalysisStatus.Finalized));
+        assertEquals("with the case's result", 1, resultCount(Integer.parseInt(CASE_ANALYSIS_ID)));
+    }
+
+    private int resultCount(int analysisId) {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.result WHERE analysis_id = ?", Integer.class,
+                analysisId);
+    }
+
+    private boolean isOrderFinished() {
+        String statusId = jdbcTemplate.queryForObject(
+                "SELECT CAST(status_id AS varchar) FROM clinlims.sample WHERE id = ?", String.class,
+                Integer.parseInt(CASE_SAMPLE_ID));
+        return statusService.matches(statusId, OrderStatus.Finished);
+    }
+
+    private void leavePathologyCaseAtCompleted() {
+        jdbcTemplate.update("UPDATE clinlims.pathology_sample SET status = 'COMPLETED' WHERE id = ?",
+                PATHOLOGY_CASE_ID);
+    }
+
+    private boolean isPathologyCaseReleasable() {
+        return pathologySampleService.isReleasable(pathologySampleService.get(PATHOLOGY_CASE_ID));
+    }
+
+    private PathologySampleForm pathologyReleaseForm() {
+        PathologySampleForm form = new PathologySampleForm();
+        form.setSystemUserId("1001");
+        form.setRelease(true);
+        form.setBlocks(new ArrayList<>());
+        form.setSlides(new ArrayList<>());
+        form.setReports(new ArrayList<>());
+        return form;
+    }
+
+    private void assertSecondPathologyReleaseRefused() {
+        LocalizedValidationException refusal = assertThrows(LocalizedValidationException.class,
+                () -> pathologySampleService.updateWithFormValues(PATHOLOGY_CASE_ID, pathologyReleaseForm()));
+        assertEquals("refused as already signed out", "pathology.error.caseCompleted", refusal.getErrorCode());
+    }
+
+    /**
+     * The referral rows, and the pathology case's stage entries and audit entries,
+     * which outlive a fixture reload.
+     */
+    private void removeOwnRows() {
+        String referralAnalyses = "SELECT id FROM clinlims.analysis WHERE test_sect_id = " + REFERRAL_SECTION_ID;
+        jdbcTemplate.update("DELETE FROM clinlims.result WHERE analysis_id IN (" + referralAnalyses + ")");
+        jdbcTemplate.update("DELETE FROM clinlims.note WHERE reference_table ="
+                + " (SELECT id FROM clinlims.reference_tables WHERE name = 'ANALYSIS') AND reference_id IN ("
+                + referralAnalyses + ")");
+        jdbcTemplate.update("DELETE FROM clinlims.analysis WHERE test_sect_id = ?", REFERRAL_SECTION_ID);
+        jdbcTemplate.update("DELETE FROM clinlims.test_section WHERE id = ?", REFERRAL_SECTION_ID);
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_stage_event WHERE pathology_sample_id = ?",
+                PATHOLOGY_CASE_ID);
+        jdbcTemplate.update(
+                "DELETE FROM clinlims.history WHERE reference_id = ? AND reference_table ="
+                        + " (SELECT id FROM clinlims.reference_tables WHERE name = 'PATHOLOGY_SAMPLE')",
+                PATHOLOGY_CASE_ID);
     }
 
     private void assertReleasedOnCaseAnalysisOnly() {

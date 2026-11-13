@@ -7,7 +7,9 @@ import {
   Switch,
 } from "react-router-dom";
 import RedirectOldUI from "./RedirectOldUI";
+import ModuleRoutes from "./modules/ModuleRoutes";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
+import FacilityAutoLocation from "./components/admin/generalConfig/facilityLocation/FacilityAutoLocation";
 import { Admin } from "./components";
 import ChangePassword from "./components/ChangePassword";
 import Home from "./components/Home";
@@ -477,6 +479,7 @@ export default function App() {
         }}
       >
         <>
+          <FacilityAutoLocation />
           <Router>
             <Layout onChangeLanguage={onChangeLanguage}>
               <Switch>
@@ -1822,6 +1825,8 @@ export default function App() {
                   )}
                   role={ANALYZER_RESULTS_ROLES}
                 />
+                {/* Pages of installed modules, /m/<module id>/..., before the catch-all */}
+                <Route path="/m/:moduleId" render={() => <ModuleRoutes />} />
                 <Route path="*" render={() => <RedirectOldUI />} />
               </Switch>
             </Layout>

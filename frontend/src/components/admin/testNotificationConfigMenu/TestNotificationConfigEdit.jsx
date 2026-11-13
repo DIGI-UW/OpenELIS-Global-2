@@ -222,7 +222,30 @@ function TestNotificationConfigEdit() {
     });
   };
 
+  const subjectWithoutMessage = (templatePath) =>
+    readTemplateField(templatePath, "subjectTemplate").trim() !== "" &&
+    readTemplateField(templatePath, "messageTemplate").trim() === "";
+
+  const TEMPLATE_PATHS = [
+    "config.defaultPayloadTemplate",
+    "config.providerEmail.payloadTemplate",
+    "config.providerSMS.payloadTemplate",
+    "config.patientEmail.payloadTemplate",
+    "config.patientSMS.payloadTemplate",
+  ];
+
   function testNotificationConfigEditSavePostCall() {
+    if (TEMPLATE_PATHS.some(subjectWithoutMessage)) {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "testnotification.template.messageRequired",
+        }),
+      });
+      setNotificationVisible(true);
+      return;
+    }
     setLoading(true);
     postToOpenElisServerJsonResponse(
       `/rest/TestNotificationConfig`,
@@ -296,9 +319,7 @@ function TestNotificationConfigEdit() {
             <Column lg={16} md={8} sm={4}>
               <Section>
                 <Section>
-                  <Heading>
-                    {testName && <FormattedMessage id={`${testName}`} />}
-                  </Heading>
+                  <Heading>{testName}</Heading>
                 </Section>
               </Section>
             </Column>
@@ -432,7 +453,7 @@ function TestNotificationConfigEdit() {
                     setSysDefaultMsg(!sysDefaultMsg);
                   }}
                 >
-                  Edit
+                  <FormattedMessage id="button.edit" />
                 </Button>
               </Column>
             </Grid>
@@ -445,7 +466,9 @@ function TestNotificationConfigEdit() {
                 <TextInput
                   id="subject"
                   type="text"
-                  labelText=""
+                  labelText={intl.formatMessage({
+                    id: "testnotification.subjecttemplate",
+                  })}
                   hideLabel={true}
                   disabled={sysDefaultMsg}
                   placeholder={intl.formatMessage({
@@ -483,7 +506,9 @@ function TestNotificationConfigEdit() {
                 <TextArea
                   id="message"
                   type="text"
-                  labelText=""
+                  labelText={intl.formatMessage({
+                    id: "testnotification.messagetemplate",
+                  })}
                   hideLabel={true}
                   disabled={sysDefaultMsg}
                   placeholder={intl.formatMessage({
@@ -536,7 +561,10 @@ function TestNotificationConfigEdit() {
                 <TextInput
                   id="testDefaultSubjectTemplate"
                   type="text"
-                  labelText=""
+                  hideLabel={true}
+                  labelText={intl.formatMessage({
+                    id: "testnotification.subjecttemplate",
+                  })}
                   value={readTemplateField(
                     "config.defaultPayloadTemplate",
                     "subjectTemplate",
@@ -559,7 +587,16 @@ function TestNotificationConfigEdit() {
               <Column lg={16} md={8} sm={4}>
                 <TextArea
                   id="testDefaultMessageTemplate"
-                  labelText=""
+                  invalid={subjectWithoutMessage(
+                    "config.defaultPayloadTemplate",
+                  )}
+                  invalidText={intl.formatMessage({
+                    id: "testnotification.template.messageRequired",
+                  })}
+                  hideLabel={true}
+                  labelText={intl.formatMessage({
+                    id: "testnotification.messagetemplate",
+                  })}
                   value={readTemplateField(
                     "config.defaultPayloadTemplate",
                     "messageTemplate",
@@ -667,7 +704,10 @@ function TestNotificationConfigEdit() {
                     <TextInput
                       id={`${individualChannelKey}-subject`}
                       type="text"
-                      labelText=""
+                      hideLabel={true}
+                      labelText={intl.formatMessage({
+                        id: "testnotification.subjecttemplate",
+                      })}
                       value={readTemplateField(
                         `config.${individualChannelKey}.payloadTemplate`,
                         "subjectTemplate",
@@ -690,7 +730,16 @@ function TestNotificationConfigEdit() {
                   <Column lg={16} md={8} sm={4}>
                     <TextArea
                       id={`${individualChannelKey}-message`}
-                      labelText=""
+                      invalid={subjectWithoutMessage(
+                        `config.${individualChannelKey}.payloadTemplate`,
+                      )}
+                      invalidText={intl.formatMessage({
+                        id: "testnotification.template.messageRequired",
+                      })}
+                      hideLabel={true}
+                      labelText={intl.formatMessage({
+                        id: "testnotification.messagetemplate",
+                      })}
                       value={readTemplateField(
                         `config.${individualChannelKey}.payloadTemplate`,
                         "messageTemplate",
@@ -737,7 +786,16 @@ function TestNotificationConfigEdit() {
                   <Column lg={16} md={8} sm={4}>
                     <TextArea
                       id={`${individualChannelKey}-message`}
-                      labelText=""
+                      invalid={subjectWithoutMessage(
+                        `config.${individualChannelKey}.payloadTemplate`,
+                      )}
+                      invalidText={intl.formatMessage({
+                        id: "testnotification.template.messageRequired",
+                      })}
+                      hideLabel={true}
+                      labelText={intl.formatMessage({
+                        id: "testnotification.messagetemplate",
+                      })}
                       value={readTemplateField(
                         `config.${individualChannelKey}.payloadTemplate`,
                         "messageTemplate",

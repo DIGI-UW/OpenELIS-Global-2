@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- The organization record that is this laboratory, by id. Written by the system
+       when it creates that record; it has no settings domain, so no settings screen
+       lists or edits it. The record's name, short name and other fields stay editable. -->
+  <changeSet author="mozzy11" id="facility-organization-id-1">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'facilityOrganizationId'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq" />
+      <column name="name" value="facilityOrganizationId" />
+      <column name="description" value="Id of the organization record that is this laboratory. Set by the system." />
+      <column name="value" value="" />
+      <column name="value_type" value="text" />
+      <column name="lastupdated" valueDate="now()" />
+    </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="site_information">
+        <where>name = 'facilityOrganizationId'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+  <changeSet author="mozzy11" id="facility-organization-id-2">
+    <comment>Record the existing facility organization (short name FACILITY_ORG) of an upgraded installation.</comment>
+    <sql>
+      UPDATE clinlims.site_information
+         SET value = (SELECT CAST(MIN(o.id) AS VARCHAR) FROM clinlims.organization o WHERE o.short_name = 'FACILITY_ORG'),
+             lastupdated = now()
+       WHERE name = 'facilityOrganizationId'
+         AND (value IS NULL OR value = '')
+         AND EXISTS (SELECT 1 FROM clinlims.organization o WHERE o.short_name = 'FACILITY_ORG');
+    </sql>
+    <rollback/>
+  </changeSet>
+
+</databaseChangeLog>

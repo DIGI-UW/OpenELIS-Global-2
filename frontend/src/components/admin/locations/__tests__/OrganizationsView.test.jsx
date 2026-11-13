@@ -25,6 +25,7 @@ const { api, notify } = vi.hoisted(() => ({
     moveWard: vi.fn(),
     getHistory: vi.fn(),
     getLists: vi.fn(),
+    getThisLaboratory: vi.fn(() => Promise.resolve(null)),
     listIdentifierCollisions: vi.fn(() => Promise.resolve([])),
     getAreaLevels: vi.fn(),
     listAreas: vi.fn(),
@@ -108,6 +109,7 @@ describe("OrganizationsView (OGC-1363)", () => {
     Object.values(api).forEach((fn) => fn.mockReset && fn.mockReset());
     notify.mockReset();
     api.listIdentifierCollisions.mockResolvedValue([]);
+    api.getThisLaboratory.mockResolvedValue(null);
     api.searchAreas.mockResolvedValue([]);
     api.listOrganizations.mockResolvedValue({
       items: [row()],
@@ -137,6 +139,50 @@ describe("OrganizationsView (OGC-1363)", () => {
         pageSize: 25,
       }),
     );
+  });
+
+  it("shows this laboratory's name, FHIR id and record id above the list and tags its row", async () => {
+    api.getThisLaboratory.mockResolvedValue({
+      id: "2",
+      name: "Uganda National Reference Laboratory",
+      fhirId: "161f4606-a361-4350-a87a-1a879ea9e5de",
+    });
+    api.listOrganizations.mockResolvedValue({
+      items: [
+        row(),
+        row({ id: "2", name: "Uganda National Reference Laboratory" }),
+      ],
+      total: 2,
+      page: 1,
+      pageSize: 25,
+    });
+    renderView();
+    const panel = await screen.findByTestId("locations-this-lab");
+    expect(panel).toHaveTextContent("This laboratory");
+    expect(screen.getByTestId("locations-this-lab-name")).toHaveTextContent(
+      "Uganda National Reference Laboratory",
+    );
+    expect(screen.getByTestId("locations-this-lab-fhir-id")).toHaveTextContent(
+      "161f4606-a361-4350-a87a-1a879ea9e5de",
+    );
+    expect(
+      screen.getByTestId("locations-this-lab-record-id"),
+    ).toHaveTextContent("2");
+    const tags = await screen.findAllByTestId("locations-this-lab-tag");
+    expect(tags).toHaveLength(1);
+    expect(tags[0].closest("tr")).toHaveTextContent(
+      "Uganda National Reference Laboratory",
+    );
+  });
+
+  it("shows no panel and no tag when this laboratory has no record yet", async () => {
+    renderView();
+    expect(await screen.findByText("Health Services Inc")).toBeInTheDocument();
+    await waitFor(() => expect(api.getThisLaboratory).toHaveBeenCalled());
+    expect(screen.queryByTestId("locations-this-lab")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("locations-this-lab-tag"),
+    ).not.toBeInTheDocument();
   });
 
   // OGC-1448: the sort description is built from the header's children; an

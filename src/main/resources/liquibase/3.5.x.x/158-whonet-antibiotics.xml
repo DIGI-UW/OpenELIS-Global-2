@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="158-whonet-antibiotic-table" author="openelis">
+  <createTable schemaName="clinlims" tableName="micro_whonet_antibiotic" remarks="WHONET's antibiotic table as published, one row per code and potency">
+   <column name="id" type="varchar(36)" defaultValueComputed="gen_random_uuid()::varchar">
+    <constraints primaryKey="true" nullable="false"/>
+   </column>
+   <column name="whonet_abx_code" type="varchar(255)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="who_code" type="varchar(255)"/>
+   <column name="din_code" type="varchar(255)"/>
+   <column name="jac_code" type="varchar(255)"/>
+   <column name="eucast_code" type="varchar(255)"/>
+   <column name="user_code" type="varchar(255)"/>
+   <column name="antibiotic" type="varchar(255)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="guidelines" type="varchar(255)"/>
+   <column name="clsi" type="varchar(255)"/>
+   <column name="eucast" type="varchar(255)"/>
+   <column name="sfm" type="varchar(255)"/>
+   <column name="srga" type="varchar(255)"/>
+   <column name="bsac" type="varchar(255)"/>
+   <column name="din" type="varchar(255)"/>
+   <column name="neo" type="varchar(255)"/>
+   <column name="afa" type="varchar(255)"/>
+   <column name="abx_number" type="varchar(255)"/>
+   <column name="potency" type="varchar(255)"/>
+   <column name="atc_code" type="varchar(255)"/>
+   <column name="antibiotic_class" type="varchar(255)"/>
+   <column name="subclass" type="varchar(255)"/>
+   <column name="prof_class" type="varchar(255)"/>
+   <column name="who_aware" type="varchar(255)"/>
+   <column name="cia_category" type="varchar(255)"/>
+   <column name="clsi_order" type="varchar(255)"/>
+   <column name="eucast_order" type="varchar(255)"/>
+   <column name="human" type="varchar(255)"/>
+   <column name="veterinary" type="varchar(255)"/>
+   <column name="animal_gp" type="varchar(255)"/>
+   <column name="loinc_comp" type="varchar(255)"/>
+   <column name="loinc_gen" type="varchar(255)"/>
+   <column name="loinc_disk" type="varchar(255)"/>
+   <column name="loinc_mic" type="varchar(255)"/>
+   <column name="loinc_etest" type="varchar(255)"/>
+   <column name="loinc_slow" type="varchar(255)"/>
+   <column name="loinc_afb" type="varchar(255)"/>
+   <column name="loinc_sbt" type="varchar(255)"/>
+   <column name="loinc_mlc" type="varchar(255)"/>
+   <column name="date_entered" type="varchar(255)"/>
+   <column name="date_modified" type="varchar(255)"/>
+   <column name="comments" type="text"/>
+   <column name="last_updated" type="timestamp" defaultValueComputed="now()">
+    <constraints nullable="false"/>
+   </column>
+  </createTable>
+  <sql>CREATE INDEX idx_micro_whonet_antibiotic_code ON clinlims.micro_whonet_antibiotic (whonet_abx_code);</sql>
+  <rollback>
+   <dropTable schemaName="clinlims" tableName="micro_whonet_antibiotic"/>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

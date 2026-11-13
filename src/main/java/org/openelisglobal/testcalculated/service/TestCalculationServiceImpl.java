@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TestCalculationServiceImpl extends AuditableBaseObjectServiceImpl<Calculation, Integer>
         implements TestCalculationService {
 
+    public static final String INVALID_LOGIC = "error.invalid.calculation.logic";
     public static final String DUPLICATE_NAME = "calculation.error.duplicateName";
     public static final String DUPLICATE_NAME_INACTIVE = "calculation.error.duplicateNameInactive";
     public static final String SELF_REFERENCE = "calculation.error.selfReference";
@@ -52,6 +53,11 @@ public class TestCalculationServiceImpl extends AuditableBaseObjectServiceImpl<C
     @Override
     @Transactional(readOnly = true)
     public void validateRule(Calculation calculation, boolean willBeActive) {
+        try {
+            CalculationExpression.compile(calculation.getOperations());
+        } catch (IllegalArgumentException e) {
+            throw new CalculationRuleViolation(INVALID_LOGIC, Map.of());
+        }
         List<Calculation> others = getAll().stream().filter(other -> !sameRule(other, calculation))
                 .collect(Collectors.toList());
         String name = StringUtils.trimToEmpty(calculation.getName());

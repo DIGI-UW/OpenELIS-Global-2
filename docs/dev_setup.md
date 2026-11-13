@@ -18,11 +18,12 @@ routing, but it is not a production deployment or proof that CI passes.
 ## Work on source
 
 Install Git, Python, a working Docker CLI with Compose, Java 21, Maven, curl,
-gettext (`envsubst`), and [mkcert](https://github.com/FiloSottile/mkcert). On
-macOS, install mkcert with `brew install mkcert`; other platforms should follow
-its installation instructions. Frontend build tools run inside Docker; install a
-supported Node version when running browser tests or frontend tools on the host.
-The package lockfiles and Dockerfiles own dependency versions.
+gettext (`envsubst`). [mkcert](https://github.com/FiloSottile/mkcert) is needed
+for trusted local HTTPS; `scripts/dev-stack up` installs it when it is missing
+(with Homebrew when present, otherwise the official binary into
+`~/.cache/openelis-dev-stack/bin`). Frontend build tools run inside Docker;
+install a supported Node version when running browser tests or frontend tools on
+the host. The package lockfiles and Dockerfiles own dependency versions.
 
 Once per clone or worktree:
 
@@ -33,8 +34,13 @@ bash scripts/setup-workspace.sh
 Start development:
 
 ```bash
-scripts/dev-stack up
+scripts/dev-stack up                  # full stack (default, same as --setup full)
+scripts/dev-stack up --setup light    # database, webapp, frontend and proxy only
 ```
+
+The light setup leaves out the FHIR server, the Analyzer Bridge and the analyzer
+simulator. Add `--module <module source folder>` to build and run a module; see
+the README's "Running a module from its source".
 
 Use the URL printed by `up`. Retrieve it later with `scripts/dev-stack url`.
 Localhost works with the generated `.env`; no domain or port settings are
@@ -53,9 +59,13 @@ the checkout and runs it, together with the frontend `src` and `public`
 directories, in the published development images named in
 `projects/analyzer-harness/docker-compose.dev.yml` and
 `docker-compose.worktree.yml` (`itechuw/openelis-global-2-dev`, `-frontend-dev`,
-`-analyzer-bridge` and `-analyzer-mock`, tag `develop`), which it pulls on each
-start. `DEV_STACK_IMAGE_NAMESPACE` and `DEV_STACK_IMAGE_TAG` select other
-published images.
+`-analyzer-bridge` and `-analyzer-mock`, tag `develop`). It pulls the latest
+published images on the first `up` in each terminal, and any image that is not
+on the machine; later runs in the same terminal reuse the local images and print
+their build date. A terminal counts as pulled only when every pull succeeded,
+and a light `up` does not count for a later full one. Run `up --pull` to pull
+again at any time. `DEV_STACK_IMAGE_NAMESPACE` and `DEV_STACK_IMAGE_TAG` select
+other published images.
 
 Run `up --build` to build those images from the checkout instead. That is only
 needed when a change lives inside an image rather than in the mounted WAR or
@@ -145,6 +155,44 @@ it does not publish images or manage GitHub checkpoints. GitHub-only
 publication, artifact uploads and checkpoint reporting still require their
 GitHub results. Neither a failed lane nor a check that did not run is a pass.
 
+## Backend tests in CI
+
+The backend integration tests share one PostgreSQL per JVM and run in
+alphabetical order, because many fixtures commit and later classes see their
+rows. CI (pull requests, develop pushes and releases) runs them as four shards
+in parallel: contiguous alphabetical ranges of the same classes, each on a fresh
+database, about 20 minutes instead of one hour. Every test class runs in exactly
+one shard. The `mode` line in `.github/ci/backend-test-shards.json` decides
+which result gates a run:
+
+- `required` (current): the shards and `Backend shard report` decide. The single
+  full run (`Build + Test`) runs on a pull request only when it carries the
+  `ci:full-backend` label, and the report then lists every test whose outcome
+  differs. The label is read when a run starts: add it, then push.
+- `shadow`: `Build + Test` decides; the shards run beside it for comparison.
+- `off`: the single full run only.
+
+Classes that start their own PostgreSQL carry `@IsolatedDatabase` and run in
+`Build + Test (isolated databases)`, three JVMs at a time. A test class that
+creates a `PostgreSQLContainer` without the annotation fails `Detect Changes`.
+On develop pushes the `Coverage` job merges the shards' JaCoCo data and
+publishes the coverage badge, as before. `Backend / Nightly order check` runs
+the whole suite in one JVM every night, in alphabetical and in reverse order; a
+test that fails only in reverse order depends on another class and should seed
+its own data. Locally, `mvn test` and `mvn clean install` still run every test
+in one JVM, as before.
+
+Run one shard locally:
+
+```bash
+python3 .github/scripts/backend_test_shards.py check
+python3 .github/scripts/backend_test_shards.py includes --shard 2 --output /tmp/shard-2.txt
+scripts/run-java21 mvn test -Dsurefire.includesFile=/tmp/shard-2.txt
+```
+
+To rebalance, move a boundary in the same file, using the per-shard minutes in
+the shard report.
+
 ## Native builds
 
 Java, Maven and Node can also run directly on the host. The development launcher
@@ -166,38 +214,39 @@ installation does not change application ownership or configuration.
 
 ## Run published images
 
-Follow
-[the installation instructions](../README.md#for-offline-installation-using-the-openelis-global2-installer)
-and [release guidance](../RELEASES.md) to prepare the deployment configuration.
-The deployment files are `docker-compose.yml` and, when analyzers are needed,
-`docker-compose.analyzers.yml`. Use coherent version or digest pins.
+For a lab deployment, use
+[the released default distribution](https://github.com/DIGI-UW/openelis-docker/releases)
+and its tagged README. Run the following in that distribution directory after
+configuring credentials:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.analyzers.yml pull
-docker compose -f docker-compose.yml -f docker-compose.analyzers.yml up -d --no-build
+docker compose pull
+docker compose up -d --no-build
+docker compose ps
 ```
 
-This mode does not compile application source or mount a locally built WAR. An
-unavailable image must fail visibly. Mutable `develop` images are for explicit
-development/demo deployments; release verification uses fixed images.
+OE2's root Compose files remain inputs to build/test and testing-server
+deployment. They do not define a second operator installation path. Development
+images require an explicit development/testing choice; a production distribution
+uses the tested release manifest's digests and fails if an image is unavailable.
 
-The `certs` service runs `scripts/certs/ensure-install-keys.sh` on every start.
-It replaces only the certificate the public `certgen` image shipped to every
-install: the first start gives the install its own TLS key and certificate in
-`/etc/openelis-global/install` on the `key_trust-store-volume` volume and
-rebuilds the keystore, truststore and proxy certificate that still hold the
-image's. A keystore that already holds a certificate of the site's own is kept,
-and its key becomes the install's; a proxy certificate someone else installed,
-such as a Let's Encrypt one, is kept too. A store that does not open with the
-configured keystore/truststore passwords is left untouched and startup fails
-with an explanation; restore the correct passwords before retrying. Later starts
-keep the install's key. The first start also generates the install's key for
-database secrets (`install/encryption.key`), which the webapp uses unless
-`OE_ENCRYPTION_PASSWORD` is set. Fresh installations use this key from the first
-write. Existing databases require the explicit
-[one-time encryption upgrade](upgrades/installation-encryption.md) before
-switching to it. Normal startup never scans or rewrites database secrets. Back
-up the key volume with the database.
+The versioned `openelis-global-2-certs` image contains the initializer and
+tools, with no installation keys. Docker Compose starts it before dependent
+services. An empty installation gets its own TLS identity and independent
+`install/encryption.key`; the webapp loads that key unless an explicit
+`OE_ENCRYPTION_PASSWORD` is retained. Restart validates and preserves the
+complete security volume. Missing material or incorrect passwords stop
+initialization. Back up the database, configuration and all security volumes
+together.
+
+Existing installations use the separate `certs --upgrade-existing` command with
+their effective encryption password supplied through the environment. It adopts
+site-owned certificates or replaces recognized shared TLS certificates while
+preserving the effective encryption password. It does not scan or convert
+database values. See the
+[installer's adoption procedure](https://github.com/DIGI-UW/openelis-docker#installation-keys-and-existing-installations).
+Moving existing encrypted values to a different encryption key remains the
+separate [one-time encryption upgrade](upgrades/installation-encryption.md).
 
 A paired Analyzer Bridge pinned the certificate OpenELIS served when they
 paired, so it stops delivering results when the key is replaced; undelivered
@@ -225,7 +274,7 @@ as routine setup. Automatic Bridge cache repair is separate follow-up work.
 ### Install-owned TLS stores
 
 The published Compose stack generates a private TLS key on first start and
-reuses it on later starts. The upgrade script replaces both historical shared
+reuses it on later starts. Explicit adoption replaces both historical shared
 certgen certificate subjects (DIGI-UW and I-TECH-UW), including a shared key
 previously exported into the install directory. Genuine site keys, separate
 proxy certificates, and extra truststore entries are preserved.

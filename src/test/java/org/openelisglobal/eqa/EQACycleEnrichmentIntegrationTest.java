@@ -128,6 +128,17 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
         assertTrue("a cycle with no linked orders has no sample rows", ((List<?>) row.get("samples")).isEmpty());
     }
 
+    @Test
+    public void aReadyCycleSaysWhyItIsNotSentAutomatically() {
+        EQAProgram scheme = insertScheme("Unsent scheme " + System.nanoTime(), EQASchemeType.REGIONAL_PT, "NHRL");
+        seedEnrollment(9960, scheme.getName());
+        Long cycleId = insertCycle(scheme, 7);
+        jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'READY_TO_SUBMIT' WHERE id = ?", cycleId);
+
+        assertEquals("the test context configures no FHIR store", "NO_CHANNEL",
+                findCycleRow(cycleId).get("autoSubmitReason"));
+    }
+
     /**
      * With the gate on, each analyte carries what would be submitted — the value
      * validated in the standard pipeline and when it was released. With the gate
@@ -193,7 +204,31 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
         assertEquals(Map.of("entered", 2, "total", 2), row.get("progress"));
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> after = (List<Map<String, Object>>) row.get("samples");
-        assertEquals("entered", after.get(0).get("entryStatus"));
+        assertEquals("validated", after.get(0).get("entryStatus"));
+    }
+
+    @Test
+    public void anExternalSampleReadsEnteredUntilEveryAnalysisIsValidated() {
+        EQAProgram scheme = insertScheme("Validation scheme " + System.nanoTime(), EQASchemeType.INTERNATIONAL_PT,
+                "WHO AFRO");
+        Long cycleId = insertCycle(scheme, 6);
+
+        int finalizedId = Integer.parseInt(statusService.getStatusID(AnalysisStatus.Finalized));
+        int technicalAcceptance = Integer.parseInt(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+        seedLinkedOrder(cycleId, finalizedId, technicalAcceptance);
+
+        assertEquals("one result still awaits validation", "entered", entryStatusOf(cycleId));
+        assertEquals("Progress counts the result awaiting validation as the sample does",
+                Map.of("entered", 2, "total", 2), findCycleRow(cycleId).get("progress"));
+
+        jdbc.update("UPDATE clinlims.analysis SET status_id = ? WHERE id = ?", finalizedId, ANALYSIS_NOT_STARTED_ID);
+
+        assertEquals("validated", entryStatusOf(cycleId));
+    }
+
+    @SuppressWarnings("unchecked")
+    private String entryStatusOf(Long cycleId) {
+        return (String) ((List<Map<String, Object>>) findCycleRow(cycleId).get("samples")).get(0).get("entryStatus");
     }
 
     /**

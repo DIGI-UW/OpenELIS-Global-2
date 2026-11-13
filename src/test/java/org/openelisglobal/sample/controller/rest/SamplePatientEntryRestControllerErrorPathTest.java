@@ -1,5 +1,6 @@
 package org.openelisglobal.sample.controller.rest;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -16,6 +17,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.config.ControllerSetup;
+import org.openelisglobal.labelpreset.service.LabelQuantityRefusedException;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -156,5 +158,30 @@ public class SamplePatientEntryRestControllerErrorPathTest {
         assertTrue(reported.stream().anyMatch(e -> "sampleOrderItems".equals(e.get("field"))));
         assertTrue(withoutPatient.get("error").toString().startsWith("sampleOrderItems"));
         assertTrue(((List<?>) withPatient.get("fieldErrors")).size() == 2);
+    }
+
+    /**
+     * A label quantity refused while saving the order keeps its translation key, so
+     * order entry can show the refusal in the user's language.
+     */
+    @Test
+    public void aRefusedLabelQuantity_keepsItsTranslationKeyInTheSaveError() {
+        Map<String, Object> tooManyInTotal = SamplePatientEntryRestController.persistErrorBody("too many labels",
+                new LabelQuantityRefusedException(LabelQuantityRefusedException.JOB_TOO_LARGE, "too many labels"));
+        Map<String, Object> tooManyOfOne = SamplePatientEntryRestController.persistErrorBody("over the limit",
+                new LabelQuantityRefusedException(LabelQuantityRefusedException.ABOVE_LIMIT, "over the limit",
+                        Map.of("max", 100)));
+        Map<String, Object> otherRejection = SamplePatientEntryRestController.persistErrorBody("bad date",
+                new IllegalArgumentException("bad date"));
+        Map<String, Object> serverFault = SamplePatientEntryRestController.persistErrorBody("database down", null);
+
+        assertEquals(LabelQuantityRefusedException.JOB_TOO_LARGE, tooManyInTotal.get("messageKey"));
+        assertEquals("too many labels", tooManyInTotal.get("error"));
+        assertEquals(LabelQuantityRefusedException.ABOVE_LIMIT, tooManyOfOne.get("messageKey"));
+        assertEquals(Map.of("max", 100), tooManyOfOne.get("messageArgs"));
+        assertFalse(otherRejection.containsKey("messageKey"));
+        assertEquals("bad date", otherRejection.get("error"));
+        assertFalse(serverFault.containsKey("messageKey"));
+        assertEquals("database down", serverFault.get("error"));
     }
 }

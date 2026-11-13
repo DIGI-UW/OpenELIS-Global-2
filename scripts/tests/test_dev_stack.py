@@ -10,6 +10,8 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import unittest.mock
+import zipfile
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -311,22 +313,84 @@ class DevStackContractTest(unittest.TestCase):
                 self.dev_stack.ensure_local_tls_trust(context, {"DEV_STACK_TLS": tls})
             run.assert_not_called()
 
-    def test_up_stops_before_build_when_trust_setup_fails(self):
+    def test_up_continues_with_self_signed_when_trust_setup_fails(self):
         environment = {"DEV_STACK_TLS": "local-ca", "LETSENCRYPT_DOMAIN": "localhost"}
         with (
             patch.object(self.dev_stack, "ensure_local_env"),
             patch.object(self.dev_stack, "build_environment", return_value=environment),
+            patch.object(self.dev_stack, "ensure_mkcert"),
             patch.object(self.dev_stack, "doctor"),
-            patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(1, "mkcert")),
-            patch.object(self.dev_stack, "ensure_submodules") as submodules,
+            patch.object(
+                self.dev_stack, "ensure_local_tls_trust", side_effect=RuntimeError("administrator prompt not completed")
+            ),
+            patch.object(self.dev_stack, "ensure_submodules", return_value=()),
+            patch.object(self.dev_stack, "bootstrap_analyzer_harness"),
+            patch.object(self.dev_stack, "service_is_running", return_value=False),
+            patch.object(self.dev_stack, "heal_war_mount"),
             patch.object(self.dev_stack, "build_application") as build,
+            patch.object(self.dev_stack, "pull_images"),
+            patch.object(self.dev_stack, "record_images"),
+            patch.object(self.dev_stack, "record_setup"),
             patch.object(self.dev_stack, "start_services") as start,
+            patch.object(self.dev_stack, "reload_proxy"),
+            patch.object(self.dev_stack, "configure_local_tls") as local_certificate,
+            patch.object(self.dev_stack, "print_endpoints"),
+            contextlib.redirect_stderr(io.StringIO()) as warnings,
         ):
-            with self.assertRaisesRegex(RuntimeError, "interactive terminal"):
-                self.dev_stack.main(["up"])
-        submodules.assert_not_called()
-        build.assert_not_called()
-        start.assert_not_called()
+            self.dev_stack.main(["up", "--no-wait", "--no-scenarios"])
+
+        build.assert_called_once()
+        start.assert_called_once()
+        local_certificate.assert_not_called()
+        self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
+        self.assertIn("self-signed certificate for this run", warnings.getvalue())
+
+    def test_each_local_https_step_falls_back_to_self_signed(self):
+        for error in (RuntimeError("no brew"), subprocess.CalledProcessError(1, "mkcert"), OSError("disk")):
+            environment = {"DEV_STACK_TLS": "local-ca"}
+            with self.subTest(error=type(error).__name__), contextlib.redirect_stderr(io.StringIO()):
+                self.dev_stack.local_https_step(environment, "a step", unittest.mock.Mock(side_effect=error))
+            self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
+
+    def test_a_failed_https_check_on_local_ca_warns_instead_of_stopping(self):
+        environment = {"DEV_STACK_TLS": "local-ca"}
+        with (
+            patch.object(self.dev_stack, "endpoint_environment", return_value={"BASE_URL": "https://localhost:1"}),
+            patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(60, "curl")),
+            contextlib.redirect_stderr(io.StringIO()) as warnings,
+        ):
+            self.dev_stack.verify_tls(self.dev_stack.make_context(REPO_ROOT), environment)
+
+        self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
+        self.assertIn("verifying the trusted certificate", warnings.getvalue())
+
+    def test_a_failed_https_check_on_a_public_domain_still_stops(self):
+        with (
+            patch.object(self.dev_stack, "endpoint_environment", return_value={"BASE_URL": "https://lab.example.org"}),
+            patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(60, "curl")),
+            self.assertRaisesRegex(RuntimeError, "HTTPS verification failed"),
+        ):
+            self.dev_stack.verify_tls(self.dev_stack.make_context(REPO_ROOT), {"DEV_STACK_TLS": "letsencrypt"})
+
+    def test_local_ca_on_a_domain_falls_back_too(self):
+        environment = {"DEV_STACK_TLS": "local-ca", "LETSENCRYPT_DOMAIN": "lab.example.org"}
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.dev_stack.local_https_step(
+                environment, "trusting", self.dev_stack.ensure_local_tls_trust,
+                self.dev_stack.make_context(REPO_ROOT), environment,
+            )
+        self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
+
+    def test_a_working_step_and_other_tls_modes_are_left_alone(self):
+        step = unittest.mock.Mock()
+        working = {"DEV_STACK_TLS": "local-ca"}
+        self.dev_stack.local_https_step(working, "a step", step, "argument")
+        step.assert_called_once_with("argument")
+        self.assertEqual(working["DEV_STACK_TLS"], "local-ca")
+
+        skipped = unittest.mock.Mock()
+        self.dev_stack.local_https_step({"DEV_STACK_TLS": "letsencrypt"}, "a step", skipped)
+        skipped.assert_not_called()
 
     def test_local_tls_covers_loopback_and_never_copies_or_installs_ca(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -349,23 +413,26 @@ class DevStackContractTest(unittest.TestCase):
             self.assertFalse(any("rootCA" in part for command in commands for part in command))
             self.assertEqual(0o600, (context.repo_root / ".dev-stack/tls/localhost-key.pem").stat().st_mode & 0o777)
 
-    def test_trusted_tls_fails_closed_on_certificate_errors(self):
+    def test_trusted_tls_check_verifies_and_falls_back_on_certificate_errors(self):
         context = self.dev_stack.make_context(REPO_ROOT)
-        with patch.object(self.dev_stack, "endpoint_environment", return_value={"BASE_URL": "https://localhost:12345"}), patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(60, "curl")) as run:
-            with self.assertRaisesRegex(RuntimeError, "HTTPS verification failed"):
-                self.dev_stack.verify_tls(context, {"DEV_STACK_TLS": "local-ca"})
+        environment = {"DEV_STACK_TLS": "local-ca"}
+        with patch.object(self.dev_stack, "endpoint_environment", return_value={"BASE_URL": "https://localhost:12345"}), patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(60, "curl")) as run, contextlib.redirect_stderr(io.StringIO()):
+            self.dev_stack.verify_tls(context, environment)
+        self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
         command = run.call_args.args[0]
         self.assertNotIn("--insecure", command)
         self.assertNotIn("-k", command)
         self.assertNotIn("--retry-all-errors", command)
         self.assertEqual("https://localhost:12345/", command[-1])
 
-    def test_local_ca_refuses_public_domain(self):
+    def test_local_ca_on_a_public_domain_falls_back_to_self_signed(self):
         context = self.dev_stack.make_context(REPO_ROOT)
-        with patch.object(self.dev_stack, "run") as run:
-            with self.assertRaisesRegex(ValueError, "loopback"):
-                self.dev_stack.configure_tls(context, {"LETSENCRYPT_DOMAIN": "example.org", "DEV_STACK_TLS": "local-ca"})
+        environment = {"LETSENCRYPT_DOMAIN": "example.org", "DEV_STACK_TLS": "local-ca"}
+        with patch.object(self.dev_stack, "run") as run, contextlib.redirect_stderr(io.StringIO()) as warnings:
+            self.dev_stack.configure_tls(context, environment)
         run.assert_not_called()
+        self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
+        self.assertIn("loopback", warnings.getvalue())
 
     def test_domain_uses_public_standard_ingress_and_letsencrypt(self):
         context = self.dev_stack.make_context(REPO_ROOT)
@@ -565,8 +632,8 @@ class DevStackContractTest(unittest.TestCase):
         with patch.object(self.dev_stack, "run") as run:
             self.dev_stack.build_images(context, environment)
         command = run.call_args.args[0]
-        self.assertEqual(command[-5:],
-                         ["build", "frontend.openelis.org", "oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"])
+        self.assertEqual(command[-6:],
+                         ["build", "certs", "frontend.openelis.org", "oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"])
         self.assertEqual(environment["DEV_STACK_BACKEND_IMAGE"], f"{context.project}-backend:dev")
         self.assertEqual(environment["DEV_STACK_BRIDGE_IMAGE"], f"{context.project}-analyzer-bridge:dev")
         compose = (context.project_dir / "docker-compose.dev.yml").read_text()
@@ -633,6 +700,7 @@ class DevStackContractTest(unittest.TestCase):
             patch.object(self.dev_stack, "doctor"),
             patch.object(self.dev_stack, "ensure_local_tls_trust"),
             patch.object(self.dev_stack, "ensure_local_env"),
+            patch.object(self.dev_stack, "ensure_mkcert"),
             patch.object(self.dev_stack, "ensure_submodules"),
             patch.object(self.dev_stack, "bootstrap_analyzer_harness"),
             patch.object(self.dev_stack, "service_is_running", return_value=True),
@@ -640,10 +708,13 @@ class DevStackContractTest(unittest.TestCase):
             patch.object(self.dev_stack, "build_application"),
             patch.object(self.dev_stack, "build_images"),
             patch.object(self.dev_stack, "pull_images"),
+            patch.object(self.dev_stack, "record_images"),
             patch.object(self.dev_stack, "reload_proxy"),
             patch.object(self.dev_stack, "configure_tls"),
             patch.object(self.dev_stack, "verify_tls"),
             patch.object(self.dev_stack, "print_endpoints"),
+            patch.object(self.dev_stack, "record_images"),
+            patch.object(self.dev_stack, "record_setup"),
             patch.object(self.dev_stack, "run") as run,
         ):
             self.dev_stack.main(["up", "--no-wait", "--no-scenarios"])
@@ -709,7 +780,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
         self.context = self.dev_stack.make_context(REPO_ROOT)
         self.environment = self.dev_stack.build_environment(self.context)
 
-    def pull(self, changed_submodules=(), run=None, differences=(), backend_differences=()):
+    def pull(self, changed_submodules=(), run=None, differences=(), backend_differences=(), always=True):
         printed = io.StringIO()
         with (
             patch.object(self.dev_stack, "run", side_effect=run) as mocked_run,
@@ -718,8 +789,40 @@ class DevStackPublishedImagesTest(unittest.TestCase):
             contextlib.redirect_stdout(printed),
             contextlib.redirect_stderr(printed),
         ):
-            self.dev_stack.pull_images(self.context, self.environment, changed_submodules)
+            self.dev_stack.pull_images(self.context, self.environment, changed_submodules, always=always)
         return [call.args[0] for call in mocked_run.call_args_list], printed.getvalue()
+
+    @staticmethod
+    def images_on_machine(*present):
+        """A docker stub where only the named images exist locally."""
+
+        def run(command, **_):
+            if command[:3] == ["docker", "image", "inspect"]:
+                if command[-1] in present:
+                    return subprocess.CompletedProcess(command, 0, stdout="2026-11-10T08:00:00Z\n")
+                raise subprocess.CalledProcessError(1, command)
+            return subprocess.CompletedProcess(command, 0, stdout="")
+
+        return run
+
+    def test_up_uses_the_images_already_on_the_machine_without_pulling(self):
+        present = [self.environment[variable] for _, variable, _, _ in self.dev_stack.APPLICATION_IMAGES]
+        commands, printed = self.pull(run=self.images_on_machine(*present), always=False)
+
+        self.assertFalse([command for command in commands if command[:2] == ["docker", "pull"]])
+        self.assertIn("up --pull", printed)
+
+    def test_up_pulls_only_the_images_missing_from_the_machine(self):
+        backend = self.environment["DEV_STACK_BACKEND_IMAGE"]
+        present = [
+            self.environment[variable]
+            for _, variable, _, _ in self.dev_stack.APPLICATION_IMAGES
+            if self.environment[variable] != backend
+        ]
+        commands, _ = self.pull(run=self.images_on_machine(*present), always=False)
+
+        self.assertEqual([command for command in commands if command[:2] == ["docker", "pull"]],
+                         [["docker", "pull", backend]])
 
     def test_compose_files_run_the_published_development_images(self):
         harness = REPO_ROOT / "projects" / "analyzer-harness"
@@ -746,6 +849,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
         self.assertEqual(
             commands,
             [
+                ["docker", "pull", "itechuw/openelis-global-2-certs:develop"],
                 ["docker", "pull", "itechuw/openelis-global-2-frontend-dev:develop"],
                 ["docker", "pull", "itechuw/openelis-global-2-dev:develop"],
                 ["docker", "pull", "itechuw/openelis-global-2-analyzer-mock:develop"],
@@ -812,11 +916,35 @@ class DevStackPublishedImagesTest(unittest.TestCase):
         self.assertFalse([command for command in commands if "build" in command])
         self.assertIn("using the copy already on this machine", printed)
 
+    def up_raw(self, *arguments):
+        with (
+            patch.object(self.dev_stack, "doctor"),
+            patch.object(self.dev_stack, "ensure_local_tls_trust"),
+            patch.object(self.dev_stack, "ensure_local_env"),
+            patch.object(self.dev_stack, "ensure_mkcert"),
+            patch.object(self.dev_stack, "ensure_submodules", return_value=()),
+            patch.object(self.dev_stack, "bootstrap_analyzer_harness"),
+            patch.object(self.dev_stack, "service_is_running", return_value=False),
+            patch.object(self.dev_stack, "heal_war_mount"),
+            patch.object(self.dev_stack, "build_application"),
+            patch.object(self.dev_stack, "build_images"),
+            patch.object(self.dev_stack, "record_images"),
+            patch.object(self.dev_stack, "record_setup"),
+            patch.object(self.dev_stack, "start_services"),
+            patch.object(self.dev_stack, "reload_proxy"),
+            patch.object(self.dev_stack, "configure_tls"),
+            patch.object(self.dev_stack, "verify_tls"),
+            patch.object(self.dev_stack, "print_endpoints"),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            self.dev_stack.main(["up", "--no-wait", "--no-scenarios", *arguments])
+
     def up(self, *arguments):
         with (
             patch.object(self.dev_stack, "doctor"),
             patch.object(self.dev_stack, "ensure_local_tls_trust"),
             patch.object(self.dev_stack, "ensure_local_env"),
+            patch.object(self.dev_stack, "ensure_mkcert"),
             patch.object(self.dev_stack, "ensure_submodules", return_value=("tools/analyzer-mock-server",)),
             patch.object(self.dev_stack, "bootstrap_analyzer_harness"),
             patch.object(self.dev_stack, "service_is_running", return_value=False),
@@ -825,6 +953,8 @@ class DevStackPublishedImagesTest(unittest.TestCase):
             patch.object(self.dev_stack, "build_images") as build_images,
             patch.object(self.dev_stack, "pull_images") as pull_images,
             patch.object(self.dev_stack, "record_images") as record_images,
+            patch.object(self.dev_stack, "mark_terminal_pulled"),
+            patch.object(self.dev_stack, "record_setup"),
             patch.object(self.dev_stack, "start_services"),
             patch.object(self.dev_stack, "reload_proxy"),
             patch.object(self.dev_stack, "configure_tls"),
@@ -919,6 +1049,414 @@ class DevStackPublishedImagesTest(unittest.TestCase):
         self.assertTrue(self.dev_stack.parse_args(["up", "--build"]).build)
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.dev_stack.parse_args(["up", "--skip-build", "--build"])
+
+    def test_pull_is_off_by_default_and_cannot_be_combined_with_build_or_skip_build(self):
+        self.assertFalse(self.dev_stack.parse_args(["up"]).pull)
+        self.assertTrue(self.dev_stack.parse_args(["up", "--pull"]).pull)
+        for other in ("--build", "--skip-build"):
+            with self.subTest(other=other), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                self.dev_stack.parse_args(["up", "--pull", other])
+
+    def test_up_pulls_on_the_first_run_in_a_terminal_and_reuses_images_after(self):
+        with patch.object(self.dev_stack, "first_up_in_terminal", return_value=True):
+            _, _, pull_images = self.up()
+        self.assertTrue(pull_images.call_args.kwargs["always"])
+
+        with patch.object(self.dev_stack, "first_up_in_terminal", return_value=False):
+            _, _, pull_images = self.up()
+        self.assertFalse(pull_images.call_args.kwargs["always"])
+
+    def test_pull_flag_pulls_even_later_in_the_same_terminal(self):
+        with patch.object(self.dev_stack, "first_up_in_terminal", return_value=False):
+            _, _, pull_images = self.up("--pull")
+        self.assertTrue(pull_images.call_args.kwargs["always"])
+
+    def test_failed_pull_reports_that_not_every_image_is_current(self):
+        def run(command, **_):
+            if command[:2] == ["docker", "pull"]:
+                raise subprocess.CalledProcessError(1, command)
+            return subprocess.CompletedProcess(command, 0, stdout="")
+
+        with patch.object(self.dev_stack, "run", side_effect=run), contextlib.redirect_stderr(io.StringIO()):
+            self.assertFalse(self.dev_stack.pull_image(self.context, self.environment, "image:tag"))
+        with patch.object(self.dev_stack, "run", return_value=subprocess.CompletedProcess([], 0, stdout="")):
+            self.assertTrue(self.dev_stack.pull_image(self.context, self.environment, "image:tag"))
+
+    def test_terminal_is_marked_only_when_every_pull_succeeded(self):
+        for succeeded in (True, False):
+            with self.subTest(succeeded=succeeded), \
+                    patch.object(self.dev_stack, "first_up_in_terminal", return_value=True), \
+                    patch.object(self.dev_stack, "pull_images", return_value=succeeded), \
+                    patch.object(self.dev_stack, "mark_terminal_pulled") as mark:
+                self.up_raw()
+            self.assertEqual(mark.called, succeeded)
+
+    def test_a_light_pull_does_not_count_for_a_later_full_up(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        light = self.context._replace(repo_root=pathlib.Path(directory.name), setup="light")
+        full = light._replace(setup="full")
+
+        with patch.object(self.dev_stack, "terminal_session_key", return_value="101:start"):
+            self.dev_stack.mark_terminal_pulled(light)
+            self.assertFalse(self.dev_stack.first_up_in_terminal(light))
+            self.assertTrue(self.dev_stack.first_up_in_terminal(full))
+            self.dev_stack.mark_terminal_pulled(full)
+            self.assertFalse(self.dev_stack.first_up_in_terminal(full))
+            self.assertFalse(self.dev_stack.first_up_in_terminal(light), "a full pull covers the light setup")
+
+    def test_a_terminal_counts_as_pulled_only_after_its_own_pull(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        context = self.context._replace(repo_root=pathlib.Path(directory.name))
+
+        with patch.object(self.dev_stack, "terminal_session_key", return_value="101:Thu Nov 12 08:00:00 2026"):
+            self.assertTrue(self.dev_stack.first_up_in_terminal(context))
+            self.dev_stack.mark_terminal_pulled(context)
+            self.assertFalse(self.dev_stack.first_up_in_terminal(context))
+        with patch.object(self.dev_stack, "terminal_session_key", return_value="202:Thu Nov 12 09:00:00 2026"):
+            self.assertTrue(self.dev_stack.first_up_in_terminal(context))
+            self.dev_stack.mark_terminal_pulled(context)
+        with patch.object(self.dev_stack, "terminal_session_key", return_value="101:Thu Nov 12 08:00:00 2026"):
+            self.assertFalse(self.dev_stack.first_up_in_terminal(context), "the first terminal is still remembered")
+        with patch.object(self.dev_stack, "terminal_session_key", return_value=None):
+            self.assertTrue(self.dev_stack.first_up_in_terminal(context))
+
+    def test_terminal_session_key_names_the_session_and_its_start(self):
+        with (
+            patch.object(self.dev_stack.os, "getsid", return_value=4242),
+            patch.object(self.dev_stack, "run",
+                         return_value=subprocess.CompletedProcess([], 0, stdout="Thu Nov 12 08:00:00 2026\n")) as run,
+        ):
+            self.assertEqual(self.dev_stack.terminal_session_key(), "4242:Thu Nov 12 08:00:00 2026")
+        self.assertEqual(run.call_args.args[0], ["ps", "-o", "lstart=", "-p", "4242"])
+        with patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(1, "ps")):
+            self.assertIsNone(self.dev_stack.terminal_session_key())
+
+
+class DevStackModuleTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dev_stack = load_dev_stack()
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self.temp.name)
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def module_checkout(self, name, module_id, port=None):
+        path = self.root / name
+        (path / "src/main/resources/META-INF").mkdir(parents=True)
+        (path / "pom.xml").write_text("<project/>", encoding="utf-8")
+        (path / "src/main/resources/META-INF/openelis-module.json").write_text(
+            f'{{"id": "{module_id}", "frontend": {{"entry": "remoteEntry.js"}}}}', encoding="utf-8"
+        )
+        (path / "frontend").mkdir()
+        (path / "frontend/package.json").write_text('{"scripts": {"dev": "vite"}}', encoding="utf-8")
+        if port:
+            (path / "frontend/vite.config.js").write_text(
+                f"export default {{ server: {{ port: {port}, strictPort: true }} }};", encoding="utf-8"
+            )
+        return path
+
+    def module_jar(self, path, module_id):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("META-INF/openelis-module.json", f'{{"id": "{module_id}"}}')
+        return path
+
+    def test_up_accepts_repeated_module_paths(self):
+        args = self.dev_stack.parse_args(["up", "--module", "/a", "--module=/b"])
+
+        self.assertEqual(args.module, ["/a", "/b"])
+        self.assertEqual(self.dev_stack.parse_args(["up"]).module, [])
+
+    def test_module_checkout_reads_id_entry_and_dev_port(self):
+        module = self.dev_stack.read_module_checkout(str(self.module_checkout("m", "lab-notes", port=5190)))
+
+        self.assertEqual(module.module_id, "lab-notes")
+        self.assertEqual(module.entry, "remoteEntry.js")
+        self.assertEqual(module.dev_port, 5190)
+
+    def test_module_without_vite_config_uses_the_default_port(self):
+        module = self.dev_stack.read_module_checkout(str(self.module_checkout("m", "lab-notes")))
+
+        self.assertEqual(module.dev_port, self.dev_stack.DEFAULT_MODULE_DEV_PORT)
+
+    def test_a_folder_without_a_module_manifest_is_refused(self):
+        (self.root / "plain").mkdir()
+        with self.assertRaisesRegex(RuntimeError, "openelis-module.json"):
+            self.dev_stack.read_module_checkout(str(self.root / "plain"))
+
+    def test_two_modules_on_one_dev_port_are_refused(self):
+        first = str(self.module_checkout("a", "first"))
+        second = str(self.module_checkout("b", "second"))
+
+        with self.assertRaisesRegex(RuntimeError, "both serve their pages on port"):
+            self.dev_stack.read_module_checkouts([first, second])
+
+    def test_deploy_replaces_other_copies_of_the_same_module_only(self):
+        repo = self.root / "repo"
+        context = self.dev_stack.StackContext(repo, "p", repo, ())
+        modules_dir = repo / "volume" / "modules"
+        old = self.module_jar(modules_dir / "lab-notes-0.9.0.jar", "lab-notes")
+        other = self.module_jar(modules_dir / "other-1.0.0.jar", "other")
+        module = self.dev_stack.read_module_checkout(str(self.module_checkout("m", "lab-notes")))
+        built = self.module_jar(module.path / "target" / "lab-notes-1.0.0.jar", "lab-notes")
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            changed = self.dev_stack.deploy_module_jar(context, module, built)
+            unchanged = self.dev_stack.deploy_module_jar(context, module, built)
+
+        self.assertTrue(changed)
+        self.assertFalse(unchanged)
+        self.assertFalse(old.exists())
+        self.assertTrue(other.exists())
+        self.assertEqual((modules_dir / "lab-notes.jar").read_bytes(), built.read_bytes())
+
+    def test_built_jar_is_the_one_carrying_the_module_manifest(self):
+        module = self.dev_stack.read_module_checkout(str(self.module_checkout("m", "lab-notes")))
+        (module.path / "target").mkdir()
+        (module.path / "target" / "lab-notes-sources.jar").write_bytes(b"not a module")
+        built = self.module_jar(module.path / "target" / "lab-notes-1.0.0.jar", "lab-notes")
+
+        self.assertEqual(self.dev_stack.built_module_jar(module), built)
+
+    def test_proxy_sends_the_remote_entry_to_the_dev_server_in_every_server_block(self):
+        harness = self.root / "harness"
+        config = harness / "volume" / "nginx" / "nginx.conf"
+        config.parent.mkdir(parents=True)
+        config.write_text(
+            "server {\n        location /api/ {\n        }\n}\nserver {\n        location /api/ {\n        }\n}\n",
+            encoding="utf-8",
+        )
+        context = self.dev_stack.StackContext(self.root, "p", harness, ())
+        module = self.dev_stack.ModuleCheckout(self.root, "lab-notes", "remoteEntry.js", 5190)
+
+        self.dev_stack.route_module_pages(context, [module])
+
+        routed = config.read_text(encoding="utf-8")
+        self.assertEqual(
+            routed.count("location = /api/OpenELIS-Global/modules/lab-notes/remoteEntry.js {"), 2
+        )
+        self.assertIn("return 307 http://localhost:5190/remoteEntry.js;", routed)
+        self.assertLess(routed.index("lab-notes/remoteEntry.js"), routed.index("location /api/ {"))
+
+    def test_no_modules_leave_the_proxy_config_untouched(self):
+        context = self.dev_stack.StackContext(self.root, "p", self.root / "missing", ())
+
+        self.dev_stack.route_module_pages(context, [])
+
+
+
+class DevStackSetupTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dev_stack = load_dev_stack()
+
+    def test_up_defaults_to_the_full_setup(self):
+        self.assertEqual(self.dev_stack.parse_args(["up"]).setup, "full")
+        self.assertEqual(self.dev_stack.parse_args(["up", "--setup", "light"]).setup, "light")
+        self.assertEqual(self.dev_stack.parse_args(["up", "--setup=light"]).setup, "light")
+
+    def test_an_unknown_setup_is_refused(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.dev_stack.parse_args(["up", "--setup", "tiny"])
+
+    def test_light_adds_its_override_last_and_full_does_not(self):
+        full = self.dev_stack.make_context(REPO_ROOT)
+        light = self.dev_stack.make_context(REPO_ROOT, "light")
+
+        self.assertEqual(full.setup, "full")
+        self.assertNotIn("docker-compose.light.yml", [path.name for path in full.compose_files])
+        self.assertEqual(light.compose_files[-1].name, "docker-compose.light.yml")
+        self.assertTrue(light.compose_files[-1].is_file())
+        self.assertEqual(light.project, full.project)
+
+    def test_light_override_drops_the_fhir_dependency_and_blanks_the_external_urls(self):
+        override = (REPO_ROOT / "projects" / "analyzer-harness" / "docker-compose.light.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("depends_on: !override", override)
+        self.assertNotIn("fhir.openelis.org:", override)
+        self.assertIn('ORG_OPENELISGLOBAL_FHIRSTORE_URI: ""', override)
+        self.assertIn('ANALYZER_BRIDGE_URL: ""', override)
+
+    def test_light_services_leave_out_fhir_bridge_and_simulator(self):
+        for service in self.dev_stack.FULL_ONLY_SERVICES:
+            self.assertNotIn(service, self.dev_stack.LIGHT_SERVICES)
+
+    def test_the_last_up_setup_is_remembered_for_later_commands(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            self.assertEqual(self.dev_stack.recorded_setup(root), "full")
+            context = self.dev_stack.StackContext(root, "p", root, (), "light")
+            self.dev_stack.record_setup(context)
+            self.assertEqual(self.dev_stack.recorded_setup(root), "light")
+
+
+
+class DevStackMkcertTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dev_stack = load_dev_stack()
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.tools = pathlib.Path(self.temp.name) / "bin"
+        self.bin = pathlib.Path(self.temp.name) / "path"
+        self.bin.mkdir()
+        self.environment = {"DEV_STACK_TLS": "local-ca", "PATH": os.pathsep.join((str(self.tools), str(self.bin)))}
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def tool(self, name):
+        path = self.bin / name
+        path.write_text("#!/bin/sh\n", encoding="utf-8")
+        path.chmod(0o755)
+
+    def test_an_installed_mkcert_is_left_alone(self):
+        self.tool("mkcert")
+        with patch.object(self.dev_stack, "run") as run, patch.object(self.dev_stack, "urlopen") as download:
+            self.dev_stack.ensure_mkcert(self.environment)
+        run.assert_not_called()
+        download.assert_not_called()
+
+    def test_other_tls_modes_need_no_mkcert(self):
+        with patch.object(self.dev_stack, "run") as run, patch.object(self.dev_stack, "urlopen") as download:
+            self.dev_stack.ensure_mkcert({**self.environment, "DEV_STACK_TLS": "self-signed"})
+        run.assert_not_called()
+        download.assert_not_called()
+
+    def test_homebrew_installs_it_when_present(self):
+        self.tool("brew")
+
+        def install(command, **_):
+            self.assertEqual(command, ["brew", "install", "mkcert"])
+            self.tool("mkcert")
+
+        with patch.object(self.dev_stack, "run", side_effect=install) as run, contextlib.redirect_stdout(io.StringIO()):
+            self.dev_stack.ensure_mkcert(self.environment)
+        run.assert_called_once()
+
+    def test_without_homebrew_the_binary_is_downloaded_for_this_machine(self):
+        with (
+            patch.object(self.dev_stack, "TOOLS_DIR", self.tools),
+            patch.object(self.dev_stack.platform, "system", return_value="Linux"),
+            patch.object(self.dev_stack.platform, "machine", return_value="x86_64"),
+            patch.object(self.dev_stack, "urlopen", return_value=io.BytesIO(b"#!/bin/sh\n")) as download,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            self.dev_stack.ensure_mkcert(self.environment)
+
+        self.assertIn("for=linux/amd64", download.call_args.args[0])
+        self.assertTrue(os.access(self.tools / "mkcert", os.X_OK))
+
+    def test_an_unsupported_machine_gets_the_manual_ways_out(self):
+        with (
+            patch.object(self.dev_stack, "TOOLS_DIR", self.tools),
+            patch.object(self.dev_stack.platform, "system", return_value="Windows"),
+            self.assertRaisesRegex(RuntimeError, "DEV_STACK_TLS=self-signed"),
+        ):
+            self.dev_stack.ensure_mkcert(self.environment)
+
+    def test_the_tools_folder_is_on_the_stack_path(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+
+        path = self.dev_stack.build_environment(context)["PATH"].split(os.pathsep)
+
+        self.assertEqual(path[0], str(self.dev_stack.TOOLS_DIR))
+
+
+
+class DevStackCleanBuildTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dev_stack = load_dev_stack()
+
+    def build_command(self, root, **options):
+        (root / "target").mkdir(exist_ok=True)
+        (root / "target" / "OpenELIS-Global.war").write_bytes(b"war")
+        context = self.dev_stack.StackContext(root, "p", root, ())
+        maven = []
+
+        def fake_run(command, **_):
+            if "mvn" in command and "-f" not in command:
+                maven.append(command)
+            return SimpleNamespace(stdout="")
+
+        with patch.object(self.dev_stack, "run", side_effect=fake_run):
+            self.dev_stack.build_application(context, {}, **options)
+        return maven[0]
+
+    def test_every_build_starts_from_mvn_clean(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            first = self.build_command(root)
+            again = self.build_command(root)
+            for_modules = self.build_command(root, install_for_modules=True)
+
+        for command in (first, again):
+            self.assertEqual(command[command.index("clean") + 1], "package")
+        self.assertEqual(for_modules[for_modules.index("clean") + 1], "install")
+
+
+
+class DevStackLocalCertificateTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dev_stack = load_dev_stack()
+
+    def test_the_certificate_is_made_for_the_system_store_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            context = self.dev_stack.StackContext(root, "p", root, ())
+            environment = {"LETSENCRYPT_DOMAIN": "localhost", "JAVA_HOME": "/opt/homebrew/opt/openjdk@21"}
+            calls = []
+
+            def fake_run(command, **options):
+                calls.append((command, options))
+                if command[0] == "mkcert":
+                    (root / ".dev-stack" / "tls" / "localhost-key.pem").write_text("key", encoding="utf-8")
+                return SimpleNamespace(stdout="")
+
+            with (
+                patch.object(self.dev_stack, "run", side_effect=fake_run),
+                patch.object(self.dev_stack, "reload_proxy"),
+            ):
+                self.dev_stack.configure_local_tls(context, environment)
+
+        command, options = next(call for call in calls if call[0][0] == "mkcert")
+        self.assertIn("-cert-file", command)
+        self.assertEqual(options["environment"]["TRUST_STORES"], "system")
+        self.assertNotIn("TRUST_STORES", environment)
+
+
+
+class DevStackDiskTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dev_stack = load_dev_stack()
+
+    def warnings_for(self, free):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        usage = SimpleNamespace(total=0, used=0, free=free)
+        with (
+            patch.object(self.dev_stack.shutil, "disk_usage", return_value=usage),
+            contextlib.redirect_stderr(io.StringIO()) as warnings,
+        ):
+            self.dev_stack.warn_on_low_disk(context)
+        return warnings.getvalue()
+
+    def test_a_nearly_full_disk_is_named_before_the_build(self):
+        self.assertIn("0.5 GB free", self.warnings_for(512 * 1024**2))
+
+    def test_enough_space_says_nothing(self):
+        self.assertEqual(self.warnings_for(20 * 1024**3), "")
 
 
 if __name__ == "__main__":

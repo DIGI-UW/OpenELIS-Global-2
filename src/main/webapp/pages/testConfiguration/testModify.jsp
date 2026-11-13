@@ -550,9 +550,9 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         }
 
 <%--         <%if (locale.equals("en_US") || locale.equals("en")) {%> --%>
-//         	ul.append( createLI(modId, jQuery("#testNameEnglish").val(), true) );
+//         	ul.append(createLI(modId, jQuery("#testNameEnglish").val(), true));
 <%--         <%} else { %> --%>
-//         	ul.append( createLI(modId, jQuery("#testNameFrench").val(), true) );
+//         	ul.append(createLI(modId, jQuery("#testNameFrench").val(), true));
 <%--         <% } %> --%>
 
         jQuery("#sort" + sampleTypeId).append(ul);
@@ -569,7 +569,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         li.addClass("ui-state-default_oe ui-state-default_oe-tag");
         span.addClass("ui-icon ui-icon-arrowthick-2-n-s");
         li.append(span);
-        li.append(name);
+        li.append(document.createTextNode(name));
         if (highlight) {
             li.addClass("altered");
         }
@@ -596,7 +596,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
     function createNameSpan(sampleTypeName) {
         var nameSpan = jQuery(document.createElement("span"));
         nameSpan.addClass("half-tab");
-        nameSpan.append(sampleTypeName);
+        nameSpan.append(document.createTextNode(sampleTypeName));
         return nameSpan;
     }
 
@@ -1268,7 +1268,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
             li.val(dictionaryValues[i]);
             //qualified = qualifyList.find("option[value=" + this.value + "]:selected").length == 1;
             //li.append(jQuery(this).text() + (qualified ? "-- qualified" : ""));
-            li.append(dictionaryValues[i]);
+            li.append(document.createTextNode(dictionaryValues[i]));
             verifyList.append(li);
         };
     }
@@ -1282,7 +1282,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
             li = jQuery(document.createElement("li"));
             li.val(this.value);
             qualified = qualifyList.find("option[value=" + this.value + "]:selected").length == 1;
-            li.append(jQuery(this).text() + (qualified ? "-- qualified" : ""));
+            li.append(document.createTextNode(jQuery(this).text() + (qualified ? "-- qualified" : "")));
             verifyList.append(li);
         });
     }
@@ -1496,7 +1496,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         root.find(" option:selected").removeAttr("selected");
     }
     function setStep1ReadOnlyFields() {
-        var panelNames = "";
+        var panelNames = document.createDocumentFragment();
 
         jQuery("#testNameEnglishRO").text(jQuery("#testNameEnglish").val());
         jQuery("#testNameFrenchRO").text(jQuery("#testNameFrench").val());
@@ -1504,13 +1504,14 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         jQuery("#testReportNameFrenchRO").text(jQuery("#testReportNameFrench").val());
         jQuery("#testSectionRO").text(jQuery("#testUnitSelection  option:selected").text());
         jQuery("#panelSelection option:selected").each(function () {
-            panelNames += (jQuery(this).text()) + "\<br\>";
+            panelNames.appendChild(document.createTextNode(jQuery(this).text()));
+            panelNames.appendChild(document.createElement("br"));
         });
         //we use append for optional
         jQuery("#panelRO").empty();
         jQuery("#panelRO").append(panelNames);
         jQuery("#uomRO").empty();
-        jQuery("#uomRO").append(jQuery("#uomSelection  option:selected").text());
+        jQuery("#uomRO").append(document.createTextNode(jQuery("#uomSelection  option:selected").text()));
         jQuery("#loincRO").text(jQuery("#loinc").val());
         jQuery("#resultTypeRO").text(jQuery("#resultTypeSelection  option:selected").text());
         jQuery("#activeRO").text(jQuery("#active").attr("checked") ? "Y" : "N");

@@ -22,6 +22,7 @@ import org.openelisglobal.organization.locations.LocationsApi.Page;
 import org.openelisglobal.organization.locations.LocationsApi.Query;
 import org.openelisglobal.organization.locations.LocationsApi.SaveRequest;
 import org.openelisglobal.organization.locations.LocationsApi.SaveResult;
+import org.openelisglobal.organization.locations.LocationsApi.ThisLaboratory;
 import org.openelisglobal.organization.locations.LocationsApi.UsageDetail;
 import org.openelisglobal.organization.locations.LocationsApi.Ward;
 import org.openelisglobal.organization.locations.LocationsApi.WardRequest;
@@ -203,6 +204,12 @@ public class LocationsRestController extends BaseRestController {
     @GetMapping(value = "/identifier-collisions", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<IdentifierCollision> identifierCollisions() {
         return locationsService.identifierCollisions();
+    }
+
+    @GetMapping(value = "/this-laboratory", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ThisLaboratory> thisLaboratory() {
+        ThisLaboratory thisLaboratory = locationsService.thisLaboratory();
+        return thisLaboratory == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(thisLaboratory);
     }
 
     @GetMapping(value = "/lists", produces = MediaType.APPLICATION_JSON_VALUE)

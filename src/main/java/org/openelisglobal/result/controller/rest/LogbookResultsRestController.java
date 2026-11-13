@@ -516,7 +516,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         rejectEqaRowsMissingAnalyst(tests);
 
         for (TestResultItem modified : actionDataSet.getModifiedItems()) {
-            Optional<WaitingRun> waiting = resultRunService.waitingFor(analysisService.get(modified.getAnalysisId()));
+            Optional<WaitingRun> waiting = resultRunService.waitingFor(analysisService.get(modified.getAnalysisId()),
+                    modified.getTestResultComponentId());
             if (waiting.isPresent()) {
                 Map<String, Object> refusal = new HashMap<>();
                 refusal.put("error",
@@ -540,6 +541,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
                 statusRuleSet, request);
         ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
+        ResultUtil.holdOpenWhileRequiredComponentsBlank(actionDataSet);
 
         try {
             List<Analysis> reflexAnalysises = logbookPersistService.persistDataSet(actionDataSet, updaters,
@@ -606,7 +608,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                                 + String.join(", ", calcAccessions));
             }
             // OGC-763: evaluate per-test alert rules on the newly entered results and
-            // dispatch matches to the header bell + SMS/Email senders.
+            // dispatch matches to the header bell.
             if (testAlertEvaluationService != null) {
                 // An edited value is as alertable as a first one - a result
                 // corrected into the critical range has to raise the alert the

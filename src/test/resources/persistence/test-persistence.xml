@@ -47,6 +47,9 @@
         <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplanItem</class>
         <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplanQcRelease</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroOrganism</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroWhonetOrganism</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroWhonetAntibiotic</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroWhonetBreakpoint</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAntibiotic</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstPanel</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic</class>
@@ -127,6 +130,7 @@
         <class>org.openelisglobal.program.valueholder.pathology.PathologyReport</class>
         <class>org.openelisglobal.program.valueholder.pathology.PathologyConclusion</class>
         <class>org.openelisglobal.program.valueholder.pathology.PathologyBlock</class>
+        <class>org.openelisglobal.program.valueholder.pathology.PathologyStageEvent</class>
 
         <!-- Sample Storage Management entities (001-sample-storage) - annotation-based -->
         <class>org.openelisglobal.storage.valueholder.StorageRoom</class>
@@ -160,6 +164,9 @@
         <class>org.openelisglobal.dictionary.valueholder.Dictionary</class>
         <class>org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory</class>
 
+        <!-- DocumentType entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.reports.valueholder.DocumentType</class>
+
         <!-- Notebook Management entities -->
         <class>org.openelisglobal.notebook.valueholder.NoteBook</class>
         <class>org.openelisglobal.notebook.valueholder.NoteBookPage</class>
@@ -192,6 +199,9 @@
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.resultrun.valueholder.ResultRun</class>
+        <class>org.openelisglobal.containertype.valueholder.ContainerType</class>
+        <class>org.openelisglobal.containertype.valueholder.TestExpectedContainer</class>
+        <class>org.openelisglobal.validationpolicy.valueholder.ValidationPolicy</class>
 
         <!-- Westgard QC entities (003-westgard-qc) -->
         <class>org.openelisglobal.qc.valueholder.QCControlLot</class>
@@ -277,6 +287,7 @@
         <class>org.openelisglobal.compliance.valueholder.ComplianceThreshold</class>
         <class>org.openelisglobal.compliance.valueholder.ComplianceThresholdValueMap</class>
         <class>org.openelisglobal.compliance.valueholder.ComplianceReportArchive</class>
+        <class>org.openelisglobal.compliance.valueholder.ComplianceReportGeneration</class>
         <class>org.openelisglobal.reportqueue.valueholder.ReportVersion</class>
         <class>org.openelisglobal.reportqueue.valueholder.ReportVersionItem</class>
         <class>org.openelisglobal.reportqueue.valueholder.ReportPrintEvent</class>

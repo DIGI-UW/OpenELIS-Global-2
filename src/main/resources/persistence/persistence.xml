@@ -79,6 +79,9 @@
 
         <!-- Microbiology MVP reference/config entities (OGC-782 M1) -->
         <class>org.openelisglobal.microbiology.valueholder.MicroOrganism</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroWhonetOrganism</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroWhonetAntibiotic</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroWhonetBreakpoint</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAntibiotic</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstPanel</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic</class>
@@ -172,11 +175,17 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.resultrun.valueholder.ResultRun</class>
+        <class>org.openelisglobal.containertype.valueholder.ContainerType</class>
+        <class>org.openelisglobal.containertype.valueholder.TestExpectedContainer</class>
+        <class>org.openelisglobal.validationpolicy.valueholder.ValidationPolicy</class>
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt</class>
 
         <!-- Dictionary entities (migrated from HBM to JPA annotations) -->
         <class>org.openelisglobal.dictionary.valueholder.Dictionary</class>
         <class>org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory</class>
+
+        <!-- DocumentType entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.reports.valueholder.DocumentType</class>
 
         <!-- UOM type mapping (OGC-356 environmental workflow) -->
         <class>org.openelisglobal.unitofmeasure.valueholder.UomTypeMap</class>

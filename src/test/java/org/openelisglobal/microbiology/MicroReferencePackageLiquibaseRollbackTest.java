@@ -9,8 +9,10 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.Test;
+import org.openelisglobal.IsolatedDatabase;
 import org.testcontainers.containers.PostgreSQLContainer;
 
+@IsolatedDatabase
 public class MicroReferencePackageLiquibaseRollbackTest {
     @Test
     public void clinicalContextRollbackCannotTurnConditionalRulesIntoUnconditionalRules() throws Exception {
