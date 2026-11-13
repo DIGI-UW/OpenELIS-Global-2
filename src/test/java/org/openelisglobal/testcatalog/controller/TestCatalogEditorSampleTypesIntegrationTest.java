@@ -122,6 +122,8 @@ public class TestCatalogEditorSampleTypesIntegrationTest extends BaseWebContextS
         jdbc.update("DELETE FROM clinlims.test WHERE id = ? OR name = 'SampleTypesCreateIT'", TEST_ID);
         jdbc.update("DELETE FROM clinlims.type_of_sample WHERE id IN (?, ?, ?, ?)", HUMAN_TYPE_A, HUMAN_TYPE_B,
                 ENV_TYPE, NULL_DOMAIN_TYPE);
+        jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id IN (?, ?, ?, ?)", HUMAN_TYPE_A,
+                HUMAN_TYPE_B, ENV_TYPE, NULL_DOMAIN_TYPE);
         jdbc.update("DELETE FROM clinlims.localization WHERE id IN (?, ?, ?, ?)", HUMAN_TYPE_A, HUMAN_TYPE_B, ENV_TYPE,
                 NULL_DOMAIN_TYPE);
         typeOfSampleService.clearCache();
@@ -231,6 +233,25 @@ public class TestCatalogEditorSampleTypesIntegrationTest extends BaseWebContextS
     }
 
     @org.junit.Test
+    public void listSampleTypes_labelsByLocalizedName_notDescription() {
+        // The stock "Variable" row's description is a whole sentence ("Actual type
+        // will be selected by user"), so labelling by description makes the picker
+        // unreadable. Seed a distinct english localization value here and prove
+        // the endpoint returns the name, not the description.
+        long localizationValueId = HUMAN_TYPE_A * 10L + 1L;
+        jdbc.update("INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)"
+                + " VALUES (?, ?, 'en', 'Human A Localized', NOW())", localizationValueId, HUMAN_TYPE_A);
+        typeOfSampleService.clearCache();
+
+        List<TestCatalogEditorRestController.SampleTypeOption> options = controller.listSampleTypes(null);
+        TestCatalogEditorRestController.SampleTypeOption humanA = options.stream()
+                .filter(o -> String.valueOf(HUMAN_TYPE_A).equals(o.id)).findFirst().orElseThrow();
+        assertEquals("the picker labels by the localized name, not the description", "Human A Localized", humanA.name);
+
+        jdbc.update("DELETE FROM clinlims.localization_value WHERE id = ?", localizationValueId);
+    }
+
+    @org.junit.Test
     public void listSampleTypes_domainParamFiltersOffers() {
         List<TestCatalogEditorRestController.SampleTypeOption> clinical = controller.listSampleTypes("CLINICAL");
         assertTrue(clinical.stream().anyMatch(o -> String.valueOf(HUMAN_TYPE_A).equals(o.id)));
@@ -246,7 +267,7 @@ public class TestCatalogEditorSampleTypesIntegrationTest extends BaseWebContextS
     @org.junit.Test
     public void listTests_rowCarriesEverySampleType() {
         saveTypes(String.valueOf(HUMAN_TYPE_A), String.valueOf(HUMAN_TYPE_B));
-        TestCatalogEditorRestController.TestListPage page = controller.listTests(null, "all", null, null,
+        TestCatalogEditorRestController.TestListPage page = controller.listTests(null, "all", null, null, null,
                 "SampleTypesIT", false, 1, 10);
         assertEquals(1, page.rows.size());
         assertEquals("FR-9: the row lists every associated specimen", 2, page.rows.get(0).sampleTypes.size());

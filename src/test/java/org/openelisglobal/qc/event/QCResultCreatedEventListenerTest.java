@@ -69,8 +69,36 @@ public class QCResultCreatedEventListenerTest {
 
         verify(ruleEvaluationService).evaluateAllRules("R1");
         verify(violationService, never()).createViolation(any(), any());
-        verify(resultDAO).update(testResult);
-        assertEquals("ACCEPTED", testResult.getResultStatus());
+        // An empty evaluation is "no rules ran", so the listener leaves the status
+        // alone; testHandleQCResultCreated_WithNoRulesEvaluated_ShouldNotTouchStatus
+        // covers why that matters.
+        verify(resultDAO, never()).update(any());
+    }
+
+    /**
+     * OGC-1147 regression. An empty evaluation means "no rules ran", not "in control", so
+     * the status the writer set must survive. A bench control has no westgard_rule_config
+     * row at all — that table is keyed on a non-null instrument_id — so without this the
+     * listener would flip a technician's FAIL to ACCEPTED. findLatestAcceptedBefore
+     * would then treat the failed control as the last in-control one when bounding the next
+     * failure's window, holding FEWER patient results than it should.
+     */
+    @Test
+    public void testHandleQCResultCreated_WithNoRulesEvaluated_ShouldNotTouchStatus() {
+        when(ruleEvaluationService.evaluateAllRules("R1")).thenReturn(Collections.emptyList());
+        // Must be stubbed, or the unfixed code NPEs on a null Optional, the catch swallows
+        // it, and update() goes uncalled for entirely the wrong reason — a test that
+        // passes with or without the fix.
+        QCResult rejected = new QCResult();
+        rejected.setId("R1");
+        rejected.setResultStatus("REJECTED");
+        lenient().when(resultDAO.get("R1")).thenReturn(Optional.of(rejected));
+
+        listener.handleQCResultCreated(testEvent);
+
+        // The status write is the thing that must not happen.
+        verify(resultDAO, never()).update(any());
+        assertEquals("REJECTED", rejected.getResultStatus());
     }
 
     @Test

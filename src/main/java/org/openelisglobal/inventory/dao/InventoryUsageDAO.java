@@ -1,5 +1,7 @@
 package org.openelisglobal.inventory.dao;
 
+import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -26,4 +28,13 @@ public interface InventoryUsageDAO extends BaseDAO<InventoryUsage, Long> {
      * Get usage records by analysis ID
      */
     List<InventoryUsage> getByAnalysisId(Long analysisId) throws LIMSRuntimeException;
+
+    /** Usage with startDate <= usageDate < endDate, newest first. */
+    List<InventoryUsage> getByDateRange(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException;
+
+    /** Quantity used per item per day, for usage dated in [startDate, endDate). */
+    List<DailyUsage> getDailyTotals(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException;
+
+    record DailyUsage(Long itemId, LocalDate day, double quantity) {
+    }
 }

@@ -286,4 +286,24 @@ describe("CreatePatientForm OGC-671 config-driven registration requirements", ()
       screen.getByText("Identification Documents (e.g. CIN)"),
     ).toBeInTheDocument();
   });
+
+  test("Sex is marked required by default and not when PATIENT_SEX_REQUIRED is false", async () => {
+    const sexLegend = () =>
+      Array.from(document.querySelectorAll("legend")).find((legend) =>
+        legend.textContent?.startsWith("Sex"),
+      );
+
+    const { unmount } = renderForm();
+    await flush();
+    expect(sexLegend()?.querySelector(".requiredlabel")).not.toBeNull();
+    unmount();
+
+    renderForm({
+      ...madagascarRegistrationConfig,
+      PATIENT_SEX_REQUIRED: "false",
+    });
+    await flush();
+    expect(sexLegend()).toBeDefined();
+    expect(sexLegend()?.querySelector(".requiredlabel")).toBeNull();
+  });
 });

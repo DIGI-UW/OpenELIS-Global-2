@@ -19,11 +19,23 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { ChevronDown, Edit, TaskAdd } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils";
+import {
+  serverPageArrowsProps,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 
-const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
+const EOrder = ({
+  eOrders,
+  setEOrders,
+  eOrderRef,
+  paging,
+  serverPageSize,
+  loadPage,
+}) => {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -31,8 +43,6 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
   const intl = useIntl();
 
   const [entering, setEntering] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
 
   useEffect(() => {}, []);
 
@@ -202,22 +212,17 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
     return <TableCell key={cell.id}>{cell.value}</TableCell>;
   };
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
-  };
-
   const createDataTable = (eOrdersCurrent) => {
+    const arrows = serverPageArrowsProps({
+      paging,
+      onPageRequest: (pageNumber) => loadPage?.(pageNumber),
+    });
     return (
       <>
+        {arrows.show && <ServerPageArrows {...arrows} />}
         <DataTable
           id="eOrderTable"
-          rows={eOrdersCurrent.slice((page - 1) * pageSize, page * pageSize)}
+          rows={eOrdersCurrent}
           headers={[
             {
               key: "requestDateDisplay",
@@ -340,43 +345,13 @@ const EOrder = ({ eOrders, setEOrders, eOrderRef }) => {
           )}
         </DataTable>
         <Pagination
-          onChange={handlePageChange}
-          page={page}
-          pageSize={pageSize}
-          pageSizes={[10, 20, 30, 50, 100]}
-          totalItems={eOrdersCurrent.length}
-          forwardText={intl.formatMessage({ id: "pagination.forward" })}
-          backwardText={intl.formatMessage({ id: "pagination.backward" })}
-          itemRangeText={(min, max, total) =>
-            intl.formatMessage(
-              { id: "pagination.item-range" },
-              { min: min, max: max, total: total },
-            )
-          }
-          itemsPerPageText={intl.formatMessage({
-            id: "pagination.items-per-page",
+          {...serverPaginationProps({
+            paging,
+            rowsOnPage: eOrdersCurrent.length,
+            pageSize: serverPageSize,
+            onPageRequest: (pageNumber) => loadPage?.(pageNumber),
+            intl,
           })}
-          itemText={(min, max) =>
-            intl.formatMessage(
-              { id: "pagination.item" },
-              { min: min, max: max },
-            )
-          }
-          pageNumberText={intl.formatMessage({
-            id: "pagination.page-number",
-          })}
-          pageRangeText={(_current, total) =>
-            intl.formatMessage(
-              { id: "pagination.page-range" },
-              { total: total },
-            )
-          }
-          pageText={(page, pagesUnknown) =>
-            intl.formatMessage(
-              { id: "pagination.page" },
-              { page: pagesUnknown ? "" : page },
-            )
-          }
         />
       </>
     );

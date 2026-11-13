@@ -9,8 +9,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
@@ -19,11 +21,13 @@ import org.openelisglobal.qc.dao.QCControlLotDAO;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.dao.QCRuleViolationDAO;
 import org.openelisglobal.qc.dto.AnalyteDetail;
+import org.openelisglobal.qc.dto.BenchQcSummaryRow;
 import org.openelisglobal.qc.dto.InstrumentQCStatus;
 import org.openelisglobal.qc.dto.QCDashboardSummary;
 import org.openelisglobal.qc.dto.TriggeredRuleDetail;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
+import org.openelisglobal.qc.valueholder.QCSource;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -49,8 +53,6 @@ public class QCDashboardServiceImpl implements QCDashboardService {
 
     private static final String SEVERITY_REJECTION = "REJECTION";
     private static final String SEVERITY_WARNING = "WARNING";
-
-    private static final String STATUS_UNRESOLVED = "UNRESOLVED";
 
     private static final int DEFAULT_WINDOW_DAYS = 30;
 
@@ -89,34 +91,15 @@ public class QCDashboardServiceImpl implements QCDashboardService {
     @Override
     @Transactional(readOnly = true)
     public List<InstrumentQCStatus> getAllInstrumentComplianceStatus(Timestamp startDate, Timestamp endDate) {
-        // Collect instrument IDs from both QC results and unresolved violations
-        Set<String> instrumentIds = new HashSet<>();
-        try {
-            List<String> resultInstrumentIds = resultDAO.findDistinctInstrumentIds();
-            instrumentIds.addAll(resultInstrumentIds);
-        } catch (Exception e) {
-            LogEvent.logWarn(this.getClass().getName(), "getAllInstrumentComplianceStatus",
-                    "Could not load instrument IDs from QC results: " + e.getMessage());
-        }
-        try {
-            List<QCRuleViolation> allUnresolved = violationDAO.findUnresolved();
-            allUnresolved.stream().map(QCRuleViolation::getInstrumentId).forEach(instrumentIds::add);
-        } catch (Exception e) {
-            LogEvent.logWarn(this.getClass().getName(), "getAllInstrumentComplianceStatus",
-                    "Could not load instrument IDs from violations: " + e.getMessage());
-        }
-
-        // Pre-fetch analyzers to avoid N+1
-        Map<String, Analyzer> analyzerCache = new HashMap<>();
-        for (String id : instrumentIds) {
-            try {
-                Optional<Analyzer> analyzer = analyzerService.getWithBinding(id);
-                analyzer.ifPresent(a -> analyzerCache.put(id, a));
-            } catch (Exception e) {
-                LogEvent.logWarn(this.getClass().getName(), "getAllInstrumentComplianceStatus",
-                        "Could not load analyzer " + id + ": " + e.getMessage());
-            }
-        }
+        // Inventory is independent of QC activity. Keep historical instruments with
+        // results or unresolved violations visible as well as active instruments.
+        Map<String, Analyzer> analyzerCache = analyzerService.getAllWithMapping().stream()
+                .collect(Collectors.toMap(Analyzer::getId, Function.identity()));
+        Set<String> instrumentIds = analyzerCache.values().stream()
+                .filter(analyzer -> analyzer.getStatus() == Analyzer.AnalyzerStatus.ACTIVE).map(Analyzer::getId)
+                .collect(Collectors.toCollection(HashSet::new));
+        instrumentIds.addAll(resultDAO.findDistinctInstrumentIds());
+        violationDAO.findUnresolved().stream().map(QCRuleViolation::getInstrumentId).forEach(instrumentIds::add);
 
         List<InstrumentQCStatus> statuses = new ArrayList<>();
 
@@ -126,8 +109,10 @@ public class QCDashboardServiceImpl implements QCDashboardService {
             statuses.add(status);
         }
 
-        // Remove instruments that have no activity in the date range
-        statuses.removeIf(s -> s.getAnalyteDetails().isEmpty() && s.getUnresolvedRejections() == 0
+        // Inactive historical instruments remain only when there is activity to review
+        statuses.removeIf(s -> (analyzerCache.get(s.getInstrumentId()) == null
+                || analyzerCache.get(s.getInstrumentId()).getStatus() != Analyzer.AnalyzerStatus.ACTIVE)
+                && s.getAnalyteDetails().isEmpty() && s.getUnresolvedRejections() == 0
                 && s.getUnresolvedWarnings() == 0);
 
         // Sort by compliance color (RED first, then YELLOW, then GREEN)
@@ -155,7 +140,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
             Timestamp endDate) {
         Analyzer analyzer = null;
         try {
-            Optional<Analyzer> opt = analyzerService.getWithBinding(String.valueOf(instrumentId));
+            Optional<Analyzer> opt = analyzerService.getWithMapping(String.valueOf(instrumentId));
             analyzer = opt.orElse(null);
         } catch (Exception e) {
             LogEvent.logWarn(this.getClass().getName(), "getInstrumentComplianceStatus",
@@ -213,6 +198,37 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         return summary;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<BenchQcSummaryRow> getBenchQcSummary(Timestamp startDate, Timestamp endDate, QCSource source) {
+        List<Object[]> rows = resultDAO.summariseBenchQc(startDate, endDate, source);
+        List<BenchQcSummaryRow> summary = new ArrayList<>();
+        for (Object[] row : rows) {
+            String testSectionId = Objects.toString(row[0], null);
+            String testId = Objects.toString(row[1], null);
+            summary.add(new BenchQcSummaryRow(testSectionId, resolveTestSectionName(testSectionId), testId,
+                    testService.getLabelOrDefault(testId, Test::getName, null), Objects.toString(row[2], null),
+                    row[3] == null ? 0L : ((Number) row[3]).longValue(),
+                    row[4] == null ? 0L : ((Number) row[4]).longValue(), (Timestamp) row[5]));
+        }
+        return summary;
+    }
+
+    /** Names are context, never a reason to fail the listing. */
+    private String resolveTestSectionName(String testSectionId) {
+        if (testSectionId == null) {
+            return null;
+        }
+        try {
+            TestSection section = testSectionService.get(testSectionId);
+            return section == null ? null : section.getLocalizedName();
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getName(), "resolveTestSectionName",
+                    "Could not resolve lab unit name for " + testSectionId);
+            return null;
+        }
+    }
+
     /**
      * Build the compliance status for a specific instrument within a date range.
      * Loads violations and results for the instrument within the window.
@@ -246,8 +262,8 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         if (analyzer != null) {
             status.setInstrumentName(analyzer.getName());
             status.setInstrumentLocation(resolveLabUnitNames(analyzer.getTestUnitIds()));
-            if (analyzer.getPinnedProfileBinding() != null) {
-                status.setInstrumentType(analyzer.getPinnedProfileBinding().getProfileId());
+            if (analyzer.getPinnedProfile() != null) {
+                status.setInstrumentType(analyzer.getPinnedProfile().getProfileId());
             }
         } else {
             status.setInstrumentName("Instrument " + instrumentId);
@@ -360,18 +376,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         AnalyteDetail detail = new AnalyteDetail();
         detail.setTestId(testId);
 
-        try {
-            Test test = testService.getTestById(String.valueOf(testId));
-            if (test != null) {
-                detail.setTestName(test.getDescription() != null ? test.getDescription() : "Test " + testId);
-            } else {
-                detail.setTestName("Test " + testId);
-            }
-        } catch (Exception e) {
-            LogEvent.logWarn(this.getClass().getName(), "buildAnalyteDetail",
-                    "Could not load test " + testId + ": " + e.getMessage());
-            detail.setTestName("Test " + testId);
-        }
+        detail.setTestName(testService.getLabelOrDefault(testId, Test::getDescription, "Test " + testId));
 
         if (latestResult != null) {
             detail.setLatestZScore(latestResult.getZScore());

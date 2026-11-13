@@ -19,8 +19,10 @@ import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import BasicInfoSection from "./sections/BasicInfoSection";
 import SampleResultsSection from "./sections/SampleResultsSection";
+import ContainersSection from "./sections/ContainersSection";
 import MethodsSection from "./sections/MethodsSection";
 import RangesSection from "./sections/RangesSection";
+import QcTargetsSection from "./sections/QcTargetsSection";
 import StorageSection from "./sections/StorageSection";
 import AnalyzersSection from "./sections/AnalyzersSection";
 import DisplayOrderSection from "./sections/DisplayOrderSection";
@@ -29,6 +31,7 @@ import PanelsSection from "./sections/PanelsSection";
 import ReagentsSection from "./sections/ReagentsSection";
 import LabelsSection from "./sections/LabelsSection";
 import AlertsSection from "./sections/AlertsSection";
+import AccreditationSection from "./sections/AccreditationSection";
 import ReflexCalcSection from "./sections/ReflexCalcSection";
 import LocalizationSection from "./sections/LocalizationSection";
 import { DEFAULT_SECTION, isValidSection } from "./sectionConfig";
@@ -288,10 +291,14 @@ const TestCatalogEditor = () => {
                 <BasicInfoSection testId={testId} />
               ) : activeSection === "sample-results" ? (
                 <SampleResultsSection testId={testId} />
+              ) : activeSection === "containers" ? (
+                <ContainersSection testId={testId} />
               ) : activeSection === "methods" ? (
                 <MethodsSection testId={testId} />
               ) : activeSection === "ranges" ? (
                 <RangesSection testId={testId} />
+              ) : activeSection === "qc-targets" ? (
+                <QcTargetsSection testId={testId} />
               ) : activeSection === "storage" ? (
                 <StorageSection testId={testId} />
               ) : activeSection === "analyzers" ? (
@@ -308,6 +315,8 @@ const TestCatalogEditor = () => {
                 <LabelsSection testId={testId} />
               ) : activeSection === "alerts" ? (
                 <AlertsSection testId={testId} />
+              ) : activeSection === "accreditation" ? (
+                <AccreditationSection testId={testId} />
               ) : activeSection === "reflex-calc" ? (
                 <ReflexCalcSection testId={testId} />
               ) : activeSection === "localization" ? (

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <qa_event id="90001" is_holdable="N" is_billable="N"
+        name="Haemolysed" description="Synthetic rejection reason" />
+    <nce_type id="90001" name="Equipment failure" active="true" />
+    <sample_qaevent id="90001" sample_id="1"
+        sampleitem_id="1" qa_event_id="90001"
+        entered_date="2026-05-05 12:00:00" />
+</dataset>

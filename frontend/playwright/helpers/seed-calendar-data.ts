@@ -1,24 +1,9 @@
 import { Page } from "@playwright/test";
+import { csrfToken as getCsrfToken } from "./api-session";
 
 /** API context path — must use /api/OpenELIS-Global prefix so the
  *  JSESSIONID (scoped to that webapp context) is recognized by Tomcat. */
 const API_PREFIX = "/api/OpenELIS-Global";
-
-/**
- * Extract CSRF token from the page context's storageState.
- * The auth.setup saves it in localStorage under key "CSRF".
- * page.request doesn't auto-include localStorage values, so we read the
- * storageState origin data to get the token without needing page navigation.
- */
-async function getCsrfToken(page: Page): Promise<string> {
-  const state = await page.context().storageState();
-  for (const origin of state.origins) {
-    for (const item of origin.localStorage) {
-      if (item.name === "CSRF") return item.value;
-    }
-  }
-  return "";
-}
 
 interface Holiday {
   id?: number;

@@ -1,0 +1,9 @@
+/* The selected-patient line: tag, "select another patient" and Clear on one
+   row, wrapping on a narrow screen, matching the results entry page. */
+.patientStatusReportSelectedPatient {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 0.75rem 0;
+}

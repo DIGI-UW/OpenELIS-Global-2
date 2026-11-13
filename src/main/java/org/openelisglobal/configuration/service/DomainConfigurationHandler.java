@@ -59,4 +59,34 @@ public interface DomainConfigurationHandler {
      * @throws Exception if processing fails
      */
     void processConfiguration(InputStream inputStream, String fileName) throws Exception;
+
+    /**
+     * Outcome counters of the most recently processed file, for handlers that
+     * record one row as created, updated or skipped; {@code null} otherwise.
+     */
+    default CsvLoadSummary getLastSummary() {
+        return null;
+    }
+
+    /**
+     * Whether {@link #processConfiguration(InputStream, String, boolean)} can run
+     * without keeping anything, so an import preview can show the plan for this
+     * domain. Handlers that write in one file-wide unit of work say no and are left
+     * out of previews.
+     */
+    default boolean supportsDryRun() {
+        return false;
+    }
+
+    /**
+     * Processes the file, or, when {@code dryRun} is set and the handler supports
+     * it, evaluates every row against the current database and rolls each one back,
+     * leaving the outcomes in {@link #getLastSummary()}.
+     */
+    default void processConfiguration(InputStream inputStream, String fileName, boolean dryRun) throws Exception {
+        if (dryRun && !supportsDryRun()) {
+            throw new UnsupportedOperationException(getDomainName() + " does not support a dry run");
+        }
+        processConfiguration(inputStream, fileName);
+    }
 }

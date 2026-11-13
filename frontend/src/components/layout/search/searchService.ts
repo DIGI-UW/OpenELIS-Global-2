@@ -97,12 +97,6 @@ export const fetchPatientData = async (
   }
 };
 
-export const openPatientResults = (patientId?: string | number) => {
-  if (patientId) {
-    window.location.href = "/PatientResults/" + patientId;
-  }
-};
-
 type UserInput = string | AutocompleteSuggestion | undefined;
 
 export const useAutocomplete = (props: AutocompleteProps) => {

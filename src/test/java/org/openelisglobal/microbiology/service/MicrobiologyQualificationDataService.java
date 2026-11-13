@@ -16,7 +16,6 @@ import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 
 /**
  * Test-support builder for repeatable qualification workloads through
@@ -36,12 +35,14 @@ public class MicrobiologyQualificationDataService {
     private final MicroIsolateService isolateService;
     private final MicroAstService astService;
     private final MicroCaseService caseService;
+    private final org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures fixtures;
     private final boolean enabled;
 
     public MicrobiologyQualificationDataService(MicrobiologyUatScenarioService scenarioService,
             MicrobiologyReferenceService referenceService, MicroBreakpointService breakpointService,
             MicrobiologyConfigurationService configurationService, MicroIsolateService isolateService,
-            MicroAstService astService, MicroCaseService caseService, boolean enabled) {
+            MicroAstService astService, MicroCaseService caseService,
+            org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures fixtures, boolean enabled) {
         this.scenarioService = scenarioService;
         this.referenceService = referenceService;
         this.breakpointService = breakpointService;
@@ -49,6 +50,7 @@ public class MicrobiologyQualificationDataService {
         this.isolateService = isolateService;
         this.astService = astService;
         this.caseService = caseService;
+        this.fixtures = fixtures;
         this.enabled = enabled;
     }
 
@@ -76,6 +78,7 @@ public class MicrobiologyQualificationDataService {
         String normalizedRunKey = requireRunKey(runKey);
         MicroCaseServiceImpl.requireText(performedBy, "performedBy");
         MicrobiologyUatScenarioForm scenario = provision("qualification-" + normalizedRunKey + "-dense", performedBy);
+        fixtures.prepareAstCase(caseService.getCase(scenario.caseId), performedBy);
         MicroAstPanel panel = requireUatPanel();
         MicroBreakpointStandard standard = requireUatStandard();
         List<MicroAntibiotic> antibiotics = getOrCreateQualificationAntibiotics(panel, standard);
@@ -116,7 +119,7 @@ public class MicrobiologyQualificationDataService {
     }
 
     private MicroAstPanel requireUatPanel() {
-        return referenceService.getActiveAstPanels(MicroWorkflowType.BACTERIOLOGY).stream()
+        return referenceService.getActiveAstPanels(null).stream()
                 .filter(panel -> UAT_PANEL_NAME.equals(panel.getName())).findFirst()
                 .orElseThrow(() -> new IllegalStateException("QUALIFICATION_AST_PANEL_REQUIRED"));
     }

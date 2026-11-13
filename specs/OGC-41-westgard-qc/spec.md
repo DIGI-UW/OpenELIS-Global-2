@@ -4,7 +4,7 @@
 > OpenELIS operational Quality Control: control lots, QC results, statistics,
 > Westgard evaluation, violations, alerts, and their user workflows. Its older
 > per-analyzer editable identification-rule design is superseded by the
-> [OGC-1054 authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md).
+> [analyzer specification](../analyzers/spec.md).
 > Control-result recognition is immutable behavior of the pinned Bridge profile
 > revision. OpenELIS does not own an editable recognition rule or send a
 > classifier to Bridge.
@@ -34,7 +34,7 @@ Operational-QC foundation implemented; analyzer-identification path superseded
 ## Analyzer Architecture Boundary
 
 The canonical
-[OGC-1054 analyzer roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
+[analyzer specification](../analyzers/spec.md)
 supersedes the analyzer-classification ownership originally proposed here.
 This specification remains authoritative for OpenELIS operational QC: control
 lots, QC results, statistics, Westgard configuration and evaluation,
@@ -429,31 +429,31 @@ to the analyzer, and verify its activation and verification state is unchanged.
 - v1 does not include corrective action workflows (recalibration, maintenance
   tracking, task assignment). Violations can be acknowledged/resolved but
   without typed corrective action categories.
-- v1 does not include manual QC recording (the analyzer-manual-qc spec is a
-  separate feature for instruments that run manual tests).
-- v1 does not include trend analysis, reporting/export, or advanced chart
-  interactions (zoom, pan, export to PDF).
+- Manual (bench) QC results are recorded from the reagents and QC section of
+  the Results page. The dedicated manual QC page (`/qa/qc/manual-qc`) is still a
+  placeholder.
+- QC data can be exported as CSV or PDF from the QC dashboard.
+- v1 does not include trend analysis or advanced chart interactions (zoom,
+  pan).
 - The system targets CLIA/CAP QC requirements and ISO 15189 audit trail
   standards.
 
 ## Implementation Status
 
-PR #3390 implemented the OpenELIS operational-QC foundation and also introduced
-an analyzer-classification path that OGC-1054 removes. The control-lot,
-QC-result, statistics, Westgard, violation, alert, and dashboard work remains
-the operational foundation. Current tests and human review determine
-acceptance; old test counts and route inventories do not.
+The operational QC foundation is implemented: control lots, QC results,
+statistics, Westgard rules, violations, alerts and the dashboard, plus manual QC
+entry and export. Control-result recognition belongs to the Bridge
+profile, not to OpenELIS. Current tests and human review determine acceptance.
 
 ## v2+ Roadmap (deferred from design spec)
 
 | Feature                                  | Design ref                         | Priority |
 | ---------------------------------------- | ---------------------------------- | -------- |
 | Corrective action workflow               | FR7 (westgard-rules.md)            | High     |
-| Manual QC recording                      | analyzer-manual-qc.md              | High     |
+| Dedicated manual QC page                 | analyzer-manual-qc.md              | High     |
 | Email/push alerts                        | FR11.2, FR11.7 (westgard-rules.md) | Medium   |
 | Trend analysis                           | FR10 (westgard-rules.md)           | Medium   |
-| Reporting + PDF/CSV export               | FR12 (westgard-rules.md)           | Medium   |
-| Chart zoom/pan/export                    | FR9.6, FR9.8 (westgard-rules.md)   | Low      |
+| Chart zoom/pan                           | FR9.6, FR9.8 (westgard-rules.md)   | Low      |
 | Manual rule re-evaluation / preview mode | FR5 (westgard-rules.md)            | Low      |
 | Per-user notification preferences        | FR11.3 (westgard-rules.md)         | Low      |
 | Granular QC roles (Results/Biologist)    | FR13.2-13.4 (westgard-rules.md)    | Low      |

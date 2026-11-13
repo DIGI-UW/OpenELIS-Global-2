@@ -1,0 +1,362 @@
+/**
+ * The landing worklist is every stage but COMPLETED, named by the "Not
+ * Completed" option, so a case waiting for a pathologist is listed; the "In
+ * Progress" option is narrower and matches the backend tile grouping. Stage
+ * names render localized, never as raw enum ids.
+ */
+import React from "react";
+import { vi } from "vitest";
+import { act, render, screen, within, fireEvent } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import "@testing-library/jest-dom";
+import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
+import messages from "../../languages/en.json";
+import { NotificationContext } from "../layout/Layout";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import PathologyDashboard from "./PathologyDashboard";
+import { PATHOLOGY_STAGES } from "./pathologyStages";
+
+vi.mock("../utils/Utils", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    getFromOpenElisServer: vi.fn(),
+    postToOpenElisServerFullResponse: vi.fn(),
+  };
+});
+
+import { getFromOpenElisServer } from "../utils/Utils";
+
+/**
+ * The display list is served with the stage id as its own text, so the only
+ * way the catalogue-wording assertions below can pass is if the label came
+ * from React Intl. Had the screen kept using the server's text, or fallen
+ * through to stageLabel's fallback, every option would read as a raw id.
+ */
+const PATHOLOGY_STATUS_LIST = PATHOLOGY_STAGES.map((id) => ({ id, value: id }));
+
+/**
+ * Both lists are typed out rather than derived from the stage module, so a
+ * change to either grouping has to be made here on purpose as well.
+ */
+const LANDING_WORKLIST_STAGES = [
+  "ACCESSIONED",
+  "GROSSING",
+  "DECALCIFICATION",
+  "PROCESSING",
+  "EMBEDDING",
+  "MICROTOMY",
+  "STAINING",
+  "COVERSLIPPING",
+  "READY_PATHOLOGIST",
+  "UNDER_REVIEW",
+];
+
+const IN_PROGRESS_OPTION_STAGES = [
+  "ACCESSIONED",
+  "GROSSING",
+  "DECALCIFICATION",
+  "PROCESSING",
+  "EMBEDDING",
+  "MICROTOMY",
+  "STAINING",
+  "COVERSLIPPING",
+  "UNDER_REVIEW",
+];
+
+const DASHBOARD_COUNTS = {
+  inProgress: 3,
+  awaitingReview: 1,
+  additionalRequests: 0,
+  complete: 2,
+};
+
+/**
+ * One case on the bench and one waiting for a pathologist. Both already have
+ * a technician, so the only Start button either row can carry is the
+ * pathologist's, which the screen draws only on a READY_PATHOLOGIST row.
+ */
+const DASHBOARD_ENTRIES = [
+  {
+    pathologySampleId: 9,
+    labNumber: "ACC9",
+    firstName: "A",
+    lastName: "B",
+    status: "MICROTOMY",
+    assignedTechnician: "Tech One",
+    requestDate: "2026-09-01",
+  },
+  {
+    pathologySampleId: 7,
+    labNumber: "ACC7",
+    firstName: "C",
+    lastName: "D",
+    status: "READY_PATHOLOGIST",
+    assignedTechnician: "Tech One",
+    requestDate: "2026-09-02",
+  },
+];
+
+const requestedStages = (url) =>
+  (new URLSearchParams(url.split("?")[1]).get("statuses") ?? "")
+    .split(",")
+    .filter(Boolean);
+
+/** The stages of every worklist request so far, oldest first. */
+const dashboardRequests = () =>
+  getFromOpenElisServer.mock.calls
+    .filter(([url]) => url.startsWith("/rest/pathology/dashboard?"))
+    .map(([url]) => requestedStages(url));
+
+const renderDashboard = ({ roles = [] } = {}) =>
+  render(
+    <MemoryRouter initialEntries={["/PathologyDashboard"]}>
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider value={{ notificationVisible: false }}>
+          <UserSessionDetailsContext.Provider
+            value={{ userSessionDetails: { roles } }}
+          >
+            <PathologyDashboard />
+          </UserSessionDetailsContext.Provider>
+        </NotificationContext.Provider>
+      </IntlProvider>
+    </MemoryRouter>,
+  );
+
+beforeEach(() => {
+  getFromOpenElisServer.mockReset();
+  getFromOpenElisServer.mockImplementation((url, callback) => {
+    if (url.startsWith("/rest/displayList/PATHOLOGY_STATUS")) {
+      return callback(PATHOLOGY_STATUS_LIST);
+    }
+    if (url.startsWith("/rest/pathology/dashboard/count")) {
+      return callback(DASHBOARD_COUNTS);
+    }
+    if (url.startsWith("/rest/pathology/dashboard?")) {
+      // Answers like the server does: one page holding only the cases at a
+      // requested stage.
+      const stages = requestedStages(url);
+      return callback({
+        items: DASHBOARD_ENTRIES.filter((entry) =>
+          stages.includes(entry.status),
+        ),
+        paging: { currentPage: "1", totalPages: "1" },
+      });
+    }
+    return callback([]);
+  });
+});
+
+it("shows the localized bench-stage name in the Stage column, never the raw enum id", async () => {
+  renderDashboard();
+
+  const labNumberCell = await screen.findByText("ACC9");
+  const row = labNumberCell.closest("tr");
+
+  expect(
+    within(row).getByText(messages["pathology.stage.microtomy"]),
+  ).toBeInTheDocument();
+  expect(within(row).queryByText("MICROTOMY")).not.toBeInTheDocument();
+});
+
+it("lists a case waiting for a pathologist on landing, with its Start button", async () => {
+  const { container } = renderDashboard({ roles: ["Pathologist"] });
+
+  const waitingRow = (await screen.findByText("ACC7")).closest("tr");
+  expect(
+    within(waitingRow).getByRole("button", {
+      name: messages["label.button.start"],
+    }),
+  ).toBeInTheDocument();
+
+  // The Start button belongs to the waiting case alone: the bench case has a
+  // technician and is not ready for a pathologist, so it offers nothing.
+  const benchRow = screen.getByText("ACC9").closest("tr");
+  expect(
+    within(benchRow).queryByRole("button", {
+      name: messages["label.button.start"],
+    }),
+  ).not.toBeInTheDocument();
+
+  expect(dashboardRequests().at(-1)).toEqual(LANDING_WORKLIST_STAGES);
+
+  // The landing set has its own option, so the control names it.
+  expect(container.querySelector("#statusFilter").value).toBe("NOT_COMPLETED");
+});
+
+it("names the landing worklist before the stage list has arrived", () => {
+  // The stage list is held back: only the worklist and the counts answer.
+  getFromOpenElisServer.mockImplementation((url, callback) => {
+    if (url.startsWith("/rest/pathology/dashboard/count")) {
+      return callback(DASHBOARD_COUNTS);
+    }
+    if (url.startsWith("/rest/pathology/dashboard?")) {
+      return callback({
+        items: [],
+        paging: { currentPage: "1", totalPages: "1" },
+      });
+    }
+    return undefined;
+  });
+  const { container } = renderDashboard();
+
+  expect(container.querySelector("#statusFilter").value).toBe("NOT_COMPLETED");
+});
+
+it("lists the waiting case again once Not Completed is chosen after Completed", async () => {
+  const { container } = renderDashboard({ roles: ["Pathologist"] });
+  await screen.findByText("ACC7");
+  const select = container.querySelector("#statusFilter");
+
+  fireEvent.change(select, { target: { value: "COMPLETED" } });
+  await waitFor(() => {
+    expect(screen.queryByText("ACC7")).not.toBeInTheDocument();
+  });
+
+  fireEvent.change(select, { target: { value: "NOT_COMPLETED" } });
+  await screen.findByText("ACC7");
+  expect(dashboardRequests().at(-1)).toEqual(LANDING_WORKLIST_STAGES);
+  expect(select.value).toBe("NOT_COMPLETED");
+});
+
+it("requests only the In Progress grouping once it is chosen, dropping the waiting case", async () => {
+  const { container } = renderDashboard({ roles: ["Pathologist"] });
+  await screen.findByText("ACC7");
+
+  fireEvent.change(container.querySelector("#statusFilter"), {
+    target: { value: "IN_PROGRESS" },
+  });
+
+  await waitFor(() => {
+    expect(screen.queryByText("ACC7")).not.toBeInTheDocument();
+  });
+  expect(screen.getByText("ACC9")).toBeInTheDocument();
+  expect(dashboardRequests().at(-1)).toEqual(IN_PROGRESS_OPTION_STAGES);
+});
+
+it("reads the single stage chosen, not the grouping that contains it", async () => {
+  const { container } = renderDashboard();
+  await screen.findByText("ACC9");
+  const select = container.querySelector("#statusFilter");
+
+  fireEvent.change(select, { target: { value: "MICROTOMY" } });
+
+  await waitFor(() => {
+    expect(dashboardRequests().at(-1)).toEqual(["MICROTOMY"]);
+  });
+  expect(select.value).toBe("MICROTOMY");
+});
+
+it("lists the eleven bench stages in order with localized labels in the status filter", async () => {
+  const { container } = renderDashboard();
+  await screen.findByText("ACC9");
+
+  const select = container.querySelector("#statusFilter");
+  const optionTexts = Array.from(select.querySelectorAll("option")).map(
+    (option) => option.textContent,
+  );
+
+  expect(optionTexts.slice(0, 4)).toEqual([
+    messages["common.status"],
+    messages["common.all"],
+    messages["common.notCompleted"],
+    messages["common.inProgress"],
+  ]);
+  expect(optionTexts.slice(4)).toEqual([
+    messages["pathology.stage.accessioned"],
+    messages["pathology.stage.grossing"],
+    messages["pathology.stage.decalcification"],
+    messages["pathology.stage.processing"],
+    messages["pathology.stage.embedding"],
+    messages["pathology.stage.microtomy"],
+    messages["pathology.stage.staining"],
+    messages["pathology.stage.coverslipping"],
+    messages["pathology.stage.readyPathologist"],
+    messages["pathology.stage.underReview"],
+    messages["pathology.stage.completed"],
+  ]);
+});
+
+it("issues a request scoped to COMPLETED only when the Completed stage is chosen", async () => {
+  const { container } = renderDashboard();
+  await screen.findByText("ACC9");
+
+  const select = container.querySelector("#statusFilter");
+  fireEvent.change(select, { target: { value: "COMPLETED" } });
+
+  await waitFor(() => {
+    expect(dashboardRequests().at(-1)).toEqual(["COMPLETED"]);
+  });
+  expect(select.value).toBe("COMPLETED");
+});
+
+it("keeps the page the user moved to when an earlier search answers late", async () => {
+  // The search runs more than once while the stage list and filters settle; a
+  // slow duplicate must not pull the view back to page 1.
+  const pending = [];
+  getFromOpenElisServer.mockImplementation((url, callback) => {
+    if (url.startsWith("/rest/displayList/PATHOLOGY_STATUS")) {
+      return callback(PATHOLOGY_STATUS_LIST);
+    }
+    if (url.startsWith("/rest/pathology/dashboard/count")) {
+      return callback(DASHBOARD_COUNTS);
+    }
+    if (url.startsWith("/rest/pathology/dashboard?")) {
+      pending.push({ url, callback });
+      return;
+    }
+    return callback([]);
+  });
+  const pageOne = {
+    items: [
+      DASHBOARD_ENTRIES[0],
+      {
+        pathologySampleId: 10,
+        labNumber: "ACC10",
+        firstName: "C",
+        lastName: "D",
+        status: "GROSSING",
+        requestDate: "2026-09-01",
+      },
+    ],
+    paging: { currentPage: "1", totalPages: "2" },
+  };
+  const pageTwo = {
+    items: [
+      {
+        pathologySampleId: 11,
+        labNumber: "ACC11",
+        firstName: "E",
+        lastName: "F",
+        status: "STAINING",
+        requestDate: "2026-09-01",
+      },
+    ],
+    paging: { currentPage: "2", totalPages: "2" },
+  };
+  renderDashboard();
+
+  await waitFor(() => {
+    expect(
+      pending.filter((p) => !p.url.includes("page=")).length,
+    ).toBeGreaterThan(0);
+  });
+  const searches = pending.filter((p) => !p.url.includes("page="));
+  act(() => searches[searches.length - 1].callback(pageOne));
+  await screen.findByText("ACC9");
+
+  fireEvent.click(document.getElementById("loadnextresults"));
+  await waitFor(() => {
+    expect(pending.some((p) => p.url.includes("page=2"))).toBe(true);
+  });
+  act(() => pending.find((p) => p.url.includes("page=2")).callback(pageTwo));
+  await screen.findByText("ACC11");
+  expect(screen.getByText("2 / 2")).toBeInTheDocument();
+
+  act(() => searches[0].callback(pageOne));
+
+  expect(screen.getByText("ACC11")).toBeInTheDocument();
+  expect(screen.queryByText("ACC9")).toBeNull();
+  expect(screen.getByText("2 / 2")).toBeInTheDocument();
+});

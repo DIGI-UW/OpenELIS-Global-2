@@ -232,7 +232,9 @@ public class Localization extends BaseObject<String> {
     }
 
     /**
-     * Set the translation for a specific locale code.
+     * Set the translation for a specific locale code. This is an edit made in an
+     * editor, so a changed label becomes the lab's own (OGC-1507): on a shipped
+     * value it then wins over the shipped translation.
      *
      * @param localeCode the locale code (e.g., "en", "fr")
      * @param value      the translation value
@@ -243,12 +245,53 @@ public class Localization extends BaseObject<String> {
         }
         LocalizationValue lv = values.get(localeCode);
         if (lv != null) {
-            lv.setValue(value);
+            if (value == null ? lv.getValue() != null : !value.equals(lv.getValue())) {
+                lv.writeSiteLabel(value);
+            }
         } else {
             lv = new LocalizationValue(localeCode, value);
             lv.setLocalization(this);
             values.put(localeCode, lv);
         }
+    }
+
+    /**
+     * A label OpenELIS writes, from a configuration file or an upgrade (OGC-1507).
+     * On a shipped value a lab's own edit for that language is kept, with the
+     * file's label kept beside it; a site-created value is rewritten from its file
+     * as before.
+     *
+     * @param keepSiteLabel true for a value that ships with a display key
+     */
+    public void setSystemValue(String localeCode, String value, boolean keepSiteLabel) {
+        if (values == null) {
+            values = new HashMap<>();
+        }
+        LocalizationValue lv = values.get(localeCode);
+        if (lv == null) {
+            lv = new LocalizationValue(localeCode, value);
+            lv.setLocalization(this);
+            lv.setOrigin(LocalizationValue.ORIGIN_SYSTEM);
+            values.put(localeCode, lv);
+        } else {
+            lv.writeSystemLabel(value, keepSiteLabel);
+        }
+    }
+
+    /** A lab's own label for the language, or null. */
+    public String getSiteValue(String language) {
+        LocalizationValue lv = values == null ? null : values.get(language);
+        return lv != null && lv.isSiteLabel() && !GenericValidator.isBlankOrNull(lv.getValue()) ? lv.getValue() : null;
+    }
+
+    /**
+     * The label OpenELIS wrote for the language, also when a lab label replaced it,
+     * or null.
+     */
+    public String getSystemValue(String language) {
+        LocalizationValue lv = values == null ? null : values.get(language);
+        String shipped = lv == null ? null : lv.getShippedValue();
+        return GenericValidator.isBlankOrNull(shipped) ? null : shipped;
     }
 
     /**

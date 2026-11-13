@@ -14,8 +14,8 @@ runtime code.
 
 ### Current projects
 
-- `projects/catalyst/` — OGC-70 Catalyst (LLM-powered lab data assistant).
-  Tracked as a git submodule pinned to the `main` branch of
-  [DIGI-UW/openelis-catalyst](https://github.com/DIGI-UW/openelis-catalyst).
-  After cloning OpenELIS-Global-2, run
-  `git submodule update --init projects/catalyst` to populate.
+- `projects/analyzer-harness/` — internal Compose configuration, scenario
+  seeding, and analyzer testing/recording tools. The public source-development
+  launcher is `scripts/dev-stack`; full local CI is `scripts/run-ci-checks.sh`.
+- `projects/reporting-uat/` — runtime qualification tools for the isolated
+  reporting UAT deployment.

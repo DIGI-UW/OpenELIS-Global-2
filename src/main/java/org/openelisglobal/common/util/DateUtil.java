@@ -20,8 +20,11 @@ import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Period;
+import java.time.chrono.IsoChronology;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
+import java.time.format.FormatStyle;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -727,32 +730,38 @@ public class DateUtil {
     }
 
     public static String formatStringDate(String dateStr, String outputFormat) {
+        return formatStringDate(dateStr, outputFormat, getDateFormatLocale());
+    }
+
+    /**
+     * Re-formats a stored display date. Stored dates are written in the site's own
+     * date order, so that order is tried first: reading a day-first 03/11/1990 as
+     * month-first turned 3 November into 11 March, and a patient saved again from
+     * that screen kept the swapped date. The other order is only a fallback for
+     * values the site's order cannot read. A value neither order can read, such as
+     * a birth date with an unknown day and month, is returned as it was.
+     */
+    public static String formatStringDate(String dateStr, String outputFormat, Locale siteLocale) {
         if (dateStr == null || dateStr.isBlank()) {
             return "";
         }
-        // Define the input date formats
-        DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("MM/dd/yyyy");
-        DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-        LocalDate date = null;
-
-        // Attempt to parse with the first format
-        try {
-            date = LocalDate.parse(dateStr, formatter1);
-        } catch (DateTimeParseException e) {
-            // Attempt to parse with the second format
+        DateTimeFormatter dayFirst = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        DateTimeFormatter monthFirst = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+        DateTimeFormatter[] inputs = isDayFirst(siteLocale) ? new DateTimeFormatter[] { dayFirst, monthFirst }
+                : new DateTimeFormatter[] { monthFirst, dayFirst };
+        for (DateTimeFormatter input : inputs) {
             try {
-                date = LocalDate.parse(dateStr, formatter2);
-            } catch (DateTimeParseException ex) {
-                // Handle invalid date format
-                return "Invalid date format: " + dateStr;
+                return LocalDate.parse(dateStr.trim(), input).format(DateTimeFormatter.ofPattern(outputFormat));
+            } catch (DateTimeParseException e) {
+                LogEvent.logDebug(DateUtil.class.getSimpleName(), "formatStringDate", e.getMessage());
             }
         }
+        return dateStr;
+    }
 
-        // Define the output date format
-        DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern(outputFormat);
-
-        // Format the parsed date to the desired output format
-        return date.format(outputFormatter);
+    private static boolean isDayFirst(Locale locale) {
+        String pattern = DateTimeFormatterBuilder.getLocalizedDateTimePattern(FormatStyle.SHORT, null,
+                IsoChronology.INSTANCE, locale == null ? Locale.US : locale);
+        return pattern.indexOf('d') < pattern.indexOf('M');
     }
 }

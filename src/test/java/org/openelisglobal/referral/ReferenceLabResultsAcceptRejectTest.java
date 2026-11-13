@@ -383,6 +383,29 @@ public class ReferenceLabResultsAcceptRejectTest extends BaseWebContextSensitive
                 referenceLabResultsService.getDashboardMetrics().getReconciledToday());
     }
 
+    /**
+     * A referral is acted on by the users who may read its order by lab unit; an
+     * unknown referral is left for the action itself to report as missing.
+     */
+    @Test
+    public void aReferralIsVisibleToTheUsersWhoMayReadItsOrder() {
+        Object target = AopTestUtils.getUltimateTargetObject(referenceLabResultsService);
+        Object realScope = ReflectionTestUtils.getField(target, "sampleLabUnitScopeService");
+        org.openelisglobal.sample.service.SampleLabUnitScopeService scope = Mockito
+                .mock(org.openelisglobal.sample.service.SampleLabUnitScopeService.class);
+        ReflectionTestUtils.setField(target, "sampleLabUnitScopeService", scope);
+        try {
+            Mockito.when(scope.isVisible(Mockito.eq("42"), Mockito.any())).thenReturn(false);
+            Mockito.when(scope.isVisible(Mockito.eq("43"), Mockito.any())).thenReturn(true);
+
+            Assert.assertFalse(referenceLabResultsService.isReferralVisible(REFERRAL_ID, "42"));
+            Assert.assertTrue(referenceLabResultsService.isReferralVisible(REFERRAL_ID, "43"));
+            Assert.assertTrue(referenceLabResultsService.isReferralVisible("987654", "42"));
+        } finally {
+            ReflectionTestUtils.setField(target, "sampleLabUnitScopeService", realScope);
+        }
+    }
+
     private List<String> idsIn(DashboardView view) {
         return referenceLabResultsService.getDashboardReferrals(view).stream().map(ReferenceLabReferralDTO::getId)
                 .toList();

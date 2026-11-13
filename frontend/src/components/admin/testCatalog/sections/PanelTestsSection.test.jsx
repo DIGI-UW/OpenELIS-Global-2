@@ -1,21 +1,20 @@
 /**
- * PanelTestsSection — OGC-224 C3 (FRS v2.2, the centerpiece).
+ * PanelTestsSection — the domain-guarded picker (OGC-224) and what it tells
+ * the operator when the server refuses a member (OGC-1232).
  *
- * - members load ordered from /panels/{id}/test-order with name + code;
- * - the add typeahead is DOMAIN-GUARDED (fetch carries the panel's domain)
- *   and already-member tests are not offered;
- * - picking a result appends it to the end; up/down reorder; remove;
- * - Save PUTs 1-based positions (+ autoActivate only on the create flow);
- * - empty state when the panel has no tests.
+ * - candidates are fetched for the panel's own domain only, and never before
+ *   the panel is known;
+ * - a candidates response that arrives after the panel's domain has changed
+ *   is dropped, so an Environmental panel is never offered the Clinical list;
+ * - a 422 that names the refused tests is shown by name, a bodyless one falls
+ *   back to the generic message.
  */
 
-// ========== MOCKS (before imports) ==========
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
   putToOpenElisServerFullResponse: vi.fn(),
 }));
 
-// ========== IMPORTS ==========
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
@@ -29,200 +28,284 @@ import {
 import { NotificationContext } from "../../../layout/Layout";
 import messages from "../../../../languages/en.json";
 
-const PANEL = { id: "7", name: "CBC", domain: "CLINICAL", active: true };
-const MEMBERS = [
-  { testId: "10", testName: "WBC Count", code: "WBC", position: 1 },
-  { testId: "11", testName: "RBC Count", code: "RBC", position: 2 },
-];
-const CANDIDATES = {
-  rows: [
-    { testId: "12", name: "Hemoglobin", code: "HGB", domain: "CLINICAL" },
-    { testId: "10", name: "WBC Count", code: "WBC", domain: "CLINICAL" },
-  ],
-};
+const ENV_PANEL = { id: "14", name: "Water Panel", domain: "ENVIRONMENTAL" };
 
 const notification = {
   addNotification: vi.fn(),
   setNotificationVisible: vi.fn(),
 };
 
-const SAMPLE_TYPES = {
-  success: true,
-  data: [
-    { id: 2, name: "Serum" },
-    { id: 4, name: "Whole Blood" },
-  ],
-};
-// tests filtered to sample type 2 — only Hemoglobin is on Serum
-const SERUM_ONLY = {
-  rows: [{ testId: "12", name: "Hemoglobin", code: "HGB", domain: "CLINICAL" }],
-};
-
-const mockServer = (members = MEMBERS) => {
-  getFromOpenElisServer.mockImplementation((url, cb) => {
-    if (url.includes("/test-order")) {
-      cb({ panelId: "7", tests: members });
-    } else if (url === "/rest/sample-types") {
-      cb(SAMPLE_TYPES);
-    } else if (url.startsWith("/rest/test-catalog/tests?")) {
-      cb(url.includes("sampleType=2") ? SERUM_ONLY : CANDIDATES);
-    } else {
-      cb(undefined);
-    }
-  });
-};
-
-const wrap = (props = {}) =>
+const wrap = (panel) =>
   render(
     <IntlProvider locale="en" messages={messages}>
       <NotificationContext.Provider value={notification}>
-        <PanelTestsSection panel={PANEL} onSaved={() => {}} {...props} />
+        <PanelTestsSection
+          panel={panel}
+          autoActivate={false}
+          onSaved={vi.fn()}
+        />
       </NotificationContext.Provider>
     </IntlProvider>,
   );
 
+const candidateCalls = () =>
+  getFromOpenElisServer.mock.calls.filter(([url]) =>
+    url.startsWith("/rest/test-catalog/tests?"),
+  );
+
 beforeEach(() => {
   vi.clearAllMocks();
+  getFromOpenElisServer.mockImplementation((url, cb) => {
+    if (url.includes("/test-order")) {
+      cb({ tests: [] });
+    } else if (url.startsWith("/rest/sample-types")) {
+      cb([]);
+    }
+    // candidate fetches are answered by each test, in the order it chooses
+  });
 });
 
-describe("PanelTestsSection", () => {
-  it("loads ordered members with name and code", async () => {
-    mockServer();
-    wrap();
-    expect(await screen.findByText("WBC Count")).toBeInTheDocument();
-    expect(screen.getByText("RBC")).toBeInTheDocument();
-    expect(screen.getByTestId("panel-tests-count")).toHaveTextContent("2");
-  });
-
-  it("the typeahead fetch is domain-guarded and excludes existing members", async () => {
-    mockServer();
-    wrap();
-    await screen.findByText("WBC Count");
-    const pickerCall = getFromOpenElisServer.mock.calls.find(([url]) =>
-      url.startsWith("/rest/test-catalog/tests?"),
+describe("PanelTestsSection picker (domain guard)", () => {
+  it("fetches candidates for the panel's own domain, and none before the panel is known", () => {
+    const { rerender } = render(
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider value={notification}>
+          <PanelTestsSection
+            panel={null}
+            autoActivate={false}
+            onSaved={vi.fn()}
+          />
+        </NotificationContext.Provider>
+      </IntlProvider>,
     );
-    expect(pickerCall[0]).toContain("domain=CLINICAL");
-    expect(pickerCall[0]).toContain("status=active");
-    // open the combobox: candidate 12 offered, member 10 not re-offered
-    fireEvent.click(document.getElementById("panel-add-test"));
-    expect(screen.getByText(/Hemoglobin — HGB/)).toBeInTheDocument();
-    expect(screen.queryByText(/WBC Count — WBC/)).not.toBeInTheDocument();
+    expect(candidateCalls()).toHaveLength(0);
+
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider value={notification}>
+          <PanelTestsSection
+            panel={ENV_PANEL}
+            autoActivate={false}
+            onSaved={vi.fn()}
+          />
+        </NotificationContext.Provider>
+      </IntlProvider>,
+    );
+    expect(candidateCalls()).toHaveLength(1);
+    expect(candidateCalls()[0][0]).toContain("domain=ENVIRONMENTAL");
+    expect(candidateCalls()[0][0]).not.toContain("domain=CLINICAL");
   });
 
-  it("picking a candidate appends it at the end", async () => {
-    mockServer();
-    wrap();
-    await screen.findByText("WBC Count");
-    fireEvent.click(document.getElementById("panel-add-test"));
-    fireEvent.click(screen.getByText(/Hemoglobin — HGB/));
-    const rows = screen.getAllByRole("row").map((row) => row.textContent || "");
-    expect(rows[rows.length - 1]).toContain("Hemoglobin");
-    expect(rows[rows.length - 1]).toContain("3");
-  });
+  it("drops a candidates response that arrives after the panel's domain changed", async () => {
+    const { rerender } = wrap({ ...ENV_PANEL, domain: "CLINICAL" });
+    const clinicalCallback = candidateCalls()[0][1];
 
-  it("reorder and remove operate on the list", async () => {
-    mockServer();
-    wrap();
-    await screen.findByText("WBC Count");
-    fireEvent.click(screen.getByTestId("panel-test-down-10"));
-    let rows = screen.getAllByRole("row").map((r) => r.textContent || "");
-    expect(rows[1]).toContain("RBC Count");
-    fireEvent.click(screen.getByTestId("panel-test-remove-11"));
-    expect(screen.queryByText("RBC Count")).not.toBeInTheDocument();
-  });
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider value={notification}>
+          <PanelTestsSection
+            panel={ENV_PANEL}
+            autoActivate={false}
+            onSaved={vi.fn()}
+          />
+        </NotificationContext.Provider>
+      </IntlProvider>,
+    );
+    const environmentalCallback = candidateCalls()[1][1];
 
-  it("Save PUTs 1-based positions with autoActivate only for the create flow", async () => {
-    mockServer();
-    wrap({ autoActivate: true });
-    await screen.findByText("WBC Count");
-    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
-    expect(putToOpenElisServerFullResponse).toHaveBeenCalledWith(
-      "/rest/test-catalog/panels/7/tests",
-      JSON.stringify({
-        tests: [
-          { testId: "10", position: 1 },
-          { testId: "11", position: 2 },
-        ],
-        autoActivate: true,
+    // the empty Environmental answer lands first, the big Clinical one last
+    environmentalCallback({ rows: [] });
+    clinicalCallback({
+      rows: [{ testId: "6", name: "Albumin(Urines)", code: "Albumin-Urines" }],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /open/i }));
+    await waitFor(() =>
+      expect(screen.getByRole("listbox")).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/Albumin\(Urines\)/)).toBeNull();
+  });
+});
+
+describe("PanelTestsSection save refusals (OGC-1232)", () => {
+  const refuse = (body) =>
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        ok: false,
+        status: 422,
+        json: () =>
+          body === undefined
+            ? Promise.reject(new Error())
+            : Promise.resolve(body),
       }),
-      expect.any(Function),
+    );
+
+  it("names the tests the domain guard refused", async () => {
+    wrap(ENV_PANEL);
+    refuse({
+      domainConflict: {
+        domain: "ENVIRONMENTAL",
+        tests: [{ testId: "6", name: "Albumin(Urines)", domain: "CLINICAL" }],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(notification.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message:
+            "Not saved: Albumin(Urines) (Clinical) is not in this panel's domain (Environmental). Only Environmental-domain tests can be added.",
+        }),
+      ),
     );
   });
 
-  it("shows the empty state when the panel has no tests", async () => {
-    mockServer([]);
-    wrap();
+  it("keeps the generic message for a bodyless refusal", async () => {
+    wrap(ENV_PANEL);
+    refuse(undefined);
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(notification.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["error.panel.save"],
+        }),
+      ),
+    );
+  });
+});
+
+describe("PanelTestsSection when the member list fails to load (OGC-1456)", () => {
+  const failMembers = () =>
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/test-order")) {
+        cb(undefined);
+      } else if (url.startsWith("/rest/sample-types")) {
+        cb([]);
+      }
+    });
+
+  it("says so and keeps Save disabled, so nothing replaces the members", () => {
+    failMembers();
+    wrap(ENV_PANEL);
+
+    expect(screen.getByTestId("panel-tests-load-error")).toBeVisible();
+    expect(screen.getByRole("button", { name: /^save$/i })).toBeDisabled();
+    expect(screen.queryByText(messages["empty.panel.tests"])).toBeNull();
+    expect(screen.queryByTestId("panel-tests-count")).toBeNull();
+  });
+
+  it("loads the members on Retry and enables Save", async () => {
+    failMembers();
+    wrap(ENV_PANEL);
+
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/test-order")) {
+        cb({
+          tests: [{ testId: "6", testName: "pH", code: "PH", position: 1 }],
+        });
+      } else if (url.startsWith("/rest/sample-types")) {
+        cb([]);
+      }
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["common.retry"] }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("panel-tests-load-error")).toBeNull(),
+    );
+    expect(screen.getByText("pH")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^save$/i })).toBeEnabled();
+  });
+});
+
+describe("PanelTestsSection membership refusals (OGC-1456)", () => {
+  const refuse = (body) =>
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({ ok: false, status: 422, json: () => Promise.resolve(body) }),
+    );
+
+  it("explains that an active panel keeps at least one test", async () => {
+    wrap(ENV_PANEL);
+    refuse({ refusal: "tests.activeNeedsTest" });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(notification.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["error.panel.tests.activeNeedsTest"],
+        }),
+      ),
+    );
+  });
+
+  it("shows the stored members again after that refusal", async () => {
+    wrap(ENV_PANEL);
+    const memberLoads = () =>
+      getFromOpenElisServer.mock.calls.filter(([url]) =>
+        url.includes("/test-order"),
+      ).length;
+    const before = memberLoads();
+    refuse({ refusal: "tests.activeNeedsTest" });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() => expect(memberLoads()).toBe(before + 1));
+  });
+
+  it("names the inactive tests it refused", async () => {
+    wrap(ENV_PANEL);
+    refuse({
+      refusal: "tests.inactive",
+      refusedTests: [{ testId: "6", name: "pH(Water)" }],
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() =>
+      expect(notification.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: expect.stringContaining("pH(Water)"),
+        }),
+      ),
+    );
+  });
+});
+
+describe("PanelTestsSection two editors (OGC-1463)", () => {
+  it("sends the loaded version and shows a stale save with Refresh", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/test-order")) {
+        cb({ tests: [], version: "v1" });
+      } else if (url.startsWith("/rest/sample-types")) {
+        cb([]);
+      }
+    });
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        ok: false,
+        status: 409,
+        json: () => Promise.resolve({ conflict: "stale", version: "v2" }),
+      }),
+    );
+    wrap(ENV_PANEL);
+    const memberLoads = () =>
+      getFromOpenElisServer.mock.calls.filter(([url]) =>
+        url.includes("/test-order"),
+      ).length;
+
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
     expect(
-      await screen.findByText(messages["empty.panel.tests"]),
+      await screen.findByTestId("panel-tests-stale-save"),
     ).toBeInTheDocument();
-  });
-
-  it("offers a Sample Type filter populated from the shared sample-types source", async () => {
-    mockServer();
-    wrap();
-    await screen.findByText("WBC Count");
-    const filter = document.querySelector("#panel-test-sampletype-filter");
-    expect(filter).not.toBeNull();
-    const options = Array.from(filter.querySelectorAll("option")).map((o) => ({
-      value: o.value,
-      text: o.textContent,
-    }));
-    // "All sample types" sentinel plus every shared sample type
-    expect(options[0].value).toBe("");
-    expect(options.map((o) => o.value)).toContain("2");
-    expect(options.map((o) => o.text)).toContain("Whole Blood");
-  });
-
-  it("the filter narrows the candidates server-side and clearing it restores them", async () => {
-    mockServer();
-    wrap();
-    await screen.findByText("WBC Count");
-
-    fireEvent.change(document.querySelector("#panel-test-sampletype-filter"), {
-      target: { value: "2" },
-    });
-    await waitFor(() =>
-      expect(
-        getFromOpenElisServer.mock.calls.some(
-          ([url]) =>
-            url.startsWith("/rest/test-catalog/tests?") &&
-            url.includes("sampleType=2"),
-        ),
-      ).toBe(true),
+    expect(
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).version,
+    ).toBe("v1");
+    expect(screen.getByRole("button", { name: /^save$/i })).toBeDisabled();
+    const before = memberLoads();
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["label.results.refresh"] }),
     );
-    // only the Serum test is offered now
-    fireEvent.click(document.getElementById("panel-add-test"));
-    expect(screen.getByText(/Hemoglobin — HGB/)).toBeInTheDocument();
-
-    // clearing returns to the unfiltered domain-compatible fetch
-    fireEvent.change(document.querySelector("#panel-test-sampletype-filter"), {
-      target: { value: "" },
-    });
-    await waitFor(() => {
-      const last = getFromOpenElisServer.mock.calls
-        .map(([url]) => url)
-        .filter((url) => url.startsWith("/rest/test-catalog/tests?"))
-        .pop();
-      expect(last).not.toContain("sampleType=");
-      expect(last).toContain("domain=CLINICAL");
-    });
-  });
-
-  it("the filter composes with the typeahead search", async () => {
-    mockServer();
-    wrap();
-    await screen.findByText("WBC Count");
-    fireEvent.change(document.querySelector("#panel-test-sampletype-filter"), {
-      target: { value: "2" },
-    });
-    await waitFor(() =>
-      expect(document.getElementById("panel-add-test")).toBeInTheDocument(),
-    );
-    // typing still filters within the sample-type-narrowed candidate set
-    fireEvent.click(document.getElementById("panel-add-test"));
-    fireEvent.change(document.getElementById("panel-add-test"), {
-      target: { value: "zzz" },
-    });
-    expect(screen.queryByText(/Hemoglobin — HGB/)).not.toBeInTheDocument();
+    await waitFor(() => expect(memberLoads()).toBe(before + 1));
+    expect(notification.addNotification).not.toHaveBeenCalled();
   });
 });

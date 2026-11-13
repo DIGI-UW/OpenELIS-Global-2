@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    FR-2.3: changeset 036's seven descriptions promised that a disabled stage
+    "is skipped", but nothing skips a stage automatically; a case simply cannot
+    be moved to it. The case view marks the stage not applicable on the
+    progress rail, locks its section as not tracked at this laboratory, and
+    removes it from the manual stage selector. The Result Entry Configuration
+    admin page shows this description column to whoever flips the switch, so
+    it corrects the seven rows in place rather than replacing them, which
+    keeps every other column, including value, untouched.
+    -->
+    <changeSet id="OGC-264-pathology-stage-flag-descriptions" author="OGC">
+        <comment>Corrects the seven pathology stage switch descriptions to describe what turning a stage off actually does</comment>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="description" value="If true, cases pass through the Decalcification stage; if false, it cannot be chosen and is not applicable" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <where>name = 'pathology.stage.DECALCIFICATION.enabled'</where>
+        </update>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="description" value="If true, cases pass through the Processing stage; if false, it cannot be chosen and is not applicable" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <where>name = 'pathology.stage.PROCESSING.enabled'</where>
+        </update>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="description" value="If true, cases pass through the Embedding stage; if false, it cannot be chosen and is not applicable" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <where>name = 'pathology.stage.EMBEDDING.enabled'</where>
+        </update>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="description" value="If true, cases pass through the Microtomy stage; if false, it cannot be chosen and is not applicable" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <where>name = 'pathology.stage.MICROTOMY.enabled'</where>
+        </update>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="description" value="If true, cases pass through the Staining stage; if false, it cannot be chosen and is not applicable" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <where>name = 'pathology.stage.STAINING.enabled'</where>
+        </update>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="description" value="If true, cases pass through the Coverslipping &amp; QC stage; if false, it cannot be chosen and is not applicable" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <where>name = 'pathology.stage.COVERSLIPPING.enabled'</where>
+        </update>
+        <update schemaName="clinlims" tableName="site_information">
+            <column name="description" value="If true, cases pass through the Under Pathologist Review stage; if false, it cannot be chosen and is not applicable" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <where>name = 'pathology.stage.UNDER_REVIEW.enabled'</where>
+        </update>
+        <rollback>
+            <update schemaName="clinlims" tableName="site_information">
+                <column name="description" value="If true, cases pass through the Decalcification stage; if false, it is skipped and shown as not applicable" />
+                <where>name = 'pathology.stage.DECALCIFICATION.enabled'</where>
+            </update>
+            <update schemaName="clinlims" tableName="site_information">
+                <column name="description" value="If true, cases pass through the Processing stage; if false, it is skipped and shown as not applicable" />
+                <where>name = 'pathology.stage.PROCESSING.enabled'</where>
+            </update>
+            <update schemaName="clinlims" tableName="site_information">
+                <column name="description" value="If true, cases pass through the Embedding stage; if false, it is skipped and shown as not applicable" />
+                <where>name = 'pathology.stage.EMBEDDING.enabled'</where>
+            </update>
+            <update schemaName="clinlims" tableName="site_information">
+                <column name="description" value="If true, cases pass through the Microtomy stage; if false, it is skipped and shown as not applicable" />
+                <where>name = 'pathology.stage.MICROTOMY.enabled'</where>
+            </update>
+            <update schemaName="clinlims" tableName="site_information">
+                <column name="description" value="If true, cases pass through the Staining stage; if false, it is skipped and shown as not applicable" />
+                <where>name = 'pathology.stage.STAINING.enabled'</where>
+            </update>
+            <update schemaName="clinlims" tableName="site_information">
+                <column name="description" value="If true, cases pass through the Coverslipping &amp; QC stage; if false, it is skipped and shown as not applicable" />
+                <where>name = 'pathology.stage.COVERSLIPPING.enabled'</where>
+            </update>
+            <update schemaName="clinlims" tableName="site_information">
+                <column name="description" value="If true, cases pass through the Under Pathologist Review stage; if false, it is skipped and shown as not applicable" />
+                <where>name = 'pathology.stage.UNDER_REVIEW.enabled'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

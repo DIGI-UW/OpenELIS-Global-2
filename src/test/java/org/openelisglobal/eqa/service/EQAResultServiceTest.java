@@ -51,7 +51,8 @@ public class EQAResultServiceTest {
         when(eqaResultDAO.insert(any(EQAResult.class))).thenReturn(1L);
         when(eqaResultDAO.findByDistributionId(1L)).thenReturn(Collections.emptyList());
 
-        EQAResult result = resultService.submitResult(1L, 10L, 20L, new BigDecimal("5.5"), EQASubmissionMethod.MANUAL);
+        EQAResult result = resultService.submitResult(1L, 10L, 20L, new BigDecimal("5.5"), EQASubmissionMethod.MANUAL,
+                "1");
 
         assertNotNull("Result should not be null", result);
         assertEquals("Organization ID should match", Long.valueOf(10L), result.getParticipantOrganizationId());
@@ -81,7 +82,8 @@ public class EQAResultServiceTest {
         when(eqaResultDAO.update(any(EQAResult.class))).thenAnswer(i -> i.getArgument(0));
         when(eqaResultDAO.findByDistributionId(1L)).thenReturn(Collections.emptyList());
 
-        EQAResult result = resultService.submitResult(1L, 10L, 20L, new BigDecimal("5.5"), EQASubmissionMethod.MANUAL);
+        EQAResult result = resultService.submitResult(1L, 10L, 20L, new BigDecimal("5.5"), EQASubmissionMethod.MANUAL,
+                "1");
 
         assertEquals("Result value should be updated", new BigDecimal("5.5"), result.getResultValue());
         // T116: Verify audit trail fields
@@ -101,7 +103,7 @@ public class EQAResultServiceTest {
 
         when(eqaDistributionDAO.get(1L)).thenReturn(Optional.of(distribution));
 
-        resultService.submitResult(1L, 10L, 20L, new BigDecimal("5.5"), EQASubmissionMethod.MANUAL);
+        resultService.submitResult(1L, 10L, 20L, new BigDecimal("5.5"), EQASubmissionMethod.MANUAL, "1");
     }
 
     @Test
@@ -115,7 +117,8 @@ public class EQAResultServiceTest {
         when(eqaResultDAO.insert(any(EQAResult.class))).thenReturn(1L);
         when(eqaResultDAO.findByDistributionId(1L)).thenReturn(Collections.emptyList());
 
-        EQAResult result = resultService.submitResult(1L, 10L, 20L, new BigDecimal("5.5"), EQASubmissionMethod.MANUAL);
+        EQAResult result = resultService.submitResult(1L, 10L, 20L, new BigDecimal("5.5"), EQASubmissionMethod.MANUAL,
+                "1");
 
         assertNotNull("Result should not be null", result);
     }
@@ -128,7 +131,7 @@ public class EQAResultServiceTest {
 
         when(eqaDistributionDAO.get(1L)).thenReturn(Optional.of(distribution));
 
-        resultService.submitResult(1L, 10L, 20L, new BigDecimal("-1"), EQASubmissionMethod.MANUAL);
+        resultService.submitResult(1L, 10L, 20L, new BigDecimal("-1"), EQASubmissionMethod.MANUAL, "1");
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -139,7 +142,7 @@ public class EQAResultServiceTest {
 
         when(eqaDistributionDAO.get(1L)).thenReturn(Optional.of(distribution));
 
-        resultService.submitResult(1L, 10L, 20L, new BigDecimal("1000000"), EQASubmissionMethod.MANUAL);
+        resultService.submitResult(1L, 10L, 20L, new BigDecimal("1000000"), EQASubmissionMethod.MANUAL, "1");
     }
 
     @Test
@@ -153,7 +156,7 @@ public class EQAResultServiceTest {
         when(eqaResultDAO.insert(any(EQAResult.class))).thenReturn(1L);
         when(eqaResultDAO.findByDistributionId(1L)).thenReturn(Collections.emptyList());
 
-        EQAResult result = resultService.submitResult(1L, 10L, 20L, null, EQASubmissionMethod.MANUAL);
+        EQAResult result = resultService.submitResult(1L, 10L, 20L, null, EQASubmissionMethod.MANUAL, "1");
 
         assertNotNull("Result should not be null", result);
     }
@@ -172,7 +175,7 @@ public class EQAResultServiceTest {
         when(eqaResultDAO.findByDistributionId(1L)).thenReturn(
                 Arrays.asList(new EQAResult(), new EQAResult(), new EQAResult(), new EQAResult(), new EQAResult()));
 
-        resultService.submitResult(1L, 10L, 20L, new BigDecimal("5.5"), EQASubmissionMethod.MANUAL);
+        resultService.submitResult(1L, 10L, 20L, new BigDecimal("5.5"), EQASubmissionMethod.MANUAL, "1");
 
         verify(eqaStatisticsService).calculateAndUpdateStatistics(1L);
     }
@@ -188,7 +191,7 @@ public class EQAResultServiceTest {
         when(eqaResultDAO.insert(any(EQAResult.class))).thenReturn(1L);
         when(eqaResultDAO.findByDistributionId(1L)).thenReturn(Arrays.asList(new EQAResult(), new EQAResult()));
 
-        resultService.submitResult(1L, 10L, 20L, new BigDecimal("5.5"), EQASubmissionMethod.MANUAL);
+        resultService.submitResult(1L, 10L, 20L, new BigDecimal("5.5"), EQASubmissionMethod.MANUAL, "1");
 
         verify(eqaStatisticsService, never()).calculateAndUpdateStatistics(anyLong());
     }
@@ -197,7 +200,7 @@ public class EQAResultServiceTest {
     public void testSubmitResult_WithInvalidDistribution_ThrowsException() {
         when(eqaDistributionDAO.get(999L)).thenReturn(Optional.empty());
         resultService.submitResult(999L, 10L, 20L,
-                new BigDecimal("5.5"), EQASubmissionMethod.MANUAL);
+                new BigDecimal("5.5"), EQASubmissionMethod.MANUAL, "1");
     }
 
     @Test

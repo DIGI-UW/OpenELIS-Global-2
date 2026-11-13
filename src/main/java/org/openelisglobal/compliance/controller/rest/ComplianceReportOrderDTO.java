@@ -7,6 +7,16 @@ import org.openelisglobal.compliance.service.ComplianceEvaluationResult.Paramete
 
 public class ComplianceReportOrderDTO {
 
+    private List<org.openelisglobal.microbiology.form.MicroPatientReportForm> microbiology = List.of();
+
+    public List<org.openelisglobal.microbiology.form.MicroPatientReportForm> getMicrobiology() {
+        return microbiology;
+    }
+
+    public void setMicrobiology(List<org.openelisglobal.microbiology.form.MicroPatientReportForm> reports) {
+        microbiology = reports;
+    }
+
     private Long sampleId;
     private String labNumber;
     private String siteCode;
@@ -16,6 +26,48 @@ public class ComplianceReportOrderDTO {
     private String collectionDate;
     private int testCount;
     private String complianceStatus;
+
+    /** Why an INELIGIBLE order cannot have a certificate. */
+    public static final String INELIGIBLE_NO_TESTS = "NO_TESTS";
+    public static final String INELIGIBLE_NOT_VALIDATED = "NOT_VALIDATED";
+
+    private String ineligibleReason;
+
+    /**
+     * A certificate when a standard is linked, otherwise a results report
+     * (OGC-1617).
+     */
+    public static final String KIND_COMPLIANCE = "COMPLIANCE";
+    public static final String KIND_RESULTS = "RESULTS";
+
+    private String reportKind;
+
+    private List<org.openelisglobal.compliance.service.EnvironmentalReportRow> reportRows = List.of();
+
+    public String getReportKind() {
+        return reportKind;
+    }
+
+    public void setReportKind(String reportKind) {
+        this.reportKind = reportKind;
+    }
+
+    public List<org.openelisglobal.compliance.service.EnvironmentalReportRow> getReportRows() {
+        return reportRows;
+    }
+
+    public void setReportRows(List<org.openelisglobal.compliance.service.EnvironmentalReportRow> reportRows) {
+        this.reportRows = reportRows;
+    }
+
+    public String getIneligibleReason() {
+        return ineligibleReason;
+    }
+
+    public void setIneligibleReason(String ineligibleReason) {
+        this.ineligibleReason = ineligibleReason;
+    }
+
     private static final DateTimeFormatter DISPLAY_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm xxx");
     private String lastGenerated;
 
@@ -28,6 +80,7 @@ public class ComplianceReportOrderDTO {
     private String preservation;
 
     private boolean hasBeenReleased;
+    private boolean reportIssued;
     private List<ParameterResult> parameterResults;
     private SignatureDTO analystSignature;
     private SignatureDTO managerSignature;
@@ -204,6 +257,18 @@ public class ComplianceReportOrderDTO {
 
     public void setHasBeenReleased(boolean hasBeenReleased) {
         this.hasBeenReleased = hasBeenReleased;
+    }
+
+    /**
+     * The released report was issued: its original is archived, or it was already
+     * amended. Only an issued report is amended; until then it is generated.
+     */
+    public boolean isReportIssued() {
+        return reportIssued;
+    }
+
+    public void setReportIssued(boolean reportIssued) {
+        this.reportIssued = reportIssued;
     }
 
     public SignatureDTO getAnalystSignature() {

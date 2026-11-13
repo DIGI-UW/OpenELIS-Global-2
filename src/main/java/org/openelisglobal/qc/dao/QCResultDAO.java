@@ -5,6 +5,7 @@ import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.qc.valueholder.QCResult;
+import org.openelisglobal.qc.valueholder.QCSource;
 
 /**
  * DAO interface for QCResult entity operations.
@@ -12,12 +13,14 @@ import org.openelisglobal.qc.valueholder.QCResult;
 public interface QCResultDAO extends BaseDAO<QCResult, String> {
 
     /**
-     * Get all results for a specific control lot.
+     * Every measured result (one with a value) for a control lot, newest first.
+     * Feeds statistics, so a qualitative run is not part of it.
      */
     List<QCResult> findByControlLot(String controlLotId) throws LIMSRuntimeException;
 
     /**
-     * Get historical results for rule evaluation (ordered by run date).
+     * The latest measured results of a control lot for rule evaluation, newest
+     * first.
      */
     List<QCResult> findHistoricalForRule(String controlLotId, int limit) throws LIMSRuntimeException;
 
@@ -33,8 +36,8 @@ public interface QCResultDAO extends BaseDAO<QCResult, String> {
     List<QCResult> findLatestByControlLot(String controlLotId, int limit) throws LIMSRuntimeException;
 
     /**
-     * Get all results for a control lot ordered by run date ascending (oldest
-     * first). Used for Westgard rule evaluation.
+     * Every measured result of a control lot, oldest first. Used for Westgard rule
+     * evaluation.
      */
     List<QCResult> findByControlLotIdOrderByRunDateTime(String controlLotId) throws LIMSRuntimeException;
 
@@ -55,4 +58,30 @@ public interface QCResultDAO extends BaseDAO<QCResult, String> {
      * Get all distinct instrument IDs that have QC results.
      */
     List<String> findDistinctInstrumentIds() throws LIMSRuntimeException;
+
+    /**
+     * Get the most recent accepted (in-control) result for a test strictly before
+     * the given time, in one of two scopes: an analyzer when {@code instrumentId}
+     * is given, or else the lab unit named by {@code testSectionId}, where only
+     * bench-entered runs count because a manual or RDT control has no analyzer to
+     * key on (OGC-1147). Bounds the affected-samples window when a violation
+     * auto-creates an NCE. At most one result is returned.
+     */
+    List<QCResult> findLatestAcceptedBefore(String instrumentId, String testSectionId, String testId, Timestamp before)
+            throws LIMSRuntimeException;
+
+    /**
+     * Bench QC activity for a window, grouped by lab unit and test (OGC-1147).
+     * Returns {testSectionId, testId, source, totalRuns, failedRuns, lastRun}. A
+     * null {@code source} covers both MANUAL and RDT.
+     */
+    List<Object[]> summariseBenchQc(Timestamp startDate, Timestamp endDate, QCSource source)
+            throws LIMSRuntimeException;
+
+    /**
+     * Flat list of bench control runs in a window, newest first, capped at
+     * {@code maxRows} (OGC-1147). A null {@code source} covers MANUAL and RDT.
+     */
+    List<QCResult> findBenchResults(Timestamp startDate, Timestamp endDate, QCSource source, int maxRows)
+            throws LIMSRuntimeException;
 }

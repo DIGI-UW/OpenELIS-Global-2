@@ -14,6 +14,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.search.service.SearchResultsService;
@@ -44,12 +45,19 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
     @Qualifier("luceneSearchResultsServiceImpl")
     SearchResultsService luceneSearchResultsServiceImpl;
 
+    /**
+     * {@code PatientIdentityTypeMap} is a JVM-wide cache of identity-type ids. A
+     * sibling class that reloads {@code patient_identity_type} leaves it stale, and
+     * a stale map re-inserts a type the table already has (a duplicate SUBJECT), so
+     * it is reset to re-read the table this class works against.
+     */
     @org.junit.Before
     public void seedAuditReferenceTables() throws Exception {
         ensureReferenceTables("PATIENT", "PERSON", "PATIENT_IDENTITY");
         // Audit emit on Person/Patient writes history rows with sys_user_id=1;
         // load the shared system_user fixture so the history FK is satisfied.
         executeDataSetWithStateManagement("testdata/system-user.xml");
+        PatientIdentityTypeMap.reset();
     }
 
     @SuppressWarnings("unused")

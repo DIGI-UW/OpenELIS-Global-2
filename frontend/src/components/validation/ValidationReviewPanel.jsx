@@ -22,6 +22,9 @@ import {
 import ReferenceSection from "../resultPage/unified/ReferenceSection";
 import HistorySection from "../resultPage/unified/HistorySection";
 import CriticalBanner from "../resultPage/unified/CriticalBanner";
+import ResultAlertModal, {
+  acknowledgementRefusal,
+} from "../resultPage/ResultAlertModal";
 import {
   AttachmentsSection,
   OrderInfoSection,
@@ -36,6 +39,7 @@ import {
 import "../resultPage/unified/unified-results.scss";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
 import { triageRows } from "./validationTriage";
+import { displayRange } from "../common/rangeNotApplied";
 import {
   NOTE_CONTEXT_MODIFICATION,
   NOTE_CONTEXT_VALIDATION,
@@ -68,12 +72,17 @@ const QC_TAG_TYPE = { PASS: "green", FAIL: "red" };
  * panel caps its own width to stay readable without scrolling sideways.
  */
 const PANEL_STYLE = { maxWidth: "1200px" };
+
+/**
+ * The server's select-list choices start with an empty ("0", "") entry for the
+ * legacy screens; the Modify list already offers its own empty choice.
+ */
+const isBlankChoice = (entry) =>
+  String(entry.id) === "0" && !String(entry.value ?? "").trim();
 const LABEL_STYLE = { display: "block" };
 
 const resultsEntryLink = (accessionNumber) =>
-  `/result?type=order&doRange=false&accessionNumber=${encodeURIComponent(
-    accessionNumber || "",
-  )}`;
+  `/Results?accessionNumber=${encodeURIComponent(accessionNumber || "")}`;
 
 const Field = ({ labelKey, value, testId }) => (
   <div data-testid={testId}>
@@ -84,6 +93,14 @@ const Field = ({ labelKey, value, testId }) => (
   </div>
 );
 
+/**
+ * The value Modify starts from: a numeric result as it was entered, since the row
+ * shows it rounded to the test's places (OGC-1544). A viral load shown as its
+ * count starts from that count.
+ */
+const modifyStartValue = (row) =>
+  row.displayResultAsLog ? displayResult(row) : (row.result ?? "");
+
 const ValidationReviewPanel = ({
   data: row,
   rows = [],
@@ -93,15 +110,18 @@ const ValidationReviewPanel = ({
   onActionDone,
   onNoteChange,
   onStale,
+  onQcHold,
 }) => {
   const intl = useIntl();
   const triage =
     (triageByRowId && triageByRowId.get(row.id)) || triageRows([row])[0];
   const chips = triage.chips;
   const flag = flagFor(row, triage.signals);
+  // OGC-1226 (FR-10): a QC verdict is shown only when one exists; an ordinary
+  // patient result has none, and saying "not evaluated" on every row is noise.
   const qcStatus = ["PASS", "FAIL"].includes(row.qcStatus)
     ? row.qcStatus
-    : "UNKNOWN";
+    : null;
   const notRecorded = intl.formatMessage({
     id: "label.validation.review.notRecorded",
   });
@@ -156,9 +176,12 @@ const ValidationReviewPanel = ({
   const [modifying, setModifying] = useState(false);
   const [retesting, setRetesting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
-  const [newValue, setNewValue] = useState(row.result ?? "");
+  const [newValue, setNewValue] = useState(modifyStartValue(row));
   const [busy, setBusy] = useState(false);
   const [errorKey, setErrorKey] = useState("");
+  // OGC-1417: a corrected value the server will not store until the validator
+  // acknowledges it as critical, or confirms it outside the valid range
+  const [resultAlert, setResultAlert] = useState(null);
 
   const sectionOpen = (id, autoOpen = false) =>
     isSectionOpen(layout, id, autoOpen);
@@ -173,6 +196,11 @@ const ValidationReviewPanel = ({
       JSON.stringify(payload),
       (response) => {
         setBusy(false);
+        const refusal = acknowledgementRefusal(response);
+        if (refusal) {
+          setResultAlert({ ...refusal, action, payload });
+          return;
+        }
         if (response && response.outcome && !response.error) {
           if (onActionDone) {
             onActionDone(response.outcome, row);
@@ -183,9 +211,30 @@ const ValidationReviewPanel = ({
           onStale(response, row);
           return;
         }
+        if (response?.error === "qcHold" && onQcHold) {
+          onQcHold(response, row);
+          return;
+        }
         setErrorKey(errorMessageKey(response));
       },
     );
+  };
+
+  const confirmResultAlert = () => {
+    const pending = resultAlert;
+    setResultAlert(null);
+    if (!pending) {
+      return;
+    }
+    submit(pending.action, {
+      ...pending.payload,
+      criticalAcknowledged: pending.alerts.some(
+        (alert) => alert.kind === "CRITICAL",
+      ),
+      invalidResultConfirmed: pending.alerts.some(
+        (alert) => alert.kind === "INVALID",
+      ),
+    });
   };
 
   const sendForRetest = () =>
@@ -230,7 +279,12 @@ const ValidationReviewPanel = ({
     );
 
   const qcAckBlocksRelease = Boolean(qcAck?.required && !qcAck?.satisfied);
-  const releaseBlocked = busy || qcAckBlocksRelease;
+  const qcHoldBlocksRelease =
+    row.qcHold === true &&
+    configurationProperties?.QC_FAIL_BLOCKS_VALIDATION === "true";
+  const selfValidationBlocked = row.selfValidationBlocked === true;
+  const releaseBlocked =
+    busy || qcAckBlocksRelease || qcHoldBlocksRelease || selfValidationBlocked;
   const reasonMissing = notesRequired && !noteText.trim();
   const modificationBlocked =
     busy || !editableHere || !String(newValue ?? "").trim() || reasonMissing;
@@ -271,13 +325,26 @@ const ValidationReviewPanel = ({
             <span className="cds--label" style={LABEL_STYLE}>
               <FormattedMessage id="label.validation.review.result" />
             </span>
-            <strong>{displayResult(row)}</strong>
+            <strong
+              style={{ whiteSpace: "nowrap" }}
+              data-testid="review-result-value"
+            >
+              {displayResult(row)}
+            </strong>
             {unitsOnly(row.units) && <span> {unitsOnly(row.units)}</span>}{" "}
             <FlagChip flag={flag} />
+            {row.resultType === "N" && displayResult(row) !== row.result && (
+              <div className="unifiedFieldHint">
+                <FormattedMessage
+                  id="label.results.clinicalValue"
+                  values={{ value: row.result }}
+                />
+              </div>
+            )}
           </div>
           <Field
             labelKey="label.validation.review.normalRange"
-            value={row.normalRange || notRecorded}
+            value={displayRange(intl, row) || notRecorded}
             testId="review-normal-range"
           />
           <Field
@@ -295,6 +362,17 @@ const ValidationReviewPanel = ({
             value={row.analyzerName || notRecorded}
             testId="review-analyzer"
           />
+          {/* Where the result was produced is part of reviewing it. */}
+          {row.referredOut && (
+            <div data-testid="review-referred-out">
+              <span className="cds--label" style={LABEL_STYLE}>
+                <FormattedMessage id="label.validation.review.performedAt" />
+              </span>
+              <Tag size="sm" type="cyan">
+                <FormattedMessage id="label.results.referredOut" />
+              </Tag>
+            </div>
+          )}
           <Field
             labelKey="label.validation.review.enteredBy"
             value={row.enteredBy || notRecorded}
@@ -305,16 +383,18 @@ const ValidationReviewPanel = ({
             value={row.enteredDate || row.resultDate || notRecorded}
             testId="review-entered-date"
           />
-          <div data-testid="review-qc">
-            <span className="cds--label" style={LABEL_STYLE}>
-              <FormattedMessage id="label.validation.review.qc" />
-            </span>
-            <Tag size="sm" type={QC_TAG_TYPE[qcStatus] || "gray"}>
-              {intl.formatMessage({
-                id: `label.validation.review.qc.${qcStatus}`,
-              })}
-            </Tag>
-          </div>
+          {qcStatus && (
+            <div data-testid="review-qc">
+              <span className="cds--label" style={LABEL_STYLE}>
+                <FormattedMessage id="label.validation.review.qc" />
+              </span>
+              <Tag size="sm" type={QC_TAG_TYPE[qcStatus]}>
+                {intl.formatMessage({
+                  id: `label.validation.review.qc.${qcStatus}`,
+                })}
+              </Tag>
+            </div>
+          )}
         </div>
 
         {chips.length > 0 && (
@@ -427,13 +507,15 @@ const ValidationReviewPanel = ({
                 onChange={(event) => setNewValue(event.target.value)}
               >
                 <SelectItem value="" text="" />
-                {(row.dictionaryResults || []).map((entry) => (
-                  <SelectItem
-                    key={entry.id}
-                    value={String(entry.id)}
-                    text={entry.value}
-                  />
-                ))}
+                {(row.dictionaryResults || [])
+                  .filter((entry) => !isBlankChoice(entry))
+                  .map((entry) => (
+                    <SelectItem
+                      key={entry.id}
+                      value={String(entry.id)}
+                      text={entry.value}
+                    />
+                  ))}
               </Select>
             )}
             {editableHere && row.resultType !== "D" && (
@@ -564,6 +646,13 @@ const ValidationReviewPanel = ({
         >
           {!inSideMode && (
             <span data-testid="review-release">
+              {selfValidationBlocked && (
+                <p id={`review-self-validation-hint-${row.id}`}>
+                  {intl.formatMessage({
+                    id: "microbiology.testing.selfValidationBlocked",
+                  })}
+                </p>
+              )}
               <ESignatureButton
                 meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
                 context={signContext}
@@ -572,6 +661,16 @@ const ValidationReviewPanel = ({
                 onBeforeSign={qcAck?.beforeSign}
                 onSign={release}
                 disabled={releaseBlocked}
+                ariaDescribedBy={
+                  [
+                    qcAckBlocksRelease && `review-qc-ack-hint-${row.id}`,
+                    qcHoldBlocksRelease && `review-qc-hold-hint-${row.id}`,
+                    selfValidationBlocked &&
+                      `review-self-validation-hint-${row.id}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                }
                 size="sm"
               >
                 <FormattedMessage id="label.validation.review.action.release" />
@@ -685,7 +784,7 @@ const ValidationReviewPanel = ({
               disabled={busy}
               onClick={() => {
                 setModifying(false);
-                setNewValue(row.result ?? "");
+                setNewValue(modifyStartValue(row));
                 setErrorKey("");
                 if (!visibilityChosen) {
                   changeNoteVisibility(NOTE_EXTERNAL, false);
@@ -708,8 +807,21 @@ const ValidationReviewPanel = ({
             <FormattedMessage id="label.validation.review.action.refer" />
           </Button>
           {qcAckBlocksRelease && (
-            <span className="unifiedFieldHint" data-testid="review-qc-ack-hint">
+            <span
+              id={`review-qc-ack-hint-${row.id}`}
+              className="unifiedFieldHint"
+              data-testid="review-qc-ack-hint"
+            >
               <FormattedMessage id="label.validation.review.release.qcAckFirst" />
+            </span>
+          )}
+          {qcHoldBlocksRelease && (
+            <span
+              id={`review-qc-hold-hint-${row.id}`}
+              className="unifiedFieldHint"
+              data-testid="review-qc-hold-hint"
+            >
+              <FormattedMessage id="label.validation.review.error.qcHold" />
             </span>
           )}
         </div>
@@ -774,17 +886,23 @@ const ValidationReviewPanel = ({
         <ReferenceSection
           sectionId="qc"
           title={<FormattedMessage id="label.validation.review.qcSection" />}
-          summary={intl.formatMessage({
-            id: `label.validation.review.qc.${qcStatus}`,
-          })}
+          summary={
+            qcStatus
+              ? intl.formatMessage({
+                  id: `label.validation.review.qc.${qcStatus}`,
+                })
+              : ""
+          }
           open={sectionOpen("qc")}
           onToggle={toggleSection("qc")}
         >
-          <Tag size="sm" type={QC_TAG_TYPE[qcStatus] || "gray"}>
-            {intl.formatMessage({
-              id: `label.validation.review.qc.${qcStatus}`,
-            })}
-          </Tag>
+          {qcStatus && (
+            <Tag size="sm" type={QC_TAG_TYPE[qcStatus]}>
+              {intl.formatMessage({
+                id: `label.validation.review.qc.${qcStatus}`,
+              })}
+            </Tag>
+          )}
           <div className="unifiedFieldHint">
             <FormattedMessage id="label.validation.review.reagents.followUp" />
           </div>
@@ -815,6 +933,14 @@ const ValidationReviewPanel = ({
           editable={false}
         />
       </div>
+      <ResultAlertModal
+        open={Boolean(resultAlert)}
+        alerts={resultAlert?.alerts || []}
+        mode="save"
+        customCriticalMessage={resultAlert?.customCriticalMessage}
+        onConfirm={confirmResultAlert}
+        onCorrect={() => setResultAlert(null)}
+      />
     </div>
   );
 };

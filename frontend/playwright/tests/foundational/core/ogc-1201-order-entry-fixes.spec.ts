@@ -43,13 +43,15 @@ test.describe("OGC-1201 order entry", () => {
     // It is a real button, not an anchor without an href.
     await expect(generate).toHaveJSProperty("tagName", "BUTTON");
 
+    // Auto-generation temporarily disables the button and removes it from tab order.
+    await expect(page.locator("#labNumber")).not.toHaveValue("", {
+      timeout: NAV_TIMEOUT,
+    });
+    await expect(generate).toBeEnabled();
     await page.locator("#labNumber").focus();
     await page.keyboard.press("Tab");
     await expect(generate).toBeFocused();
 
-    await expect(page.locator("#labNumber")).not.toHaveValue("", {
-      timeout: NAV_TIMEOUT,
-    });
     const before = await page.locator("#labNumber").inputValue();
     await page.keyboard.press("Enter");
     await expect(page.locator("#labNumber")).not.toHaveValue(before, {
@@ -203,8 +205,12 @@ test.describe("OGC-1201 order entry", () => {
     await openEntry(page, CLINICAL_ENTER);
     // A generated lab number, no patient and no sample type: the message must
     // not ask for a lab number, and must ask for the two that are missing.
-    const draft = page.getByRole("button", { name: /Save Draft/i });
-    await expect(draft).toBeDisabled();
+    const save = page.getByRole("button", { name: "Save and exit" });
+    await expect(save).toBeDisabled();
+    const toContinue = page.getByTestId("to-continue-checklist");
+    await expect(toContinue).toContainText("Select or create the patient");
+    await expect(toContinue).toContainText("Add at least one sample type");
+    await expect(toContinue).not.toContainText("Add a lab number");
   });
 
   // D — collect-only copy reached the collect-less lanes verbatim.

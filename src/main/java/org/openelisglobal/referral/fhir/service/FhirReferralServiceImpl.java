@@ -25,6 +25,7 @@ import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
+import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.ServiceRequest;
 import org.hl7.fhir.r4.model.ServiceRequest.ServiceRequestStatus;
 import org.hl7.fhir.r4.model.Specimen;
@@ -49,6 +50,7 @@ import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingExcepti
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirApiWorkFlowServiceImpl.ReferralResultsImportObjects;
+import org.openelisglobal.dataexchange.fhir.service.FhirFacilityOrganizationService;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
@@ -59,6 +61,7 @@ import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.referral.service.ReferenceLabResultsServiceImpl;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
@@ -84,6 +87,7 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -129,6 +133,9 @@ public class FhirReferralServiceImpl implements FhirReferralService {
     private FhirConfig fhirConfig;
     @Autowired
     private AlertService alertService;
+    @Autowired
+    @Lazy
+    private FhirFacilityOrganizationService facilityOrganizationService;
 
     private final String RESULT_SUBJECT = "Result Note";
     private String RESULT_TABLE_ID;
@@ -462,8 +469,15 @@ public class FhirReferralServiceImpl implements FhirReferralService {
     }
 
     private Organization getFhirOrganization(org.openelisglobal.organization.valueholder.Organization organization) {
-        Optional<Organization> fhiOrganization = fhirPersistanceService
-                .getFhirOrganizationByName(organization.getOrganizationName());
+        // Resolve on the organization's own uuid first. The receiving lab polls for
+        // Tasks owned by that uuid, so a resource found by name alone — an older one
+        // created under some other id — would address the referral to a lab that is
+        // not listening (OGC-1188).
+        Optional<Organization> fhiOrganization = organization.getFhirUuid() == null ? Optional.empty()
+                : fhirPersistanceService.getFhirOrganizationByUuid(organization.getFhirUuidAsString());
+        if (fhiOrganization.isEmpty()) {
+            fhiOrganization = fhirPersistanceService.getFhirOrganizationByName(organization.getOrganizationName());
+        }
         if (fhiOrganization.isPresent()) {
             return fhiOrganization.get();
         } else {
@@ -482,7 +496,25 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         // Best-effort: a missing/unreachable FHIR Organization degrades to a null
         // owner reference rather than throwing — the Task/SR build tolerates a null
         // org.
-        return fhirPersistanceService.getFhirOrganizationByName(organization.getOrganizationName()).orElse(null);
+        Optional<Organization> created = organization.getFhirUuid() == null ? Optional.empty()
+                : fhirPersistanceService.getFhirOrganizationByUuid(organization.getFhirUuidAsString());
+        return created.orElseGet(() -> fhirPersistanceService
+                .getFhirOrganizationByName(organization.getOrganizationName()).orElse(null));
+    }
+
+    /**
+     * This laboratory's facility Organization: the reference lab reads it as the
+     * referring laboratory and addresses the results back to it.
+     */
+    private Reference referringLaboratory() {
+        try {
+            String facilityUuid = facilityOrganizationService.getFacilityUuid();
+            return facilityUuid == null ? null : new Reference(ResourceType.Organization + "/" + facilityUuid);
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "referringLaboratory",
+                    "this facility's Organization id is not available: " + e.getMessage());
+            return null;
+        }
     }
 
     public Task createReferralTask(Organization referralOrganization, Patient patient, ServiceRequest serviceRequest,
@@ -499,9 +531,9 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         if (requester.isPresent()) {
             task.setRequester(fhirTransformService.createReferenceFor(requester.get()));
         }
-        if (!fhirConfig.getRemoteStoreIdentifier().isEmpty()) {
-            task.setRestriction(new TaskRestrictionComponent()
-                    .setRecipient(Arrays.asList(new Reference(fhirConfig.getRemoteStoreIdentifier().get(0)))));
+        Reference referringLab = referringLaboratory();
+        if (referringLab != null) {
+            task.setRestriction(new TaskRestrictionComponent().setRecipient(Arrays.asList(referringLab)));
         }
         task.setAuthoredOn(new Date());
         task.setStatus(TaskStatus.REQUESTED);
@@ -632,13 +664,25 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         try {
             String testCode = analysis.getTest() != null ? analysis.getTest().getId() : "";
             String value = result.getValue() == null ? "" : result.getValue();
-            String range = observation.hasReferenceRange() && observation.getReferenceRangeFirstRep().hasText()
-                    ? observation.getReferenceRangeFirstRep().getText()
-                    : "";
-            String deepLink = "/result?analysisId=" + analysis.getId();
-            String json = "{\"analysisId\":\"" + analysis.getId() + "\",\"testCode\":" + jsonStr(testCode)
-                    + ",\"value\":" + jsonStr(value) + ",\"range\":" + jsonStr(range) + ",\"deepLink\":"
-                    + jsonStr(deepLink) + "}";
+            // A range is usually sent as structured low/high with no text, so reading
+            // text alone reported the value as critical without saying critical
+            // against what. Same rendering as the result card on the dashboard.
+            String range = "";
+            if (observation.hasReferenceRange()) {
+                String rendered = ReferenceLabResultsServiceImpl
+                        .referenceRangeText(observation.getReferenceRangeFirstRep());
+                range = rendered == null ? "" : rendered;
+            }
+            // Without the patient, acting on a critical result needs a second lookup.
+            org.openelisglobal.patient.valueholder.Patient patient = analysis.getSampleItem() == null ? null
+                    : sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample());
+            String patientId = patient == null ? "" : patient.getId();
+            String accessionNumber = analysis.getSampleItem() == null ? ""
+                    : analysis.getSampleItem().getSample().getAccessionNumber();
+            String deepLink = "/Results?accessionNumber=" + accessionNumber;
+            String json = "{\"analysisId\":\"" + analysis.getId() + "\",\"patientId\":" + jsonStr(patientId)
+                    + ",\"testCode\":" + jsonStr(testCode) + ",\"value\":" + jsonStr(value) + ",\"range\":"
+                    + jsonStr(range) + ",\"deepLink\":" + jsonStr(deepLink) + "}";
             Long entityId = result.getId() != null ? Long.valueOf(result.getId()) : Long.valueOf(analysis.getId());
             alertService.createAlert(AlertType.REFERRAL_CRITICAL_RESULT, "Result", entityId, AlertSeverity.CRITICAL,
                     "Critical/abnormal reference lab result for analysis " + analysis.getId(), json);

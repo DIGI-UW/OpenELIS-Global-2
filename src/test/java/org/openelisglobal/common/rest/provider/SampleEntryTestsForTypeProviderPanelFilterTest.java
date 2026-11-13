@@ -66,4 +66,25 @@ public class SampleEntryTestsForTypeProviderPanelFilterTest extends BaseWebConte
         assertEquals("Test In", TestServiceImpl.getUserLocalizedTestName(testIn));
         assertEquals("Test Out", TestServiceImpl.getUserLocalizedTestName(testService.get(TEST_OUT_ID)));
     }
+
+    /**
+     * OGC-1266 (FR-B16): a member is matched by its id, so another test on the same
+     * sample type that happens to share the member's name does not push the member
+     * out of the panel.
+     */
+    @Test
+    public void linkTestsToPanels_keepsAMemberThatSharesItsNameWithAnotherTest() {
+        org.openelisglobal.test.valueholder.Test testIn = testService.get(TEST_IN_ID);
+        org.openelisglobal.test.valueholder.Test sameName = new org.openelisglobal.test.valueholder.Test();
+        sameName.setId("9999");
+        sameName.setDescription(TestServiceImpl.getUserLocalizedTestName(testIn));
+
+        TypeOfSamplePanel samplePanel = new TypeOfSamplePanel();
+        samplePanel.setPanelId(PANEL_P_ID);
+
+        List<PanelTestMap> result = controller.linkTestsToPanels(List.of(samplePanel), List.of(testIn, sameName));
+
+        assertEquals(1, result.size());
+        assertEquals(TEST_IN_ID, result.get(0).getTestIds());
+    }
 }

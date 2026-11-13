@@ -5,6 +5,7 @@ import static org.apache.commons.validator.GenericValidator.isBlankOrNull;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -12,11 +13,13 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.paging.PagingUtility;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IResultSaveService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.beanAdapters.ResultSaveBeanAdapter;
 import org.openelisglobal.common.services.registration.ValidationUpdateRegister;
@@ -24,6 +27,7 @@ import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
@@ -34,14 +38,20 @@ import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.qc.service.QcHoldService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.reports.service.DocumentTrackService;
 import org.openelisglobal.reports.service.DocumentTypeService;
 import org.openelisglobal.reports.valueholder.DocumentTrack;
+import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultSet;
+import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
+import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.resultvalidation.action.util.ResultValidationPaging;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
+import org.openelisglobal.resultvalidation.bean.ValidationQueueFilter;
 import org.openelisglobal.resultvalidation.controller.BaseResultValidationController;
 import org.openelisglobal.resultvalidation.form.ResultValidationForm;
 import org.openelisglobal.resultvalidation.service.ResultValidationService;
@@ -60,8 +70,10 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
@@ -80,6 +92,11 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
     @Autowired
     SearchResultsService searchService;
+
+    @Autowired
+    private QcHoldService qcHoldService;
+    @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
     @Autowired
     private SampleService sampleService;
     @Autowired
@@ -149,10 +166,22 @@ public class AccessionValidationRestController extends BaseResultValidationContr
     @ResponseBody
     public ResultValidationForm showAccessionValidationRange(HttpServletRequest request,
             @RequestParam(required = false) String accessionNumber, @RequestParam(required = false) String date,
-            @RequestParam(required = false) String unitType, @RequestParam(defaultValue = "true") Boolean doRange)
+            @RequestParam(required = false) String unitType, @RequestParam(defaultValue = "true") Boolean doRange,
+            @RequestParam(required = false) String labNumberFrom, @RequestParam(required = false) String labNumberTo,
+            @RequestParam(required = false) String testSectionId, @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate, @RequestParam(required = false) String patientId)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         ResultValidationForm newForm = new ResultValidationForm();
+        ValidationQueueFilter filter = new ValidationQueueFilter(labNumberFrom, labNumberTo, testSectionId, fromDate,
+                toDate, patientId);
+        if (!filter.isEmpty()) {
+            if (filter.isSingleLabNumber()) {
+                newForm.setAccessionNumber(filter.getLabNumberFrom());
+            }
+            newForm.setTestSectionId(filter.getTestSectionId());
+            return getResultValidation(request, newForm, doRange, filter);
+        }
         if (StringUtils.isNotBlank(accessionNumber)) {
             newForm.setAccessionNumber(accessionNumber);
         } else if (StringUtils.isNotBlank(date)) {
@@ -160,11 +189,26 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         } else if (StringUtils.isNotBlank(unitType)) {
             newForm.setTestSectionId(unitType);
         }
-        return getResultValidation(request, newForm, doRange);
+        return getResultValidation(request, newForm, doRange, null);
+    }
+
+    /**
+     * OGC-1418: the queue for the one-page search, every criterion combined. One
+     * lab number alone keeps loading the order's own queue, as the "By Order"
+     * search did.
+     */
+    private List<AnalysisItem> loadQueue(ValidationQueueFilter filter) {
+        ResultsValidationUtility resultsValidationUtility = SpringContext.getBean(ResultsValidationUtility.class);
+        if (filter.isSingleLabNumberOnly()) {
+            Sample sample = getSample(filter.getLabNumberFrom());
+            return sample == null ? new ArrayList<>() : resultsValidationUtility.getValidationAnalysisBySample(sample);
+        }
+        return resultsValidationUtility.getResultValidationList(getValidationStatus(), filter);
     }
 
     private ResultValidationForm getResultValidation(HttpServletRequest request, ResultValidationForm form,
-            Boolean doRange) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+            Boolean doRange, ValidationQueueFilter filter)
+            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         String patientName = "";
         String patientInfo = "";
@@ -183,7 +227,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
             // load testSections for drop down
             String resultsRoleId = roleService.getRoleByName(Constants.ROLE_VALIDATION).getId();
-            List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
+            List<IdValuePair> testSections = userService.getUserViewerTestSections(getSysUserId(request),
+                    resultsRoleId);
             form.setTestSections(testSections);
             form.setTestSectionsByName(DisplayListService.getInstance().getList(ListType.TEST_SECTION_BY_NAME));
 
@@ -199,7 +244,13 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             } else if (request.getRequestURI().contains("ResultValidationByTestDate")) {
                 setRequestType(ts == null ? MessageUtil.getMessage("validation.date.title") : ts.getLocalizedName());
             }
-            if (!(GenericValidator.isBlankOrNull(form.getTestSectionId())
+            if (filter != null) {
+                filteredresultList = userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request),
+                        loadQueue(filter), Constants.ROLE_VALIDATION);
+                markQcHolds(filteredresultList);
+                request.setAttribute("pageSize", filteredresultList.size());
+                form.setSearchFinished(true);
+            } else if (!(GenericValidator.isBlankOrNull(form.getTestSectionId())
                     && GenericValidator.isBlankOrNull(form.getAccessionNumber())
                     && GenericValidator.isBlankOrNull(form.getTestDate()))) {
 
@@ -220,6 +271,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
                 filteredresultList = userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), resultList,
                         Constants.ROLE_VALIDATION);
+                markQcHolds(filteredresultList);
                 request.setAttribute("pageSize", filteredresultList.size());
                 form.setSearchFinished(true);
             } else {
@@ -249,9 +301,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                                             : (StringUtils.trimToEmpty(itemPatient.getPerson().getLastName()) + " "
                                                     + StringUtils.trimToEmpty(itemPatient.getPerson().getFirstName()))
                                                     .trim());
-            analysisItem.setPatientInfo(StringUtils.trimToEmpty(itemPatient.getNationalId()) + ", "
-                    + StringUtils.trimToEmpty(itemPatient.getGender()) + ", "
-                    + StringUtils.trimToEmpty(itemPatient.getBirthDateForDisplay()));
+            analysisItem.setPatientInfo(StringUtil.joinNonBlank(", ", itemPatient.getNationalId(),
+                    itemPatient.getGender(), itemPatient.getBirthDateForDisplay()));
         }
 
         // Surface failed QC samples for the batch so the frontend can render the
@@ -261,6 +312,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             form.setQcFailureList(validationUtility.findFailedQcForAccession(form.getAccessionNumber()));
         }
 
+        SpringContext.getBean(org.openelisglobal.resultvalidation.service.ResultSelfValidationPolicy.class)
+                .decorateRows(form.getResultList(), getSysUserId(request));
         return form;
     }
 
@@ -279,14 +332,18 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
     @PostMapping(value = "AccessionValidation", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResultValidationForm showAccessionValidationRangeSave(HttpServletRequest request,
+    public org.springframework.http.ResponseEntity<Object> showAccessionValidationRangeSave(HttpServletRequest request,
             @Validated(ResultValidationForm.ResultValidation.class) @RequestBody ResultValidationForm form,
             BindingResult result) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         if ("true".equals(request.getParameter("pageResults"))) {
-            return getResultValidation(request, form, false);
+            return org.springframework.http.ResponseEntity.ok(getResultValidation(request, form, false, null));
         }
         form.setSearchFinished(false);
+        // Response-only field; Jackson binding bypasses the @InitBinder allowlist,
+        // so clear anything the client posted before the early returns below echo
+        // the form back.
+        form.setWithheldAccessions(null);
 
         if (result.hasErrors()) {
             saveErrors(result);
@@ -296,12 +353,11 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
         request.getSession().setAttribute(SAVE_DISABLED, "true");
 
-        List<Result> checkPagedResults = (List<Result>) request.getSession()
-                .getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
+        List<Result> checkPagedResults = new PagingUtility<Result>().getLoadedPages(request.getSession());
         List<Result> checkResults = (List<Result>) checkPagedResults.get(0);
         if (checkResults.size() == 0) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "ResultValidation()", "Attempted save of stale page.");
-            return form;
+            return org.springframework.http.ResponseEntity.ok(form);
         }
 
         ResultValidationPaging paging = new ResultValidationPaging();
@@ -318,7 +374,15 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         if (errors.hasErrors()) {
             saveErrors(errors);
             // return findForward(FWD_VALIDATION_ERROR, form);
-            return form;
+            return org.springframework.http.ResponseEntity.ok(form);
+        }
+
+        List<ResultEntryAlert> alerts = acknowledgementService.alertsForValidationItems(resultItemList);
+        List<ResultEntryAlert> owed = alerts.stream().filter(alert -> !alert.isAcknowledged())
+                .collect(Collectors.toList());
+        if (!owed.isEmpty()) {
+            return org.springframework.http.ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(acknowledgementService.refusalBody(owed));
         }
 
         createSystemUser();
@@ -336,9 +400,23 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         // if (testSectionName.equals("serology")) {
         // createUpdateElisaList(resultItemList, analysisUpdateList);
         // } else {
-        createUpdateList(resultItemList, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
-                resultSaveService, areListeners);
+        List<String> withheldAccessions = createUpdateList(resultItemList, analysisUpdateList, resultUpdateList,
+                noteUpdateList, deletableList, resultSaveService, areListeners);
+        // A refused release must travel back to the caller — the only other
+        // trace is a backend log line, which reads as a silent failure on screen.
+        form.setWithheldAccessions(withheldAccessions);
         // }
+        for (ResultEntryAlert alert : alerts) {
+            resultUpdateList.stream()
+                    .filter(saved -> saved.getAnalysis() != null
+                            && alert.getAnalysisId().equals(saved.getAnalysis().getId())
+                            && (alert.getComponentId() == null || (saved.getTestResult() != null
+                                    && alert.getComponentId().equals(saved.getTestResult().getComponentId()))))
+                    .findFirst().ifPresent(alert::setResult);
+        }
+        updaters = new ArrayList<>(updaters);
+        updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
+                ResultEntryAcknowledgement.SOURCE_VALIDATION, getSysUserId(request)));
         try {
             resultValidationService.persistdata(deletableList, analysisUpdateList, resultUpdateList, resultItemList,
                     sampleUpdateList, noteUpdateList, resultSaveService, updaters, getSysUserId(request));
@@ -365,7 +443,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         // redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
         if (isBlankOrNull(testSectionName)) {
             // return findForward(forward, form);
-            return form;
+            return org.springframework.http.ResponseEntity.ok(form);
         } else {
             Map<String, String> params = new HashMap<>();
             params.put("type", testSectionName);
@@ -373,7 +451,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             // return getForwardWithParameters(findForward(forward, form), params);
         }
 
-        return (form);
+        return org.springframework.http.ResponseEntity.ok(form);
     }
 
     /**
@@ -491,21 +569,40 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         }
     }
 
-    private void createUpdateList(List<AnalysisItem> analysisItems, List<Analysis> analysisUpdateList,
+    /**
+     * @return accession numbers whose release was withheld by an open QC failure —
+     *         surfaced on the save response so the frontend can warn.
+     */
+    private List<String> createUpdateList(List<AnalysisItem> analysisItems, List<Analysis> analysisUpdateList,
             List<Result> resultUpdateList, List<Note> noteUpdateList, List<Result> deletableList,
             IResultSaveService resultValidationSave, boolean areListeners) {
 
+        Set<String> blocked = analysisIdsBlockedFromRelease(analysisItems);
+
         List<String> analysisIdList = new ArrayList<>();
+        Set<String> withheldAccessions = new LinkedHashSet<>();
 
         for (AnalysisItem analysisItem : analysisItems) {
             if (!analysisItem.isReadOnly() && analysisItemWillBeUpdated(analysisItem)) {
 
                 Analysis analysis = analysisService.get(analysisItem.getAnalysisId());
                 analysis.setSysUserId(getSysUserId(request));
+                boolean componentOnly = analysisItem.getIsAccepted() && !blocked.contains(analysis.getId())
+                        && otherComponentsAwaitValidation(analysis, analysisItem, analysisItems);
 
-                if (!analysisIdList.contains(analysis.getId())) {
+                if (!componentOnly && !analysisIdList.contains(analysis.getId())) {
 
-                    if (analysisItem.getIsAccepted()) {
+                    boolean releaseBlocked = analysisItem.getIsAccepted() && blocked.contains(analysis.getId());
+                    if (releaseBlocked) {
+                        // Withhold only the status change. Notes the tech typed are still
+                        // saved below, and rejection stays available — for a result whose
+                        // control failed, rejecting is usually the correct action.
+                        withheldAccessions.add(analysisItem.getAccessionNumber());
+                        LogEvent.logWarn(this.getClass().getName(), "createUpdateList",
+                                "Release of analysis " + analysis.getId() + " withheld: open QC failure");
+                    }
+
+                    if (analysisItem.getIsAccepted() && !releaseBlocked) {
                         analysis.setStatusId(
                                 SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
                         analysis.setReleasedDate(new java.sql.Timestamp(System.currentTimeMillis()));
@@ -523,19 +620,108 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
                 createNeededNotes(analysisItem, analysis, noteUpdateList);
 
+                List<Result> results = new ArrayList<>();
                 if (areResults(analysisItem)) {
-                    List<Result> results = createResultFromAnalysisItem(analysisItem, analysis, analysis,
-                            noteUpdateList, deletableList);
+                    results = createResultFromAnalysisItem(analysisItem, analysis, analysis, noteUpdateList,
+                            deletableList);
                     for (Result result : results) {
                         resultUpdateList.add(result);
 
-                        if (areListeners) {
+                        if (!componentOnly && areListeners) {
                             addResultSets(analysis, result, resultValidationSave);
                         }
                     }
                 }
+                if (componentOnly) {
+                    markComponentValidated(analysisItem, results, resultUpdateList);
+                }
             }
         }
+        clearComponentMarks(analysisIdList, resultUpdateList);
+        return new ArrayList<>(withheldAccessions);
+    }
+
+    /**
+     * A test that is released or sent back no longer has components validated on
+     * their own: every mark is cleared, so a later correction re-opens all of its
+     * components alike, whichever order they were first validated in.
+     */
+    private void clearComponentMarks(List<String> settledAnalysisIds, List<Result> resultUpdateList) {
+        ResultService resultService = SpringContext.getBean(ResultService.class);
+        for (String analysisId : settledAnalysisIds) {
+            for (Result stored : resultService.getResultsByAnalysis(analysisService.get(analysisId))) {
+                if (stored.getValidatedDate() == null) {
+                    continue;
+                }
+                Result pending = resultUpdateList.stream().filter(r -> stored.getId().equals(r.getId())).findFirst()
+                        .orElse(null);
+                if (pending != null) {
+                    pending.setValidatedDate(null);
+                } else {
+                    stored.setValidatedDate(null);
+                    stored.setSysUserId(getSysUserId(request));
+                    resultUpdateList.add(stored);
+                }
+            }
+        }
+    }
+
+    /**
+     * True when the accepted row is one component of a multi-component test and
+     * another component that has a result is neither validated yet nor accepted in
+     * this same save, or a required component has no result yet (OGC-1608). The
+     * test is then not released: only this component is marked validated, and the
+     * test is released with its last component.
+     */
+    private boolean otherComponentsAwaitValidation(Analysis analysis, AnalysisItem accepted,
+            List<AnalysisItem> analysisItems) {
+        if (isBlankOrNull(accepted.getResultId())) {
+            return false;
+        }
+        ResultService resultService = SpringContext.getBean(ResultService.class);
+        RuleResultScope scope = SpringContext.getBean(RuleResultScope.class);
+        Result acceptedResult = resultService.get(accepted.getResultId());
+        if (acceptedResult == null) {
+            return false;
+        }
+        String acceptedComponent = scope.componentIdOf(acceptedResult);
+        if (acceptedComponent == null) {
+            return false;
+        }
+        List<Result> stored = resultService.getResultsByAnalysis(analysis);
+        Set<String> componentsWithResult = new HashSet<>();
+        for (Result other : stored) {
+            if (other.getParentResult() == null && !isBlankOrNull(other.getValue())) {
+                componentsWithResult.add(scope.componentIdOf(other));
+            }
+            if (other.getParentResult() != null || other.getId().equals(acceptedResult.getId())
+                    || isBlankOrNull(other.getValue()) || other.getValidatedDate() != null
+                    || acceptedComponent.equals(scope.componentIdOf(other))) {
+                continue;
+            }
+            boolean acceptedNow = analysisItems.stream()
+                    .anyMatch(item -> item.getIsAccepted() && other.getId().equals(item.getResultId()));
+            if (!acceptedNow) {
+                return true;
+            }
+        }
+        return !SpringContext.getBean(TestResultComponentService.class)
+                .getRequiredComponentsWithoutResult(analysisService.getTest(analysis).getId(), componentsWithResult)
+                .isEmpty();
+    }
+
+    private void markComponentValidated(AnalysisItem accepted, List<Result> saved, List<Result> resultUpdateList) {
+        java.sql.Timestamp now = new java.sql.Timestamp(System.currentTimeMillis());
+        for (Result result : saved) {
+            if (accepted.getResultId().equals(result.getId())) {
+                result.setValidatedDate(now);
+                return;
+            }
+        }
+        Result result = SpringContext.getBean(ResultService.class).get(accepted.getResultId());
+        result.setValidatedDate(now);
+        result.setSysUserId(getSysUserId(request));
+        resultUpdateList.add(result);
     }
 
     private void createNeededNotes(AnalysisItem analysisItem, Analysis analysis, List<Note> noteUpdateList) {
@@ -619,10 +805,12 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         List<Result> deletableList = new ArrayList<>();
         List<AnalysisItem> items = new ArrayList<>();
         items.add(item);
-        createUpdateList(items, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList, resultSaveService,
-                !updaters.isEmpty());
+        if (!createUpdateList(items, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
+                resultSaveService, !updaters.isEmpty()).isEmpty()) {
+            return errorResponse(409, "qcHold");
+        }
         return persistSingleAnalysis(analysisId, items, analysisUpdateList, resultUpdateList, noteUpdateList,
-                deletableList, resultSaveService, updaters, "released");
+                deletableList, resultSaveService, updaters, analysisUpdateList.isEmpty() ? "accepted" : "released");
     }
 
     /**
@@ -669,6 +857,13 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         if (errors.hasErrors()) {
             return errorResponse(400, "invalidResult");
         }
+        List<ResultEntryAlert> alerts = acknowledgementService.alertsForValidationItems(List.of(item));
+        List<ResultEntryAlert> owed = alerts.stream().filter(alert -> !alert.isAcknowledged())
+                .collect(Collectors.toList());
+        if (!owed.isEmpty()) {
+            return org.springframework.http.ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(acknowledgementService.refusalBody(owed));
+        }
 
         analysis.setSysUserId(getSysUserId(request));
         analysis.setRevision(
@@ -683,11 +878,14 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         List<Result> deletableList = new ArrayList<>();
         ArrayList<Result> resultUpdateList = new ArrayList<>(
                 createResultFromAnalysisItem(item, analysis, analysis, noteUpdateList, deletableList));
+        alerts.forEach(alert -> resultUpdateList.stream().findFirst().ifPresent(alert::setResult));
         List<AnalysisItem> items = new ArrayList<>();
         items.add(item);
+        List<IResultUpdate> updaters = new ArrayList<>(ValidationUpdateRegister.getRegisteredUpdaters());
+        updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
+                ResultEntryAcknowledgement.SOURCE_VALIDATION, getSysUserId(request)));
         return persistSingleAnalysis(analysisId, items, analysisUpdateList, resultUpdateList, noteUpdateList,
-                deletableList, new ResultValidationSaveService(), ValidationUpdateRegister.getRegisteredUpdaters(),
-                "modified");
+                deletableList, new ResultValidationSaveService(), updaters, "modified");
     }
 
     private org.springframework.http.ResponseEntity<Map<String, Object>> persistSingleAnalysis(String analysisId,
@@ -761,6 +959,62 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         private String testDate;
         private Boolean doRange;
         private List<AnalysisItem> rows;
+        // OGC-1418: the one-page search's full scope, so the release covers exactly
+        // the rows that search shows
+        private String labNumberFrom;
+        private String labNumberTo;
+        private String fromDate;
+        private String toDate;
+        private String patientId;
+
+        public ValidationQueueFilter queueFilter() {
+            return new ValidationQueueFilter(labNumberFrom, labNumberTo, testSectionId, fromDate, toDate, patientId);
+        }
+
+        public boolean hasQueueFilter() {
+            return !(isBlankOrNull(labNumberFrom) && isBlankOrNull(testSectionId) && isBlankOrNull(fromDate)
+                    && isBlankOrNull(toDate) && isBlankOrNull(patientId));
+        }
+
+        public String getLabNumberFrom() {
+            return labNumberFrom;
+        }
+
+        public void setLabNumberFrom(String labNumberFrom) {
+            this.labNumberFrom = labNumberFrom;
+        }
+
+        public String getLabNumberTo() {
+            return labNumberTo;
+        }
+
+        public void setLabNumberTo(String labNumberTo) {
+            this.labNumberTo = labNumberTo;
+        }
+
+        public String getFromDate() {
+            return fromDate;
+        }
+
+        public void setFromDate(String fromDate) {
+            this.fromDate = fromDate;
+        }
+
+        public String getToDate() {
+            return toDate;
+        }
+
+        public void setToDate(String toDate) {
+            this.toDate = toDate;
+        }
+
+        public String getPatientId() {
+            return patientId;
+        }
+
+        public void setPatientId(String patientId) {
+            this.patientId = patientId;
+        }
 
         public String getAccessionNumber() {
             return accessionNumber;
@@ -809,8 +1063,9 @@ public class AccessionValidationRestController extends BaseResultValidationContr
      * SERVER finds in the Clear lane right now (re-derived from a fresh load of the
      * same queue, never from the client's list), under one e-signature. Anything
      * abnormal, critical, flagged or no longer awaiting validation is skipped and
-     * reported back by reason. Gated by the "allow bulk release of clear results"
-     * site flag (403 when off).
+     * reported back by reason. A test that another of its components still holds
+     * open is only validated in part and is reported as accepted, not released.
+     * Gated by the "allow bulk release of clear results" site flag (403 when off).
      */
     @PostMapping(value = "AccessionValidation/release-clear", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -844,6 +1099,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                 skipped.add(skipReason(entry.getKey(), "notFound"));
                 continue;
             }
+            if (group.stream().anyMatch(AnalysisItem::isSelfValidationBlocked)) {
+                skipped.add(skipReason(entry.getKey(), "selfValidationBlocked"));
+                continue;
+            }
             if (!org.openelisglobal.resultvalidation.util.ValidationSignals.allClear(group)) {
                 skipped.add(skipReason(entry.getKey(), "notClear"));
                 continue;
@@ -869,8 +1128,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             released.add(entry.getKey());
         }
 
+        List<String> accepted = new ArrayList<>();
         Map<String, Object> result = new HashMap<>();
         result.put("released", released);
+        result.put("accepted", accepted);
         result.put("skipped", skipped);
         if (released.isEmpty()) {
             return org.springframework.http.ResponseEntity.ok(result);
@@ -882,8 +1143,21 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         ArrayList<Result> resultUpdateList = new ArrayList<>();
         ArrayList<Note> noteUpdateList = new ArrayList<>();
         List<Result> deletableList = new ArrayList<>();
-        createUpdateList(serverRows, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
-                resultSaveService, !updaters.isEmpty());
+        boolean qcWithheld = !createUpdateList(serverRows, analysisUpdateList, resultUpdateList, noteUpdateList,
+                deletableList, resultSaveService, !updaters.isEmpty()).isEmpty();
+        Set<String> updated = analysisUpdateList.stream().map(Analysis::getId).collect(Collectors.toSet());
+        Set<String> componentsValidated = resultUpdateList.stream()
+                .filter(r -> r.getValidatedDate() != null && r.getAnalysis() != null).map(r -> r.getAnalysis().getId())
+                .collect(Collectors.toSet());
+        released.removeIf(id -> {
+            if (updated.contains(id)) {
+                return false;
+            }
+            if (componentsValidated.contains(id)) {
+                return accepted.add(id);
+            }
+            return qcWithheld && skipped.add(skipReason(id, "qcHold"));
+        });
         ArrayList<Sample> sampleUpdateList = new ArrayList<>();
         try {
             resultValidationService.persistdata(deletableList, analysisUpdateList, resultUpdateList, serverRows,
@@ -1093,7 +1367,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
     /**
      * OGC-1030 (FR-A4) — the accession's auto-validated results: released at result
-     * entry with no validator signature. Read-only, never part of the queue.
+     * entry, never by a validator. Read-only, never part of the queue.
      */
     @GetMapping(value = "AccessionValidation/auto-validated", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -1118,7 +1392,9 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         ResultsValidationUtility resultsValidationUtility = SpringContext.getBean(ResultsValidationUtility.class);
         List<AnalysisItem> rows = new ArrayList<>();
         boolean doRange = body.getDoRange() == null || body.getDoRange();
-        if (doRange) {
+        if (body.hasQueueFilter()) {
+            rows = loadQueue(body.queueFilter());
+        } else if (doRange) {
             if (!(isBlankOrNull(body.getTestSectionId()) && isBlankOrNull(body.getAccessionNumber())
                     && isBlankOrNull(body.getTestDate()))) {
                 rows = resultsValidationUtility.getResultValidationList(getValidationStatus(), body.getTestSectionId(),
@@ -1130,7 +1406,12 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                 rows = resultsValidationUtility.getValidationAnalysisBySample(sample);
             }
         }
-        return userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), rows, Constants.ROLE_VALIDATION);
+        List<AnalysisItem> visible = userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), rows,
+                Constants.ROLE_VALIDATION);
+        markQcHolds(visible);
+        SpringContext.getBean(org.openelisglobal.resultvalidation.service.ResultSelfValidationPolicy.class)
+                .decorateRows(visible, getSysUserId(request));
+        return visible;
     }
 
     private void addResultSets(Analysis analysis, Result result, IResultSaveService resultValidationSave) {
@@ -1260,7 +1541,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         ResultSaveBean bean = ResultSaveBeanAdapter.fromAnalysisItem(analysisItem);
         ResultSaveService resultSaveService = new ResultSaveService(analysis, getSysUserId(request));
         List<Result> results = resultSaveService.createResultsFromTestResultItem(bean, deletableList);
-        if (analysisService.patientReportHasBeenDone(analysis) && resultSaveService.isUpdatedResult()) {
+        if (analysisService.releasedResultHasBeenReported(analysis) && resultSaveService.isUpdatedResult()) {
             Note note = noteService.createSavableNote(analysis, NoteType.EXTERNAL,
                     MessageUtil.getMessage("note.corrected.result"), RESULT_SUBJECT, getSysUserId(request));
             if (!noteService.duplicateNoteExists(note)) {
@@ -1286,6 +1567,31 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             }
         }
         return testResult;
+    }
+
+    /**
+     * Annotate the rows covered by an open QC failure (OGC-1147). One batched query
+     * for the whole list. A failure here must not blank the validation page — the
+     * rows are still correct, they just lose the QC annotation for this load.
+     */
+    private void markQcHolds(List<AnalysisItem> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        try {
+            Set<String> held = qcHoldService.heldAnalysisIds(analysisIdsOf(items));
+            for (AnalysisItem item : items) {
+                boolean isHeld = item.getAnalysisId() != null && held.contains(item.getAnalysisId());
+                item.setQcHold(isHeld);
+                if (isHeld) {
+                    item.setQcStatus(org.openelisglobal.resultvalidation.util.ValidationSignals.QC_FAIL);
+                    item.setClear(false);
+                }
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(this.getClass().getName(), "markQcHolds",
+                    "Could not resolve QC holds for the validation list: " + e.getMessage());
+        }
     }
 
     private boolean areResults(AnalysisItem item) {

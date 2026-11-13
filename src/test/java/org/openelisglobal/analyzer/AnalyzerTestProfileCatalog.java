@@ -13,12 +13,64 @@ public final class AnalyzerTestProfileCatalog {
     public static final String HL7_PROFILE_ID = "test.generic-hl7-analyzer";
     public static final int HL7_PROFILE_REVISION = 1;
     public static final String HL7_PROFILE_FINGERPRINT = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    /**
+     * A profile with two revisions, for adoption: revision 2 fixes ADOPT-A's LOINC,
+     * reports ADOPT-D in another unit, adds ADOPT-B and drops ADOPT-C.
+     */
+    public static final String ADOPTABLE_PROFILE_ID = "test.adoptable";
+    public static final String ADOPTABLE_RECOGNITION_FINGERPRINT = "sha256:" + "6".repeat(64);
 
     private AnalyzerTestProfileCatalog() {
     }
 
     public static BridgeProfileCatalog catalog() {
-        return new BridgeProfileCatalog("1.0", PROFILE_FINGERPRINT, List.of(astmProfile(), hl7Profile()));
+        return new BridgeProfileCatalog("1.0", PROFILE_FINGERPRINT, List.of(astmProfile(), hl7Profile(),
+                unknownCapableProfile(), mockHematologyProfile(), adoptableProfile(1), adoptableProfile(2)));
+    }
+
+    public static String adoptableFingerprint(int revision) {
+        return "sha256:" + String.valueOf(revision).repeat(64);
+    }
+
+    private static BridgeProfileCatalog.ProfileRevision adoptableProfile(int revision) {
+        ObjectNode profile = ((ObjectNode) astmProfile().profile()).deepCopy();
+        ((ObjectNode) profile.path("profileMeta")).put("id", ADOPTABLE_PROFILE_ID);
+        ((ObjectNode) profile.path("catalog")).put("revision", revision).put("revisionFingerprint",
+                adoptableFingerprint(revision));
+        var tests = profile.putArray("default_test_mappings");
+        tests.addObject().put("test_code", "ADOPT-A").put("loinc", revision == 1 ? "2345-7" : "2339-0")
+                .put("result_type", "quantitative");
+        tests.addObject().put("test_code", "ADOPT-D").put("loinc", "2160-0").put("result_type", "quantitative")
+                .put("unit", revision == 1 ? "mg/dL" : "umol/L");
+        if (revision == 1) {
+            tests.addObject().put("test_code", "ADOPT-C").put("loinc", "2947-0").put("result_type", "quantitative");
+        }
+        if (revision > 1) {
+            tests.addObject().put("test_code", "ADOPT-B").put("loinc", "2951-2").put("result_type", "quantitative");
+        }
+        return new BridgeProfileCatalog.ProfileRevision(profile, JsonNodeFactory.instance.objectNode(),
+                new BridgeProfileCatalog.ControlRecognitionSummary(ADOPTABLE_RECOGNITION_FINGERPRINT, "RULES", null,
+                        false, List.of()));
+    }
+
+    private static BridgeProfileCatalog.ProfileRevision unknownCapableProfile() {
+        ObjectNode profile = ((ObjectNode) astmProfile().profile()).deepCopy();
+        ((ObjectNode) profile.path("profileMeta")).put("id", "site.unknown-capable");
+        ((ObjectNode) profile.path("catalog")).put("revision", 3).put("revisionFingerprint",
+                "sha256:" + "1".repeat(64));
+        return new BridgeProfileCatalog.ProfileRevision(profile, JsonNodeFactory.instance.objectNode(),
+                new BridgeProfileCatalog.ControlRecognitionSummary("sha256:" + "2".repeat(64), "RULES", null, false,
+                        List.of()));
+    }
+
+    /** Profile identity used by the normalized QC delivery contract fixture. */
+    private static BridgeProfileCatalog.ProfileRevision mockHematologyProfile() {
+        BridgeProfileCatalog.ProfileRevision base = unknownCapableProfile();
+        ObjectNode profile = ((ObjectNode) base.profile()).deepCopy();
+        ((ObjectNode) profile.path("profileMeta")).put("id", "site.mock-hematology");
+        ((ObjectNode) profile.path("catalog")).put("revision", 1);
+        return new BridgeProfileCatalog.ProfileRevision(profile, JsonNodeFactory.instance.objectNode(),
+                base.controlRecognitionSummary());
     }
 
     private static BridgeProfileCatalog.ProfileRevision astmProfile() {

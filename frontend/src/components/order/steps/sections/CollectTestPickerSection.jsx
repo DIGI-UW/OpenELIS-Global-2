@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
+  Button,
   Tile,
   Search,
   Tag,
@@ -17,13 +18,25 @@ import { getFromOpenElisServer } from "../../../utils/Utils";
  * order was fixed: a clinician asking for an extra test at the bedside, or a
  * test that only becomes appropriate when the specimen is in hand, meant
  * walking back to step 1. This offers the same catalogue, scoped to each
- * sample's own type, against the tests the order already holds.
+ * sample's own type, against the tests the order already holds. A type whose
+ * catalogue could not be loaded says so and offers Retry (OGC-1449), instead of
+ * offering nothing to add.
  */
-const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
+const CollectTestPickerSection = ({
+  samples,
+  setSamples,
+  isReadOnly,
+  titleId = "collect.addTests.title",
+  helperId = "collect.addTests.helper",
+  excludedTestIds = [],
+  excludedTestIdsBySample = {},
+  cataloguePath = "/rest/sample-type-tests",
+}) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
   const fetchedTypesRef = useRef({});
   const [catalogue, setCatalogue] = useState({});
+  const [failedTypes, setFailedTypes] = useState({});
   const [searchTerms, setSearchTerms] = useState({});
 
   useEffect(() => {
@@ -33,30 +46,51 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
     };
   }, []);
 
+  const cataloguePathRef = useRef(cataloguePath);
+  useEffect(() => {
+    cataloguePathRef.current = cataloguePath;
+    fetchedTypesRef.current = {};
+    setCatalogue({});
+    setFailedTypes({});
+  }, [cataloguePath]);
+
+  const loadCatalogue = (sampleTypeId) => {
+    const requestedPath = cataloguePath;
+    fetchedTypesRef.current[sampleTypeId] = true;
+    setFailedTypes((prev) => ({ ...prev, [sampleTypeId]: false }));
+    getFromOpenElisServer(
+      `${cataloguePath}?sampleType=${encodeURIComponent(sampleTypeId)}`,
+      (response) => {
+        if (
+          !componentMounted.current ||
+          requestedPath !== cataloguePathRef.current
+        ) {
+          return;
+        }
+        if (!response) {
+          setFailedTypes((prev) => ({ ...prev, [sampleTypeId]: true }));
+          return;
+        }
+        setCatalogue((prev) => ({
+          ...prev,
+          [sampleTypeId]: {
+            tests: response.tests || [],
+            panels: response.panels || [],
+          },
+        }));
+      },
+    );
+  };
+
   useEffect(() => {
     samples.forEach((sample) => {
       const sampleTypeId = sample?.sampleTypeId;
       if (!sampleTypeId || fetchedTypesRef.current[sampleTypeId]) {
         return;
       }
-      fetchedTypesRef.current[sampleTypeId] = true;
-      getFromOpenElisServer(
-        `/rest/sample-type-tests?sampleType=${sampleTypeId}`,
-        (response) => {
-          if (!componentMounted.current || !response) {
-            return;
-          }
-          setCatalogue((prev) => ({
-            ...prev,
-            [sampleTypeId]: {
-              tests: response.tests || [],
-              panels: response.panels || [],
-            },
-          }));
-        },
-      );
+      loadCatalogue(sampleTypeId);
     });
-  }, [samples]);
+  }, [samples, cataloguePath]);
 
   const updateSample = (sampleIndex, changes) =>
     setSamples(
@@ -85,6 +119,15 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
         )
       : items;
 
+  // Carbon labels a tag's close button from title, and falls back to
+  // dismissTooltipLabel only once the tag's own text has been ellipsised, so
+  // both have to be given or the button reads Carbon's English "Dismiss".
+  const removeLabel = (name) =>
+    intl.formatMessage(
+      { id: "common.removeSelection", defaultMessage: "Remove {name}" },
+      { name },
+    );
+
   const collectableSamples = samples
     .map((sample, index) => ({ sample, index }))
     .filter(({ sample }) => sample.sampleTypeId && !sample.sampleRejected);
@@ -96,14 +139,11 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
   return (
     <Tile className="order-section">
       <h4 className="section-title">
-        <FormattedMessage
-          id="collect.addTests.title"
-          defaultMessage="Add Tests or Panels"
-        />
+        <FormattedMessage id={titleId} defaultMessage="Add Tests or Panels" />
       </h4>
       <p className="helper-text">
         <FormattedMessage
-          id="collect.addTests.helper"
+          id={helperId}
           defaultMessage="Add a test the clinician asked for after the order was entered, or one that only becomes appropriate with the specimen in hand."
         />
       </p>
@@ -128,13 +168,8 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
                     text={panel.name}
                     disabled={isReadOnly}
                     onClose={() => toggleSelection(index, "panels", panel)}
-                    dismissTooltipLabel={intl.formatMessage(
-                      {
-                        id: "common.removeSelection",
-                        defaultMessage: "Remove {name}",
-                      },
-                      { name: panel.name },
-                    )}
+                    title={removeLabel(panel.name)}
+                    dismissTooltipLabel={removeLabel(panel.name)}
                   />
                 ))}
                 {(sample.tests || []).map((test) => (
@@ -144,13 +179,8 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
                     text={test.name}
                     disabled={isReadOnly}
                     onClose={() => toggleSelection(index, "tests", test)}
-                    dismissTooltipLabel={intl.formatMessage(
-                      {
-                        id: "common.removeSelection",
-                        defaultMessage: "Remove {name}",
-                      },
-                      { name: test.name },
-                    )}
+                    title={removeLabel(test.name)}
+                    dismissTooltipLabel={removeLabel(test.name)}
                   />
                 ))}
               </div>
@@ -176,6 +206,25 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
                 size="sm"
               />
 
+              {failedTypes[sample.sampleTypeId] && (
+                <div className="no-items-message" role="alert">
+                  <FormattedMessage
+                    id="sample.testsLoadFailed"
+                    defaultMessage="The tests for this sample type could not be loaded."
+                  />
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    onClick={() => loadCatalogue(sample.sampleTypeId)}
+                  >
+                    <FormattedMessage
+                      id="common.retry"
+                      defaultMessage="Retry"
+                    />
+                  </Button>
+                </div>
+              )}
+
               <div className="available-tags">
                 {matching(options.panels, term).map((panel) => (
                   <Tag
@@ -184,17 +233,50 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
                     onClick={() =>
                       !isReadOnly && toggleSelection(index, "panels", panel)
                     }
+                    role="button"
+                    tabIndex={isReadOnly ? -1 : 0}
+                    aria-disabled={isReadOnly}
+                    onKeyDown={(event) => {
+                      if (
+                        !isReadOnly &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        toggleSelection(index, "panels", panel);
+                      }
+                    }}
                   >
                     {panel.name}
                   </Tag>
                 ))}
-                {matching(options.tests, term).map((test) => (
+                {matching(
+                  options.tests.filter(
+                    (test) =>
+                      !excludedTestIds.includes(String(test.id)) &&
+                      !(
+                        excludedTestIdsBySample[sample.sampleItemId] || []
+                      ).includes(String(test.id)),
+                  ),
+                  term,
+                ).map((test) => (
                   <Tag
                     key={`available-test-${test.id}`}
                     type="outline"
                     onClick={() =>
                       !isReadOnly && toggleSelection(index, "tests", test)
                     }
+                    role="button"
+                    tabIndex={isReadOnly ? -1 : 0}
+                    aria-disabled={isReadOnly}
+                    onKeyDown={(event) => {
+                      if (
+                        !isReadOnly &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        toggleSelection(index, "tests", test);
+                      }
+                    }}
                   >
                     {test.name}
                   </Tag>

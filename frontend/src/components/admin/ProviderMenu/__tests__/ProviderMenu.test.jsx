@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -173,5 +173,81 @@ describe("ProviderMenu", () => {
     // Modify used to stay enabled on the row id that no longer exists, and
     // clicking it crashed the screen looking that row up.
     expect(screen.getByRole("button", { name: "Modify" })).toBeDisabled();
+  });
+
+  // Both modals share the title state, so whichever one opens has to set it.
+  // An update form that left it alone silently cleared the provider's title on
+  // the next save, and an add form that left it alone inherited the last one
+  // that was edited (OGC-1223).
+  describe("the title on the provider forms", () => {
+    const titled = () => {
+      const list = providers(["Lovelace"]);
+      list.providers[0].person.titleCode = "Prof";
+      return list;
+    };
+
+    // The control only holds a code it has an option for, so the dictionary
+    // has to answer before the form can show the provider's title.
+    const serveTitles = () =>
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url.startsWith("/rest/dictionary/categories/providerTitle")) {
+          return callback([
+            { code: "Dr", label: "Doctor" },
+            { code: "Prof", label: "Professor" },
+          ]);
+        }
+        return url.startsWith("/rest/ProviderMenu") ||
+          url.startsWith("/rest/SearchProviderMenu")
+          ? callback(onServer)
+          : callback(undefined);
+      });
+
+    // Both forms are mounted at once, so each title control needs its own id;
+    // they shared one and the label alone could not tell them apart.
+    const titleOn = (form) =>
+      document.getElementById(
+        form === "update" ? "updateProviderTitle" : "providerTitle",
+      );
+
+    it("opens the update form on the provider's own title", async () => {
+      onServer = titled();
+      serveTitles();
+      renderScreen();
+      await waitFor(() =>
+        expect(screen.getByText("Lovelace")).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getAllByLabelText("selectRows")[0]);
+      await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+
+      await waitFor(() => expect(titleOn("update")).toHaveValue("Prof"));
+    });
+
+    it("opens the add form with no title, even after one was edited", async () => {
+      onServer = titled();
+      serveTitles();
+      renderScreen();
+      await waitFor(() =>
+        expect(screen.getByText("Lovelace")).toBeInTheDocument(),
+      );
+
+      fireEvent.click(screen.getAllByLabelText("selectRows")[0]);
+      await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+      await waitFor(() => expect(titleOn("update")).toHaveValue("Prof"));
+      await userEvent.click(
+        within(document.querySelector(".cds--modal.is-visible")).getByRole(
+          "button",
+          { name: "Cancel" },
+        ),
+      );
+
+      await userEvent.click(
+        screen
+          .getAllByRole("button", { name: "Add" })
+          .find((button) => !button.closest(".cds--modal")),
+      );
+
+      await waitFor(() => expect(titleOn("add")).toHaveValue(""));
+    });
   });
 });

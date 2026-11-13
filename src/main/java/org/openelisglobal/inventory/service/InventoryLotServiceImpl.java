@@ -3,7 +3,11 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.common.util.CodeGenerator;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
@@ -17,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<InventoryLot, Long>
         implements InventoryLotService {
+
+    // Matches the inventory_lot.barcode column length.
+    private static final int BARCODE_MAX_LENGTH = 100;
 
     @Autowired
     private InventoryLotDAO inventoryLotDAO;
@@ -35,8 +42,109 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional
+    public Long insert(InventoryLot lot) {
+        lot.setBarcode(resolveBarcode(lot));
+        return super.insert(lot);
+    }
+
+    // Minting a replacement here would orphan the label already printed.
+    @Override
+    @Transactional
+    public InventoryLot update(InventoryLot lot) {
+        normalizeBarcode(lot);
+        return super.update(lot);
+    }
+
+    /**
+     * The lot barcode is the lab's own scannable label, so insert mints one from
+     * the item code and lot number when the user supplies none.
+     */
+    private String resolveBarcode(InventoryLot lot) {
+        String supplied = lot.getBarcode();
+        if (supplied == null || supplied.trim().isEmpty()) {
+            return CodeGenerator.generateFromName(barcodeSeed(lot), BARCODE_MAX_LENGTH, "LOT", this::barcodeExists);
+        }
+        String barcode = CodeGenerator.normalize(supplied, BARCODE_MAX_LENGTH);
+        rejectIfHeldByAnotherLot(barcode, lot.getId());
+        return barcode;
+    }
+
+    // barcode is UNIQUE and nullable: '' would make barcode-less lots collide.
+    private void normalizeBarcode(InventoryLot lot) {
+        String barcode = lot.getBarcode() == null ? null : lot.getBarcode().trim();
+        if (barcode == null || barcode.isEmpty()) {
+            lot.setBarcode(null);
+            return;
+        }
+        if (isFirstBarcode(lot)) {
+            barcode = CodeGenerator.normalize(barcode, BARCODE_MAX_LENGTH);
+        }
+        lot.setBarcode(barcode);
+        rejectIfHeldByAnotherLot(barcode, lot.getId());
+    }
+
+    /**
+     * True when the stored row carries no barcode, so update reshapes a first
+     * assignment the way insert does and leaves every later save alone.
+     */
+    private boolean isFirstBarcode(InventoryLot lot) {
+        if (lot.getId() == null) {
+            return true;
+        }
+        String stored = inventoryLotDAO.get(lot.getId()).map(InventoryLot::getBarcode).orElse(null);
+        return stored == null || stored.trim().isEmpty();
+    }
+
+    private void rejectIfHeldByAnotherLot(String barcode, Long lotId) {
+        InventoryLot holder = inventoryLotDAO.getByBarcode(barcode);
+        if (holder != null && !holder.getId().equals(lotId)) {
+            throw new LocalizedValidationException("inventory.lot.error.duplicateBarcode",
+                    "Barcode " + barcode + " is already assigned to lot " + holder.getLotNumber(),
+                    Map.of("barcode", barcode, "lotNumber", holder.getLotNumber()));
+        }
+    }
+
+    @Override
+    @Transactional
     public InventoryLot getForUpdate(Long lotId) {
         return inventoryLotDAO.getForUpdate(lotId);
+    }
+
+    @Override
+    @Transactional
+    public void refreshForUpdate(InventoryLot lot) {
+        inventoryLotDAO.refreshForUpdate(lot);
+    }
+
+    /**
+     * Item code plus lot number, so a human can still identify the lot when the
+     * printed barcode is damaged; falls back to whichever half is present.
+     */
+    private String barcodeSeed(InventoryLot lot) {
+        String itemCode = lot.getInventoryItem() != null ? lot.getInventoryItem().getCode() : null;
+        String lotNumber = lot.getLotNumber();
+        if (itemCode == null || itemCode.trim().isEmpty()) {
+            return lotNumber;
+        }
+        if (lotNumber == null || lotNumber.trim().isEmpty()) {
+            return itemCode;
+        }
+        // A lot number generated from the item code must not be prefixed again.
+        if (toComparable(lotNumber).startsWith(toComparable(itemCode))) {
+            return lotNumber;
+        }
+        return itemCode + "-" + lotNumber;
+    }
+
+    /**
+     * Same shape CodeGenerator applies, so prefix check and lookup see final form.
+     */
+    private static String toComparable(String value) {
+        return value.trim().toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]+", "-").replaceAll("^-+|-+$", "");
+    }
+
+    private boolean barcodeExists(String barcode) {
+        return inventoryLotDAO.getByBarcode(barcode) != null;
     }
 
     @Override
@@ -53,12 +161,6 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryLot> getByStorageLocationId(Long locationId) {
-        return inventoryLotDAO.getByStorageLocationId(locationId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<InventoryLot> getExpiringLots(int daysFromNow) {
         return inventoryLotDAO.getExpiringLots(daysFromNow);
     }
@@ -71,8 +173,29 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional(readOnly = true)
+    public List<InventoryLot> getStockedLotsExpiringWithin(int daysAhead) {
+        return inventoryLotDAO.getStockedLotsExpiringWithin(daysAhead);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public InventoryLot getByLotNumber(String lotNumber) {
         return inventoryLotDAO.getByLotNumber(lotNumber);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public InventoryLot getByBarcode(String barcode) {
+        if (barcode == null || barcode.trim().isEmpty()) {
+            return null;
+        }
+        InventoryLot exact = inventoryLotDAO.getByBarcode(barcode.trim());
+        if (exact != null) {
+            return exact;
+        }
+        // Retry rather than replace: older rows need not be upper-kebab.
+        String normalized = toComparable(barcode);
+        return normalized.isEmpty() ? null : inventoryLotDAO.getByBarcode(normalized);
     }
 
     @Override
@@ -104,9 +227,8 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         lot.setStatus(LotStatus.IN_USE);
         lot.setDateOpened(openedDate);
 
-        // Calculate expiry after opening for reagents
         InventoryItem item = lot.getInventoryItem();
-        if (item != null && item.isReagent() && item.getStabilityAfterOpening() != null) {
+        if (item != null && item.getStabilityAfterOpening() != null) {
             Calendar cal = Calendar.getInstance();
             cal.setTime(openedDate);
             cal.add(Calendar.DAY_OF_MONTH, item.getStabilityAfterOpening());
@@ -156,6 +278,8 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalArgumentException("Lot not found: " + lotId);
         }
 
+        refuseStatusThatMovesStock(lot, status);
+
         lot.setStatus(status);
         lot.setSysUserId(sysUserId);
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
@@ -165,11 +289,26 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     }
 
     @Override
+    public void refuseStatusThatMovesStock(InventoryLot lot, LotStatus status) {
+        // Dispose and adjust write the transaction; a bare status change would skip it.
+        if (status == LotStatus.DISPOSED
+                || (status == LotStatus.CONSUMED && lot.getCurrentQuantity() != null && lot.getCurrentQuantity() > 0)) {
+            throw new IllegalStateException(
+                    "Lot " + lot.getLotNumber() + " cannot be set to " + status + " here; use dispose or adjust");
+        }
+    }
+
+    @Override
     @Transactional
-    public InventoryLot adjustLotQuantity(Long lotId, Double newQuantity, String reason, String sysUserId) {
+    public InventoryLot adjustLotQuantity(Long lotId, Double newQuantity, String reason, String notes,
+            String sysUserId) {
         InventoryLot lot = get(lotId);
         if (lot == null) {
             throw new IllegalArgumentException("Lot not found: " + lotId);
+        }
+
+        if (lot.getStatus() == LotStatus.DISPOSED || lot.getStatus() == LotStatus.CONSUMED) {
+            throw new IllegalStateException("Cannot adjust a " + lot.getStatus() + " lot: " + lot.getLotNumber());
         }
 
         if (newQuantity < 0) {
@@ -184,15 +323,18 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         lot.setLastupdated(new Timestamp(System.currentTimeMillis()));
 
         // Update status based on quantity
-        if (newQuantity == 0 && lot.getStatus() != LotStatus.DISPOSED) {
+        if (newQuantity == 0) {
             lot.setStatus(LotStatus.CONSUMED);
         }
 
         update(lot);
 
         // Record transaction
+        String transactionNotes = notes == null || notes.trim().isEmpty()
+                ? (reason != null ? reason : "Manual quantity adjustment")
+                : buildReasonAndNotes(reason, notes);
         transactionService.recordTransaction(lotId, TransactionType.ADJUSTMENT, quantityChange, newQuantity, null, null,
-                reason != null ? reason : "Manual quantity adjustment", sysUserId);
+                transactionNotes, sysUserId);
 
         return lot;
     }
@@ -205,6 +347,10 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalArgumentException("Lot not found: " + lotId);
         }
 
+        if (lot.getStatus() == LotStatus.DISPOSED) {
+            throw new IllegalStateException("Lot already disposed: " + lot.getLotNumber());
+        }
+
         Double quantityDisposed = lot.getCurrentQuantity();
         lot.setCurrentQuantity(0.0);
         lot.setStatus(LotStatus.DISPOSED);
@@ -213,14 +359,14 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         update(lot);
 
         // Record transaction with reason and notes
-        String transactionNotes = buildDisposalNotes(reason, notes);
+        String transactionNotes = buildReasonAndNotes(reason, notes);
         transactionService.recordTransaction(lotId, TransactionType.DISPOSAL, -quantityDisposed, 0.0, null, null,
                 transactionNotes, sysUserId);
 
         return lot;
     }
 
-    private String buildDisposalNotes(String reason, String notes) {
+    private String buildReasonAndNotes(String reason, String notes) {
         StringBuilder sb = new StringBuilder();
         if (reason != null && !reason.trim().isEmpty()) {
             sb.append("Reason: ").append(reason);

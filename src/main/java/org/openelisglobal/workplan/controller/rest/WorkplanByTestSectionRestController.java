@@ -115,7 +115,8 @@ public class WorkplanByTestSectionRestController extends WorkplanRestController 
         if (!(GenericValidator.isBlankOrNull(testSectionId))) {
 
             String sectionId = testSectionId;
-            testList = analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList, true);
+            testList = withoutReferredOut(
+                    analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList, true));
 
             if (testList.isEmpty()) {
                 return new ArrayList<>();
@@ -152,6 +153,7 @@ public class WorkplanByTestSectionRestController extends WorkplanRestController 
                 testResultItem = new TestResultItem();
                 testResultItem.setTestName(analysisService.getTestDisplayName(analysis));
                 testResultItem.setAccessionNumber(currentAccessionNumber);
+                markEqaSample(testResultItem, sample);
                 testResultItem.setReceivedDate(getReceivedDateDisplay(sample));
                 testResultItem.setSampleGroupingNumber(sampleGroupingNumber);
                 testResultItem.setTestId(analysis.getTest().getId());

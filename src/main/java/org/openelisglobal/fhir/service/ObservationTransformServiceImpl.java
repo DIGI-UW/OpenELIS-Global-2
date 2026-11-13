@@ -1,46 +1,38 @@
 package org.openelisglobal.fhir.service;
 
-import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-import org.hl7.fhir.r4.model.CodeableConcept;
-import org.hl7.fhir.r4.model.Coding;
+import java.nio.charset.StandardCharsets;
 import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Observation.ObservationStatus;
 import org.hl7.fhir.r4.model.Quantity;
+import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.StringType;
 import org.openelisglobal.analysis.service.AnalysisAnchor;
 import org.openelisglobal.analysis.service.AnalysisAnchorService;
-import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.service.AnalysisServiceImpl;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
-import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
-import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.patient.valueholder.Patient;
-import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
-import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.test.beanItems.TestResultItem;
-import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.valueholder.Test;
-import org.openelisglobal.testresult.service.TestResultService;
-import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -51,191 +43,75 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
     @Autowired
     private FhirConfig fhirConfig;
     @Autowired
-    private PatientService patientService;
-    @Autowired
-    private AnalysisService analysisService;
-    @Autowired
-    private TestService testService;
-    @Autowired
     private ResultService resultService;
     @Autowired
     private SampleHumanService sampleHumanService;
     @Autowired
     private DictionaryService dictionaryService;
     @Autowired
-    private SampleItemService sampleItemService;
-    @Autowired
     private AnalysisAnchorService analysisAnchorService;
     @Autowired
     private IStatusService statusService;
     @Autowired
-    private TestResultService testResultService;
-    @Autowired
     private FhirCommonTransformService common;
     @Autowired
     private TerminologyTransformService terminologyTransformService;
+    @Autowired
+    private HistoryService historyService;
+    @Autowired
+    private SystemUserService systemUserService;
 
-    @Override
-    public TestResultItem createResultFromObservation(org.hl7.fhir.r4.model.Observation observation) {
-
-        TestResultItem bean = new TestResultItem();
-        Result result = new Result();
-        bean.setResult(result);
-
-        if (observation.hasSpecimen()) {
-            String sampleItemUUID = observation.getSpecimen().getReferenceElement().getIdPart();
-            SampleItem sampleItem = common.getItemByFhirId(sampleItemUUID, sampleItemService);
-
-            if (sampleItem == null) {
-                throw new UnprocessableEntityException("SampleItem not found: " + sampleItemUUID);
-            }
-
-            Sample sample = sampleItem.getSample();
-            bean.setSampleItemId(sampleItem.getId());
-            bean.setAccessionNumber(sample.getAccessionNumber());
-        }
-
-        if (observation.hasBasedOn()) {
-
-            String analysisUUID = observation.getBasedOnFirstRep().getReferenceElement().getIdPart();
-
-            Analysis analysis = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUUID)).get(0);
-
-            Test test = analysis.getTest();
-
-            bean.setAnalysisId(analysis.getId());
-            bean.setTestId(test.getId());
-        }
-        if (observation.hasSubject()) {
-            String patientUUID = observation.getSubject().getReferenceElement().getIdPart();
-            Patient patient = common.getItemByFhirId(patientUUID, patientService);
-
-            if (patient == null) {
-                throw new UnprocessableEntityException("Patient not found: " + patientUUID);
-            }
-
-            bean.setPatientId(patient.getId());
-        }
-
-        bean.setIsModified(true);
-        bean.setResultId(null);
-        bean.setReportable(true);
-        String locale = ConfigurationProperties.getInstance()
-                .getPropertyValue(ConfigurationProperties.Property.DEFAULT_DATE_LOCALE);
-
-        String pattern = "en-US".equals(locale) ? "MM/dd/yyyy" : "dd/MM/yyyy";
-
-        String formattedDate = new SimpleDateFormat(pattern).format(new Date());
-        bean.setTestDate(formattedDate);
-
-        if (bean.getTechnician() == null) {
-            bean.setTechnician("");
-        }
-
-        if (observation.hasStatus()) {
-            String status = observation.getStatusElement().getValue().toString();
-            if (status.equals(org.hl7.fhir.r4.model.Observation.ObservationStatus.FINAL.toString())) {
-                bean.setAnalysisStatusId(statusService.getStatusID(AnalysisStatus.Finalized));
-            } else if (status.equals(org.hl7.fhir.r4.model.Observation.ObservationStatus.CANCELLED.toString())) {
-                bean.setAnalysisStatusId(statusService.getStatusID(AnalysisStatus.Canceled));
-            } else if (status.equals(org.hl7.fhir.r4.model.Observation.ObservationStatus.REGISTERED.toString())) {
-                bean.setAnalysisStatusId(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+    private static Quantity numericQuantity(String value) {
+        Quantity quantity = new Quantity();
+        String numericValue = value.trim();
+        for (String comparator : new String[] { "<=", ">=", "<", ">" }) {
+            if (numericValue.startsWith(comparator)) {
+                quantity.setComparator(Quantity.QuantityComparator.fromCode(comparator));
+                numericValue = numericValue.substring(comparator.length()).trim();
+                break;
             }
         }
-
-        if (observation.hasCode()) {
-            boolean matchedLoinc = false;
-
-            for (Coding code : observation.getCode().getCoding()) {
-                if ("http://loinc.org".equals(code.getSystem())) {
-                    matchedLoinc = true;
-
-                    List<Test> tests = testService.getTestsByLoincCode(code.getCode());
-                    if (tests.isEmpty()) {
-                        throw new UnprocessableEntityException("No test with loinc code " + code.getCode());
-                    }
-
-                    if (tests.getFirst().getLoinc().equals(code.getCode())) {
-                        bean.setTestId(tests.getFirst().getId());
-                    } else {
-                        throw new UnprocessableEntityException("Observation code " + code.getCode()
-                                + " does not match test loinc code " + tests.getFirst().getLoinc());
-                    }
-
-                    break;
-                }
-            }
-
-            if (!matchedLoinc) {
-                throw new UnprocessableEntityException("Observation has code but no LOINC code was found");
-            }
-        }
-
-        if (observation.hasValueStringType()) {
-
-            String value = observation.getValueStringType().getValueAsString();
-
-            bean.setResultValue(value);
-            bean.setShadowResultValue(value);
-            bean.setResultType("T");
-        }
-
-        else if (observation.hasValueCodeableConcept()) {
-
-            for (Coding code : observation.getValueCodeableConcept().getCoding()) {
-
-                if (code.getSystem().equals(fhirConfig.getOeFhirSystem() + "/dictionary_entry")) {
-
-                    List<Dictionary> dictionaries = dictionaryService.getAllMatching("dictEntry", code.getCode());
-
-                    if (!dictionaries.isEmpty()) {
-
-                        Dictionary dictionary = dictionaries.get(0);
-
-                        bean.setResultValue(dictionary.getId());
-                        bean.setShadowResultValue(dictionary.getId());
-
-                        List<TestResult> testResults = testResultService.getAllMatching("value", dictionary.getId());
-                        TestResult testResult = testResults.get(0);
-                        if (testResult != null) {
-
-                            bean.setResultType(testResult.getTestResultType());
-
-                            result.setTestResult(testResult);
-
-                        }
-
-                    }
-                }
-            }
-        }
-
-        else if (observation.hasValueQuantity()) {
-
-            String value = observation.getValueQuantity().getValueElement().getValueAsString();
-
-            bean.setResultValue(value);
-            bean.setShadowResultValue(value);
-            bean.setResultType("N");
-            bean.setUnitsOfMeasure(observation.getValueQuantity().getUnit());
-
-        }
-
-        if (bean.getResultType() == null) {
-            bean.setResultType("T");
-        }
-
-        bean.setHasQualifiedResult(false);
-
-        if (bean.getAnalysisId() == null || bean.getTestId() == null || bean.getSampleItemId() == null) {
-            throw new UnprocessableEntityException("Missing required fields for result creation");
-        }
-        return bean;
+        quantity.setValue(new BigDecimal(StringUtil.normalizeScientificNotation(numericValue)));
+        return quantity;
     }
 
     @Override
     public Observation transformResultToObservation(String resultId) {
         return transformResultToObservation(resultService.get(resultId));
+    }
+
+    /**
+     * The person responsible for a released result is the one who validated it,
+     * never the ordering provider. No validator is stored on the result, so it is
+     * the user on the analysis's latest status change, read from the audit trail
+     * once the analysis is finalized. Users have no Practitioner resource, so the
+     * reference is by name.
+     */
+    private Reference validatorOf(Analysis analysis) {
+        if (analysis.getStatusId() == null
+                || !analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.Finalized))) {
+            return null;
+        }
+        try {
+            History finalization = null;
+            for (History row : historyService.getHistoryByRefIdAndRefTableId(analysis.getId(),
+                    AnalysisServiceImpl.getTableReferenceId())) {
+                if (row.getChanges() != null && row.getTimestamp() != null
+                        && new String(row.getChanges(), StandardCharsets.UTF_8).contains("<statusId>")
+                        && (finalization == null || row.getTimestamp().after(finalization.getTimestamp()))) {
+                    finalization = row;
+                }
+            }
+            SystemUser user = finalization == null ? null : systemUserService.getUserById(finalization.getSysUserId());
+            if (user == null) {
+                return null;
+            }
+            return new Reference().setDisplay(user.getNameForDisplay());
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "validatorOf",
+                    "could not read who validated analysis " + analysis.getId() + ": " + e.getMessage());
+            return null;
+        }
     }
 
     @Override
@@ -252,7 +128,6 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
                 : (anchor != null ? anchor.getSampleItem() : null);
         Sample sampleForResult = anchor != null ? anchor.getSample() : null;
         Patient patient = sampleForResult != null ? sampleHumanService.getPatientForSample(sampleForResult) : null;
-        Provider provider = sampleForResult != null ? sampleHumanService.getProviderForSample(sampleForResult) : null;
         Observation observation = new Observation();
 
         observation.setId(result.getFhirUuidAsString());
@@ -278,44 +153,16 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
         }
 
         if (!GenericValidator.isBlankOrNull(result.getValue())) {
-            // in case of Viral load test
-            if (result.getAnalysis().getTest().getName().equalsIgnoreCase("Viral Load")) {
-                Quantity quantity = new Quantity();
-                long finalResult = result.getVLValueAsNumber();
-                quantity.setValue(finalResult);
-                quantity.setUnit(resultService.getUOM(result));
-                observation.setValue(quantity);
-            } else if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())
+            if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())
                     && !"0".equals(result.getValue())) {
                 Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
-                CodeableConcept codeableConcept = new CodeableConcept();
-                if (dictionary.getLoincCode() != null && !dictionary.getLoincCode().isEmpty()) {
-                    codeableConcept.addCoding(new Coding("http://loinc.org", dictionary.getLoincCode(),
-                            dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
-                                    : dictionary.getLocalizedDictionaryName().getEnglish()));
-                }
-                codeableConcept.addCoding(
-                        new Coding(fhirConfig.getOeFhirSystem() + "/dictionary_entry", dictionary.getDictEntry(),
-                                dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
-                                        : dictionary.getLocalizedDictionaryName().getEnglish()));
-                observation.setValue(codeableConcept);
+                observation.setValue(terminologyTransformService.transformAnswerToCodeableConcept(dictionary));
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())
                     && !"0".equals(result.getValue())) {
                 Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
-                CodeableConcept codeableConcept = new CodeableConcept();
-                if (dictionary.getLoincCode() != null && !dictionary.getLoincCode().isEmpty()) {
-                    codeableConcept.addCoding(new Coding("http://loinc.org", dictionary.getLoincCode(),
-                            dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
-                                    : dictionary.getLocalizedDictionaryName().getEnglish()));
-                }
-                codeableConcept.addCoding(
-                        new Coding(fhirConfig.getOeFhirSystem() + "/dictionary_entry", dictionary.getDictEntry(),
-                                dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
-                                        : dictionary.getLocalizedDictionaryName().getEnglish()));
-                observation.setValue(codeableConcept);
+                observation.setValue(terminologyTransformService.transformAnswerToCodeableConcept(dictionary));
             } else if (TypeOfTestResultServiceImpl.ResultType.isNumeric(result.getResultType())) {
-                Quantity quantity = new Quantity();
-                quantity.setValue(new BigDecimal(result.getValue(true)));
+                Quantity quantity = numericQuantity(result.getValue());
                 quantity.setUnit(resultService.getUOM(result));
                 observation.setValue(quantity);
             } else if (TypeOfTestResultServiceImpl.ResultType.isTextOnlyVariant(result.getResultType())) {
@@ -329,7 +176,7 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
         org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component = terminologyTransformService
                 .resolveResultComponent(test.getId(), result);
         observation.setCode(terminologyTransformService.transformResultCodeableConcept(test, component,
-                sampleItem.getTypeOfSampleId()));
+                sampleItem == null ? null : sampleItem.getTypeOfSampleId()));
         observation.addBasedOn(common.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
         if (sampleItem != null) {
             observation.setSpecimen(common.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));
@@ -348,11 +195,9 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
             observation.setEffective(new DateTimeType(analysis.getStartedDate()));
         }
         // observation.setIssued(new Date());
-        // sample_human.provider_id is nullable: samples entered without an ordering
-        // provider carry no performer rather than a dangling Practitioner/null.
-        if (provider != null && provider.getFhirUuid() != null) {
-            observation
-                    .addPerformer(common.createReferenceFor(ResourceType.Practitioner, provider.getFhirUuidAsString()));
+        Reference validator = validatorOf(analysis);
+        if (validator != null) {
+            observation.addPerformer(validator);
         }
 
         return observation;

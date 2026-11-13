@@ -3,6 +3,7 @@ package org.openelisglobal.organization.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -371,7 +372,14 @@ public class OrganizationRestController extends BaseController {
 
         // List states = getPossibleStates(form);
 
+        Timestamp storedVersion = organization.getLastupdated();
         PropertyUtils.copyProperties(organization, form);
+        // The form sends lastupdated in milliseconds; a stored version with
+        // microseconds is the same version when the milliseconds match.
+        if (storedVersion != null && form.getLastupdated() != null
+                && storedVersion.getTime() == form.getLastupdated().getTime()) {
+            organization.setLastupdated(storedVersion);
+        }
 
         if (FormFields.getInstance().useField(FormFields.Field.OrganizationParent)) {
             String parentOrgName = form.getParentOrgName();

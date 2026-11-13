@@ -13,4 +13,10 @@ public interface MenuService extends BaseObjectService<Menu, String> {
     MenuItem save(MenuItem menuItem);
 
     List<MenuItem> save(List<MenuItem> menuItems);
+
+    /**
+     * Drops nodes whose target no role of the current user grants. A target with no
+     * {@code system_module_url} row stays visible.
+     */
+    List<MenuItem> filterByPrivilege(List<MenuItem> menuTree);
 }

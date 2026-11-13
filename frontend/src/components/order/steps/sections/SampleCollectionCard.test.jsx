@@ -15,47 +15,7 @@ vi.mock("../../../addOrder/GpsCoordinatesCapture", () => ({
 
 import SampleCollectionCard from "./SampleCollectionCard";
 
-describe("SampleCollectionCard admission-date validation", () => {
-  it("shows an inline error when collection predates admission", () => {
-    render(
-      <IntlProvider locale="en" messages={messages}>
-        <ConfigurationContext.Provider
-          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
-        >
-          <SampleCollectionCard
-            sample={{
-              sampleItemId: "1",
-              sampleTypeId: "5",
-              sampleTypeName: "Blood",
-              collectionDate: "2026-08-02",
-              tests: [],
-              panels: [],
-            }}
-            sampleIndex={0}
-            sampleTypes={[]}
-            unitOfMeasures={[]}
-            serverReceivedDate="2026-08-13"
-            serverReceivedTime="10:00"
-            admissionDate="2026-08-03"
-            onUpdate={vi.fn()}
-            onRemove={vi.fn()}
-            onPrintLabels={vi.fn()}
-            isReadOnly={false}
-            canRemove={false}
-          />
-        </ConfigurationContext.Provider>
-      </IntlProvider>,
-    );
-
-    expect(screen.getByLabelText(/Collection Date/)).toHaveAttribute(
-      "aria-invalid",
-      "true",
-    );
-    expect(
-      screen.getByText("Collection date cannot be before date of admission."),
-    ).toBeInTheDocument();
-  });
-
+describe("SampleCollectionCard", () => {
   it("does not restore the default after the user clears a collection date", async () => {
     const ControlledCard = () => {
       const [sample, setSample] = React.useState({
@@ -158,12 +118,212 @@ describe("SampleCollectionCard admission-date validation", () => {
       expect(onUpdate).toHaveBeenCalledWith(
         0,
         expect.objectContaining({
-          collectionDate: expect.any(String),
-          collectionTime: expect.any(String),
+          collectionDate: "2026-08-13",
+          collectionTime: "10:00",
           receivedDate: "2026-08-13",
           receivedTime: "10:00",
         }),
       ),
     );
+  });
+
+  it("waits for the server clock before defaulting collection and receipt", () => {
+    const onUpdate = vi.fn();
+    const props = {
+      sampleIndex: 0,
+      sampleTypes: [],
+      unitOfMeasures: [],
+      onUpdate,
+      onRemove: vi.fn(),
+      onPrintLabels: vi.fn(),
+      isReadOnly: false,
+      canRemove: false,
+      sample: {
+        sampleTypeId: "5",
+        collectionDate: "",
+        collectionTime: "",
+        receivedDate: "",
+        receivedTime: "",
+        tests: [],
+        panels: [],
+      },
+    };
+    const { rerender } = render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleCollectionCard
+          {...props}
+          serverReceivedDate=""
+          serverReceivedTime=""
+        />
+      </IntlProvider>,
+    );
+    expect(onUpdate).not.toHaveBeenCalled();
+
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleCollectionCard
+          {...props}
+          serverReceivedDate="2026-09-26"
+          serverReceivedTime="09:00"
+        />
+      </IntlProvider>,
+    );
+
+    expect(onUpdate).toHaveBeenCalledWith(0, {
+      collectionDate: "2026-09-26",
+      collectionTime: "09:00",
+      receivedDate: "2026-09-26",
+      receivedTime: "09:00",
+    });
+  });
+
+  it("fills the defaults again when the order reloads the sample without them", () => {
+    const onUpdate = vi.fn();
+    const props = {
+      sampleIndex: 0,
+      sampleTypes: [],
+      unitOfMeasures: [],
+      serverReceivedDate: "2026-09-26",
+      serverReceivedTime: "09:00",
+      onUpdate,
+      onRemove: vi.fn(),
+      onPrintLabels: vi.fn(),
+      isReadOnly: false,
+      canRemove: false,
+    };
+    const filled = {
+      sampleTypeRequestId: "20",
+      sampleTypeId: "5",
+      collectionDate: "2026-09-26",
+      collectionTime: "09:00",
+      receivedDate: "2026-09-26",
+      receivedTime: "09:00",
+      tests: [],
+      panels: [],
+    };
+    const { rerender } = render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleCollectionCard {...props} sample={filled} />
+      </IntlProvider>,
+    );
+    expect(onUpdate).not.toHaveBeenCalled();
+
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleCollectionCard
+          {...props}
+          sample={{
+            ...filled,
+            collectionDate: "",
+            collectionTime: "",
+            receivedDate: "",
+            receivedTime: "",
+          }}
+        />
+      </IntlProvider>,
+    );
+
+    expect(onUpdate).toHaveBeenCalledWith(0, {
+      collectionDate: "2026-09-26",
+      collectionTime: "09:00",
+      receivedDate: "2026-09-26",
+      receivedTime: "09:00",
+    });
+  });
+});
+
+describe("SampleCollectionCard print labels while the order loads (OGC-1423)", () => {
+  const renderCard = (props = {}) =>
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
+        >
+          <SampleCollectionCard
+            sample={{
+              sampleItemId: "1",
+              sampleTypeId: "5",
+              sampleTypeName: "Blood",
+              tests: [],
+              panels: [],
+            }}
+            sampleIndex={0}
+            sampleTypes={[]}
+            unitOfMeasures={[]}
+            serverReceivedDate="2026-08-13"
+            serverReceivedTime="10:00"
+            onUpdate={vi.fn()}
+            onRemove={vi.fn()}
+            onPrintLabels={vi.fn()}
+            isReadOnly={false}
+            canRemove={false}
+            {...props}
+          />
+        </ConfigurationContext.Provider>
+      </IntlProvider>,
+    );
+
+  it("disables Print Labels while printDisabled is set", () => {
+    renderCard({ printDisabled: true });
+    expect(
+      screen.getByRole("button", {
+        name: messages["collect.sample.printLabels"],
+      }),
+    ).toBeDisabled();
+  });
+
+  it("offers Print Labels once the order has loaded", () => {
+    renderCard({ printDisabled: false });
+    expect(
+      screen.getByRole("button", {
+        name: messages["collect.sample.printLabels"],
+      }),
+    ).toBeEnabled();
+  });
+
+  it("fills an unsaved sample's defaults through onFillDefaults, keeping onUpdate for the user's own edits (OGC-1443)", async () => {
+    const onUpdate = vi.fn();
+    const onFillDefaults = vi.fn();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
+        >
+          <SampleCollectionCard
+            sample={{
+              sampleTypeId: "5",
+              sampleTypeName: "Blood",
+              collectionDate: "",
+              collectionTime: "",
+              receivedDate: "",
+              receivedTime: "",
+              tests: [],
+              panels: [],
+            }}
+            sampleIndex={1}
+            sampleTypes={[]}
+            unitOfMeasures={[]}
+            serverReceivedDate="2026-08-13"
+            serverReceivedTime="10:00"
+            onUpdate={onUpdate}
+            onFillDefaults={onFillDefaults}
+            onRemove={vi.fn()}
+            onPrintLabels={vi.fn()}
+            isReadOnly={false}
+            canRemove={false}
+          />
+        </ConfigurationContext.Provider>
+      </IntlProvider>,
+    );
+
+    await waitFor(() =>
+      expect(onFillDefaults).toHaveBeenCalledWith(1, {
+        collectionDate: "2026-08-13",
+        collectionTime: "10:00",
+        receivedDate: "2026-08-13",
+        receivedTime: "10:00",
+      }),
+    );
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 });

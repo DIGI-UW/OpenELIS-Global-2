@@ -22,7 +22,9 @@ vi.mock("../../../layout/Layout", () => ({
   }),
 }));
 
-vi.mock("../../../utils/Utils", () => ({
+vi.mock("../../../utils/Utils", async (importOriginal) => ({
+  toLocalIsoDate: (await importOriginal()).toLocalIsoDate,
+  parseIsoDate: (await importOriginal()).parseIsoDate,
   getFromOpenElisServer: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
 }));
@@ -129,7 +131,9 @@ describe("CalendarManagement", () => {
 
   test("renders year dropdown", async () => {
     renderWithIntl(<CalendarManagement />);
-    expect(screen.getByTestId("year-dropdown")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /^Year/ })).toHaveTextContent(
+      /^\d{4}/,
+    );
   });
 
   test("renders import and export buttons", async () => {

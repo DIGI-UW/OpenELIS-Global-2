@@ -9,8 +9,10 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.qachecklist.service.SampleQaChecklistService;
 import org.openelisglobal.qachecklist.valueholder.SampleQaChecklist;
+import org.openelisglobal.sample.service.OrderProgressService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleacceptance.service.SampleAcceptanceBlockedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +41,9 @@ public class SampleQaChecklistRestController extends BaseRestController {
 
     @Autowired
     private SampleService sampleService;
+
+    @Autowired
+    private OrderProgressService orderProgressService;
 
     @Autowired
     private HttpServletRequest httpRequest;
@@ -255,6 +260,13 @@ public class SampleQaChecklistRestController extends BaseRestController {
                     userId);
 
             Map<String, Object> response = new HashMap<>();
+            if (getBooleanValue(requestBody.get("release"))) {
+                Sample released = orderProgressService.release(String.valueOf(sampleId),
+                        requestBody.get("releaseNote") instanceof String note ? note : null, getSysUserId(httpRequest));
+                response.put("progressStatus", released.getOrderProgressStatus());
+                response.put("readyAt",
+                        released.getOrderReadyAt() != null ? released.getOrderReadyAt().toString() : null);
+            }
             response.put("id", checklist.getId());
             response.put("sampleId", checklist.getSampleId());
             response.put("verifiedItems", checklist.getVerifiedItems());
@@ -264,6 +276,19 @@ public class SampleQaChecklistRestController extends BaseRestController {
             response.put("success", true);
 
             return ResponseEntity.ok(response);
+        } catch (SampleAcceptanceBlockedException e) {
+            Map<String, Object> blocked = new HashMap<>();
+            blocked.put("blocked", true);
+            blocked.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(blocked);
+        } catch (IllegalStateException e) {
+            Map<String, String> refused = new HashMap<>();
+            refused.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(refused);
+        } catch (IllegalArgumentException e) {
+            Map<String, String> rejected = new HashMap<>();
+            rejected.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(rejected);
         } catch (Exception e) {
             logger.error("Error saving QA checklist", e);
             Map<String, String> error = new HashMap<>();

@@ -59,6 +59,7 @@ import org.openelisglobal.fhir.service.ServiceRequestTransformService;
 import org.openelisglobal.fhir.service.SpecimenTransformService;
 import org.openelisglobal.fhir.service.TaskTransformService;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
@@ -81,7 +82,6 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
@@ -131,6 +131,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private PractitionerTransformService practitionerTransformService;
     @Autowired
     private OrganizationTransformService organizationTransformService;
+    @Autowired
+    private OrganizationService organizationService;
     @Autowired
     private TaskTransformService taskTransformService;
     @Autowired
@@ -184,6 +186,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformPersistObjectsUnderSamples",
                 "transformPersistObjectsUnderSamples called");
 
+        // Resolve the whole selection before generating UUIDs or emitting resources.
+        List<Sample> samples = sampleIds.stream().map(sampleService::get).toList();
         FhirOperations fhirOperations = new FhirOperations();
         CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
 
@@ -196,10 +200,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         Map<String, Practitioner> requesters = new HashMap<>();
         Set<String> includedAnalyzerIds = new HashSet<>();
         Map<String, Analyzer> analyzerCache = new HashMap<>();
-        for (String sampleId : sampleIds) {
+        for (Sample sample : samples) {
+            String sampleId = sample.getId();
             LogEvent.logDebug(this.getClass().getSimpleName(), "transformPersistObjectsUnderSamples",
                     "transforming sampleId: " + sampleId);
-            Sample sample = sampleService.get(sampleId);
             Patient patient = sampleHumanService.getPatientForSample(sample);
             Provider provider = sampleHumanService.getProviderForSample(sample);
             List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sampleId);
@@ -251,9 +255,19 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 Optional<Task> referringTask = taskTransformService.getReferringTaskForSample(sample);
                 if (referringTask.isPresent()) {
                     taskTransformService.updateReferringTaskWithTaskInfo(referringTask.get(), task);
-                    if (tasks.containsKey(referringTask.get().getIdElement().getIdPart())) {
+                    String referringId = referringTask.get().getIdElement().getIdPart();
+                    if (tasks.containsKey(referringId)) {
                         LogEvent.logWarn(this.getClass().getSimpleName(), "transformPersistObjectsUnderSamples",
-                                "referring task collision with id: " + referringTask.get().getIdElement().getIdPart());
+                                "referring task collision with id: " + referringId);
+                    } else {
+                        // The order-entry path adds the referring task to the
+                        // transaction as soon as it updates it (see
+                        // transformPersistObjectsUnderResultUpdate). Replay only
+                        // mutated it in memory, so the transaction persisted just the
+                        // child task and a finalized referred sample received a 200
+                        // "completed" response while its referring task stayed stale
+                        // instead of being marked completed and receiving the outputs.
+                        tasks.put(referringId, referringTask.get());
                     }
                 }
             }
@@ -335,7 +349,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             this.addToOperations(fhirOperations, tempIdGenerator, specimen);
         }
         for (ServiceRequest serviceRequest : serviceRequests.values()) {
-            this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+            this.addServiceRequestWithSites(fhirOperations, tempIdGenerator, serviceRequest);
         }
         for (Observation observation : observations.values()) {
             this.addToOperations(fhirOperations, tempIdGenerator, observation);
@@ -400,6 +414,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         org.hl7.fhir.r4.model.Organization fhirOrg = organizationTransformService
                 .transformToFhirOrganization(organization);
         this.addToOperations(fhirOperations, tempIdGenerator, fhirOrg);
+        org.hl7.fhir.r4.model.Location site = organizationTransformService.transformToFhirLocation(organization);
+        if (site != null) {
+            this.addToOperations(fhirOperations, tempIdGenerator, site);
+        }
         try {
             Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
         } catch (FhirLocalPersistingException e) {
@@ -487,7 +505,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             // fhirSampleEntryObjects.collector);
 
             for (ServiceRequest serviceRequest : fhirSampleEntryObjects.serviceRequests) {
-                this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+                this.addServiceRequestWithSites(fhirOperations, tempIdGenerator, serviceRequest);
             }
 
             orderEntryObjects.sampleEntryObjectsList.add(fhirSampleEntryObjects);
@@ -499,7 +517,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             this.addToOperations(fhirOperations, tempIdGenerator, updateData.getProgramQuestionnaireResponse());
         }
 
-        // TODO location?
         // TODO create encounter?
 
         Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
@@ -518,6 +535,14 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Transactional(readOnly = true)
     public void transformPersistResultsEntryFhirObjects(ResultsUpdateDataSet actionDataSet)
             throws FhirLocalPersistingException {
+        transformPersistResultsEntryFhirObjects(actionDataSet, List.of());
+    }
+
+    @Override
+    @Async
+    @Transactional(readOnly = true)
+    public void transformPersistResultsEntryFhirObjects(ResultsUpdateDataSet actionDataSet,
+            List<Observation> clearedObservations) throws FhirLocalPersistingException {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformPersistResultsEntryFhirObjects",
                 "transformPersistResultsEntryFhirObjects called");
         String method = "transformPersistResultsEntryFhirObjects";
@@ -526,6 +551,15 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         FhirOperations fhirOperations = new FhirOperations();
         Set<String> includedAnalyzerIds = new HashSet<>();
         Map<String, Analyzer> analyzerCache = new HashMap<>();
+
+        for (Observation snapshot : clearedObservations) {
+            Observation cancelled = snapshot.copy();
+            cancelled.setStatus(ObservationStatus.CANCELLED);
+            cancelled.setValue(null);
+            cancelled.getComponent().clear();
+            cancelled.getInterpretation().clear();
+            this.addToOperations(fhirOperations, tempIdGenerator, cancelled);
+        }
 
         for (ResultSet resultSet : actionDataSet.getNewResults()) {
             Observation observation = observationTransformService
@@ -546,7 +580,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             ServiceRequest serviceRequest = serviceRequestTransformService.transformToServiceRequest(analysis.getId());
             if (serviceRequest != null) {
                 serviceRequestTransformService.preserveTerminalServiceRequestStatus(analysis, serviceRequest);
-                this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+                this.addServiceRequestWithSites(fhirOperations, tempIdGenerator, serviceRequest);
             }
             if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
                 DiagnosticReport diagnosticReport = diagnosticReportTransformService
@@ -592,7 +626,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         for (Analysis analysis : analysisUpdateList) {
             ServiceRequest serviceRequest = serviceRequestTransformService.transformToServiceRequest(analysis.getId());
             if (serviceRequest != null) {
-                this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+                this.addServiceRequestWithSites(fhirOperations, tempIdGenerator, serviceRequest);
             }
             if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
                 DiagnosticReport diagnosticReport = diagnosticReportTransformService
@@ -642,6 +676,33 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+    }
+
+    /**
+     * Adds a ServiceRequest with the Organization and site Location behind every
+     * Location it points at (referring site and department, sampling site subject),
+     * so its locationReference and subject resolve in the FHIR store.
+     */
+    private void addServiceRequestWithSites(FhirOperations fhirOperations, TempIdGenerator tempIdGenerator,
+            ServiceRequest serviceRequest) {
+        this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+        List<Reference> places = new ArrayList<>(serviceRequest.getLocationReference());
+        places.add(serviceRequest.getSubject());
+        for (Reference place : places) {
+            String locationId = place.getReferenceElement().getIdPart();
+            if (!ResourceType.Location.name().equals(place.getReferenceElement().getResourceType())
+                    || locationId == null
+                    || fhirOperations.updateResources.containsKey(ResourceType.Location.name() + "/" + locationId)) {
+                continue;
+            }
+            Organization organization = organizationService.getOrganizationByFhirId(locationId);
+            org.hl7.fhir.r4.model.Location site = organizationTransformService.transformToFhirLocation(organization);
+            if (site != null) {
+                this.addToOperations(fhirOperations, tempIdGenerator,
+                        organizationTransformService.transformToFhirOrganization(organization));
+                this.addToOperations(fhirOperations, tempIdGenerator, site);
+            }
+        }
     }
 
     private void addToOperations(FhirOperations fhirOperations, TempIdGenerator tempIdGenerator, Resource resource) {
@@ -730,7 +791,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             Analysis analysis = analysisService.get(analysisId);
             ServiceRequest serviceRequest = serviceRequestTransformService.transformToServiceRequest(analysis);
             if (serviceRequest != null) {
-                this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+                this.addServiceRequestWithSites(fhirOperations, tempIdGenerator, serviceRequest);
             }
 
             if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
@@ -774,6 +835,27 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     }
 
     @Override
+    public SampleOrderItem buildSampleOrderItemForUpdate(ServiceRequest serviceRequest, Sample sample, String sysUserId)
+            throws Exception {
+        return serviceRequestTransformService.buildSampleOrderItemForUpdate(serviceRequest, sample, sysUserId);
+    }
+
+    @Override
+    public void addPatientAddressToPerson(org.hl7.fhir.r4.model.Patient fhirPatient, Person person) {
+        patientTransformService.addAddressToPerson(fhirPatient, person);
+    }
+
+    @Override
+    public void keepPatientDetailsFhirDoesNotCarry(PatientManagementInfo patientInfo, Patient storedPatient) {
+        patientTransformService.keepDetailsFhirDoesNotCarry(patientInfo, storedPatient);
+    }
+
+    @Override
+    public void keepUnchangedPatientContactDetails(Person stored, Person working) {
+        patientTransformService.keepUnchangedContactDetails(stored, working);
+    }
+
+    @Override
     public PatientSearchResults transformToOpenElisPatientSearchResults(org.hl7.fhir.r4.model.Patient fhirPatient) {
         return patientTransformService.transformToOpenElisPatientSearchResults(fhirPatient);
     }
@@ -796,11 +878,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Override
     public Specimen transformToSpecimen(SampleItem sampleItem) {
         return specimenTransformService.transformToSpecimen(sampleItem);
-    }
-
-    @Override
-    public TestResultItem createResultFromObservation(org.hl7.fhir.r4.model.Observation observation) {
-        return observationTransformService.createResultFromObservation(observation);
     }
 
     @Override

@@ -5,6 +5,7 @@
  */
 import {
   bulkOutcomeKey,
+  bulkSuccessMessages,
   bulkReleaseRequest,
   clearRows,
   triageRows,
@@ -22,19 +23,20 @@ const row = (id, overrides = {}) => ({
   ackPending: false,
   nonconforming: false,
   critical: false,
+  clear: true,
   ...overrides,
 });
 
 describe("clearRows", () => {
-  it("returns only the Clear-lane rows, in queue order", () => {
+  it("returns only the rows the server holds clear, in queue order", () => {
     const triaged = triageRows([
       row(0),
-      row(1, { normal: false }),
+      row(1, { normal: false, clear: false }),
       row(2, { qcStatus: "UNKNOWN" }),
       row(3),
-      row(4, { modified: true }),
+      row(4, { modified: true, clear: false }),
     ]);
-    expect(clearRows(triaged).map((r) => r.id)).toEqual([0, 3]);
+    expect(clearRows(triaged).map((r) => r.id)).toEqual([0, 2, 3]);
     expect(clearRows(undefined)).toEqual([]);
   });
 });
@@ -76,7 +78,30 @@ describe("bulkReleaseRequest", () => {
     ).toMatchObject({ testSectionId: "7", doRange: true, rows: [] });
     expect(
       bulkReleaseRequest(undefined, "?type=testDate&date=01/09/2026", []),
-    ).toMatchObject({ testDate: "01/09/2026", doRange: true });
+    ).toMatchObject({
+      fromDate: "01/09/2026",
+      toDate: "01/09/2026",
+      doRange: true,
+    });
+  });
+
+  it("OGC-1418: carries the whole combined search, so the release covers only the rows it shows", () => {
+    expect(
+      bulkReleaseRequest(
+        undefined,
+        "?labNumber=ACC1..ACC9&testSectionId=7&fromDate=01/09/2026&toDate=30/09/2026&patientId=42",
+        [],
+      ),
+    ).toMatchObject({
+      labNumberFrom: "ACC1",
+      labNumberTo: "ACC9",
+      testSectionId: "7",
+      fromDate: "01/09/2026",
+      toDate: "30/09/2026",
+      patientId: "42",
+      accessionNumber: "",
+      doRange: true,
+    });
   });
 });
 
@@ -112,5 +137,27 @@ describe("bulkOutcomeKey", () => {
     expect(bulkOutcomeKey(undefined)).toBe(
       "label.validation.bulk.error.generic",
     );
+  });
+});
+
+describe("bulkSuccessMessages (OGC-1608)", () => {
+  it("names tests validated in part apart from the ones released", () => {
+    expect(
+      bulkSuccessMessages({ released: ["1"], accepted: ["2"], skipped: [] }),
+    ).toEqual([
+      { id: "label.validation.bulk.success", values: { count: 1 } },
+      { id: "label.validation.bulk.accepted", values: { count: 1 } },
+    ]);
+    expect(bulkSuccessMessages({ released: [], accepted: ["2"] })).toEqual([
+      { id: "label.validation.bulk.accepted", values: { count: 1 } },
+    ]);
+    expect(
+      bulkSuccessMessages({ released: ["1"], skipped: [{}], accepted: [] }),
+    ).toEqual([
+      {
+        id: "label.validation.bulk.partial",
+        values: { released: 1, skipped: 1 },
+      },
+    ]);
   });
 });

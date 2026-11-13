@@ -9,6 +9,7 @@ import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
+import RangeNotAppliedWarning from "../order/RangeNotAppliedWarning";
 
 // Single Order print fallback for an order with no persisted label snapshot
 // (e.g. a no-test order: AddOrder only fetches the test-driven aggregation when
@@ -22,7 +23,13 @@ const buildOrderFallbackPrintUrl = (accessionNumber) =>
   `&type=order&quantity=1`;
 
 const OrderSuccessMessage = (props) => {
-  const { orderFormValues, setOrderFormValues, setSamples, setPage } = props;
+  const {
+    orderFormValues,
+    setOrderFormValues,
+    setSamples,
+    setPage,
+    saveResponse,
+  } = props;
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -205,6 +212,10 @@ const OrderSuccessMessage = (props) => {
             <FormattedMessage id="save.success" />
           </h4>
         </Stack>
+        <RangeNotAppliedWarning
+          tests={saveResponse?.rangeNotAppliedTests}
+          labNumber={accessionNumber}
+        />
         <div className="orderEntrySuccessPrintPanel">
           <PostSavePrintDialog
             accessionNumber={accessionNumber}

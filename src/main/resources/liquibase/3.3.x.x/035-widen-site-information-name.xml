@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    FR-2.3: the pathology case view's per-deployment bench stage
+    switches need names such as "pathology.stage.DECALCIFICATION.enabled",
+    longer than the 32 characters site_information.name allowed. Every prior
+    site flag whose name would not fit under 32 characters had to be given a
+    name that matched neither the specification that described it nor the
+    Java constant that read it (see SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_*
+    in ConfigurationProperties, shortened to "sampleAcceptCheck.*"). Widening
+    the column to 60 characters lets the pathology stage flags, and any flag
+    added after them, carry the same name the specification and
+    ConfigurationProperties.Property both use.
+    -->
+    <changeSet id="OGC-264-widen-site-information-name" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">select count(*) from information_schema.columns where table_schema = 'clinlims' and table_name = 'site_information' and column_name = 'name' and character_maximum_length &lt; 60;</sqlCheck>
+        </preConditions>
+        <comment>Widen site_information.name from VARCHAR(32) to VARCHAR(60) so a site flag's name can match its specification and its Property constant instead of being shortened to fit</comment>
+        <modifyDataType schemaName="clinlims" tableName="site_information" columnName="name" newDataType="VARCHAR(60)"/>
+        <!--
+        Rolling back fails, rather than truncating, if any row still carries a
+        name longer than 32 characters; a name is never generated data, so
+        widening it further under this changeset is the correct fix, not a
+        rollback. The pathology stage flag rows seeded by changeset 036 carry
+        such names and are rolled back first, since Liquibase rolls back a
+        changelog in reverse of its execution order, so by the time this
+        rollback runs no row seeded by this feature should remain. A row
+        seeded by a later changeset that ships no rollback of its own stays in
+        place during a rollback, so any such row with a name longer than 32
+        characters has to be removed by hand before this rollback can run.
+        -->
+        <rollback>
+            <modifyDataType schemaName="clinlims" tableName="site_information" columnName="name" newDataType="VARCHAR(32)"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

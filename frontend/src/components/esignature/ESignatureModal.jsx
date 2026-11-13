@@ -23,6 +23,7 @@ import {
   DEFAULT_CERTIFICATION_TEXT,
   ESignatureError,
 } from "./api";
+import "./ESignatureModal.css";
 
 /**
  * ESignatureModal - Modal component for electronic signature ceremony.
@@ -169,6 +170,7 @@ const ESignatureModal = ({
 
       // After certification, proceed to signature
       setPassword("");
+      setEnteredUsername(userName);
       setFlowStep("fullAuth");
     } catch (err) {
       handleApiError(err);
@@ -367,6 +369,7 @@ const ESignatureModal = ({
         })}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
+        onKeyDown={submitOnEnter}
         invalid={!!error && !password}
       />
     </Stack>
@@ -438,6 +441,7 @@ const ESignatureModal = ({
           })}
           value={enteredUsername}
           onChange={(e) => setEnteredUsername(e.target.value)}
+          onKeyDown={submitOnEnter}
           invalid={!!error && !enteredUsername.trim()}
           autoFocus
         />
@@ -456,6 +460,7 @@ const ESignatureModal = ({
         })}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
+        onKeyDown={submitOnEnter}
         invalid={!!error && !password}
         autoFocus={flowStep === "passwordOnly"}
       />
@@ -513,6 +518,13 @@ const ESignatureModal = ({
     }
   };
 
+  const submitOnEnter = (e) => {
+    if (e.key === "Enter" && !isLoading && flowStep !== "loading") {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   const getSubmitLabel = () => {
     if (flowStep === "certification") {
       return intl.formatMessage({
@@ -527,7 +539,12 @@ const ESignatureModal = ({
   };
 
   return (
-    <ComposedModal open={open} onClose={onClose} size="sm">
+    <ComposedModal
+      open={open}
+      onClose={onClose}
+      size="sm"
+      className="esignature-modal"
+    >
       <ModalHeader
         title={getModalTitle()}
         label={

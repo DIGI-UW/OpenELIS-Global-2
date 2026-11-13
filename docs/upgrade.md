@@ -20,10 +20,9 @@ find an existing version of OpenELIS, it runs the upgrade, if not, it installs.
 
 [Download latest installer package Here:](https://www.dropbox.com/sh/47lagjht4ynpcg8/AABORyLmkpVTtRReeD6wSnJra?dl=0)
 
-OpenELIS uses a versioning system where for OE version 2.6 for example, 2.6.1.x
-is the Alpha release, 2.6.2.x is the Beta, and 2.6.3.1 is the first production
-ready release. If you are using a production system, be sure to use a production
-tested release which will have a 3 in the third place x.x.3.x
+Production systems should run a release from a supported line. The supported
+lines and the versioning rules are listed in
+[RELEASES.md](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/RELEASES.md).
 
 So, to upgrade, one must download the new installer, EG for the RC of OpenELIS
 2.3

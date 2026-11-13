@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1608: per-component "required" flag. A required component without a
+    result keeps its test open and prints as in progress; an optional one is
+    left off the patient report. Existing components become required only when
+    they are the primary, so sites get the report they had before per-component
+    validation without rebuilding their tests.
+    -->
+
+    <changeSet id="OGC-1608-component-is-required" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="test_result_component" columnName="is_required"/>
+            </not>
+        </preConditions>
+        <comment>Add is_required to test_result_component; the primary component is required.</comment>
+        <addColumn schemaName="clinlims" tableName="test_result_component">
+            <column name="is_required" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <update schemaName="clinlims" tableName="test_result_component">
+            <column name="is_required" valueBoolean="true"/>
+            <where>is_primary = true</where>
+        </update>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="test_result_component" columnName="is_required"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

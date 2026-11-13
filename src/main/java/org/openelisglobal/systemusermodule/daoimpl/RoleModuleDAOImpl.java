@@ -17,6 +17,7 @@ package org.openelisglobal.systemusermodule.daoimpl;
 
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
+import java.util.Collection;
 import java.util.List;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.hibernate.HibernateException;
@@ -41,6 +42,20 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
 
     public RoleModuleDAOImpl() {
         super(RoleModule.class);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getSelectableModuleNames(Collection<String> roleNames, String namePrefix) {
+        if (roleNames == null || roleNames.isEmpty()) {
+            return List.of();
+        }
+        String hql = "select distinct m.systemModuleName from RoleModule rm join rm.role r join rm.systemModule m"
+                + " where rm.hasSelect = 'Y' and trim(r.name) in (:roleNames) and m.systemModuleName like :namePrefix";
+        Query<String> query = entityManager.unwrap(Session.class).createQuery(hql, String.class);
+        query.setParameterList("roleNames", roleNames);
+        query.setParameter("namePrefix", (namePrefix == null ? "" : namePrefix) + "%");
+        return query.list();
     }
 
     @Override

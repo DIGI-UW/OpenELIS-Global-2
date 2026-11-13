@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="3.6.0.0-backfill-analysis-referred-out" author="samuelmale">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="referral"/>
+            <columnExists tableName="analysis" columnName="referred_out"/>
+        </preConditions>
+        <comment>
+            A test sent to a reference laboratory is that laboratory's work, and the reports
+            read analysis.referred_out to leave it out of this laboratory's workload. Order
+            Entry raised referrals without ever setting the flag, so a referred test that was
+            never resulted through the Results page still counts as work performed here.
+
+            Set the flag for every analysis that carries a live referral. Cancelled and
+            rejected referrals are skipped because both of those transitions clear the flag
+            deliberately: the test comes back to this laboratory. The deprecated CANCELED
+            spelling is skipped alongside CANCELLED.
+
+            Analyses already flagged are left alone, so the statement is safe to re-run.
+        </comment>
+
+        <sql>
+            UPDATE clinlims.analysis a
+            SET referred_out = TRUE
+            FROM clinlims.referral r
+            WHERE r.analysis_id = a.id
+              AND (r.status IS NULL OR r.status NOT IN ('CANCELLED', 'CANCELED', 'REJECTED'))
+              AND (a.referred_out IS NULL OR a.referred_out = FALSE);
+        </sql>
+
+        <rollback>
+            <comment>
+                Not reversible. Clearing the flag again cannot tell a row this changeset set
+                from one the Results page set correctly years ago, and clearing both would put
+                referred work back into the workload counts.
+            </comment>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

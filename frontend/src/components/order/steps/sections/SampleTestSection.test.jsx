@@ -1,7 +1,9 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
+import { vi } from "vitest";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 
@@ -74,7 +76,6 @@ describe("SampleTestSection — panel selection (OGC-1189)", () => {
 const cultureTest = {
   id: "42",
   name: "Blood culture",
-  cultureWorkflowType: "BACTERIOLOGY",
   methods: [
     {
       methodId: "7",
@@ -97,7 +98,12 @@ const sample = {
 
 const renderSection = (
   setSamples,
-  { currentSamples = [sample], orderData = {}, setOrderData = vi.fn() } = {},
+  {
+    currentSamples = [sample],
+    orderData = {},
+    setOrderData = vi.fn(),
+    workflowType,
+  } = {},
 ) =>
   render(
     <IntlProvider locale="en" messages={messages}>
@@ -107,111 +113,439 @@ const renderSection = (
         orderData={orderData}
         setOrderData={setOrderData}
         isReadOnly={false}
+        workflowType={workflowType}
       />
     </IntlProvider>,
   );
 
-describe("SampleTestSection microbiology metadata", () => {
+// ─────────────────────────────────────────────────────────────────────────────
+// OGC-189: search behaviour. Kept in the same file as the suites above —
+// they cover the same component from different angles and share no
+// fixtures, so each suite carries its own mock setup.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const WHOLE_BLOOD = "4";
+const SERUM = "2";
+
+const CATALOG = {
+  [WHOLE_BLOOD]: {
+    tests: [
+      { id: "926", name: "Malaria Microscopy" },
+      { id: "925", name: "Malaria Rapid Test" },
+    ],
+    panels: [{ id: "10", name: "Malaria Panel" }],
+  },
+  [SERUM]: {
+    tests: [{ id: "500", name: "Glucose" }],
+    panels: [{ id: "20", name: "Liver Panel" }],
+  },
+};
+
+function renderSearchSection(sampleTypeId = WHOLE_BLOOD) {
+  const samples = [
+    { index: 0, sampleTypeId, tests: [], panels: [], sampleRejected: false },
+  ];
+  return render(
+    <IntlProvider locale="en" messages={messages}>
+      <SampleTestSection
+        samples={samples}
+        setSamples={vi.fn()}
+        orderData={{ sampleOrderItems: {} }}
+        setOrderData={vi.fn()}
+        isReadOnly={false}
+        workflowType="clinical"
+      />
+    </IntlProvider>,
+  );
+}
+
+/**
+ * Carbon's <Search> does not react to fireEvent.change — it listens for the
+ * events a real keyboard produces, so state never updates and the assertions
+ * pass or fail for the wrong reason. Type (and clear) the way a user would.
+ */
+async function typeSearch(input, value) {
+  await userEvent.clear(input);
+  if (value) {
+    await userEvent.type(input, value);
+  }
+}
+
+/**
+ * Regression: searching for a test that does not exist used to break the
+ * screen permanently.
+ *
+ * The <Search> input was rendered INSIDE the `filteredTests.length > 0`
+ * branch, so a term matching nothing unmounted the search box along with the
+ * list — leaving the term stuck in state with no control able to clear it.
+ * Changing sample type did not help either, because nothing reset the term.
+ */
+describe("SampleTestSection — search with no matches", () => {
   beforeEach(() => {
     getFromOpenElisServer.mockReset();
     getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url === "/rest/user-sample-types") {
-        callback([{ id: "5", value: "Blood" }]);
-      }
-      if (url === "/rest/sample-type-tests?sampleType=5") {
-        callback({ tests: [cultureTest], panels: [] });
+      const match = /sampleType=(\d+)/.exec(url);
+      if (url.startsWith("/rest/sample-type-tests") && match) {
+        callback(CATALOG[match[1]] || { tests: [], panels: [] });
       }
     });
   });
 
-  it("retains workflow and linked Method metadata when a test is selected", async () => {
-    const user = userEvent.setup();
-    const setSamples = vi.fn();
-    renderSection(setSamples);
+  it("keeps the test search box mounted when nothing matches", async () => {
+    renderSearchSection();
+    const search = await screen.findByPlaceholderText(/Choose Available Test/i);
 
-    await screen.findAllByText("Blood culture");
-    await user.click(document.querySelector('label[for="test-0-42"]'));
+    await typeSearch(search, "zzz");
 
-    expect(setSamples).toHaveBeenLastCalledWith([
-      expect.objectContaining({
-        tests: [cultureTest],
-      }),
-    ]);
+    // The input must survive — it is the only way back out.
+    await waitFor(() =>
+      expect(
+        screen.getByPlaceholderText(/Choose Available Test/i),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText("No tests match your search")).toBeInTheDocument();
   });
 
-  it("retains the same metadata when a panel selects the culture test", async () => {
-    const user = userEvent.setup();
-    const setSamples = vi.fn();
+  it("distinguishes 'no match' from 'none for this sample type'", async () => {
+    renderSearchSection();
+    const search = await screen.findByPlaceholderText(/Choose Available Test/i);
+
+    await typeSearch(search, "zzz");
+
+    // Blaming the sample type sent users hunting for a config problem that
+    // did not exist.
+    await waitFor(() =>
+      expect(
+        screen.getByText("No tests match your search"),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText("No tests available for this sample type"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clearing the term brings every test back", async () => {
+    renderSearchSection();
+    const search = await screen.findByPlaceholderText(/Choose Available Test/i);
+
+    await typeSearch(search, "zzz");
+    await waitFor(() =>
+      expect(
+        screen.getByText("No tests match your search"),
+      ).toBeInTheDocument(),
+    );
+
+    await typeSearch(search, "");
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Malaria Microscopy")).toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText("Malaria Rapid Test")).toBeInTheDocument();
+  });
+
+  it("keeps the panel search box mounted when nothing matches", async () => {
+    renderSearchSection();
+    const panelSearch = await screen.findByPlaceholderText(
+      /Choose Available panel/i,
+    );
+
+    await typeSearch(panelSearch, "qqq");
+
+    // The panels block carried the identical flaw.
+    await waitFor(() =>
+      expect(
+        screen.getByPlaceholderText(/Choose Available panel/i),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText("No panels match your search")).toBeInTheDocument();
+  });
+
+  it("changing sample type clears a stale search term", async () => {
+    // The other half of the bug: nothing reset the term, so a refetch
+    // filtered the NEW sample type's tests against the old text and showed
+    // nothing — with no way back.
+    const { rerender } = renderSearchSection(WHOLE_BLOOD);
+    const search = await screen.findByPlaceholderText(/Choose Available Test/i);
+    await typeSearch(search, "zzz");
+    await waitFor(() =>
+      expect(
+        screen.getByText("No tests match your search"),
+      ).toBeInTheDocument(),
+    );
+
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleTestSection
+          samples={[
+            {
+              index: 0,
+              sampleTypeId: SERUM,
+              tests: [],
+              panels: [],
+              sampleRejected: false,
+            },
+          ]}
+          setSamples={vi.fn()}
+          orderData={{ sampleOrderItems: {} }}
+          setOrderData={vi.fn()}
+          isReadOnly={false}
+          workflowType="clinical"
+        />
+      </IntlProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Glucose")).toBeInTheDocument(),
+    );
+    expect(screen.getByPlaceholderText(/Choose Available Test/i)).toHaveValue(
+      "",
+    );
+  });
+
+  it("a search matching nothing still filters correctly when it does match", async () => {
+    renderSearchSection();
+    const search = await screen.findByPlaceholderText(/Choose Available Test/i);
+
+    // Positive control: without this, a render that dropped every test would
+    // satisfy the no-match assertions above vacuously.
+    await typeSearch(search, "microscopy");
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Malaria Microscopy")).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByLabelText("Malaria Rapid Test"),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("SampleTestSection selected-tag close buttons", () => {
+  const catalogue = {
+    tests: [cultureTest],
+    panels: [{ id: "9", name: "Sepsis panel", testIds: "42" }],
+  };
+  const selected = {
+    ...sample,
+    tests: [cultureTest],
+    panels: [{ id: "9", name: "Sepsis panel" }],
+  };
+
+  beforeEach(() => {
+    getFromOpenElisServer.mockReset();
+  });
+
+  // The tags used to pass dismissTooltipLabel alone, so every close button was
+  // named Carbon's English "Dismiss"; see removeLabel in the component for why
+  // both props are needed.
+  it("names each selected test and panel's close button after what it removes", async () => {
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url === "/rest/user-sample-types") {
         callback([{ id: "5", value: "Blood" }]);
       }
       if (url === "/rest/sample-type-tests?sampleType=5") {
-        callback({
-          tests: [cultureTest],
-          panels: [{ id: "9", name: "Sepsis panel", testIds: "42" }],
-        });
+        callback(catalogue);
       }
     });
-    renderSection(setSamples);
+    renderSection(vi.fn(), { currentSamples: [selected] });
 
-    await user.click(
-      (await screen.findByText("Sepsis panel")).closest("label"),
+    await screen.findAllByText("Blood culture");
+
+    expect(
+      screen.getByRole("button", { name: "Remove Blood culture" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove Sepsis panel" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Dismiss" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lets an environmental sample override the order site without changing its tests", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/environmental-sample-types")
+        callback([{ id: "5", value: "Swab" }]);
+      if (url === "/rest/admin/vector/sampling-sites")
+        callback([
+          { id: 11, code: "WARD1", name: "Ward 1", active: true },
+          { id: 12, code: "WARD2", name: "Ward 2", active: true },
+        ]);
+      if (url === "/rest/vector/dictionary/sample-containers") callback([]);
+      if (url.startsWith("/rest/sample-type-tests")) callback(catalogue);
+    });
+    const setSamples = vi.fn();
+    renderSection(setSamples, {
+      currentSamples: [selected],
+      workflowType: "environmental",
+    });
+    const site = await screen.findByLabelText("Sampling site");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("option", { name: "Ward 2 (WARD2)" }),
+      ).toBeInTheDocument(),
     );
-
-    expect(setSamples).toHaveBeenLastCalledWith([
+    fireEvent.change(site, { target: { value: "12" } });
+    expect(setSamples).toHaveBeenCalledWith([
       expect.objectContaining({
-        tests: [cultureTest],
+        collectionLocationId: "12",
+        tests: selected.tests,
       }),
     ]);
   });
 
-  it("confirms before discarding details with the final culture test", async () => {
+  it("names them the same way in the per-sample manifest picker", async () => {
     const user = userEvent.setup();
-    const setSamples = vi.fn();
-    const setOrderData = vi.fn();
-    renderSection(setSamples, {
-      currentSamples: [{ ...sample, tests: [cultureTest] }],
-      orderData: {
-        microbiologyOrderDetail: {
-          cultureMethodId: "7",
-          clinicalHistory: "Fever and hypotension",
-        },
-        sampleOrderItems: {
-          programId: "8",
-          microbiologyPreviousProgramId: "1",
-        },
-      },
-      setOrderData,
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/environmental-sample-types") {
+        callback([{ id: "5", value: "Blood" }]);
+      }
+      if (url === "/rest/vector/dictionary/sample-containers") {
+        callback([]);
+      }
+      if (url === "/rest/sample-type-tests?sampleType=5") {
+        callback(catalogue);
+      }
+    });
+    renderSection(vi.fn(), {
+      currentSamples: [selected],
+      workflowType: "environmental",
     });
 
-    await screen.findAllByText("Blood culture");
-    await user.click(document.querySelector('label[for="test-0-42"]'));
+    await user.click(
+      await screen.findByRole("button", { name: /Tests & Panels/ }),
+    );
 
     expect(
-      screen.getByRole("heading", { name: "Remove microbiology workflow?" }),
+      screen.getByRole("button", { name: "Remove Blood culture" }),
     ).toBeInTheDocument();
-    expect(setSamples).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("button", { name: /Discard details$/ }));
-
-    expect(setSamples).toHaveBeenCalledWith([
-      expect.objectContaining({ tests: [] }),
-    ]);
-    const clearOrder = setOrderData.mock.calls.at(-1)[0];
     expect(
-      clearOrder({
-        microbiologyOrderDetail: { clinicalHistory: "Fever" },
-        sampleOrderItems: {
-          programId: "8",
-          microbiologyPreviousProgramId: "1",
+      screen.getByRole("button", { name: "Remove Sepsis panel" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Dismiss" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("culture set assignments", () => {
+  beforeEach(() => {
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/user-sample-types") cb([{ id: "5", value: "Blood" }]);
+      if (url.startsWith("/rest/sample-type-tests"))
+        cb({
+          tests: [{ id: "42", name: "Blood culture", collectedInSets: true }],
+          panels: [],
+        });
+      if (url.endsWith("sample-containers"))
+        cb([{ id: "9", dictEntry: "B17" }]);
+    });
+  });
+  it("defaults a newly selected set culture to set 1 without changing the previous state", async () => {
+    const setSamples = vi.fn();
+    const previous = [{ ...sample, tests: [], panels: [] }];
+    renderSection(setSamples, { currentSamples: previous });
+    fireEvent.click(await screen.findByLabelText("Blood culture"));
+    expect(setSamples.mock.calls.at(-1)[0][0].cultureSetNumber).toBe(1);
+    expect(previous[0].cultureSetNumber).toBeUndefined();
+    expect(previous[0].tests).toEqual([]);
+  });
+  it("duplicates a bottle into the last assigned set with fresh collection identities", async () => {
+    const setSamples = vi.fn();
+    renderSection(setSamples, {
+      currentSamples: [
+        {
+          ...sample,
+          tests: [{ id: "42", collectedInSets: true }],
+          cultureSetNumber: 3,
+          sampleItemId: "81",
+          sampleTypeRequestId: "17",
+          clientKey: "old-key",
         },
-      }),
-    ).toEqual(
-      expect.objectContaining({
-        microbiologyOrderDetail: undefined,
-        sampleOrderItems: expect.objectContaining({ programId: "1" }),
-      }),
+      ],
+    });
+    expect(await screen.findByLabelText("Container type")).toBeInTheDocument();
+    expect(screen.getByLabelText("Body site")).toBeInTheDocument();
+    const duplicate = await screen.findByRole("button", { name: /duplicate/i });
+    fireEvent.click(duplicate);
+    expect(setSamples.mock.calls.at(-1)[0][1]).toMatchObject({
+      cultureSetNumber: 3,
+      sampleItemId: "",
+      sampleTypeRequestId: "",
+      clientKey: "",
+    });
+  });
+});
+
+describe("SampleTestSection sample notes", () => {
+  it("shows each sample card's own note under its tests", async () => {
+    mockPanelServer();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleTestSection
+          samples={[
+            { index: 0, sampleTypeId: "ST1", tests: [], panels: [] },
+            { index: 1, sampleTypeId: "ST1", tests: [], panels: [] },
+          ]}
+          setSamples={vi.fn()}
+          orderData={{}}
+          setOrderData={vi.fn()}
+          isReadOnly={false}
+          workflowType="clinical"
+          renderSampleNote={(sampleIndex) => (
+            <span>Note for sample {sampleIndex + 1}</span>
+          )}
+        />
+      </IntlProvider>,
+    );
+
+    const cards = document.querySelectorAll(".sample-card");
+    await waitFor(() =>
+      expect(cards[0]).toHaveTextContent("Note for sample 1"),
+    );
+    expect(cards[1]).toHaveTextContent("Note for sample 2");
+    expect(cards[0]).not.toHaveTextContent("Note for sample 2");
+  });
+});
+
+describe("SampleTestSection microbiology tag", () => {
+  it("tags only the tests that open a microbiology case", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.startsWith("/rest/user-sample-types")) {
+        cb([{ id: "ST1", value: "Sputum" }]);
+      } else if (url.startsWith("/rest/sample-type-tests")) {
+        cb({
+          tests: [
+            { id: "T1", name: "Culture", opensMicrobiologyCase: true },
+            { id: "T2", name: "Glucose", opensMicrobiologyCase: false },
+          ],
+          panels: [],
+        });
+      }
+    });
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleTestSection
+          samples={[{ index: 0, sampleTypeId: "ST1", tests: [], panels: [] }]}
+          setSamples={vi.fn()}
+          orderData={{}}
+          setOrderData={vi.fn()}
+          isReadOnly={false}
+          workflowType="clinical"
+        />
+      </IntlProvider>,
+    );
+
+    await waitFor(() =>
+      expect(document.getElementById("test-0-T1")).toBeTruthy(),
+    );
+    const culture = document.getElementById("test-0-T1");
+    const glucose = document.getElementById("test-0-T2");
+    expect(culture.closest(".cds--checkbox-wrapper")).toHaveTextContent(
+      "Microbiology case",
+    );
+    expect(glucose.closest(".cds--checkbox-wrapper")).not.toHaveTextContent(
+      "Microbiology case",
     );
   });
 });

@@ -29,6 +29,12 @@ public interface SampleService extends BaseObjectService<Sample, String> {
 
     String getLargestAccessionNumberWithPrefix(String prefix);
 
+    /**
+     * Environmental samples (domain E) whose lab number starts with the prefix,
+     * ignoring case, in lab number order, at most max.
+     */
+    List<Sample> getEnvironmentalSamplesWithAccessionNumberStartingWith(String prefix, int max);
+
     String getLargestAccessionNumberMatchingPattern(String startingWith, int size);
 
     List<Sample> getSamplesWithPendingQaEventsByService(String serviceId);
@@ -132,4 +138,7 @@ public interface SampleService extends BaseObjectService<Sample, String> {
     List<Sample> getSamplesByPriority(OrderPriority priority);
 
     List<Sample> findSamplesWithRequiredByBefore(Timestamp horizon);
+
+    List<Sample> getStatSamplesReceivedBetweenWithAnalysisIn(Timestamp since, Timestamp cutoff,
+            List<String> analysisStatusIds);
 }

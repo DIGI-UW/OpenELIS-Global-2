@@ -57,6 +57,113 @@ public class StringUtilTest {
     }
 
     @Test
+    public void isNumeric_shouldAcceptScientificNotationInEveryWrittenForm() {
+        assertTrue(StringUtil.isNumeric("1.5e5"));
+        assertTrue(StringUtil.isNumeric("1.5E+05"));
+        assertTrue(StringUtil.isNumeric("1.5 x 10^5"));
+        assertTrue(StringUtil.isNumeric("1.5×10⁵"));
+        assertTrue(StringUtil.isNumeric("2 X 10^-3"));
+        assertTrue(StringUtil.isNumeric("10⁻³"));
+    }
+
+    @Test
+    public void isNumeric_shouldRejectBareSuperscriptsAndNonFiniteValues() {
+        assertFalse(StringUtil.isNumeric("3²"));
+        assertFalse(StringUtil.isNumeric("3.5⁻³"));
+        assertFalse(StringUtil.isNumeric("NaN"));
+        assertFalse(StringUtil.isNumeric("Infinity"));
+        assertFalse(StringUtil.isNumeric("1e400"));
+        assertFalse(StringUtil.isNumeric("1.5e"));
+    }
+
+    @Test
+    public void normalizeScientificNotation_shouldRewriteEveryFormAsCanonicalENotation() {
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation("1.5e5"));
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation("1.5E+05"));
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation("1.5 x 10^5"));
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation("1.5×10⁵"));
+        assertEquals("1.5e5", StringUtil.normalizeScientificNotation(" 1.5*10^5 "));
+        assertEquals("2e-3", StringUtil.normalizeScientificNotation("2×10⁻³"));
+        assertEquals("1e-3", StringUtil.normalizeScientificNotation("10⁻³"));
+        assertEquals("-1e3", StringUtil.normalizeScientificNotation("-10^3"));
+        assertEquals("-2.5e-7", StringUtil.normalizeScientificNotation("-2.5E-07"));
+    }
+
+    @Test
+    public void normalizeScientificNotation_shouldLeaveEverythingElseUnchanged() {
+        assertEquals("3", StringUtil.normalizeScientificNotation("3"));
+        assertEquals("3.14", StringUtil.normalizeScientificNotation("3.14"));
+        assertEquals("3²", StringUtil.normalizeScientificNotation("3²"));
+        assertEquals("abc", StringUtil.normalizeScientificNotation("abc"));
+        assertEquals("", StringUtil.normalizeScientificNotation(""));
+        assertEquals(null, StringUtil.normalizeScientificNotation(null));
+    }
+
+    @Test
+    public void getActualNumericValue_shouldStripTheComparatorAndNormalize() {
+        assertEquals("1.5e5", StringUtil.getActualNumericValue("<1.5×10⁵"));
+        assertEquals("1.5e5", StringUtil.getActualNumericValue("1.5E5"));
+        assertEquals("12.5", StringUtil.getActualNumericValue(">12.5"));
+        assertEquals("NaN", StringUtil.getActualNumericValue("3²"));
+        assertEquals("NaN", StringUtil.getActualNumericValue("abc"));
+    }
+
+    @Test
+    public void getActualNumericValue_acceptsEachQualifiedQuantityWithoutChangingItsDigits() {
+        for (String comparator : new String[] { "<", "<=", ">", ">=" }) {
+            assertEquals("12.50", StringUtil.getActualNumericValue(" " + comparator + " 12.50 "));
+            assertEquals("1.5e5", StringUtil.getActualNumericValue(comparator + "1.5×10⁵"));
+        }
+    }
+
+    @Test
+    public void getActualNumericValue_doesNotRepairMalformedQualifiers() {
+        for (String malformed : new String[] { "<<12", ">>12", "<>12", "12>", "=12", ">=x" }) {
+            assertEquals(malformed, "NaN", StringUtil.getActualNumericValue(malformed));
+        }
+    }
+
+    @Test
+    public void roundToPlaces_roundsHalfUp() {
+        assertEquals("1", StringUtil.roundToPlaces("0.9", 0));
+        assertEquals("1.0", StringUtil.roundToPlaces("0.95", 1));
+        assertEquals("70", StringUtil.roundToPlaces("69.9", 0));
+        assertEquals("12.35", StringUtil.roundToPlaces("12.345", 2));
+        assertEquals("12.50", StringUtil.roundToPlaces("12.5", 2));
+    }
+
+    @Test
+    public void roundToPlaces_leavesWhatItCannotRoundSafely() {
+        assertEquals("<0.55", StringUtil.roundToPlaces("<0.55", 0));
+        assertEquals("<5.00", StringUtil.roundToPlaces("<5", 2));
+        assertEquals("1.567e5", StringUtil.roundToPlaces("1.567e5", 2));
+        assertEquals("abc", StringUtil.roundToPlaces("abc", 1));
+        assertEquals("12.345", StringUtil.roundToPlaces("12.345", -1));
+        assertEquals(null, StringUtil.roundToPlaces(null, 1));
+    }
+
+    @Test
+    public void roundToPlaces_dropsTrailingZerosBehindAComparator() {
+        assertEquals("<40", StringUtil.roundToPlaces("<40.00", 0));
+        assertEquals(">1.5", StringUtil.roundToPlaces(">1.50", 1));
+        assertEquals("<40.50", StringUtil.roundToPlaces("<40.50", 0));
+    }
+
+    @Test
+    public void isScientificNotation_shouldRecogniseEveryWrittenFormAndNothingElse() {
+        assertTrue(StringUtil.isScientificNotation("1.5e5"));
+        assertTrue(StringUtil.isScientificNotation("1.5E+05"));
+        assertTrue(StringUtil.isScientificNotation("1.5 x 10^5"));
+        assertTrue(StringUtil.isScientificNotation("1.5×10⁵"));
+        assertTrue(StringUtil.isScientificNotation("10⁻³"));
+        assertTrue(StringUtil.isScientificNotation("<1.5E-3"));
+        assertFalse(StringUtil.isScientificNotation("150000"));
+        assertFalse(StringUtil.isScientificNotation("3²"));
+        assertFalse(StringUtil.isScientificNotation("abc"));
+        assertFalse(StringUtil.isScientificNotation(null));
+    }
+
+    @Test
     public void blankIfNull_shouldReturnEmptyStringForNull() {
         assertEquals("", StringUtil.blankIfNull(null));
     }
@@ -140,5 +247,12 @@ public class StringUtilTest {
     @Test
     public void countInstances_shouldCountOccurrences() {
         assertEquals(3, StringUtil.countInstances("hello world", 'l'));
+    }
+
+    @Test
+    public void joinNonBlank_shouldSkipBlankParts() {
+        assertEquals("ID-1, 01/01/1990", StringUtil.joinNonBlank(", ", "ID-1", "", "01/01/1990"));
+        assertEquals("ID-1, F, 01/01/1990", StringUtil.joinNonBlank(", ", " ID-1 ", "F", "01/01/1990"));
+        assertEquals("", StringUtil.joinNonBlank(", ", null, " ", ""));
     }
 }

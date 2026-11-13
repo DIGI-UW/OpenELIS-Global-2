@@ -85,6 +85,17 @@
     }
   }
 
+  .order-status-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .order-referral-line {
+    font-size: 0.75rem;
+    color: var(--cds-text-secondary);
+  }
+
   .order-progress {
     display: flex;
     align-items: center;
@@ -765,8 +776,21 @@
 .order-section {
   margin-bottom: 1.5rem;
   min-width: 0;
-  overflow: hidden;
+  // Clip sideways only: hidden on both axes cut open dropdown menus off at
+  // the bottom of the card.
+  overflow-x: clip;
+  overflow-y: visible;
   padding: 1.5rem;
+  // The workflow container is already --cds-layer; a default Tile matches it.
+  background-color: var(--cds-layer-02);
+
+  .cds--css-grid {
+    row-gap: 1rem;
+  }
+
+  .cds--css-grid + .cds--css-grid {
+    margin-top: 1rem;
+  }
 
   .section-title {
     margin: 0 0 1rem 0;
@@ -903,11 +927,30 @@
   color: var(--cds-text-secondary);
 }
 
+.order-attachment-list {
+  margin-top: 1rem;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--cds-border-subtle);
+  }
+
+  .order-attachment-size {
+    font-size: 0.875rem;
+    color: var(--cds-text-secondary);
+  }
+}
+
 /* Selected Entity Card */
 .selected-entity-card {
   margin-top: 1rem;
   padding: 1rem;
   background-color: var(--cds-layer-02);
+  border: 1px solid var(--cds-border-subtle);
   border-left: 4px solid var(--cds-support-success);
   border-radius: 4px;
 
@@ -949,10 +992,34 @@
 
 /* Sample & Test Section */
 
+.micro-sample-callout {
+  margin-top: 1rem;
+  max-inline-size: none;
+}
+
+.micro-sample-note__line {
+  display: block;
+}
+
+.micro-sample-note__results {
+  margin-top: 0.5rem;
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+}
+
+.micro-sample-note__site {
+  display: block;
+}
+
+.micro-test-tag {
+  margin-inline-start: 0.5rem;
+}
+
 .sample-card {
   margin-bottom: 1.5rem;
   padding: 1rem;
   background-color: var(--cds-layer-02);
+  border: 1px solid var(--cds-border-subtle);
   border-radius: 4px;
 
   .sample-card-header {
@@ -1753,4 +1820,60 @@
   font-size: 0.75rem;
   color: var(--cds-text-secondary);
   margin: 0.25rem 0 0.5rem;
+}
+
+/* ==========================================================================
+   Saved order: next step
+   ========================================================================== */
+.order-saved-next-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+
+  .cds--inline-notification {
+    margin: 0;
+  }
+}
+
+// OGC-1611 FR-B24, B26: a clinical sample's container with its cap colour
+// and the Proposed, Draw and Edited tags.
+.sample-container-field {
+  .sample-container-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+    min-height: 1.5rem;
+  }
+
+  .containerTypeSwatch {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 1px solid var(--cds-border-strong, #8d8d8d);
+    border-radius: 50%;
+  }
+
+  .sample-container-proposed {
+    display: inline-flex;
+  }
+}
+
+// The Prepare Samples test picker shows each name in full. Carbon truncates a
+// long tag label and then wraps it in a tooltip button, which put a button
+// inside the clickable tag's own button.
+.available-tags,
+.selected-tags {
+  .cds--tag {
+    max-inline-size: none;
+    block-size: auto;
+  }
+
+  .cds--tag__label {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+  }
 }

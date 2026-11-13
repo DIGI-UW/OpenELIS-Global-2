@@ -17,4 +17,28 @@ export const TRIGGER_DESCRIPTORS = {
       "notificationtrigger.templates.subcontractdispatched.description",
     statusKey: "notificationtrigger.status.new",
   },
+  REFERRAL_REJECTED_NEEDS_RECOLLECTION: {
+    nameKey: "notificationtrigger.referralrejected.name",
+    descriptionKey: "notificationtrigger.referralrejected.description",
+    templateDescriptionKey:
+      "notificationtrigger.templates.referralrejected.description",
+  },
+  REFERRAL_NUDGE: {
+    nameKey: "notificationtrigger.referralnudge.name",
+    descriptionKey: "notificationtrigger.referralnudge.description",
+    templateDescriptionKey:
+      "notificationtrigger.templates.referralnudge.description",
+  },
+  SAMPLE_RESAMPLED: {
+    nameKey: "notificationtrigger.sampleresampled.name",
+    descriptionKey: "notificationtrigger.sampleresampled.description",
+    templateDescriptionKey:
+      "notificationtrigger.templates.sampleresampled.description",
+  },
+  TEST_RESULT: {
+    nameKey: "notificationtrigger.testresult.name",
+    descriptionKey: "notificationtrigger.testresult.description",
+    templateDescriptionKey:
+      "notificationtrigger.templates.testresult.description",
+  },
 };

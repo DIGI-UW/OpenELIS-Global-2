@@ -1,25 +1,43 @@
 import importlib.util
+import io
 import json
 import os
+import secrets
 from pathlib import Path
+import shutil
 import subprocess
+import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
+import yaml
 
-import test_readiness
+from test_deployment_tls import HttpsServer
 
 spec = importlib.util.spec_from_file_location("deployment", Path(__file__).with_name("deploy-published-testing.py"))
 deployment = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(deployment)
 
 
+def write_bundle(path, files):
+    with tarfile.open(path, "w:gz") as bundle:
+        for name, content in files.items():
+            data = content.encode()
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            bundle.addfile(info, io.BytesIO(data))
+
+
 class DeploymentTest(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
-        self.root = Path(self.directory.name)
+        self.root = Path(self.directory.name).resolve()
         (self.root / ".env").write_text("SERVER_SECRET=keep-existing-value\n")
+        self.password_file = self.root / "secrets/initial-admin-password"
+        self.password_file.parent.mkdir()
+        self.bootstrap_value = secrets.token_urlsafe(24)
+        self.password_file.write_text(self.bootstrap_value + "\n")
         self.diagnostics = self.root / "diagnostics"
         self.diagnostics.mkdir()
         self.target = self.root / ".openelis-ci/target.json"
@@ -31,33 +49,66 @@ class DeploymentTest(unittest.TestCase):
             for service, repository in deployment.SERVICES.items()}})
         self.override.write_text(self.previous_override)
         self.sha = "a" * 40
+        self.bundle = self.root / "deploy-bundle.tgz"
+        write_bundle(self.bundle, {name: "# " + name + "\n" for name in deployment.BUNDLE_FILES})
         self.request = {"manifest": {"appSha": self.sha, "appBranch": "develop", "images": {
             service: "itechuw/" + repository + "@sha256:" + "b" * 64 for service, repository in deployment.SERVICES.items()}},
-            "deploy_path": str(self.root), "run_id": "123-1",
-            "readiness": {"url": "http://127.0.0.1:1/health", "timeout": 0.02, "interval": 0.01}}
+            "deploy_path": str(self.root), "run_id": "36125008939-1",
+            "readiness": {"url": "https://localhost:1/health", "timeout": 0.02, "interval": 0.01}}
         self.wrong_image = False
+        self.initializer_state = {"Running": False, "Status": "exited", "ExitCode": 0}
+        self.initializer_image = "sha256:actual"
+        self.runtime_running = True
         self.branch_head = self.sha
         self.commands = []
-        self.port_owner = str(self.root)
+        self.port_owner = deployment.PROJECT
+        self.delivery = []
+        self.seed_environment = None
 
-    def command(self, args, _cwd, capture=False):
+    def command(self, args, _cwd, capture=False, **_kwargs):
         self.commands.append(args)
+        if args[:1] == ["env"]:
+            self.seed_environment = _kwargs.get("env")
         if args[:2] == ["git", "ls-remote"]:
             return self.branch_head + "\trefs/heads/develop\n"
-        if args == ["git", "rev-parse", "HEAD"]:
-            return self.sha
         if args[:2] == ["docker", "ps"]:
             return "proxy-id"
         if args == ["docker", "inspect", "proxy-id"]:
-            return json.dumps([{"Config": {"Labels": {
-                "com.docker.compose.project.working_dir": self.port_owner}}}])
+            return json.dumps([{"Config": {"Labels": {"com.docker.compose.project": self.port_owner}}}])
         if "ps" in args:
+            if args[-1] == "certs":
+                return "certs-container" if "--all" in args else ""
             return "container-id"
         if args[:2] == ["docker", "inspect"]:
-            return json.dumps([{"State": {"Running": True}, "Image": "wrong" if self.wrong_image else "sha256:actual"}])
+            if args[-1] == "certs-container":
+                return json.dumps([{"State": self.initializer_state, "Image": self.initializer_image}])
+            return json.dumps([{"State": {"Running": self.runtime_running}, "Image": "wrong" if self.wrong_image else "sha256:actual"}])
         if args[:3] == ["docker", "image", "inspect"]:
             return json.dumps([{"Id": "sha256:actual"}])
         return ""
+
+    def verify_delivery(self, api_base, mock_url, accession, **_):
+        self.delivery.append((api_base, mock_url, accession))
+        return {"accession": accession, "rows": 2}
+
+    def deploy(self, run=None, **patches):
+        run = run or self.command
+        with patch.object(deployment, "run", side_effect=run), patch.object(deployment.subprocess, "run"), \
+                patch.object(deployment, "verify_analyzer_delivery",
+                             side_effect=patches.get("delivery", self.verify_delivery)):
+            deployment.deploy(self.request, self.diagnostics, self.bundle)
+
+    def ready_health(self):
+        server = HttpsServer().__enter__()
+        self.addCleanup(server.__exit__, None, None, None)
+        trust = patch.dict(os.environ, {"SSL_CERT_FILE": str(server.cert)})
+        trust.start()
+        self.addCleanup(trust.stop)
+        self.health_url = server.url
+        self.request["readiness"].update(url=server.url + "/health", timeout=1)
+
+    def compose_calls(self, verb):
+        return [args for args in self.commands if args[:2] == ["docker", "compose"] and verb in args]
 
     def test_mutable_missing_and_foreign_images_are_rejected(self):
         manifest = self.request["manifest"]
@@ -89,43 +140,65 @@ class DeploymentTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             deployment.validate_manifest(manifest, "test-org")
 
-    def test_competing_stack_is_rejected_before_updating_configuration(self):
-        for owner in ("/other/analyzer-harness", None):
+    def test_competing_stack_is_rejected_before_anything_changes(self):
+        for owner in ("openelis-docker", None):
             with self.subTest(owner=owner):
                 self.port_owner = owner
                 self.commands.clear()
-                with patch.object(deployment, "run", side_effect=self.command), patch.object(deployment.subprocess, "run"):
-                    with self.assertRaisesRegex(ValueError, "another Docker stack"):
-                        deployment.deploy(self.request, self.diagnostics)
-                self.assertFalse(any("fetch" in command or "pull" in command or "up" in command
-                                     for command in self.commands))
+                with self.assertRaisesRegex(ValueError, "another Docker stack"):
+                    self.deploy()
+                self.assertFalse(self.compose_calls("pull") or self.compose_calls("up"))
+                self.assertFalse((self.root / "releases").exists())
                 self.assertEqual(self.previous_override, self.override.read_text())
 
     def test_stack_owner_is_rechecked_after_pull(self):
         def change_owner(args, cwd, capture=False):
             result = self.command(args, cwd, capture)
             if "pull" in args:
-                self.port_owner = "/other/analyzer-harness"
+                self.port_owner = "openelis-docker"
             return result
-        with patch.object(deployment, "run", side_effect=change_owner), patch.object(deployment.subprocess, "run"):
-            with self.assertRaisesRegex(ValueError, "another Docker stack"):
-                deployment.deploy(self.request, self.diagnostics)
-        self.assertFalse(any("up" in command for command in self.commands))
+        with self.assertRaisesRegex(ValueError, "another Docker stack"):
+            self.deploy(change_owner)
+        self.assertFalse(self.compose_calls("up"))
         self.assertEqual(self.previous_override, self.override.read_text())
 
     def test_invalid_readiness_contract_is_rejected_before_deployment(self):
         self.request["readiness"]["timeout"] = 0
         with patch.object(deployment, "run") as command:
             with self.assertRaises(ValueError):
-                deployment.deploy(self.request, self.diagnostics)
+                deployment.deploy(self.request, self.diagnostics, self.bundle)
             command.assert_not_called()
+
+    def test_unverified_deployment_is_rejected_before_any_state_changes(self):
+        for contract in ({"url": "http://localhost/health"}, {"insecure": True}):
+            with self.subTest(contract=contract), patch.object(deployment, "run") as command:
+                request = {**self.request, "readiness": {**self.request["readiness"], **contract}}
+                with self.assertRaisesRegex(ValueError, "verified HTTPS"):
+                    deployment.deploy(request, self.diagnostics, self.bundle)
+                command.assert_not_called()
+                self.assertEqual("previous-ready", json.loads(self.target.read_text())["deploymentId"])
+
+    def test_seed_process_requires_verification_and_uses_the_same_trust(self):
+        self.ready_health()
+        with patch.dict(os.environ, {"DEV_STACK_TLS": "self-signed"}):
+            self.deploy()
+        self.assertEqual("verified", self.seed_environment["DEV_STACK_TLS"])
+        self.assertEqual(os.environ["SSL_CERT_FILE"], self.seed_environment["CURL_CA_BUNDLE"])
+
+    def test_deployment_lock_belongs_to_the_installation_state_directory(self):
+        request_path = self.root / "request.json"
+        request_path.write_text(json.dumps(self.request))
+        with patch.object(deployment.sys, "argv", ["deploy", str(request_path)]), \
+                patch.object(deployment, "deploy") as deploy:
+            self.assertEqual(0, deployment.main())
+        deploy.assert_called_once()
+        self.assertTrue((self.root / ".openelis-ci/deploy.lock").is_file())
 
     def test_old_build_cannot_overwrite_a_newer_deployment(self):
         self.branch_head = "c" * 40
-        with patch.object(deployment, "run", side_effect=self.command), patch.object(deployment.subprocess, "run"):
-            with self.assertRaisesRegex(ValueError, "obsolete deployment"):
-                deployment.deploy(self.request, self.diagnostics)
-        self.assertFalse(any("up" in command or "pull" in command for command in self.commands))
+        with self.assertRaisesRegex(ValueError, "obsolete deployment"):
+            self.deploy()
+        self.assertFalse(self.compose_calls("pull") or self.compose_calls("up"))
         self.assertEqual("previous-ready", json.loads(self.target.read_text())["deploymentId"])
         self.assertTrue((self.diagnostics / "compose-status.txt").exists())
 
@@ -142,17 +215,14 @@ class DeploymentTest(unittest.TestCase):
                     self.override.unlink()
                 self.branch_head = self.sha
                 self.commands.clear()
-                with patch.object(deployment, "run", side_effect=advance_during_pull), patch.object(deployment.subprocess, "run"):
-                    with self.assertRaisesRegex(ValueError, "obsolete deployment"):
-                        deployment.deploy(self.request, self.diagnostics)
-                self.assertFalse(any("up" in command for command in self.commands))
+                with self.assertRaisesRegex(ValueError, "obsolete deployment"):
+                    self.deploy(advance_during_pull)
+                self.assertFalse(self.compose_calls("up"))
                 self.assertEqual("previous-ready", json.loads(self.target.read_text())["deploymentId"])
                 if existing_override:
                     self.assertEqual(self.previous_override, self.override.read_text())
                 else:
                     self.assertFalse(self.override.exists())
-                self.assertEqual({"target.json"} | ({"deployment-images.json"} if existing_override else set()),
-                                 {path.name for path in self.target.parent.iterdir()})
 
     def test_failed_image_pull_preserves_the_previous_override(self):
         def fail_pull(args, cwd, capture=False):
@@ -161,125 +231,376 @@ class DeploymentTest(unittest.TestCase):
                 raise deployment.subprocess.CalledProcessError(1, args)
             return result
 
-        with patch.object(deployment, "run", side_effect=fail_pull), patch.object(deployment.subprocess, "run"):
-            with self.assertRaises(deployment.subprocess.CalledProcessError):
-                deployment.deploy(self.request, self.diagnostics)
-        self.assertFalse(any("up" in command for command in self.commands))
+        with self.assertRaises(deployment.subprocess.CalledProcessError):
+            self.deploy(fail_pull)
+        self.assertFalse(self.compose_calls("up"))
         self.assertEqual(self.previous_override, self.override.read_text())
         self.assertEqual("previous-ready", json.loads(self.target.read_text())["deploymentId"])
-        self.assertEqual({"target.json", "deployment-images.json"},
-                         {path.name for path in self.target.parent.iterdir()})
+
+    def test_bundle_missing_a_required_file_is_rejected_before_pull(self):
+        write_bundle(self.bundle, {"docker-compose.yml": "services: {}\n"})
+        with self.assertRaisesRegex(ValueError, "bundle is missing"):
+            self.deploy()
+        self.assertFalse(self.compose_calls("pull"))
+        self.assertFalse((self.root / "releases" / self.sha).exists())
+
+    def test_release_runs_the_commits_own_compose_under_the_fixed_project(self):
+        (self.root / "docker-compose.site.yml").write_text("services: {}\n")
+        self.ready_health()
+        self.deploy()
+        release = self.root / "releases" / self.sha
+        up = self.compose_calls("up")[0]
+        self.assertEqual(["docker", "compose", "-p", deployment.PROJECT, "--project-directory", str(release),
+                          "--env-file", str(self.root / ".env"),
+                          "-f", str(release / "docker-compose.yml"),
+                          "-f", str(release / "docker-compose.analyzers.yml"),
+                          "-f", str(self.root / "docker-compose.site.yml"),
+                          "-f", str(self.override), "up", "-d"], up)
+        self.assertEqual("# docker-compose.analyzers.yml\n", (release / "docker-compose.analyzers.yml").read_text())
+        lucene = release / "volume/lucene"
+        self.assertTrue(lucene.is_symlink())
+        self.assertEqual(self.root / "lucene", lucene.resolve())
+
+    def test_new_site_uses_bundled_defaults_and_uploaded_catalog_survives_release_change(self):
+        first = deployment.unpack_release(self.bundle, self.root, self.sha)
+        catalog = self.root / "configuration/backend"
+        self.assertEqual([], list(catalog.iterdir()))
+        self.assertEqual(catalog, (first / "configuration/backend").resolve())
+        (catalog / "tests").mkdir()
+        uploaded = catalog / "tests/site-tests.csv"
+        uploaded.write_text("site-owned catalog\n")
+
+        second = deployment.unpack_release(self.bundle, self.root, "c" * 40)
+
+        self.assertEqual(catalog, (second / "configuration/backend").resolve())
+        self.assertEqual("site-owned catalog\n", uploaded.read_text())
+
+    def test_site_overlay_is_optional(self):
+        self.ready_health()
+        self.deploy()
+        self.assertNotIn(str(self.root / "docker-compose.site.yml"), self.compose_calls("up")[0])
 
     def test_failed_startup_withdraws_stale_ready_identity_and_keeps_it_in_diagnostics(self):
-        with patch.object(deployment, "run", side_effect=self.command), patch.object(deployment.subprocess, "run") as diagnostics:
+        with patch.object(deployment.subprocess, "run") as diagnostics, \
+                patch.object(deployment, "run", side_effect=self.command):
             with self.assertRaisesRegex(RuntimeError, "did not become ready"):
-                deployment.deploy(self.request, self.diagnostics)
+                deployment.deploy(self.request, self.diagnostics, self.bundle)
         self.assertFalse(self.target.exists())
         self.assertEqual("previous-ready",
                          json.loads((self.diagnostics / "previous-target.json").read_text())["deploymentId"])
         self.assertFalse(json.loads((self.diagnostics / "readiness.json").read_text())["ready"])
         self.assertTrue((self.diagnostics / "compose-status.txt").exists())
-        self.assertTrue((self.diagnostics / "service-logs.txt").exists())
         self.assertEqual(self.previous_override, (self.diagnostics / "previous-images.json").read_text())
         log_command = next(call.args[0] for call in diagnostics.call_args_list if "logs" in call.args[0])
         self.assertTrue(set(deployment.SERVICES).issubset(log_command))
+        self.assertFalse(any(args[:1] == ["env"] for args in self.commands))
         self.assertIn("keep-existing-value", (self.root / ".env").read_text())
+
+    def test_a_site_without_a_pairing_code_gets_one_and_keeps_it(self):
+        self.ready_health()
+        self.deploy()
+        first = deployment.read_env_file(self.root / ".env")
+        self.ready_health()
+        self.deploy()
+        second = deployment.read_env_file(self.root / ".env")
+
+        self.assertRegex(first["ANALYZER_BRIDGE_PAIRING_CODE"], r"^[0-9a-f]{32}$")
+        self.assertEqual(first["ANALYZER_BRIDGE_PAIRING_CODE"], second["ANALYZER_BRIDGE_PAIRING_CODE"])
+        self.assertEqual("keep-existing-value", second["SERVER_SECRET"])
+
+    def test_a_configured_pairing_code_is_left_alone(self):
+        env_file = self.root / ".env"
+        env_file.write_text(env_file.read_text() + "ANALYZER_BRIDGE_PAIRING_CODE=SITE-CODE")
+        self.ready_health()
+        self.deploy()
+
+        self.assertEqual("SITE-CODE",
+                         deployment.read_env_file(self.root / ".env")["ANALYZER_BRIDGE_PAIRING_CODE"])
 
     def test_wrong_running_image_cannot_publish_ready(self):
         self.wrong_image = True
-        with patch.object(deployment, "run", side_effect=self.command), patch.object(deployment.subprocess, "run"):
-            with self.assertRaisesRegex(ValueError, "does not match"):
-                deployment.deploy(self.request, self.diagnostics)
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            self.deploy()
         self.assertFalse(self.target.exists())
 
-    def test_ready_identity_requires_both_running_digests_and_health(self):
-        test_readiness.ReadinessTest.setUpClass()
-        self.addCleanup(test_readiness.ReadinessTest.tearDownClass)
-        test_readiness.ReadinessTest.server.response = (200, "application/json", b'{"status": "UP"}')
-        self.request["readiness"].update(url=test_readiness.ReadinessTest.url, timeout=1)
-        expected_override = {"services": {service: {"image": reference}
-                                          for service, reference in self.request["manifest"]["images"].items()}}
+    def test_completed_initializer_is_verified_without_requiring_it_to_keep_running(self):
+        self.ready_health()
+        self.deploy()
+        self.assertEqual("sha256:actual", json.loads(self.target.read_text())["images"]["certs"]["imageId"])
 
-        def check_selected_images(args, cwd, capture=False):
-            if "pull" in args or "up" in args:
-                selected_override = Path(args[args.index("-f", 4) + 1])
-                self.assertEqual(expected_override, json.loads(selected_override.read_text()))
-                if "pull" in args:
-                    self.assertEqual(self.previous_override, self.override.read_text())
+    def test_failed_unfinished_or_running_initializer_cannot_publish_ready(self):
+        for state in [{"Running": False, "Status": "exited", "ExitCode": 1},
+                      {"Running": True, "Status": "running", "ExitCode": 0},
+                      {"Running": False, "Status": "created", "ExitCode": 0}]:
+            with self.subTest(state=state):
+                self.initializer_state = state
+                with self.assertRaisesRegex(ValueError, "initializer did not complete"):
+                    self.deploy()
+                self.assertFalse(self.target.exists())
+
+    def test_wrong_initializer_image_cannot_publish_ready(self):
+        self.initializer_image = "sha256:unexpected"
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            self.deploy()
+        self.assertFalse(self.target.exists())
+
+    def test_stopped_application_cannot_publish_ready(self):
+        self.runtime_running = False
+        with self.assertRaisesRegex(ValueError, "Expected running service"):
+            self.deploy()
+        self.assertFalse(self.target.exists())
+
+    def test_missing_or_empty_bootstrap_secret_stops_before_image_pull(self):
+        for value in (None, "\n"):
+            with self.subTest(value=value):
+                if value is None:
+                    self.password_file.unlink()
                 else:
-                    self.assertEqual(self.override, selected_override)
-            return self.command(args, cwd, capture)
+                    self.password_file.write_text(value)
+                with self.assertRaisesRegex(ValueError, "persistent OE_INITIAL_ADMIN_PASSWORD_FILE"):
+                    self.deploy()
+                self.assertFalse(self.compose_calls("pull") or self.compose_calls("up"))
+                self.assertEqual("previous-ready", json.loads(self.target.read_text())["deploymentId"])
 
-        with patch.object(deployment, "run", side_effect=check_selected_images), patch.object(deployment.subprocess, "run"):
-            deployment.deploy(self.request, self.diagnostics)
+    def test_bootstrap_secret_is_site_owned_and_absolute_across_release_changes(self):
+        self.ready_health()
+        for sha in (self.sha, "c" * 40):
+            self.sha = self.branch_head = sha
+            self.request["manifest"]["appSha"] = sha
+            self.deploy()
+            secret = json.loads(self.override.read_text())["secrets"]["initial-admin-password"]["file"]
+            self.assertEqual(str(self.password_file), secret)
+            self.assertFalse((self.root / "releases" / sha / "secrets").exists())
+            self.assertEqual(self.bootstrap_value + "\n", self.password_file.read_text())
+
+    def test_relative_and_absolute_password_settings_resolve_against_the_site(self):
+        custom = self.root / "private/admin-password"
+        custom.parent.mkdir()
+        custom_value = secrets.token_urlsafe(24)
+        custom.write_text(custom_value + "\n")
+        for value in ("./private/admin-password", str(custom)):
+            with self.subTest(value=value):
+                def environment(args, cwd, capture=False, **kwargs):
+                    if args[-2:] == ["config", "--environment"]:
+                        return "OE_INITIAL_ADMIN_PASSWORD_FILE=" + value + "\n"
+                    return self.command(args, cwd, capture, **kwargs)
+                with patch.object(deployment, "run", side_effect=environment):
+                    settings = deployment.site_settings(self.root, self.root / "releases" / self.sha)
+                self.assertEqual(str(custom), settings["OE_INITIAL_ADMIN_PASSWORD_FILE"])
+                self.assertEqual(custom_value, settings["TEST_PASS"])
+
+    @unittest.skipUnless(shutil.which("docker"), "Docker Compose is required to verify native secret resolution")
+    def test_native_compose_uses_the_persistent_secret_from_a_disposable_release(self):
+        self.ready_health()
+        self.deploy()
+        release = self.root / "releases" / self.sha
+        secret = yaml.safe_load((Path(__file__).resolve().parents[2] / "docker-compose.yml").read_text())["secrets"]["initial-admin-password"]
+        compose_file = release / "docker-compose.yml"
+        compose_file.write_text(json.dumps({"services": {"oe.openelis.org": {
+            "image": self.request["manifest"]["images"]["oe.openelis.org"], "secrets": ["initial-admin-password"]}},
+            "secrets": {"initial-admin-password": secret}}))
+        (release / "docker-compose.analyzers.yml").write_text("{}")
+        settings = deployment.site_settings(self.root, release)
+        self.assertEqual(str(self.password_file), settings["OE_INITIAL_ADMIN_PASSWORD_FILE"])
+        config = json.loads(subprocess.check_output(deployment.compose_command(self.root, release, self.override)
+                                                   + ["config", "--format", "json"], text=True))
+        self.assertEqual(str(self.password_file), config["secrets"]["initial-admin-password"]["file"])
+
+    def test_ready_deployment_seeds_analyzers_then_proves_delivery(self):
+        self.ready_health()
+        self.deploy()
+        release = self.root / "releases" / self.sha
+        seed = next(args for args in self.commands if args[:1] == ["env"])
+        self.assertIn("BASE_URL=" + self.health_url, seed)
+        self.assertIn("MOCK_URL=" + deployment.DEFAULT_MOCK_URL, seed)
+        self.assertEqual(["bash", str(release / "projects/analyzer-harness/seed-analyzers.sh"),
+                          "--ensure-connections", "--no-mock-network"], seed[-4:])
+        self.assertLess(self.commands.index(self.compose_calls("up")[0]), self.commands.index(seed))
+        self.assertEqual([(self.health_url + "/api/OpenELIS-Global/rest", deployment.DEFAULT_MOCK_URL, "DEV01900361250089391")],
+                         self.delivery)
         target = json.loads(self.target.read_text())
         self.assertEqual(self.sha, target["appSha"])
-        self.assertEqual(5, len(target["images"]))
-        self.assertTrue(target["verification"]["readiness"]["ready"])
-        self.assertEqual(expected_override, json.loads(self.override.read_text()))
-        self.assertEqual({"target.json", "deployment-images.json"},
-                         {path.name for path in self.target.parent.iterdir()})
+        self.assertEqual(str(release), target["release"])
+        self.assertEqual(set(deployment.SERVICES), set(target["images"]))
+        self.assertEqual("DEV01900361250089391", target["verification"]["analyzerDelivery"]["accession"])
+
+    def test_failed_delivery_proof_withdraws_ready_identity(self):
+        self.ready_health()
+
+        def lost(*_args, **_kwargs):
+            raise RuntimeError("analyzer result DEV01900361250089391 never reached OpenELIS")
+
+        with self.assertRaisesRegex(RuntimeError, "never reached OpenELIS"):
+            self.deploy(delivery=lost)
+        self.assertFalse(self.target.exists())
+        self.assertFalse(any(args[:3] == ["docker", "image", "prune"] for args in self.commands))
+
+    def test_success_keeps_only_the_current_and_previous_release(self):
+        releases = self.root / "releases"
+        for name in ("old", "previous"):
+            (releases / name).mkdir(parents=True)
+        (self.target.parent / "target.json").write_text(json.dumps({"release": str(releases / "previous")}))
+        self.ready_health()
+        self.deploy()
+        self.assertEqual({self.sha, "previous"}, {path.name for path in releases.iterdir()})
+        self.assertIn(["docker", "image", "prune", "--all", "--force"], self.commands)
+
+    def test_a_release_the_deploy_user_cannot_delete_is_removed_through_docker_and_never_fails_the_deploy(self):
+        """Run 39466371613 attempt 4 passed readiness and the analyzer smoke, then failed
+        with "[Errno 13] Permission denied: 'backend'" while pruning an old release."""
+        releases = self.root / "releases"
+        (releases / "old").mkdir(parents=True)
+        (releases / "previous").mkdir()
+        (self.target.parent / "target.json").write_text(json.dumps({"release": str(releases / "previous")}))
+        real_rmtree = deployment.shutil.rmtree
+
+        def refuse_old(path, *args, **kwargs):
+            if Path(path).name == "old":
+                raise PermissionError(13, "Permission denied", "backend")
+            return real_rmtree(path, *args, **kwargs)
+
+        self.ready_health()
+        with patch.object(deployment.shutil, "rmtree", side_effect=refuse_old):
+            self.deploy()
+
+        removal = [args for args in self.commands if args[:3] == ["docker", "run", "--rm"]]
+        self.assertEqual(1, len(removal))
+        self.assertIn(f"{releases}:/releases", removal[0])
+        self.assertEqual(["rm", "-rf", "/releases/old"], removal[0][-3:])
+        self.assertTrue((self.target.parent / "target.json").is_file())
+        self.assertIn(["docker", "image", "prune", "--all", "--force"], self.commands)
+
+    def test_a_release_docker_cannot_delete_either_is_left_with_a_warning(self):
+        releases = self.root / "releases"
+        (releases / "old").mkdir(parents=True)
+        self.ready_health()
+
+        def refuse_docker_removal(args, cwd, capture=False, **kwargs):
+            if args[:3] == ["docker", "run", "--rm"]:
+                raise deployment.subprocess.CalledProcessError(1, args)
+            return self.command(args, cwd, capture, **kwargs)
+
+        real_rmtree = deployment.shutil.rmtree
+
+        def refuse_old(path, *args, **kwargs):
+            if Path(path).name == "old":
+                raise PermissionError(13, "Permission denied", "backend")
+            return real_rmtree(path, *args, **kwargs)
+
+        with patch.object(deployment.shutil, "rmtree", side_effect=refuse_old):
+            self.deploy(run=refuse_docker_removal)
+
+        self.assertTrue((self.target.parent / "target.json").is_file())
+        self.assertIn("could not remove old release", (self.diagnostics / "prune-warnings.txt").read_text())
+
+    def test_site_settings_read_the_env_file_when_compose_cannot_list_it(self):
+        configured_value = secrets.token_urlsafe(24)
+        (self.root / ".env").write_text(
+            f"# site settings\nexport TEST_USER=qa-admin\nTEST_PASS='{configured_value}'\nASTM_SIMULATOR_HTTP_PORT=\"9085\"\n")
+
+        def old_compose(args, cwd, capture=False, **kwargs):
+            if args[-2:] == ["config", "--environment"]:
+                raise deployment.subprocess.CalledProcessError(15, args, "unknown flag: --environment")
+            return self.command(args, cwd, capture, **kwargs)
+
+        with patch.object(deployment, "run", side_effect=old_compose):
+            settings = deployment.site_settings(self.root, self.root / "releases" / self.sha)
+
+        self.assertEqual({"TEST_USER": "qa-admin", "TEST_PASS": configured_value, "MOCK_URL": "http://127.0.0.1:9085",
+                          "OE_INITIAL_ADMIN_PASSWORD_FILE": str(self.password_file)},
+                         settings)
+
+    def test_env_file_fallback_drops_trailing_comments_like_compose(self):
+        path = self.root / ".env"
+        path.write_text("TEST_USER=qa-admin # site admin\nTEST_PASS=p#ss\nQUOTED='a # b'\n")
+
+        self.assertEqual({"TEST_USER": "qa-admin", "TEST_PASS": "p#ss", "QUOTED": "a # b"},
+                         deployment.read_env_file(path))
+
+    def test_smoke_accession_is_a_valid_unique_accession(self):
+        self.assertEqual("DEV01900361250089391", deployment.smoke_accession("36125008939-1"))
+        self.assertEqual(20, len(deployment.smoke_accession("9" * 30 + "-12")))
+        self.assertNotEqual(deployment.smoke_accession("1-1"), deployment.smoke_accession("1-2"))
 
 
-class InfrastructureUpdateTest(unittest.TestCase):
+class AnalyzerDeliveryTest(unittest.TestCase):
     def setUp(self):
-        directory = tempfile.TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        self.root = Path(directory.name)
-        self.upstream = self.root / "upstream"
-        self.upstream.mkdir()
-        self.git(self.upstream, "init", "-b", "main")
-        (self.upstream / ".env").write_text("OE_CERTS_PATH=upstream-default\n")
-        (self.upstream / "docker-compose.yml").write_text("services: {}\n")
-        self.commit(self.upstream, "initial")
-        self.app = self.root / "app"
-        self.git(self.root, "clone", str(self.upstream), str(self.app))
-        self.env = self.app / ".env"
-        self.local_env = b"OE_CERTS_PATH=/site/certs\r\nSERVER_SECRET=preserve-exactly\r\n"
-        self.env.write_bytes(self.local_env)
-        self.env.chmod(0o640)
-        self.state = self.app / ".openelis-ci"
-        self.state.mkdir()
-        (self.upstream / ".env").write_text("OE_CERTS_PATH=new-default\nNEW_DEFAULT=true\n")
-        (self.upstream / "docker-compose.yml").write_text("services: {}\n# updated\n")
-        self.commit(self.upstream, "new defaults")
+        self.calls = []
+        self.rows = []
+        self.on_page = "1"
 
-    def git(self, directory, *args):
-        return subprocess.check_output(["git", "-c", "user.name=Deployment Test", "-c",
-                                        "user.email=deployment@example.invalid", "-c", "commit.gpgsign=false",
-                                        *args], cwd=directory, text=True, stderr=subprocess.PIPE,
-                                       env={**os.environ, "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1"})
+    def http(self, method, url, body=None):
+        self.calls.append((method, url, body))
+        if url.endswith("/simulate/fixture/genexpert_astm/hivvl/quantified"):
+            return {"status": "completed", "pushed": 1}
+        if url.endswith("/analyzer/analyzers"):
+            return {"analyzers": [{"id": 7, "name": "QuantStudio 5"},
+                                  {"id": 2, "name": deployment.SMOKE_ANALYZER, "status": "ACTIVE",
+                                   "profileId": "cepheid-genexpert-astm", "bridgeConnectionId": "c-2"}]}
+        if url.endswith("/AnalyzerResults?id=2"):
+            return {"resultList": self.rows if self.on_page == "1" else [],
+                    "paging": {"searchTermToPage": [{"id": "DEV01900000000000011", "value": self.on_page}]
+                               if self.rows else []}}
+        if url.endswith("/AnalyzerResults?id=2&page=2"):
+            return {"resultList": self.rows}
+        raise AssertionError(url)
 
-    def commit(self, directory, message):
-        self.git(directory, "add", ".env", "docker-compose.yml")
-        self.git(directory, "commit", "-m", message)
+    def test_pushes_to_shared_listener_with_seeded_identity_and_waits_for_its_rows(self):
+        polls = []
 
-    def test_fast_forward_preserves_site_env_when_upstream_changes_it(self):
-        deployment.update_infrastructure(self.app, self.state)
-        self.assertEqual(self.local_env, self.env.read_bytes())
-        self.assertEqual(0o640, self.env.stat().st_mode & 0o777)
-        self.assertEqual(self.git(self.upstream, "rev-parse", "HEAD"), self.git(self.app, "rev-parse", "HEAD"))
-        self.assertIn("# updated", (self.app / "docker-compose.yml").read_text())
-        self.assertFalse((self.state / "server.env.backup").exists())
-        deployment.update_infrastructure(self.app, self.state)
-        self.assertEqual(self.local_env, self.env.read_bytes())
+        def arrive_on_second_poll(_seconds):
+            polls.append(_seconds)
+            self.rows = [{"accessionNumber": "DEV01900000000000011", "rawTestCode": "HIV-VL"}]
 
-    def test_merge_failure_restores_env_and_preserves_other_local_edits(self):
-        (self.app / "docker-compose.yml").write_text("services: {}\n# local change\n")
-        with self.assertRaises(subprocess.CalledProcessError):
-            deployment.update_infrastructure(self.app, self.state)
-        self.assertEqual(self.local_env, self.env.read_bytes())
-        self.assertIn("# local change", (self.app / "docker-compose.yml").read_text())
-        self.assertFalse((self.state / "server.env.backup").exists())
+        report = deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
+                                                     http=self.http, sleep=arrive_on_second_poll, timeout=5)
+        push = next(call for call in self.calls if call[0] == "POST")
+        self.assertEqual(("POST", "http://mock/simulate/fixture/genexpert_astm/hivvl/quantified",
+                          {"destination": "tcp://openelis-analyzer-bridge:12001", "sample_id": "DEV01900000000000011",
+                           "sender_id": "OE2-TEST-GENEXPERT"}), push)
+        self.assertEqual({"accession": "DEV01900000000000011", "rows": 1}, report)
+        self.assertEqual(1, len(polls))
 
-    def test_interrupted_update_backup_is_never_overwritten(self):
-        backup = self.state / "server.env.backup"
-        backup.write_bytes(b"previous configuration")
-        with self.assertRaisesRegex(ValueError, "interrupted update"), patch.object(deployment, "run") as run:
-            deployment.update_infrastructure(self.app, self.state)
-        run.assert_not_called()
-        self.assertEqual(b"previous configuration", backup.read_bytes())
-        self.assertEqual(self.local_env, self.env.read_bytes())
+    def test_reads_the_page_of_the_review_list_that_holds_the_accession(self):
+        self.on_page = "2"
+        self.rows = [{"accessionNumber": "DEV01900000000000011", "rawTestCode": "HIVVL"}]
+
+        report = deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
+                                                     http=self.http, sleep=lambda _: None, timeout=5)
+
+        self.assertEqual({"accession": "DEV01900000000000011", "rows": 1}, report)
+
+    def test_result_that_never_arrives_fails_with_the_last_response(self):
+        with self.assertRaisesRegex(RuntimeError, "never reached OpenELIS"):
+            deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
+                                                http=self.http, sleep=lambda _s: None, timeout=0)
+
+    def test_mock_that_did_not_push_fails_before_polling(self):
+        def refused(method, url, body=None):
+            self.calls.append((method, url, body))
+            if url.endswith("/analyzer/analyzers"):
+                return self.http(method, url, body)
+            return {"status": "failed", "pushed": 0, "error": "connection refused"}
+
+        with self.assertRaisesRegex(RuntimeError, "connection refused"):
+            deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
+                                                http=refused, sleep=lambda _s: None, timeout=5)
+        self.assertFalse(any("AnalyzerResults" in call[1] for call in self.calls))
+
+    def test_an_inactive_unconnected_smoke_analyzer_is_named_before_anything_is_sent(self):
+        """Testing kept analyzer rows from before profile pins: INACTIVE, no profile, no Bridge
+        connection. The smoke used to push into them and time out with an empty review list."""
+        def legacy(method, url, body=None):
+            self.calls.append((method, url, body))
+            if url.endswith("/analyzer/analyzers"):
+                return {"analyzers": [{"id": "2", "name": deployment.SMOKE_ANALYZER, "status": "INACTIVE",
+                                       "profileId": "", "bridgeConnectionId": None}]}
+            raise AssertionError(url)
+
+        with self.assertRaisesRegex(RuntimeError, "status INACTIVE, profile none, Bridge connection none"):
+            deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
+                                                http=legacy, sleep=lambda _s: None, timeout=5)
+        self.assertEqual([("GET", "https://oe/rest/analyzer/analyzers", None)], self.calls)
 
 
 if __name__ == "__main__":

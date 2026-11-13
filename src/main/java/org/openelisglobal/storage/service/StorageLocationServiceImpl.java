@@ -1124,6 +1124,7 @@ public class StorageLocationServiceImpl implements StorageLocationService {
         List<Map<String, Object>> devices = storageSearchService.searchDevices(searchTerm);
         List<Map<String, Object>> shelves = storageSearchService.searchShelves(searchTerm);
         List<Map<String, Object>> racks = storageSearchService.searchRacks(searchTerm);
+        List<Map<String, Object>> boxes = storageSearchService.searchBoxes(searchTerm);
 
         // --- Rooms matched directly: add room + entire subtree ---
         for (Map<String, Object> room : rooms) {
@@ -1214,6 +1215,23 @@ public class StorageLocationServiceImpl implements StorageLocationService {
             if (rackId instanceof Integer) {
                 expandRackSubtree((Integer) rackId, sb.toString(), seen);
             }
+        }
+
+        // --- Boxes matched directly ---
+        for (Map<String, Object> box : boxes) {
+            Object boxId = box.get("id");
+            Map<String, Object> result = new HashMap<>(box);
+            // getBoxesForAPI puts the physical format in "type"; the picker's level check
+            // needs "box" there.
+            Object physicalType = box.get("type");
+            if (physicalType != null) {
+                result.put("boxType", physicalType);
+            }
+            result.put("type", "box");
+            // getBoxesForAPI joins with " > "; SearchField splits on the " › " every other
+            // level uses.
+            result.computeIfPresent("hierarchicalPath", (key, path) -> ((String) path).replace(" > ", " › "));
+            seen.putIfAbsent("box:" + boxId, result);
         }
 
         // Sort by hierarchicalPath so siblings appear grouped

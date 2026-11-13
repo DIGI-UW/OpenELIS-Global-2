@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Duration;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -27,6 +28,28 @@ public class BridgeProfileCatalogServiceTest {
     @Before
     public void setUp() {
         service = new BridgeProfileCatalogServiceImpl(bridgeHttpClient, "https://bridge.example/");
+    }
+
+    @Test
+    public void anUnpairedBridgeIsReportedAsNotPaired() throws Exception {
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenThrow(new BridgeHttpClient.BridgeNotPairedException());
+
+        BridgeProfileCatalogException failure = assertThrows(BridgeProfileCatalogException.class,
+                () -> service.getCatalog());
+
+        assertEquals(true, failure.bridgeNotPaired());
+    }
+
+    @Test
+    public void anUnreachableBridgeIsNotReportedAsNotPaired() throws Exception {
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenThrow(new java.io.IOException("Connection refused"));
+
+        BridgeProfileCatalogException failure = assertThrows(BridgeProfileCatalogException.class,
+                () -> service.getCatalog());
+
+        assertEquals(false, failure.bridgeNotPaired());
     }
 
     @Test
@@ -56,6 +79,37 @@ public class BridgeProfileCatalogServiceTest {
     }
 
     @Test
+    public void getCatalogKeepsTheProfilesTheBridgeSetAsideVisible() throws Exception {
+        ObjectNode catalog = (ObjectNode) new ObjectMapper().readTree(validCatalog());
+        catalog.putArray("issues").addObject().put("source", "file [/app/analyzer-profiles/broken.json]").put("reason",
+                "Cannot load shipped profile: Unexpected character");
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+        BridgeProfileCatalog loaded = service.getCatalog();
+
+        assertEquals(1, loaded.profiles().size());
+        assertEquals(List.of(new BridgeProfileCatalog.CatalogIssue("file [/app/analyzer-profiles/broken.json]",
+                "Cannot load shipped profile: Unexpected character")), loaded.issues());
+    }
+
+    @Test
+    public void getCatalogRejectsAnIssueMissingItsSourceOrReason() throws Exception {
+        for (String issue : List.of("{\"reason\":\"Cannot load\"}", "{\"source\":\"file [a.json]\",\"reason\":\" \"}",
+                "{\"source\":\"file [a.json]\",\"reasn\":\"Cannot load\"}")) {
+            ObjectNode catalog = (ObjectNode) new ObjectMapper().readTree(validCatalog());
+            catalog.putArray("issues").add(new ObjectMapper().readTree(issue));
+            when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                    .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+            BridgeProfileCatalogException exception = assertThrows(issue, BridgeProfileCatalogException.class,
+                    () -> service.getCatalog());
+
+            assertEquals(issue, "Bridge profile catalog contains an invalid issue", exception.getMessage());
+        }
+    }
+
+    @Test
     public void getProfileFetchesAndValidatesTheExactRequestedRevision() throws Exception {
         when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles/site.mock%20hematology?revision=2"),
                 any(Duration.class))).thenReturn(new BridgeHttpClient.BridgeResponse(200, validProfileRevision()));
@@ -78,6 +132,22 @@ public class BridgeProfileCatalogServiceTest {
                 () -> service.getProfile("site.mock hematology", 1));
 
         assertEquals("Bridge returned a different profile revision than requested", exception.getMessage());
+    }
+
+    @Test
+    public void getCatalogIgnoresFieldsANewerBridgeAddsWithinTheSameSchemaVersion() throws Exception {
+        ObjectNode catalog = (ObjectNode) new ObjectMapper().readTree(validCatalog());
+        catalog.put("addedByANewerBridge", true);
+        ObjectNode entry = (ObjectNode) catalog.path("profiles").get(0);
+        entry.putObject("lifecycle").put("state", "CURRENT");
+        ((ObjectNode) entry.path("controlRecognitionSummary")).put("addedByANewerBridge", "x");
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+        BridgeProfileCatalog loaded = service.getCatalog();
+
+        assertEquals("sysmex-xn", loaded.profiles().get(0).profile().path("profileMeta").path("id").asText());
+        assertEquals("RULES", loaded.profiles().get(0).controlRecognitionSummary().mode());
     }
 
     @Test
@@ -139,6 +209,46 @@ public class BridgeProfileCatalogServiceTest {
                 () -> service.getCatalog());
 
         assertEquals("Bridge profile catalog contains an invalid control recognition summary", exception.getMessage());
+    }
+
+    @Test
+    public void getCatalogAcceptsExplicitUnconfiguredRulesWithoutClaimingNoControls() throws Exception {
+        JsonNode catalog = new ObjectMapper().readTree(validCatalog());
+        ObjectNode summary = (ObjectNode) catalog.path("profiles").get(0).path("controlRecognitionSummary");
+        summary.putArray("conditions");
+        summary.put("description", "Control recognition not configured");
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+        BridgeProfileCatalog.ControlRecognitionSummary recognition = service.getCatalog().profiles().get(0)
+                .controlRecognitionSummary();
+
+        assertEquals("RULES", recognition.mode());
+        assertEquals(false, recognition.affirmedNoControlResults());
+        assertEquals(0, recognition.conditions().size());
+    }
+
+    @Test
+    public void getCatalogRejectsUnconfiguredRulesThatClaimNoControls() throws Exception {
+        JsonNode catalog = new ObjectMapper().readTree(validCatalog());
+        ObjectNode summary = (ObjectNode) catalog.path("profiles").get(0).path("controlRecognitionSummary");
+        summary.putArray("conditions");
+        summary.put("affirmedNoControlResults", true);
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+        assertThrows(BridgeProfileCatalogException.class, () -> service.getCatalog());
+    }
+
+    @Test
+    public void getCatalogRejectsRulesWithoutAnExplicitConditionsList() throws Exception {
+        JsonNode catalog = new ObjectMapper().readTree(validCatalog());
+        ObjectNode summary = (ObjectNode) catalog.path("profiles").get(0).path("controlRecognitionSummary");
+        summary.remove("conditions");
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+        assertThrows(BridgeProfileCatalogException.class, () -> service.getCatalog());
     }
 
     private static String validCatalog() {

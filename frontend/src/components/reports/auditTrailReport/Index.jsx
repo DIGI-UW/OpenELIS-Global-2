@@ -22,7 +22,7 @@ const AuditTrailReportIndex = () => {
       setType(paramType);
       setIsLoading(false);
     } else {
-      history.replace("/AuditTrailReport?type=system");
+      history.replace("/qa/qms/audit-trail?type=system");
     }
   }, [location.search]);
 
@@ -34,7 +34,7 @@ const AuditTrailReportIndex = () => {
           { label: "home.label", link: "/" },
           {
             label: "sideNav.title.audittrail",
-            link: "/AuditTrailReport?type=system",
+            link: "/qa/qms/audit-trail?type=system",
           },
         ]}
       />

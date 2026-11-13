@@ -17,6 +17,7 @@ import {
   TableSelectRow,
   TableContainer,
   Pagination,
+  Search,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { useServerData } from "../../../utils/useServerData";
@@ -25,15 +26,27 @@ import { AlertDialog } from "../../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import GenericConfigEdit from "../../generalConfig/common/GenericConfigEdit";
+import ValidationPolicySection, {
+  VALIDATION_POLICY_API,
+} from "./ValidationPolicySection";
+import { settingDescription, settingName } from "./settingLabels";
+import { matchesSearch } from "../../../common/searchText";
+import FacilityLocationSection from "../facilityLocation/FacilityLocationSection";
 
 interface ConfigMenuDisplayProps {
   id: string;
-  label: string;
   menuType: string;
 }
 
 interface ConfigLocalization {
   localesAndValuesOfLocalesWithValues?: string;
+}
+
+const RESULT_CONFIGURATION_MENU = "ResultConfigurationMenu";
+const REPLACED_BY_VALIDATION_POLICY = "validate all results";
+
+interface ValidationPolicy {
+  enabled: boolean;
 }
 
 interface ConfigMenuItem {
@@ -73,7 +86,7 @@ interface NotificationContextValue {
   notificationVisible: boolean;
 }
 
-function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
+function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
   const { notificationVisible } = useContext(
     NotificationContext,
   ) as NotificationContextValue;
@@ -90,12 +103,13 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
     useState<ConfigTableRow[]>([]);
 
   const [ConfigEdit, setConfigEdit] = useState(false);
+  const [query, setQuery] = useState("");
 
   // eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
-    { label: `${props.label}`, link: `/MasterListsPage/${props.menuType}` },
+    { label: props.id, link: `/MasterListsPage/${props.menuType}` },
   ];
 
   function handleModify(event: FormEvent<HTMLFormElement>) {
@@ -141,6 +155,10 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
   const { data: formEntryConfigMenuList } = useServerData<ConfigMenuResponse>(
     `/rest/${props.menuType}`,
   );
+  const { data: validationPolicy } = useServerData<ValidationPolicy>(
+    props.menuType === RESULT_CONFIGURATION_MENU ? VALIDATION_POLICY_API : null,
+  );
+  const validationPolicyEnabled = Boolean(validationPolicy?.enabled);
 
   useEffect(() => {
     const updateConfigList = () => {
@@ -184,6 +202,31 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
     updateConfigList();
   }, [formEntryConfigMenuList]);
 
+  const shownSettings = orderEntryConfigurationList
+    .filter(
+      (item) =>
+        !(
+          validationPolicyEnabled && item.name === REPLACED_BY_VALIDATION_POLICY
+        ),
+    )
+    .map((item) => ({
+      ...item,
+      name: settingName(intl, item.name),
+      description: settingDescription(intl, item.name, item.description),
+    }))
+    .filter((item) =>
+      [
+        item.name,
+        orderEntryConfigurationList.find((setting) => setting.id === item.id)
+          ?.name,
+        item.description,
+        item.value,
+      ].some((text) => matchesSearch(text, query)),
+    );
+  const selectionShown = shownSettings.some(
+    (item) => String(item.id) === selectedRowId,
+  );
+
   const renderCell = (
     cell: CarbonTableCell,
     row: CarbonTableRow,
@@ -196,7 +239,7 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
           id={cell.id}
           checked={selectedRowId === row.id}
           name="selectRowRadio"
-          ariaLabel="selectRow"
+          aria-label="selectRow"
           onSelect={() => {
             setModifyButton(false);
             setSelectedRowId(row.id);
@@ -242,12 +285,24 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
                   </Heading>
                 </Section>
                 <br />
+                {validationPolicyEnabled && (
+                  <Section>
+                    <ValidationPolicySection policy={validationPolicy} />
+                    <br />
+                  </Section>
+                )}
+                {props.menuType === "SiteInformationMenu" && (
+                  <Section>
+                    <FacilityLocationSection />
+                    <br />
+                  </Section>
+                )}
                 <Section>
                   <Form onSubmit={handleModify}>
                     <Column lg={16} md={8} sm={4}>
                       <Button
                         data-cy="modify-Button"
-                        disabled={modifyButton}
+                        disabled={modifyButton || !selectionShown}
                         type="submit"
                       >
                         <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
@@ -260,8 +315,23 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
             <div className="orderLegendBody">
               <Grid fullWidth={true} className="gridBoundary">
                 <Column lg={16} md={8} sm={4}>
+                  <Search
+                    id="config-menu-search"
+                    size="lg"
+                    labelText={intl.formatMessage({
+                      id: "admin.page.configuration.search",
+                    })}
+                    placeholder={intl.formatMessage({
+                      id: "admin.page.configuration.search",
+                    })}
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setPage(1);
+                    }}
+                  />
                   <DataTable
-                    rows={orderEntryConfigurationList.slice(
+                    rows={shownSettings.slice(
                       (page - 1) * pageSize,
                       page * pageSize,
                     )}
@@ -320,6 +390,14 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
                             </>
                           </TableBody>
                         </Table>
+                        {query && shownSettings.length === 0 && (
+                          <p className="cds--label">
+                            <FormattedMessage
+                              id="searchableList.noMatch"
+                              values={{ query }}
+                            />
+                          </p>
+                        )}
                       </TableContainer>
                     )}
                   </DataTable>
@@ -328,7 +406,7 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
                     page={page}
                     pageSize={pageSize}
                     pageSizes={[5, 20, 30, 50]}
-                    totalItems={orderEntryConfigurationList.length}
+                    totalItems={shownSettings.length}
                     forwardText={intl.formatMessage({
                       id: "pagination.forward",
                     })}
@@ -376,4 +454,6 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
   );
 }
 
-export default ConfigMenuDisplay;
+export default function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
+  return <ConfigMenuDisplayContent key={props.menuType} {...props} />;
+}

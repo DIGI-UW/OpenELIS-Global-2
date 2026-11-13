@@ -666,7 +666,17 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
         patientInfo.setPatientPK(patient.getId());
     }
 
+    /**
+     * Saves the emergency contact submitted with the patient. A new contact with no
+     * person is nothing to save: callers that do not carry contact details, such as
+     * the FHIR facade, leave the stored contact untouched that way.
+     */
     private void persistContact(PatientManagementInfo patientInfo, Patient patient) {
+        if (patientInfo.getPatientContact() == null
+                || (GenericValidator.isBlankOrNull(patientInfo.getPatientContact().getId())
+                        && patientInfo.getPatientContact().getPerson() == null)) {
+            return;
+        }
         if (GenericValidator.isBlankOrNull(patientInfo.getPatientContact().getId())) {
             PatientContact contact = patientInfo.getPatientContact();
             Person contactPerson = patientInfo.getPatientContact().getPerson();

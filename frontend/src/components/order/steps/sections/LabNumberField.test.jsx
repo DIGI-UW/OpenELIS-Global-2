@@ -28,6 +28,14 @@ describe("LabNumberField", () => {
     getFromOpenElisServer.mockReset();
   });
 
+  // OGC-1240: the asterisk alone told only sighted users the field is required.
+  it("tells assistive technology the lab number is required", () => {
+    renderField({ value: "LAB-1" });
+
+    const labNumber = screen.getByRole("textbox", { name: /Lab Number/ });
+    expect(labNumber).toHaveAttribute("aria-required", "true");
+  });
+
   // OGC-1201 AI: the affordance used to be a Carbon <Link> with no href, so it
   // took no keyboard focus — on the form's only required control.
   it("offers generation as a control the keyboard can reach", async () => {
@@ -57,7 +65,9 @@ describe("LabNumberField", () => {
       "/rest/SampleEntryGenerateScanProvider",
       expect.any(Function),
     );
-    expect(onLabNumberChange).toHaveBeenCalledWith("DEV01260000000000001");
+    expect(onLabNumberChange).toHaveBeenCalledWith("DEV01260000000000001", {
+      generated: true,
+    });
   });
 
   it("leaves an order that already has a lab number alone", () => {

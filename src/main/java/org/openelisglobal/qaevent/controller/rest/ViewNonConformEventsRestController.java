@@ -57,7 +57,11 @@ public class ViewNonConformEventsRestController extends BaseRestController {
             @RequestParam(required = false) String nceNumber, @RequestParam(required = false) String status,
             HttpServletRequest request) {
         Map<String, Object> searchParameters = new HashMap<>();
-        searchParameters.put("status", status);
+        // blank status = any status, matching the other params' guards below —
+        // deep links (?nceNumber=...) must resolve NCEs that moved past Pending
+        if (status != null && !status.isBlank()) {
+            searchParameters.put("status", status);
+        }
         List<NcEvent> searchResults = new ArrayList<>();
         if (!"".equalsIgnoreCase(labNumber)) {
             searchParameters.put("labOrderNumber", labNumber);
@@ -78,8 +82,8 @@ public class ViewNonConformEventsRestController extends BaseRestController {
         NonConformingEventForm response = new NonConformingEventForm();
 
         response.setnceEventsSearchResults(searchResults);
-        response.setNceCategories(nceCategoryService.getActiveCategoriesAsIdValuePairs());
-        response.setNceTypes(nceTypeService.getActiveTypesAsIdValuePairs());
+        response.setNceCategories(nceCategoryService.getAllCategoriesAsIdValuePairs());
+        response.setNceTypes(nceTypeService.getAllTypesAsIdValuePairs());
         response.setLabComponentList(
                 DisplayListService.getInstance().getList(DisplayListService.ListType.LABORATORY_COMPONENT));
         response.setSeverityConsequencesList(

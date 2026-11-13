@@ -18,8 +18,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import javax.imageio.ImageIO;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -177,15 +175,12 @@ public class LogoUploadController {
     }
 
     private boolean validToWrite(MultipartFile logoFile) {
-        boolean valid = logoFile.getSize() > 0 && !GenericValidator.isBlankOrNull(logoFile.getOriginalFilename())
-                && (logoFile.getOriginalFilename().contains("jpg") || logoFile.getOriginalFilename().contains("png")
-                        || logoFile.getOriginalFilename().contains("gif"));
-
-        try (InputStream input = logoFile.getInputStream()) {
-            ImageIO.read(input);
-        } catch (IOException e) {
-            valid = false;
+        try {
+            logoUploadService.validateLogo(logoFile);
+            return true;
+        } catch (IllegalArgumentException e) {
+            LogEvent.logWarn(this.getClass().getName(), "validToWrite", "Logo rejected: " + e.getMessage());
+            return false;
         }
-        return valid;
     }
 }

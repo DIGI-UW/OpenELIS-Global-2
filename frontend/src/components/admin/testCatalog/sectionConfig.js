@@ -13,8 +13,10 @@
 export const V1_SECTIONS = [
   "basic-info",
   "sample-results",
+  "containers",
   "methods",
   "ranges",
+  "qc-targets",
   "storage",
   "panels",
   "labels",
@@ -22,6 +24,7 @@ export const V1_SECTIONS = [
   "reagents",
   "analyzers",
   "alerts",
+  "accreditation",
   "reflex-calc",
   "localization",
   "display-order",

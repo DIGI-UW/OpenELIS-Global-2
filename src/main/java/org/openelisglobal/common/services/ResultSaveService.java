@@ -16,6 +16,7 @@
 
 package org.openelisglobal.common.services;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -166,7 +167,7 @@ public class ResultSaveService {
             }
 
             setAnalyteForResult(result);
-            setStandardResultValues(serviceBean.getResultValue(), result);
+            setStandardResultValues(serviceBean.getResultValue(), serviceBean.getRawResultValue(), result);
             result.setExpandedUncertainty(serviceBean.getExpandedUncertainty());
             result.setCoverageFactor(
                     serviceBean.getExpandedUncertainty() != null ? serviceBean.getCoverageFactor() : null);
@@ -296,7 +297,11 @@ public class ResultSaveService {
         result.setResultType(serviceBean.getResultType());
         result.setMinNormal(serviceBean.getLowerNormalRange());
         result.setMaxNormal(serviceBean.getUpperNormalRange());
-        result.setSignificantDigits(serviceBean.getSignificantDigits());
+        if (serviceBean.getReportingDecimalPlaces() < 0) {
+            result.clearReportingDecimalPlaces();
+        } else {
+            result.setReportingDecimalPlaces(serviceBean.getReportingDecimalPlaces());
+        }
     }
 
     private void setAnalyteForResult(Result result) {
@@ -307,14 +312,75 @@ public class ResultSaveService {
         }
     }
 
-    private void setStandardResultValues(String value, Result result) {
-        if (!(GenericValidator.isBlankOrNull(value) || GenericValidator.isBlankOrNull(result.getValue()))
-                && !StringUtil.blankIfNull(value).equals(result.getValue())) {
+    private void setStandardResultValues(String incoming, Result result) {
+        setStandardResultValues(incoming, null, result);
+    }
+
+    private void setStandardResultValues(String incoming, String postedMeasurement, Result result) {
+        String value = valueToStore(incoming, postedMeasurement, result.getEnteredValue(), result.getResultType(),
+                result.getReportingDecimalPlaces());
+        if (!(GenericValidator.isBlankOrNull(value) || GenericValidator.isBlankOrNull(result.getEnteredValue()))
+                && !isSameValue(value, result)) {
             updatedResult = true;
         }
         result.setValue(value);
         result.setSysUserId(currentUserId);
         result.setSortOrder("0");
+        result.setValidatedDate(null);
+    }
+
+    private boolean isSameValue(String value, Result result) {
+        return isSameValue(value, result.getEnteredValue(), result.getResultType());
+    }
+
+    /**
+     * A numeric result rewritten in another scientific notation, or with equivalent
+     * trailing zeros ("1.2" as "1.20"), is the same result, so it must not book a
+     * correction against a report that has already gone out.
+     */
+    static boolean isSameValue(String value, String enteredValue, String resultType) {
+        String entered = StringUtil.blankIfNull(enteredValue);
+        String incoming = StringUtil.blankIfNull(value);
+        if ("N".equals(resultType)) {
+            String normalizedIncoming = StringUtil.normalizeScientificNotation(incoming.trim());
+            String normalizedEntered = StringUtil.normalizeScientificNotation(entered.trim());
+            if (normalizedIncoming.equals(normalizedEntered)) {
+                return true;
+            }
+            try {
+                return new BigDecimal(normalizedIncoming).compareTo(new BigDecimal(normalizedEntered)) == 0;
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+        return incoming.equals(entered);
+    }
+
+    /**
+     * The value to store for a result saved with {@code incoming}. A numeric result
+     * is served to its clients rounded to its decimal places, while the stored
+     * value is what was measured (OGC-1544). A client that posts a row back
+     * unchanged sends that rounded form, which used to replace the measurement: 0.9
+     * on a 0-decimal test became 1 when only a note was edited (OGC-1569). The
+     * rounded form of the stored value is therefore read as "unchanged" and the
+     * stored value is kept, unless the client says it holds another measurement:
+     * {@code postedMeasurement} is the unrounded value the client sends with the
+     * row, which a page that edits from the measurement sets to what was typed. Any
+     * other value is what the user entered and is stored.
+     */
+    static String valueToStore(String incoming, String postedMeasurement, String enteredValue, String resultType,
+            int decimalPlaces) {
+        if (!"N".equals(resultType) || GenericValidator.isBlankOrNull(incoming)
+                || GenericValidator.isBlankOrNull(enteredValue) || isSameValue(incoming, enteredValue, resultType)) {
+            return incoming;
+        }
+        if (!GenericValidator.isBlankOrNull(postedMeasurement)
+                && !isSameValue(postedMeasurement, enteredValue, resultType)) {
+            return incoming;
+        }
+        String entered = enteredValue.trim();
+        String served = StringUtil.roundToPlaces(entered, decimalPlaces);
+        return incoming.trim().equals(served == null ? null : served.trim()) ? enteredValue : incoming;
     }
 
     private String getResultSortOrder(String resultValue, String componentId) {

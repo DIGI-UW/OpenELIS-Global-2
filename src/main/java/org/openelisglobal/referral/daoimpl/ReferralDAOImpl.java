@@ -42,6 +42,16 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Override
     @Transactional(readOnly = true)
+    public List<Referral> getWorkspaceReferrals(List<String> sampleItemIds) {
+        if (sampleItemIds.isEmpty())
+            return List.of();
+        return entityManager.createQuery(
+                "select r from Referral r join fetch r.analysis a join fetch a.sampleItem s join fetch a.test left join fetch r.organization left join fetch r.subcontract where s.id in (:ids) order by r.requestDate, r.id",
+                Referral.class).setParameter("ids", sampleItemIds).getResultList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Referral getReferralById(String referralId) throws LIMSRuntimeException {
         try {
             Referral referral = entityManager.unwrap(Session.class).get(Referral.class, referralId);
@@ -58,13 +68,18 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
     public Referral getReferralByAnalysisId(String analysisId) throws LIMSRuntimeException {
 
         if (ObjectUtils.isNotEmpty(analysisId)) {
-            String sql = "From Referral r where r.analysis.id = :analysisId";
+            // An analysis can carry more than one referral: a rejected or cancelled one
+            // is re-raised, or the sample goes to a second lab. Newest first, so the
+            // caller always gets the referral currently in play rather than whichever
+            // row the database happened to return first.
+            String sql = "From Referral r where r.analysis.id = :analysisId order by r.id desc";
 
             try {
                 Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
                 query.setParameter("analysisId", analysisId);
+                query.setMaxResults(1);
                 List<Referral> referralList = query.list();
-                return referralList.isEmpty() ? null : referralList.get(referralList.size() - 1);
+                return referralList.isEmpty() ? null : referralList.get(0);
             } catch (HibernateException e) {
                 handleException(e, "getReferralByAnalysisId");
             }
@@ -209,7 +224,8 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
         // Filter in SQL for performance: exclude lost, canceled, and already assigned
         // referrals
         String sql = "FROM Referral r WHERE r.assignedBox IS NULL "
-                + "AND (r.lostStatus IS NULL OR r.lostStatus = false) " + "AND r.status != 'CANCELED'";
+                + "AND (r.lostStatus IS NULL OR r.lostStatus = false) "
+                + "AND r.status NOT IN ('CANCELLED', 'CANCELED')";
 
         try {
             Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
@@ -241,7 +257,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
     public List<Referral> getReferralsBySampleItemId(String sampleItemId) {
         String hql = "SELECT DISTINCT r" + " FROM Referral r" + " JOIN FETCH r.analysis a"
                 + " JOIN FETCH a.sampleItem si" + " LEFT JOIN FETCH a.test t" + " LEFT JOIN FETCH r.organization org"
-                + " WHERE si.id = :sampleItemId" + "   AND r.status != 'CANCELED'"
+                + " WHERE si.id = :sampleItemId" + "   AND r.status NOT IN ('CANCELLED', 'CANCELED')"
                 + "   AND (r.lostStatus IS NULL OR r.lostStatus = false)" + " ORDER BY r.requestDate";
 
         try {
@@ -262,7 +278,8 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
                 + " s.collectionDate, si.sortOrder" + " FROM Referral r" + " JOIN r.analysis a"
                 + " JOIN a.sampleItem si" + " JOIN si.sample s" + " LEFT JOIN si.typeOfSample tos"
                 + " WHERE r.assignedBox IS NULL" + "   AND (r.lostStatus IS NULL OR r.lostStatus = false)"
-                + "   AND r.status != 'CANCELED'" + "   AND (si.rejected IS NULL OR si.rejected = false)"
+                + "   AND r.status NOT IN ('CANCELLED', 'CANCELED')"
+                + "   AND (si.rejected IS NULL OR si.rejected = false)"
                 + "   AND (si.voided IS NULL OR si.voided = false)";
 
         if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {
@@ -293,7 +310,8 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
                 + " s.collectionDate, si.sortOrder" + " FROM Referral r" + " JOIN r.analysis a"
                 + " JOIN a.sampleItem si" + " JOIN si.sample s" + " LEFT JOIN si.typeOfSample tos"
                 + " WHERE r.assignedBox IS NULL" + "   AND (r.lostStatus IS NULL OR r.lostStatus = false)"
-                + "   AND r.status != 'CANCELED'" + "   AND (si.rejected IS NULL OR si.rejected = false)"
+                + "   AND r.status NOT IN ('CANCELLED', 'CANCELED')"
+                + "   AND (si.rejected IS NULL OR si.rejected = false)"
                 + "   AND (si.voided IS NULL OR si.voided = false)" + "   AND s.accessionNumber LIKE :accessionNumber";
 
         if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {

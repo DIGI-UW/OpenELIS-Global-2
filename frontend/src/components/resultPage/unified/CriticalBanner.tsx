@@ -40,9 +40,13 @@ const CriticalBanner: React.FC<CriticalBannerProps> = ({
       setLoaded(true);
       return;
     }
+    const controller = new AbortController();
     getFromOpenElisServer(
       `/rest/alerts?entityType=ANALYSIS&entityId=${analysisId}`,
       (list: AlertDTO[]) => {
+        if (controller.signal.aborted) {
+          return;
+        }
         const criticals = (Array.isArray(list) ? list : []).filter(
           (a) => a.alertType === "CRITICAL_RESULT",
         );
@@ -50,7 +54,9 @@ const CriticalBanner: React.FC<CriticalBannerProps> = ({
         setAlert(open || criticals[criticals.length - 1] || null);
         setLoaded(true);
       },
+      controller.signal,
     );
+    return () => controller.abort();
   }, [analysisId]);
 
   const acknowledge = () => {
@@ -64,7 +70,7 @@ const CriticalBanner: React.FC<CriticalBannerProps> = ({
       (status: number) => {
         setSubmitting(false);
         if (status === 200) {
-          setAlert({ ...alert, status: "RESOLVED" });
+          setAlert({ ...alert, status: "ACKNOWLEDGED" });
         }
       },
     );
@@ -80,7 +86,7 @@ const CriticalBanner: React.FC<CriticalBannerProps> = ({
           <FormattedMessage id="label.results.critical.banner.title" />
         </div>
         <div className="unifiedCriticalBannerText">
-          <FormattedMessage id="label.results.critical.banner.body" />
+          <FormattedMessage id="label.results.critical.banner.notify" />
           {criticalRange && (
             <>
               {" "}

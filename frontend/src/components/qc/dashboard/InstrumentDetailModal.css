@@ -22,10 +22,6 @@
   margin-bottom: var(--cds-spacing-06, 1.5rem);
 }
 
-.instrument-detail-back-button {
-  margin-top: var(--cds-spacing-05, 1rem);
-}
-
 /* Subtitle with instrument metadata */
 .instrument-detail-subtitle {
   display: flex;

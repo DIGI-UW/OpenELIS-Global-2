@@ -41,7 +41,7 @@ import useModalFocusReturn from "./useModalFocusReturn";
 
 const emptyPanel = {
   name: "",
-  workflowType: "BACTERIOLOGY",
+  susceptibilityProtocol: "GENERAL",
   organismGroup: "",
   specimenTypeId: "",
   active: true,
@@ -117,12 +117,6 @@ const AstPanelPage = ({ query, setQuery }) => {
         header: intl.formatMessage({ id: "microbiology.admin.field.name" }),
       },
       {
-        key: "workflowType",
-        header: intl.formatMessage({
-          id: "microbiology.admin.field.workflow",
-        }),
-      },
-      {
         key: "version",
         header: intl.formatMessage({
           id: "microbiology.admin.astPanels.version",
@@ -140,7 +134,6 @@ const AstPanelPage = ({ query, setQuery }) => {
   const rows = page.rows.map((panel) => ({
     id: panel.id,
     name: panel.name,
-    workflowType: panel.workflowType,
     version: `v${panel.versionNumber}`,
     status: { current: panel.current, active: panel.active },
     actions: { id: panel.id, current: panel.current },
@@ -269,36 +262,6 @@ const AstPanelPage = ({ query, setQuery }) => {
                     value="INACTIVE"
                     text={intl.formatMessage({
                       id: "microbiology.admin.status.inactive",
-                    })}
-                  />
-                </Select>
-                <Select
-                  id="microbiology-panel-workflow-filter"
-                  hideLabel
-                  labelText={intl.formatMessage({
-                    id: "microbiology.admin.field.workflow",
-                  })}
-                  value={query.workflow}
-                  onChange={(event) =>
-                    setQuery({ workflow: event.target.value })
-                  }
-                >
-                  <SelectItem
-                    value=""
-                    text={intl.formatMessage({
-                      id: "microbiology.admin.workflow.all",
-                    })}
-                  />
-                  <SelectItem
-                    value="BACTERIOLOGY"
-                    text={intl.formatMessage({
-                      id: "microbiology.workflow.bacteriology",
-                    })}
-                  />
-                  <SelectItem
-                    value="MYCOBACTERIOLOGY"
-                    text={intl.formatMessage({
-                      id: "microbiology.workflow.mycobacteriology",
                     })}
                   />
                 </Select>
@@ -454,6 +417,26 @@ const AstPanelPage = ({ query, setQuery }) => {
           )}
           {draft && (
             <div className="microbiology-admin__form">
+              <Select
+                id="panel-protocol"
+                labelText={intl.formatMessage({
+                  id: "microbiology.m6.protocol",
+                })}
+                value={draft.susceptibilityProtocol || "GENERAL"}
+                onChange={(e) =>
+                  updateDraft({ susceptibilityProtocol: e.target.value })
+                }
+              >
+                {["GENERAL", "TB", "NTM"].map((value) => (
+                  <SelectItem
+                    key={value}
+                    value={value}
+                    text={intl.formatMessage({
+                      id: `microbiology.m6.protocol.${value}`,
+                    })}
+                  />
+                ))}
+              </Select>
               <TextInput
                 id="microbiology-panel-name"
                 labelText={intl.formatMessage({
@@ -463,30 +446,6 @@ const AstPanelPage = ({ query, setQuery }) => {
                 disabled={readOnly}
                 onChange={(event) => updateDraft({ name: event.target.value })}
               />
-              <Select
-                id="microbiology-panel-workflow"
-                labelText={intl.formatMessage({
-                  id: "microbiology.admin.field.workflow",
-                })}
-                value={draft.workflowType}
-                disabled={readOnly}
-                onChange={(event) =>
-                  updateDraft({ workflowType: event.target.value })
-                }
-              >
-                <SelectItem
-                  value="BACTERIOLOGY"
-                  text={intl.formatMessage({
-                    id: "microbiology.workflow.bacteriology",
-                  })}
-                />
-                <SelectItem
-                  value="MYCOBACTERIOLOGY_TB"
-                  text={intl.formatMessage({
-                    id: "microbiology.workflow.mycobacteriology",
-                  })}
-                />
-              </Select>
               <Checkbox
                 id="microbiology-panel-active"
                 labelText={intl.formatMessage({
@@ -582,6 +541,21 @@ const AstPanelPage = ({ query, setQuery }) => {
                         })}
                       />
                     </Select>
+                    <TextInput
+                      id={`microbiology-disk-${row.antibioticId}`}
+                      labelText={intl.formatMessage({
+                        id: "microbiology.admin.astPanels.diskContent",
+                      })}
+                      helperText={intl.formatMessage({
+                        id: "microbiology.admin.astPanels.diskContent.help",
+                      })}
+                      value={row.diskContent || ""}
+                      maxLength={40}
+                      readOnly={readOnly}
+                      onChange={(event) =>
+                        updateRow(index, { diskContent: event.target.value })
+                      }
+                    />
                     <div className="microbiology-admin__row-actions">
                       <Button
                         kind="ghost"

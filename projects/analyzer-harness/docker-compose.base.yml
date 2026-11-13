@@ -1,14 +1,46 @@
 services:
+  harness-catalog-init:
+    image: alpine:3.21
+    restart: "no"
+    volumes:
+      - configuration-data:/catalog
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        # A file Catalog Import already wrote to the volume is kept.
+        cd /dictionary
+        find . -type f | while read -r file; do
+          target="/catalog/backend/$$file"
+          [ -e "$$target" ] && continue
+          mkdir -p "$$(dirname "$$target")"
+          cp "$$file" "$$target"
+        done
+        chown -R 8443:8443 /catalog/backend
+
   certs:
     container_name: oe-certs
+    restart: "no"
+    # Each stack selects the image containing the same OE2 initializer.
     environment:
-      KEYSTORE_PW: '"kspass"'
-      TRUSTSTORE_PW: '"tspass"'
+      KEYSTORE_PW: ${SSL_KEYSTORE_PASSWORD:-kspass}
+      TRUSTSTORE_PW: ${SSL_TRUSTSTORE_PASSWORD:-tspass}
     volumes:
-      - key_trust-store-volume:/etc/openelis-global
-      - keys-vol:/etc/ssl/private/
-      - certs-vol:/etc/ssl/certs/
-
+      - type: volume
+        source: key_trust-store-volume
+        target: /etc/openelis-global
+        volume:
+          nocopy: true
+      - type: volume
+        source: keys-vol
+        target: /etc/ssl/private/
+        volume:
+          nocopy: true
+      - type: volume
+        source: certs-vol
+        target: /etc/ssl/certs/
+        volume:
+          nocopy: true
   db.openelis.org:
     container_name: openelisglobal-database
     ports:
@@ -28,20 +60,35 @@ services:
       - "8080:8080"
       - "8443:8443"
     environment:
-      DEFAULT_PW: adminADMIN!
+      # Override older bootstrapped common.properties as well as fresh copies.
+      SERVER_SSL_KEY_STORE_PASSWORD: ${SSL_KEYSTORE_PASSWORD:-kspass}
+      SERVER_SSL_KEY_PASSWORD: ${SSL_KEYSTORE_PASSWORD:-kspass}
+      SERVER_SSL_TRUST_STORE_PASSWORD: ${SSL_TRUSTSTORE_PASSWORD:-tspass}
+      SSL_KEYSTORE_PASSWORD: ${SSL_KEYSTORE_PASSWORD:-kspass}
+      SSL_TRUSTSTORE_PASSWORD: ${SSL_TRUSTSTORE_PASSWORD:-tspass}
       TZ: Africa/Nairobi
       SPRING_LIQUIBASE_CONTEXTS: test
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+      harness-catalog-init:
+        condition: service_completed_successfully
     networks:
       - default
+    # `compose up --wait` gives up once a check fails after the start period,
+    # so the start period, not the caller's --wait-timeout, bounds a slow boot.
     healthcheck:
       test: ["CMD", "/healthcheck.sh"]
       timeout: 10s
       interval: 30s
       retries: 3
-      start_period: 2m
+      start_period: 10m
 
   fhir.openelis.org:
     container_name: external-fhir-api
+    depends_on:
+      certs:
+        condition: service_completed_successfully
     ports:
       - "8081:8080"
       - "8444:8443"
@@ -52,8 +99,33 @@ services:
       CHOKIDAR_USEPOLLING: "true"
     tty: true
 
+  # Shared by CI and local development; all durable Bridge state survives
+  # container replacement and ordinary down/up (only --volumes removes it).
+  openelis-analyzer-bridge:
+    # Only the development/CI profile serves the shared test keystore.
+    group_add: ["8443"]
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+    volumes:
+      - bridge-data:/data/openelis-analyzer-bridge
+    environment:
+      SERVER_SSL_KEY_STORE_PASSWORD: ${SSL_KEYSTORE_PASSWORD:-kspass}
+      BRIDGE_TRUSTSTORE_PATH: /etc/openelis-global/truststore
+      BRIDGE_TRUSTSTORE_PASSWORD: ${SSL_TRUSTSTORE_PASSWORD:-tspass}
+      BRIDGE_TRUSTSTORE_TYPE: PKCS12
+      BRIDGE_OUTBOX_DB_PATH: /data/openelis-analyzer-bridge/outbox.db
+      BRIDGE_FILE_STATE_STORE_PATH: /data/openelis-analyzer-bridge/state.db
+
   proxy:
     container_name: openelisglobal-proxy
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+      frontend.openelis.org:
+        condition: service_started
+      oe.openelis.org:
+        condition: service_healthy
     ports:
       - "80:80"
       - "443:443"
@@ -63,8 +135,11 @@ networks:
     driver: bridge
 
 volumes:
+  bridge-data:
+  configuration-data:
   db-data:
   key_trust-store-volume:
   certs-vol:
   keys-vol:
+  reporting-data:
   lucene_index-vol:

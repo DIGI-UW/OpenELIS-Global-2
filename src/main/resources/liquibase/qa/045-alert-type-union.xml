@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- The alert-type CHECK was widened twice in parallel: once on the core line
+         for microbiology critical communications and the two freezer states, and
+         once here for the automatic-submission failure. Each rewrote the whole
+         constraint, so whichever ran last silently withdrew the other's types and
+         every insert of one failed. This restores the union, and it runs after
+         both because it sits at the end of the changelog. Add new alert types to
+         AlertType and to this list together. -->
+    <changeSet author="openelisglobal" id="qa-084-alert-type-union">
+        <comment>Allow every alert type both lines introduced</comment>
+        <sql>
+            ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+            ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+            CHECK (alert_type IN (
+            'FREEZER_TEMPERATURE', 'FREEZER_HUMIDITY', 'FREEZER_OFFLINE', 'EQUIPMENT_FAILURE',
+            'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER', 'EQA_DEADLINE', 'EQA_SUBMISSION_FAILED',
+            'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED',
+            'CRITICAL_RESULT', 'REFERRAL_CRITICAL_RESULT', 'REFERRAL_REJECTED',
+            'REQUIRED_BY_DEADLINE', 'MICROBIOLOGY_CRITICAL'
+            ));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

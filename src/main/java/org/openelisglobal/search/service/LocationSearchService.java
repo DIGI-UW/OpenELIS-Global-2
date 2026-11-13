@@ -25,6 +25,7 @@ import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Location;
 import org.openelisglobal.common.fhir.dao.DateParamBounds;
 import org.openelisglobal.fhir.FhirConstants;
+import org.openelisglobal.fhir.search.bundleProviders.BaseFhirBundleProvider;
 import org.openelisglobal.fhir.search.bundleProviders.PagedBundleProvider;
 import org.openelisglobal.fhir.search.searchparams.LocationSearchParams;
 import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
@@ -127,8 +128,16 @@ public class LocationSearchService {
 
         @Override
         public void setCurrentPage(Integer offset, Integer count) {
+            if (offset == null) {
+                currentPageOffset = null;
+                currentPageSize = null;
+                return;
+            }
+            if (offset < 0) {
+                throw new IllegalArgumentException("_offset must be zero or greater");
+            }
             currentPageOffset = offset;
-            currentPageSize = offset == null || count == null || count <= 0 ? null : count;
+            currentPageSize = count == null || count <= 0 ? BaseFhirBundleProvider.defaultPageSize() : count;
         }
 
         @Override
