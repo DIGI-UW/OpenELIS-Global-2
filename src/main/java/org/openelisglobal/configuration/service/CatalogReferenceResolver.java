@@ -186,7 +186,8 @@ public class CatalogReferenceResolver {
     }
 
     public MicroOrganism resolveOrganism(String name, String context) {
-        MicroOrganism organism = organismDAO.findByDisplayNameIgnoreCase(name).orElse(null);
+        MicroOrganism organism = organismDAO.findByDisplayNameIgnoreCase(name)
+                .or(() -> organismDAO.findByWhonetName(name)).orElse(null);
         if (organism == null) {
             String aliased = aliasService.resolve(UnresolvedReference.TYPE_ORGANISM, name);
             if (aliased != null) {

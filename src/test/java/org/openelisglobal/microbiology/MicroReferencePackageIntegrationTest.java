@@ -68,6 +68,10 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     private MicrobiologyConfigurationService configuration;
     @Autowired
     private MicrobiologyReferenceAdminService referenceAdmin;
+    @Autowired
+    private MicroWhonetOrganismConfigurationHandler whonetOrganismTable;
+    @Autowired
+    private MicroWhonetOrganismDAO whonetOrganisms;
 
     @Before
     public void seedAdoptableConcept() throws Exception {
@@ -90,6 +94,7 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
                 oldDirectory);
         org.springframework.test.util.ReflectionTestUtils.setField(catalog, "configurationBaseDir",
                 oldCatalogDirectory);
+        whonetOrganisms.deleteAllRows();
     }
 
     @Test
@@ -1615,6 +1620,99 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     private org.openelisglobal.configuration.service.ConfigurationReloadResult reloadOrganismGroups(boolean force) {
         return initialization.reload(new org.openelisglobal.configuration.service.ConfigurationReloadOptions(
                 java.util.Set.of("microbiology-organism-groups"), force));
+    }
+
+    @Test
+    public void organismGroupFileFindsAnOrganismUnderAnOlderWhonetName() throws Exception {
+        loadWhonetOrganisms("kpn\t\tKlebsiella pneumoniae ss. pneumoniae\tC\tKL-\tKlebsiella\n"
+                + "kpn\t\tKlebsiella pneumoniae\tO\tKL-\tKlebsiella\n");
+        String group = "Group " + suffix();
+        writeOrganismGroups(GROUPS_HEADER + "Klebsiella pneumoniae,,," + group + "\n");
+
+        var result = reloadOrganismGroups(false);
+
+        assertFalse(result.toString(), result.hasErrors());
+        assertEquals(java.util.List.of(group), labGroups(organisms.findByWhonetCodeIgnoreCase("kpn").orElseThrow()));
+    }
+
+    @Test
+    public void aNameWhonetGivesToTwoOrganismsIsUnknownToAnOrganismGroupFile() throws Exception {
+        loadWhonetOrganisms("aaa\t\tTwin organism A\tC\t\t\n" + "bbb\t\tTwin organism B\tC\t\t\n"
+                + "aaa\t\tShared older name\tO\t\t\n" + "bbb\t\tShared older name\tO\t\t\n");
+        writeOrganismGroups(GROUPS_HEADER + "Shared older name,,,Group " + suffix() + "\n");
+
+        String error = reloadOrganismGroups(false).files().get(0).errorMessage();
+
+        assertTrue(error, error.contains("Line 2: unknown organism Shared older name"));
+    }
+
+    @Test
+    public void aSpeciesPanelAndAGenusPanelShareOutAWhonetGenus() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.71", "WHONETDEFAULT");
+        load(fixture);
+        loadWhonetOrganisms("tau\t\tTestococcus aureus ss. aureus\tC\tTES\tTestococcus\n"
+                + "tau\t\tTestococcus aureus\tO\tTES\tTestococcus\n"
+                + "tep\t\tTestococcus epidermidis\tC\tTES\tTestococcus\n"
+                + "tcn\t\tTestococcus, coagulase negative\tC\tTES\t\n");
+        writePanels("panelName,antibioticWhonetCode,defaultFor\nWhonet genus panel," + fixture.antibiotic
+                + ",Testococcus\nWhonet species panel," + fixture.antibiotic + ",Testococcus aureus\n");
+
+        var result = reloadPanels(false);
+
+        assertFalse(result.toString(), result.hasErrors());
+        assertEquals("Whonet species panel", defaultPanel("tau"));
+        assertEquals("Whonet genus panel", defaultPanel("tep"));
+        assertEquals("Whonet genus panel", defaultPanel("tcn"));
+    }
+
+    @Test
+    public void panelOrganismCoverageCountsAWhonetRuleOnlyForTheOrganismsItsLevelCovers() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.72", "WHONETCOVERAGE");
+        load(fixture);
+        loadWhonetOrganisms("sau\t\tStaphylococcus aureus ss. aureus\tC\tSTA\tStaphylococcus\n"
+                + "sep\t\tStaphylococcus epidermidis\tC\tSTA\tStaphylococcus\n"
+                + "eco\t\tEscherichia coli\tC\tESC\tEscherichia\n");
+        String drug = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow().getId();
+        whonetRule(fixture, drug, "GENUS_CODE", "STA", "2");
+        whonetRule(fixture, drug, "WHONET_ORG_CODE", "sau", null);
+
+        var coverage = referenceAdmin.getPanelOrganismCoverage(java.util.List.of(drug), "GENERAL");
+
+        java.util.function.Function<String, Integer> covered = name -> coverage.stream()
+                .filter(row -> row.value.equals(name)).findFirst().orElseThrow().covered;
+        assertEquals(Integer.valueOf(1), covered.apply("Staphylococcus epidermidis"));
+        assertEquals("A closer rule without values means no breakpoint", Integer.valueOf(0),
+                covered.apply("Staphylococcus aureus ss. aureus"));
+        assertEquals(Integer.valueOf(0), covered.apply("Escherichia coli"));
+    }
+
+    private void loadWhonetOrganisms(String rows) throws Exception {
+        String table = "WHONET_ORG_CODE\tREPLACED_BY\tORGANISM\tTAXONOMIC_STATUS\tGENUS_CODE\tGENUS\n" + rows;
+        whonetOrganismTable.processConfiguration(
+                new java.io.ByteArrayInputStream(table.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                "Organisms.txt");
+    }
+
+    private String defaultPanel(String whonetCode) {
+        return java.util.Optional
+                .ofNullable(organisms.findByWhonetCodeIgnoreCase(whonetCode).orElseThrow().getDefaultAstPanelId())
+                .flatMap(panels::get).map(MicroAstPanel::getName).orElse(null);
+    }
+
+    private void whonetRule(ReferencePackageFixture fixture, String antibioticId, String level, String code,
+            String susceptible) {
+        var rule = new MicroBreakpointRule();
+        rule.setStandardId(standard(fixture).getId());
+        rule.setAntibioticId(antibioticId);
+        rule.setBreakpointType("MIC");
+        rule.setOrganismCodeType(level);
+        rule.setOrganismCode(code);
+        if (susceptible != null) {
+            rule.setSusceptibleValue(new BigDecimal(susceptible));
+            rule.setResistantValue(new BigDecimal("64"));
+        }
+        rule.setIsActive("Y");
+        rules.insert(rule);
     }
 
     private java.util.List<String> labGroups(MicroOrganism organism) {

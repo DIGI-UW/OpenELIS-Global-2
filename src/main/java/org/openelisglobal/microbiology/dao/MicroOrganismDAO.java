@@ -26,6 +26,9 @@ public interface MicroOrganismDAO extends BaseDAO<MicroOrganism, String> {
 
     Optional<MicroOrganism> findByWhonetCodeIgnoreCase(String whonetCode);
 
+    // Empty when WHONET gives the name, current or older, to several organisms.
+    Optional<MicroOrganism> findByWhonetName(String name);
+
     Optional<MicroOrganism> findByReference(String source, String code);
 
     List<MicroOrganism> getByDefaultAstPanelId(String panelId);

@@ -194,6 +194,13 @@ public class MicroBreakpointServiceImpl implements MicroBreakpointService {
         return best;
     }
 
+    /** Only the closest level counts; valueless rules there hide a wider one. */
+    static boolean hasBreakpoint(List<MicroBreakpointRule> rules, MicroWhonetOrganism organism) {
+        int closest = rules.stream().mapToInt(rule -> level(rule, organism)).min().orElse(NO_LEVEL);
+        return closest < NO_LEVEL && rules.stream().anyMatch(rule -> level(rule, organism) == closest
+                && rule.getSusceptibleValue() != null && rule.getResistantValue() != null);
+    }
+
     /** Lower is more specific; NO_LEVEL when the rule is not for this organism. */
     private static int level(MicroBreakpointRule rule, MicroWhonetOrganism organism) {
         String code = rule.getOrganismCode();

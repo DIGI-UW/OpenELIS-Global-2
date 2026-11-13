@@ -26,6 +26,7 @@ import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
+import org.openelisglobal.microbiology.dao.MicroWhonetOrganismDAO;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
@@ -42,6 +43,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanelAssignment;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
+import org.openelisglobal.microbiology.valueholder.MicroWhonetOrganism;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +62,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     private final MicroAstPanelAssignmentDAO assignmentDAO;
     private final MicroBreakpointRuleDAO breakpointRuleDAO;
     private final MicroPatientOriginDAO patientOriginDAO;
+    private final MicroWhonetOrganismDAO whonetOrganismDAO;
     private final MethodService methodService;
     private final TypeOfSampleService typeOfSampleService;
 
@@ -67,8 +70,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             MicroAstPanelDAO panelDAO, MicroAstPanelAntibioticDAO panelAntibioticDAO,
             MicroPatientOriginDAO patientOriginDAO, MethodService methodService,
             TypeOfSampleService typeOfSampleService, MicroAstPanelAssignmentDAO assignmentDAO,
-            MicroBreakpointRuleDAO breakpointRuleDAO) {
+            MicroBreakpointRuleDAO breakpointRuleDAO, MicroWhonetOrganismDAO whonetOrganismDAO) {
         this.organismDAO = organismDAO;
+        this.whonetOrganismDAO = whonetOrganismDAO;
         this.antibioticDAO = antibioticDAO;
         this.panelDAO = panelDAO;
         this.panelAntibioticDAO = panelAntibioticDAO;
@@ -307,7 +311,13 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         Map<String, Set<String>> byOrganism = new HashMap<>();
         Map<String, Set<String>> byGroup = new HashMap<>();
         Set<String> forEveryOrganism = new HashSet<>();
+        Map<List<String>, List<MicroBreakpointRule>> whonetRules = new HashMap<>();
         for (MicroBreakpointRule rule : breakpointRuleDAO.getActiveByAntibioticIds(drugs)) {
+            if (rule.getOrganismCodeType() != null) {
+                whonetRules.computeIfAbsent(List.of(rule.getAntibioticId(), rule.getStandardId()),
+                        key -> new ArrayList<>()).add(rule);
+                continue;
+            }
             Set<String> covered = rule.getOrganismId() != null
                     ? byOrganism.computeIfAbsent(rule.getOrganismId(), key -> new HashSet<>())
                     : rule.getOrganismGroup() != null
@@ -317,6 +327,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         }
         List<MicroPanelCoverageForm> rows = new ArrayList<>();
         Map<String, Set<String>> labGroups = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        Map<String, MicroWhonetOrganism> whonet = currentWhonetOrganisms();
         for (MicroOrganism organism : organismDAO.getActiveOrganisms()) {
             if (!Objects.equals(protocol, organism.getSusceptibilityProtocol())) {
                 continue;
@@ -324,6 +335,14 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             Set<String> covered = new HashSet<>(forEveryOrganism);
             covered.addAll(byOrganism.getOrDefault(organism.getId(), Set.of()));
             covered.addAll(byGroup.getOrDefault(organism.getOrganismGroup(), Set.of()));
+            MicroWhonetOrganism whonetOrganism = whonetOrganism(whonet, organism);
+            if (whonetOrganism != null) {
+                whonetRules.forEach((drugAndEdition, edition) -> {
+                    if (MicroBreakpointServiceImpl.hasBreakpoint(edition, whonetOrganism)) {
+                        covered.add(drugAndEdition.get(0));
+                    }
+                });
+            }
             rows.add(coverage(organism.getDisplayName(), false, covered.size(), drugs.size()));
             for (String group : organism.getLabGroups()) {
                 labGroups.computeIfAbsent(group, key -> new HashSet<>()).addAll(covered);
@@ -351,15 +370,33 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                 .filter(p -> "Y".equals(p.getIsCurrent()) && "Y".equals(p.getIsActive())
                         && !defaultForEntries(p.getDefaultFor()).isEmpty())
                 .sorted(Comparator.comparing(MicroAstPanel::getName, String.CASE_INSENSITIVE_ORDER)).toList();
+        Map<String, MicroWhonetOrganism> whonet = currentWhonetOrganisms();
+        Map<String, String> whonetSpecies = new HashMap<>();
+        Map<String, Set<String>> whonetGenus = new HashMap<>();
+        claimants.stream().flatMap(panel -> defaultForEntries(panel.getDefaultFor()).stream()).distinct()
+                .forEach(entry -> {
+                    organismDAO.findByWhonetName(entry).ifPresent(named -> whonetSpecies.put(entry, named.getId()));
+                    whonetGenus.put(entry,
+                            whonet.values().stream().filter(row -> entry.equalsIgnoreCase(row.getGenus()))
+                                    .map(MicroWhonetOrganism::getGenusCode).filter(Objects::nonNull)
+                                    .collect(Collectors.toSet()));
+                });
         Map<MicroOrganism, MicroAstPanel> winners = new LinkedHashMap<>();
         Set<String> matched = new HashSet<>();
         List<String> errors = new ArrayList<>();
         for (var organism : organismDAO.getActiveOrganisms()) {
+            MicroWhonetOrganism whonetOrganism = whonetOrganism(whonet, organism);
             Map<MicroAstPanel, String> bestEntries = new LinkedHashMap<>();
             int bestRank = 0;
             for (var panel : claimants) {
                 for (String entry : defaultForEntries(panel.getDefaultFor())) {
                     int rank = specificity(entry, organism.getDisplayName(), organism.getLabGroups());
+                    if (organism.getId().equals(whonetSpecies.get(entry))) {
+                        rank = 3;
+                    } else if (rank < 2 && whonetOrganism != null
+                            && whonetGenus.get(entry).contains(whonetOrganism.getGenusCode())) {
+                        rank = 2;
+                    }
                     if (rank > 0) {
                         matched.add(panel.getId() + "\n" + entry);
                     }
@@ -418,6 +455,16 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                 organismDAO.update(organism);
             }
         });
+    }
+
+    private Map<String, MicroWhonetOrganism> currentWhonetOrganisms() {
+        return whonetOrganismDAO.getAll().stream()
+                .filter(row -> MicroWhonetOrganism.CURRENT.equals(row.getTaxonomicStatus())).collect(Collectors.toMap(
+                        row -> row.getWhonetOrgCode().toLowerCase(Locale.ROOT), row -> row, (first, second) -> first));
+    }
+
+    private static MicroWhonetOrganism whonetOrganism(Map<String, MicroWhonetOrganism> whonet, MicroOrganism organism) {
+        return organism.getWhonetCode() == null ? null : whonet.get(organism.getWhonetCode().toLowerCase(Locale.ROOT));
     }
 
     static List<String> defaultForEntries(String defaultFor) {
