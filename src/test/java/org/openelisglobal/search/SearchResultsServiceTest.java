@@ -178,6 +178,38 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals(gender, result.getGender());
     }
 
+    @Test
+    public void getSearchResults_shouldFilterByExternalIdInLuceneSearch() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "person", "patient" });
+
+        Patient patient = createPatient("Alex", "External", "12/12/1992", "M");
+        patient.setNationalId("NATIONAL-SEARCH-001");
+        patient.setExternalId("EXTERNAL-SEARCH-001");
+        String patientId = patientService.insert(patient);
+
+        List<PatientSearchResults> results = luceneSearchResultsServiceImpl.getSearchResults(null, null, null, null,
+                null, "EXTERNAL-SEARCH-001", null, null, null, null);
+
+        Assert.assertEquals(1, results.size());
+        Assert.assertEquals(patientId, results.get(0).getPatientID());
+    }
+
+    @Test
+    public void getSearchResultsExact_shouldFilterByExternalIdInLuceneSearch() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "person", "patient" });
+
+        Patient patient = createPatient("Alex", "External", "12/12/1992", "M");
+        patient.setNationalId("NATIONAL-SEARCH-002");
+        patient.setExternalId("EXTERNAL-SEARCH-002");
+        String patientId = patientService.insert(patient);
+
+        List<PatientSearchResults> results = luceneSearchResultsServiceImpl.getSearchResultsExact(null, null, null,
+                null, null, "EXTERNAL-SEARCH-002", null, null, null, null);
+
+        Assert.assertEquals(1, results.size());
+        Assert.assertEquals(patientId, results.get(0).getPatientID());
+    }
+
     private void assertSearchResult(PatientSearchResults result, String patientID, String firstName, String lastName,
             String birthdate, String gender) throws ParseException {
         Assert.assertEquals(patientID, result.getPatientID());
