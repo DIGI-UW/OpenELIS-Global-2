@@ -13,111 +13,62 @@
  */
 package org.openelisglobal.citystatezip.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
+@Setter
+@Getter
+@DynamicUpdate
+@Entity
+@Table(name = "CITY_STATE_ZIP")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class CityStateZip extends BaseObject<String> {
 
+    @Id
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0)
     private String id;
 
+    @Column(name = "CITY", length = 30)
     private String city;
 
+    @Column(name = "STATE", length = 2)
     private String state;
 
+    @Column(name = "ZIP_CODE", length = 10)
     private String zipCode;
 
+    @Column(name = "COUNTY_FIPS", length = 3)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String countyFips;
 
+    @Column(name = "COUNTY", length = 25)
     private String county;
 
+    @Column(name = "REGION_ID", length = 3)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String regionId;
 
+    @Column(name = "REGION", length = 30)
     private String region;
 
+    @Column(name = "STATE_FIPS", length = 3)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String stateFips;
 
+    @Column(name = "STATE_NAME", length = 30)
     private String stateName;
 
     public CityStateZip() {
         super();
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setCity(String city) {
-        this.city = city;
-    }
-
-    public String getCity() {
-        return city;
-    }
-
-    public String getCounty() {
-        return county;
-    }
-
-    public void setCounty(String county) {
-        this.county = county;
-    }
-
-    public String getCountyFips() {
-        return countyFips;
-    }
-
-    public void setCountyFips(String countyFips) {
-        this.countyFips = countyFips;
-    }
-
-    public String getRegion() {
-        return region;
-    }
-
-    public void setRegion(String region) {
-        this.region = region;
-    }
-
-    public String getRegionId() {
-        return regionId;
-    }
-
-    public void setRegionId(String regionId) {
-        this.regionId = regionId;
-    }
-
-    public String getState() {
-        return state;
-    }
-
-    public void setState(String state) {
-        this.state = state;
-    }
-
-    public String getStateFips() {
-        return stateFips;
-    }
-
-    public void setStateFips(String stateFips) {
-        this.stateFips = stateFips;
-    }
-
-    public String getStateName() {
-        return stateName;
-    }
-
-    public void setStateName(String stateName) {
-        this.stateName = stateName;
-    }
-
-    public String getZipCode() {
-        return zipCode;
-    }
-
-    public void setZipCode(String zipCode) {
-        this.zipCode = zipCode;
-    }
 }
