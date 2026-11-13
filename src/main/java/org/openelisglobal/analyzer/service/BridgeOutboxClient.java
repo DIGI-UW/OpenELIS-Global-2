@@ -61,6 +61,10 @@ public class BridgeOutboxClient {
         return rows;
     }
 
+    public JsonNode get(String outboxEntryId) {
+        return send("GET", entryUrl(outboxEntryId));
+    }
+
     public void retry(String outboxEntryId) {
         JsonNode queued = send("POST", entryUrl(outboxEntryId) + "/retry");
         if (!outboxEntryId.equals(queued.path("id").asText()) || !"PENDING".equals(queued.path("state").asText())) {
