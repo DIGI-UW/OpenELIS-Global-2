@@ -15,35 +15,52 @@
  */
 package org.openelisglobal.statusofsample.valueholder;
 
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
 
 /**
  * @author bill mcgough bugzilla 1625
  */
+@Getter
+@Setter
+@DynamicUpdate
+@Entity
+@Table(name = "STATUS_OF_SAMPLE")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class StatusOfSample extends EnumValueItemImpl {
 
     private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(generator = "status_of_sample_seq_gen")
+    @GenericGenerator(name = "status_of_sample_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "status_of_sample_seq"))
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0)
     private String id;
-    private String statusOfSampleName;
+
+    @Column(name = "DESCRIPTION", length = 240)
     private String description;
+
+    @Column(name = "NAME", length = 30, nullable = false)
+    private String statusOfSampleName;
+
+    @Column(name = "CODE", length = 3)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String code;
+
+    @Column(name = "STATUS_TYPE", length = 10)
     private String statusType;
+
+    @Column(name = "is_active")
     private String isActive;
 
     public StatusOfSample() {
         super();
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public String getDescription() {
-        return description;
     }
 
     public void setDescription(String description) {
@@ -52,41 +69,24 @@ public class StatusOfSample extends EnumValueItemImpl {
         this.name = description;
     }
 
-    public String getId() {
-        return id;
-    }
-
     public void setId(String id) {
         this.id = id;
         // bugzilla 1625
         this.key = id;
     }
 
-    public String getStatusType() {
-        return statusType;
+    @Override
+    public String getNameKey() {
+        return super.getNameKey();
     }
 
-    public void setStatusType(String statusType) {
-        this.statusType = statusType;
-    }
-
-    public String getStatusOfSampleName() {
-        return statusOfSampleName;
-    }
-
-    public void setStatusOfSampleName(String statusOfSampleName) {
-        this.statusOfSampleName = statusOfSampleName;
+    @Override
+    public void setNameKey(String nameKey) {
+        super.setNameKey(nameKey);
     }
 
     public String getDefaultLocalizedName() {
         return getStatusOfSampleName();
     }
 
-    public String getIsActive() {
-        return isActive;
-    }
-
-    public void setIsActive(String isActive) {
-        this.isActive = isActive;
-    }
 }
