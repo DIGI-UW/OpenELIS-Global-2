@@ -58,8 +58,8 @@ public class ReportConfig {
     @Bean("patientEID1")
     @Scope("prototype")
     public IReportParameterSetter patientEID1ParameterSetter() {
-        return new ReportSpecificationParameters(new Parameter[] { Parameter.ACCESSION_RANGE,
-                Parameter.USE_PATIENT_SEARCH, Parameter.USE_SITE_SEARCH },
+        return new ReportSpecificationParameters(
+                new Parameter[] { Parameter.ACCESSION_RANGE, Parameter.USE_PATIENT_SEARCH, Parameter.USE_SITE_SEARCH },
                 MessageUtil.getMessage("reports.label.patient.EID"), null);
     }
 
@@ -73,8 +73,8 @@ public class ReportConfig {
     @Bean("patientVL1")
     @Scope("prototype")
     public IReportParameterSetter patientVL1ParameterSetter() {
-        return new ReportSpecificationParameters(new Parameter[] { Parameter.ACCESSION_RANGE,
-                Parameter.USE_PATIENT_SEARCH, Parameter.USE_SITE_SEARCH },
+        return new ReportSpecificationParameters(
+                new Parameter[] { Parameter.ACCESSION_RANGE, Parameter.USE_PATIENT_SEARCH, Parameter.USE_SITE_SEARCH },
                 MessageUtil.getMessage("reports.label.patient.VL"), null);
     }
 
@@ -169,8 +169,8 @@ public class ReportConfig {
     @Bean("indicatorRealisation")
     @Scope("prototype")
     public IReportParameterSetter indicatorRealisationParameterSetter() {
-        return new ReportSpecificationParameters(Parameter.DATE_RANGE,
-                MessageUtil.getMessage("report.realisation"), null);
+        return new ReportSpecificationParameters(Parameter.DATE_RANGE, MessageUtil.getMessage("report.realisation"),
+                null);
     }
 
     @Bean("epiSurveillanceExport")

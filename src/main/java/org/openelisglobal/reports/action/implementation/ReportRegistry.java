@@ -1,7 +1,7 @@
+
 package org.openelisglobal.reports.action.implementation;
 
 import org.apache.commons.validator.GenericValidator;
-import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
@@ -17,15 +17,13 @@ public class ReportRegistry {
             return null;
         }
 
-        try {
-            return context.getBean(reportName, IReportCreator.class);
-        } catch (BeansException e) {
-            try {
-                return context.getBean(reportName + "Creator", IReportCreator.class);
-            } catch (BeansException ex) {
-                return null;
-            }
+        IReportCreator creator = getBeanIfTypeMatches(reportName, IReportCreator.class);
+
+        if (creator != null) {
+            return creator;
         }
+
+        return getBeanIfTypeMatches(reportName + "Creator", IReportCreator.class);
     }
 
     public IReportParameterSetter getParameterSetter(String reportName) {
@@ -33,10 +31,14 @@ public class ReportRegistry {
             return null;
         }
 
-        try {
-            return context.getBean(reportName, IReportParameterSetter.class);
-        } catch (BeansException e) {
-            return null;
+        return getBeanIfTypeMatches(reportName, IReportParameterSetter.class);
+    }
+
+    private <T> T getBeanIfTypeMatches(String beanName, Class<T> beanType) {
+        if (context.containsBean(beanName) && context.isTypeMatch(beanName, beanType)) {
+            return context.getBean(beanName, beanType);
         }
+
+        return null;
     }
 }
