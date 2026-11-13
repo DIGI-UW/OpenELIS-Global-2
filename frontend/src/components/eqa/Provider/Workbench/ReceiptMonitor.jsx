@@ -550,16 +550,19 @@ const ReceiptMonitor = ({
                         : "—"}
                     </TableCell>
                     <TableCell>
-                      {isProvider && !delivered && row.shipmentId && (
-                        <Button
-                          kind="ghost"
-                          size="sm"
-                          disabled={busy === row.organizationId}
-                          onClick={() => handleDelivered(row)}
-                        >
-                          {t("eqa.receipt.markReceived", "Mark received")}
-                        </Button>
-                      )}
+                      {isProvider &&
+                        !delivered &&
+                        row.shipmentId &&
+                        cycleStatus !== "CLOSED" && (
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            disabled={busy === row.organizationId}
+                            onClick={() => handleDelivered(row)}
+                          >
+                            {t("eqa.receipt.markReceived", "Mark received")}
+                          </Button>
+                        )}
                       {isProvider &&
                         row.shipmentId &&
                         REPEATABLE.includes(cycleStatus) && (

@@ -12,26 +12,46 @@ import {
  */
 export const asList = (data) => (Array.isArray(data) ? data : []);
 
-// Names come from the whole catalog: the lab-unit list is empty for a QA officer.
+// A QA officer's lab-unit test list is empty, so filter against the whole catalog.
 // A removed scheme assignment keeps its row with isActive false.
+// Answers null when any read fails.
 export const fetchTests = (schemeId, callback) => {
-  getFromOpenElisServer(`/rest/eqa/programs/${schemeId}/tests`, (rows) => {
-    const assigned = new Set(
-      asList(rows)
-        .filter((row) => row.isActive !== false)
-        .map((row) => String(row.testId)),
-    );
-    getFromOpenElisServer("/rest/eqa/testable-tests", (testable) => {
+  const urls = [
+    `/rest/eqa/programs/${schemeId}/tests`,
+    "/rest/eqa/testable-tests",
+    "/rest/displayList/ALL_TESTS",
+  ];
+  const replies = [];
+  let pending = urls.length;
+  urls.forEach((url, index) =>
+    getFromOpenElisServer(url, (data) => {
+      replies[index] = data;
+      if (--pending > 0) {
+        return;
+      }
+      const [rows, testable, tests] = replies;
+      if (!replies.every(Array.isArray)) {
+        callback(null);
+        return;
+      }
+      const labels = new Map(
+        rows
+          .filter((row) => row.isActive !== false)
+          .map((row) => [String(row.testId), row.label]),
+      );
       const usable = new Set(
-        asList(testable)
-          .map(String)
-          .filter((id) => assigned.has(id)),
+        testable.map(String).filter((id) => labels.has(id)),
       );
-      getFromOpenElisServer("/rest/displayList/ALL_TESTS", (tests) =>
-        callback(asList(tests).filter((test) => usable.has(String(test.id)))),
+      callback(
+        tests
+          .filter((test) => usable.has(String(test.id)))
+          .map((test) => ({
+            ...test,
+            name: labels.get(String(test.id)) || test.name || test.value,
+          })),
       );
-    });
-  });
+    }),
+  );
 };
 
 // Omit cycleNumber and the service takes the scheme's next one.

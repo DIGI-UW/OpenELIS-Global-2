@@ -383,6 +383,21 @@ public class EQAProviderCycleWizardIntegrationTest extends EQASpineTestBase {
         assertTrue(refused.getMessage(), refused.getMessage().contains("distribution date"));
     }
 
+    @Test
+    public void aSubmissionDeadlineBeforeTheDistributionDateIsRefused() {
+        ProviderCycleRequest reversed = new ProviderCycleRequest(scheme.getId(), 14, "2026 Round",
+                Date.valueOf("2026-10-01"), Date.valueOf("2026-09-01"), "HIV VL panel",
+                EQAPanelSourceType.IN_HOUSE_ALIQUOTED, "LOT-1", null, null, null, twoSamples(), List.of(ORG_A),
+                EQAStorageTemp.DRY_ICE, null, EQADistributionMethod.FHIR);
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> cycleService.createProviderCycle(reversed, USER));
+        assertTrue(refused.getMessage(), refused.getMessage().contains("submission deadline"));
+        assertEquals("nothing written", Integer.valueOf(0),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.eqa_cycle WHERE cycle_number = 14 AND scheme_id = ?",
+                        Integer.class, scheme.getId()));
+    }
+
     /** A cycle nobody can name is refused too (the first step's fields). */
     @Test
     public void aCycleWithNoNameIsRefused() {
