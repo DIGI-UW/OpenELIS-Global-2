@@ -101,6 +101,7 @@
   <!-- FR-2.3: widen site_information.name so standard property names fit, then seed the pathology stage enablement flags -->
   <include relativeToChangelogFile="true" file="035-widen-site-information-name.xml"/>
   <include relativeToChangelogFile="true" file="036-pathology-stage-enablement-flags.xml"/>
+  <include relativeToChangelogFile="true" file="037-print-history-add-last-updated.xml"/>
 
   <!-- FR-2.3: the stage switch descriptions promised automatic skipping, which does not exist; describe what the case view does -->
   <include relativeToChangelogFile="true" file="037-pathology-stage-flag-descriptions.xml"/>

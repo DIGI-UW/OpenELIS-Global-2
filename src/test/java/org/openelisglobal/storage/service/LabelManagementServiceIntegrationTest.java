@@ -3,10 +3,13 @@ package org.openelisglobal.storage.service;
 import static org.junit.Assert.*;
 
 import java.io.ByteArrayOutputStream;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.storage.dao.StorageLocationPrintHistoryDAO;
 import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StorageLocationPrintHistory;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -34,6 +37,9 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
 
     @Autowired
     private StorageLocationService storageLocationService;
+
+    @Autowired
+    private StorageLocationPrintHistoryDAO printHistoryDAO;
 
     @Before
     @Override
@@ -299,8 +305,7 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
     }
 
     /**
-     * Test trackPrintHistory records print history in database Expected: Print
-     * history record is created in storage_location_print_history table
+     * Test trackPrintHistory records print history in database through the DAO.
      */
     @Test
     public void testTrackPrintHistory_RecordsInDatabase() {
@@ -308,12 +313,99 @@ public class LabelManagementServiceIntegrationTest extends BaseWebContextSensiti
         StorageDevice device = createTestDeviceWithShortCode();
         String deviceId = String.valueOf(device.getId());
         String shortCode = device.getCode();
-        String userId = "1"; // Test user ID
+        String userId = "42";
+
+        int beforeCount = countRowsInTableWhere("storage_location_print_history",
+                "location_id = '" + deviceId + "' AND printed_by = '" + userId + "'");
 
         // When: Track print history
         labelManagementService.trackPrintHistory(deviceId, "device", shortCode, userId);
 
-        assertTrue("trackPrintHistory should complete without exceptions", true);
+        // Then: History row should be persisted in database
+        int afterCount = countRowsInTableWhere("storage_location_print_history", "location_id = '" + deviceId
+                + "' AND printed_by = '" + userId + "' AND location_code = '" + shortCode + "'");
+        assertEquals("Print history count should increase by 1 for this device and user", beforeCount + 1, afterCount);
+
+        List<StorageLocationPrintHistory> historyList = printHistoryDAO.getAllMatching("locationId", deviceId);
+        assertNotNull("History list should not be null", historyList);
+        assertFalse("History list should not be empty", historyList.isEmpty());
+
+        StorageLocationPrintHistory record = historyList.get(historyList.size() - 1);
+        assertEquals("device", record.getLocationType());
+        assertEquals(deviceId, record.getLocationId());
+        assertEquals(shortCode, record.getLocationCode());
+        assertEquals(userId, record.getPrintedBy());
+        assertEquals(Integer.valueOf(1), record.getPrintCount());
+        assertNotNull("Printed date should not be null", record.getPrintedDate());
+        assertNotNull("Record ID should not be null", record.getId());
+    }
+
+    @Test
+    public void testGetLocationById_Device_ReturnsStorageDevice() {
+        StorageDevice device = createTestDeviceWithShortCode();
+        Object location = labelManagementService.getLocationById("device", String.valueOf(device.getId()));
+
+        assertNotNull("Device should be found", location);
+        assertTrue("Location should be instance of StorageDevice", location instanceof StorageDevice);
+        assertEquals(device.getId(), ((StorageDevice) location).getId());
+    }
+
+    @Test
+    public void testGetLocationById_Shelf_ReturnsStorageShelf() {
+        StorageDevice device = createTestDeviceWithShortCode();
+        StorageShelf shelf = new StorageShelf();
+        shelf.setCode("TEST-SH01");
+        shelf.setLabel("Test Shelf 01");
+        shelf.setParentDevice(device);
+        shelf.setActive(true);
+        shelf.setSysUserIdValue(1);
+        Integer shelfId = storageLocationService.insert(shelf);
+        assertNotNull("Shelf should be created", shelfId);
+
+        Object location = labelManagementService.getLocationById("shelf", String.valueOf(shelfId));
+
+        assertNotNull("Shelf should be found", location);
+        assertTrue("Location should be instance of StorageShelf", location instanceof StorageShelf);
+        assertEquals(shelfId, ((StorageShelf) location).getId());
+    }
+
+    @Test
+    public void testGetLocationById_Rack_ReturnsStorageRack() {
+        StorageDevice device = createTestDeviceWithShortCode();
+        StorageShelf shelf = new StorageShelf();
+        shelf.setCode("TEST-SH02");
+        shelf.setLabel("Test Shelf 02");
+        shelf.setParentDevice(device);
+        shelf.setActive(true);
+        shelf.setSysUserIdValue(1);
+        Integer shelfId = storageLocationService.insert(shelf);
+        assertNotNull("Shelf should be created", shelfId);
+
+        StorageRack rack = new StorageRack();
+        rack.setCode("TEST-RK01");
+        rack.setLabel("Test Rack 01");
+        rack.setParentShelf((StorageShelf) storageLocationService.get(shelfId, StorageShelf.class));
+        rack.setActive(true);
+        rack.setSysUserIdValue(1);
+        Integer rackId = storageLocationService.insert(rack);
+        assertNotNull("Rack should be created", rackId);
+
+        Object location = labelManagementService.getLocationById("rack", String.valueOf(rackId));
+
+        assertNotNull("Rack should be found", location);
+        assertTrue("Location should be instance of StorageRack", location instanceof StorageRack);
+        assertEquals(rackId, ((StorageRack) location).getId());
+    }
+
+    @Test
+    public void testGetLocationById_InvalidTypeOrId_ReturnsNull() {
+        assertNull("Invalid type should return null", labelManagementService.getLocationById("invalid_type", "1000"));
+        assertNull("Non-numeric ID should return null",
+                labelManagementService.getLocationById("device", "not-a-number"));
+        assertNull("Null type should return null", labelManagementService.getLocationById(null, "1000"));
+        assertNull("Null ID should return null", labelManagementService.getLocationById("device", null));
+        assertNull("Non-existent device ID should return null",
+                labelManagementService.getLocationById("device", "999999"));
     }
 
     /**
