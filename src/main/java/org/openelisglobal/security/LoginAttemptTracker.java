@@ -31,6 +31,7 @@ public class LoginAttemptTracker {
     private static final int SWEEP_ABOVE = 5000;
 
     private final int maxAttempts;
+    private final int maxClientAttempts;
     private final Duration window;
     private final Clock clock;
     private final List<IpAddressMatcher> trustedProxies;
@@ -38,17 +39,19 @@ public class LoginAttemptTracker {
 
     @Autowired
     public LoginAttemptTracker(@Value("${org.openelisglobal.login.throttle.maxAttempts:10}") int maxAttempts,
+            @Value("${org.openelisglobal.login.throttle.maxClientAttempts:100}") int maxClientAttempts,
             @Value("${org.openelisglobal.login.throttle.windowMinutes:15}") int windowMinutes,
             @Value("${org.openelisglobal.login.throttle.trustedProxies:}") String trustedProxies) {
-        this(maxAttempts, Duration.ofMinutes(windowMinutes), Clock.systemUTC(), trustedProxies);
+        this(maxAttempts, maxClientAttempts, Duration.ofMinutes(windowMinutes), Clock.systemUTC(), trustedProxies);
     }
 
-    public LoginAttemptTracker(int maxAttempts, Duration window, Clock clock) {
-        this(maxAttempts, window, clock, "");
-    }
-
-    public LoginAttemptTracker(int maxAttempts, Duration window, Clock clock, String trustedProxies) {
+    public LoginAttemptTracker(int maxAttempts, int maxClientAttempts, Duration window, Clock clock,
+            String trustedProxies) {
+        if (maxAttempts < 1 || maxClientAttempts < 1 || window.isZero() || window.isNegative()) {
+            throw new IllegalArgumentException("Login throttle limits and window must be positive");
+        }
         this.maxAttempts = maxAttempts;
+        this.maxClientAttempts = maxClientAttempts;
         this.window = window;
         this.clock = clock;
         this.trustedProxies = java.util.Arrays.stream(trustedProxies.split(",")).map(String::trim)
@@ -56,7 +59,8 @@ public class LoginAttemptTracker {
     }
 
     public boolean isThrottled(String loginName, String client) {
-        return recentFailures(loginKey(loginName)) >= maxAttempts || recentFailures(clientKey(client)) >= maxAttempts;
+        return recentFailures(loginKey(loginName)) >= maxAttempts
+                || recentFailures(clientKey(client)) >= maxClientAttempts;
     }
 
     public void recordFailure(String loginName, String client) {
