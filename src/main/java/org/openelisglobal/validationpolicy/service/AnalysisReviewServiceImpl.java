@@ -46,6 +46,7 @@ public class AnalysisReviewServiceImpl implements AnalysisReviewService {
 
     private static final String ONE_SIGNATURE_PER_LEVEL = "uq_analysis_review_sign_off_level";
     private static final String ONE_LEVEL_PER_PERSON = "uq_analysis_review_sign_off_signer";
+    private static final String ONE_PLAN_PER_ANALYSIS = "pk_analysis_review_plan";
 
     @Autowired
     private AnalysisReviewPlanDAO planDAO;
@@ -119,6 +120,12 @@ public class AnalysisReviewServiceImpl implements AnalysisReviewService {
         analysis.setSysUserId(sysUserId);
         analysisService.update(analysis);
         return stateOf(analysis, sysUserId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void checkReviewSignature(Long signatureId, String sysUserId) {
+        checkSignature(signatureId, sysUserId, SignatureMeaning.REVIEWED);
     }
 
     @Override
@@ -226,7 +233,14 @@ public class AnalysisReviewServiceImpl implements AnalysisReviewService {
             saved.setReviewLevels(plan.levels());
             saved.setCreatedAt(OffsetDateTime.now());
             saved.getLevelRoleIds().putAll(plan.roles());
-            planDAO.insert(saved);
+            try {
+                planDAO.insert(saved);
+            } catch (RuntimeException e) {
+                if (causedBy(e, ONE_PLAN_PER_ANALYSIS)) {
+                    throw new ReviewSignRefusedException("levelAlreadySigned");
+                }
+                throw e;
+            }
         }
         AnalysisReviewSignOff signOff = new AnalysisReviewSignOff();
         signOff.setAnalysisId(analysisId);
