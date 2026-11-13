@@ -103,6 +103,7 @@ public class EmailDeliverySender implements DeliverySender {
         props.put("mail.smtp.starttls.enable", String.valueOf(security == Security.STARTTLS));
         props.put("mail.smtp.starttls.required", String.valueOf(security == Security.STARTTLS));
         props.put("mail.smtp.ssl.enable", String.valueOf(security == Security.SSL_TLS));
+        props.put("mail.smtp.ssl.checkserveridentity", "true");
         boolean auth = !GenericValidator.isBlankOrNull(config.getUsername())
                 && !GenericValidator.isBlankOrNull(config.getSecret());
         props.put("mail.smtp.auth", String.valueOf(auth));

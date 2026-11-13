@@ -95,6 +95,11 @@ public class EmailNotificationSender implements ClientNotificationSender<EmailNo
         Properties props = mailSender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");
         props.put("mail.smtp.starttls.enable", "true");
+        props.put("mail.smtp.starttls.required", "true");
+        props.put("mail.smtp.ssl.checkserveridentity", "true");
+        props.put("mail.smtp.connectiontimeout", "10000");
+        props.put("mail.smtp.timeout", "30000");
+        props.put("mail.smtp.writetimeout", "30000");
         if (hasAuth) {
             mailSender.setUsername(username);
             mailSender.setPassword(password);
