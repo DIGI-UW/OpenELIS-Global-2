@@ -115,7 +115,8 @@ public class AccessionValidationSequentialSignOffTest extends BaseWebContextSens
         assertEquals("level 1 of 2 does not release", statusId(AnalysisStatus.TechnicalAcceptance),
                 analysisService.get(ANALYSIS_ID).getStatusId());
 
-        queue("1").andExpect(jsonPath(row() + ".reviewLevels").value(2))
+        queue("1").andExpect(jsonPath(row() + ".sequentialSignOff").value(true))
+                .andExpect(jsonPath(row() + ".reviewLevels").value(2))
                 .andExpect(jsonPath(row() + ".reviewLevel").value(2))
                 .andExpect(jsonPath(row() + ".reviewBlockedReason").value("alreadySigned"))
                 .andExpect(jsonPath(row() + ".signOffs[0].level").value(1))
@@ -183,6 +184,7 @@ public class AccessionValidationSequentialSignOffTest extends BaseWebContextSens
     public void withTheFlagOffOneValidatorReleasesAndNoSignOffIsRecorded() throws Exception {
         ConfigurationProperties.getInstance().setPropertyValue(Property.USE_MULTI_LEVEL_VALIDATION, "false");
 
+        queue("1").andExpect(jsonPath(row() + ".sequentialSignOff").value(false));
         release("1").andExpect(status().isOk()).andExpect(jsonPath("$.outcome").value("released"));
         entityManager.flush();
         entityManager.clear();
