@@ -15,11 +15,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -73,6 +75,21 @@ public class KpiTatFiguresIntegrationTest extends BaseWebContextSensitiveTest {
     private int samples;
     private String unitA;
     private String unitB;
+    private TimeZone serverZone;
+
+    // Dates are stored as the server's local time. In a zone that observes
+    // daylight saving, the sample received 2097-03-09 08:00 and validated
+    // 2097-03-11 00:00 spans the change of 2097-03-10, so it took 39 hours, not 40.
+    @Before
+    public void runInAZoneWithDaylightSaving() {
+        serverZone = TimeZone.getDefault();
+        TimeZone.setDefault(TimeZone.getTimeZone("America/New_York"));
+    }
+
+    @After
+    public void restoreServerZone() {
+        TimeZone.setDefault(serverZone);
+    }
 
     @Before
     public void seedAnalyses() {
@@ -139,7 +156,7 @@ public class KpiTatFiguresIntegrationTest extends BaseWebContextSensitiveTest {
         bySection.forEach((section, tat) -> byUnit.put(
                 section == null ? "Unknown" : testSectionService.getTestSectionById(section).getLocalizedName(), tat));
         assertEquals(Set.of(unitA, unitB, "Unknown"), expectedByUnit.keySet());
-        assertEquals(new SectionTat(new BigDecimal("10.00"), new BigDecimal("40.00"), new BigDecimal("60.0")),
+        assertEquals(new SectionTat(new BigDecimal("10.00"), new BigDecimal("39.00"), new BigDecimal("60.0")),
                 byUnit.get(unitB));
         assertEquals(expectedByUnit, byUnit);
     }
