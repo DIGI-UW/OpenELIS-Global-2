@@ -89,23 +89,20 @@ public class TbSampleServiceImpl implements TbSampleService {
     @Autowired
     private SampleOrganizationService sampleOrganizationService;
 
-    private String sampleId;
-    private String patientId;
-    private String sampleItemId;
-
     @Transactional
     @Override
     public boolean persistTbData(SampleTbEntryForm form, HttpServletRequest request) {
         boolean isOK = false;
         try {
-            persistPatientData(form);
+            Patient patient = persistPatientData(form);
+            String patientId = patient.getId();
             createPatientIdentity(form, patientId);
-            sampleId = persistSampleData(form);
-            persistSampleHumanData(form);
-            sampleItemId = persistSampleItemData(form);
-            persistAnalysisData(form);
-            persistSampleOrganizationData(form);
-            persistObservations(form);
+            String sampleId = persistSampleData(form);
+            persistSampleHumanData(form, sampleId, patientId);
+            String sampleItemId = persistSampleItemData(form, sampleId);
+            persistAnalysisData(form, sampleItemId);
+            persistSampleOrganizationData(form, sampleId);
+            persistObservations(form, sampleId, patientId);
             isOK = true;
         } catch (Exception e) {
             isOK = false;
@@ -114,7 +111,7 @@ public class TbSampleServiceImpl implements TbSampleService {
         return isOK;
     }
 
-    private List<String> persistObservations(SampleTbEntryForm formData) {
+    private List<String> persistObservations(SampleTbEntryForm formData, String sampleId, String patientId) {
         List<ObservationHistory> obervations = new ArrayList<ObservationHistory>();
 
         // tb order reason
@@ -206,7 +203,7 @@ public class TbSampleServiceImpl implements TbSampleService {
             patient.setBirthDate(DateUtil.convertStringDateToTruncatedTimestamp(formData.getPatientBirthDate()));
             patient.setGender(formData.getPatientGender());
             patient.setSysUserId(formData.getSysUserId());
-            patientId = patientService.insert(patient);
+            String patientId = patientService.insert(patient);
             patient.setId(patientId);
             return patient;
         } else {
@@ -217,7 +214,6 @@ public class TbSampleServiceImpl implements TbSampleService {
             oldPatient.setGender(formData.getPatientGender());
             oldPatient.setSysUserId(formData.getSysUserId());
             oldPatient = patientService.update(oldPatient);
-            patientId = oldPatient.getId();
             return oldPatient;
         }
     }
@@ -331,7 +327,7 @@ public class TbSampleServiceImpl implements TbSampleService {
         }
     }
 
-    private String persistSampleHumanData(SampleTbEntryForm formData) {
+    private String persistSampleHumanData(SampleTbEntryForm formData, String sampleId, String patientId) {
         SampleHuman sampleHuman = new SampleHuman();
         sampleHuman.setSampleId(sampleId);
         sampleHuman.setPatientId(patientId);
@@ -341,7 +337,7 @@ public class TbSampleServiceImpl implements TbSampleService {
         return sampleHumanService.insert(sampleHuman);
     }
 
-    private String persistSampleItemData(SampleTbEntryForm formData) {
+    private String persistSampleItemData(SampleTbEntryForm formData, String sampleId) {
         SampleItem item = new SampleItem();
         if (!ObjectUtils.isEmpty(sampleId)) {
             List<SampleItem> oldSampleItems = sampleItemService.getSampleItemsBySampleId(sampleId);
@@ -363,7 +359,7 @@ public class TbSampleServiceImpl implements TbSampleService {
         return sampleItemService.insert(item);
     }
 
-    private List<String> persistAnalysisData(SampleTbEntryForm formData) {
+    private List<String> persistAnalysisData(SampleTbEntryForm formData, String sampleItemId) {
         List<Analysis> analysisItems = new ArrayList<Analysis>();
         for (String testId : formData.getNewSelectedTests()) {
             Analysis analysis = new Analysis();
@@ -386,7 +382,7 @@ public class TbSampleServiceImpl implements TbSampleService {
         return analysisService.insertAll(analysisItems);
     }
 
-    private String persistSampleOrganizationData(SampleTbEntryForm formData) {
+    private String persistSampleOrganizationData(SampleTbEntryForm formData, String sampleId) {
         SampleOrganization sampleOrganization = new SampleOrganization();
         if (ObjectUtils.isNotEmpty(formData.getSampleId())) {
             sampleOrganization = sampleOrganizationService.getDataBySample(sampleService.get(formData.getSampleId()));
