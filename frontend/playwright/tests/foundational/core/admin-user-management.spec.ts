@@ -26,6 +26,7 @@ const USER_ENDPOINT = `${API}/rest/UnifiedSystemUser`;
 const USER_SEARCH = `${API}/rest/SearchUnifiedSystemUserMenu`;
 const ALL_LAB_UNITS = "AllLabUnits";
 const PASSWORD = "Pw!Passw0rd";
+const seededUsers = new WeakMap<Page, Set<string>>();
 
 // The seeded username charset has no digits, so the unique suffix is letters.
 const letters = (length: number) =>
@@ -92,6 +93,7 @@ async function readUser(page: Page, login: string): Promise<UserForm> {
 
 /** Creates a user through the endpoint the screen saves with. */
 async function seedUser(page: Page, user: SeededUser) {
+  seededUsers.get(page)!.add(user.login);
   const form = await blankForm(page);
   const created = await page.request.post(USER_ENDPOINT, {
     headers: { "X-CSRF-Token": await csrfToken(page) },
@@ -171,6 +173,7 @@ test.describe("User Management", () => {
   const consoleErrors: string[] = [];
 
   test.beforeEach(async ({ page }) => {
+    seededUsers.set(page, new Set());
     consoleErrors.length = 0;
     page.on("pageerror", (error) => consoleErrors.push(error.message));
     page.on("console", (message) => {
@@ -178,7 +181,27 @@ test.describe("User Management", () => {
     });
   });
 
-  test.afterEach(() => {
+  test.afterEach(async ({ page }) => {
+    const cleanupErrors: string[] = [];
+    for (const login of seededUsers.get(page) ?? []) {
+      try {
+        if (!(await listedUser(page, login))) continue;
+        const form = await readUser(page, login);
+        if (form.accountActive === "N") continue;
+        await page.request.post(USER_ENDPOINT, {
+          headers: { "X-CSRF-Token": await csrfToken(page) },
+          data: { ...form, accountActive: "N", accountDisabled: "Y" },
+        });
+        expect
+          .soft((await readUser(page, login)).accountActive, login)
+          .toBe("N");
+      } catch (error) {
+        cleanupErrors.push(`${login}: ${String(error)}`);
+      }
+    }
+    expect
+      .soft(cleanupErrors, "Every seeded account must be deactivated")
+      .toEqual([]);
     expect(consoleErrors).toEqual([]);
   });
 
@@ -370,49 +393,34 @@ test.describe("User Management", () => {
     );
     const suffix = letters(8);
     const login = `pw_ga_${suffix}`;
-    try {
-      await seedUser(page, {
-        login,
-        first: "Playwright",
-        last: `Global ${suffix}`,
-        roles: [globalAdmin!.roleId],
-      });
+    await seedUser(page, {
+      login,
+      first: "Playwright",
+      last: `Global ${suffix}`,
+      roles: [globalAdmin!.roleId],
+    });
 
-      await openUserList(page);
-      await search(page, login);
-      await expect(rowsWith(page, login)).toHaveCount(1);
+    await openUserList(page);
+    await search(page, login);
+    await expect(rowsWith(page, login)).toHaveCount(1);
 
-      const narrowed = page.waitForResponse(
-        (response) =>
-          response.url().includes("/rest/SearchUnifiedSystemUserMenu") &&
-          (new URL(response.url()).searchParams.get("filter") || "")
-            .split(",")
-            .includes("isAdmin"),
-      );
-      await page.locator('label[for="only-administrator"]').click();
-      await narrowed;
-      await expect(page.locator("#only-administrator")).toBeChecked();
-      await expect(rowsWith(page, login)).toHaveCount(0);
+    const narrowed = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/SearchUnifiedSystemUserMenu") &&
+        (new URL(response.url()).searchParams.get("filter") || "")
+          .split(",")
+          .includes("isAdmin"),
+    );
+    await page.locator('label[for="only-administrator"]').click();
+    await narrowed;
+    await expect(page.locator("#only-administrator")).toBeChecked();
+    await expect(rowsWith(page, login)).toHaveCount(0);
 
-      await search(page, "admin");
-      const admin = page.locator(".cds--data-table tbody tr").filter({
-        has: page.getByRole("cell", { name: "admin", exact: true }),
-      });
-      await expect(admin).toHaveCount(1);
-    } finally {
-      const id = await listedUser(page, login);
-      if (id) {
-        const removed = await page.request.post(
-          `${API}/rest/DeleteUnifiedSystemUser?ID=${id}&startingRecNo=1`,
-          {
-            headers: { "X-CSRF-Token": await csrfToken(page) },
-            data: { selectedIDs: [id] },
-          },
-        );
-        expect(removed.ok(), await removed.text()).toBeTruthy();
-        expect((await readUser(page, login)).accountActive).toBe("N");
-      }
-    }
+    await search(page, "admin");
+    const admin = page.locator(".cds--data-table tbody tr").filter({
+      has: page.getByRole("cell", { name: "admin", exact: true }),
+    });
+    await expect(admin).toHaveCount(1);
   });
 
   test("Modify copies another user's permissions with Apply", async ({
