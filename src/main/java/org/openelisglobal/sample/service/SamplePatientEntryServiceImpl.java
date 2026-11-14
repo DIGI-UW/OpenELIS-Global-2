@@ -38,6 +38,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.compliance.service.ComplianceStandardService;
 import org.openelisglobal.compliance.valueholder.ComplianceStandard;
 import org.openelisglobal.containertype.service.ContainerProposalService;
+import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.eqa.service.EQAPanelReceiptService;
@@ -202,6 +203,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private OrderLabelRequestService orderLabelRequestService;
     @Autowired
     private org.openelisglobal.questionnaire.service.QuestionnaireStorageService questionnaireStorageService;
+    @Autowired(required = false)
+    private FhirUtil fhirUtil;
     @Lazy
     @Autowired
     private ResultLimitService resultLimitService;
@@ -546,9 +549,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             // Only set new UUID if this is a new ProgramSample (no existing UUID)
             if (updateData.getProgramQuestionnaireResponse() != null
                     && updateData.getProgramSample().getQuestionnaireResponseUuid() == null) {
-                if (hasMeaningfulId(updateData.getProgramQuestionnaireResponse())) {
-                    updateData.getProgramSample().setQuestionnaireResponseUuid(QuestionnaireStorageServiceImpl
-                            .toStorageUuid(updateData.getProgramQuestionnaireResponse().getIdElement().getIdPart()));
+                UUID adoptedUuid = resolveAdoptedQuestionnaireResponseUuid(updateData);
+                if (adoptedUuid != null) {
+                    updateData.getProgramSample().setQuestionnaireResponseUuid(adoptedUuid);
                 } else {
                     updateData.getProgramSample().setQuestionnaireResponseUuid(UUID.randomUUID());
                 }
@@ -1712,6 +1715,45 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 }
             }
         }
+    }
+
+    public UUID resolveAdoptedQuestionnaireResponseUuid(SamplePatientUpdateData updateData) {
+        if (updateData == null || updateData.getElectronicOrder() == null || questionnaireStorageService == null
+                || fhirUtil == null) {
+            return null;
+        }
+        ElectronicOrder eOrder = updateData.getElectronicOrder();
+        if (StringUtils.isBlank(eOrder.getData())) {
+            return null;
+        }
+        try {
+            Task task = fhirUtil.getFhirParser().parseResource(Task.class, eOrder.getData());
+            if (task == null || !task.hasBasedOn()) {
+                return null;
+            }
+            String patientFhirId = null;
+            if (task.hasFor() && task.getFor().hasReference()) {
+                patientFhirId = task.getFor().getReferenceElement().getIdPart();
+            } else if (eOrder.getPatient() != null && eOrder.getPatient().getFhirUuid() != null) {
+                patientFhirId = eOrder.getPatient().getFhirUuid().toString();
+            }
+            for (Reference basedOn : task.getBasedOn()) {
+                if (basedOn.hasReferenceElement()) {
+                    String serviceRequestId = basedOn.getReferenceElement().getIdPart();
+                    Optional<QuestionnaireResponse> found = questionnaireStorageService
+                            .getQuestionnaireResponseForServiceRequest(serviceRequestId, patientFhirId);
+                    if (found.isPresent() && hasMeaningfulId(found.get())) {
+                        return QuestionnaireStorageServiceImpl
+                                .toStorageUuid(found.get().getIdElement().getIdPart());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "resolveAdoptedQuestionnaireResponseUuid",
+                    "Failed to resolve adopted questionnaire response for electronic order: " + eOrder.getId()
+                            + " - " + e.getMessage());
+        }
+        return null;
     }
 
     public static boolean hasMeaningfulId(QuestionnaireResponse qr) {

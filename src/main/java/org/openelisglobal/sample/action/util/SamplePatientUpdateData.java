@@ -62,7 +62,6 @@ import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.service.ProviderTitleService;
 import org.openelisglobal.provider.valueholder.Provider;
-import org.openelisglobal.questionnaire.service.QuestionnaireStorageServiceImpl;
 import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
@@ -968,11 +967,6 @@ public class SamplePatientUpdateData {
             }
             getProgramSample().setProgram(program);
             getProgramSample().setSysUserId(currentUserId);
-            if (additionalQuestions != null && additionalQuestions.hasId()
-                    && StringUtils.isNotBlank(additionalQuestions.getIdElement().getIdPart())) {
-                getProgramSample().setQuestionnaireResponseUuid(
-                        QuestionnaireStorageServiceImpl.toStorageUuid(additionalQuestions.getIdElement().getIdPart()));
-            }
         }
     }
 

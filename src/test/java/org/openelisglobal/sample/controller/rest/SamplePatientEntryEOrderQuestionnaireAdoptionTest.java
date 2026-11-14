@@ -5,8 +5,13 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import ca.uhn.fhir.parser.IParser;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,12 +24,14 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageServiceImpl;
+import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SamplePatientEntryServiceImpl;
 
@@ -35,6 +42,8 @@ public class SamplePatientEntryEOrderQuestionnaireAdoptionTest {
     private QuestionnaireStorageService questionnaireStorageService;
     @Mock
     private ProgramService programService;
+    @Mock
+    private FhirUtil fhirUtil;
 
     @InjectMocks
     private SamplePatientEntryServiceImpl samplePatientService;
@@ -197,5 +206,62 @@ public class SamplePatientEntryEOrderQuestionnaireAdoptionTest {
         QuestionnaireResponse qr = new QuestionnaireResponse();
         qr.setQuestionnaire("Questionnaire/" + expected);
         assertEquals(expected, QuestionnaireStorageServiceImpl.questionnaireUuidOf(qr));
+    }
+
+    @Test
+    public void resolveAdoptedQuestionnaireResponseUuid_returnsNullWhenNonEOrder() {
+        SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
+        when(updateData.getElectronicOrder()).thenReturn(null);
+
+        assertNull(samplePatientService.resolveAdoptedQuestionnaireResponseUuid(updateData));
+        assertNull(samplePatientService.resolveAdoptedQuestionnaireResponseUuid(null));
+    }
+
+    @Test
+    public void resolveAdoptedQuestionnaireResponseUuid_adoptsServerResolvedQrForElectronicOrder() {
+        SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
+        ElectronicOrder eOrder = new ElectronicOrder();
+        eOrder.setId("eo-1");
+        eOrder.setData("{\"resourceType\":\"Task\"}");
+        when(updateData.getElectronicOrder()).thenReturn(eOrder);
+
+        Task task = new Task();
+        task.addBasedOn(new Reference("ServiceRequest/sr-999"));
+        task.setFor(new Reference("Patient/pat-111"));
+
+        IParser parser = mock(IParser.class);
+        when(fhirUtil.getFhirParser()).thenReturn(parser);
+        when(parser.parseResource(eq(Task.class), anyString())).thenReturn(task);
+
+        UUID expectedUuid = UUID.randomUUID();
+        QuestionnaireResponse qr = new QuestionnaireResponse();
+        qr.setId(expectedUuid.toString());
+
+        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-999", "pat-111"))
+                .thenReturn(Optional.of(qr));
+
+        UUID resolved = samplePatientService.resolveAdoptedQuestionnaireResponseUuid(updateData);
+        assertEquals(expectedUuid, resolved);
+    }
+
+    @Test
+    public void resolveAdoptedQuestionnaireResponseUuid_returnsNullWhenEOrderHasNoMatchingQr() {
+        SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
+        ElectronicOrder eOrder = new ElectronicOrder();
+        eOrder.setId("eo-2");
+        eOrder.setData("{\"resourceType\":\"Task\"}");
+        when(updateData.getElectronicOrder()).thenReturn(eOrder);
+
+        Task task = new Task();
+        task.addBasedOn(new Reference("ServiceRequest/sr-none"));
+
+        IParser parser = mock(IParser.class);
+        when(fhirUtil.getFhirParser()).thenReturn(parser);
+        when(parser.parseResource(eq(Task.class), anyString())).thenReturn(task);
+
+        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest(eq("sr-none"), any()))
+                .thenReturn(Optional.empty());
+
+        assertNull(samplePatientService.resolveAdoptedQuestionnaireResponseUuid(updateData));
     }
 }

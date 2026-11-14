@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -139,7 +140,6 @@ public class QuestionnaireStorageServiceLookupTest {
 
         when(questionnaireResponseService.getAllMatching("subjectReference", "Patient/pat-1"))
                 .thenReturn(Collections.singletonList(entity2));
-        when(questionnaireResponseService.getAll()).thenReturn(Collections.emptyList());
 
         // Searching for sr-123 should NOT match prefix-sr-123 even though it ends with sr-123
         Optional<QuestionnaireResponse> result = storageService.getQuestionnaireResponseForServiceRequest("sr-123",
@@ -148,24 +148,15 @@ public class QuestionnaireStorageServiceLookupTest {
     }
 
     @Test
-    public void getQuestionnaireResponseForServiceRequest_localSearch_fallsBackToAllWhenPatientSearchMisses() {
+    public void getQuestionnaireResponseForServiceRequest_localSearch_returnsEmptyWhenPatientSearchMissesWithoutLoadingAll() {
         when(fhirConfig.getLocalFhirStorePath()).thenReturn(null);
-
-        QuestionnaireResponse qr = new QuestionnaireResponse();
-        qr.setId("qr-fallback");
-        qr.addBasedOn(new Reference("ServiceRequest/sr-500"));
-
-        org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse entity = new org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse();
-        entity.setFhirUuid(UUID.randomUUID());
-        entity.setResourceJson(parser.encodeResourceToString(qr));
 
         when(questionnaireResponseService.getAllMatching("subjectReference", "Patient/pat-999"))
                 .thenReturn(Collections.emptyList());
-        when(questionnaireResponseService.getAll()).thenReturn(Collections.singletonList(entity));
 
         Optional<QuestionnaireResponse> result = storageService.getQuestionnaireResponseForServiceRequest("sr-500",
                 "pat-999");
-        assertTrue(result.isPresent());
-        assertEquals("qr-fallback", result.get().getIdElement().getIdPart());
+        assertFalse(result.isPresent());
+        verify(questionnaireResponseService, never()).getAll();
     }
 }

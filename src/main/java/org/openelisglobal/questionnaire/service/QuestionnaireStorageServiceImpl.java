@@ -209,16 +209,6 @@ public class QuestionnaireStorageServiceImpl implements QuestionnaireStorageServ
                 }
             }
         }
-        List<org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse> all = questionnaireResponseService
-                .getAll();
-        if (all != null) {
-            for (org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse entity : all) {
-                QuestionnaireResponse qr = toFhir(entity);
-                if (matchesServiceRequest(qr, serviceRequestId)) {
-                    return Optional.of(qr);
-                }
-            }
-        }
         return Optional.empty();
     }
 
