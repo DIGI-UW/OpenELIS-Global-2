@@ -176,7 +176,7 @@ jobs:
               CHECKOUT_REF="$HEAD_SHA"
             else
               ARTIFACT_SOURCE_MODE="same_run"
-              CHECKOUT_REF="refs/pull/${PR_NUMBER}/merge"
+              CHECKOUT_REF="$HEAD_SHA"
             fi
           elif [ "$IMAGE_TRANSFER" = "ghcr" ]; then
             ARTIFACT_SOURCE_MODE="cross_run"
