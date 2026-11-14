@@ -4,6 +4,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
+import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -105,6 +106,8 @@ public class UnifiedSystemUserRestController extends BaseController {
     private UserModuleService userModuleService;
     @Autowired
     private UserService userService;
+    @Autowired
+    private org.openelisglobal.systemuser.service.UnifiedSystemUserService accountAdministration;
     @Autowired
     private TestSectionService testSectionService;
     // private static final String RESERVED_ADMIN_NAME = "admin";
@@ -369,19 +372,20 @@ public class UnifiedSystemUserRestController extends BaseController {
         if (grantsGlobalAdministrator(form)) {
             refusal.reject(ERROR_GLOBAL_ADMIN_GRANT);
         }
-        if (targetsProtectedAccount(form)) {
+        if (targetsProtectedAccount(form, callerId)) {
             refusal.reject(ERROR_GLOBAL_ADMIN_EDIT);
         }
         return refusal;
     }
 
     private boolean grantsGlobalAdministrator(UnifiedSystemUserForm form) {
-        if (form.getSelectedRoles() != null && form.getSelectedRoles().contains(GLOBAL_ADMIN_ID)) {
+        if (form.getSelectedRoles() != null
+                && form.getSelectedRoles().stream().anyMatch(this::isGlobalAdministratorRole)) {
             return true;
         }
         Map<String, Set<String>> labUnitRoles = form.getSelectedTestSectionLabUnits();
-        if (labUnitRoles != null
-                && labUnitRoles.values().stream().anyMatch(roles -> roles != null && roles.contains(GLOBAL_ADMIN_ID))) {
+        if (labUnitRoles != null && labUnitRoles.values().stream()
+                .anyMatch(roles -> roles != null && roles.stream().anyMatch(this::isGlobalAdministratorRole))) {
             return true;
         }
         String copiedFrom = form.getSystemUserIdToCopy() == null ? "" : form.getSystemUserIdToCopy().trim();
@@ -407,20 +411,22 @@ public class UnifiedSystemUserRestController extends BaseController {
         }
     }
 
-    private boolean targetsProtectedAccount(UnifiedSystemUserForm form) {
-        String loginName = form.getUserLoginName() == null ? "" : form.getUserLoginName().trim();
-        if (RESERVED_ADMIN_NAME.equals(loginName)) {
-            return true;
-        }
-        if (!GenericValidator.isBlankOrNull(form.getSystemUserId())
-                && userRoleService.getRoleIdsForUser(form.getSystemUserId()).contains(GLOBAL_ADMIN_ID)) {
-            return true;
-        }
-        if (GenericValidator.isBlankOrNull(form.getLoginUserId())) {
+    private boolean isGlobalAdministratorRole(String roleId) {
+        if (roleId == null) {
             return false;
         }
-        LoginUser login = loginService.get(Integer.parseInt(form.getLoginUserId()));
-        return login != null && (YES.equals(login.getIsAdmin()) || RESERVED_ADMIN_NAME.equals(login.getLoginName()));
+        try {
+            return new BigInteger(roleId).equals(new BigInteger(GLOBAL_ADMIN_ID));
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private boolean targetsProtectedAccount(UnifiedSystemUserForm form, String callerId) {
+        String loginName = form.getUserLoginName() == null ? "" : form.getUserLoginName().trim();
+        return RESERVED_ADMIN_NAME.equals(loginName) || !accountAdministration.canManageAccount(callerId,
+                form.getSystemUserId(),
+                GenericValidator.isBlankOrNull(form.getLoginUserId()) ? null : Integer.valueOf(form.getLoginUserId()));
     }
 
     private List<Role> doRoleFiltering(List<Role> roles, String loggedInUserId) {

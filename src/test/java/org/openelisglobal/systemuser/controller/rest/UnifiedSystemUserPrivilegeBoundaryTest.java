@@ -62,6 +62,51 @@ public class UnifiedSystemUserPrivilegeBoundaryTest extends BaseWebContextSensit
     }
 
     @Test
+    public void zeroPaddedGlobalRoleCannotBeGrantedDirectlyOrThroughLabUnits() throws Exception {
+        Map<String, Object> form = readForm(userAccountAdmin, BWHITE_FORM);
+        form.put("selectedRoles", List.of("01"));
+        save(userAccountAdmin, form).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorKey").value(UnifiedSystemUserRestController.ERROR_GLOBAL_ADMIN_GRANT));
+        form.put("selectedRoles", List.of());
+        form.put("selectedTestSectionLabUnits", Map.of("AllLabUnits", List.of("001")));
+        save(userAccountAdmin, form).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorKey").value(UnifiedSystemUserRestController.ERROR_GLOBAL_ADMIN_GRANT));
+        assertEquals(List.of(), userRoleService.getRoleIdsForUser(BWHITE));
+    }
+
+    @Test
+    public void accountAdministratorCannotDeactivateGlobalAdministratorOrMixedBatch() throws Exception {
+        deactivate(userAccountAdmin, List.of("4-7")).andExpect(status().isForbidden());
+        deactivate(userAccountAdmin, List.of(BWHITE_FORM, "4-7")).andExpect(status().isForbidden());
+        assertEquals(IActionConstants.YES, readForm(globalAdmin, "4-7").get("accountActive"));
+        assertEquals(IActionConstants.YES, readForm(globalAdmin, BWHITE_FORM).get("accountActive"));
+        assertTrue(userRoleService.getRoleIdsForUser("4").contains(GLOBAL_ADMINISTRATOR));
+    }
+
+    @Test
+    public void deletionCannotCombineAnOrdinaryProfileWithAnAdministratorLogin() throws Exception {
+        deactivate(userAccountAdmin, List.of("5-7")).andExpect(status().isForbidden());
+        deactivate(globalAdmin, List.of("5-7")).andExpect(status().isForbidden());
+        assertEquals("asmith", loginService.get(7).getLoginName());
+        assertEquals(IActionConstants.YES, readForm(globalAdmin, BWHITE_FORM).get("accountActive"));
+    }
+
+    @Test
+    public void accountAdministratorStillDeactivatesOrdinaryAccounts() throws Exception {
+        deactivate(userAccountAdmin, List.of(BWHITE_FORM)).andExpect(status().isOk());
+        var profiles = webApplicationContext.getBean(org.openelisglobal.systemuser.service.SystemUserService.class);
+        assertEquals(IActionConstants.NO, profiles.get(BWHITE).getIsActive());
+        assertFalse(loginService.getMatch("id", 8).isPresent());
+    }
+
+    private org.springframework.test.web.servlet.ResultActions deactivate(MockHttpSession session, List<String> ids)
+            throws Exception {
+        return mockMvc
+                .perform(post("/rest/DeleteUnifiedSystemUser").session(session).contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("selectedIDs", ids))));
+    }
+
+    @Test
     public void malformedCopiedUserIdIsRejectedBeforeRoleLookup() throws Exception {
         Map<String, Object> form = readForm(userAccountAdmin, BWHITE_FORM);
         form.put("allowCopyUserRoles", IActionConstants.YES);

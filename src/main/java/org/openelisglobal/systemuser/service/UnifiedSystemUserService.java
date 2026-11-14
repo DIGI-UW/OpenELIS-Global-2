@@ -7,6 +7,8 @@ import org.openelisglobal.userrole.valueholder.UserRole;
 
 public interface UnifiedSystemUserService {
 
+    boolean canManageAccount(String callerId, String systemUserId, Integer loginUserId);
+
     void deleteData(List<UserRole> userRoles, List<SystemUser> systemUsers, List<LoginUser> loginUsers,
             String sysUserId);
 }
