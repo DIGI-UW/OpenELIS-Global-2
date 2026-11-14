@@ -361,4 +361,113 @@ public class SamplePatientEntryEOrderQuestionnaireAdoptionTest {
 
         samplePatientService.resolveAdoptedQuestionnaireResponseUuid(updateData);
     }
+
+    @Test
+    public void resolveAndPrefillQuestionnaireResponse_retriesTaskForWhenEOrderPatientDoesNotMatch() {
+        Task task = new Task();
+        task.addBasedOn(new Reference("ServiceRequest/sr-retry-1"));
+        task.setFor(new Reference("Patient/remote-task-pat-456"));
+
+        UUID localPatientUuid = UUID.randomUUID();
+        Patient localPatient = new Patient();
+        localPatient.setFhirUuid(localPatientUuid);
+        ElectronicOrder eOrder = new ElectronicOrder();
+        eOrder.setPatient(localPatient);
+
+        QuestionnaireResponse importedQr = new QuestionnaireResponse();
+        importedQr.setId("qr-from-remote-pat");
+
+        // Primary lookup by eOrder patient returns empty
+        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-retry-1",
+                localPatientUuid.toString())).thenReturn(Optional.empty());
+        // Fallback retry with task.for remote patient finds the response
+        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-retry-1",
+                "remote-task-pat-456")).thenReturn(Optional.of(importedQr));
+
+        samplePatientService.resolveAndPrefillQuestionnaireResponse(orderItem, task, eOrder);
+
+        assertNotNull(orderItem.getAdditionalQuestions());
+        assertEquals("qr-from-remote-pat", orderItem.getAdditionalQuestions().getIdElement().getIdPart());
+    }
+
+    @Test
+    public void resolveAdoptedQuestionnaireResponseUuid_retriesTaskForWhenEOrderPatientDoesNotMatch() {
+        SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
+        ElectronicOrder eOrder = new ElectronicOrder();
+        eOrder.setId("eo-retry");
+        eOrder.setData("{\"resourceType\":\"Task\"}");
+        UUID localPatientUuid = UUID.randomUUID();
+        Patient localPatient = new Patient();
+        localPatient.setFhirUuid(localPatientUuid);
+        eOrder.setPatient(localPatient);
+        when(updateData.getElectronicOrder()).thenReturn(eOrder);
+
+        Task task = new Task();
+        task.addBasedOn(new Reference("ServiceRequest/sr-retry-2"));
+        task.setFor(new Reference("Patient/remote-task-pat-789"));
+
+        IParser parser = mock(IParser.class);
+        when(fhirUtil.getFhirParser()).thenReturn(parser);
+        when(parser.parseResource(eq(Task.class), anyString())).thenReturn(task);
+
+        UUID expectedUuid = UUID.randomUUID();
+        QuestionnaireResponse qr = new QuestionnaireResponse();
+        qr.setId(expectedUuid.toString());
+
+        // eOrder patient lookup fails
+        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-retry-2",
+                localPatientUuid.toString())).thenReturn(Optional.empty());
+        // task.for patient lookup succeeds
+        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-retry-2",
+                "remote-task-pat-789")).thenReturn(Optional.of(qr));
+
+        UUID resolved = samplePatientService.resolveAdoptedQuestionnaireResponseUuid(updateData);
+        assertEquals(expectedUuid, resolved);
+    }
+
+    @Test
+    public void resolveProgramQuestionnaireResponseUuid_reusesExistingMeaningfulIdWithoutPerformingLookup() {
+        SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
+        UUID existingId = UUID.randomUUID();
+        QuestionnaireResponse existingQr = new QuestionnaireResponse();
+        existingQr.setId(existingId.toString());
+        when(updateData.getProgramQuestionnaireResponse()).thenReturn(existingQr);
+
+        UUID result = samplePatientService.resolveProgramQuestionnaireResponseUuid(updateData);
+
+        assertEquals(existingId, result);
+        // ElectronicOrder should never even be inspected when QR already has a meaningful ID
+        org.mockito.Mockito.verify(updateData, org.mockito.Mockito.never()).getElectronicOrder();
+    }
+
+    @Test
+    public void resolveProgramQuestionnaireResponseUuid_fallsBackToAdoptionWhenIdNotMeaningful() {
+        SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
+        QuestionnaireResponse placeholderQr = new QuestionnaireResponse();
+        placeholderQr.setId(""); // Empty placeholder from UI
+        when(updateData.getProgramQuestionnaireResponse()).thenReturn(placeholderQr);
+
+        ElectronicOrder eOrder = new ElectronicOrder();
+        eOrder.setId("eo-placeholder");
+        eOrder.setData("{\"resourceType\":\"Task\"}");
+        when(updateData.getElectronicOrder()).thenReturn(eOrder);
+
+        Task task = new Task();
+        task.addBasedOn(new Reference("ServiceRequest/sr-ad-1"));
+
+        IParser parser = mock(IParser.class);
+        when(fhirUtil.getFhirParser()).thenReturn(parser);
+        when(parser.parseResource(eq(Task.class), anyString())).thenReturn(task);
+
+        UUID adoptedUuid = UUID.randomUUID();
+        QuestionnaireResponse qr = new QuestionnaireResponse();
+        qr.setId(adoptedUuid.toString());
+
+        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-ad-1", null))
+                .thenReturn(Optional.of(qr));
+
+        UUID result = samplePatientService.resolveProgramQuestionnaireResponseUuid(updateData);
+
+        assertEquals(adoptedUuid, result);
+    }
 }

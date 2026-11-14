@@ -550,12 +550,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             // Only set new UUID if this is a new ProgramSample (no existing UUID)
             if (updateData.getProgramQuestionnaireResponse() != null
                     && updateData.getProgramSample().getQuestionnaireResponseUuid() == null) {
-                UUID adoptedUuid = resolveAdoptedQuestionnaireResponseUuid(updateData);
-                if (adoptedUuid != null) {
-                    updateData.getProgramSample().setQuestionnaireResponseUuid(adoptedUuid);
-                } else {
-                    updateData.getProgramSample().setQuestionnaireResponseUuid(UUID.randomUUID());
-                }
+                updateData.getProgramSample()
+                        .setQuestionnaireResponseUuid(resolveProgramQuestionnaireResponseUuid(updateData));
             }
             updateData.getProgramSample().setSample(updateData.getSample());
 
@@ -1684,12 +1680,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         if (sampleOrder == null || task == null) {
             return;
         }
-        String patientFhirId = null;
-        if (eOrder != null && eOrder.getPatient() != null && eOrder.getPatient().getFhirUuid() != null) {
-            patientFhirId = eOrder.getPatient().getFhirUuid().toString();
-        } else if (task.hasFor() && task.getFor().hasReference()) {
-            patientFhirId = task.getFor().getReferenceElement().getIdPart();
-        }
+        List<String> candidatePatientIds = extractCandidatePatientFhirIds(task, eOrder);
 
         QuestionnaireResponse qrForProgram = sampleOrder.getAdditionalQuestions();
         if (!hasMeaningfulId(qrForProgram)) {
@@ -1697,8 +1688,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             for (Reference basedOn : task.getBasedOn()) {
                 if (basedOn.hasReferenceElement()) {
                     String serviceRequestId = basedOn.getReferenceElement().getIdPart();
-                    Optional<QuestionnaireResponse> found = questionnaireStorageService
-                            .getQuestionnaireResponseForServiceRequest(serviceRequestId, patientFhirId);
+                    Optional<QuestionnaireResponse> found = findQuestionnaireResponseForServiceRequest(
+                            serviceRequestId, candidatePatientIds);
                     if (found.isPresent()) {
                         importedQr = found.get();
                         break;
@@ -1744,17 +1735,12 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             if (task == null || !task.hasBasedOn()) {
                 return null;
             }
-            String patientFhirId = null;
-            if (eOrder.getPatient() != null && eOrder.getPatient().getFhirUuid() != null) {
-                patientFhirId = eOrder.getPatient().getFhirUuid().toString();
-            } else if (task.hasFor() && task.getFor().hasReference()) {
-                patientFhirId = task.getFor().getReferenceElement().getIdPart();
-            }
+            List<String> candidatePatientIds = extractCandidatePatientFhirIds(task, eOrder);
             for (Reference basedOn : task.getBasedOn()) {
                 if (basedOn.hasReferenceElement()) {
                     String serviceRequestId = basedOn.getReferenceElement().getIdPart();
-                    Optional<QuestionnaireResponse> found = questionnaireStorageService
-                            .getQuestionnaireResponseForServiceRequest(serviceRequestId, patientFhirId);
+                    Optional<QuestionnaireResponse> found = findQuestionnaireResponseForServiceRequest(
+                            serviceRequestId, candidatePatientIds);
                     if (found.isPresent() && hasMeaningfulId(found.get())) {
                         return QuestionnaireStorageServiceImpl
                                 .toStorageUuid(found.get().getIdElement().getIdPart());
@@ -1769,6 +1755,47 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     + eOrder.getId(), e);
         }
         return null;
+    }
+
+    static List<String> extractCandidatePatientFhirIds(Task task, ElectronicOrder eOrder) {
+        List<String> candidateIds = new ArrayList<>();
+        if (eOrder != null && eOrder.getPatient() != null && eOrder.getPatient().getFhirUuid() != null) {
+            candidateIds.add(eOrder.getPatient().getFhirUuid().toString());
+        }
+        if (task != null && task.hasFor() && task.getFor().hasReference()) {
+            String taskPatientId = task.getFor().getReferenceElement().getIdPart();
+            if (StringUtils.isNotBlank(taskPatientId) && !candidateIds.contains(taskPatientId)) {
+                candidateIds.add(taskPatientId);
+            }
+        }
+        return candidateIds;
+    }
+
+    private Optional<QuestionnaireResponse> findQuestionnaireResponseForServiceRequest(
+            String serviceRequestId, List<String> candidatePatientIds) {
+        if (candidatePatientIds.isEmpty()) {
+            return questionnaireStorageService.getQuestionnaireResponseForServiceRequest(serviceRequestId, null);
+        }
+        for (String patientFhirId : candidatePatientIds) {
+            Optional<QuestionnaireResponse> found = questionnaireStorageService
+                    .getQuestionnaireResponseForServiceRequest(serviceRequestId, patientFhirId);
+            if (found.isPresent()) {
+                return found;
+            }
+        }
+        return questionnaireStorageService.getQuestionnaireResponseForServiceRequest(serviceRequestId, null);
+    }
+
+    public UUID resolveProgramQuestionnaireResponseUuid(SamplePatientUpdateData updateData) {
+        if (updateData == null || updateData.getProgramQuestionnaireResponse() == null) {
+            return null;
+        }
+        if (hasMeaningfulId(updateData.getProgramQuestionnaireResponse())) {
+            return QuestionnaireStorageServiceImpl
+                    .toStorageUuid(updateData.getProgramQuestionnaireResponse().getIdElement().getIdPart());
+        }
+        UUID adopted = resolveAdoptedQuestionnaireResponseUuid(updateData);
+        return adopted != null ? adopted : UUID.randomUUID();
     }
 
     public static boolean hasMeaningfulId(QuestionnaireResponse qr) {
