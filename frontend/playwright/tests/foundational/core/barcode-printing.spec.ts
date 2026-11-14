@@ -1,6 +1,6 @@
 import { expect, test } from "../../../helpers/test-base";
 
-test.describe("Barcode printing", () => {
+test.describe("OGC-284: Barcode printing", () => {
   test("Print Barcode page loads with pre-print and existing order sections", async ({
     page,
   }) => {
