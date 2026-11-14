@@ -58,6 +58,7 @@ import org.openelisglobal.sample.override.valueholder.OverrideType;
 import org.openelisglobal.sample.service.OrderTestEdits;
 import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
+import org.openelisglobal.sample.service.SamplePatientEntryServiceImpl;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.validator.SamplePatientEntryFormValidator;
 import org.openelisglobal.sample.valueholder.OrderPriority;
@@ -391,6 +392,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         // Now that sample is loaded, we can initialize program questions (which needs
         // sample.id for updates)
+        prefillElectronicOrderIfPresent(sampleOrder);
+
         if (!GenericValidator.isBlankOrNull(sampleOrder.getProgramId())) {
             updateData.initProgramQuestions(sampleOrder.getProgramId(), sampleOrder.getAdditionalQuestions());
         }
@@ -800,7 +803,22 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         samplePatientService.persistLabelRequests(updateData, form.getLabelPersistRequest(), sysUserId);
     }
 
-    private void setupForm(SamplePatientEntryForm form, HttpServletRequest request, String externalOrderNumber)
+    void prefillElectronicOrderIfPresent(SampleOrderItem sampleOrder) {
+        if (sampleOrder != null && StringUtils.isNotBlank(sampleOrder.getExternalOrderNumber())) {
+            if (!SamplePatientEntryServiceImpl.hasMeaningfulId(sampleOrder.getAdditionalQuestions())
+                    || GenericValidator.isBlankOrNull(sampleOrder.getProgramId())) {
+                List<ElectronicOrder> eOrders = electronicOrderService
+                        .getElectronicOrdersByExternalId(sampleOrder.getExternalOrderNumber());
+                ElectronicOrder eOrder = eOrders.isEmpty() ? null : eOrders.get(eOrders.size() - 1);
+                if (eOrder != null && StringUtils.isNotBlank(eOrder.getData())) {
+                    Task task = fhirUtil.getFhirParser().parseResource(Task.class, eOrder.getData());
+                    samplePatientService.resolveAndPrefillQuestionnaireResponse(sampleOrder, task, eOrder);
+                }
+            }
+        }
+    }
+
+    void setupForm(SamplePatientEntryForm form, HttpServletRequest request, String externalOrderNumber)
             throws LIMSRuntimeException, IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         SampleOrderService sampleOrderService = new SampleOrderService();
         form.setSampleOrderItems(sampleOrderService.getSampleOrderItem());
@@ -816,7 +834,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         form.getSampleOrderItems().setExternalOrderNumber(externalOrderNumber);
         if (StringUtils.isNotBlank(externalOrderNumber)) {
             List<ElectronicOrder> eOrders = electronicOrderService.getElectronicOrdersByExternalId(externalOrderNumber);
-            ElectronicOrder eOrder = eOrders.isEmpty() ? null : eOrders.get(0);
+            ElectronicOrder eOrder = eOrders.isEmpty() ? null : eOrders.get(eOrders.size() - 1);
             if (eOrder != null) {
                 form.getSampleOrderItems().setPriority(eOrder.getPriority());
                 Task task = fhirUtil.getFhirParser().parseResource(Task.class, eOrder.getData());
@@ -838,6 +856,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                         }
                     }
                 }
+                samplePatientService.resolveAndPrefillQuestionnaireResponse(form.getSampleOrderItems(), task, eOrder);
             }
         }
         form.setPatientProperties(new PatientManagementInfo());
