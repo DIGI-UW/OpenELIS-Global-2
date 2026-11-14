@@ -1,10 +1,10 @@
 import React from "react";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { vi } from "vitest";
-import { IntlProvider } from "react-intl";
+import { IntlProvider, type IntlConfig } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
-import PageBreadCrumb from "./PageBreadCrumb";
+import PageBreadCrumb, { type BreadcrumbEntry } from "./PageBreadCrumb";
 
 const messages = {
   "home.label": "Home",
@@ -12,7 +12,11 @@ const messages = {
   "reports.label.status": "Patient Status Report",
 };
 
-const wrap = (breadcrumbs, onError, locale = "en") =>
+const wrap = (
+  breadcrumbs: BreadcrumbEntry[],
+  onError?: IntlConfig["onError"],
+  locale = "en",
+) =>
   render(
     <IntlProvider locale={locale} messages={messages} onError={onError}>
       <MemoryRouter>

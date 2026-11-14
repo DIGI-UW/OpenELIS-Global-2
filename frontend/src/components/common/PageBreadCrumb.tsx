@@ -22,7 +22,20 @@ import { Link } from "react-router-dom";
 // sample's accession number, a box label) can pass it directly: a label the
 // catalogue does not hold shows as written, without asking react-intl for it,
 // which logged a missing-message error on every render.
-const PageBreadCrumb = ({ breadcrumbs }) => {
+export interface BreadcrumbEntry {
+  /** react-intl message id (ignored when `text` is provided) */
+  label?: string;
+  link?: string;
+  /** Literal text, e.g. an analyzer name — not looked up as a message id */
+  text?: string;
+  isCurrentPage?: boolean;
+}
+
+interface PageBreadCrumbProps {
+  breadcrumbs: BreadcrumbEntry[];
+}
+
+const PageBreadCrumb = ({ breadcrumbs }: PageBreadCrumbProps) => {
   const intl = useIntl();
   const anyExplicitCurrent = breadcrumbs.some((b) => b.isCurrentPage === true);
   const lastIndex = breadcrumbs.length - 1;
@@ -35,7 +48,8 @@ const PageBreadCrumb = ({ breadcrumbs }) => {
           {breadcrumbs.map((breadcrumb, index) => {
             const label =
               breadcrumb.text ??
-              (breadcrumb.label in (intl.messages || {})
+              (breadcrumb.label !== undefined &&
+              breadcrumb.label in (intl.messages || {})
                 ? intl.formatMessage({ id: breadcrumb.label })
                 : breadcrumb.label);
             const isCurrent =
