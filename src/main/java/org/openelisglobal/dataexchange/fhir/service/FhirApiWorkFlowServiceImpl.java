@@ -616,12 +616,41 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
             objects.serviceRequests.add(localServiceRequest);
         }
 
+        // Patient
+        // Patient forPatient = getForPatientFromBundle(bundle, remoteTask);
+        // env/vector samples have no patient reference
+        if (remotePatientForTask != null) {
+            Optional<Patient> existingLocalPatient = getPatientWithSameServiceIdentifier(remotePatientForTask,
+                    remoteStorePath);
+            if (existingLocalPatient.isEmpty()) {
+                objects.patient = remotePatientForTask
+                        .addIdentifier(createIdentifierToRemoteResource(remotePatientForTask, remoteStorePath));
+                fhirOperations.updateResources.put(objects.patient.getIdElement().getIdPart(), objects.patient);
+            } else {
+                objects.patient = existingLocalPatient.get();
+            }
+            objects.task.setFor(fhirTransformService.createReferenceFor(objects.patient));
+            for (ServiceRequest serviceRequest : objects.serviceRequests) {
+                serviceRequest.setSubject(fhirTransformService.createReferenceFor(objects.patient));
+            }
+        } else {
+            // reject only when domain is explicitly clinical
+            String sampleDomain = getSampleDomainFromServiceRequests(remoteServiceRequests);
+            if ("H".equals(sampleDomain)) {
+                throw new FhirLocalPersistingException(
+                        "remote Task has no patient reference but sample domain is clinical (H)."
+                                + " Cannot import clinical referral without a patient.");
+            }
+            LogEvent.logInfo(this.getClass().getSimpleName(), "saveRemoteTaskAsLocalTask",
+                    "remote Task has no patient reference; sample domain is " + sampleDomain);
+            objects.patient = null;
+        }
+
         // QuestionnaireResponse
         objects.questionnaireResponses = new ArrayList<>();
         for (QuestionnaireResponse qResponse : remoteQResponses) {
             QuestionnaireResponse localQResponse = qResponse;
-            if (objects.patient != null
-                    && (!localQResponse.hasSubject() || !localQResponse.getSubject().hasReference())) {
+            if (objects.patient != null) {
                 localQResponse.setSubject(fhirTransformService.createReferenceFor(objects.patient));
             }
             fhirOperations.updateResources.put(localQResponse.getIdElement().getIdPart(), localQResponse);
@@ -670,36 +699,6 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
                 localSpecimen = existingLocalSpecimen.get();
             }
             objects.specimens.add(localSpecimen);
-        }
-
-        // Patient
-        // Patient forPatient = getForPatientFromBundle(bundle, remoteTask);
-        // env/vector samples have no patient reference
-        if (remotePatientForTask != null) {
-            Optional<Patient> existingLocalPatient = getPatientWithSameServiceIdentifier(remotePatientForTask,
-                    remoteStorePath);
-            if (existingLocalPatient.isEmpty()) {
-                objects.patient = remotePatientForTask
-                        .addIdentifier(createIdentifierToRemoteResource(remotePatientForTask, remoteStorePath));
-                fhirOperations.updateResources.put(objects.patient.getIdElement().getIdPart(), objects.patient);
-            } else {
-                objects.patient = existingLocalPatient.get();
-            }
-            objects.task.setFor(fhirTransformService.createReferenceFor(objects.patient));
-            for (ServiceRequest serviceRequest : objects.serviceRequests) {
-                serviceRequest.setSubject(fhirTransformService.createReferenceFor(objects.patient));
-            }
-        } else {
-            // reject only when domain is explicitly clinical
-            String sampleDomain = getSampleDomainFromServiceRequests(remoteServiceRequests);
-            if ("H".equals(sampleDomain)) {
-                throw new FhirLocalPersistingException(
-                        "remote Task has no patient reference but sample domain is clinical (H)."
-                                + " Cannot import clinical referral without a patient.");
-            }
-            LogEvent.logInfo(this.getClass().getSimpleName(), "saveRemoteTaskAsLocalTask",
-                    "remote Task has no patient reference; sample domain is " + sampleDomain);
-            objects.patient = null;
         }
 
         // Task Practitioner
