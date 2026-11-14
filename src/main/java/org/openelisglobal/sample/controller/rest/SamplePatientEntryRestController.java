@@ -397,7 +397,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                     || GenericValidator.isBlankOrNull(sampleOrder.getProgramId())) {
                 List<ElectronicOrder> eOrders = electronicOrderService
                         .getElectronicOrdersByExternalId(sampleOrder.getExternalOrderNumber());
-                ElectronicOrder eOrder = eOrders.isEmpty() ? null : eOrders.get(0);
+                ElectronicOrder eOrder = eOrders.isEmpty() ? null : eOrders.get(eOrders.size() - 1);
                 if (eOrder != null && StringUtils.isNotBlank(eOrder.getData())) {
                     Task task = fhirUtil.getFhirParser().parseResource(Task.class, eOrder.getData());
                     samplePatientService.resolveAndPrefillQuestionnaireResponse(sampleOrder, task, eOrder);
@@ -830,7 +830,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         form.getSampleOrderItems().setExternalOrderNumber(externalOrderNumber);
         if (StringUtils.isNotBlank(externalOrderNumber)) {
             List<ElectronicOrder> eOrders = electronicOrderService.getElectronicOrdersByExternalId(externalOrderNumber);
-            ElectronicOrder eOrder = eOrders.isEmpty() ? null : eOrders.get(0);
+            ElectronicOrder eOrder = eOrders.isEmpty() ? null : eOrders.get(eOrders.size() - 1);
             if (eOrder != null) {
                 form.getSampleOrderItems().setPriority(eOrder.getPriority());
                 Task task = fhirUtil.getFhirParser().parseResource(Task.class, eOrder.getData());

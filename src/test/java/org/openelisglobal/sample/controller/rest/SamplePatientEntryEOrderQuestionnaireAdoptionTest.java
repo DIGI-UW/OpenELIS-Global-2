@@ -24,6 +24,7 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -263,5 +264,101 @@ public class SamplePatientEntryEOrderQuestionnaireAdoptionTest {
                 .thenReturn(Optional.empty());
 
         assertNull(samplePatientService.resolveAdoptedQuestionnaireResponseUuid(updateData));
+    }
+
+    @Test
+    public void resolveAndPrefillQuestionnaireResponse_prefersElectronicOrderPatientOverRemoteTaskForReference() {
+        Task task = new Task();
+        task.addBasedOn(new Reference("ServiceRequest/sr-100"));
+        task.setFor(new Reference("Patient/remote-pat-999"));
+
+        UUID patientUuid = UUID.randomUUID();
+        Patient localPatient = new Patient();
+        localPatient.setFhirUuid(patientUuid);
+        ElectronicOrder eOrder = new ElectronicOrder();
+        eOrder.setPatient(localPatient);
+
+        QuestionnaireResponse importedQr = new QuestionnaireResponse();
+        importedQr.setId("qr-local-pat");
+
+        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-100", patientUuid.toString()))
+                .thenReturn(Optional.of(importedQr));
+
+        samplePatientService.resolveAndPrefillQuestionnaireResponse(orderItem, task, eOrder);
+
+        assertNotNull(orderItem.getAdditionalQuestions());
+        assertEquals("qr-local-pat", orderItem.getAdditionalQuestions().getIdElement().getIdPart());
+    }
+
+    @Test
+    public void resolveAndPrefillQuestionnaireResponse_matchesProgramWhenResponseIdAlreadyExists() {
+        UUID qUuid = UUID.randomUUID();
+        QuestionnaireResponse existingQr = new QuestionnaireResponse();
+        existingQr.setId("existing-meaningful-id");
+        existingQr.setQuestionnaire("Questionnaire/" + qUuid);
+        orderItem.setAdditionalQuestions(existingQr);
+
+        Task task = new Task();
+        task.addBasedOn(new Reference("ServiceRequest/sr-100"));
+
+        Program program = new Program();
+        program.setId("prog-match-1");
+        program.setQuestionnaireUUID(qUuid);
+
+        when(programService.getAllMatching("questionnaireUUID", qUuid)).thenReturn(Collections.singletonList(program));
+
+        samplePatientService.resolveAndPrefillQuestionnaireResponse(orderItem, task, new ElectronicOrder());
+
+        // Keeps existing response and does not replace it
+        assertEquals("existing-meaningful-id", orderItem.getAdditionalQuestions().getIdElement().getIdPart());
+        // Resolves programId even though additionalQuestions already had an ID
+        assertEquals("prog-match-1", orderItem.getProgramId());
+    }
+
+    @Test
+    public void resolveAdoptedQuestionnaireResponseUuid_prefersElectronicOrderPatientOverRemoteTaskForReference() {
+        SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
+        ElectronicOrder eOrder = new ElectronicOrder();
+        eOrder.setId("eo-pref");
+        eOrder.setData("{\"resourceType\":\"Task\"}");
+        UUID localPatientUuid = UUID.randomUUID();
+        Patient localPatient = new Patient();
+        localPatient.setFhirUuid(localPatientUuid);
+        eOrder.setPatient(localPatient);
+        when(updateData.getElectronicOrder()).thenReturn(eOrder);
+
+        Task task = new Task();
+        task.addBasedOn(new Reference("ServiceRequest/sr-pref-1"));
+        task.setFor(new Reference("Patient/remote-task-pat"));
+
+        IParser parser = mock(IParser.class);
+        when(fhirUtil.getFhirParser()).thenReturn(parser);
+        when(parser.parseResource(eq(Task.class), anyString())).thenReturn(task);
+
+        UUID expectedUuid = UUID.randomUUID();
+        QuestionnaireResponse qr = new QuestionnaireResponse();
+        qr.setId(expectedUuid.toString());
+
+        when(questionnaireStorageService.getQuestionnaireResponseForServiceRequest("sr-pref-1", localPatientUuid.toString()))
+                .thenReturn(Optional.of(qr));
+
+        UUID resolved = samplePatientService.resolveAdoptedQuestionnaireResponseUuid(updateData);
+        assertEquals(expectedUuid, resolved);
+    }
+
+    @Test(expected = LIMSRuntimeException.class)
+    public void resolveAdoptedQuestionnaireResponseUuid_throwsLIMSRuntimeExceptionWhenResolutionFailsDueToException() {
+        SamplePatientUpdateData updateData = mock(SamplePatientUpdateData.class);
+        ElectronicOrder eOrder = new ElectronicOrder();
+        eOrder.setId("eo-err");
+        eOrder.setData("{\"resourceType\":\"Task\"}");
+        when(updateData.getElectronicOrder()).thenReturn(eOrder);
+
+        IParser parser = mock(IParser.class);
+        when(fhirUtil.getFhirParser()).thenReturn(parser);
+        when(parser.parseResource(eq(Task.class), anyString()))
+                .thenThrow(new RuntimeException("Simulated parser or database connectivity failure"));
+
+        samplePatientService.resolveAdoptedQuestionnaireResponseUuid(updateData);
     }
 }
