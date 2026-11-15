@@ -8,13 +8,17 @@ import org.hamcrest.CoreMatchers;
 import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -59,6 +63,26 @@ public class BatchTestReassignmentRestControllerTest extends BaseWebContextSensi
     @Test
     public void aWellFormedRequestIsAccepted() throws Exception {
         save("{" + EMPTY_LISTS + ",\"replace\":[]}").andExpect(status().isOk());
+    }
+
+    @Test
+    public void persistenceFailureAnswers500SaveFailed() throws Exception {
+        AnalysisService mockAnalysisService = Mockito.mock(AnalysisService.class);
+        Mockito.doThrow(new LIMSRuntimeException("database update failed")).when(mockAnalysisService)
+                .updateAnalysises(Mockito.anyList(), Mockito.anyList(), Mockito.anyString());
+
+        Object target = AopProxyUtils.getSingletonTarget(controller);
+        Object targetController = target != null ? target : controller;
+        Object originalService = ReflectionTestUtils.getField(targetController, "analysisService");
+
+        try {
+            ReflectionTestUtils.setField(targetController, "analysisService", mockAnalysisService);
+            save("{" + EMPTY_LISTS + ",\"replace\":[]}").andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.error").value("saveFailed"))
+                    .andExpect(jsonPath("$.message").value("The change was not saved."));
+        } finally {
+            ReflectionTestUtils.setField(targetController, "analysisService", originalService);
+        }
     }
 
     private ResultActions save(String jsonWad) throws Exception {
