@@ -1,5 +1,5 @@
 import { test, expect } from "../../../helpers/test-base";
-import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
  * OGC-1547 — Result Entry Configuration listed the pathology identifier
@@ -14,6 +14,9 @@ import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
 const RAW_KEY = /^\S+\.\S+$/;
 
+// Result settings are all named, so a camelCase key is caught there too.
+const RESULT_RAW_KEY = /^\S+\.\S+$|^[a-z]+[A-Z][A-Za-z]*$/;
+
 const MENUS = [
   "ResultConfigurationMenu",
   "SampleEntryConfigurationMenu",
@@ -26,17 +29,28 @@ test.describe("OGC-1547 configuration setting names", () => {
       await page.goto(`/MasterListsPage/${menu}`, {
         waitUntil: "domcontentloaded",
       });
-      const rows = page.locator("tbody tr");
-      await expect(rows.first()).toBeVisible({ timeout: LONG_TIMEOUT });
-      await page
-        .getByRole("combobox", { name: /Items per page/i })
-        .selectOption("50");
-
-      const names = await rows.locator("td:nth-child(2)").allInnerTexts();
+      let names: string[];
+      if (menu === "ResultConfigurationMenu") {
+        // OGC-1364 v3: switches and fields grouped by purpose, no table.
+        const settings = page.getByTestId("result-validation-settings");
+        await expect(settings).toBeVisible({ timeout: LONG_TIMEOUT });
+        names = await settings
+          .locator(".cds--toggle__label-text, .cds--label")
+          .allInnerTexts();
+      } else {
+        const rows = page.locator("tbody tr");
+        await expect(rows.first()).toBeVisible({ timeout: LONG_TIMEOUT });
+        await page
+          .getByRole("combobox", { name: /Items per page/i })
+          .selectOption("50");
+        names = await rows.locator("td:nth-child(2)").allInnerTexts();
+      }
       expect(names.length).toBeGreaterThan(0);
+      const rawKey =
+        menu === "ResultConfigurationMenu" ? RESULT_RAW_KEY : RAW_KEY;
       const raw = names
         .map((name) => name.trim())
-        .filter((name) => RAW_KEY.test(name));
+        .filter((name) => rawKey.test(name));
       expect(raw, `settings on ${menu} listed by their raw key`).toEqual([]);
     });
   }
@@ -47,17 +61,12 @@ test.describe("OGC-1547 configuration setting names", () => {
     await page.goto("/MasterListsPage/ResultConfigurationMenu", {
       waitUntil: "domcontentloaded",
     });
-    await expect(page.locator("tbody tr").first()).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
-    await page
-      .getByRole("combobox", { name: /Items per page/i })
-      .selectOption("50");
-
-    const partScheme = page.getByRole("row", {
-      name: /Pathology: part designation/,
-    });
-    await expect(partScheme).toBeVisible({ timeout: UI_TIMEOUT });
+    const partScheme = page
+      .getByTestId("settings-group-pathology")
+      .locator('[data-testid^="setting-"]', {
+        hasText: "Pathology: part designation",
+      });
+    await expect(partScheme).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(partScheme).toContainText("How specimen parts are designated");
   });
 });

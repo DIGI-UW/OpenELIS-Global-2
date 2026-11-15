@@ -59,6 +59,7 @@ interface ConfigMenuItem {
   description: string;
   value: string;
   valueType: string;
+  lastupdated?: number;
   tag?: string;
   localization?: ConfigLocalization;
 }
@@ -74,6 +75,7 @@ interface ConfigTableRow {
   description: string;
   value: string;
   valueType: string;
+  lastupdated?: number;
 }
 
 interface CarbonTableCell {
@@ -163,8 +165,7 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
     props.menuType === RESULT_CONFIGURATION_MENU ? VALIDATION_POLICY_API : null,
   );
   const validationPolicyEnabled = Boolean(validationPolicy?.enabled);
-  const groupedSettings =
-    props.menuType === RESULT_CONFIGURATION_MENU && validationPolicyEnabled;
+  const groupedSettings = props.menuType === RESULT_CONFIGURATION_MENU;
   const invalidateServerData = useInvalidateServerData();
 
   useEffect(() => {
@@ -198,6 +199,7 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
               description: item.description,
               value: value,
               valueType: item.valueType,
+              lastupdated: item.lastupdated,
             };
           })
           .filter(Boolean);
@@ -329,6 +331,7 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
               <div className="orderLegendBody">
                 <ResultValidationSettings
                   settings={orderEntryConfigurationList}
+                  policyEnabled={validationPolicyEnabled}
                   onSaved={() => {
                     invalidateServerData(`/rest/${props.menuType}`);
                     invalidateServerData(VALIDATION_POLICY_API);

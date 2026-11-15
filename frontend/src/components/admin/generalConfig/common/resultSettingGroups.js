@@ -10,6 +10,7 @@ export const RESULT_SETTING_GROUPS = [
     titleKey: "resultSettings.group.validation",
     names: [
       "useMultiLevelValidation",
+      "validate all results",
       "blockSelfValidation",
       "qcFailBlocksValidation",
       "allowBulkReleaseClear",
@@ -60,7 +61,10 @@ export const RESULT_SETTING_GROUPS = [
   },
 ];
 
-/** Settings the page leaves out because something else replaced them. */
+/**
+ * Settings the validation policy replaces: shown while the policy is off, left
+ * out while it decides.
+ */
 export const REPLACED_SETTINGS = ["validate all results"];
 
 /** A setting that only applies while another one is on. */
@@ -80,9 +84,9 @@ const groupOf = (name) =>
  * The settings in page order: each group with its settings in the order listed
  * (prefixed groups by name), then "Other". Empty groups are left out.
  */
-export function groupResultSettings(settings) {
+export function groupResultSettings(settings, { policyEnabled = true } = {}) {
   const shown = (settings || []).filter(
-    (setting) => !REPLACED_SETTINGS.includes(setting.name),
+    (setting) => !(policyEnabled && REPLACED_SETTINGS.includes(setting.name)),
   );
   const groups = RESULT_SETTING_GROUPS.map((group) => ({
     id: group.id,

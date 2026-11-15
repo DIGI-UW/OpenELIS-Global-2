@@ -38,11 +38,18 @@ describe("result settings grouped by purpose (OGC-1364 v3)", () => {
     ]);
   });
 
+  it("shows validate all results under Validation while the policy is off", () => {
+    const groups = groupResultSettings([setting("validate all results")], {
+      policyEnabled: false,
+    });
+    expect(groups.map((group) => group.id)).toEqual(["validation"]);
+  });
+
   it("never hides a setting it does not know, and leaves out the replaced switch", () => {
-    const groups = groupResultSettings([
-      setting("validate all results"),
-      setting("somethingNew"),
-    ]);
+    const groups = groupResultSettings(
+      [setting("validate all results"), setting("somethingNew")],
+      { policyEnabled: true },
+    );
     expect(groups).toEqual([
       {
         id: "other",
