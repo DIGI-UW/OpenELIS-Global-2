@@ -17,8 +17,8 @@ public interface OrderClinicalInfoService extends BaseObjectService<OrderClinica
      * version, or does nothing when it equals the latest saved version.
      *
      * @return the saved version, or the unchanged latest one
-     * @throws IllegalArgumentException when the data is not a JSON object, is
-     *                                  too long, or no order has this lab number
+     * @throws IllegalArgumentException when the data is not a JSON object, is too
+     *                                  long, or no order has this lab number
      */
     SaveResult save(String accessionNumber, String clinicalDataJson, String sysUserId);
 
