@@ -89,6 +89,13 @@ const openQueueFor = async (page: Page, accession: string) => {
   await loaded;
 };
 
+const searchSettings = async (page: Page, text: string) => {
+  const search = page.locator("#config-menu-search");
+  if (await search.isVisible()) {
+    await search.fill(text);
+  }
+};
+
 const openResultConfiguration = async (page: Page) => {
   const menu = new SiteInformationPage(page, "ResultConfigurationMenu");
   await menu.goto();
@@ -97,13 +104,13 @@ const openResultConfiguration = async (page: Page) => {
 
 const setFlag = async (page: Page, on: boolean) => {
   const menu = await openResultConfiguration(page);
-  await page.locator("#config-menu-search").fill("useMultiLevelValidation");
+  await searchSettings(page, "useMultiLevelValidation");
   await menu.setBooleanSetting(FLAG, on);
 };
 
 const flagValue = async (page: Page) => {
   const menu = await openResultConfiguration(page);
-  await page.locator("#config-menu-search").fill("useMultiLevelValidation");
+  await searchSettings(page, "useMultiLevelValidation");
   return (await menu.getSettingValue(FLAG)).trim();
 };
 
@@ -380,15 +387,12 @@ test.describe("OGC-1364 validation policy", () => {
       await expect(page.getByTestId("validation-policy")).toBeVisible({
         timeout: NAV_TIMEOUT,
       });
-      await page.locator("#config-menu-search").fill("validate all results");
-      const names = page.locator("tbody tr td:nth-child(2)");
-      await expect(names.filter({ hasText: FLAG })).toHaveCount(1, {
-        timeout: UI_TIMEOUT,
-      });
       await expect(
-        names.filter({ hasText: /^validate all results$/ }),
-      ).toHaveCount(0);
-      await page.locator("#config-menu-search").fill("");
+        page.getByTestId("settings-group-validation").getByText(FLAG, {
+          exact: true,
+        }),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+      await expect(page.getByText(/^validate all results$/)).toHaveCount(0);
     });
 
     await test.step("No review takes the reviews to 0 and is kept", async () => {

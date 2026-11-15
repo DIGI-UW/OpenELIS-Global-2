@@ -20,7 +20,10 @@ import {
   Search,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
-import { useServerData } from "../../../utils/useServerData";
+import {
+  useInvalidateServerData,
+  useServerData,
+} from "../../../utils/useServerData";
 import { NotificationContext } from "../../../layout/Layout";
 import { AlertDialog } from "../../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -30,6 +33,7 @@ import ValidationPolicySection, {
   VALIDATION_POLICY_API,
 } from "./ValidationPolicySection";
 import { settingDescription, settingName } from "./settingLabels";
+import ResultValidationSettings from "./ResultValidationSettings";
 import { matchesSearch } from "../../../common/searchText";
 import FacilityLocationSection from "../facilityLocation/FacilityLocationSection";
 
@@ -159,6 +163,9 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
     props.menuType === RESULT_CONFIGURATION_MENU ? VALIDATION_POLICY_API : null,
   );
   const validationPolicyEnabled = Boolean(validationPolicy?.enabled);
+  const groupedSettings =
+    props.menuType === RESULT_CONFIGURATION_MENU && validationPolicyEnabled;
+  const invalidateServerData = useInvalidateServerData();
 
   useEffect(() => {
     const updateConfigList = () => {
@@ -281,7 +288,11 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
               <Column lg={16} md={8} sm={4}>
                 <Section>
                   <Heading>
-                    <FormattedMessage id={props.id} />
+                    <FormattedMessage
+                      id={
+                        groupedSettings ? "resultSettings.pageTitle" : props.id
+                      }
+                    />
                   </Heading>
                 </Section>
                 <br />
@@ -297,156 +308,170 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
                     <br />
                   </Section>
                 )}
-                <Section>
-                  <Form onSubmit={handleModify}>
-                    <Column lg={16} md={8} sm={4}>
-                      <Button
-                        data-cy="modify-Button"
-                        disabled={modifyButton || !selectionShown}
-                        type="submit"
-                      >
-                        <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
-                      </Button>{" "}
-                    </Column>
-                  </Form>
-                </Section>
+                {!groupedSettings && (
+                  <Section>
+                    <Form onSubmit={handleModify}>
+                      <Column lg={16} md={8} sm={4}>
+                        <Button
+                          data-cy="modify-Button"
+                          disabled={modifyButton || !selectionShown}
+                          type="submit"
+                        >
+                          <FormattedMessage id="admin.page.configuration.formEntryConfigMenu.button.modify" />
+                        </Button>{" "}
+                      </Column>
+                    </Form>
+                  </Section>
+                )}
               </Column>
             </Grid>
-            <div className="orderLegendBody">
-              <Grid fullWidth={true} className="gridBoundary">
-                <Column lg={16} md={8} sm={4}>
-                  <Search
-                    id="config-menu-search"
-                    size="lg"
-                    labelText={intl.formatMessage({
-                      id: "admin.page.configuration.search",
-                    })}
-                    placeholder={intl.formatMessage({
-                      id: "admin.page.configuration.search",
-                    })}
-                    value={query}
-                    onChange={(event) => {
-                      setQuery(event.target.value);
-                      setPage(1);
-                    }}
-                  />
-                  <DataTable
-                    rows={shownSettings.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )}
-                    headers={[
-                      {
-                        key: "select",
-                        header: intl.formatMessage({
-                          id: "admin.page.configuration.formEntryConfigMenu.select",
-                        }),
-                      },
-                      {
-                        key: "name",
-                        header: intl.formatMessage({
-                          id: "admin.page.configuration.formEntryConfigMenu.name",
-                        }),
-                      },
+            {groupedSettings ? (
+              <div className="orderLegendBody">
+                <ResultValidationSettings
+                  settings={orderEntryConfigurationList}
+                  onSaved={() => {
+                    invalidateServerData(`/rest/${props.menuType}`);
+                    invalidateServerData(VALIDATION_POLICY_API);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="orderLegendBody">
+                <Grid fullWidth={true} className="gridBoundary">
+                  <Column lg={16} md={8} sm={4}>
+                    <Search
+                      id="config-menu-search"
+                      size="lg"
+                      labelText={intl.formatMessage({
+                        id: "admin.page.configuration.search",
+                      })}
+                      placeholder={intl.formatMessage({
+                        id: "admin.page.configuration.search",
+                      })}
+                      value={query}
+                      onChange={(event) => {
+                        setQuery(event.target.value);
+                        setPage(1);
+                      }}
+                    />
+                    <DataTable
+                      rows={shownSettings.slice(
+                        (page - 1) * pageSize,
+                        page * pageSize,
+                      )}
+                      headers={[
+                        {
+                          key: "select",
+                          header: intl.formatMessage({
+                            id: "admin.page.configuration.formEntryConfigMenu.select",
+                          }),
+                        },
+                        {
+                          key: "name",
+                          header: intl.formatMessage({
+                            id: "admin.page.configuration.formEntryConfigMenu.name",
+                          }),
+                        },
 
-                      {
-                        key: "description",
-                        header: intl.formatMessage({
-                          id: "admin.page.configuration.formEntryConfigMenu.description",
-                        }),
-                      },
-                      {
-                        key: "value",
-                        header: intl.formatMessage({
-                          id: "admin.page.configuration.formEntryConfigMenu.value",
-                        }),
-                      },
-                    ]}
-                  >
-                    {({ rows, headers, getHeaderProps, getTableProps }) => (
-                      <TableContainer>
-                        <Table {...getTableProps()}>
-                          <TableHead>
-                            <TableRow>
-                              {headers.map((header) => (
-                                <TableHeader
-                                  key={header.key}
-                                  {...getHeaderProps({ header })}
-                                >
-                                  {header.header}
-                                </TableHeader>
-                              ))}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            <>
-                              {rows.map((row) => (
-                                <TableRow key={row.id}>
-                                  {row.cells.map((cell) =>
-                                    renderCell(cell, row),
-                                  )}
-                                </TableRow>
-                              ))}
-                            </>
-                          </TableBody>
-                        </Table>
-                        {query && shownSettings.length === 0 && (
-                          <p className="cds--label">
-                            <FormattedMessage
-                              id="searchableList.noMatch"
-                              values={{ query }}
-                            />
-                          </p>
-                        )}
-                      </TableContainer>
-                    )}
-                  </DataTable>
-                  <Pagination
-                    onChange={handlePageChange}
-                    page={page}
-                    pageSize={pageSize}
-                    pageSizes={[5, 20, 30, 50]}
-                    totalItems={shownSettings.length}
-                    forwardText={intl.formatMessage({
-                      id: "pagination.forward",
-                    })}
-                    backwardText={intl.formatMessage({
-                      id: "pagination.backward",
-                    })}
-                    itemRangeText={(min, max, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.item-range" },
-                        { min: min, max: max, total: total },
-                      )
-                    }
-                    itemsPerPageText={intl.formatMessage({
-                      id: "pagination.items-per-page",
-                    })}
-                    itemText={(min, max) =>
-                      intl.formatMessage(
-                        { id: "pagination.item" },
-                        { min: min, max: max },
-                      )
-                    }
-                    pageNumberText={intl.formatMessage({
-                      id: "pagination.page-number",
-                    })}
-                    pageRangeText={(_current, total) =>
-                      intl.formatMessage(
-                        { id: "pagination.page-range" },
-                        { total: total },
-                      )
-                    }
-                    pageText={(page, pagesUnknown) =>
-                      intl.formatMessage(
-                        { id: "pagination.page" },
-                        { page: pagesUnknown ? "" : page },
-                      )
-                    }
-                  />
-                </Column>
-              </Grid>
-            </div>
+                        {
+                          key: "description",
+                          header: intl.formatMessage({
+                            id: "admin.page.configuration.formEntryConfigMenu.description",
+                          }),
+                        },
+                        {
+                          key: "value",
+                          header: intl.formatMessage({
+                            id: "admin.page.configuration.formEntryConfigMenu.value",
+                          }),
+                        },
+                      ]}
+                    >
+                      {({ rows, headers, getHeaderProps, getTableProps }) => (
+                        <TableContainer>
+                          <Table {...getTableProps()}>
+                            <TableHead>
+                              <TableRow>
+                                {headers.map((header) => (
+                                  <TableHeader
+                                    key={header.key}
+                                    {...getHeaderProps({ header })}
+                                  >
+                                    {header.header}
+                                  </TableHeader>
+                                ))}
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              <>
+                                {rows.map((row) => (
+                                  <TableRow key={row.id}>
+                                    {row.cells.map((cell) =>
+                                      renderCell(cell, row),
+                                    )}
+                                  </TableRow>
+                                ))}
+                              </>
+                            </TableBody>
+                          </Table>
+                          {query && shownSettings.length === 0 && (
+                            <p className="cds--label">
+                              <FormattedMessage
+                                id="searchableList.noMatch"
+                                values={{ query }}
+                              />
+                            </p>
+                          )}
+                        </TableContainer>
+                      )}
+                    </DataTable>
+                    <Pagination
+                      onChange={handlePageChange}
+                      page={page}
+                      pageSize={pageSize}
+                      pageSizes={[5, 20, 30, 50]}
+                      totalItems={shownSettings.length}
+                      forwardText={intl.formatMessage({
+                        id: "pagination.forward",
+                      })}
+                      backwardText={intl.formatMessage({
+                        id: "pagination.backward",
+                      })}
+                      itemRangeText={(min, max, total) =>
+                        intl.formatMessage(
+                          { id: "pagination.item-range" },
+                          { min: min, max: max, total: total },
+                        )
+                      }
+                      itemsPerPageText={intl.formatMessage({
+                        id: "pagination.items-per-page",
+                      })}
+                      itemText={(min, max) =>
+                        intl.formatMessage(
+                          { id: "pagination.item" },
+                          { min: min, max: max },
+                        )
+                      }
+                      pageNumberText={intl.formatMessage({
+                        id: "pagination.page-number",
+                      })}
+                      pageRangeText={(_current, total) =>
+                        intl.formatMessage(
+                          { id: "pagination.page-range" },
+                          { total: total },
+                        )
+                      }
+                      pageText={(page, pagesUnknown) =>
+                        intl.formatMessage(
+                          { id: "pagination.page" },
+                          { page: pagesUnknown ? "" : page },
+                        )
+                      }
+                    />
+                  </Column>
+                </Grid>
+              </div>
+            )}
           </div>
         </>
       )}
