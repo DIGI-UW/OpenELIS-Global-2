@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
@@ -25,6 +26,7 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.services.StatusSet;
+import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
@@ -51,6 +53,8 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
+import org.openelisglobal.siteinformation.service.SiteInformationService;
+import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.test.service.EffectiveTestStatusService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -115,6 +119,14 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     private IStatusService statusService;
     @Autowired
     private ResultLimitService resultLimitService;
+    @Autowired
+    private SiteInformationService siteInformationService;
+    @Autowired(required = false)
+    private ConfigurationProperties configurationProperties;
+
+    private final ThreadLocal<String> callDbsSampleTypeId = new ThreadLocal<>();
+    private static final AtomicBoolean warnedMissingDbsSetting = new AtomicBoolean(false);
+    private static final AtomicBoolean warnedDbsTypeNotFound = new AtomicBoolean(false);
 
     // ---------------------------------------------------------------
     // Public entry point
@@ -129,62 +141,69 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     @Override
     @Transactional
     public void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId, List<ResultEntryAlert> alerts) {
-        List<AnalyzerResultItem> actionableResults = extractActionableResult(allResults);
-        retainResolvableResults(actionableResults);
-        applyRedirects(actionableResults, sysUserId);
-        keepGroupingsOnOneOrder(actionableResults);
+        try {
+            String resolved = resolveDbsSampleTypeIdInternal();
+            callDbsSampleTypeId.set(resolved != null ? resolved : "");
 
-        if (actionableResults.isEmpty()) {
-            return;
+            List<AnalyzerResultItem> actionableResults = extractActionableResult(allResults);
+            retainResolvableResults(actionableResults);
+            applyRedirects(actionableResults, sysUserId);
+            keepGroupingsOnOneOrder(actionableResults);
+
+            if (actionableResults.isEmpty()) {
+                return;
+            }
+
+            // A result whose specimen ID matches several analyses has no placement
+            // until the reviewer chooses one; its row stays staged, the rest proceed.
+            holdRowsAwaitingPlacement(actionableResults, sysUserId);
+            if (actionableResults.isEmpty()) {
+                return;
+            }
+
+            // OGC-1145 FR-8 — never first-match a specimen: any accepted grouping
+            // whose test is specimen-ambiguous and carries no reviewer choice stays
+            // staged, flagged awaiting_specimen, so the review page shows its
+            // chooser; everything else in the batch proceeds normally.
+            holdGroupsAwaitingSpecimen(actionableResults, sysUserId);
+            if (actionableResults.isEmpty()) {
+                return;
+            }
+
+            // Only the explicit review action transfers staged observations to a case.
+            var routed = microbiology.acceptReviewed(actionableResults, sysUserId);
+            actionableResults.removeIf(item -> routed.contains(item.getId()));
+            if (actionableResults.isEmpty())
+                return;
+
+            List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults);
+
+            List<SampleGrouping> sampleGroupList = new ArrayList<>();
+            buildSampleGroupings(actionableResults, sampleGroupList, sysUserId);
+
+            LogEvent.logInfo(this.getClass().getSimpleName(), "acceptAndPersist",
+                    "Accept: " + actionableResults.size() + " actionable, " + sampleGroupList.size()
+                            + " sample groupings, " + deletableAnalyzerResults.size() + " to delete from staging");
+
+            // A deliberately skipped observation keeps its staging row for later review.
+            Set<String> skippedResultIds = sampleGroupList.stream().flatMap(group -> group.skippedResultIds.stream())
+                    .collect(Collectors.toSet());
+            deletableAnalyzerResults.removeIf(staged -> skippedResultIds.contains(staged.getId()));
+            // A grouping whose every row was skipped has nothing to save.
+            sampleGroupList.removeIf(grouping -> grouping.resultList.isEmpty());
+            long expectedResults = actionableResults.stream()
+                    .filter(item -> !item.getIsDeleted() && !skippedResultIds.contains(item.getId())).count();
+            long builtResults = sampleGroupList.stream().mapToLong(group -> group.resultList.size()).sum();
+            if (builtResults != expectedResults) {
+                throw new IllegalStateException("Analyzer review would remove " + expectedResults
+                        + " observations but persist " + builtResults);
+            }
+
+            analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList, sysUserId);
+            recordAcknowledgements(alerts, sampleGroupList, sysUserId);
+        } finally {
+            callDbsSampleTypeId.remove();
         }
-
-        // A result whose specimen ID matches several analyses has no placement
-        // until the reviewer chooses one; its row stays staged, the rest proceed.
-        holdRowsAwaitingPlacement(actionableResults, sysUserId);
-        if (actionableResults.isEmpty()) {
-            return;
-        }
-
-        // OGC-1145 FR-8 — never first-match a specimen: any accepted grouping
-        // whose test is specimen-ambiguous and carries no reviewer choice stays
-        // staged, flagged awaiting_specimen, so the review page shows its
-        // chooser; everything else in the batch proceeds normally.
-        holdGroupsAwaitingSpecimen(actionableResults, sysUserId);
-        if (actionableResults.isEmpty()) {
-            return;
-        }
-
-        // Only the explicit review action transfers staged observations to a case.
-        var routed = microbiology.acceptReviewed(actionableResults, sysUserId);
-        actionableResults.removeIf(item -> routed.contains(item.getId()));
-        if (actionableResults.isEmpty())
-            return;
-
-        List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults);
-
-        List<SampleGrouping> sampleGroupList = new ArrayList<>();
-        buildSampleGroupings(actionableResults, sampleGroupList, sysUserId);
-
-        LogEvent.logInfo(this.getClass().getSimpleName(), "acceptAndPersist",
-                "Accept: " + actionableResults.size() + " actionable, " + sampleGroupList.size() + " sample groupings, "
-                        + deletableAnalyzerResults.size() + " to delete from staging");
-
-        // A deliberately skipped observation keeps its staging row for later review.
-        Set<String> skippedResultIds = sampleGroupList.stream().flatMap(group -> group.skippedResultIds.stream())
-                .collect(Collectors.toSet());
-        deletableAnalyzerResults.removeIf(staged -> skippedResultIds.contains(staged.getId()));
-        // A grouping whose every row was skipped has nothing to save.
-        sampleGroupList.removeIf(grouping -> grouping.resultList.isEmpty());
-        long expectedResults = actionableResults.stream()
-                .filter(item -> !item.getIsDeleted() && !skippedResultIds.contains(item.getId())).count();
-        long builtResults = sampleGroupList.stream().mapToLong(group -> group.resultList.size()).sum();
-        if (builtResults != expectedResults) {
-            throw new IllegalStateException(
-                    "Analyzer review would remove " + expectedResults + " observations but persist " + builtResults);
-        }
-
-        analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList, sysUserId);
-        recordAcknowledgements(alerts, sampleGroupList, sysUserId);
     }
 
     /** Each acknowledged value names the analysis and result it was saved as. */
@@ -558,7 +577,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
      * on the accession pins one of the candidates, and no special-case rule
      * (RetroCI LDBS→DBS) applies.
      */
-    private boolean needsSpecimenChoice(AnalyzerResultItem item) {
+    boolean needsSpecimenChoice(AnalyzerResultItem item) {
         if (item.getIsControl() || GenericValidator.isBlankOrNull(item.getTestId())) {
             return false;
         }
@@ -567,9 +586,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 .anyMatch(candidate -> candidate.getTypeOfSampleId().equals(item.getTypeOfSampleId()))) {
             return false;
         }
-        if (IS_RETROCI && DBS_SAMPLE_TYPE_ID != null && item.getAccessionNumber() != null
+        String dbsSampleTypeId = resolveDbsSampleTypeId();
+        if (isRetroCi() && dbsSampleTypeId != null && item.getAccessionNumber() != null
                 && item.getAccessionNumber().startsWith("LDBS")
-                && candidates.stream().anyMatch(c -> DBS_SAMPLE_TYPE_ID.equals(c.getTypeOfSampleId()))) {
+                && candidates.stream().anyMatch(c -> dbsSampleTypeId.equals(c.getTypeOfSampleId()))) {
             return false;
         }
         Sample sample = sampleService.getSampleByAccessionNumber(item.getAccessionNumber());
@@ -1316,10 +1336,11 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         }
     }
 
-    private String getTypeOfSampleId(List<String> typeOfSampleIds, String accessionNumber) {
-        if (IS_RETROCI && DBS_SAMPLE_TYPE_ID != null && accessionNumber.startsWith("LDBS")
-                && typeOfSampleIds.contains(DBS_SAMPLE_TYPE_ID)) {
-            return DBS_SAMPLE_TYPE_ID;
+    String getTypeOfSampleId(List<String> typeOfSampleIds, String accessionNumber) {
+        String dbsSampleTypeId = resolveDbsSampleTypeId();
+        if (isRetroCi() && dbsSampleTypeId != null && accessionNumber != null && accessionNumber.startsWith("LDBS")
+                && typeOfSampleIds.contains(dbsSampleTypeId)) {
+            return dbsSampleTypeId;
         }
         if (typeOfSampleIds.size() > 1) {
             // Accepted ambiguous groups are intercepted by the FR-8 hold; this
@@ -1378,33 +1399,93 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     // Configuration constants (copied from controller)
     // ---------------------------------------------------------------
 
-    private static final boolean IS_RETROCI = org.openelisglobal.common.util.ConfigurationProperties.getInstance()
-            .isPropertyValueEqual(org.openelisglobal.common.util.ConfigurationProperties.Property.configurationName,
-                    "CI_GENERAL");
+    public static final String RETROCI_DBS_SAMPLE_TYPE_CONFIG = "retroci.dbs.sampleType";
 
-    private final String DBS_SAMPLE_TYPE_ID;
-
-    /**
-     * Resolves the DBS sample type ID when running in RetroCI mode. The type is
-     * matched on its local abbreviation first because a catalog import can rewrite
-     * the description; a missing type must not stop the application from starting.
-     */
-    public AnalyzerResultsAcceptServiceImpl(TypeOfSampleService typeOfSampleService) {
-        DBS_SAMPLE_TYPE_ID = IS_RETROCI ? resolveDbsSampleTypeId(typeOfSampleService) : null;
+    private boolean isRetroCi() {
+        ConfigurationProperties config = configurationProperties;
+        if (config == null) {
+            try {
+                config = ConfigurationProperties.getInstance();
+            } catch (Exception e) {
+                return false;
+            }
+        }
+        return config != null
+                && config.isPropertyValueEqual(ConfigurationProperties.Property.configurationName, "CI_GENERAL");
     }
 
-    private static String resolveDbsSampleTypeId(TypeOfSampleService typeOfSampleService) {
-        TypeOfSample typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain("DBS",
-                Domain.CLINICAL.name());
+    public AnalyzerResultsAcceptServiceImpl(TypeOfSampleService typeOfSampleService) {
+        this(typeOfSampleService, null);
+    }
+
+    @Autowired
+    public AnalyzerResultsAcceptServiceImpl(TypeOfSampleService typeOfSampleService,
+            SiteInformationService siteInformationService) {
+        this.typeOfSampleService = typeOfSampleService;
+        this.siteInformationService = siteInformationService;
+    }
+
+    /**
+     * Resolves the DBS sample type ID dynamically when running in RetroCI mode. The
+     * type is identified by a configured site setting (ID or abbreviation, falling
+     * back to description). Reading the setting at result processing time ensures
+     * catalog changes take effect without restarting the server. If the setting is
+     * missing or the referenced sample type cannot be found, a warning is logged
+     * and null is returned (LDBS accessions will not default to DBS).
+     *
+     * <p>
+     * Within an {@link #acceptAndPersist} invocation, the result is resolved once
+     * and cached for the call. If called directly outside acceptAndPersist, it
+     * resolves directly.
+     * </p>
+     */
+    String resolveDbsSampleTypeId() {
+        String cached = callDbsSampleTypeId.get();
+        if (cached != null) {
+            return cached.isEmpty() ? null : cached;
+        }
+        return resolveDbsSampleTypeIdInternal();
+    }
+
+    private String resolveDbsSampleTypeIdInternal() {
+        if (!isRetroCi()) {
+            return null;
+        }
+        if (siteInformationService == null || typeOfSampleService == null) {
+            return null;
+        }
+        SiteInformation siteInfo = siteInformationService.getSiteInformationByName(RETROCI_DBS_SAMPLE_TYPE_CONFIG);
+        if (siteInfo == null || GenericValidator.isBlankOrNull(siteInfo.getValue())) {
+            siteInfo = siteInformationService.getSiteInformationByName("retrociDbsSampleType");
+        }
+        if (siteInfo == null || GenericValidator.isBlankOrNull(siteInfo.getValue())) {
+            if (warnedMissingDbsSetting.compareAndSet(false, true)) {
+                LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), "resolveDbsSampleTypeId",
+                        "No RetroCI DBS sample type configured; LDBS accessions will not default to DBS");
+            }
+            return null;
+        }
+        String configValue = siteInfo.getValue().trim();
+        TypeOfSample typeOfSample = null;
+        if (configValue.matches("\\d+")) {
+            typeOfSample = typeOfSampleService.getTypeOfSampleById(configValue);
+        }
+        if (typeOfSample == null) {
+            typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain(configValue,
+                    Domain.CLINICAL.name());
+        }
         if (typeOfSample == null) {
             TypeOfSample searchType = new TypeOfSample();
-            searchType.setDescription("DBS");
+            searchType.setDescription(configValue);
             searchType.setDomain(Domain.CLINICAL.name());
             typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(searchType, false);
         }
         if (typeOfSample == null) {
-            LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), "resolveDbsSampleTypeId",
-                    "No clinical DBS sample type found; LDBS accessions will not default to DBS");
+            if (warnedDbsTypeNotFound.compareAndSet(false, true)) {
+                LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), "resolveDbsSampleTypeId",
+                        "Configured RetroCI DBS sample type '" + configValue
+                                + "' not found; LDBS accessions will not default to DBS");
+            }
             return null;
         }
         return typeOfSample.getId();
