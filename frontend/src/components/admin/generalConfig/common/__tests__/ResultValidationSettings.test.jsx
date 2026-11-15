@@ -29,6 +29,7 @@ const SETTINGS = [
     value: "false",
     valueType: "boolean",
     description: "",
+    lastupdated: 1700000000000,
   },
   {
     id: "2",
@@ -163,6 +164,31 @@ describe("Result & Validation Configuration settings", () => {
     );
   });
 
+  it("sends the version the page loaded, and says when someone else changed the setting", async () => {
+    postToOpenElisServer.mockImplementation((url, body, callback) =>
+      callback(409),
+    );
+    const onSaved = vi.fn();
+    const addNotification = renderSettings(onSaved);
+
+    fireEvent.click(toggle("Require the technician name"));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("save-group-resultEntry"));
+    });
+    await waitFor(() => expect(addNotification).toHaveBeenCalled());
+
+    expect(JSON.parse(postToOpenElisServer.mock.calls[0][1]).lastupdated).toBe(
+      1700000000000,
+    );
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message:
+          "Require the technician name on results was changed by someone else since this page loaded. The page now shows the latest values: check them and save again.",
+      }),
+    );
+    expect(onSaved).toHaveBeenCalled();
+  });
+
   it("names what was saved when a later setting of the group fails", async () => {
     postToOpenElisServer.mockImplementation((url, body, callback) =>
       callback(url.endsWith("ID=4") ? 503 : 200),
@@ -222,5 +248,49 @@ describe("Result & Validation Configuration settings", () => {
     );
     expect(screen.getByTestId("save-group-validation")).toBeEnabled();
     expect(screen.getByTestId("save-group-resultEntry")).toBeDisabled();
+  });
+
+  it("shows the stored value of a setting someone else changed, not the refused edit", async () => {
+    postToOpenElisServer.mockImplementation((url, body, callback) =>
+      callback(409),
+    );
+    renderSettings();
+
+    fireEvent.click(toggle("Require the technician name"));
+    expect(toggle("Require the technician name")).toBeChecked();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("save-group-resultEntry"));
+    });
+
+    await waitFor(() =>
+      expect(toggle("Require the technician name")).not.toBeChecked(),
+    );
+  });
+
+  it("names what was saved before a later setting turned out changed by someone else", async () => {
+    postToOpenElisServer.mockImplementation((url, body, callback) =>
+      callback(url.endsWith("ID=4") ? 409 : 200),
+    );
+    const addNotification = renderSettings();
+
+    fireEvent.click(toggle("Require the technician name"));
+    fireEvent.change(screen.getByLabelText("Critical result message"), {
+      target: { value: "Call the doctor" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("save-group-resultEntry"));
+    });
+
+    await waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message:
+            "Saved Require the technician name on results. Critical result message was changed by someone else since this page loaded, so it was not saved. The page now shows the latest values: check them and save again.",
+        }),
+      ),
+    );
+    expect(screen.getByLabelText("Critical result message")).toHaveValue(
+      "Call the ward",
+    );
   });
 });

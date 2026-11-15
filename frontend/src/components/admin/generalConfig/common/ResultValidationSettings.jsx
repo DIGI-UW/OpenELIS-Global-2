@@ -21,8 +21,20 @@ const saveSetting = (setting, value) =>
       }
       postToOpenElisServer(
         `${SETTING_API}?ID=${setting.id}`,
-        JSON.stringify({ ...stored, value }),
-        (status) => (status === 200 ? resolve() : reject(new Error(status))),
+        JSON.stringify({
+          ...stored,
+          value,
+          lastupdated: setting.lastupdated ?? stored.lastupdated,
+        }),
+        (status) => {
+          if (status === 200) {
+            resolve();
+            return;
+          }
+          const error = new Error(setting.name);
+          error.stale = status === 409;
+          reject(error);
+        },
       );
     });
   });
@@ -34,7 +46,11 @@ const saveSetting = (setting, value) =>
  * while another is on (the technician-name autofill) is shown under it and
  * disabled while that one is off.
  */
-export default function ResultValidationSettings({ settings, onSaved }) {
+export default function ResultValidationSettings({
+  settings,
+  onSaved,
+  policyEnabled = true,
+}) {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
@@ -94,12 +110,23 @@ export default function ResultValidationSettings({ settings, onSaved }) {
           };
           notify(
             NotificationKinds.error,
-            saved.length > 0
-              ? "resultSettings.savePartial"
-              : "resultSettings.saveFailed",
+            error.stale
+              ? saved.length > 0
+                ? "resultSettings.stalePartial"
+                : "resultSettings.stale"
+              : saved.length > 0
+                ? "resultSettings.savePartial"
+                : "resultSettings.saveFailed",
             values,
           );
-          if (saved.length > 0) onSaved?.();
+          if (error.stale) {
+            setDraft((prev) => {
+              const rest = { ...prev };
+              delete rest[setting.id];
+              return rest;
+            });
+          }
+          if (error.stale || saved.length > 0) onSaved?.();
           return;
         }
         saved.push(settingName(intl, setting.name));
@@ -160,7 +187,7 @@ export default function ResultValidationSettings({ settings, onSaved }) {
 
   return (
     <Stack gap={6} data-testid="result-validation-settings">
-      {groupResultSettings(settings).map((group) => (
+      {groupResultSettings(settings, { policyEnabled }).map((group) => (
         <Tile key={group.id} data-testid={`settings-group-${group.id}`}>
           <h4>
             <FormattedMessage id={group.titleKey} />
