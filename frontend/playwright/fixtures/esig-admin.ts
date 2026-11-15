@@ -52,12 +52,18 @@ export class SiteInformationPage {
    * 5. Save
    */
   /**
-   * OGC-1364 v3: with the validation policy on, Result & Validation
-   * Configuration shows grouped switches with a Save per group instead of the
-   * table. Returns the setting's block on that layout, or null on the table.
+   * OGC-1364 v3: Result & Validation Configuration shows grouped switches with a
+   * Save per group instead of the table. Returns the setting's block on that
+   * layout, or null on a table menu. It waits for either layout first: deciding
+   * before the page rendered sent a grouped page down the table path.
    */
   private async groupedSetting(settingName: string) {
     const grouped = this.page.getByTestId("result-validation-settings");
+    await expect(
+      grouped.or(
+        this.page.getByRole("button", { name: "Modify", exact: true }),
+      ),
+    ).toBeVisible({ timeout: NAV_TIMEOUT });
     if (!(await grouped.isVisible())) {
       return null;
     }

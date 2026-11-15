@@ -10,7 +10,6 @@ import {
   Column,
   Dropdown,
   Button,
-  DatePicker,
   DatePickerInput,
   Tag,
   Tabs,
@@ -31,6 +30,7 @@ import {
   TableToolbarSearch,
   Pagination,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import "./Reports.scss";
 import {
   fetchReportExcursions,
@@ -45,7 +45,6 @@ import { endOfDay, startOfDay } from "date-fns";
 import { toLocalIsoDate } from "../utils/Utils";
 import { labNow, labTimeToInstant } from "../utils/labClock";
 import useSiteDateFormat from "../common/useSiteDateFormat";
-import useTypedDateCommit from "../common/useTypedDateCommit";
 
 const REPORT_TYPES = ["Daily Log", "Weekly Log", "Monthly Log"];
 
@@ -255,7 +254,6 @@ const mapAuditEvent = (event) => ({
 function Reports({ devices = [] }) {
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
-  const typedDate = useTypedDateCommit();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const excursionHeaders = useMemo(() => getExcursionHeaders(intl), [intl]);
@@ -700,7 +698,6 @@ function Reports({ devices = [] }) {
             dateFormat={siteDate.dateFormat}
             parseDate={siteDate.parseDate}
             datePickerType="single"
-            {...typedDate.picker("reports-start-date")}
             value={dateRange[0]}
             onChange={(dates) => {
               const newRange = [...dateRange];
@@ -710,7 +707,6 @@ function Reports({ devices = [] }) {
           >
             <DatePickerInput
               id="reports-start-date"
-              {...typedDate.input("reports-start-date")}
               placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({
                 id: "coldStorage.reports.startDate",
@@ -725,7 +721,6 @@ function Reports({ devices = [] }) {
             dateFormat={siteDate.dateFormat}
             parseDate={siteDate.parseDate}
             datePickerType="single"
-            {...typedDate.picker("reports-end-date")}
             value={dateRange[1]}
             onChange={(dates) => {
               const newRange = [...dateRange];
@@ -735,7 +730,6 @@ function Reports({ devices = [] }) {
           >
             <DatePickerInput
               id="reports-end-date"
-              {...typedDate.input("reports-end-date")}
               placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({
                 id: "coldStorage.reports.endDate",

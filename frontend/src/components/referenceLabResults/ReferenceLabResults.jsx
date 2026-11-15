@@ -1,7 +1,6 @@
 import {
   Button,
   Column,
-  DatePicker,
   DatePickerInput,
   Grid,
   InlineNotification,
@@ -22,6 +21,7 @@ import {
   TableRow,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import {
   CheckmarkOutline,
   Send,
@@ -53,7 +53,6 @@ import MarkLostModal from "./MarkLostModal";
 import RejectModal from "./RejectModal";
 import "./ReferenceLabResults.css";
 import useSiteDateFormat from "../common/useSiteDateFormat";
-import useTypedDateCommit from "../common/useTypedDateCommit";
 
 const VIEWS = ["outstanding", "returned", "history"];
 // The real OrderPriority enum, which is what a sample actually carries. The
@@ -101,7 +100,6 @@ const METRIC_COLOR = {
 const ReferenceLabResults = () => {
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
-  const typedDate = useTypedDateCommit();
   const history = useHistory();
   const location = useLocation();
   const componentMounted = useRef(true);
@@ -463,7 +461,6 @@ const ReferenceLabResults = () => {
               dateFormat={siteDate.dateFormat}
               parseDate={siteDate.parseDate}
               datePickerType="range"
-              {...typedDate.picker("date-from")}
               onChange={([from, to]) =>
                 unstable_batchedUpdates(() => {
                   setFilterDateFrom(from || null);
@@ -474,7 +471,6 @@ const ReferenceLabResults = () => {
             >
               <DatePickerInput
                 id="date-from"
-                {...typedDate.input("date-from")}
                 placeholder={siteDate.placeholder}
                 labelText={intl.formatMessage({
                   id: "referral.filter.dateRange",
@@ -482,7 +478,6 @@ const ReferenceLabResults = () => {
               />
               <DatePickerInput
                 id="date-to"
-                {...typedDate.input("date-from", { message: false })}
                 placeholder={siteDate.placeholder}
                 labelText={" "}
               />

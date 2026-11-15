@@ -3,7 +3,6 @@ import { format, parse } from "date-fns";
 import { labNow } from "../../utils/labClock";
 import {
   Button,
-  DatePicker,
   DatePickerInput,
   Select,
   SelectItem,
@@ -12,6 +11,7 @@ import {
   Tag,
   Tile,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { Warning, CheckmarkFilled } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -27,7 +27,6 @@ import "./InlineNceForm.css";
 import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 import SearchableSelect from "../../common/SearchableSelect";
 import useSiteDateFormat from "../../common/useSiteDateFormat";
-import useTypedDateCommit from "../../common/useTypedDateCommit";
 
 const SEVERITIES = [
   {
@@ -75,7 +74,6 @@ const InlineNceForm = ({
 }) => {
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
-  const typedDate = useTypedDateCommit();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -363,9 +361,7 @@ const InlineNceForm = ({
           parseDate={siteDate.parseDate}
           id="inline-nce-date-picker"
           datePickerType="single"
-          invalid={
-            !!errors.dateOfEvent || typedDate.picker("inline-nce-date").invalid
-          }
+          invalid={!!errors.dateOfEvent}
           value={
             nceForm.dateOfEvent
               ? parse(nceForm.dateOfEvent, "MM/dd/yyyy", labNow())
@@ -381,7 +377,6 @@ const InlineNceForm = ({
         >
           <DatePickerInput
             id="inline-nce-date"
-            {...typedDate.input("inline-nce-date")}
             placeholder={siteDate.placeholder}
             {...requiredProps()}
             labelText={
@@ -393,10 +388,7 @@ const InlineNceForm = ({
                 <RequiredMarker />
               </>
             }
-            invalidText={
-              typedDate.input("inline-nce-date").invalidText ||
-              errors.dateOfEvent
-            }
+            invalidText={errors.dateOfEvent}
           />
         </DatePicker>
         <SearchableSelect

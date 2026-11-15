@@ -2,7 +2,6 @@ import {
   Button,
   Column,
   DataTable,
-  DatePicker,
   DatePickerInput,
   Dropdown,
   Grid,
@@ -23,6 +22,7 @@ import {
   Tag,
   Tile,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
@@ -37,14 +37,12 @@ import MarkAsLostModal from "./MarkAsLostModal";
 import "./ShipmentDashboard.css";
 import ShipmentNavigation from "./ShipmentNavigation";
 import useSiteDateFormat from "../common/useSiteDateFormat";
-import useTypedDateCommit from "../common/useTypedDateCommit";
 
 const TAB_ROUTES = ["boxes", "unassigned"];
 
 const ShipmentDashboard = () => {
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
-  const typedDate = useTypedDateCommit();
   const history = useHistory();
   const location = useLocation();
   const componentMounted = useRef(true);
@@ -675,13 +673,11 @@ const ShipmentDashboard = () => {
                     dateFormat={siteDate.dateFormat}
                     parseDate={siteDate.parseDate}
                     datePickerType="single"
-                    {...typedDate.picker("date-from")}
                     onChange={([date]) => setFilterDateFrom(date)}
                     value={filterDateFrom}
                   >
                     <DatePickerInput
                       id="date-from"
-                      {...typedDate.input("date-from")}
                       placeholder={siteDate.placeholder}
                       labelText={intl.formatMessage({
                         id: "shipment.filter.dateFrom",
@@ -693,13 +689,11 @@ const ShipmentDashboard = () => {
                     dateFormat={siteDate.dateFormat}
                     parseDate={siteDate.parseDate}
                     datePickerType="single"
-                    {...typedDate.picker("date-to")}
                     onChange={([date]) => setFilterDateTo(date)}
                     value={filterDateTo}
                   >
                     <DatePickerInput
                       id="date-to"
-                      {...typedDate.input("date-to")}
                       placeholder={siteDate.placeholder}
                       labelText={intl.formatMessage({
                         id: "shipment.filter.dateTo",

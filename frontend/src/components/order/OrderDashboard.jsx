@@ -29,12 +29,12 @@ import {
   Button,
   Tag,
   Dropdown,
-  DatePicker,
   DatePickerInput,
   Pagination,
   ProgressBar,
   Stack,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { Add } from "@carbon/icons-react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
@@ -60,7 +60,6 @@ import {
   cancelReasonText as reasonText,
 } from "./cancelReasons";
 import useSiteDateFormat from "../common/useSiteDateFormat";
-import useTypedDateCommit from "../common/useTypedDateCommit";
 
 /**
  * OrderDashboard - Default landing page for "Add Order" menu (DSH-1 to DSH-9)
@@ -147,7 +146,6 @@ const priorityOptions = (intl) => [
 const OrderDashboardContent = () => {
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
-  const typedDate = useTypedDateCommit();
   const STATUS_OPTIONS = useMemo(() => statusOptions(intl), [intl]);
   const PRIORITY_OPTIONS = useMemo(() => priorityOptions(intl), [intl]);
   const history = useHistory();
@@ -856,7 +854,6 @@ const OrderDashboardContent = () => {
                 dateFormat={siteDate.dateFormat}
                 parseDate={siteDate.parseDate}
                 datePickerType="single"
-                {...typedDate.picker("date-start")}
                 onChange={(dates) =>
                   applyFilter(setDateRange)((prev) => ({
                     ...prev,
@@ -866,7 +863,6 @@ const OrderDashboardContent = () => {
               >
                 <DatePickerInput
                   id="date-start"
-                  {...typedDate.input("date-start")}
                   placeholder={siteDate.placeholder}
                   labelText={intl.formatMessage({
                     id: "order.filter.dateFrom",
@@ -881,7 +877,6 @@ const OrderDashboardContent = () => {
                 dateFormat={siteDate.dateFormat}
                 parseDate={siteDate.parseDate}
                 datePickerType="single"
-                {...typedDate.picker("date-end")}
                 onChange={(dates) =>
                   applyFilter(setDateRange)((prev) => ({
                     ...prev,
@@ -891,7 +886,6 @@ const OrderDashboardContent = () => {
               >
                 <DatePickerInput
                   id="date-end"
-                  {...typedDate.input("date-end")}
                   placeholder={siteDate.placeholder}
                   labelText={intl.formatMessage({
                     id: "order.filter.dateTo",
