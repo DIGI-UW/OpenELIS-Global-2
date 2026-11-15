@@ -37,7 +37,7 @@ import {
   fetchAuditTrail,
   downloadReportDirect,
 } from "./api";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import { toDate, formatDuration } from "./shared/timeUtils";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -45,6 +45,7 @@ import { endOfDay, startOfDay } from "date-fns";
 import { toLocalIsoDate } from "../utils/Utils";
 import { labNow, labTimeToInstant } from "../utils/labClock";
 import useSiteDateFormat from "../common/useSiteDateFormat";
+import useTypedDateCommit from "../common/useTypedDateCommit";
 
 const REPORT_TYPES = ["Daily Log", "Weekly Log", "Monthly Log"];
 
@@ -254,7 +255,8 @@ const mapAuditEvent = (event) => ({
 function Reports({ devices = [] }) {
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
-  const { notificationVisible, setNotificationVisible, addNotification } =
+  const typedDate = useTypedDateCommit();
+  const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const excursionHeaders = useMemo(() => getExcursionHeaders(intl), [intl]);
   const auditHeaders = useMemo(() => getAuditHeaders(intl), [intl]);
@@ -561,9 +563,12 @@ function Reports({ devices = [] }) {
     if (!rangeParams) {
       notify({
         kind: NotificationKinds.error,
-        title: "Missing date range",
-        subtitle:
-          "Please select a valid start and end date before generating a report.",
+        title: intl.formatMessage({
+          id: "coldStorage.reports.missingRange.title",
+        }),
+        subtitle: intl.formatMessage({
+          id: "coldStorage.reports.missingRange.subtitle",
+        }),
       });
       return;
     }
@@ -636,8 +641,6 @@ function Reports({ devices = [] }) {
 
   return (
     <div className="reports-page">
-      {notificationVisible === true ? <AlertDialog /> : ""}
-
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <h3 className="reports-title">
@@ -697,17 +700,17 @@ function Reports({ devices = [] }) {
             dateFormat={siteDate.dateFormat}
             parseDate={siteDate.parseDate}
             datePickerType="single"
+            {...typedDate.picker("reports-start-date")}
             value={dateRange[0]}
             onChange={(dates) => {
-              if (dates && dates.length > 0) {
-                const newRange = [...dateRange];
-                newRange[0] = dates[0];
-                setDateRange(newRange);
-              }
+              const newRange = [...dateRange];
+              newRange[0] = dates?.[0] || null;
+              setDateRange(newRange);
             }}
           >
             <DatePickerInput
               id="reports-start-date"
+              {...typedDate.input("reports-start-date")}
               placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({
                 id: "coldStorage.reports.startDate",
@@ -722,17 +725,17 @@ function Reports({ devices = [] }) {
             dateFormat={siteDate.dateFormat}
             parseDate={siteDate.parseDate}
             datePickerType="single"
+            {...typedDate.picker("reports-end-date")}
             value={dateRange[1]}
             onChange={(dates) => {
-              if (dates && dates.length > 0) {
-                const newRange = [...dateRange];
-                newRange[1] = dates[0];
-                setDateRange(newRange);
-              }
+              const newRange = [...dateRange];
+              newRange[1] = dates?.[0] || null;
+              setDateRange(newRange);
             }}
           >
             <DatePickerInput
               id="reports-end-date"
+              {...typedDate.input("reports-end-date")}
               placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({
                 id: "coldStorage.reports.endDate",
