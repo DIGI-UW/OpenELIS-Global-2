@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.eqa.service.EQAProgramEnrollmentService;
 import org.openelisglobal.eqa.valueholder.EQAProgramEnrollment;
@@ -120,7 +121,8 @@ public class EQAEnrollmentRestController extends ControllerUtills {
             try {
                 Organization org = organizationService.get(String.valueOf(enrollment.getOrganizationId()));
                 dto.put("organizationName", org != null ? org.getOrganizationName() : null);
-                dto.put("organizationCode", org != null ? org.getShortName() : null);
+                dto.put("organizationCode", org == null ? null
+                        : GenericValidator.isBlankOrNull(org.getCode()) ? org.getShortName() : org.getCode());
             } catch (Exception e) {
                 dto.put("organizationName", null);
                 dto.put("organizationCode", null);

@@ -116,20 +116,20 @@ test.describe("EQA provider cycle lifecycle", () => {
       ).toBeVisible({ timeout: UI_TIMEOUT });
       await page.locator("#cycle-name").fill(`E2E ${RUN} cycle`);
       await page.locator("#cycle-number").fill("1");
-      // The step-1 relabel: the range picker collects the dates the FRS
-      // names, not "planned start/end".
+      // The step-1 relabel: the pickers collect the dates the FRS names, not
+      // "planned start/end".
       await expect(
         page.getByText("Distribution date", { exact: true }),
       ).toBeVisible();
       await expect(
         page.getByText("Submission deadline", { exact: true }),
       ).toBeVisible();
-      // Both inputs take no keystrokes, so the range is chosen on the
-      // calendar: distribution on the 1st of next month and the deadline on
-      // its 15th, which keeps the cycle ahead of today whenever the spec runs.
+      // Picked on the calendar so the spec doesn't depend on the site's date
+      // format; next month keeps the cycle ahead of today.
       await page.locator("#cycle-planned-start").click();
       await pickCalendarDay(page, 1, 1);
-      await pickCalendarDay(page, 15);
+      await page.locator("#cycle-planned-end").click();
+      await pickCalendarDay(page, 15, 1);
       await expect(page.locator("#cycle-planned-start")).not.toHaveValue("");
       await expect(page.locator("#cycle-planned-end")).not.toHaveValue("");
       await page.getByRole("button", { name: "Next", exact: true }).click();

@@ -1,5 +1,5 @@
 import React from "react";
-import { Tag } from "@carbon/react";
+import { InlineNotification, Loading, Tag } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { csvCell, downloadBlob } from "../utils/Utils";
 
@@ -83,5 +83,34 @@ export const CycleStatusTag = ({ status }) => {
         defaultMessage: key.replace(/_/g, " "),
       })}
     </Tag>
+  );
+};
+
+export const SchemeTestsNotice = ({ status, count }) => {
+  const intl = useIntl();
+  if (status === "loading") {
+    return <Loading withOverlay={false} small />;
+  }
+  if (status !== "failed" && count > 0) {
+    return null;
+  }
+  return (
+    <InlineNotification
+      kind={status === "failed" ? "error" : "warning"}
+      lowContrast
+      hideCloseButton
+      title={
+        status === "failed"
+          ? intl.formatMessage({
+              id: "eqa.wizard.schemeTestsFailed",
+              defaultMessage:
+                "The scheme's tests could not be loaded. Reload the page to try again.",
+            })
+          : intl.formatMessage({
+              id: "eqa.wizard.noSchemeTests",
+              defaultMessage: "This scheme has no tests a panel can use.",
+            })
+      }
+    />
   );
 };

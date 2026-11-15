@@ -10,19 +10,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.eqa.controller.rest.EQAEnrollmentRestController;
 import org.openelisglobal.eqa.controller.rest.EQAProgramRestController;
 import org.openelisglobal.eqa.service.EQAProgramEnrollmentService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -37,12 +42,24 @@ public class EQASchemeAdministrationIntegrationTest extends EQASpineTestBase {
 
     private static final long TEST_SERO = 9971L;
     private static final long TEST_VL = 9972L;
+    private static final long GLUCOSE_SERUM = 9983L;
+    private static final long GLUCOSE_PLASMA = 9984L;
+    private static final long SERUM = 9985L;
+    private static final long PLASMA = 9986L;
+    private static final long CODED_LAB = 9987L;
+    private static final long UNCODED_LAB = 9988L;
 
     @Autowired
     private EQAProgramEnrollmentService enrollmentService;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private TypeOfSampleService typeOfSampleService;
+
+    @Autowired
+    private OrganizationService organizationService;
 
     private EQAProgramRestController controller;
 
@@ -209,7 +226,95 @@ public class EQASchemeAdministrationIntegrationTest extends EQASpineTestBase {
         assertEquals(2, eqaProgramService.getTestAssignments(id).size());
     }
 
+    @Test
+    public void getTestAssignments_labelsSameNamedTestsWithTheirSampleTypes() {
+        try {
+            seedSampleType(SERUM, "Serum 1251");
+            seedSampleType(PLASMA, "Plasma 1251");
+            seedNamedTest(GLUCOSE_SERUM, SERUM, "Glucose 1251");
+            seedNamedTest(GLUCOSE_PLASMA, PLASMA, "Glucose 1251");
+            typeOfSampleService.clearCache();
+            Long id = created(Map.of("name", "Glucose scheme " + System.nanoTime(), "schemeType", "REGIONAL_PT",
+                    "provider", "CPHL"));
+            controller.updateTestAssignments(id, Map.of("testIds", List.of(GLUCOSE_SERUM, GLUCOSE_PLASMA)));
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> rows = (List<Map<String, Object>>) controller.getTestAssignments(id).getBody();
+
+            assertEquals(List.of("Glucose 1251 (Plasma 1251)", "Glucose 1251 (Serum 1251)"),
+                    rows.stream().map(row -> String.valueOf(row.get("label"))).sorted().toList());
+        } finally {
+            jdbc.update("DELETE FROM clinlims.eqa_program_test WHERE test_id IN (?, ?)", GLUCOSE_SERUM, GLUCOSE_PLASMA);
+            jdbc.update("DELETE FROM clinlims.sampletype_test WHERE test_id IN (?, ?)", GLUCOSE_SERUM, GLUCOSE_PLASMA);
+            jdbc.update("DELETE FROM clinlims.test WHERE id IN (?, ?)", GLUCOSE_SERUM, GLUCOSE_PLASMA);
+            jdbc.update("DELETE FROM clinlims.type_of_sample WHERE id IN (?, ?)", SERUM, PLASMA);
+            jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id BETWEEN ? AND ?", GLUCOSE_SERUM,
+                    PLASMA);
+            jdbc.update("DELETE FROM clinlims.localization WHERE id BETWEEN ? AND ?", GLUCOSE_SERUM, PLASMA);
+            typeOfSampleService.clearCache();
+        }
+    }
+
+    @Test
+    public void listEnrollments_showsTheOrganizationCodeAndFallsBackToTheShortName() {
+        EQAEnrollmentRestController enrollments = new EQAEnrollmentRestController();
+        ReflectionTestUtils.setField(enrollments, "enrollmentService", enrollmentService);
+        ReflectionTestUtils.setField(enrollments, "organizationService", organizationService);
+        try {
+            Long id = created(Map.of("name", "Roster scheme " + System.nanoTime(), "schemeType", "REGIONAL_PT",
+                    "provider", "CPHL"));
+            seedEnrolledOrganization(id, CODED_LAB, "LAB-0042", "Mbeya");
+            seedEnrolledOrganization(id, UNCODED_LAB, null, "Iringa");
+
+            Map<Object, Object> codes = enrollments.listEnrollments(id).getBody().stream()
+                    .collect(Collectors.toMap(row -> row.get("organizationId"), row -> row.get("organizationCode")));
+
+            assertEquals("LAB-0042", codes.get(CODED_LAB));
+            assertEquals("Iringa", codes.get(UNCODED_LAB));
+        } finally {
+            jdbc.update("DELETE FROM clinlims.eqa_program_enrollment WHERE organization_id IN (?, ?)", CODED_LAB,
+                    UNCODED_LAB);
+            jdbc.update("DELETE FROM clinlims.organization WHERE id IN (?, ?)", CODED_LAB, UNCODED_LAB);
+        }
+    }
+
     // ---- helpers ----
+
+    private void seedEnrolledOrganization(Long programId, long organizationId, String code, String shortName) {
+        jdbc.update(
+                "INSERT INTO clinlims.organization (id, name, short_name, code, mls_sentinel_lab_flag, is_active,"
+                        + " lastupdated) VALUES (?, ?, ?, ?, 'N', 'Y', now())",
+                organizationId, "Roster lab " + organizationId, shortName, code);
+        jdbc.update(
+                "INSERT INTO clinlims.eqa_program_enrollment (id, eqa_program_id, organization_id,"
+                        + " enrollment_date, status, sys_user_id, lastupdated)"
+                        + " VALUES (nextval('clinlims.eqa_enrollment_seq'), ?, ?, now(), 'Active', ?, now())",
+                programId, organizationId, USER);
+    }
+
+    private void seedSampleType(long id, String name) {
+        jdbc.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, ?, NOW())", id, name);
+        jdbc.update("INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)"
+                + " VALUES (?, ?, 'en', ?, NOW())", id, id, name);
+        jdbc.update(
+                "INSERT INTO clinlims.type_of_sample (id, description, domain, local_abbrev, is_active,"
+                        + " sort_order, name_localization_id, lastupdated) VALUES (?, ?, 'H', ?, 'true', ?, ?, NOW())",
+                id, name, "T" + id, id, id);
+    }
+
+    // test.description is unique, so a shared name has to come from the
+    // localization.
+    private void seedNamedTest(long id, long sampleTypeId, String name) {
+        jdbc.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, ?, NOW())", id, name);
+        jdbc.update("INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)"
+                + " VALUES (?, ?, 'en', ?, NOW())", id, id, name);
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated,"
+                        + " name_localization_id) VALUES (?, ?, ?, 'Y', ?, NOW(), ?)",
+                id, name, name + " " + id, UUID.randomUUID().toString(), id);
+        jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id, is_panel)"
+                + " VALUES (nextval('sample_type_test_seq'), ?, ?, 'false')", sampleTypeId, id);
+    }
 
     /**
      * Runs the call with one transaction, and so one persistence context, open
