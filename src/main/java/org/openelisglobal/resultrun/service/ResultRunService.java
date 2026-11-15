@@ -87,12 +87,16 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
     Optional<WaitingRun> waitingFor(Analysis analysis, String componentId);
 
     /**
-     * The staged value a run row holds, when that row is still in an open run and
-     * names this analysis's order, test and component, and is not a control, a
-     * duplicate or an import exception. Accepting it is a Results Entry save of
-     * this analysis (FR-E10, FR-E13).
+     * The staged value a run row holds, when that row is still in an open or held
+     * run (a held run holds only the tests a failed control covers) and names this
+     * analysis's order, test and component, and is not a control, a duplicate or an
+     * import exception. Accepting it is a Results Entry save of this analysis
+     * (FR-E10, FR-E13).
      */
     Optional<AnalyzerResults> stagedValueFor(String runRowId, Analysis analysis, String componentId);
+
+    /** The run that holds a row, as the worklist names it (FR-D4). */
+    WaitingRun heldRun(Long runId);
 
     static String waitingKey(String accessionNumber, String testId) {
         return accessionNumber + "|" + testId;
