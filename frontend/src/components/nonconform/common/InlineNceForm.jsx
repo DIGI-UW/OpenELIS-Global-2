@@ -27,6 +27,7 @@ import "./InlineNceForm.css";
 import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 import SearchableSelect from "../../common/SearchableSelect";
 import useSiteDateFormat from "../../common/useSiteDateFormat";
+import useTypedDateCommit from "../../common/useTypedDateCommit";
 
 const SEVERITIES = [
   {
@@ -74,6 +75,7 @@ const InlineNceForm = ({
 }) => {
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
+  const typedDate = useTypedDateCommit();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -361,6 +363,9 @@ const InlineNceForm = ({
           parseDate={siteDate.parseDate}
           id="inline-nce-date-picker"
           datePickerType="single"
+          invalid={
+            !!errors.dateOfEvent || typedDate.picker("inline-nce-date").invalid
+          }
           value={
             nceForm.dateOfEvent
               ? parse(nceForm.dateOfEvent, "MM/dd/yyyy", labNow())
@@ -368,14 +373,15 @@ const InlineNceForm = ({
           }
           maxDate={labNow().setHours(23, 59, 59, 999)}
           onChange={(dates) => {
-            if (dates && dates[0]) {
-              const formatted = format(new Date(dates[0]), "MM/dd/yyyy");
-              handleFormChange("dateOfEvent", formatted);
-            }
+            handleFormChange(
+              "dateOfEvent",
+              dates && dates[0] ? format(new Date(dates[0]), "MM/dd/yyyy") : "",
+            );
           }}
         >
           <DatePickerInput
             id="inline-nce-date"
+            {...typedDate.input("inline-nce-date")}
             placeholder={siteDate.placeholder}
             {...requiredProps()}
             labelText={
@@ -387,8 +393,10 @@ const InlineNceForm = ({
                 <RequiredMarker />
               </>
             }
-            invalid={!!errors.dateOfEvent}
-            invalidText={errors.dateOfEvent}
+            invalidText={
+              typedDate.input("inline-nce-date").invalidText ||
+              errors.dateOfEvent
+            }
           />
         </DatePicker>
         <SearchableSelect

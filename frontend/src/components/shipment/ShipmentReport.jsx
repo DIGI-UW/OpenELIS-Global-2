@@ -33,6 +33,7 @@ import ShipmentNavigation from "./ShipmentNavigation";
 import "./ShipmentDashboard.css";
 import { labNow } from "../utils/labClock";
 import useSiteDateFormat from "../common/useSiteDateFormat";
+import useTypedDateCommit from "../common/useTypedDateCommit";
 
 // jspdf-autotable v5 no longer patches jsPDF on a bare import; restore doc.autoTable.
 applyPlugin(jsPDF);
@@ -40,6 +41,7 @@ applyPlugin(jsPDF);
 const ShipmentReport = () => {
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
+  const typedDate = useTypedDateCommit();
   const { addNotification } = useContext(NotificationContext);
 
   const [boxes, setBoxes] = useState([]);
@@ -430,11 +432,13 @@ const ShipmentReport = () => {
             dateFormat={siteDate.dateFormat}
             parseDate={siteDate.parseDate}
             datePickerType="single"
+            {...typedDate.picker("report-date-from")}
             onChange={([date]) => setFilterDateFrom(date)}
             value={filterDateFrom}
           >
             <DatePickerInput
               id="report-date-from"
+              {...typedDate.input("report-date-from")}
               placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({ id: "shipment.filter.dateFrom" })}
               size="md"
@@ -446,11 +450,13 @@ const ShipmentReport = () => {
             dateFormat={siteDate.dateFormat}
             parseDate={siteDate.parseDate}
             datePickerType="single"
+            {...typedDate.picker("report-date-to")}
             onChange={([date]) => setFilterDateTo(date)}
             value={filterDateTo}
           >
             <DatePickerInput
               id="report-date-to"
+              {...typedDate.input("report-date-to")}
               placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({ id: "shipment.filter.dateTo" })}
               size="md"

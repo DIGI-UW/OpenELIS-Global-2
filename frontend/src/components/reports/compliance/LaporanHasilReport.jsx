@@ -37,6 +37,7 @@ import {
   toLocalIsoDate,
 } from "../../utils/Utils";
 import { labNow } from "../../utils/labClock";
+import useTypedDateCommit from "../../common/useTypedDateCommit";
 import useSiteDateFormat from "../../common/useSiteDateFormat";
 
 const STATUS_TAG_TYPE = {
@@ -65,6 +66,7 @@ function statusTag(status, statusLabels) {
 export default function LaporanHasilReport() {
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
+  const typedDate = useTypedDateCommit();
 
   const generationStatusItems = [
     { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.all" }) },
@@ -391,6 +393,7 @@ export default function LaporanHasilReport() {
             dateFormat={siteDate.dateFormat}
             parseDate={siteDate.parseDate}
             datePickerType="single"
+            {...typedDate.picker("date-from")}
             onChange={(dates) =>
               setDateFrom(
                 dates[0] ? toLocalIsoDate(dates[0]) : "",
@@ -399,6 +402,7 @@ export default function LaporanHasilReport() {
           >
             <DatePickerInput
               id="filter-date-from"
+              {...typedDate.input("date-from")}
               placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({ id: "laporanHasil.filter.dateFrom" })}
             />
@@ -409,12 +413,14 @@ export default function LaporanHasilReport() {
             dateFormat={siteDate.dateFormat}
             parseDate={siteDate.parseDate}
             datePickerType="single"
+            {...typedDate.picker("date-to")}
             onChange={(dates) =>
               setDateTo(dates[0] ? toLocalIsoDate(dates[0]) : "")
             }
           >
             <DatePickerInput
               id="filter-date-to"
+              {...typedDate.input("date-to")}
               placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({ id: "laporanHasil.filter.dateTo" })}
             />

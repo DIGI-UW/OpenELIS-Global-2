@@ -5,6 +5,7 @@ import { useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
 import { labNow } from "../utils/labClock";
 import useSiteDateFormat from "./useSiteDateFormat";
+import useTypedDateCommit from "./useTypedDateCommit";
 
 const CustomDatePicker = (props) => {
   const [currentDate, setCurrentDate] = useState(
@@ -14,6 +15,7 @@ const CustomDatePicker = (props) => {
     useContext(ConfigurationContext) || {};
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
+  const typedDate = useTypedDateCommit();
   // Today's bounds as timestamps. A formatted date string is parsed back by
   // the calendar with its own rules, which read "26/09/2026" as a January
   // date, and a value set after mount was then clamped to that bound.
@@ -94,8 +96,11 @@ const CustomDatePicker = (props) => {
         ? props.pastDateText ||
           intl.formatMessage({ id: "datepicker.past.notAllowed" })
         : null;
-  const invalid = props.invalid || Boolean(refusedText);
-  const invalidText = refusedText || props.invalidText;
+  const typedInput = typedDate.input(props.id);
+  const invalid =
+    props.invalid || Boolean(refusedText) || typedDate.picker(props.id).invalid;
+  const invalidText =
+    refusedText || typedInput.invalidText || props.invalidText;
 
   const displayedDate = props.updateStateValue
     ? props.value || ""
@@ -127,6 +132,7 @@ const CustomDatePicker = (props) => {
           aria-invalid={invalid || undefined}
           aria-required={props["aria-required"]}
           disabled={props.disabled}
+          onFocus={typedInput.onFocus}
           onInput={handleInputChange}
         />
       </DatePicker>

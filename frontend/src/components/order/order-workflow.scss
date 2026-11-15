@@ -380,6 +380,11 @@
     background: transparent;
     cursor: not-allowed;
   }
+
+  /* An NCE can be reported on an order that can no longer be edited. */
+  .inline-nce-form {
+    pointer-events: auto;
+  }
 }
 
 /* ==========================================================================
