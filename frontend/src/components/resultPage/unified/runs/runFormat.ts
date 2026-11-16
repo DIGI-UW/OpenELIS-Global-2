@@ -20,7 +20,7 @@ export const runSourceKey = (source: string): string =>
 export const runStateKey = (state: string): string =>
   STATE_KEYS[state] ?? "run.state.open";
 
-/** A run's times arrive as ISO instants; the date follows the site date format. */
+/** The date follows the site format; the time follows the interface language. */
 export const formatRunTime = (
   intl: IntlShape,
   iso: string,
