@@ -704,9 +704,10 @@ public class ResultsValidationUtility {
         setResultLimitDependencies(resultLimit, testItem, testResults);
         testItem.setRangeNotAppliedReason(
                 rangeSelection.isRangeNotApplied() ? rangeSelection.getReason().getMessageKey() : null);
-        boolean criticalAnswer = result != null && testResultService.isCriticalAnswer(test.getId(),
-                result.getTestResult() == null ? null : result.getTestResult().getComponentId(), result.getResultType(),
-                result.getValue());
+        boolean criticalAnswer = result != null && "D".equals(result.getResultType())
+                && testResultService.isCriticalAnswer(test.getId(),
+                        result.getTestResult() == null ? null : result.getTestResult().getComponentId(),
+                        result.getValue());
         testItem.setCritical(criticalAnswer || ValidationSignals.isCritical(resultLimit, result));
         testItem.setAnalysisMethod(analysis.getAnalysisType());
         testItem.setResult(result);

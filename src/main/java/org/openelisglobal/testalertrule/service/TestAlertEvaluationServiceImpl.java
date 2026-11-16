@@ -260,7 +260,7 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
             Analysis analysis = result.getAnalysis();
             if ("D".equals(result.getResultType())) {
                 String componentId = result.getTestResult() == null ? null : result.getTestResult().getComponentId();
-                return testResultService.isCriticalAnswer(analysis.getTest().getId(), componentId, "D", value);
+                return testResultService.isCriticalAnswer(analysis.getTest().getId(), componentId, value);
             }
             if (!"N".equals(result.getResultType())) {
                 return false;

@@ -183,7 +183,7 @@ public class CriticalAnswerIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void aCriticalAnswerCalculatedFromAcceptedAnalyzerCallsRaisesTheCriticalResultAlert() {
+    public void theCriticalResultAlertNamesTheCalculatedAnswerNotTheCalls() {
         jdbc.update("UPDATE clinlims.test_result SET is_critical = false WHERE component_id = ?", component("EBOV"));
 
         List<Result> recorded = new TransactionTemplate(transactionManager).execute(status -> {

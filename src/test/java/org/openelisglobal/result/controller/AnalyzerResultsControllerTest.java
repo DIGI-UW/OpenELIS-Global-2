@@ -383,6 +383,37 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void acceptingACriticalCodedAnswer_raisesTheCriticalResultAlert() throws Exception {
+        long analysis = orderFor("ACC123456", 4001, true);
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        long person = jdbc.queryForObject("SELECT nextval('person_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.person (id, last_name, first_name, lastupdated)"
+                + " VALUES (?, 'Doe', 'Jane', NOW())", person);
+        long patient = jdbc.queryForObject("SELECT nextval('patient_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.patient (id, person_id, gender, birth_date, lastupdated)"
+                + " VALUES (?, ?, 'F', '1990-01-01', NOW())", patient, person);
+        jdbc.update("INSERT INTO clinlims.sample_human (id, patient_id, samp_id, lastupdated) VALUES"
+                + " (nextval('sample_human_seq'), ?, (SELECT id FROM clinlims.sample WHERE accession_number ="
+                + " 'ACC123456'), NOW())", patient);
+        String detected = codedAnswer("OGC1610 Detected", true);
+        stageCodedAnswer(detected);
+        MockHttpSession session = new MockHttpSession();
+        String loaded = mockMvc.perform(
+                get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        mockMvc.perform(post("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).with(csrf()).session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(acceptRow(loaded, "1001", detected)))
+                .andExpect(status().isOk());
+
+        org.junit.Assert.assertEquals(Integer.valueOf(1),
+                new JdbcTemplate(dataSource).queryForObject(
+                        "SELECT count(*)::int FROM clinlims.alert WHERE alert_type = 'CRITICAL_RESULT'"
+                                + " AND alert_entity_type = 'ANALYSIS' AND alert_entity_id = ?",
+                        Integer.class, analysis));
+    }
+
+    @Test
     public void anUneditedCodedInstrumentAnswer_andANonCriticalOne_oweNothing() {
         String detected = codedAnswer("OGC1610 Detected", true);
         String notDetected = codedAnswer("OGC1610 Not detected", false);

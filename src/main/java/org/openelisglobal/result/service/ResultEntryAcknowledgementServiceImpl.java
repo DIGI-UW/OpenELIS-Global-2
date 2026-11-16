@@ -317,7 +317,7 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
         String component = GenericValidator.isBlankOrNull(componentId) ? ruleResultScope.primaryComponentId(testId)
                 : componentId;
         if (answer.equals(StringUtil.blankIfNull(previousValue).trim())
-                || !testResultService.isCriticalAnswer(testId, component, "D", answer)) {
+                || !testResultService.isCriticalAnswer(testId, component, answer)) {
             return alerts;
         }
         Dictionary label = dictionaryService.getDictionaryById(answer);

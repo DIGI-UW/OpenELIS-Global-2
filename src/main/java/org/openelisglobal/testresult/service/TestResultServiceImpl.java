@@ -217,8 +217,8 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
 
     @Override
     @Transactional(readOnly = true)
-    public boolean isCriticalAnswer(String testId, String componentId, String resultType, String value) {
-        if (!"D".equals(resultType) || StringUtils.isBlank(testId) || StringUtils.isBlank(value)) {
+    public boolean isCriticalAnswer(String testId, String componentId, String value) {
+        if (StringUtils.isBlank(testId) || StringUtils.isBlank(value)) {
             return false;
         }
         TestResult answer = baseObjectDAO.getTestResultsByTestAndDictonaryResult(testId, value.trim(), componentId);
