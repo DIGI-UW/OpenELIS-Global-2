@@ -55,6 +55,7 @@ const config = (value: string) => ({
 describe("ConfigMenuDisplay", () => {
   let onServer: { value: string };
   let reloadConfiguration: ReturnType<typeof vi.fn>;
+  let addNotification: ReturnType<typeof vi.fn>;
 
   const renderScreen = (
     content = <ConfigMenuDisplay id="admin.formEntryConfig" menuType={MENU} />,
@@ -67,7 +68,7 @@ describe("ConfigMenuDisplay", () => {
               value={{
                 notificationVisible: false,
                 setNotificationVisible: vi.fn(),
-                addNotification: vi.fn(),
+                addNotification,
               }}
             >
               <ConfigurationContext.Provider value={{ reloadConfiguration }}>
@@ -90,6 +91,7 @@ describe("ConfigMenuDisplay", () => {
   beforeEach(() => {
     onServer = { value: "false" };
     reloadConfiguration = vi.fn();
+    addNotification = vi.fn();
     (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
     (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
       (url: string, callback: (r: unknown) => void) => {
@@ -303,6 +305,30 @@ describe("ConfigMenuDisplay", () => {
     expect(
       screen.getByRole("heading", { name: "Edit Record" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows the latest value when someone else changed the setting since it was opened", async () => {
+    await openTheEditor();
+    await waitFor(() => expect(screen.getByLabelText("False")).toBeChecked());
+    onServer = { value: "true" };
+    (postToOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, body: string, callback: (status: number) => void) =>
+        callback(409),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(screen.getByLabelText("True")).toBeChecked());
+    expect(
+      screen.getByRole("heading", { name: "Edit Record" }),
+    ).toBeInTheDocument();
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message:
+          "This setting was changed by someone else since you opened it. The form now shows the latest value: check it and save again.",
+      }),
+    );
+    expect(reloadConfiguration).not.toHaveBeenCalled();
   });
 
   it("returns to the list when the edit is abandoned", async () => {
@@ -733,6 +759,12 @@ describe("ConfigMenuDisplay on Result Configuration", () => {
 
     expect(await screen.findByText("validate all results")).toBeInTheDocument();
     expect(screen.queryByTestId("validation-policy")).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("result-validation-settings"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Modify" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the policy in place of validate all results while it is on", async () => {
@@ -740,7 +772,7 @@ describe("ConfigMenuDisplay on Result Configuration", () => {
 
     expect(await screen.findByTestId("validation-policy")).toBeInTheDocument();
     expect(
-      await screen.findByText("Block self-validation"),
+      await screen.findByText("Block validating your own results"),
     ).toBeInTheDocument();
     expect(screen.queryByText("validate all results")).not.toBeInTheDocument();
   });

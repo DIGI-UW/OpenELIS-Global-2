@@ -13,7 +13,6 @@ import {
   Select,
   SelectItem,
   MultiSelect,
-  DatePicker,
   DatePickerInput,
   InlineLoading,
   DataTable,
@@ -27,6 +26,7 @@ import {
   Pagination,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { LineChart, SimpleBarChart } from "@carbon/charts-react";
 import "@carbon/charts/styles.css";
 import { FormattedMessage, useIntl } from "react-intl";

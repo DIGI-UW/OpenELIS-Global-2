@@ -35,8 +35,10 @@ import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirFacilityOrganizationService;
 import org.openelisglobal.facilityregistry.form.FacilityLocationStatus;
 import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.organization.service.ThisLaboratoryService;
 import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -57,9 +59,13 @@ public class FacilityRegistryServiceImpl implements FacilityRegistryService {
     private OrganizationService organizationService;
 
     @Autowired
+    private ThisLaboratoryService thisLaboratoryService;
+
+    @Autowired
     private FhirUtil fhirUtil;
 
     @Autowired
+    @Qualifier("partnerFhirHttpClient")
     private CloseableHttpClient httpClient;
 
     @Autowired
@@ -67,8 +73,8 @@ public class FacilityRegistryServiceImpl implements FacilityRegistryService {
 
     /**
      * The IP lookup is a public HTTPS service: it needs the JVM's certificate
-     * authorities, which {@link #httpClient} (OpenELIS keystore and truststore
-     * only) does not trust.
+     * authorities, while {@link #httpClient} uses the installation truststore
+     * without presenting the installation client certificate.
      */
     private final CloseableHttpClient lookupClient = HttpClients.createSystem();
 
@@ -370,8 +376,7 @@ public class FacilityRegistryServiceImpl implements FacilityRegistryService {
     }
 
     private org.openelisglobal.organization.valueholder.Organization facilityRow() {
-        return organizationService.getOrganizationByShortName(FhirFacilityOrganizationService.FACILITY_ORG_SHORT_NAME,
-                false);
+        return thisLaboratoryService.find();
     }
 
     private String fingerprint() {

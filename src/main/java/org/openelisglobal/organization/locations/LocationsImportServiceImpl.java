@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
@@ -62,6 +63,7 @@ import org.openelisglobal.organization.service.OrganizationChangeService.FieldCh
 import org.openelisglobal.organization.service.OrganizationIdentifierService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.service.OrganizationTypeService;
+import org.openelisglobal.organization.service.ThisLaboratoryService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.organization.valueholder.OrganizationIdentifier;
 import org.openelisglobal.organization.valueholder.OrganizationType;
@@ -85,7 +87,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             "parentType", "active", "streetAddress", "city", "state", "zipCode", "gpsLatitude", "gpsLongitude",
             "contactName", "phone", "email", "internetAddress", "category", "ownership", "serviceType", "siteType",
             "subtype", "environmentalZone", "description", "approvalStatus", "accreditationBody", "accreditationNumber",
-            "accreditationExpiry", "lastReviewDate", "nextReviewDue" };
+            "accreditationExpiry", "lastReviewDate", "nextReviewDue", "fhirId" };
     private static final String IDENTIFIER_PREFIX = "identifier:";
 
     @Value("${org.openelisglobal.configuration.dir:/var/lib/openelis-global/configuration/backend}")
@@ -99,6 +101,8 @@ public class LocationsImportServiceImpl implements LocationsImportService {
     private LocationsService locationsService;
     @Autowired
     private OrganizationService organizationService;
+    @Autowired
+    private ThisLaboratoryService thisLaboratoryService;
     @Autowired
     private OrganizationTypeService organizationTypeService;
     @Autowired
@@ -520,6 +524,48 @@ public class LocationsImportServiceImpl implements LocationsImportService {
     // ----------------------------------------------------------------
     // organizations file
 
+    /**
+     * A reference lab's fhirId must be a FHIR id no other organization uses, not
+     * repeated by another row of the file, and never a change of this laboratory's
+     * own id; the preview says so instead of offering the row as new or updated.
+     */
+    private String fhirIdProblem(ParsedRow row, Map<String, ParsedRow> fhirIdsSeen) {
+        String value = row.csv.has("fhirId") && row.csv.get("fhirId") != null ? row.csv.get("fhirId").trim() : "";
+        if (value.isEmpty()) {
+            return null;
+        }
+        UUID uuid = LocationsApi.parseFhirId(value);
+        if (uuid == null) {
+            return "fhirId '" + value + "' is not a FHIR id (a UUID such as 1e7a6c75-a668-4a91-84d7-dcc639bdda1f)";
+        }
+        if (row.matched != null && thisLaboratoryService.isThisLaboratory(row.matched)
+                && !uuid.equals(row.matched.getFhirUuid())) {
+            return "this laboratory's own FHIR id cannot be changed: other labs address referrals to it";
+        }
+        Organization other = organizationService.getOrganizationByFhirId(uuid.toString());
+        if (other != null && (row.matched == null || !other.getId().equals(row.matched.getId()))) {
+            return "fhirId '" + value + "' is already used by " + other.getOrganizationName();
+        }
+        ParsedRow earlier = fhirIdsSeen.putIfAbsent(uuid.toString(), row);
+        if (earlier != null) {
+            return "fhirId '" + value + "' is also on line " + earlier.csv.lineNumber();
+        }
+        return null;
+    }
+
+    /**
+     * The reason a row was not written: the record's own field messages when the
+     * save refused it, otherwise the deepest message in the failure.
+     */
+    static String rejectReason(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof LocationsValidationException validation && !validation.getFieldErrors().isEmpty()) {
+                return String.join("; ", validation.getFieldErrors().values());
+            }
+        }
+        return CsvLoadSummary.reason(failure);
+    }
+
     /** One parsed and resolved organizations row, before the match. */
     private static final class ParsedRow {
         CsvRow csv;
@@ -642,6 +688,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         Set<String> wardParents = new LinkedHashSet<>();
         Set<String> typeNames = new LinkedHashSet<>();
         Map<String, ParsedRow> identifiersSeen = new HashMap<>();
+        Map<String, ParsedRow> fhirIdsSeen = new HashMap<>();
 
         for (ParsedRow row : parsed) {
             if (row.reject != null) {
@@ -653,6 +700,9 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             }
             match(row, catalogue, options, matchedIds);
             String repeated = repeatedIdentifier(row, identifiersSeen);
+            if (repeated == null) {
+                repeated = fhirIdProblem(row, fhirIdsSeen);
+            }
             if (repeated != null) {
                 row.reject = repeated;
                 row.matched = null;
@@ -695,7 +745,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
                         return null;
                     });
                 } catch (RuntimeException e) {
-                    row.reject = CsvLoadSummary.reason(e);
+                    row.reject = rejectReason(e);
                     row.outcome = LocationsImportApi.OUTCOME_REJECTED;
                 }
             }
@@ -1301,6 +1351,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         values.put("accreditationExpiry", text(organization.getAccreditationExpiry()));
         values.put("lastReviewDate", text(organization.getLastReviewDate()));
         values.put("nextReviewDue", text(organization.getNextReviewDue()));
+        values.put("fhirId", organization.getFhirUuidAsString());
         if (organization.getId().matches("\\d+")) {
             VectorSamplingSite site = samplingSiteService.getByOrganizationId(Integer.valueOf(organization.getId()));
             if (site != null) {
@@ -1396,13 +1447,14 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             identifiers.set(0, new Identifier(first.id(), first.label(), first.value(), true));
         }
         Referral referral = current != null && current.referral() != null ? current.referral()
-                : new Referral(null, null, null, null, null, null, null);
+                : new Referral(null, null, null, null, null, null, null, null);
         referral = new Referral(value(csv, "approvalStatus", referral.approvalStatus()),
                 value(csv, "accreditationBody", referral.accreditationBody()),
                 value(csv, "accreditationNumber", referral.accreditationNumber()),
                 value(csv, "accreditationExpiry", referral.accreditationExpiry()),
                 value(csv, "lastReviewDate", referral.lastReviewDate()),
-                value(csv, "nextReviewDue", referral.nextReviewDue()), referral.reviewNotes());
+                value(csv, "nextReviewDue", referral.nextReviewDue()), referral.reviewNotes(),
+                value(csv, "fhirId", referral.fhirId()));
         Site site = current != null && current.site() != null ? current.site() : new Site(null, null, null, null);
         site = new Site(site.siteId(), value(csv, "siteType", site.siteType()), value(csv, "subtype", site.subtype()),
                 value(csv, "environmentalZone", site.environmentalZone()));
@@ -1565,11 +1617,11 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         String header = String.join(",", BASE_COLUMNS) + ",identifier:DHIS2 ID\n";
         return header + "referring clinic;referralLab,PMGH,Port Moresby General Hospital,PMGH,,NCD-MS,,Y,Taurama"
                 + " Road,Port Moresby,,,-9.4705,147.1597,Dr. Anna Kila,+675 324 8200,lab@pmgh.gov.pg,,National"
-                + " referral hospital,Government,,,,,,Approved,,,,,,Rp1k2mPqH3x\n"
+                + " referral hospital,Government,,,,,,Approved,,,,,,,Rp1k2mPqH3x\n"
                 + "dept,PMGH-OPD,Outpatient Department,,PMGH,,,Y,,,,,,,Sister Ruth Moi,+675 324 8210,,,,,"
-                + "Outpatient,,,,,,,,,,,\n"
+                + "Outpatient,,,,,,,,,,,,\n"
                 + "sampling site,VT-LAE-03,Bumbu Settlement light trap,,,Lae Urban,LLG,Y,,,,,-6.7160,147.0010,John"
-                + " Wari,+675 7123 4567,,,,,,Vector trap,CDC light trap,Peri-urban settlement,Weekly collection,,,,,,,"
+                + " Wari,+675 7123 4567,,,,,,Vector trap,CDC light trap,Peri-urban settlement,Weekly collection,,,,,,,,"
                 + "\n";
     }
 
@@ -1658,6 +1710,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             values.put("accreditationExpiry", detail.referral().accreditationExpiry());
             values.put("lastReviewDate", detail.referral().lastReviewDate());
             values.put("nextReviewDue", detail.referral().nextReviewDue());
+            values.put("fhirId", detail.referral().fhirId());
         }
         for (Identifier identifier : detail.identifiers()) {
             values.put(IDENTIFIER_PREFIX + identifier.label(), identifier.value());

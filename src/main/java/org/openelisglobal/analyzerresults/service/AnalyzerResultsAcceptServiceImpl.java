@@ -43,6 +43,7 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.resultrun.service.RunQcService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -64,6 +65,7 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.Errors;
@@ -115,6 +117,9 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     private IStatusService statusService;
     @Autowired
     private ResultLimitService resultLimitService;
+    @Lazy
+    @Autowired
+    private RunQcService runQcService;
 
     // ---------------------------------------------------------------
     // Public entry point
@@ -220,6 +225,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
      * Never use client-supplied review flags to remove a server-held observation.
      */
     private void retainResolvableResults(List<AnalyzerResultItem> actionableResults) {
+        Map<Long, Set<String>> heldTestsByRun = new HashMap<>();
         actionableResults.removeIf(item -> {
             AnalyzerResults staged = analyzerResultsService.get(item.getId());
             if (staged == null) {
@@ -244,6 +250,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             }
             if (staged.isReadOnly() || !GenericValidator.isBlankOrNull(staged.getImportIssueReason())
                     || GenericValidator.isBlankOrNull(staged.getTestId())) {
+                return true;
+            }
+            if (item.getIsAccepted() && staged.getRunId() != null && heldTestsByRun
+                    .computeIfAbsent(staged.getRunId(), runQcService::heldTestIds).contains(staged.getTestId())) {
                 return true;
             }
             restoreStagedIdentity(item, staged);

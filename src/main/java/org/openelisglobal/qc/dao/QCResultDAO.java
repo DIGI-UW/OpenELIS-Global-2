@@ -84,4 +84,7 @@ public interface QCResultDAO extends BaseDAO<QCResult, String> {
      */
     List<QCResult> findBenchResults(Timestamp startDate, Timestamp endDate, QCSource source, int maxRows)
             throws LIMSRuntimeException;
+
+    /** The controls recorded on these runs (OGC-1200), oldest first. */
+    List<QCResult> findByRunIds(java.util.Collection<Long> runIds) throws LIMSRuntimeException;
 }
