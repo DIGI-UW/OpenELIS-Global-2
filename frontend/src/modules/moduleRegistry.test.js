@@ -210,6 +210,26 @@ describe("pickModuleMessages", () => {
     expect(pickModuleMessages(undefined, "en")).toEqual({});
   });
 
+  it("fills the keys a partial translation lacks from the base language, then English", () => {
+    const partial = {
+      en: {
+        "mod.alpha.menu": "Alpha",
+        "mod.alpha.card.title": "Open items",
+        "mod.alpha.card.subtitle": "Waiting on the bench",
+      },
+      fr: { "mod.alpha.menu": "Alpha (fr)", "mod.alpha.card.title": "Ouverts" },
+      fr_CA: { "mod.alpha.menu": "Alpha (CA)" },
+    };
+    expect(pickModuleMessages(partial, "fr-CA")).toEqual({
+      "mod.alpha.menu": "Alpha (CA)",
+      "mod.alpha.card.title": "Ouverts",
+      "mod.alpha.card.subtitle": "Waiting on the bench",
+    });
+    expect(pickModuleMessages(partial, "fr")["mod.alpha.card.subtitle"]).toBe(
+      "Waiting on the bench",
+    );
+  });
+
   it("planModules carries the registry's bundles through", () => {
     const module = {
       id: "alpha",

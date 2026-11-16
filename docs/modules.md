@@ -849,10 +849,14 @@ It adds the base path, the session cookie, the locale and the CSRF token:
 ```
 
 The backend sends each module's messages with the module registry, so menu
-labels exist before the pages load. The shell picks the exact locale, then the
-base language, then English; a menu entry whose key has no message stays hidden
-rather than show the key. Add new English keys only; other languages follow the
-core's translation process.
+labels exist before the pages load. For each key the shell takes the exact
+locale's text, then the base language's, then the English one, so a partial
+translation shows English for the keys it lacks rather than raw ids; a menu
+entry whose key has no message in any bundle stays hidden rather than show the
+key. The core's own translations load the same way: only the active locale's
+bundle is downloaded, so a module adds no locale files to the first page load.
+Add new English keys only; other languages follow the core's translation
+process.
 
 **The core surface.** Import core components, API helpers, hooks and contexts
 from `openelis_core/*`; the full list is in the

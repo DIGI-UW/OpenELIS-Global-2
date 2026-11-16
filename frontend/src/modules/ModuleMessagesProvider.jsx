@@ -10,8 +10,9 @@ import { pickModuleMessages } from "./moduleRegistry";
  * arrive with the registry (the backend reads them from the module JAR), so
  * nothing is fetched here and the labels are right on their first render.
  * Only keys under `mod.<id>.` are taken, so a module can never override a
- * core string. A module without a bundle for the locale falls back to the
- * base language and then to its English bundle.
+ * core string. Each key comes from the locale's bundle, then the base
+ * language's, then the English one, so a partial translation never shows
+ * raw message ids.
  */
 export default function ModuleMessagesProvider({ children }) {
   const host = useModuleHost();

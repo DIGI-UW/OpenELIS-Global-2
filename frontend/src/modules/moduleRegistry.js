@@ -111,18 +111,21 @@ export function planModules(registry, serverBaseUrl) {
 }
 
 /**
- * The bundle a module ships for a locale: the exact code first (`fr-CA`,
- * also spelt `fr_CA`), then the base language, then English; empty when the
- * module ships none of them.
+ * A module's messages for a locale, key by key: the exact code's text first
+ * (`fr-CA`, also spelt `fr_CA`), then the base language's, then English, the
+ * same layering the core applies to its own bundles. A translation that has
+ * not caught up with every key therefore shows English for the rest instead
+ * of raw message ids; empty when the module ships none of the bundles.
  */
 export function pickModuleMessages(bundles, locale) {
   if (!bundles || !locale) {
     return {};
   }
   const base = locale.split(/[-_]/)[0];
-  const candidates = [locale, locale.replace("-", "_"), base, "en"];
-  const found = candidates.find((code) => bundles[code]);
-  return found ? bundles[found] : {};
+  const layers = ["en", base, locale.replace("-", "_"), locale]
+    .map((code) => bundles[code])
+    .filter(Boolean);
+  return Object.assign({}, ...layers);
 }
 
 /** The expose name without its `./` prefix, as `loadRemote("<remote>/<name>")` wants it. */
