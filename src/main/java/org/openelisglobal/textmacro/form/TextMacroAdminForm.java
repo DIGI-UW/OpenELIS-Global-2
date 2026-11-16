@@ -11,8 +11,5 @@ public class TextMacroAdminForm {
     public String category;
     public Set<String> contexts = new LinkedHashSet<>();
     public boolean active = true;
-    public String provenance;
-    public String sourceKey;
-    public String sourceVersion;
     public Timestamp lastupdated;
 }

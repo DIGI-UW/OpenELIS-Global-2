@@ -21,8 +21,7 @@ public class TextMacroRestController extends TextMacroRestControllerSupport {
     }
 
     @GetMapping
-    public ResponseEntity<TextMacroListForm> findActive(@RequestParam String context,
-            @RequestParam(defaultValue = "") String q, @RequestParam(defaultValue = "20") int limit) {
-        return ResponseEntity.ok(new TextMacroListForm(service.findActive(context, q, limit)));
+    public ResponseEntity<TextMacroListForm> findActive(@RequestParam String context) {
+        return ResponseEntity.ok(new TextMacroListForm(service.findActive(context)));
     }
 }

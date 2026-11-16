@@ -5,14 +5,12 @@ This file records the first engineering contract. Product acceptance remains in
 
 ## Runtime Lookup
 
-`GET /rest/text-macros?context={context}&q={query}&limit={limit}`
+`GET /rest/text-macros?context={context}`
 
 - Requires an authenticated user.
 - `context` is required and must be recognized.
-- `q` is optional. A blank query returns the first active entries for the
-  context; a dot/code or phrase fragment matches canonical code and expansion
-  text case-insensitively.
-- `limit` defaults to 20 and is capped at 50.
+- Returns every active phrase for the context; the field filters and expands
+  them locally.
 - Sort order is canonical code ascending for deterministic keyboard behavior.
 
 Response:
@@ -35,10 +33,10 @@ Runtime responses omit audit and package-management fields.
 
 ## Administrative List
 
-`GET /rest/text-macros/admin?q={query}&context={context}&category={category}&source={source}&status={status}&sort={sort}&page={page}&pageSize={pageSize}`
+`GET /rest/text-macros/admin?q={query}&context={context}&category={category}&status={status}&sort={sort}&page={page}&pageSize={pageSize}`
 
 - Requires the existing administrator role.
-- `category`: `all` or one category. `source`: `all`, `local`, or `packaged`.
+- `category`: `all` or one category.
 - `status`: `active`, `inactive`, or `all`.
 - M1 sorts: `code:asc`, `code:desc`, `updated:desc`, `updated:asc`.
 - `page` is one-based. `pageSize` accepts 10, 20, 50, or 100.
@@ -61,9 +59,8 @@ Request:
 }
 ```
 
-The request has no ID on create, actor, timestamp, provenance, source key, or
-source version. M1 writes are local and the server derives attribution from the
-authenticated request.
+The request has no ID on create, actor, or timestamp. The server derives
+attribution from the authenticated request.
 
 Expected errors use a stable `code` and human-safe message key:
 
@@ -87,7 +84,7 @@ Expected errors use a stable `code` and human-safe message key:
 - Returns `text/csv; charset=UTF-8` as
   `attachment; filename="openelis-text-macros.csv"`.
 - The first row is
-  `code,expansion_text,category,contexts,active,provenance,source_key,source_version`.
+  `code,expansion_text,category,contexts,active`.
 - Rows are ordered by canonical code ascending. Context names are ordered and
   joined with `|`; RFC 4180 quoting preserves commas, quotes, and newlines in
   phrase text.
@@ -109,21 +106,18 @@ Supported actions are `ACTIVATE`, `DEACTIVATE`, and `DELETE_LOCAL`.
 - The request contains 1-100 unique generated IDs and no actor.
 - The service derives the actor from the authenticated request, loads the full
   selection, validates every row, then applies the action in one transaction.
-- `DELETE_LOCAL` rejects the complete request if any selected phrase is not
-  locally authored. It never removes a packaged phrase, and the irreversible
-  removal is written to the existing audit trail with the authenticated actor
-  before the row is deleted.
+- Every create, edit, activation change, and `DELETE_LOCAL` removal is written
+  to the existing audit trail with the authenticated actor.
 - Already expanded clinical text is plain text and is unaffected.
 - The response includes the action, affected count, and affected canonical codes
   in ascending order.
 - Stable errors include `MACRO_SELECTION_REQUIRED`,
   `MACRO_SELECTION_LIMIT_EXCEEDED`, `DUPLICATE_MACRO_IDS`,
-  `INVALID_MACRO_BULK_ACTION`, `MACRO_NOT_FOUND`, and
-  `PACKAGED_MACRO_REMOVAL_NOT_ALLOWED`.
+  `INVALID_MACRO_BULK_ACTION`, and `MACRO_NOT_FOUND`.
 
 ## Canonical Administration URL
 
-`/admin/MacroLibrary?q=&context=all&category=all&source=all&status=active&sort=code:asc&page=1&pageSize=20&edit=`
+`/admin/MacroLibrary?q=&context=all&category=all&status=active&sort=code:asc&page=1&pageSize=20&edit=`
 
 - Default values may be omitted after canonicalization only if a reload produces
   identical state.

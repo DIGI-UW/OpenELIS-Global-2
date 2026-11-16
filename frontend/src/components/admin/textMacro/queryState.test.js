@@ -9,13 +9,12 @@ describe("macro library query state", () => {
   it("normalizes all bookmarkable list and action state", () => {
     expect(
       parseMacroLibraryQuery(
-        "?q=gpc&context=MICROBIOLOGY_CULTURE_READING&category=CULTURE&source=local&status=inactive&sort=updated%3Adesc&page=3&pageSize=50&edit=macro-1",
+        "?q=gpc&context=MICROBIOLOGY_CULTURE_READING&category=CULTURE&status=inactive&sort=updated%3Adesc&page=3&pageSize=50&edit=macro-1",
       ),
     ).toEqual({
       q: "gpc",
       context: "MICROBIOLOGY_CULTURE_READING",
       category: "CULTURE",
-      source: "local",
       status: "inactive",
       sort: "updated:desc",
       page: 3,

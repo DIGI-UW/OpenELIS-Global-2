@@ -1,14 +1,13 @@
 package org.openelisglobal.textmacro.form;
 
 public class TextMacroAdminQueryForm {
-    public String q = "";
-    public String context = "all";
-    public String category = "all";
-    public String source = "all";
-    public String status = "active";
-    public String sort = "code:asc";
-    public int page = 1;
-    public int pageSize = 20;
+    private String q = "";
+    private String context = "all";
+    private String category = "all";
+    private String status = "active";
+    private String sort = "code:asc";
+    private int page = 1;
+    private int pageSize = 20;
 
     public String getQ() {
         return q;
@@ -32,14 +31,6 @@ public class TextMacroAdminQueryForm {
 
     public void setCategory(String category) {
         this.category = category;
-    }
-
-    public String getSource() {
-        return source;
-    }
-
-    public void setSource(String source) {
-        this.source = source;
     }
 
     public String getStatus() {

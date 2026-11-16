@@ -1,4 +1,8 @@
-import { bulkAdminMacros, exportAdminMacros } from "./TextMacroService";
+import {
+  bulkAdminMacros,
+  exportAdminMacros,
+  saveAdminMacro,
+} from "./TextMacroService";
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -55,5 +59,28 @@ describe("TextMacroService administration", () => {
       }),
     );
     expect(fetch.mock.calls[0][1].body).not.toContain("actor");
+  });
+
+  it("rejects a refused save with the server's error code and status", async () => {
+    fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 400,
+          error: "MACRO_CODE_RESERVED",
+          message: "This code is reserved by the system",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(
+      saveAdminMacro({
+        code: ".help",
+        expansionText: "Text",
+        category: "CLINICAL",
+        contexts: ["MICROBIOLOGY_CLINICAL_HISTORY"],
+        active: true,
+      }),
+    ).rejects.toMatchObject({ status: 400, error: "MACRO_CODE_RESERVED" });
   });
 });

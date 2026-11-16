@@ -3,17 +3,16 @@ package org.openelisglobal.textmacro.service;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
-import org.openelisglobal.audittrail.dao.AuditTrailService;
-import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.textmacro.dao.TextMacroDAO;
 import org.openelisglobal.textmacro.form.TextMacroAdminForm;
@@ -29,58 +28,57 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class TextMacroServiceImpl implements TextMacroService {
+public class TextMacroServiceImpl extends AuditableBaseObjectServiceImpl<TextMacro, String>
+        implements TextMacroService {
 
     private static final Pattern CODE_PATTERN = Pattern.compile("\\.[a-z0-9][a-z0-9_-]{0,13}");
     private static final Set<String> RESERVED_CODES = Set.of(".help", ".list");
     private static final int MAX_EXPANSION_LENGTH = 500;
     private static final Set<String> STATUSES = Set.of("ACTIVE", "INACTIVE", "ALL");
-    private static final Set<String> SOURCES = Set.of("ALL", "LOCAL", "PACKAGED");
     private static final Set<String> SORTS = Set.of("code:asc", "code:desc", "updated:asc", "updated:desc");
     private static final Set<Integer> PAGE_SIZES = Set.of(10, 20, 50, 100);
     private static final Set<String> BULK_ACTIONS = Set.of("ACTIVATE", "DEACTIVATE", "DELETE_LOCAL");
     private static final int MAX_BULK_SELECTION = 100;
-    private static final String[] CSV_HEADERS = { "code", "expansion_text", "category", "contexts", "active",
-            "provenance", "source_key", "source_version" };
+    private static final String[] CSV_HEADERS = { "code", "expansion_text", "category", "contexts", "active" };
 
     private final TextMacroDAO macroDAO;
-    private final AuditTrailService auditTrailService;
 
-    public TextMacroServiceImpl(TextMacroDAO macroDAO, AuditTrailService auditTrailService) {
+    public TextMacroServiceImpl(TextMacroDAO macroDAO) {
+        super(TextMacro.class);
         this.macroDAO = macroDAO;
-        this.auditTrailService = auditTrailService;
+        this.auditTrailLog = true;
+    }
+
+    @Override
+    protected TextMacroDAO getBaseObjectDAO() {
+        return macroDAO;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<TextMacroSummaryForm> findActive(String context, String query, int limit) {
-        TextMacroContext normalizedContext = parseContext(context);
-        String normalizedQuery = normalizeSearch(query);
-        int normalizedLimit = Math.min(50, Math.max(1, limit <= 0 ? 20 : limit));
-        return macroDAO.findActiveByContext(normalizedContext, normalizedQuery, normalizedLimit).stream()
-                .map(this::toSummary).toList();
+    public List<TextMacroSummaryForm> findActive(String context) {
+        return macroDAO.findActiveByContext(parseContext(context)).stream().map(this::toSummary).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public TextMacroPageForm searchAdmin(TextMacroAdminQueryForm request) {
         TextMacroAdminQueryForm query = request == null ? new TextMacroAdminQueryForm() : request;
-        String search = normalizeSearch(query.q);
-        TextMacroContext context = parseOptionalContext(query.context);
-        TextMacroCategory category = parseOptionalCategory(query.category);
-        String source = normalizeSource(query.source);
-        String status = normalizeStatus(query.status);
-        String sort = SORTS.contains(query.sort) ? query.sort : "code:asc";
-        int page = Math.max(1, query.page);
-        int pageSize = PAGE_SIZES.contains(query.pageSize) ? query.pageSize : 20;
+        String search = normalizeSearch(query.getQ());
+        TextMacroContext context = parseOptionalContext(query.getContext());
+        TextMacroCategory category = parseOptionalCategory(query.getCategory());
+        String status = normalizeStatus(query.getStatus());
+        String sort = SORTS.contains(query.getSort()) ? query.getSort() : "code:asc";
+        int page = Math.max(1, query.getPage());
+        int pageSize = PAGE_SIZES.contains(query.getPageSize()) ? query.getPageSize() : 20;
         int offset = (page - 1) * pageSize;
 
         TextMacroPageForm result = new TextMacroPageForm();
-        result.items = macroDAO.search(search, context, category, source, status, sort, offset, pageSize).stream()
+        result.items = macroDAO.search(search, context, category, status, sort, offset, pageSize).stream()
                 .map(this::toAdmin).toList();
         result.page = page;
         result.pageSize = pageSize;
-        result.total = macroDAO.countSearch(search, context, category, source, status);
+        result.total = macroDAO.countSearch(search, context, category, status);
         return result;
     }
 
@@ -110,37 +108,33 @@ public class TextMacroServiceImpl implements TextMacroService {
             throw new TextMacroConflictException("Macro code is already in use");
         }
 
-        TextMacro macro = id == null ? new TextMacro() : requireExisting(id);
+        TextMacro macro = id == null ? new TextMacro() : detach(requireExisting(id));
         macro.setCode(code);
         macro.setExpansionText(expansion);
         macro.setCategory(category);
         macro.setContexts(contexts);
         macro.setActive(request.active);
         macro.setLastUpdatedBy(actor);
-        if (id == null) {
-            macro.setProvenance("LOCAL");
-            macroDAO.insert(macro);
-        } else {
-            macroDAO.update(macro);
+        macro.setSysUserId(actor);
+        if (id != null) {
+            return toAdmin(update(macro));
         }
+        insert(macro);
         return toAdmin(macro);
     }
 
     @Override
     @Transactional(readOnly = true)
     public String exportCsv() {
-        List<TextMacro> macros = macroDAO.findAllWithContexts().stream()
-                .sorted(java.util.Comparator.comparing(TextMacro::getCode)).toList();
+        List<TextMacro> macros = macroDAO.findAllWithContexts();
         try (StringWriter writer = new StringWriter();
                 CSVPrinter printer = new CSVPrinter(writer,
                         CSVFormat.DEFAULT.builder().setHeader(CSV_HEADERS).setRecordSeparator("\r\n").build())) {
             for (TextMacro macro : macros) {
                 String contexts = macro.getContexts().stream().map(Enum::name).sorted()
-                        .collect(java.util.stream.Collectors.joining("|"));
+                        .collect(Collectors.joining("|"));
                 printer.printRecord(macro.getCode(), StringUtil.csvFormulaGuard(macro.getExpansionText()),
-                        macro.getCategory(), contexts, macro.isActive(), macro.getProvenance(),
-                        StringUtil.csvFormulaGuard(macro.getSourceKey()),
-                        StringUtil.csvFormulaGuard(macro.getSourceVersion()));
+                        macro.getCategory(), contexts, macro.isActive());
             }
             printer.flush();
             return writer.toString();
@@ -156,30 +150,22 @@ public class TextMacroServiceImpl implements TextMacroService {
         if (request == null) {
             throw new TextMacroRequestException("INVALID_MACRO_REQUEST", "Bulk request is required");
         }
-        List<String> requestedIds = normalizeBulkIds(request.ids);
+        Set<String> ids = normalizeBulkIds(request.ids);
         String action = normalizeBulkAction(request.action);
-        Set<String> uniqueIds = new LinkedHashSet<>(requestedIds);
-        List<TextMacro> macros = macroDAO.findByIdsWithContexts(uniqueIds).stream()
-                .sorted(java.util.Comparator.comparing(TextMacro::getCode)).toList();
-        if (macros.size() != uniqueIds.size()) {
+        List<TextMacro> macros = macroDAO.findByIdsWithContexts(ids);
+        if (macros.size() != ids.size()) {
             throw new TextMacroRequestException("MACRO_NOT_FOUND", "One or more selected macros were not found");
-        }
-        if ("DELETE_LOCAL".equals(action)
-                && macros.stream().anyMatch(macro -> !"LOCAL".equalsIgnoreCase(macro.getProvenance()))) {
-            throw new TextMacroRequestException("PACKAGED_MACRO_REMOVAL_NOT_ALLOWED",
-                    "Packaged macros cannot be removed");
         }
 
         for (TextMacro macro : macros) {
+            macro.setSysUserId(actor);
             if ("DELETE_LOCAL".equals(action)) {
-                macro.setSysUserId(actor);
-                auditTrailService.saveHistory(null, macro, actor, IActionConstants.AUDIT_TRAIL_DELETE,
-                        macroDAO.getTableName());
-                macroDAO.delete(macro);
+                delete(macro);
             } else {
+                detach(macro);
                 macro.setActive("ACTIVATE".equals(action));
                 macro.setLastUpdatedBy(actor);
-                macroDAO.update(macro);
+                update(macro);
             }
         }
 
@@ -188,6 +174,12 @@ public class TextMacroServiceImpl implements TextMacroService {
         result.affectedCount = macros.size();
         result.affectedCodes = macros.stream().map(TextMacro::getCode).toList();
         return result;
+    }
+
+    // Detached so the audit diff reloads the stored row, not this edited one.
+    private TextMacro detach(TextMacro macro) {
+        macroDAO.evict(macro);
+        return macro;
     }
 
     private TextMacro requireExisting(String id) {
@@ -237,14 +229,6 @@ public class TextMacroServiceImpl implements TextMacroService {
         return parseCategory(value);
     }
 
-    private String normalizeSource(String value) {
-        String source = value == null || value.isBlank() ? "ALL" : value.trim().toUpperCase(Locale.ROOT);
-        if (!SOURCES.contains(source)) {
-            throw new TextMacroRequestException("INVALID_MACRO_SOURCE", "Unsupported macro source: " + value);
-        }
-        return source;
-    }
-
     private TextMacroContext parseOptionalContext(String value) {
         if (value == null || value.isBlank() || "all".equalsIgnoreCase(value)) {
             return null;
@@ -273,7 +257,7 @@ public class TextMacroServiceImpl implements TextMacroService {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
-    private List<String> normalizeBulkIds(List<String> values) {
+    private Set<String> normalizeBulkIds(List<String> values) {
         if (values == null || values.isEmpty()) {
             throw new TextMacroRequestException("MACRO_SELECTION_REQUIRED", "Select at least one macro");
         }
@@ -281,9 +265,10 @@ public class TextMacroServiceImpl implements TextMacroService {
             throw new TextMacroRequestException("MACRO_SELECTION_LIMIT_EXCEEDED",
                     "No more than " + MAX_BULK_SELECTION + " macros can be changed at once");
         }
-        List<String> ids = values.stream()
-                .map(value -> requireText(value, "MACRO_NOT_FOUND", "Selected macro ID is required")).toList();
-        if (new HashSet<>(ids).size() != ids.size()) {
+        Set<String> ids = values.stream()
+                .map(value -> requireText(value, "MACRO_NOT_FOUND", "Selected macro ID is required"))
+                .collect(Collectors.toSet());
+        if (ids.size() != values.size()) {
             throw new TextMacroRequestException("DUPLICATE_MACRO_IDS", "Selected macro IDs must be unique");
         }
         return ids;
@@ -312,7 +297,7 @@ public class TextMacroServiceImpl implements TextMacroService {
         form.expansionText = macro.getExpansionText();
         form.category = macro.getCategory().name();
         form.contexts = macro.getContexts().stream().map(Enum::name)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         return form;
     }
 
@@ -323,11 +308,8 @@ public class TextMacroServiceImpl implements TextMacroService {
         form.expansionText = macro.getExpansionText();
         form.category = macro.getCategory().name();
         form.contexts = macro.getContexts().stream().map(Enum::name)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         form.active = macro.isActive();
-        form.provenance = macro.getProvenance();
-        form.sourceKey = macro.getSourceKey();
-        form.sourceVersion = macro.getSourceVersion();
         form.lastupdated = macro.getLastupdated();
         return form;
     }

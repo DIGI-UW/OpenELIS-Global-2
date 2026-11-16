@@ -34,26 +34,18 @@ public class TextMacroDAOImpl extends BaseDAOImpl<TextMacro, String> implements 
 
     @Override
     @Transactional(readOnly = true)
-    public List<TextMacro> findActiveByContext(TextMacroContext context, String search, int limit) {
-        String hql = "select m from TextMacro m" + " where m.active = true and :context member of m.contexts";
-        if (search != null && !search.isBlank()) {
-            hql += " and (lower(m.code) like :search or lower(m.expansionText) like :search)";
-        }
-        hql += " order by lower(m.code) asc";
-        Query<TextMacro> query = entityManager.unwrap(Session.class).createQuery(hql, TextMacro.class);
-        query.setParameter("context", context);
-        if (search != null && !search.isBlank()) {
-            query.setParameter("search", "%" + search.toLowerCase(Locale.ROOT) + "%");
-        }
-        query.setMaxResults(limit);
-        return query.list();
+    public List<TextMacro> findActiveByContext(TextMacroContext context) {
+        return entityManager.unwrap(Session.class)
+                .createQuery("select m from TextMacro m where m.active = true and :context member of m.contexts"
+                        + " order by lower(m.code) asc", TextMacro.class)
+                .setParameter("context", context).list();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<TextMacro> search(String search, TextMacroContext context, TextMacroCategory category, String source,
-            String status, String sort, int offset, int limit) {
-        String hql = "select m from TextMacro m" + where(search, context, category, source, status) + orderBy(sort);
+    public List<TextMacro> search(String search, TextMacroContext context, TextMacroCategory category, String status,
+            String sort, int offset, int limit) {
+        String hql = "select m from TextMacro m" + where(search, context, category, status) + orderBy(sort);
         Query<TextMacro> query = entityManager.unwrap(Session.class).createQuery(hql, TextMacro.class);
         setParameters(query, search, context, category, status);
         query.setFirstResult(offset);
@@ -63,11 +55,9 @@ public class TextMacroDAOImpl extends BaseDAOImpl<TextMacro, String> implements 
 
     @Override
     @Transactional(readOnly = true)
-    public long countSearch(String search, TextMacroContext context, TextMacroCategory category, String source,
-            String status) {
+    public long countSearch(String search, TextMacroContext context, TextMacroCategory category, String status) {
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(
-                "select count(distinct m.id) from TextMacro m" + where(search, context, category, source, status),
-                Long.class);
+                "select count(distinct m.id) from TextMacro m" + where(search, context, category, status), Long.class);
         setParameters(query, search, context, category, status);
         return query.getSingleResult();
     }
@@ -94,8 +84,7 @@ public class TextMacroDAOImpl extends BaseDAOImpl<TextMacro, String> implements 
         return query.list();
     }
 
-    private String where(String search, TextMacroContext context, TextMacroCategory category, String source,
-            String status) {
+    private String where(String search, TextMacroContext context, TextMacroCategory category, String status) {
         StringBuilder hql = new StringBuilder(" where 1 = 1");
         if (search != null && !search.isBlank()) {
             hql.append(" and (lower(m.code) like :search or lower(m.expansionText) like :search)");
@@ -105,11 +94,6 @@ public class TextMacroDAOImpl extends BaseDAOImpl<TextMacro, String> implements 
         }
         if (category != null) {
             hql.append(" and m.category = :category");
-        }
-        if ("LOCAL".equals(source)) {
-            hql.append(" and m.provenance = 'LOCAL'");
-        } else if ("PACKAGED".equals(source)) {
-            hql.append(" and m.provenance <> 'LOCAL'");
         }
         if (!"ALL".equals(status)) {
             hql.append(" and m.active = :active");

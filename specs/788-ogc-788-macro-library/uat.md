@@ -43,7 +43,7 @@ then reload the resulting URL.
 row, and complete canonical URL return unchanged after reload.
 
 **Route:**
-`/admin/MacroLibrary?q=.uat_ng24&context=all&category=all&source=all&status=all&sort=code%3Aasc&page=1&pageSize=20`
+`/admin/MacroLibrary?q=.uat_ng24&context=all&category=all&status=all&sort=code%3Aasc&page=1&pageSize=20`
 
 ### PHR-002 - Maintain the reusable phrase
 
@@ -121,7 +121,7 @@ the canonical URL. Prepare two local active phrases named `.uat_bulk_a` and
 `.uat_bulk_b` through the editor if they are not already present.
 
 **Route:**
-`/admin/MacroLibrary?q=.uat_bulk&context=all&category=all&source=all&status=all&sort=code%3Aasc&page=1&pageSize=20`
+`/admin/MacroLibrary?q=.uat_bulk&context=all&category=all&status=all&sort=code%3Aasc&page=1&pageSize=20`
 
 ### PHR-008 - Review an explicit bulk action
 
@@ -144,7 +144,7 @@ and then become active together. No partial update is visible.
 **Do:** Choose Export CSV and open the downloaded file.
 
 **Expect:** The UTF-8 CSV has one header row, is ordered by code, includes
-category, contexts, active state, and source/provenance, and contains no database IDs or
+category, contexts, and active state, and contains no database IDs or
 audit actor identifiers.
 
 ### PHR-011 - Restrict irreversible removal

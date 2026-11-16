@@ -2,7 +2,6 @@ import { TEXT_MACRO_CATEGORIES, TEXT_MACRO_CONTEXTS } from "./textMacroConfig";
 
 const CONTEXTS = new Set(["all", ...TEXT_MACRO_CONTEXTS]);
 const CATEGORIES = new Set(["all", ...TEXT_MACRO_CATEGORIES]);
-const SOURCES = new Set(["all", "local", "packaged"]);
 const STATUSES = new Set(["active", "inactive", "all"]);
 const SORTS = new Set(["code:asc", "code:desc", "updated:asc", "updated:desc"]);
 const PAGE_SIZES = new Set([10, 20, 50, 100]);
@@ -11,7 +10,6 @@ export const DEFAULT_MACRO_LIBRARY_QUERY = Object.freeze({
   q: "",
   context: "all",
   category: "all",
-  source: "all",
   status: "active",
   sort: "code:asc",
   page: 1,
@@ -25,14 +23,12 @@ export const parseMacroLibraryQuery = (search) => {
   const pageSize = Number(params.get("pageSize"));
   const context = params.get("context") || "all";
   const category = params.get("category") || "all";
-  const source = params.get("source") || "all";
   const status = params.get("status") || "active";
   const sort = params.get("sort") || "code:asc";
   return {
     q: params.get("q") || "",
     context: CONTEXTS.has(context) ? context : "all",
     category: CATEGORIES.has(category) ? category : "all",
-    source: SOURCES.has(source) ? source : "all",
     status: STATUSES.has(status) ? status : "active",
     sort: SORTS.has(sort) ? sort : "code:asc",
     page: Number.isInteger(page) && page > 0 ? page : 1,
@@ -56,7 +52,6 @@ export const updateMacroLibraryQuery = (current, updates) => {
     "q",
     "context",
     "category",
-    "source",
     "status",
     "sort",
     "pageSize",

@@ -19,7 +19,7 @@ adapter, while microbiology supplies only the field context.
 ## Architecture Decisions
 
 1. A dedicated phrase-definition entity owns code, expansion text, applicable
-   contexts, active status, provenance, and audit metadata. It is not a
+   contexts, active status, and audit metadata. It is not a
    microbiology case entity and it does not store expanded clinical text.
 2. Contexts are controlled application values exposed as translatable labels.
    A phrase can apply to multiple contexts; adding a future consumer does not
@@ -47,12 +47,11 @@ adapter, while microbiology supplies only the field context.
 10. Liquibase is used only for the phrase data model. Routes, UI, tests,
     fixtures, and navigation receive no migration.
 11. M2 export is a deterministic UTF-8 CSV of the effective library, ordered by
-    canonical code. Contexts and package provenance are preserved so the file is
+    canonical code. Contexts are preserved so the file is
     useful for review and future import without exposing audit actors or database
     identifiers.
 12. M2 bulk administration is an explicit, confirmed operation over at most 100
-    selected phrases. Activation and deactivation apply to local or packaged
-    phrases; irreversible removal is limited to local phrases. The service loads
+    selected phrases. The service loads
     and validates the complete selection before changing any row.
 13. Package import remains blocked until its clinical source and collision policy
     are approved. Export and bulk administration use the M1 model and therefore
@@ -106,9 +105,9 @@ delivery, not evidence that those gated outcomes are complete.
 ## Database Change
 
 M1 adds phrase definitions and phrase-to-context associations with generated
-IDs, normalized uniqueness, active status, provenance, authenticated audit
-metadata, and rollback. M2 adds a data-model migration only if reviewed package
-provenance cannot be represented by the M1 model; package content itself must
+IDs, normalized uniqueness, active status, authenticated audit metadata, and
+rollback. M2 adds the package provenance columns in its own changeset; package
+content itself must
 not be inserted as an unreviewed test fixture.
 
 ## Test Strategy

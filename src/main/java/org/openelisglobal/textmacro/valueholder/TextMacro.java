@@ -45,15 +45,6 @@ public class TextMacro extends BaseObject<String> {
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
-    @Column(name = "provenance", nullable = false, length = 20)
-    private String provenance = "LOCAL";
-
-    @Column(name = "source_key", length = 100)
-    private String sourceKey;
-
-    @Column(name = "source_version", length = 50)
-    private String sourceVersion;
-
     @Column(name = "last_updated_by", nullable = false, length = 20)
     private String lastUpdatedBy;
 
@@ -104,30 +95,6 @@ public class TextMacro extends BaseObject<String> {
 
     public void setActive(boolean active) {
         this.active = active;
-    }
-
-    public String getProvenance() {
-        return provenance;
-    }
-
-    public void setProvenance(String provenance) {
-        this.provenance = provenance;
-    }
-
-    public String getSourceKey() {
-        return sourceKey;
-    }
-
-    public void setSourceKey(String sourceKey) {
-        this.sourceKey = sourceKey;
-    }
-
-    public String getSourceVersion() {
-        return sourceVersion;
-    }
-
-    public void setSourceVersion(String sourceVersion) {
-        this.sourceVersion = sourceVersion;
     }
 
     public String getLastUpdatedBy() {

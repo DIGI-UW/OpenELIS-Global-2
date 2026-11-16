@@ -12,12 +12,12 @@ public interface TextMacroDAO extends BaseDAO<TextMacro, String> {
 
     Optional<TextMacro> findByCode(String code);
 
-    List<TextMacro> findActiveByContext(TextMacroContext context, String query, int limit);
+    List<TextMacro> findActiveByContext(TextMacroContext context);
 
-    List<TextMacro> search(String query, TextMacroContext context, TextMacroCategory category, String source,
-            String status, String sort, int offset, int limit);
+    List<TextMacro> search(String query, TextMacroContext context, TextMacroCategory category, String status,
+            String sort, int offset, int limit);
 
-    long countSearch(String query, TextMacroContext context, TextMacroCategory category, String source, String status);
+    long countSearch(String query, TextMacroContext context, TextMacroCategory category, String status);
 
     List<TextMacro> findAllWithContexts();
 

@@ -68,11 +68,12 @@ const MacroLibraryPage = () => {
   const [error, setError] = useState("");
   const [editorError, setEditorError] = useState(null);
   const requestMessage = (requestError) => {
-    const key = `textMacro.error.${requestError.payload?.error}`;
-    return intl.messages[key]
-      ? intl.formatMessage({ id: key })
-      : requestError.message;
+    const key = `textMacro.error.${requestError.error}`;
+    return intl.formatMessage({
+      id: intl.messages[key] ? key : "textMacro.error.save",
+    });
   };
+  const loadFailed = intl.formatMessage({ id: "textMacro.error.load" });
 
   const requestQuery = buildMacroAdminRequestQuery(query);
   const load = useCallback(
@@ -82,8 +83,7 @@ const MacroLibraryPage = () => {
       return getAdminMacroPage(requestQuery, signal)
         .then(setPage)
         .catch((requestError) => {
-          if (requestError.name !== "AbortError")
-            setError(requestError.message);
+          if (requestError.name !== "AbortError") setError(loadFailed);
         })
         .finally(() => setLoading(false));
     },
@@ -114,7 +114,7 @@ const MacroLibraryPage = () => {
     getAdminMacro(query.edit, controller.signal)
       .then(setDraft)
       .catch((requestError) => {
-        if (requestError.name !== "AbortError") setError(requestError.message);
+        if (requestError.name !== "AbortError") setError(loadFailed);
       });
     return () => controller.abort();
   }, [page.items, query.edit]);
@@ -132,7 +132,7 @@ const MacroLibraryPage = () => {
       await load();
     } catch (requestError) {
       setEditorError({
-        code: requestError.payload?.error,
+        code: requestError.error,
         message: requestMessage(requestError),
       });
     } finally {
@@ -215,8 +215,8 @@ const MacroLibraryPage = () => {
     try {
       const { blob, filename } = await exportAdminMacros();
       downloadBlob(blob, filename);
-    } catch (requestError) {
-      setError(requestError.message);
+    } catch {
+      setError(intl.formatMessage({ id: "textMacro.error.export" }));
     } finally {
       setExporting(false);
     }
@@ -235,10 +235,6 @@ const MacroLibraryPage = () => {
     {
       key: "contextDisplay",
       header: intl.formatMessage({ id: "textMacro.contexts" }),
-    },
-    {
-      key: "provenance",
-      header: intl.formatMessage({ id: "textMacro.provenance" }),
     },
     { key: "status", header: intl.formatMessage({ id: "textMacro.status" }) },
     { key: "actions", header: "" },
@@ -306,9 +302,6 @@ const MacroLibraryPage = () => {
                     page.items.find((item) => item.id === selected.id),
                   )
                   .filter(Boolean);
-                const includesPackaged = selectedMacros.some(
-                  (macro) => macro.provenance !== "LOCAL",
-                );
                 return (
                   <TableContainer
                     title={intl.formatMessage({
@@ -369,16 +362,11 @@ const MacroLibraryPage = () => {
                             <TableBatchAction
                               className="text-macro-admin__batch-action"
                               renderIcon={TrashCan}
-                              disabled={includesPackaged}
                               aria-label={intl.formatMessage({
-                                id: includesPackaged
-                                  ? "textMacro.bulk.removeUnavailable"
-                                  : "textMacro.bulk.remove",
+                                id: "textMacro.bulk.remove",
                               })}
                               title={intl.formatMessage({
-                                id: includesPackaged
-                                  ? "textMacro.bulk.removeUnavailable"
-                                  : "textMacro.bulk.remove",
+                                id: "textMacro.bulk.remove",
                               })}
                               onClick={() =>
                                 beginBulkAction("DELETE_LOCAL", selectedMacros)
@@ -400,7 +388,10 @@ const MacroLibraryPage = () => {
                               id: "textMacro.search",
                             })}
                             onChange={(event) =>
-                              setQuery({ q: event.target.value })
+                              setQuery(
+                                { q: event.target.value },
+                                { replace: true },
+                              )
                             }
                           />
                           <Select
@@ -453,27 +444,6 @@ const MacroLibraryPage = () => {
                                 value={category}
                                 text={intl.formatMessage({
                                   id: `textMacro.category.${category}`,
-                                })}
-                              />
-                            ))}
-                          </Select>
-                          <Select
-                            id="text-macro-source-filter"
-                            hideLabel
-                            labelText={intl.formatMessage({
-                              id: "textMacro.provenance",
-                            })}
-                            value={query.source}
-                            onChange={(event) =>
-                              setQuery({ source: event.target.value })
-                            }
-                          >
-                            {["all", "local", "packaged"].map((source) => (
-                              <SelectItem
-                                key={source}
-                                value={source}
-                                text={intl.formatMessage({
-                                  id: `textMacro.provenance.${source}`,
                                 })}
                               />
                             ))}
@@ -613,10 +583,6 @@ const MacroLibraryPage = () => {
                                           : "textMacro.status.inactive",
                                       })}
                                     </Tag>
-                                  ) : cell.info.header === "provenance" ? (
-                                    intl.formatMessage({
-                                      id: `textMacro.provenance.${String(cell.value).toLowerCase()}`,
-                                    })
                                   ) : cell.info.header === "expansionText" ? (
                                     <div className="text-macro-admin__phrase-cell">
                                       <span>{cell.value}</span>

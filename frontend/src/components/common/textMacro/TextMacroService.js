@@ -1,81 +1,66 @@
-import config from "../../../config.json";
+import {
+  fetchFromOpenElisServer,
+  getFromOpenElisServerForBlob,
+  postToOpenElisServerJsonResponse,
+  putToOpenElisServerJsonResponse,
+} from "../../utils/Utils";
 
-const requestResponse = async (path, options = {}) => {
-  const response = await fetch(config.serverBaseUrl + path, {
-    credentials: "include",
-    ...options,
-    headers: {
-      "Accept-Language":
-        localStorage.getItem("locale") || navigator.language || "en",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...(options.method && options.method !== "GET"
-        ? { "X-CSRF-Token": localStorage.getItem("CSRF") }
-        : {}),
-      ...options.headers,
-    },
-  });
-  return response;
-};
-
-const request = async (path, options = {}) => {
-  const response = await requestResponse(path, options);
-  const contentType = response.headers.get("content-type") || "";
-  const body = contentType.includes("application/json")
-    ? await response.json()
-    : await response.text();
-  if (!response.ok) {
-    const error = new Error(body?.message || response.statusText);
-    error.status = response.status;
-    error.payload = body;
-    throw error;
-  }
-  return body;
-};
+const sendJson = (send, path, body) =>
+  new Promise((resolve, reject) =>
+    send(path, JSON.stringify(body), (response) =>
+      response?.error ? reject(response) : resolve(response),
+    ),
+  );
 
 export const getTextMacros = (context, signal) =>
-  request(`/rest/text-macros?context=${encodeURIComponent(context)}&limit=50`, {
+  fetchFromOpenElisServer(
+    `/rest/text-macros?context=${encodeURIComponent(context)}`,
     signal,
-  });
+  );
 
 export const getAdminMacroPage = (query, signal) =>
-  request(`/rest/text-macros/admin?${query}`, { signal });
+  fetchFromOpenElisServer(`/rest/text-macros/admin?${query}`, signal);
 
 export const getAdminMacro = (id, signal) =>
-  request(`/rest/text-macros/admin/${encodeURIComponent(id)}`, { signal });
+  fetchFromOpenElisServer(
+    `/rest/text-macros/admin/${encodeURIComponent(id)}`,
+    signal,
+  );
 
 export const saveAdminMacro = (macro) =>
-  request(
+  sendJson(
+    macro.id
+      ? putToOpenElisServerJsonResponse
+      : postToOpenElisServerJsonResponse,
     `/rest/text-macros/admin${macro.id ? `/${encodeURIComponent(macro.id)}` : ""}`,
     {
-      method: macro.id ? "PUT" : "POST",
-      body: JSON.stringify({
-        code: macro.code,
-        expansionText: macro.expansionText,
-        category: macro.category,
-        contexts: macro.contexts,
-        active: macro.active,
-      }),
+      code: macro.code,
+      expansionText: macro.expansionText,
+      category: macro.category,
+      contexts: macro.contexts,
+      active: macro.active,
     },
   );
 
 export const bulkAdminMacros = ({ ids, action }) =>
-  request("/rest/text-macros/admin/bulk", {
-    method: "POST",
-    body: JSON.stringify({ ids, action }),
+  sendJson(postToOpenElisServerJsonResponse, "/rest/text-macros/admin/bulk", {
+    ids,
+    action,
   });
 
-export const exportAdminMacros = async () => {
-  const response = await requestResponse("/rest/text-macros/admin/export");
-  if (!response.ok) {
-    const error = new Error(response.statusText);
-    error.status = response.status;
-    throw error;
-  }
-  const disposition = response.headers.get("Content-Disposition") || "";
-  return {
-    blob: await response.blob(),
-    filename:
-      disposition.match(/filename="?([^";]+)"?/i)?.[1] ||
-      "openelis-text-macros.csv",
-  };
-};
+export const exportAdminMacros = () =>
+  new Promise((resolve, reject) =>
+    getFromOpenElisServerForBlob(
+      "/rest/text-macros/admin/export",
+      (blob, response) =>
+        resolve({
+          blob,
+          filename:
+            response.headers
+              .get("Content-Disposition")
+              ?.match(/filename="?([^";]+)"?/i)?.[1] ||
+            "openelis-text-macros.csv",
+        }),
+      reject,
+    ),
+  );

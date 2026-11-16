@@ -25,11 +25,6 @@
       <column name="is_active" type="boolean" defaultValueBoolean="true">
         <constraints nullable="false"/>
       </column>
-      <column name="provenance" type="varchar(20)" defaultValue="LOCAL">
-        <constraints nullable="false"/>
-      </column>
-      <column name="source_key" type="varchar(100)"/>
-      <column name="source_version" type="varchar(50)"/>
       <column name="last_updated_by" type="varchar(20)">
         <constraints nullable="false"/>
       </column>

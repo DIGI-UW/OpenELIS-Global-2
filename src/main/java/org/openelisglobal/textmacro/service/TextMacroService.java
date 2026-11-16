@@ -9,7 +9,7 @@ import org.openelisglobal.textmacro.form.TextMacroPageForm;
 import org.openelisglobal.textmacro.form.TextMacroSummaryForm;
 
 public interface TextMacroService {
-    List<TextMacroSummaryForm> findActive(String context, String query, int limit);
+    List<TextMacroSummaryForm> findActive(String context);
 
     TextMacroPageForm searchAdmin(TextMacroAdminQueryForm query);
 

@@ -49,7 +49,6 @@ beforeEach(() => {
         category: "GRAM_STAIN",
         contexts: ["MICROBIOLOGY_CULTURE_READING"],
         active: true,
-        provenance: "LOCAL",
       },
       {
         id: "ng24",
@@ -58,9 +57,6 @@ beforeEach(() => {
         category: "CULTURE",
         contexts: ["MICROBIOLOGY_CULTURE_READING", "MICROBIOLOGY_CASE_NOTE"],
         active: true,
-        provenance: "PACKAGED",
-        sourceKey: "reviewed-defaults",
-        sourceVersion: "2026.08",
       },
     ],
     page: 1,
@@ -74,7 +70,6 @@ beforeEach(() => {
     category: "GRAM_STAIN",
     contexts: ["MICROBIOLOGY_CULTURE_READING"],
     active: true,
-    provenance: "LOCAL",
   });
   saveAdminMacro.mockResolvedValue({ id: "new-macro" });
   bulkAdminMacros.mockResolvedValue({
@@ -95,7 +90,6 @@ const phrase = (id, active = true) => ({
   category: "CULTURE",
   contexts: ["MICROBIOLOGY_CULTURE_READING"],
   active,
-  provenance: "LOCAL",
 });
 const pageOf = (...items) => ({
   items,
@@ -218,7 +212,7 @@ describe("MacroLibraryPage", () => {
     expect(window.location.search).toContain("status=active");
   });
 
-  it("shows category, field contexts, and source for each phrase", async () => {
+  it("shows category and field contexts for each phrase", async () => {
     renderPage();
 
     const row = (await screen.findByText(".ng24")).closest("tr");
@@ -226,25 +220,36 @@ describe("MacroLibraryPage", () => {
     expect(
       within(row).getByText("Culture reading notes, Case notes"),
     ).toBeInTheDocument();
-    expect(within(row).getByText("OpenELIS package")).toBeInTheDocument();
     const local = screen.getByText(".gpc").closest("tr");
     expect(within(local).getByText("Gram stain")).toBeInTheDocument();
-    expect(within(local).getByText("Local")).toBeInTheDocument();
   });
 
-  it("filters by category and source through the bookmarkable URL", async () => {
+  it("keeps typed search in one history entry", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(await screen.findByText("Gram-positive cocci")).toBeInTheDocument();
+    const entries = window.history.length;
+    await user.type(
+      screen.getByPlaceholderText("Search codes and phrase text"),
+      "gpc",
+    );
+
+    expect(window.location.search).toContain("q=gpc");
+    expect(window.history.length).toBe(entries);
+  });
+
+  it("filters by category through the bookmarkable URL", async () => {
     const user = userEvent.setup();
     renderPage();
 
     expect(await screen.findByText("Gram-positive cocci")).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("Category"), "AST");
-    await user.selectOptions(screen.getByLabelText("Source"), "local");
 
     expect(window.location.search).toContain("category=AST");
-    expect(window.location.search).toContain("source=local");
     await waitFor(() =>
       expect(getAdminMacroPage).toHaveBeenLastCalledWith(
-        expect.stringContaining("category=AST&source=local"),
+        expect.stringContaining("category=AST&status=active"),
         expect.any(AbortSignal),
       ),
     );
@@ -252,9 +257,11 @@ describe("MacroLibraryPage", () => {
 
   it("keeps the editor open and marks a reserved code on the code field", async () => {
     const user = userEvent.setup();
-    const rejection = new Error("This code is reserved by the system");
-    rejection.payload = { error: "MACRO_CODE_RESERVED" };
-    saveAdminMacro.mockRejectedValue(rejection);
+    saveAdminMacro.mockRejectedValue({
+      status: 400,
+      error: "MACRO_CODE_RESERVED",
+      message: "This code is reserved by the system",
+    });
     renderPage("/admin/MacroLibrary?edit=new");
 
     const dialog = await screen.findByRole("dialog", { name: "Add phrase" });
@@ -289,13 +296,6 @@ describe("MacroLibraryPage", () => {
     renderPage();
 
     expect(await screen.findByText("Gram-positive cocci")).toBeInTheDocument();
-    await user.click(screen.getByRole("checkbox", { name: "Select .ng24" }));
-    expect(
-      screen.getByRole("button", {
-        name: "Remove local phrases is unavailable while packaged phrases are selected",
-      }),
-    ).toBeDisabled();
-    await user.click(screen.getByRole("checkbox", { name: "Select .ng24" }));
     await user.click(screen.getByRole("checkbox", { name: "Select .gpc" }));
     await user.click(
       screen.getByRole("button", { name: "Remove local phrases" }),

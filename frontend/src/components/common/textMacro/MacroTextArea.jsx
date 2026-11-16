@@ -35,6 +35,7 @@ const MacroTextArea = forwardRef(
       requestRef.current?.abort();
       setMacros([]);
       setLoaded(false);
+      setLoading(false);
       setOpen(false);
       return () => requestRef.current?.abort();
     }, [context]);

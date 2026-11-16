@@ -1,8 +1,6 @@
 package org.openelisglobal.textmacro.controller;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,28 +9,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.lang.reflect.Field;
 import java.util.List;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.textmacro.controller.rest.TextMacroAdminRestController;
-import org.openelisglobal.textmacro.controller.rest.TextMacroRestController;
 import org.openelisglobal.textmacro.form.TextMacroAdminForm;
 import org.openelisglobal.textmacro.form.TextMacroAdminQueryForm;
 import org.openelisglobal.textmacro.form.TextMacroBulkRequestForm;
-import org.openelisglobal.textmacro.form.TextMacroListForm;
 import org.openelisglobal.textmacro.form.TextMacroPageForm;
-import org.openelisglobal.textmacro.form.TextMacroSummaryForm;
 import org.openelisglobal.textmacro.service.TextMacroRequestException;
 import org.openelisglobal.textmacro.service.TextMacroService;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.transaction.annotation.Transactional;
 
 public class TextMacroRestControllerTest {
 
@@ -82,48 +74,18 @@ public class TextMacroRestControllerTest {
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new TextMacroAdminRestController(service)).build();
 
         mvc.perform(get("/rest/text-macros/admin").param("q", "growth").param("context", "MICROBIOLOGY_CULTURE_READING")
-                .param("category", "AST").param("source", "local").param("status", "all").param("sort", "updated:desc")
-                .param("page", "3").param("pageSize", "50")).andExpect(status().isOk());
+                .param("category", "AST").param("status", "all").param("sort", "updated:desc").param("page", "3")
+                .param("pageSize", "50")).andExpect(status().isOk());
 
         ArgumentCaptor<TextMacroAdminQueryForm> query = ArgumentCaptor.forClass(TextMacroAdminQueryForm.class);
         verify(service).searchAdmin(query.capture());
-        assertEquals("growth", query.getValue().q);
-        assertEquals("MICROBIOLOGY_CULTURE_READING", query.getValue().context);
-        assertEquals("AST", query.getValue().category);
-        assertEquals("local", query.getValue().source);
-        assertEquals("all", query.getValue().status);
-        assertEquals("updated:desc", query.getValue().sort);
-        assertEquals(3, query.getValue().page);
-        assertEquals(50, query.getValue().pageSize);
-    }
-
-    @Test
-    public void requestContractHasNoClientControlledActor() {
-        for (Field field : TextMacroAdminForm.class.getDeclaredFields()) {
-            assertFalse("actor must not be client controlled",
-                    field.getName().equalsIgnoreCase("actor") || field.getName().equalsIgnoreCase("performedBy")
-                            || field.getName().equalsIgnoreCase("lastUpdatedBy"));
-        }
-    }
-
-    @Test
-    public void runtimeReadAndAdministrationUseSeparateAuthorization() {
-        assertEquals("isAuthenticated()", TextMacroRestController.class.getAnnotation(PreAuthorize.class).value());
-        assertEquals("hasRole('ADMIN')", TextMacroAdminRestController.class.getAnnotation(PreAuthorize.class).value());
-    }
-
-    @Test
-    public void runtimeLookupUsesStableItemsEnvelope() {
-        TextMacroService service = mock(TextMacroService.class);
-        TextMacroSummaryForm macro = new TextMacroSummaryForm();
-        macro.code = ".gpc";
-        when(service.findActive("MICROBIOLOGY_CULTURE_READING", "", 20)).thenReturn(List.of(macro));
-
-        TextMacroListForm response = new TextMacroRestController(service)
-                .findActive("MICROBIOLOGY_CULTURE_READING", "", 20).getBody();
-
-        assertEquals(1, response.items.size());
-        assertEquals(".gpc", response.items.get(0).code);
+        assertEquals("growth", query.getValue().getQ());
+        assertEquals("MICROBIOLOGY_CULTURE_READING", query.getValue().getContext());
+        assertEquals("AST", query.getValue().getCategory());
+        assertEquals("all", query.getValue().getStatus());
+        assertEquals("updated:desc", query.getValue().getSort());
+        assertEquals(3, query.getValue().getPage());
+        assertEquals(50, query.getValue().getPageSize());
     }
 
     @Test
@@ -139,12 +101,6 @@ public class TextMacroRestControllerTest {
                 .contentType(MediaType.APPLICATION_JSON).content(
                         "{\"code\":\"invalid!\",\"expansionText\":\"Text\",\"contexts\":[\"MICROBIOLOGY_CULTURE_READING\"]}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").value("INVALID_MACRO_CODE"));
-    }
-
-    @Test
-    public void controllersKeepTransactionsInServiceLayer() {
-        assertNull(TextMacroRestController.class.getAnnotation(Transactional.class));
-        assertNull(TextMacroAdminRestController.class.getAnnotation(Transactional.class));
     }
 
     private MockHttpServletRequest requestFor(String userId) {

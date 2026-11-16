@@ -4,18 +4,15 @@ This is an engineering contract, not a product-spec requirement.
 
 ## Text Macro
 
-| Field           | Type                     | Rules                                                                           |
-| --------------- | ------------------------ | ------------------------------------------------------------------------------- |
-| `id`            | generated numeric string | Server generated from the OpenELIS sequence; never client supplied.             |
-| `code`          | string, 2 to 15          | Stored in canonical lower-case dot-prefixed form; unique.                       |
-| `expansionText` | string, max 500          | Trimmed, non-empty plain text.                                                  |
-| `category`      | controlled value         | One of the eight M-08 categories; required.                                     |
-| `active`        | boolean                  | Controls new runtime discovery/expansion only.                                  |
-| `provenance`    | controlled value         | `LOCAL` for staff-authored phrases; `PACKAGED` reserved for a reviewed package. |
-| `sourceKey`     | nullable string          | Package/source identifier; null for local phrases.                              |
-| `sourceVersion` | nullable string          | Version of the reviewed source; null for local phrases.                         |
-| `lastUpdatedBy` | system-user identifier   | Derived from the authenticated request.                                         |
-| `lastupdated`   | timestamp                | Managed through existing persistence conventions.                               |
+| Field           | Type                     | Rules                                                               |
+| --------------- | ------------------------ | ------------------------------------------------------------------- |
+| `id`            | generated numeric string | Server generated from the OpenELIS sequence; never client supplied. |
+| `code`          | string, 2 to 15          | Stored in canonical lower-case dot-prefixed form; unique.           |
+| `expansionText` | string, max 500          | Trimmed, non-empty plain text.                                      |
+| `category`      | controlled value         | One of the eight M-08 categories; required.                         |
+| `active`        | boolean                  | Controls new runtime discovery/expansion only.                      |
+| `lastUpdatedBy` | system-user identifier   | Derived from the authenticated request.                             |
+| `lastupdated`   | timestamp                | Managed through existing persistence conventions.                   |
 
 ## Text Macro Context
 
@@ -51,8 +48,8 @@ stored values are stable application identifiers.
 3. A macro always has at least one recognized context.
 4. Runtime reads return active macros only and require an exact recognized
    context.
-5. M1 phrases are local. No row claims packaged provenance without a reviewed
-   source key and version.
+5. M1 phrases are local. Package provenance arrives with the package import's
+   own changeset.
 6. Deactivation does not alter text already saved in any case field.
 7. Administrative updates replace the context set atomically in the service
    transaction.

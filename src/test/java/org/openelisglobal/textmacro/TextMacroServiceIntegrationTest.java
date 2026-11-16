@@ -16,6 +16,9 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.audittrail.valueholder.History;
+import org.openelisglobal.history.service.HistoryService;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.textmacro.form.TextMacroAdminForm;
 import org.openelisglobal.textmacro.form.TextMacroAdminQueryForm;
 import org.openelisglobal.textmacro.form.TextMacroBulkRequestForm;
@@ -34,6 +37,12 @@ public class TextMacroServiceIntegrationTest extends BaseWebContextSensitiveTest
     @Autowired
     private TextMacroService service;
 
+    @Autowired
+    private HistoryService historyService;
+
+    @Autowired
+    private ReferenceTablesService referenceTablesService;
+
     @Test
     public void serviceCreatesGeneratedIdsAndFiltersActiveMacrosByContext() {
         String suffix = uniqueSuffix();
@@ -45,12 +54,12 @@ public class TextMacroServiceIntegrationTest extends BaseWebContextSensitiveTest
                 Set.of("MICROBIOLOGY_CULTURE_READING"), false), TEST_SYS_USER_ID);
 
         assertNotEquals(reading.id, history.id);
-        List<TextMacroSummaryForm> readingPhrases = service.findActive("MICROBIOLOGY_CULTURE_READING", suffix, 50);
+        List<TextMacroSummaryForm> readingPhrases = offered("MICROBIOLOGY_CULTURE_READING", suffix);
         assertEquals(1, readingPhrases.size());
         assertEquals(reading.id, readingPhrases.get(0).id);
         assertEquals(".r" + suffix, readingPhrases.get(0).code);
         assertEquals("CULTURE", readingPhrases.get(0).category);
-        assertEquals(List.of(), service.findActive("MICROBIOLOGY_AMENDMENT_REASON", suffix, 50));
+        assertEquals(List.of(), offered("MICROBIOLOGY_AMENDMENT_REASON", suffix));
     }
 
     @Test
@@ -64,12 +73,12 @@ public class TextMacroServiceIntegrationTest extends BaseWebContextSensitiveTest
         }
 
         for (int index = 0; index < contexts.size(); index++) {
-            List<TextMacroSummaryForm> offered = service.findActive(contexts.get(index), suffix, 50);
+            List<TextMacroSummaryForm> offered = offered(contexts.get(index), suffix);
             assertEquals(1, offered.size());
             assertEquals(".v" + suffix + index, offered.get(0).code);
         }
         TextMacroRequestException removed = assertThrows(TextMacroRequestException.class,
-                () -> service.findActive("MICROBIOLOGY_ANTIBIOTIC_EXPOSURE", suffix, 50));
+                () -> service.findActive("MICROBIOLOGY_ANTIBIOTIC_EXPOSURE"));
         assertEquals("INVALID_MACRO_CONTEXT", removed.getCode());
     }
 
@@ -83,8 +92,8 @@ public class TextMacroServiceIntegrationTest extends BaseWebContextSensitiveTest
             assertEquals("MACRO_CODE_RESERVED", error.getCode());
         }
         TextMacroAdminQueryForm query = new TextMacroAdminQueryForm();
-        query.q = ".help";
-        query.status = "all";
+        query.setQ(".help");
+        query.setStatus("all");
         assertEquals(0, service.searchAdmin(query).total);
     }
 
@@ -133,20 +142,15 @@ public class TextMacroServiceIntegrationTest extends BaseWebContextSensitiveTest
                 request(".a" + suffix, "AST " + suffix, "AST", Set.of("MICROBIOLOGY_OVERRIDE_REASON"), true),
                 TEST_SYS_USER_ID);
         assertEquals("CULTURE", service.getAdmin(culture.id).category);
-        assertEquals("LOCAL", service.getAdmin(culture.id).provenance);
 
         TextMacroAdminForm edited = request(culture.code, culture.expansionText, "REPORTING",
                 Set.of("MICROBIOLOGY_CASE_NOTE"), true);
         service.save(culture.id, edited, TEST_SYS_USER_ID);
         assertEquals("REPORTING", service.getAdmin(culture.id).category);
 
-        assertEquals(List.of(culture.id), idsOf(search(suffix, "REPORTING", "all")));
-        assertEquals(List.of(ast.id), idsOf(search(suffix, "AST", "all")));
-        assertEquals(List.of(ast.id, culture.id), idsOf(search(suffix, "all", "local")));
-        assertEquals(0, search(suffix, "all", "packaged").total);
-        TextMacroRequestException badSource = assertThrows(TextMacroRequestException.class,
-                () -> search(suffix, "all", "elsewhere"));
-        assertEquals("INVALID_MACRO_SOURCE", badSource.getCode());
+        assertEquals(List.of(culture.id), idsOf(search(suffix, "REPORTING")));
+        assertEquals(List.of(ast.id), idsOf(search(suffix, "AST")));
+        assertEquals(List.of(ast.id, culture.id), idsOf(search(suffix, "all")));
     }
 
     @Test
@@ -172,12 +176,12 @@ public class TextMacroServiceIntegrationTest extends BaseWebContextSensitiveTest
             generatedIds.add(saved.id);
         }
         TextMacroAdminQueryForm query = new TextMacroAdminQueryForm();
-        query.q = suffix;
-        query.context = "MICROBIOLOGY_CULTURE_READING";
-        query.status = "active";
-        query.sort = "code:desc";
-        query.page = 5;
-        query.pageSize = 100;
+        query.setQ(suffix);
+        query.setContext("MICROBIOLOGY_CULTURE_READING");
+        query.setStatus("active");
+        query.setSort("code:desc");
+        query.setPage(5);
+        query.setPageSize(100);
         TextMacroPageForm page = service.searchAdmin(query);
 
         assertEquals(500, page.total);
@@ -194,11 +198,12 @@ public class TextMacroServiceIntegrationTest extends BaseWebContextSensitiveTest
         TextMacroAdminForm alpha = service.save(null, request(".a" + suffix, "Alpha, reviewed", "AST",
                 Set.of("MICROBIOLOGY_OVERRIDE_REASON", "MICROBIOLOGY_CASE_NOTE"), true), TEST_SYS_USER_ID);
         TextMacroAdminForm zeta = service.save(null,
-                request(".z" + suffix, "Zeta reviewed", "CLINICAL", Set.of("MICROBIOLOGY_CLINICAL_HISTORY"), true),
+                request(".z" + suffix, "+ve growth", "CLINICAL", Set.of("MICROBIOLOGY_CLINICAL_HISTORY"), true),
                 TEST_SYS_USER_ID);
 
         try (CSVParser parser = CSVParser.parse(new StringReader(service.exportCsv()),
                 CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build())) {
+            assertEquals(List.of("code", "expansion_text", "category", "contexts", "active"), parser.getHeaderNames());
             List<CSVRecord> exported = parser.getRecords().stream().filter(row -> row.get("code").endsWith(suffix))
                     .toList();
             assertEquals(2, exported.size());
@@ -206,20 +211,20 @@ public class TextMacroServiceIntegrationTest extends BaseWebContextSensitiveTest
             assertEquals("Alpha, reviewed", exported.get(0).get("expansion_text"));
             assertEquals("AST", exported.get(0).get("category"));
             assertEquals("MICROBIOLOGY_CASE_NOTE|MICROBIOLOGY_OVERRIDE_REASON", exported.get(0).get("contexts"));
-            assertEquals("LOCAL", exported.get(0).get("provenance"));
             assertEquals(zeta.code, exported.get(1).get("code"));
             assertEquals("CLINICAL", exported.get(1).get("category"));
+            assertEquals("'+ve growth", exported.get(1).get("expansion_text"));
         }
 
         TextMacroBulkResultForm deactivated = service.bulk(bulk("DEACTIVATE", alpha.id, zeta.id), TEST_SYS_USER_ID);
         assertEquals(List.of(alpha.code, zeta.code), deactivated.affectedCodes);
         assertFalse(service.getAdmin(alpha.id).active);
         assertFalse(service.getAdmin(zeta.id).active);
-        assertEquals(List.of(), service.findActive("MICROBIOLOGY_CLINICAL_HISTORY", suffix, 50));
+        assertEquals(List.of(), offered("MICROBIOLOGY_CLINICAL_HISTORY", suffix));
 
         TextMacroAdminQueryForm allStatuses = new TextMacroAdminQueryForm();
-        allStatuses.q = suffix;
-        allStatuses.status = "all";
+        allStatuses.setQ(suffix);
+        allStatuses.setStatus("all");
         TextMacroPageForm afterBulk = service.searchAdmin(allStatuses);
         assertEquals(2, afterBulk.total);
         assertTrue(afterBulk.items.stream().noneMatch(item -> item.active));
@@ -232,12 +237,109 @@ public class TextMacroServiceIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(zeta.code, service.getAdmin(zeta.id).code);
     }
 
-    private TextMacroPageForm search(String q, String category, String source) {
+    @Test
+    public void contextLookupReturnsEveryActivePhraseBeyondTheFirstFifty() {
+        String suffix = uniqueSuffix();
+        for (int index = 0; index < 60; index++) {
+            service.save(null, request(String.format(".l%s%02d", suffix, index), "Lookup phrase " + index, "CULTURE",
+                    Set.of("MICROBIOLOGY_CULTURE_READING"), true), TEST_SYS_USER_ID);
+        }
+
+        List<TextMacroSummaryForm> offered = offered("MICROBIOLOGY_CULTURE_READING", suffix);
+
+        assertEquals(60, offered.size());
+        assertEquals(String.format(".l%s%02d", suffix, 0), offered.get(0).code);
+        assertEquals(String.format(".l%s%02d", suffix, 59), offered.get(59).code);
+        assertEquals("Lookup phrase 59", offered.get(59).expansionText);
+    }
+
+    @Test
+    public void createEditBulkDeactivateAndRemoveEachWriteHistory() {
+        String suffix = uniqueSuffix();
+        TextMacroAdminForm created = service.save(null,
+                request(".w" + suffix, "First text", "CULTURE", Set.of("MICROBIOLOGY_CASE_NOTE"), true),
+                TEST_SYS_USER_ID);
+        assertEquals(List.of("I"), activities(created.id));
+
+        service.save(created.id,
+                request(created.code, "Edited text", "CULTURE", Set.of("MICROBIOLOGY_CASE_NOTE"), true),
+                TEST_SYS_USER_ID);
+        assertEquals(List.of("I", "U"), activities(created.id));
+        History edit = history(created.id).stream().filter(row -> "U".equals(row.getActivity())).findFirst()
+                .orElseThrow();
+        assertTrue(new String(edit.getChanges()).contains("First text"));
+
+        service.bulk(bulk("DEACTIVATE", created.id), TEST_SYS_USER_ID);
+        assertEquals(List.of("I", "U", "U"), activities(created.id));
+
+        service.bulk(bulk("DELETE_LOCAL", created.id), TEST_SYS_USER_ID);
+        assertEquals(List.of("D", "I", "U", "U"), activities(created.id));
+    }
+
+    @Test
+    public void adminListFallsBackToFirstPageOfTwentyForUnsupportedPaging() {
+        String suffix = uniqueSuffix();
+        for (int index = 0; index < 25; index++) {
+            service.save(null, request(String.format(".p%s%02d", suffix, index), "Paged phrase " + index, "CULTURE",
+                    Set.of("MICROBIOLOGY_CASE_NOTE"), true), TEST_SYS_USER_ID);
+        }
         TextMacroAdminQueryForm query = new TextMacroAdminQueryForm();
-        query.q = q;
-        query.category = category;
-        query.source = source;
-        query.status = "all";
+        query.setQ(suffix);
+        query.setPage(0);
+        query.setPageSize(999);
+
+        TextMacroPageForm page = service.searchAdmin(query);
+
+        assertEquals(1, page.page);
+        assertEquals(20, page.pageSize);
+        assertEquals(25, page.total);
+        assertEquals(20, page.items.size());
+        assertEquals(String.format(".p%s%02d", suffix, 0), page.items.get(0).code);
+        assertEquals(String.format(".p%s%02d", suffix, 19), page.items.get(19).code);
+    }
+
+    @Test
+    public void bulkRejectsMissingOrRepeatedIdsWithoutChangingAnyPhrase() {
+        String suffix = uniqueSuffix();
+        TextMacroAdminForm kept = service.save(null,
+                request(".k" + suffix, "Kept phrase", "CULTURE", Set.of("MICROBIOLOGY_CASE_NOTE"), true),
+                TEST_SYS_USER_ID);
+        String missingId = String.valueOf(Integer.MAX_VALUE);
+
+        TextMacroRequestException missing = assertThrows(TextMacroRequestException.class,
+                () -> service.bulk(bulk("DEACTIVATE", kept.id, missingId), TEST_SYS_USER_ID));
+        assertEquals("MACRO_NOT_FOUND", missing.getCode());
+        TextMacroRequestException repeated = assertThrows(TextMacroRequestException.class,
+                () -> service.bulk(bulk("DEACTIVATE", kept.id, kept.id), TEST_SYS_USER_ID));
+        assertEquals("DUPLICATE_MACRO_IDS", repeated.getCode());
+
+        assertTrue(service.getAdmin(kept.id).active);
+        assertEquals(List.of("I"), activities(kept.id));
+    }
+
+    private List<TextMacroSummaryForm> offered(String context, String suffix) {
+        return service.findActive(context).stream().filter(macro -> macro.code.contains(suffix)).toList();
+    }
+
+    private List<History> history(String macroId) {
+        String table = referenceTablesService.getReferenceTableByName("text_macro").getId();
+        List<History> rows = historyService.getHistoryByRefIdAndRefTableId(macroId, table);
+        for (History row : rows) {
+            assertEquals(macroId, row.getReferenceId());
+            assertEquals(TEST_SYS_USER_ID, row.getSysUserId());
+        }
+        return rows;
+    }
+
+    private List<String> activities(String macroId) {
+        return history(macroId).stream().map(History::getActivity).sorted().toList();
+    }
+
+    private TextMacroPageForm search(String q, String category) {
+        TextMacroAdminQueryForm query = new TextMacroAdminQueryForm();
+        query.setQ(q);
+        query.setCategory(category);
+        query.setStatus("all");
         return service.searchAdmin(query);
     }
 

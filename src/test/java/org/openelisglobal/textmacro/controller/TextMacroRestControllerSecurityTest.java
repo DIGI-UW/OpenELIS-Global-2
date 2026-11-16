@@ -115,7 +115,7 @@ public class TextMacroRestControllerSecurityTest extends SecuritySliceMockMvcTes
         @Bean
         TextMacroService textMacroService() {
             TextMacroService service = mock(TextMacroService.class);
-            when(service.findActive(any(), any(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(List.of());
+            when(service.findActive(any())).thenReturn(List.of());
             when(service.searchAdmin(any())).thenReturn(new TextMacroPageForm());
             when(service.save(any(), any(), any())).thenReturn(new TextMacroAdminForm());
             when(service.exportCsv()).thenReturn("code\r\n");
