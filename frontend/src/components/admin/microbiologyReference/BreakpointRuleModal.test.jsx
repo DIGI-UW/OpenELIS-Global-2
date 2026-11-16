@@ -6,6 +6,13 @@ import messages from "../../../languages/en.json";
 import { vi } from "vitest";
 import BreakpointRuleModal from "./BreakpointRuleModal";
 
+vi.mock("../../microbiology/OrganismSearch", async (original) => ({
+  ...(await original()),
+  searchOrganisms: () => Promise.resolve([]),
+  getOrganism: () =>
+    Promise.resolve({ id: "organism-1", label: "Escherichia coli" }),
+}));
+
 test("an any-organism rule can be saved", () => {
   render(
     <IntlProvider locale="en" messages={messages}>
@@ -30,9 +37,10 @@ test("an any-organism rule can be saved", () => {
   );
 
   expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
-  expect(
-    screen.getByRole("option", { name: "Any organism" }),
-  ).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Organism" })).toHaveAttribute(
+    "placeholder",
+    "Any organism",
+  );
 });
 
 test("a zone rule needs its disk content before it can be saved", () => {
