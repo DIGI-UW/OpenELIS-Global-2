@@ -242,6 +242,65 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
         return slide;
     }
 
+    protected PathologySlideForm postedSlide(Integer blockId, String stainId) {
+        PathologySlideForm slide = postedSlide(blockId);
+        slide.setStainId(stainId);
+        return slide;
+    }
+
+    /**
+     * Cuts slides from one embedded block A1 in one save, each carrying the stain
+     * given, and answers their ids in the order they were cut (A1.1, A1.2, ...).
+     */
+    protected List<Integer> cutSlidesCarrying(int count, String stainId) {
+        int blockId = cutEmbeddedBlock();
+        PathologySlideForm[] slides = new PathologySlideForm[count];
+        for (int i = 0; i < count; i++) {
+            slides[i] = postedSlide(blockId, stainId);
+        }
+        saveSlides(slides);
+        List<Integer> ids = new ArrayList<>();
+        for (Map<String, Object> slide : slidesCutFrom(blockId)) {
+            ids.add(((Number) slide.get("id")).intValue());
+        }
+        Assert.assertEquals("setup: every slide is cut", count, ids.size());
+        return ids;
+    }
+
+    /**
+     * What staining and the coverslip check recorded on a slide, who recorded it
+     * and when, and the stain it carries.
+     */
+    protected Map<String, Object> slideWork(int slideId) {
+        return jdbcTemplate.queryForMap(
+                "SELECT stain_id, stain_status, stain_status_at, stain_status_by,"
+                        + " coverslip_qc, coverslip_qc_at, coverslip_qc_by FROM clinlims.pathology_slide WHERE id = ?",
+                slideId);
+    }
+
+    /** The audit entries with that verb on the slide, oldest first. */
+    protected List<Map<String, Object>> slideEntries(int slideId, String verb) {
+        List<Map<String, Object>> entries = new ArrayList<>();
+        historyService.getHistoryByRefIdAndRefTableId(String.valueOf(slideId), slideReferenceTableId).stream()
+                .sorted((first, second) -> Long.compare(Long.parseLong(first.getId()), Long.parseLong(second.getId())))
+                .map(this::payloadOf).filter(payload -> verb.equals(payload.get("verb"))).forEach(entries::add);
+        return entries;
+    }
+
+    /**
+     * The case's own save diffs, which are XML; the named events that share its
+     * reference row are JSON and are left out.
+     */
+    protected List<History> caseSaveDiffs() {
+        List<History> diffs = new ArrayList<>();
+        for (History history : caseAudit()) {
+            if (!changesOf(history).startsWith("{")) {
+                diffs.add(history);
+            }
+        }
+        return diffs;
+    }
+
     protected List<Map<String, Object>> slidesOnCase() {
         return jdbcTemplate.queryForList("SELECT id, block_id, designation, barcode, location, level, stain_id, active"
                 + " FROM clinlims.pathology_slide WHERE pathology_sample_id = ? ORDER BY id", CASE_ID);

@@ -1,8 +1,11 @@
 package org.openelisglobal.program.controller.pathology;
 
+import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.OptimisticLockException;
+import jakarta.persistence.PessimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -11,9 +14,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.StaleStateException;
+import org.hibernate.exception.LockAcquisitionException;
 import org.openelisglobal.common.rest.util.DashboardPage;
 import org.openelisglobal.common.rest.util.DashboardPaging;
 import org.openelisglobal.program.bean.PathologyDashBoardCount;
@@ -33,6 +38,7 @@ import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -191,14 +197,27 @@ public class PathologyController extends PathologyRestController {
     }
 
     /**
-     * Walks the cause chain for a designation unique index by name, or for the
-     * version check a save loses when another save of the same case committed
-     * first, which is how that race usually ends; package-private for its test.
+     * Postgres states for a lock it would not grant: a deadlock it broke, and a
+     * lock it gave up waiting on.
+     */
+    private static final Set<String> LOST_LOCK_STATES = Set.of("40P01", "55P03");
+
+    /**
+     * Walks the cause chain for a designation unique index by name, for the version
+     * check a save loses when another save of the same case committed first, which
+     * is how that race usually ends, or for a lock the database gave up waiting on
+     * or broke to end a deadlock between two writes to one case; package-private
+     * for its test.
      */
     static boolean concurrentSaveConflict(Throwable failure) {
         for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
             if (cause instanceof OptimisticLockException || cause instanceof StaleStateException
-                    || cause instanceof OptimisticLockingFailureException) {
+                    || cause instanceof OptimisticLockingFailureException || cause instanceof PessimisticLockException
+                    || cause instanceof LockTimeoutException || cause instanceof PessimisticLockingFailureException
+                    || cause instanceof LockAcquisitionException) {
+                return true;
+            }
+            if (cause instanceof SQLException sqlFailure && LOST_LOCK_STATES.contains(sqlFailure.getSQLState())) {
                 return true;
             }
             if (cause.getMessage() != null && (cause.getMessage().contains("pathology_block_designation_uk")

@@ -24,10 +24,14 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologyDisplayService;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.LabelVerificationView;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.SlideStampView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.StageEventView;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.program.valueholder.pathology.PathologySlide;
+import org.openelisglobal.program.valueholder.pathology.StainStatus;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -70,9 +74,19 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
     private static final int LEGACY_SLIDE_ID = 201;
     private static final int SECOND_SLIDE = 9407;
 
+    /**
+     * Blocks and slides of this class's own, cut in an order that is not the one
+     * shown.
+     */
+    private static final int FIRST_OWN_BLOCK = 9408;
+    private static final int SECOND_OWN_BLOCK = 9409;
+    private static final int A2_1 = 9410;
+    private static final int A1_1 = 9411;
+    private static final int A1_2 = 9412;
+
     private boolean insertedTheCategory;
 
-    private boolean insertedTheStainCategory;
+    private DictionaryRows.StainEntries stains;
 
     @Autowired
     private PathologyDisplayService pathologyDisplayService;
@@ -229,6 +243,104 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
                 verification.verifiedBy());
         assertNotNull("with the time as text", verification.verifiedAt());
         assertFalse("a slide never checked is absent", displayItem.getLabelVerifications().containsKey(SECOND_SLIDE));
+    }
+
+    /**
+     * The case view reads who stained each slide and who checked its coverslip, and
+     * when, from two maps; the raw row carries the values and the user ids only,
+     * and a slide with nothing recorded is absent from each map.
+     */
+    @Test
+    public void caseDisplayItem_namesWhoStainedAndCheckedEachSlide() {
+        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_status = 'STAINED', stain_status_at = now(),"
+                + " stain_status_by = 1001, coverslip_qc = 'FAIL', coverslip_qc_at = now(), coverslip_qc_by = 1001"
+                + " WHERE id = ?", LEGACY_SLIDE_ID);
+        jdbcTemplate.update("INSERT INTO clinlims.pathology_slide (id, pathology_sample_id, last_updated, slide_number,"
+                + " active) VALUES (?, ?, now(), 2, true)", SECOND_SLIDE, CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+        PathologyCaseViewDisplayItem displayItem = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+        String technician = systemUserService.get("1001").getDisplayName();
+        SlideStampView stained = displayItem.getStainStamps().get(LEGACY_SLIDE_ID);
+        assertNotNull("a stained slide is in the stain map", stained);
+        assertEquals("named by who stained it, not an id", technician, stained.by());
+        assertNotNull("with the time as text", stained.at());
+        SlideStampView checked = displayItem.getCoverslipQcStamps().get(LEGACY_SLIDE_ID);
+        assertEquals("and by who checked its coverslip in the other", technician, checked.by());
+        assertFalse("a slide with nothing recorded is in neither",
+                displayItem.getStainStamps().containsKey(SECOND_SLIDE)
+                        || displayItem.getCoverslipQcStamps().containsKey(SECOND_SLIDE));
+        assertEquals("the raw row carries the values", StainStatus.STAINED, displayItem.getSlides().stream()
+                .filter(slide -> slide.getId() == LEGACY_SLIDE_ID).findFirst().orElseThrow().getStainStatus());
+    }
+
+    /**
+     * The coverslipping batch is offered where a save would write it and read back
+     * once written, beside the processor run and apart from it (FR-8.4).
+     */
+    @Test
+    public void caseDisplayItem_carriesTheCoverslippingBatch() {
+        try (StageSwitches switches = StageSwitches.allOn()) {
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.STAINING);
+            PathologyCaseRows.storeStainStatus(jdbcTemplate, LEGACY_SLIDE_ID, StainStatus.STAINED);
+            pathologySampleService.advance(CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.STAINING, "1001");
+
+            PathologyCaseViewDisplayItem open = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertTrue("an open coverslipping entry with no batch takes one", open.isCoverslipRunReferenceEditable());
+            assertFalse("the processor run is not offered there", open.isRunReferenceEditable());
+
+            PathologySampleForm form = formWithRunReference(null);
+            form.setCoverslipRunReference("CS-3");
+            pathologySampleService.updateWithFormValues(CASE_WITH_TWO_SPECIMEN_ITEMS, form);
+
+            PathologyCaseViewDisplayItem written = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertEquals("the batch is read from the coverslipping entry", "CS-3", written.getCoverslipRunReference());
+            assertFalse("and, written once, it is no longer editable", written.isCoverslipRunReferenceEditable());
+            assertNull("the processor run is a different field", written.getRunReference());
+        } finally {
+            PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        }
+    }
+
+    /**
+     * The case's collections carry no order, so the case view could list slides
+     * differently on each load and every sentence naming them would change. Blocks
+     * come by the order they were cut, slides under their block in the order they
+     * were cut, and a slide with no block on record last.
+     */
+    @Test
+    public void caseDisplayItem_listsSlidesByBlockThenInTheOrderTheyWereCut() {
+        try {
+            jdbcTemplate.update(
+                    "INSERT INTO clinlims.pathology_block (id, pathology_sample_id, last_updated,"
+                            + " designation, active) VALUES (?, ?, now(), 'A1', true), (?, ?, now(), 'A2', true)",
+                    FIRST_OWN_BLOCK, CASE_WITH_TWO_SPECIMEN_ITEMS, SECOND_OWN_BLOCK, CASE_WITH_TWO_SPECIMEN_ITEMS);
+            // A2.1 is cut first, so the rows are stored in an order that is not the
+            // one wanted.
+            jdbcTemplate.update(
+                    "INSERT INTO clinlims.pathology_slide (id, pathology_sample_id, block_id,"
+                            + " designation, last_updated, active) VALUES (?, ?, ?, '1', now(), true),"
+                            + " (?, ?, ?, '1', now(), true), (?, ?, ?, '2', now(), true)",
+                    A2_1, CASE_WITH_TWO_SPECIMEN_ITEMS, SECOND_OWN_BLOCK, A1_1, CASE_WITH_TWO_SPECIMEN_ITEMS,
+                    FIRST_OWN_BLOCK, A1_2, CASE_WITH_TWO_SPECIMEN_ITEMS, FIRST_OWN_BLOCK);
+
+            PathologyCaseViewDisplayItem displayItem = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+            assertEquals("A1.1, A1.2, A2.1, then the fixture's slide with no block",
+                    List.of(A1_1, A1_2, A2_1, LEGACY_SLIDE_ID),
+                    displayItem.getSlides().stream().map(PathologySlide::getId).toList());
+            assertEquals("blocks in the order they were cut",
+                    List.of(LEGACY_BLOCK_ID, FIRST_OWN_BLOCK, SECOND_OWN_BLOCK),
+                    displayItem.getBlocks().stream().map(PathologyBlock::getId).toList());
+        } finally {
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id IN (?, ?, ?)", A2_1, A1_1, A1_2);
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_block WHERE id IN (?, ?)", FIRST_OWN_BLOCK,
+                    SECOND_OWN_BLOCK);
+        }
     }
 
     /**
@@ -421,27 +533,17 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
         }
     }
 
-    /**
-     * The configuration loader ships the stain category and tests do not run it, so
-     * it is added only when absent.
-     */
     private void seedStains() {
-        insertedTheStainCategory = DictionaryRows.insertCategory(jdbcTemplate, STAIN_CATEGORY_ID,
-                PathologySampleService.STAIN_CATEGORY, PathologySampleService.STAIN_CATEGORY, "PathStain");
-        int categoryId = DictionaryRows.idOfCategory(jdbcTemplate, PathologySampleService.STAIN_CATEGORY);
-        DictionaryRows.insertEntry(jdbcTemplate, STAIN, categoryId, STAIN_NAME, "PSPas", true);
-        DictionaryRows.insertEntry(jdbcTemplate, RETIRED_STAIN, categoryId, RETIRED_STAIN_NAME, "PSRet", false);
+        stains = DictionaryRows.stainEntries(jdbcTemplate, STAIN_CATEGORY_ID).with(STAIN, STAIN_NAME, true)
+                .with(RETIRED_STAIN, RETIRED_STAIN_NAME, false);
     }
 
     private void removeSeededStainRows() {
         jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id = ?", SECOND_SLIDE);
         PathologyCaseRows.clearLabelStamp(jdbcTemplate, LEGACY_SLIDE_ID);
-        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = NULL WHERE stain_id IN (?, ?)", STAIN,
-                RETIRED_STAIN);
-        DictionaryRows.removeEntries(jdbcTemplate, STAIN, RETIRED_STAIN);
-        if (insertedTheStainCategory) {
-            DictionaryRows.removeCategory(jdbcTemplate, STAIN_CATEGORY_ID);
-            insertedTheStainCategory = false;
+        if (stains != null) {
+            stains.close();
+            stains = null;
         }
     }
 

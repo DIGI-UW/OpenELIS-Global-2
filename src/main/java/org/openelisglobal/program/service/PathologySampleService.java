@@ -5,11 +5,13 @@ import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
+import org.openelisglobal.program.valueholder.pathology.CoverslipQc;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
+import org.openelisglobal.program.valueholder.pathology.StainStatus;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 public interface PathologySampleService extends BaseObjectService<PathologySample, Integer> {
@@ -38,6 +40,15 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
      */
     String PATHOLOGY_SLIDE_LABEL_MISMATCH = "PATHOLOGY_SLIDE_LABEL_MISMATCH";
 
+    /**
+     * Audit verb recorded when staining a slide is found good or unsatisfactory;
+     * the payload says which.
+     */
+    String PATHOLOGY_SLIDE_STAINED = "PATHOLOGY_SLIDE_STAINED";
+
+    /** Audit verb recorded when a slide's coverslip check passes or fails. */
+    String PATHOLOGY_SLIDE_QC_RECORDED = "PATHOLOGY_SLIDE_QC_RECORDED";
+
     /** Audit verb recorded when a case is sent on to a later stage. */
     String PATHOLOGY_STAGE_ADVANCED = "PATHOLOGY_STAGE_ADVANCED";
 
@@ -47,7 +58,10 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
     /** Audit verb recorded when the pathologist releases the case. */
     String PATHOLOGY_CASE_SIGNED_OUT = "PATHOLOGY_CASE_SIGNED_OUT";
 
-    /** Audit verb recorded when the processor run is written at Processing. */
+    /**
+     * Audit verb recorded when the processor run is written at Processing, or the
+     * coverslipping batch at Coverslipping; the payload names the stage.
+     */
     String PATHOLOGY_RUN_REFERENCE_RECORDED = "PATHOLOGY_RUN_REFERENCE_RECORDED";
 
     /** Dictionary category a laboratory fills with the tissue types it cuts. */
@@ -81,7 +95,8 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
 
     /**
      * The case's slides, copied inside a transaction so a caller holding the case
-     * outside any session can still iterate them.
+     * outside any session can still iterate them, in the order the case view lists
+     * them, so printed labels come out in that order too.
      */
     List<PathologySlide> getSlides(Integer pathologySampleId);
 
@@ -186,10 +201,46 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
     Optional<PathologyStatus> previousStage(PathologySample pathologySample);
 
     /**
-     * Whether a case save would take a processor run now: the case stands at
-     * Processing on an entry that holds none yet.
+     * Whether a case save would take a run reference for the stage now: the case
+     * stands at that stage, Processing for the processor run or Coverslipping for
+     * the coverslipping batch, on an entry that holds none yet.
      */
-    boolean isRunReferenceRecordable(PathologySample pathologySample);
+    boolean isRunReferenceRecordable(PathologySample pathologySample, PathologyStatus stage);
+
+    /**
+     * Records what staining found for the named slides of the case, one slide or a
+     * batch alike (FR-8.1, FR-8.2), with the session user and the server clock.
+     * Every slide is checked before any is written, so a refusal leaves all of them
+     * as they were. A slide already at that status is left alone and audited no
+     * further. A change of status clears the slide's coverslip check, since a slide
+     * restained or found unsatisfactory is coverslipped and checked again.
+     *
+     * <p>
+     * Marks are taken only while the case is on the bench, at Staining or
+     * Coverslipping. The refusals, in this order, each with a message id the screen
+     * translates: no slide or no status named, a signed-out case, a case not yet at
+     * Staining, a case already with the pathologist, a slide that is not on the
+     * case, a retired slide, and a slide marked stained with no stain recorded. A
+     * change raises the case's version, so a mark and a stage move landing together
+     * cannot both commit.
+     *
+     * @return the named slides as they now stand, in the order the case view lists
+     *         them
+     */
+    List<PathologySlide> recordStainStatus(Integer pathologySampleId, List<Integer> slideIds, StainStatus status,
+            String sysUserId);
+
+    /**
+     * Records the coverslip check of the named slides of the case (FR-8.4), on the
+     * same rules as {@link #recordStainStatus}, taken only at Coverslipping. Where
+     * the laboratory tracks Staining, a slide not marked stained is refused: a
+     * check of an unstained slide checks nothing.
+     *
+     * @return the named slides as they now stand, in the order the case view lists
+     *         them
+     */
+    List<PathologySlide> recordCoverslipQc(Integer pathologySampleId, List<Integer> slideIds, CoverslipQc result,
+            String sysUserId);
 
     /**
      * Whether a release would be taken now: the case stands in the pathologist's

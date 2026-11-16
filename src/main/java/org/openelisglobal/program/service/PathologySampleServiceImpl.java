@@ -6,13 +6,15 @@ import jakarta.transaction.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -55,10 +57,13 @@ import org.openelisglobal.program.dao.PathologySampleDAO;
 import org.openelisglobal.program.dao.PathologySlideDAO;
 import org.openelisglobal.program.dao.PathologyStageEventDAO;
 import org.openelisglobal.program.util.DesignationScheme;
+import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.util.PathologyDesignations;
+import org.openelisglobal.program.util.PathologyRowOrder;
 import org.openelisglobal.program.util.PathologyStages;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
 import org.openelisglobal.program.valueholder.pathology.CassetteState;
+import org.openelisglobal.program.valueholder.pathology.CoverslipQc;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
@@ -72,6 +77,7 @@ import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
 import org.openelisglobal.program.valueholder.pathology.StageDirection;
+import org.openelisglobal.program.valueholder.pathology.StainStatus;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.result.action.util.ResultSet;
@@ -211,7 +217,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     @Transactional
     @Override
     public List<PathologySlide> getSlides(Integer pathologySampleId) {
-        return baseObjectDAO.get(pathologySampleId).map(pathologySample -> new ArrayList<>(pathologySample.getSlides()))
+        return baseObjectDAO.get(pathologySampleId)
+                .map(pathologySample -> new ArrayList<>(PathologyRowOrder.slides(pathologySample.getSlides())))
                 .orElseGet(ArrayList::new);
     }
 
@@ -280,6 +287,11 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         slide.setLevel(stored.getLevel());
         slide.setStainId(stored.getStainId());
         slide.setStainStatus(stored.getStainStatus());
+        slide.setStainStatusAt(stored.getStainStatusAt());
+        slide.setStainStatusBy(stored.getStainStatusBy());
+        slide.setCoverslipQc(stored.getCoverslipQc());
+        slide.setCoverslipQcAt(stored.getCoverslipQcAt());
+        slide.setCoverslipQcBy(stored.getCoverslipQcBy());
         slide.setLabelVerifiedAt(stored.getLabelVerifiedAt());
         slide.setLabelVerifiedBy(stored.getLabelVerifiedBy());
         slide.setLastupdated(stored.getLastupdated());
@@ -332,7 +344,12 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             pathologySample.setDecalcificationRequired(form.getDecalcificationRequired());
         }
         if (form.getRunReference() != null) {
-            recordRunReference(storedCase, form.getRunReference(), pathologySample.getSysUserId());
+            recordRunReference(storedCase, PathologyStatus.PROCESSING, form.getRunReference(),
+                    pathologySample.getSysUserId());
+        }
+        if (form.getCoverslipRunReference() != null) {
+            recordRunReference(storedCase, PathologyStatus.COVERSLIPPING, form.getCoverslipRunReference(),
+                    pathologySample.getSysUserId());
         }
         pathologySample.setMicroscopyExam(form.getMicroscopyExam());
         pathologySample.getConclusions().removeAll(pathologySample.getConclusions());
@@ -528,6 +545,179 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     @Transactional
     @Override
+    public List<PathologySlide> recordStainStatus(Integer pathologySampleId, List<Integer> slideIds, StainStatus status,
+            String sysUserId) {
+        refuseAnEmptyRequest(slideIds, status);
+        PathologySample storedCase = get(pathologySampleId);
+        List<PathologySlide> named = slidesToMark(storedCase, slideIds, PathologyStatus.STAINING,
+                "pathology.error.stainBeforeStage");
+        if (status == StainStatus.STAINED) {
+            refuseSlides(
+                    named.stream().filter(slide -> StringUtils.isBlank(slide.getStainId()))
+                            .collect(Collectors.toList()),
+                    storedCase, "pathology.error.stainMissing",
+                    "a slide is marked stained only once the stain on it is recorded");
+        }
+        return markSlides(storedCase, named, slide -> slide.getStainStatus() == status, (slide, now) -> {
+            slide.setStainStatus(status);
+            slide.setStainStatusAt(now);
+            slide.setStainStatusBy(sysUserId);
+            // A slide restained, or found unsatisfactory, is coverslipped and checked
+            // again, so an earlier check no longer speaks for it.
+            slide.setCoverslipQc(null);
+            slide.setCoverslipQcAt(null);
+            slide.setCoverslipQcBy(null);
+        }, slide -> {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("verb", PATHOLOGY_SLIDE_STAINED);
+            putIfPresent(payload, "stainId", slide.getStainId());
+            payload.put("status", status.name());
+            return payload;
+        }, sysUserId);
+    }
+
+    @Transactional
+    @Override
+    public List<PathologySlide> recordCoverslipQc(Integer pathologySampleId, List<Integer> slideIds, CoverslipQc result,
+            String sysUserId) {
+        refuseAnEmptyRequest(slideIds, result);
+        PathologySample storedCase = get(pathologySampleId);
+        List<PathologySlide> named = slidesToMark(storedCase, slideIds, PathologyStatus.COVERSLIPPING,
+                "pathology.error.qcBeforeStage");
+        if (deploymentEnabled().test(PathologyStatus.STAINING)) {
+            refuseSlides(named.stream().filter(slide -> !isStained(slide)).collect(Collectors.toList()), storedCase,
+                    "pathology.error.qcBeforeStain",
+                    "a slide's coverslip is checked only once the slide is marked stained");
+        }
+        return markSlides(storedCase, named, slide -> slide.getCoverslipQc() == result, (slide, now) -> {
+            slide.setCoverslipQc(result);
+            slide.setCoverslipQcAt(now);
+            slide.setCoverslipQcBy(sysUserId);
+        }, slide -> {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("verb", PATHOLOGY_SLIDE_QC_RECORDED);
+            payload.put("result", result.name());
+            return payload;
+        }, sysUserId);
+    }
+
+    /**
+     * A request that names no slide, or does not say what was found, is refused.
+     */
+    private static void refuseAnEmptyRequest(List<Integer> slideIds, Object value) {
+        if (value == null || slideIds == null || slideIds.isEmpty() || slideIds.stream().anyMatch(Objects::isNull)) {
+            throw new LocalizedValidationException("pathology.error.slideSelectionRequired",
+                    "name at least one slide and what was found for it");
+        }
+    }
+
+    /**
+     * Records a mark on each named slide whose stored value differs, with the
+     * server clock and the session user, and audits it.
+     *
+     * <p>
+     * The snapshot is taken before any write, so the case's own audit trail records
+     * the batch as one change carrying the values it replaced. A slide already
+     * holding the value is left alone.
+     *
+     * <p>
+     * A mark and a stage move write different rows, a slide and the case, so on
+     * their own both could commit: a slide found unsatisfactory as the case is sent
+     * on would reach the pathologist with nothing holding it. The case's version is
+     * therefore raised, and its row locked, before any slide is written, and of a
+     * mark and a move or a save landing together one loses its version check.
+     */
+    private List<PathologySlide> markSlides(PathologySample storedCase, List<PathologySlide> named,
+            Predicate<PathologySlide> alreadyHolds, BiConsumer<PathologySlide, Timestamp> mark,
+            Function<PathologySlide, Map<String, Object>> payloadOf, String sysUserId) {
+        if (named.stream().allMatch(alreadyHolds)) {
+            // Nothing to record, so nothing is locked or written.
+            return named;
+        }
+        // The case row is taken before any slide row, the order a save of the case
+        // takes them in, so a mark and a save wait for each other rather than
+        // deadlock; the version raised here makes whichever lands second lose.
+        baseObjectDAO.forceVersionIncrement(storedCase);
+        PathologySample storedState = auditedStateOf(storedCase);
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        List<PathologySlide> changed = new ArrayList<>();
+        for (PathologySlide slide : named) {
+            if (alreadyHolds.test(slide)) {
+                continue;
+            }
+            mark.accept(slide, now);
+            slide.setSysUserId(sysUserId);
+            pathologySlideDAO.update(slide);
+            changed.add(slide);
+        }
+        saveHistoryAgainst(storedCase, storedState, sysUserId);
+        for (PathologySlide slide : changed) {
+            recordRowEvent(SLIDE_REFERENCE_TABLE, slide.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE,
+                    payloadOf.apply(slide), sysUserId);
+        }
+        return named;
+    }
+
+    /**
+     * The slides a stain status or coverslip check is recorded on, after the
+     * refusals every slide shares, in this order: a signed-out case, a case not yet
+     * at the stage, a case already with the pathologist, a slide that is not on the
+     * case, a retired slide. Nothing is written before all of them pass, so a batch
+     * is recorded whole or not at all.
+     *
+     * <p>
+     * Marks are taken only while the case is on the bench, from the stage up to
+     * Coverslipping. With the pathologist, a slide found unreadable sends the case
+     * back to the bench with the return's reason; a mark there would change a slide
+     * under a case nothing holds any longer.
+     *
+     * @return the named slides in the order the case view lists them, each once
+     */
+    private List<PathologySlide> slidesToMark(PathologySample storedCase, List<Integer> slideIds,
+            PathologyStatus firstStage, String beforeStageMessageKey) {
+        refuseOutsideTheStage(storedCase, firstStage, beforeStageMessageKey);
+        PathologyStatus stage = storedCase.getStatus();
+        if (stage.ordinal() > PathologyStatus.COVERSLIPPING.ordinal()) {
+            throw new LocalizedValidationException("pathology.error.slideWorkAfterBench", "pathology case "
+                    + storedCase.getId() + " stands at " + stage + ", so it is returned to the bench to be changed");
+        }
+        List<PathologySlide> slidesOnCase = storedCase.getSlides() == null ? List.of() : storedCase.getSlides();
+        LinkedHashSet<Integer> wanted = new LinkedHashSet<>(slideIds);
+        for (Integer slideId : wanted) {
+            if (slidesOnCase.stream().noneMatch(slide -> slideId.equals(slide.getId()))) {
+                throw new LocalizedValidationException("pathology.error.slideNotOnCase",
+                        "slide " + slideId + " is not on pathology case " + storedCase.getId());
+            }
+        }
+        List<PathologySlide> named = PathologyRowOrder.slides(slidesOnCase).stream()
+                .filter(slide -> wanted.contains(slide.getId())).collect(Collectors.toList());
+        for (PathologySlide slide : named) {
+            if (!slide.isActive()) {
+                throw new LocalizedValidationException("pathology.error.slideRetired",
+                        "slide " + slide.getId() + " has been deactivated, so nothing more is recorded on it");
+            }
+        }
+        return named;
+    }
+
+    private static boolean isStained(PathologySlide slide) {
+        return slide.getStainStatus() == StainStatus.STAINED;
+    }
+
+    /** Refuses the whole request, naming every slide that stands in its way. */
+    private static void refuseSlides(List<PathologySlide> refused, PathologySample storedCase, String messageKey,
+            String rule) {
+        if (refused.isEmpty()) {
+            return;
+        }
+        String designations = slideNames(refused, storedCase, DesignationScheme.fromConfiguration());
+        throw new LocalizedValidationException(messageKey,
+                "pathology case " + storedCase.getId() + ": " + rule + ": " + designations,
+                Map.of("designations", designations));
+    }
+
+    @Transactional
+    @Override
     public PathologySample getCaseOfBlock(Integer blockId) {
         return blockId == null ? null : baseObjectDAO.getCaseOfBlock(blockId);
     }
@@ -587,8 +777,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     @Transactional
     @Override
-    public boolean isRunReferenceRecordable(PathologySample pathologySample) {
-        return recordableRunEntry(pathologySample).isPresent();
+    public boolean isRunReferenceRecordable(PathologySample pathologySample, PathologyStatus stage) {
+        return recordableRunEntry(pathologySample, stage).isPresent();
     }
 
     /**
@@ -701,13 +891,17 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * block may be held without slides, and once every slide in use that has a
      * block on record has had its label checked against it (FR-7.5), with or
      * without a scanner. A slide with no block on record has nothing to be checked
-     * against, so it does not hold the case back. No other stage has a condition
-     * yet.
+     * against, so it does not hold the case back. Staining is finished once every
+     * slide in use is marked stained (FR-8.1); coverslipping once every slide in
+     * use has passed its check (FR-8.4), and, where the laboratory tracks Staining,
+     * is marked stained. A slide with no block on record counts at both, since
+     * staining needs no parent; a retired slide counts at neither. None of the
+     * three slide stages is left with no slide in use.
      */
     private void refuseAnUnfinishedStage(PathologySample storedCase) {
         List<PathologyBlock> inUse = storedCase.getBlocks() == null ? List.of()
-                : storedCase.getBlocks().stream().filter(PathologyBlock::isActive)
-                        .sorted(Comparator.comparing(PathologyBlock::getId)).collect(Collectors.toList());
+                : PathologyRowOrder.blocks(storedCase.getBlocks()).stream().filter(PathologyBlock::isActive)
+                        .collect(Collectors.toList());
         if (storedCase.getStatus() == PathologyStatus.GROSSING
                 && (StringUtils.isBlank(storedCase.getGrossExam()) || inUse.isEmpty())) {
             throw new LocalizedValidationException("pathology.error.grossingIncomplete",
@@ -729,26 +923,58 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             }
         }
         if (storedCase.getStatus() == PathologyStatus.MICROTOMY) {
-            List<PathologySlide> slides = storedCase.getSlides() == null ? List.of() : storedCase.getSlides();
-            if (slides.stream().noneMatch(PathologySlide::isActive)) {
-                throw new LocalizedValidationException("pathology.error.microtomyIncomplete",
-                        "pathology case " + storedCase.getId() + " has no slide cut, so it cannot move on");
-            }
-            DesignationScheme scheme = DesignationScheme.fromConfiguration();
-            List<PathologyBlock> blocks = storedCase.getBlocks() == null ? List.of() : storedCase.getBlocks();
-            List<String> unverified = slides.stream().filter(
-                    slide -> slide.isActive() && slide.getBlockId() != null && slide.getLabelVerifiedAt() == null)
-                    .map(slide -> slideOnBlockName(slide, blocks.stream()
-                            .filter(block -> slide.getBlockId().equals(block.getId())).findFirst().orElse(null),
-                            scheme))
-                    .collect(Collectors.toList());
-            if (!unverified.isEmpty()) {
-                String designations = String.join(", ", unverified);
-                throw new LocalizedValidationException("pathology.error.slidesUnverified",
-                        "pathology case " + storedCase.getId() + " has slide labels still to verify: " + designations,
-                        Map.of("designations", designations));
-            }
+            refuseWithNoSlideInUse(storedCase);
+            refuseSlides(
+                    slidesInUse(storedCase).stream()
+                            .filter(slide -> slide.getBlockId() != null && slide.getLabelVerifiedAt() == null)
+                            .collect(Collectors.toList()),
+                    storedCase, "pathology.error.slidesUnverified", "slide labels still to verify");
         }
+        if (storedCase.getStatus() == PathologyStatus.STAINING) {
+            refuseWithNoSlideInUse(storedCase);
+            refuseSlides(
+                    slidesInUse(storedCase).stream().filter(slide -> !isStained(slide)).collect(Collectors.toList()),
+                    storedCase, "pathology.error.stainingIncomplete", "slides still to stain");
+        }
+        if (storedCase.getStatus() == PathologyStatus.COVERSLIPPING) {
+            refuseWithNoSlideInUse(storedCase);
+            boolean stainingTracked = deploymentEnabled().test(PathologyStatus.STAINING);
+            refuseSlides(
+                    slidesInUse(storedCase).stream()
+                            .filter(slide -> slide.getCoverslipQc() != CoverslipQc.PASS
+                                    || (stainingTracked && !isStained(slide)))
+                            .collect(Collectors.toList()),
+                    storedCase, "pathology.error.coverslipQcIncomplete", "slides still to pass their coverslip check");
+        }
+    }
+
+    /**
+     * Microtomy, Staining and Coverslipping each work on slides, so a case with no
+     * slide in use leaves none of them: retiring every slide must not open a gate.
+     */
+    private void refuseWithNoSlideInUse(PathologySample storedCase) {
+        if (slidesInUse(storedCase).isEmpty()) {
+            throw new LocalizedValidationException("pathology.error.microtomyIncomplete",
+                    "pathology case " + storedCase.getId() + " has no slide in use, so it cannot move on");
+        }
+    }
+
+    private static List<PathologySlide> slidesInUse(PathologySample pathologySample) {
+        return pathologySample.getSlides() == null ? List.of()
+                : pathologySample.getSlides().stream().filter(PathologySlide::isActive).collect(Collectors.toList());
+    }
+
+    /**
+     * The slides as the bench names them, block first ("A1.1"), joined in the order
+     * the case view lists them, for a sentence that names what holds the case.
+     */
+    private static String slideNames(List<PathologySlide> slides, PathologySample pathologySample,
+            DesignationScheme scheme) {
+        List<PathologyBlock> blocks = pathologySample.getBlocks() == null ? List.of() : pathologySample.getBlocks();
+        return PathologyRowOrder.slides(slides).stream().map(slide -> slideOnBlockName(slide, slide.getBlockId() == null
+                ? null
+                : blocks.stream().filter(block -> slide.getBlockId().equals(block.getId())).findFirst().orElse(null),
+                scheme)).collect(Collectors.joining(", "));
     }
 
     /**
@@ -855,13 +1081,25 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * signed-out case are what its report described.
      */
     private void refuseEmbeddingOutsideTheStage(PathologySample owningCase) {
-        if (owningCase != null && owningCase.getStatus() != null
-                && owningCase.getStatus().ordinal() < PathologyStatus.EMBEDDING.ordinal()) {
-            throw new LocalizedValidationException("pathology.error.embedBeforeStage",
-                    "pathology case " + owningCase.getId() + " stands at " + owningCase.getStatus()
-                            + ", so its cassettes are not embedded yet");
+        refuseOutsideTheStage(owningCase, PathologyStatus.EMBEDDING, "pathology.error.embedBeforeStage");
+    }
+
+    /**
+     * Work on a case's blocks or slides is refused on a signed-out case first, then
+     * on a case that has not reached the stage the work belongs to. A case with no
+     * stage on record has reached none.
+     */
+    private void refuseOutsideTheStage(PathologySample owningCase, PathologyStatus firstStage,
+            String beforeStageMessageKey) {
+        if (owningCase == null) {
+            return;
         }
         refuseOnACompletedCase(owningCase);
+        PathologyStatus stage = owningCase.getStatus();
+        if (stage == null || stage.ordinal() < firstStage.ordinal()) {
+            throw new LocalizedValidationException(beforeStageMessageKey, "pathology case " + owningCase.getId()
+                    + " stands at " + stage + ", so it has not reached " + firstStage + " yet");
+        }
     }
 
     /** A signed-out case's blocks and slides change only after it is reopened. */
@@ -911,14 +1149,17 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     }
 
     /**
-     * The processor run is free text on the case's Processing entry (FR-5.1),
-     * written once per entry and audited. A typo is put right by returning the case
-     * to Processing, which opens a new entry. Anything posted when no entry would
-     * take it is ignored, like the decalcification flag past its stage.
+     * A run reference is free text on the case's entry onto a stage: the processor
+     * run on Processing (FR-5.1), the coverslipping batch on Coverslipping
+     * (FR-8.4). It is written once per entry and audited. A typo is put right by
+     * returning the case to that stage, which opens a new entry. Anything posted
+     * when no entry would take it is ignored, like the decalcification flag past
+     * its stage.
      */
-    private void recordRunReference(PathologySample storedCase, String postedRunReference, String sysUserId) {
+    private void recordRunReference(PathologySample storedCase, PathologyStatus stage, String postedRunReference,
+            String sysUserId) {
         String runReference = StringUtils.trimToNull(postedRunReference);
-        Optional<PathologyStageEvent> entry = recordableRunEntry(storedCase);
+        Optional<PathologyStageEvent> entry = recordableRunEntry(storedCase, stage);
         if (runReference == null || entry.isEmpty()) {
             return;
         }
@@ -926,29 +1167,29 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             throw new LocalizedValidationException("pathology.error.runReferenceTooLong",
                     "the processor run can be at most " + PathologyStageEvent.RUN_REFERENCE_MAX_LENGTH + " characters");
         }
-        PathologyStageEvent processing = entry.get();
-        processing.setRunReference(runReference);
-        processing.setSysUserId(sysUserId);
-        pathologyStageEventDAO.update(processing);
+        PathologyStageEvent stageEntry = entry.get();
+        stageEntry.setRunReference(runReference);
+        stageEntry.setSysUserId(sysUserId);
+        pathologyStageEventDAO.update(stageEntry);
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("verb", PATHOLOGY_RUN_REFERENCE_RECORDED);
-        payload.put("stage", PathologyStatus.PROCESSING.name());
+        payload.put("stage", stage.name());
         payload.put("runReference", runReference);
         recordRowEvent(CASE_REFERENCE_TABLE, storedCase.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
                 sysUserId);
     }
 
     /**
-     * The entry a processor run may still be written on: the open Processing entry
-     * of a case standing there, while it holds none. A case that reached Processing
-     * before entries were recorded has no entry, and none is invented.
+     * The entry a run reference may still be written on: the open entry onto the
+     * stage of a case standing there, while it holds none. A case that reached the
+     * stage before entries were recorded has no entry, and none is invented.
      */
-    private Optional<PathologyStageEvent> recordableRunEntry(PathologySample storedCase) {
-        if (storedCase.getStatus() != PathologyStatus.PROCESSING) {
+    private Optional<PathologyStageEvent> recordableRunEntry(PathologySample storedCase, PathologyStatus stage) {
+        if (storedCase.getStatus() != stage) {
             return Optional.empty();
         }
-        return pathologyStageEventDAO.getOpenEvent(storedCase.getId(), PathologyStatus.PROCESSING)
+        return pathologyStageEventDAO.getOpenEvent(storedCase.getId(), stage)
                 .filter(entry -> entry.getRunReference() == null);
     }
 
@@ -1053,7 +1294,11 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     }
 
     private String tissueTypeAfterSave(String stored, String posted) {
-        return dictionaryEntryAfterSave(stored, posted, TISSUE_TYPE_CATEGORY);
+        return dictionaryEntryAfterSave(stored, posted, TISSUE_TYPE_CATEGORY, "pathology.error.tissueTypeNotInUse");
+    }
+
+    private String stainAfterSave(String stored, String posted) {
+        return dictionaryEntryAfterSave(stored, posted, STAIN_CATEGORY, "pathology.error.stainNotInUse");
     }
 
     /**
@@ -1061,31 +1306,47 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * value must be an entry of the category that is still in use. An unchanged
      * value is never checked again, so an entry retired after a row recorded it
      * cannot block a save of the case.
+     *
+     * <p>
+     * An entry of the category taken out of use is refused by name, so the bench
+     * reads which choice went out of use. Anything else (another category's entry,
+     * a value that names no entry) cannot come from the picker, which lists only
+     * the category, so it is answered like the other refusals of a case save that
+     * mean the page is out of date, with the reload message.
      */
-    private String dictionaryEntryAfterSave(String stored, String posted, String categoryName) {
+    private String dictionaryEntryAfterSave(String stored, String posted, String categoryName,
+            String retiredMessageKey) {
         String requested = StringUtils.trimToNull(posted);
         if (requested == null || Objects.equals(requested, stored)) {
             return requested;
         }
-        if (!isActiveEntryOf(requested, categoryName)) {
+        Dictionary entry = entryOf(requested, categoryName);
+        if (entry == null) {
             throw new PathologyCaseRuleException(
-                    "dictionary entry " + requested + " is not an active entry of " + categoryName);
+                    "dictionary entry " + requested + " is not an entry of " + categoryName);
+        }
+        if (!"Y".equals(entry.getIsActive())) {
+            throw new LocalizedValidationException(retiredMessageKey,
+                    "dictionary entry " + requested + " of " + categoryName + " is no longer in use", Map.of("name",
+                            DictionaryEntryNames.localizedNameOf(dictionaryService, requested).orElse(requested)));
         }
         return requested;
     }
 
-    /** An entry of the named category that is still in use. */
-    private boolean isActiveEntryOf(String dictionaryId, String categoryName) {
+    /**
+     * The entry of the named category the id names, in use or not; null if none.
+     */
+    private Dictionary entryOf(String dictionaryId, String categoryName) {
         try {
             Integer.parseInt(dictionaryId);
         } catch (NumberFormatException e) {
             // The dictionary key binds as an integer, so anything else names no entry
             // and is the client's mistake, not a failure of the lookup.
-            return false;
+            return null;
         }
         Dictionary entry = dictionaryService.getDataForId(dictionaryId);
-        return entry != null && "Y".equals(entry.getIsActive()) && entry.getDictionaryCategory() != null
-                && categoryName.equals(entry.getDictionaryCategory().getCategoryName());
+        return entry != null && entry.getDictionaryCategory() != null
+                && categoryName.equals(entry.getDictionaryCategory().getCategoryName()) ? entry : null;
     }
 
     /**
@@ -1102,14 +1363,17 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * slide is left as it is. An image is only replaced when one was posted: the
      * case view sends the slide rows back without their stored images, and treating
      * that as an erasure would lose the image on the next save of any other field.
-     * How far staining has got is not taken from the save.
+     * What staining and the coverslip check found is never taken from the save. A
+     * slide marked stained keeps the stain it was marked with, since that is the
+     * stain applied; marking it unsatisfactory lets the stain change again.
      */
     private void applyToSlide(PathologySlide slide, PathologySlide posted) {
         if (!slide.isActive()) {
             return;
         }
         String level = levelAfterSave(posted.getLevel());
-        String stainId = dictionaryEntryAfterSave(slide.getStainId(), posted.getStainId(), STAIN_CATEGORY);
+        String stainId = slide.getStainStatus() == StainStatus.STAINED ? slide.getStainId()
+                : stainAfterSave(slide.getStainId(), posted.getStainId());
         // The label check is stamped only by verifySlideLabel, so a posted stamp is
         // never copied.
         slide.setLocation(posted.getLocation());
@@ -1174,7 +1438,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         slide.setActive(true);
         slide.setLocation(posted.getLocation());
         slide.setLevel(levelAfterSave(posted.getLevel()));
-        slide.setStainId(dictionaryEntryAfterSave(null, posted.getStainId(), STAIN_CATEGORY));
+        slide.setStainId(stainAfterSave(null, posted.getStainId()));
         // A new slide's label has not been printed yet, so a posted stamp is never
         // copied.
         slide.setImage(posted.getImage());

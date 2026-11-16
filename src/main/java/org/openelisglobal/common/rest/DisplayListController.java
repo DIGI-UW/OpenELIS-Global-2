@@ -32,6 +32,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.LabelValuePair;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -787,11 +788,14 @@ public class DisplayListController extends BaseRestController {
     }
 
     /**
-     * Get dictionary entries by category name.
+     * The entries of a dictionary category still in use, for a picker.
      *
      * <p>
-     * Used by environmental workflow to fetch managed dropdown values (e.g.,
-     * "Sampling Site Type", "Environmental Zone").
+     * They come in the category's own sort order, so a shipped list such as the
+     * pathology stains keeps the order it was shipped in, H&E first. Entries with
+     * the same sort order, or with none, which come last, keep the order by name
+     * this endpoint always gave, so a category that carries no sort order at all,
+     * such as the tissue types a laboratory adds, reads as it did.
      *
      * @param categoryName the dictionary category name
      * @return list of id/value pairs
@@ -799,13 +803,14 @@ public class DisplayListController extends BaseRestController {
     @GetMapping(value = "dictionary/category/{categoryName}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getDictionaryByCategory(@PathVariable String categoryName) {
-        List<Dictionary> dictionaries = dictionaryService.getDictionaryEntrysByCategoryNameLocalizedSort(categoryName);
-
+        List<Dictionary> entries = new ArrayList<>(
+                dictionaryService.getActiveSortedEntriesByCategoryName(categoryName));
+        BaseObject.sortByLocalizedName(entries);
+        // A stable sort, so entries of one sort order keep the order by name.
+        entries.sort(Comparator.comparing(Dictionary::getSortOrder, Comparator.nullsLast(Comparator.naturalOrder())));
         List<IdValuePair> result = new ArrayList<>();
-        for (Dictionary dict : dictionaries) {
-            if ("Y".equals(dict.getIsActive())) {
-                result.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
-            }
+        for (Dictionary entry : entries) {
+            result.add(new IdValuePair(entry.getId(), entry.getLocalizedName()));
         }
         return result;
     }

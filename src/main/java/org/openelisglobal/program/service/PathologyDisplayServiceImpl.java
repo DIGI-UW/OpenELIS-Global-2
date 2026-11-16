@@ -1,6 +1,7 @@
 package org.openelisglobal.program.service;
 
 import jakarta.transaction.Transactional;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
@@ -21,10 +23,12 @@ import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.util.DictionaryEntryNames;
+import org.openelisglobal.program.util.PathologyRowOrder;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.LabelVerificationView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.RequestDisplayBean;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.SlideStampView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.StageEventView;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
@@ -106,8 +110,8 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         }
         pathologySample.getBlocks().size();
         pathologySample.getSlides().size();
-        displayItem.setBlocks(pathologySample.getBlocks());
-        displayItem.setSlides(pathologySample.getSlides());
+        displayItem.setBlocks(PathologyRowOrder.blocks(pathologySample.getBlocks()));
+        displayItem.setSlides(PathologyRowOrder.slides(pathologySample.getSlides()));
         pathologySample.getReports().size();
         if (pathologySample.getReports() != null) {
             displayItem.setReports(pathologySample.getReports());
@@ -131,10 +135,19 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         displayItem.setStainNames(dictionaryNames(pathologySample.getSlides().stream().map(PathologySlide::getStainId),
                 dictionaryService));
         displayItem.setLabelVerifications(labelVerifications(pathologySample.getSlides(), systemUserService));
+        Map<String, SystemUser> users = new HashMap<>();
+        displayItem.setStainStamps(slideStamps(pathologySample.getSlides(), PathologySlide::getStainStatusAt,
+                PathologySlide::getStainStatusBy, users));
+        displayItem.setCoverslipQcStamps(slideStamps(pathologySample.getSlides(), PathologySlide::getCoverslipQcAt,
+                PathologySlide::getCoverslipQcBy, users));
         List<PathologyStageEvent> stageEvents = pathologySampleService.getStageEvents(pathologySampleId);
         displayItem.setStageEvents(stageEvents.stream().map(StageEventView::of).collect(Collectors.toList()));
-        displayItem.setRunReference(runReference(stageEvents));
-        displayItem.setRunReferenceEditable(pathologySampleService.isRunReferenceRecordable(pathologySample));
+        displayItem.setRunReference(runReference(stageEvents, PathologyStatus.PROCESSING));
+        displayItem.setRunReferenceEditable(
+                pathologySampleService.isRunReferenceRecordable(pathologySample, PathologyStatus.PROCESSING));
+        displayItem.setCoverslipRunReference(runReference(stageEvents, PathologyStatus.COVERSLIPPING));
+        displayItem.setCoverslipRunReferenceEditable(
+                pathologySampleService.isRunReferenceRecordable(pathologySample, PathologyStatus.COVERSLIPPING));
         displayItem.setNextStage(pathologySampleService.nextStage(pathologySample).map(Enum::name).orElse(null));
         displayItem
                 .setPreviousStage(pathologySampleService.previousStage(pathologySample).map(Enum::name).orElse(null));
@@ -184,12 +197,32 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
     }
 
     /**
-     * The run written on the case's latest Processing entry; a case that never
-     * entered Processing with an entry recorded has none.
+     * The run reference written on the case's latest entry onto the stage; a case
+     * that never entered the stage with an entry recorded has none.
      */
-    private static String runReference(List<PathologyStageEvent> stageEvents) {
-        return stageEvents.stream().filter(event -> event.getStage() == PathologyStatus.PROCESSING)
-                .reduce((earlier, later) -> later).map(PathologyStageEvent::getRunReference).orElse(null);
+    private static String runReference(List<PathologyStageEvent> stageEvents, PathologyStatus stage) {
+        return stageEvents.stream().filter(event -> event.getStage() == stage).reduce((earlier, later) -> later)
+                .map(PathologyStageEvent::getRunReference).orElse(null);
+    }
+
+    /**
+     * Who recorded a slide's stain status, or its coverslip check, and when, by
+     * slide id, for the slides where it was recorded. Each user is looked up once
+     * across both maps.
+     */
+    private Map<Integer, SlideStampView> slideStamps(List<PathologySlide> slides,
+            Function<PathologySlide, Timestamp> at, Function<PathologySlide, String> by,
+            Map<String, SystemUser> users) {
+        Map<Integer, SlideStampView> stamps = new LinkedHashMap<>();
+        for (PathologySlide slide : slides) {
+            if (slide.getId() == null || at.apply(slide) == null) {
+                continue;
+            }
+            String userId = by.apply(slide);
+            SystemUser user = userId == null ? null : users.computeIfAbsent(userId, systemUserService::get);
+            stamps.put(slide.getId(), SlideStampView.of(at.apply(slide), user));
+        }
+        return stamps;
     }
 
     /**
