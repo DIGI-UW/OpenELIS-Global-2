@@ -95,8 +95,8 @@ tab-separated, WHONET's columns, configuration folder only.
 - WHONET writes `R` as the first resistant value, so an MIC at or above it and a
   zone at or below it are resistant. An MIC between dilutions is read at the
   next dilution.
-- A rule for an antibiotic code that `Antibiotics.txt` does not list is left
-  out and named in the log.
+- A rule for an antibiotic code that `Antibiotics.txt` does not list is left out
+  and named in the log.
 
 Breakpoint files use the existing administrator CSV importer:
 
