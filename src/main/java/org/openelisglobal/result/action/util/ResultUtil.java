@@ -86,6 +86,8 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.beanItems.TestResultItem;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
@@ -693,7 +695,8 @@ public class ResultUtil {
      * entry unless the test's limit or blocked self-validation insists on review.
      */
     public static String getStatusForTestResult(TestResultItem testResult, boolean alwaysValidate, Analysis analysis) {
-        Optional<ReviewTrigger> policy = SpringContext.getBean(ValidationPolicyService.class).entryReviewTrigger();
+        Optional<ReviewTrigger> policy = SpringContext.getBean(ValidationPolicyService.class)
+                .entryReviewTrigger(labUnitIdOf(testResult, analysis));
         boolean releaseWithoutReview = policy.isPresent() && policy.get() == ReviewTrigger.NONE;
         if (policy.isPresent()) {
             alwaysValidate = policy.get() == ReviewTrigger.ALL;
@@ -726,6 +729,21 @@ public class ResultUtil {
             }
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
         }
+    }
+
+    /**
+     * The lab unit whose validation policy decides: the analysis's unit, or the
+     * test's unit for a result not yet tied to an analysis.
+     */
+    private static String labUnitIdOf(TestResultItem testResult, Analysis analysis) {
+        if (analysis != null && analysis.getTestSection() != null) {
+            return analysis.getTestSection().getId();
+        }
+        if (GenericValidator.isBlankOrNull(testResult.getTestId())) {
+            return null;
+        }
+        return SpringContext.getBean(TestService.class).getMatch("id", testResult.getTestId())
+                .map(org.openelisglobal.test.valueholder.Test::getTestSection).map(TestSection::getId).orElse(null);
     }
 
     /**

@@ -45,6 +45,9 @@
   <!-- Analyzer controls that report an answer, judged against the QC target -->
   <include file="liquibase/qc/015-analyzer-qualitative-qc.xml" />
 
+  <!-- OGC-1200 slice 4: controls recorded on a run, with the run's verdict -->
+  <include file="liquibase/qc/016-qc-result-run.xml" />
+
   <!-- QA menu tree, every row of it (OGC-688) -->
   <include file="liquibase/qa/001-add-qa-menu-items.xml" />
 

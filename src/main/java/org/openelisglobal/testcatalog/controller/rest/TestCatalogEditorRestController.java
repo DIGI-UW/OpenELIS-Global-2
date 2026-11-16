@@ -94,8 +94,8 @@ public class TestCatalogEditorRestController {
      * envelope so the shell can branch once v2 lights up domain-conditional
      * visibility.
      */
-    private static final List<String> V1_SECTIONS = List.of("basic-info", "sample-results", "methods", "ranges",
-            "qc-targets", "storage", "panels", "terminology", "analyzers", "display-order");
+    private static final List<String> V1_SECTIONS = List.of("basic-info", "sample-results", "containers", "methods",
+            "ranges", "qc-targets", "storage", "panels", "terminology", "analyzers", "display-order");
 
     private final TestService testService;
 

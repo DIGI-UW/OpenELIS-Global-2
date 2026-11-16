@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1200-result-run-event" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <tableExists schemaName="clinlims" tableName="result_run_event"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1200 FR-A6: what happened on a run (a control recorded, a test held or released), with the user and the time, in one vocabulary whatever the run's source. Never updated or deleted.</comment>
+  <createSequence schemaName="clinlims" sequenceName="result_run_event_seq" startValue="1" incrementBy="1"/>
+  <createTable schemaName="clinlims" tableName="result_run_event">
+   <column name="id" type="BIGINT">
+    <constraints primaryKey="true" nullable="false" primaryKeyName="pk_result_run_event"/>
+   </column>
+   <column name="run_id" type="BIGINT">
+    <constraints nullable="false" foreignKeyName="fk_result_run_event_run" references="clinlims.result_run(id)"/>
+   </column>
+   <column name="event" type="VARCHAR(40)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="test_id" type="numeric(10)"/>
+   <column name="detail" type="VARCHAR(255)"/>
+   <column name="sys_user_id" type="numeric(10)"/>
+   <column name="occurred_at" type="TIMESTAMP">
+    <constraints nullable="false"/>
+   </column>
+   <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+  </createTable>
+  <createIndex schemaName="clinlims" tableName="result_run_event" indexName="idx_result_run_event_run">
+   <column name="run_id"/>
+  </createIndex>
+ </changeSet>
+</databaseChangeLog>
