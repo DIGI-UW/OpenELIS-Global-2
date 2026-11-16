@@ -937,7 +937,7 @@ const ValidationReviewPanel = ({
               className="unifiedFieldHint"
               data-testid="review-qc-hold-hint"
             >
-              <FormattedMessage id="label.validation.review.error.qcHold" />
+              <FormattedMessage id="label.validation.review.error.qcHeld" />
             </span>
           )}
         </div>

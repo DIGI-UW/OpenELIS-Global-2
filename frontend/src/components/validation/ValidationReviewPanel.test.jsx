@@ -360,7 +360,7 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     });
     expect(screen.getByText("Validate & release")).toBeDisabled();
     expect(screen.getByTestId("review-qc-hold-hint")).toHaveTextContent(
-      "Release blocked: a failed QC control holds this result until its non-conformity is closed.",
+      "Release blocked: a failed QC control holds this result, through an open non-conformity or a failed control in the run it came from.",
     );
     expect(screen.getByText("Validate & release")).toHaveAttribute(
       "aria-describedby",

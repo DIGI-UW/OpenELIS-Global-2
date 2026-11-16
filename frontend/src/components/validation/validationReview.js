@@ -35,6 +35,9 @@ const KNOWN_ERRORS = [
   "signatureUnknown",
 ];
 
+/** Codes whose message moved to a new key when its meaning widened. */
+const MESSAGE_OF_ERROR = { qcHold: "qcHeld" };
+
 export const NOTE_CONTEXT_RETEST = "VALIDATION";
 
 /** OGC-1030 (FR-J1) — a 409 "stale" means another validator acted on the row since the page loaded. */
@@ -152,5 +155,5 @@ export function actionPayload(
 export function errorMessageKey(response) {
   const code = response && response.error;
   const known = KNOWN_ERRORS.includes(code) ? code : "generic";
-  return `label.validation.review.error.${known}`;
+  return `label.validation.review.error.${MESSAGE_OF_ERROR[known] ?? known}`;
 }

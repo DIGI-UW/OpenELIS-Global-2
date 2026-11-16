@@ -331,7 +331,7 @@ const Validation = (props) => {
   const handleQcHold = () =>
     notifyAndRefresh(
       NotificationKinds.error,
-      intl.formatMessage({ id: "label.validation.review.error.qcHold" }),
+      intl.formatMessage({ id: "label.validation.review.error.qcHeld" }),
     );
 
   /**
@@ -650,7 +650,7 @@ const Validation = (props) => {
             {row.qcHold && (
               <DefinitionTooltip
                 definition={intl.formatMessage({
-                  id: "validation.qcHold.tooltip",
+                  id: "validation.qcHeld.tooltip",
                 })}
                 align="bottom"
                 openOnHover
@@ -884,7 +884,7 @@ const Validation = (props) => {
                 </Tag>
                 <b>
                   {" "}
-                  <FormattedMessage id="validation.legend.qcHold" />
+                  <FormattedMessage id="validation.legend.qcHeld" />
                 </b>
               </>
             )}

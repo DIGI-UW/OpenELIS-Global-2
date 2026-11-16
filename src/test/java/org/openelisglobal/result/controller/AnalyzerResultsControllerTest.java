@@ -156,6 +156,30 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.resultList[0].reportingDecimalPlaces").value("0"));
     }
 
+    /**
+     * OGC-1200 slice 4: a value whose run holds its test is shown held, read-only,
+     * with the run to open, so ticking it cannot drop it silently.
+     */
+    @Test
+    public void aValueHeldByAFailedControlInItsRunIsShownHeldWithItsRun() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, row_count, opened_at, last_activity_at)"
+                + " VALUES (?, 'ANALYZER', 'HELD', 1, NOW(), NOW())", run);
+        jdbc.update("UPDATE clinlims.analyzer_results SET run_id = ? WHERE id = 1001", run);
+        String testId = jdbc.queryForObject("SELECT test_id::text FROM clinlims.analyzer_results WHERE id = 1001",
+                String.class);
+        jdbc.update("INSERT INTO clinlims.qc_result (id, test_id, source, result_value, run_date_time, result_status,"
+                + " sys_user_id, run_id, run_verdict, verdict_source) VALUES (?, ?::numeric, 'ASTM', 1, NOW(),"
+                + " 'PENDING', 1, ?, 'FAIL', 'COMPUTED')", java.util.UUID.randomUUID().toString(), testId, run);
+
+        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultList[0].importIssueReason").value("run_qc_failed"))
+                .andExpect(jsonPath("$.resultList[0].readOnly").value(true))
+                .andExpect(jsonPath("$.resultList[0].heldRunId").value(run));
+    }
+
     @Test
     public void awaitingSpecimenKeepsItsMappedValueAvailableForReview() throws Exception {
         new JdbcTemplate(dataSource).update(
