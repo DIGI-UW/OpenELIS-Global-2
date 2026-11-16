@@ -137,6 +137,25 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getAnalysisIdsOfRunTest(Long runId, String testId) {
+        try {
+            java.util.Set<String> ids = new java.util.LinkedHashSet<>(session()
+                    .createQuery("SELECT DISTINCT r.analysis.id FROM Result r WHERE r.runId = :runId"
+                            + " AND r.analysis.test.id = :testId", String.class)
+                    .setParameter("runId", runId).setParameter("testId", testId).list());
+            ids.addAll(session().createQuery(
+                    "SELECT DISTINCT a.id FROM Analysis a, AnalyzerResults ar"
+                            + " WHERE ar.runId = :runId AND ar.testId = :testId AND ar.isControl = false"
+                            + " AND a.test.id = ar.testId AND a.sampleItem.sample.accessionNumber = ar.accessionNumber",
+                    String.class).setParameter("runId", runId).setParameter("testId", testId).list());
+            return List.copyOf(ids);
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error finding the analyses of a run's test", e);
+        }
+    }
+
     private Session session() {
         return entityManager.unwrap(Session.class);
     }

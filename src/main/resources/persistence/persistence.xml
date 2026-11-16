@@ -117,6 +117,7 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroReportVersionSource</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroInventoryUsageLink</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroWhonetExportRun</class>
+        <class>org.openelisglobal.textmacro.valueholder.TextMacro</class>
 
         <!-- External Quality Assurance entities (005-eqa-module) -->
         <class>org.openelisglobal.eqa.valueholder.EQAProgram</class>
@@ -167,6 +168,7 @@
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.resultrun.valueholder.ResultRun</class>
         <class>org.openelisglobal.resultrun.valueholder.ResultRunEvent</class>
+        <class>org.openelisglobal.resultrun.valueholder.ResultRunTestDisposition</class>
         <class>org.openelisglobal.containertype.valueholder.ContainerType</class>
         <class>org.openelisglobal.containertype.valueholder.TestExpectedContainer</class>
         <class>org.openelisglobal.validationpolicy.valueholder.ValidationPolicy</class>

@@ -31,6 +31,7 @@ import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import RunsChip from "./RunsChip";
 import RunQcBlock, { RunQc } from "./RunQcBlock";
 import UnifiedResults from "../UnifiedResults";
+import useSiteDateFormat from "../../../common/useSiteDateFormat";
 import { formatRunTime, runSourceKey, runStateKey } from "./runFormat";
 import {
   EMPTY_SELECTION,
@@ -151,6 +152,7 @@ const RunView: React.FC<RunViewProps> = ({
   onOpenRun,
 }) => {
   const intl = useIntl();
+  const { pattern } = useSiteDateFormat();
   const [header, setHeader] = useState<RunHeader | null>(null);
   const [headerState, setHeaderState] = useState<
     "loading" | "ready" | "missing"
@@ -420,7 +422,11 @@ const RunView: React.FC<RunViewProps> = ({
           <Button kind="tertiary" size="sm" onClick={onBack}>
             <FormattedMessage id="run.action.backToAll" />
           </Button>
-          <RunsChip activeRunId={runId} onOpenRun={onOpenRun} />
+          <RunsChip
+            activeRunId={runId}
+            onOpenRun={onOpenRun}
+            refreshKey={reload}
+          />
         </Column>
         {showFiltersNotice && (
           <Column lg={16} md={8} sm={4}>
@@ -484,12 +490,13 @@ const RunView: React.FC<RunViewProps> = ({
                 {setting("run.label.operator", header.operatorName)}
                 {setting(
                   "run.label.opened",
-                  header.openedAt && formatRunTime(intl, header.openedAt),
+                  header.openedAt &&
+                    formatRunTime(intl, header.openedAt, pattern),
                 )}
                 {setting(
                   "run.label.lastActivity",
                   header.lastActivityAt &&
-                    formatRunTime(intl, header.lastActivityAt),
+                    formatRunTime(intl, header.lastActivityAt, pattern),
                 )}
                 {setting(
                   "run.label.state",

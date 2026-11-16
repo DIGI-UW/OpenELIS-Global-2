@@ -504,6 +504,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               row.multiSelectResultValues !== "{}",
             ),
           Boolean(row.waitingRun),
+          Boolean(row.waitingRun?.held),
         );
         if (unsaved[worklistRowKey(row)]) {
           states[worklistRowKey(row)] =
@@ -2085,6 +2086,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               domain={domain}
                               editable={isRowEditable(state)}
                               editing={isModifyingSavedResult(state)}
+                              inRun={state === "WAITING"}
                               testSectionId={selectedLabUnit || undefined}
                               loadedAnalyzerId={loadedAnalyzers[key]}
                               methods={methods}

@@ -11,10 +11,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.hibernate.exception.ConstraintViolationException;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.qaevent.service.NCEventService;
+import org.openelisglobal.qaevent.service.QcViolationNceService;
+import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.form.BenchQCCaptureForm;
 import org.openelisglobal.qc.service.QCControlLotService;
@@ -23,13 +29,17 @@ import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.RunControlVerdict;
 import org.openelisglobal.qc.valueholder.RunVerdictSource;
+import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultrun.dao.ResultRunDAO;
 import org.openelisglobal.resultrun.dao.ResultRunEventDAO;
+import org.openelisglobal.resultrun.dao.ResultRunTestDispositionDAO;
 import org.openelisglobal.resultrun.form.RunQcBlock;
 import org.openelisglobal.resultrun.form.RunTestVerdict;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultrun.valueholder.ResultRunEvent;
 import org.openelisglobal.resultrun.valueholder.ResultRunState;
+import org.openelisglobal.resultrun.valueholder.ResultRunTestDisposition;
+import org.openelisglobal.resultrun.valueholder.RunTestAction;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestService;
@@ -68,6 +78,17 @@ public class RunQcServiceImpl implements RunQcService {
     @Lazy
     @Autowired
     private TestService testService;
+    @Autowired
+    private ResultRunTestDispositionDAO dispositionDAO;
+    @Lazy
+    @Autowired
+    private AnalyzerResultsService analyzerResultsService;
+    @Lazy
+    @Autowired
+    private QcViolationNceService qcViolationNceService;
+    @Lazy
+    @Autowired
+    private NCEventService ncEventService;
 
     @Override
     @Transactional(readOnly = true)
@@ -98,14 +119,42 @@ public class RunQcServiceImpl implements RunQcService {
     @Override
     @Transactional(readOnly = true)
     public Set<String> heldTestIds(Long runId) {
+        Set<String> held = failedTestIds(runId);
+        dispositionDAO.getDispositions(runId).forEach(decision -> held.remove(decision.getTestId()));
+        return held;
+    }
+
+    private Set<String> failedTestIds(Long runId) {
         return qcResultDAO.findByRunIds(List.of(runId)).stream()
                 .filter(control -> control.getRunVerdict() == RunControlVerdict.FAIL).map(QCResult::getTestId)
                 .filter(Objects::nonNull).collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
+    /**
+     * The tests whose stored results the run keeps from release: every failed test
+     * but one accepted despite the failure.
+     */
+    private Set<String> blockingTestIds(Long runId) {
+        Set<String> blocking = failedTestIds(runId);
+        dispositionDAO.getDispositions(runId).stream()
+                .filter(decision -> decision.getAction() == RunTestAction.ACCEPT_DESPITE)
+                .forEach(decision -> blocking.remove(decision.getTestId()));
+        return blocking;
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Map<String, Long> holdingRuns(Collection<String> analysisIds) {
+        return runsHolding(analysisIds, this::blockingTestIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> entryHoldingRuns(Collection<String> analysisIds) {
+        return runsHolding(analysisIds, this::heldTestIds);
+    }
+
+    private Map<String, Long> runsHolding(Collection<String> analysisIds, Function<Long, Set<String>> testsHeldBy) {
         List<String> ids = analysisIds == null ? List.of()
                 : analysisIds.stream().filter(StringUtils::isNumeric).distinct().toList();
         if (ids.isEmpty()) {
@@ -117,11 +166,34 @@ public class RunQcServiceImpl implements RunQcService {
             String analysisId = String.valueOf(row[0]);
             Long runId = ((Number) row[1]).longValue();
             String testId = String.valueOf(row[2]);
-            if (heldByRun.computeIfAbsent(runId, this::heldTestIds).contains(testId)) {
+            if (heldByRun.computeIfAbsent(runId, testsHeldBy).contains(testId)) {
                 held.put(analysisId, runId);
             }
         }
         return held;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void detachFromDecidedRuns(Collection<Result> results) {
+        if (results == null) {
+            return;
+        }
+        Map<Long, Set<String>> setAsideByRun = new HashMap<>();
+        for (Result result : results) {
+            if (result == null || result.getRunId() == null || result.getAnalysis() == null
+                    || result.getAnalysis().getTest() == null) {
+                continue;
+            }
+            Set<String> setAside = setAsideByRun.computeIfAbsent(result.getRunId(),
+                    runId -> dispositionDAO.getDispositions(runId).stream()
+                            .filter(decision -> decision.getAction() != RunTestAction.ACCEPT_DESPITE)
+                            .map(ResultRunTestDisposition::getTestId).collect(Collectors.toSet()));
+            if (setAside.contains(result.getAnalysis().getTest().getId())) {
+                result.setRunId(null);
+                result.setAnalyzerReportedValue(null);
+            }
+        }
     }
 
     @Override
@@ -249,18 +321,40 @@ public class RunQcServiceImpl implements RunQcService {
         Map<String, RunTestVerdict> verdicts = testVerdicts(runId);
         List<QCResult> controls = controlsOf(runId);
         Map<String, QCControlLot> lots = new HashMap<>();
-        List<RunQcBlock.TestLine> lines = verdicts.entrySet().stream()
-                .map(entry -> new RunQcBlock.TestLine(entry.getKey(),
-                        TestServiceImpl.getUserLocalizedTestName(entry.getKey()), entry.getValue().name(),
-                        controls.stream().filter(control -> entry.getKey().equals(control.getTestId()))
-                                .map(control -> controlLine(control, lots)).toList()))
-                .toList();
-        return new RunQcBlock(overallOf(verdicts.values()), lines);
+        Map<String, ResultRunTestDisposition> decisions = new HashMap<>();
+        dispositionDAO.getDispositions(runId).forEach(decision -> decisions.put(decision.getTestId(), decision));
+        List<RunQcBlock.TestLine> lines = verdicts.entrySet().stream().map(entry -> {
+            ResultRunTestDisposition decision = decisions.get(entry.getKey());
+            return new RunQcBlock.TestLine(entry.getKey(), TestServiceImpl.getUserLocalizedTestName(entry.getKey()),
+                    entry.getValue().name(),
+                    controls.stream().filter(control -> entry.getKey().equals(control.getTestId()))
+                            .map(control -> controlLine(control, lots)).toList(),
+                    decision == null ? null : decision.getAction().name(),
+                    decision == null || decision.getNceId() == null ? null : nceNumberOf(decision.getNceId()));
+        }).toList();
+        return new RunQcBlock(overallOf(verdicts.values(), decisions.keySet()), lines);
+    }
+
+    private String nceNumberOf(Integer nceId) {
+        NcEvent nce = ncEventService.get(nceId);
+        return nce == null ? null : nce.getNceNumber();
     }
 
     static String overallOf(Collection<RunTestVerdict> verdicts) {
-        if (verdicts.contains(RunTestVerdict.FAIL)) {
+        return overallOf(verdicts, Set.of());
+    }
+
+    /**
+     * Held while a failed test is undecided; Decided once every failed test has a
+     * decision, so a failure stays visible after it is dealt with.
+     */
+    static String overallOf(Collection<RunTestVerdict> verdicts, Set<String> decidedTests) {
+        long failed = verdicts.stream().filter(verdict -> verdict == RunTestVerdict.FAIL).count();
+        if (failed > decidedTests.size()) {
             return "HELD";
+        }
+        if (failed > 0) {
+            return "DECIDED";
         }
         if (verdicts.contains(RunTestVerdict.PASS)) {
             return RunTestVerdict.PASS.name();
@@ -304,6 +398,11 @@ public class RunQcServiceImpl implements RunQcService {
         if (contradictsItsNumbers(capture)) {
             throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.outcomeContradicts"));
         }
+        String decidedTest = capture.testId();
+        if (dispositionDAO.getDispositions(runId).stream()
+                .anyMatch(decision -> decidedTest.equals(decision.getTestId()))) {
+            throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.decided"));
+        }
         if (StringUtils.isBlank(capture.testSectionId()) && capture.testId() != null) {
             Test test = testService.get(capture.testId());
             capture = new BenchQCCaptureForm(capture.source(), capture.testId(),
@@ -315,5 +414,91 @@ public class RunQcServiceImpl implements RunQcService {
         QCResult control = qcResultService.createBenchQCResult(capture, sysUserId);
         attachRecordedControl(control, runId, String.valueOf(sysUserId));
         return control;
+    }
+
+    @Override
+    @Transactional
+    public ResultRunTestDisposition decide(Long runId, String testId, RunTestAction action, String reason,
+            boolean fileNce, String sysUserId) {
+        if (action == null || testId == null || !heldTestIds(runId).contains(testId)) {
+            throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.notHeld"));
+        }
+        if (action == RunTestAction.ACCEPT_DESPITE && StringUtils.isBlank(reason)) {
+            throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.reasonRequired"));
+        }
+        ResultRun run = resultRunDAO.get(runId).orElseThrow();
+        List<String> analysisIds = resultRunDAO.getAnalysisIdsOfRunTest(runId, testId);
+        ResultRunTestDisposition decision = new ResultRunTestDisposition();
+        decision.setRunId(runId);
+        decision.setTestId(testId);
+        decision.setAction(action);
+        decision.setReason(StringUtils.trimToNull(reason));
+        decision.setDecidedBy(sysUserId);
+        decision.setDecidedAt(new Timestamp(System.currentTimeMillis()));
+        decision.setSysUserId(sysUserId);
+        try {
+            dispositionDAO.insert(decision);
+        } catch (RuntimeException e) {
+            if (isDuplicateDecision(e)) {
+                throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.notHeld"));
+            }
+            throw e;
+        }
+        if (action == RunTestAction.ACCEPT_DESPITE || (action == RunTestAction.REJECT && fileNce)) {
+            decision.setNceId(fileNce(run, testId, action, decision, analysisIds, sysUserId).getId());
+            dispositionDAO.update(decision);
+        }
+        if (action != RunTestAction.ACCEPT_DESPITE) {
+            resultRunDAO.getStagedRows(List.of(runId)).stream()
+                    .filter(row -> !row.getIsControl() && testId.equals(row.getTestId()))
+                    .forEach(analyzerResultsService::delete);
+        }
+        log(runId, eventOf(action), testId, decision.getNceId() == null ? null : "nce " + decision.getNceId(),
+                sysUserId);
+        refreshState(runId, sysUserId);
+        return decision;
+    }
+
+    /**
+     * A second decision on the same test that passed the held check together with
+     * the first, and lost on the run-and-test unique key when the first committed.
+     */
+    static boolean isDuplicateDecision(Throwable e) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation && violation.getConstraintName() != null
+                    && violation.getConstraintName().toLowerCase().endsWith("uq_run_test_disposition")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String eventOf(RunTestAction action) {
+        return switch (action) {
+        case RETEST -> ResultRunEvent.RETEST_REQUESTED;
+        case REJECT -> ResultRunEvent.REJECTED_QC;
+        case ACCEPT_DESPITE -> ResultRunEvent.ACCEPTED_DESPITE_QC;
+        };
+    }
+
+    private NcEvent fileNce(ResultRun run, String testId, RunTestAction action, ResultRunTestDisposition decision,
+            List<String> analysisIds, String sysUserId) {
+        String testName = TestServiceImpl.getUserLocalizedTestName(testId);
+        String failing = controlsOf(run.getId()).stream().filter(
+                control -> testId.equals(control.getTestId()) && control.getRunVerdict() == RunControlVerdict.FAIL)
+                .map(control -> {
+                    RunQcBlock.ControlLine line = controlLine(control, new HashMap<>());
+                    return (line.level() == null ? "" : line.level() + " ")
+                            + (line.observed() == null ? "" : line.observed())
+                            + (line.expected() == null ? "" : " against " + line.expected());
+                }).collect(Collectors.joining("; "));
+        String verb = action == RunTestAction.ACCEPT_DESPITE ? "accepted despite the QC failure" : "rejected on QC";
+        String title = "QC failure on " + testName + " in " + run.getLabel() + ": " + verb;
+        String description = testName + " in " + run.getLabel()
+                + (run.getAnalyzerId() == null ? "" : " (analyzer " + run.getAnalyzerId() + ")") + " was " + verb
+                + ". Failing control: " + (failing.isBlank() ? "not recorded" : failing) + ". " + analysisIds.size()
+                + " affected result(s)." + (decision.getReason() == null ? "" : " Reason: " + decision.getReason());
+        return qcViolationNceService.createNceForRunDecision(String.valueOf(decision.getId()), title, description,
+                analysisIds, sysUserId);
     }
 }

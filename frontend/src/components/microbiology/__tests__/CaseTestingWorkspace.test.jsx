@@ -1,10 +1,19 @@
 import React from "react";
 import { vi } from "vitest";
+vi.mock("../../common/textMacro/TextMacroService", () => ({
+  getTextMacros: vi.fn(() => Promise.resolve([])),
+}));
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import CaseTestingWorkspace from "../CaseTestingWorkspace";
 import messages from "../../../languages/en.json";
+import { getTextMacros } from "../../common/textMacro/TextMacroService";
+import {
+  expandedPhrase,
+  offerOnePhrasePerContext,
+  typePhraseCode,
+} from "./phraseFields";
 vi.mock("../../utils/Utils", async () => ({
   ...(await vi.importActual("../../utils/Utils")),
   getFromOpenElisServer: vi.fn((url, cb) =>
@@ -332,6 +341,45 @@ describe("case testing workspace", () => {
     });
     expect(screen.getByText("Additional assay")).toBeTruthy();
     expect(screen.queryByText("Two-component assay")).toBeNull();
+  });
+  test("case notes and result notes expand case-note phrases and save the text", async () => {
+    offerOnePhrasePerContext();
+    const api = service();
+    api.addNote.mockResolvedValue({ id: "n1" });
+    show(api);
+    await screen.findByText("Two-component assay");
+
+    const caseNote = screen.getByLabelText("New note");
+    await typePhraseCode(caseNote);
+    expect(caseNote).toHaveValue("Seen Phrase for MICROBIOLOGY_CASE_NOTE ");
+    fireEvent.click(screen.getByRole("button", { name: "Save note" }));
+    await waitFor(() =>
+      expect(api.addNote).toHaveBeenLastCalledWith(
+        "case-1",
+        expect.stringMatching(expandedPhrase("MICROBIOLOGY_CASE_NOTE")),
+        false,
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Notes (0)" }));
+    const dialog = screen.getByRole("dialog");
+    const resultNote = within(dialog).getByLabelText("New note");
+    await typePhraseCode(resultNote);
+    expect(resultNote).toHaveValue("Seen Phrase for MICROBIOLOGY_CASE_NOTE ");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save note" }));
+    await waitFor(() =>
+      expect(api.addNote).toHaveBeenLastCalledWith(
+        "case-1",
+        expect.stringMatching(expandedPhrase("MICROBIOLOGY_CASE_NOTE")),
+        false,
+        "RESULT",
+        "20",
+      ),
+    );
+    expect(getTextMacros).toHaveBeenCalledWith(
+      "MICROBIOLOGY_CASE_NOTE",
+      expect.any(AbortSignal),
+    );
   });
   test("notes preserve a failed draft and display the attributed saved entry", async () => {
     const api = service();

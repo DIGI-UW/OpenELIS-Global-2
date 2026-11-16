@@ -80,18 +80,17 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
   // after a failed assign skip the receive, so the stock is not counted twice.
   const [createdLotId, setCreatedLotId] = useState(null);
 
-  const qcStatusOptions = [
-    { id: "PENDING", text: "Pending" },
-    { id: "PASSED", text: "Passed" },
-    { id: "FAILED", text: "Failed" },
-    { id: "QUARANTINED", text: "Quarantined" },
-  ];
+  const qcStatusOptions = ["PENDING", "PASSED", "FAILED", "QUARANTINED"].map(
+    (status) => ({
+      id: status,
+      text: intl.formatMessage({ id: `lot.qcStatus.${status}` }),
+    }),
+  );
 
-  const statusOptions = [
-    { id: "ACTIVE", text: "Active" },
-    { id: "IN_USE", text: "In Use" },
-    { id: "QUARANTINED", text: "Quarantined" },
-  ];
+  const statusOptions = ["ACTIVE", "IN_USE", "QUARANTINED"].map((status) => ({
+    id: status,
+    text: intl.formatMessage({ id: `lot.status.${status}` }),
+  }));
 
   useEffect(() => {
     fetchItems();
@@ -423,7 +422,11 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
 
           <NumberInput
             id="currentQuantity"
-            label={<FormattedMessage id="lot.initialQuantity" />}
+            label={
+              <FormattedMessage
+                id={isEdit ? "lot.currentQuantity" : "lot.initialQuantity"}
+              />
+            }
             value={formData.currentQuantity}
             onChange={(e, { value }) => handleChange("currentQuantity", value)}
             min={0}

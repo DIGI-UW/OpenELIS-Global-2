@@ -1,11 +1,20 @@
 import React from "react";
 import { vi } from "vitest";
+vi.mock("../../common/textMacro/TextMacroService", () => ({
+  getTextMacros: vi.fn(() => Promise.resolve([])),
+}));
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider, createIntl } from "react-intl";
 import messages from "../../../languages/en.json";
 import { labTimeZone } from "../MicrobiologyTime";
 import CaseCultureWorkspace from "../CaseCultureWorkspace";
+import { getTextMacros } from "../../common/textMacro/TextMacroService";
+import {
+  expandedPhrase,
+  offerOnePhrasePerContext,
+  typePhraseCode,
+} from "./phraseFields";
 const sources = [
   {
     sampleItemId: "s1",
@@ -198,6 +207,34 @@ it("an unconfirmed instrument proposal leaves the row incubating", async () => {
       outcome: "NO_GROWTH",
       proposalId: "proposal1",
     }),
+  );
+});
+it("expands a culture-reading phrase into the reading note and saves it", async () => {
+  offerOnePhrasePerContext();
+  const service = api();
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Add reading" }));
+  change("Reading", "growth");
+  const field = screen.getByLabelText("Note");
+  await typePhraseCode(field);
+
+  expect(field).toHaveValue("Seen Phrase for MICROBIOLOGY_CULTURE_READING ");
+  expect(getTextMacros).toHaveBeenCalledWith(
+    "MICROBIOLOGY_CULTURE_READING",
+    expect.any(AbortSignal),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.cultureAction).toHaveBeenCalledWith(
+      "c1",
+      "r1",
+      "reading",
+      expect.objectContaining({
+        note: expect.stringMatching(
+          expandedPhrase("MICROBIOLOGY_CULTURE_READING"),
+        ),
+      }),
+    ),
   );
 });
 it("a failed reading save retains its input and shows validation feedback", async () => {

@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { Router } from "react-router-dom";
 import { createMemoryHistory } from "history";
-import MicrobiologyCaseView from "../MicrobiologyCaseView";
+import CaseViewShell from "../CaseViewShell";
 import messages from "../../../languages/en.json";
 import { ConfigurationContext } from "../../layout/Layout";
 
@@ -99,7 +99,7 @@ const setup = (search = "", changes = {}) => {
     >
       <IntlProvider locale="en" messages={messages}>
         <Router history={history}>
-          <MicrobiologyCaseView caseId="case-1" service={service} />
+          <CaseViewShell caseId="case-1" service={service} />
         </Router>
       </IntlProvider>
     </ConfigurationContext.Provider>,

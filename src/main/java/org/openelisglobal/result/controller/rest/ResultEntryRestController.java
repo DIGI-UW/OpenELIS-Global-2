@@ -416,7 +416,11 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         ResultUtil.createAnalysisOnlyUpdates(dataSet, request);
         ResultUtil.holdOpenWhileRequiredComponentsBlank(dataSet);
 
-        runValue.ifPresent(staged -> recordRunProvenance(dataSet, analysisId, staged));
+        if (runValue.isPresent()) {
+            recordRunProvenance(dataSet, analysisId, runValue.get());
+        } else {
+            runQcService.detachFromDecidedRuns(resultsOf(dataSet));
+        }
 
         List<IResultUpdate> updaters = new ArrayList<>(ResultUpdateRegister.getRegisteredUpdaters());
         updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
@@ -745,6 +749,11 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                 });
     }
 
+    private static List<Result> resultsOf(ResultsUpdateDataSet dataSet) {
+        return Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream())
+                .map(resultSet -> resultSet.result).toList();
+    }
+
     /** The accepted value leaves staging in the same transaction as the save. */
     private IResultUpdate leavesStaging(AnalyzerResults staged, String sysUserId) {
         return new IResultUpdate() {
@@ -769,7 +778,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         if (acceptedRun != null && testId != null && runQcService.heldTestIds(acceptedRun).contains(testId)) {
             return Optional.of(acceptedRun);
         }
-        return Optional.ofNullable(runQcService.holdingRuns(List.of(analysis.getId())).get(analysis.getId()));
+        return Optional.ofNullable(runQcService.entryHoldingRuns(List.of(analysis.getId())).get(analysis.getId()));
     }
 
     private ResponseEntity<Map<String, Object>> rejectIfStale(TestResultItem item, Analysis analysis,

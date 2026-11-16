@@ -142,6 +142,147 @@ describe("RunQcBlock (OGC-1200 slice 4)", () => {
   });
 });
 
+describe("Deciding a held test (OGC-1200 FR-C5)", () => {
+  beforeEach(() => {
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+  });
+
+  it("asks for a reason before accepting despite the QC failure, then files it", () => {
+    const decided: RunQc = {
+      overall: "DECIDED",
+      tests: [
+        {
+          ...HELD.tests[0],
+          decision: "ACCEPT_DESPITE",
+          nceNumber: "NCE-26-0007",
+        },
+      ],
+    };
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (url: string, body: string, callback: (response: unknown) => void) =>
+        callback(decided),
+    );
+    const onRecorded = vi.fn();
+    renderBlock(onRecorded);
+
+    const decide = screen.getByTestId("run-qc-decide-11");
+    fireEvent.click(
+      within(decide).getByRole("button", { name: /Accept despite QC failure/ }),
+    );
+    fireEvent.click(screen.getByTestId("run-qc-decide-confirm-11"));
+    expect(utilsMock.postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(
+        "Give the reason the results are accepted despite the QC failure.",
+      ),
+    ).toBeInTheDocument();
+
+    const reason = screen.getByLabelText(/^Reason/);
+    expect(reason).toHaveAttribute("aria-required", "true");
+    expect(reason.closest(".cds--form-item")).toHaveTextContent("Reason *");
+    fireEvent.change(reason, {
+      target: { value: "Control material expired" },
+    });
+    fireEvent.click(screen.getByTestId("run-qc-decide-confirm-11"));
+
+    const [url, body] =
+      utilsMock.postToOpenElisServerJsonResponse.mock.calls[0];
+    expect(url).toBe("/rest/result-runs/7/tests/11/decision");
+    expect(JSON.parse(body)).toEqual({
+      action: "ACCEPT_DESPITE",
+      reason: "Control material expired",
+      fileNce: true,
+    });
+    expect(onRecorded).toHaveBeenCalledWith(decided);
+  });
+
+  it("rejects with a non-conformity only when asked for one", () => {
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (url: string, body: string, callback: (response: unknown) => void) =>
+        callback(HELD),
+    );
+    renderBlock();
+
+    fireEvent.click(
+      within(screen.getByTestId("run-qc-decide-11")).getByRole("button", {
+        name: "Reject",
+      }),
+    );
+    fireEvent.click(screen.getByLabelText("File a non-conformity"));
+    fireEvent.click(screen.getByTestId("run-qc-decide-confirm-11"));
+
+    expect(
+      JSON.parse(utilsMock.postToOpenElisServerJsonResponse.mock.calls[0][1]),
+    ).toEqual({ action: "REJECT", reason: null, fileNce: true });
+  });
+
+  it("shows what was decided instead of the actions", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <RunQcBlock
+          runId={7}
+          qc={{
+            overall: "DECIDED",
+            tests: [{ ...HELD.tests[0], decision: "REJECT", nceNumber: null }],
+          }}
+          onRecorded={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    expect(screen.getByTestId("run-qc-overall")).toHaveTextContent(
+      "QC failed: decided",
+    );
+    expect(screen.getByTestId("run-qc-decision-11")).toHaveTextContent(
+      "Reject",
+    );
+    expect(screen.queryByTestId("run-qc-decide-11")).not.toBeInTheDocument();
+  });
+
+  it("offers Record control only for tests not yet decided on the run", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <RunQcBlock
+          runId={7}
+          qc={{
+            overall: "HELD",
+            tests: [
+              { ...HELD.tests[0], decision: "RETEST", nceNumber: null },
+              HELD.tests[1],
+              HELD.tests[2],
+            ],
+          }}
+          onRecorded={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId("run-qc-record"));
+    const choices = within(screen.getByLabelText("Test"))
+      .getAllByRole("option")
+      .map((option) => option.textContent);
+    expect(choices).toEqual(["Urea", "Malaria RDT"]);
+    expect(screen.getByLabelText("Test")).toHaveValue("12");
+  });
+
+  it("offers no Record control once every test on the run is decided", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <RunQcBlock
+          runId={7}
+          qc={{
+            overall: "DECIDED",
+            tests: [{ ...HELD.tests[0], decision: "REJECT", nceNumber: null }],
+          }}
+          onRecorded={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    expect(screen.getByTestId("run-qc-record")).toBeDisabled();
+  });
+});
+
 describe("WaitingTag on a held row (FR-D4)", () => {
   it("says the row is held because QC failed in the run", () => {
     render(
