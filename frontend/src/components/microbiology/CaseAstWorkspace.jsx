@@ -4,6 +4,7 @@ import { labTimestamp } from "./MicrobiologyTime";
 import ContainerLabelButton from "./ContainerLabelButton";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
+import MacroTextArea from "../common/textMacro/MacroTextArea";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { hasRole, Roles } from "../utils/Utils";
 import {
@@ -26,7 +27,6 @@ import {
   TableHeader,
   TableRow,
   Tag,
-  TextArea,
   TextInput,
   Tile,
 } from "@carbon/react";
@@ -943,8 +943,9 @@ export default function CaseAstWorkspace({
               </Select>
             )}
             {needsReason && (
-              <TextArea
+              <MacroTextArea
                 id="ast-reason"
+                context="MICROBIOLOGY_OVERRIDE_REASON"
                 labelText={
                   panelChanged
                     ? intl.formatMessage({

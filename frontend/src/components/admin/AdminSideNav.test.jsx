@@ -395,6 +395,15 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
     ).not.toBeNull();
   });
 
+  it("links the Macro Library inside the admin route family", () => {
+    mockLocation = { pathname: "/admin/MacroLibrary", search: "" };
+    const { container } = renderNav();
+
+    const link = container.querySelector('[data-testid="text-macro-library"]');
+    expect(link).toHaveAttribute("href", "/admin/MacroLibrary");
+    expect(link).toHaveTextContent("Macro Library");
+  });
+
   it("keeps the stuck analyzer events inside the admin route family", () => {
     // Every item in this nav stays in the admin shell; a link out would swap
     // the whole navigation underneath the reader.
