@@ -22,6 +22,7 @@ import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.resultrun.service.RunQcService;
+import org.openelisglobal.resultrun.valueholder.RunTestAction;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -122,6 +123,39 @@ public class ResultRunRestController extends BaseRestController {
             return ResponseEntity.badRequest().body(Map.of("message", message));
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(runQcService.qcBlock(id));
+    }
+
+    /** What the page sends to decide a held test (FR-C5). */
+    public record TestDecision(String action, String reason, boolean fileNce) {
+    }
+
+    /**
+     * Decides a held test of the run: Retest, Reject, or Accept despite the QC
+     * failure (FR-C5), and answers with the QC block as it now stands.
+     */
+    @PostMapping(value = "/{id}/tests/{testId}/decision", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> decide(HttpServletRequest request, @PathVariable Long id, @PathVariable String testId,
+            @RequestBody TestDecision decision) {
+        RunViewer viewer = viewer(request);
+        if (resultRunService.getHeader(id, viewer).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!viewer.testIds().contains(testId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        RunTestAction action;
+        try {
+            action = RunTestAction.valueOf(decision.action());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Unknown decision"));
+        }
+        try {
+            runQcService.decide(id, testId, action, decision.reason(), decision.fileNce(), getSysUserId(request));
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage() == null ? "Invalid decision" : e.getMessage();
+            return ResponseEntity.badRequest().body(Map.of("message", message));
+        }
+        return ResponseEntity.ok(runQcService.qcBlock(id));
     }
 
     private RunViewer viewer(HttpServletRequest request) {

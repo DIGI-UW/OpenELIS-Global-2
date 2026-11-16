@@ -157,6 +157,28 @@ describe("OGC-1200 runs on the unified worklist", () => {
     expect(screen.getByTestId("held-chip")).toHaveTextContent("Held (1)");
   });
 
+  it("shows a stored result held by its run as held, with its value and no Edit", () => {
+    renderPage([
+      row({ resultValue: "88", waitingRun: { ...WAITING, held: true } }),
+    ]);
+
+    expect(screen.getByTestId("held-run-7")).toHaveTextContent(
+      "Held: QC failed in RUN-7",
+    );
+    expect(screen.getByText("88")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit" }),
+    ).not.toBeInTheDocument();
+    expect(resultField()).toBeNull();
+  });
+
+  it("offers Edit on a stored result its run no longer holds", () => {
+    renderPage([row({ resultValue: "88" })]);
+
+    expect(screen.queryByTestId("held-run-7")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+  });
+
   it("leaves a pending test with no waiting value open for entry", () => {
     renderPage([row()]);
 

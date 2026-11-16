@@ -35,6 +35,21 @@ public interface RunQcService {
     Map<String, Long> holdingRuns(Collection<String> analysisIds);
 
     /**
+     * Of these analyses, those whose stored result came from a run that holds the
+     * test undecided, each with that run: they take no new value until the test is
+     * decided (FR-C4, FR-D4). A decided test's stored result is open to a new
+     * value.
+     */
+    Map<String, Long> entryHoldingRuns(Collection<String> analysisIds);
+
+    /**
+     * A value entered on a result that came from a run whose test was decided
+     * Retest or Reject is no longer that run's: the result stops naming the run and
+     * the analyzer's reading, so the run no longer keeps it from release (FR-C5).
+     */
+    void detachFromDecidedRuns(Collection<org.openelisglobal.result.valueholder.Result> results);
+
+    /**
      * Names the run on a control the analyzer reported in that run's message and
      * gives it its verdict: the qualitative outcome, or the value against the QC
      * target's expected value and uncertainty (FR-C2). A control with no target has
@@ -67,4 +82,15 @@ public interface RunQcService {
      * technician's own verdict.
      */
     QCResult recordControl(Long runId, org.openelisglobal.qc.form.BenchQCCaptureForm capture, int sysUserId);
+
+    /**
+     * Decides a held test of a run (FR-C5): Retest and Reject take its values out
+     * of review (Reject may file a non-conformity); Accept despite the QC failure
+     * needs a reason and files a non-conformity linked to the test's analyses, and
+     * lets its values be accepted and its stored results released. A test is
+     * decided once.
+     */
+    org.openelisglobal.resultrun.valueholder.ResultRunTestDisposition decide(Long runId, String testId,
+            org.openelisglobal.resultrun.valueholder.RunTestAction action, String reason, boolean fileNce,
+            String sysUserId);
 }

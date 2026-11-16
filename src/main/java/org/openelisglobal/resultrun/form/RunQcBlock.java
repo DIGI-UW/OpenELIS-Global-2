@@ -8,8 +8,12 @@ import java.util.List;
  */
 public record RunQcBlock(String overall, List<TestLine> tests) {
 
-    /** One test the run covers. */
-    public record TestLine(String testId, String testName, String verdict, List<ControlLine> controls) {
+    /**
+     * One test the run covers, with what was decided for it when its control failed
+     * (FR-C5) and the non-conformity that decision filed.
+     */
+    public record TestLine(String testId, String testName, String verdict, List<ControlLine> controls, String decision,
+            String nceNumber) {
     }
 
     /**

@@ -2,6 +2,7 @@ package org.openelisglobal.resultrun.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -16,6 +17,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.qc.dao.QCResultDAO;
 import org.openelisglobal.qc.form.BenchQCCaptureForm;
@@ -31,6 +33,8 @@ import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultrun.valueholder.ResultRunEvent;
 import org.openelisglobal.resultrun.valueholder.ResultRunSource;
 import org.openelisglobal.resultrun.valueholder.ResultRunState;
+import org.openelisglobal.resultrun.valueholder.ResultRunTestDisposition;
+import org.openelisglobal.resultrun.valueholder.RunTestAction;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestService;
@@ -230,5 +234,110 @@ public class RunQcServiceIntegrationTest extends BaseWebContextSensitiveTest {
                 heldRow.getWaitingRun() != null && heldRow.getWaitingRun().held());
         assertEquals(run.getId(), heldRow.getWaitingRun().runId());
         assertEquals(null, otherRow.getWaitingRun());
+    }
+
+    private Analysis storedResultOf(String testId) {
+        SampleItem item = fixtures.createSampleWithSampleItem("RQD");
+        Analysis analysis = fixtures.createAnalysis(item, testService.get(testId));
+        jdbc.update(
+                "INSERT INTO clinlims.result (id, analysis_id, value, run_id, lastupdated) VALUES"
+                        + " (nextval('clinlims.result_seq'), ?::numeric, '42', ?, now())",
+                analysis.getId(), run.getId());
+        entityManager.flush();
+        return analysis;
+    }
+
+    @Test
+    public void acceptingDespiteTheFailureNeedsAReasonFilesANonConformityAndReleasesTheResults() {
+        Analysis held = storedResultOf(TEST);
+        analyzerControl(TEST, "120");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> runQcService.decide(run.getId(), TEST, RunTestAction.ACCEPT_DESPITE, " ", false, "1"));
+
+        ResultRunTestDisposition decision = runQcService.decide(run.getId(), TEST, RunTestAction.ACCEPT_DESPITE,
+                "Control material expired; results checked against a second run", false, "1");
+        entityManager.flush();
+
+        assertTrue("an Accept despite always files its non-conformity", decision.getNceId() != null);
+        assertEquals(1,
+                (int) jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.nce_specimen WHERE nce_id = ?" + " AND analysis_id = ?::numeric",
+                        Integer.class, decision.getNceId(), held.getId()));
+        assertTrue(runQcService.heldTestIds(run.getId()).isEmpty());
+        assertTrue("its stored results may now be released",
+                qcHoldService.analysisIdsBlockedFromRelease(List.of(held.getId())).isEmpty());
+        assertEquals(ResultRunState.OPEN, resultRunService.get(run.getId()).getState());
+        assertEquals("DECIDED", runQcService.qcBlock(run.getId()).overall());
+        assertTrue(events().containsAll(List.of(ResultRunEvent.ACCEPTED_DESPITE_QC, ResultRunEvent.TEST_RELEASED)));
+    }
+
+    @Test
+    public void aRejectedTestKeepsItsResultsFromReleaseAndIsDecidedOnce() {
+        Analysis held = storedResultOf(TEST);
+        analyzerControl(TEST, "120");
+
+        ResultRunTestDisposition decision = runQcService.decide(run.getId(), TEST, RunTestAction.REJECT, null, false,
+                "1");
+        entityManager.flush();
+
+        assertEquals("no non-conformity unless asked for", null, decision.getNceId());
+        assertTrue(runQcService.heldTestIds(run.getId()).isEmpty());
+        assertEquals(Set.of(held.getId()), qcHoldService.analysisIdsBlockedFromRelease(List.of(held.getId())));
+        assertTrue(events().contains(ResultRunEvent.REJECTED_QC));
+        assertThrows(IllegalArgumentException.class,
+                () -> runQcService.decide(run.getId(), TEST, RunTestAction.ACCEPT_DESPITE, "late", false, "1"));
+    }
+
+    @Test
+    public void aRetestedTestIsOpenToANewValueWhileTheRunsOwnValueStaysUnreleased() {
+        Analysis held = storedResultOf(TEST);
+        analyzerControl(TEST, "120");
+        assertEquals("held for entry until decided", Set.of(held.getId()),
+                runQcService.entryHoldingRuns(List.of(held.getId())).keySet());
+
+        runQcService.decide(run.getId(), TEST, RunTestAction.RETEST, null, false, "1");
+        entityManager.flush();
+
+        assertTrue("a decided test takes a new value", runQcService.entryHoldingRuns(List.of(held.getId())).isEmpty());
+        assertEquals("the run's own value is still not released", Set.of(held.getId()),
+                qcHoldService.analysisIdsBlockedFromRelease(List.of(held.getId())));
+        TestResultItem row = new TestResultItem();
+        row.setAnalysisId(held.getId());
+        row.setTestId(TEST);
+        row.setResultValue("42");
+        resultRunService.markWaiting(List.of(row));
+        assertNull("the worklist offers the row for entry again", row.getWaitingRun());
+    }
+
+    @Test
+    public void aControlForATestAlreadyDecidedOnTheRunIsRefused() {
+        analyzerControl(TEST, "120");
+        runQcService.decide(run.getId(), TEST, RunTestAction.REJECT, null, false, "1");
+        entityManager.flush();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> runQcService.recordControl(run.getId(), new BenchQCCaptureForm(QCSource.MANUAL, TEST, UNIT, LOT,
+                        null, new BigDecimal("130"), null, null, null, null, null, null), 1));
+        assertEquals(1, runQcService.controlsOf(run.getId()).size());
+    }
+
+    @Test
+    public void aDecisionThatLosesARaceIsReportedAsAlreadyDecided() {
+        java.sql.SQLException duplicate = new java.sql.SQLException("duplicate key", "23505");
+        assertTrue(RunQcServiceImpl.isDuplicateDecision(
+                new LIMSRuntimeException("insert", new org.hibernate.exception.ConstraintViolationException("dup",
+                        duplicate, "uq_run_test_disposition"))));
+        assertFalse(RunQcServiceImpl.isDuplicateDecision(new LIMSRuntimeException("insert",
+                new org.hibernate.exception.ConstraintViolationException("fk", duplicate, "fk_something_else"))));
+        assertFalse(RunQcServiceImpl.isDuplicateDecision(new IllegalStateException("other")));
+    }
+
+    @Test
+    public void onlyAHeldTestCanBeDecided() {
+        analyzerControl(TEST, "103");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> runQcService.decide(run.getId(), TEST, RunTestAction.RETEST, null, false, "1"));
     }
 }
