@@ -411,6 +411,82 @@ describe("LaporanHasilReport", () => {
     });
   });
 
+  describe("typed dates (OGC-1635)", () => {
+    const captureReportUrls = async () => {
+      const { getFromOpenElisServer } = await import("../../../utils/Utils");
+      const urls = [];
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url.includes("compliance-statuses")) {
+          callback(MOCK_STATUSES);
+          return;
+        }
+        if (url.startsWith("/rest/complianceReport?")) urls.push(url);
+        callback(url.includes("standards") ? [] : MOCK_REPORT);
+      });
+      return urls;
+    };
+
+    const typeDate = (input, text) => {
+      act(() => input.focus());
+      fireEvent.click(input);
+      fireEvent.input(input, { target: { value: text } });
+    };
+
+    const clickSearch = async () => {
+      const search = screen.getByRole("button", { name: /^Search$/ });
+      act(() => {
+        fireEvent.touchStart(search);
+        fireEvent.mouseDown(search);
+        search.focus();
+      });
+      await act(async () => {
+        fireEvent.click(search);
+      });
+    };
+
+    it("searches with dates typed into both fields, then Search clicked", async () => {
+      const urls = await captureReportUrls();
+      renderWithIntl(<LaporanHasilReport />);
+
+      typeDate(screen.getByLabelText(/Date From/i), "11/11/2026");
+      typeDate(screen.getByLabelText(/Date To/i), "11/12/2026");
+      await clickSearch();
+
+      expect(urls.at(-1)).toBe(
+        "/rest/complianceReport?dateFrom=2026-11-11&dateTo=2026-11-12",
+      );
+      expect(screen.getByLabelText(/Date From/i)).toHaveValue("11/11/2026");
+    });
+
+    it("marks a typed text that is not a date and searches without it", async () => {
+      const urls = await captureReportUrls();
+      renderWithIntl(<LaporanHasilReport />);
+
+      typeDate(screen.getByLabelText(/Date From/i), "11/11/2026");
+      typeDate(screen.getByLabelText(/Date To/i), "13/45/2026");
+      await clickSearch();
+
+      expect(urls.at(-1)).toBe("/rest/complianceReport?dateFrom=2026-11-11");
+      expect(screen.getByLabelText(/Date To/i)).toHaveValue("13/45/2026");
+      expect(
+        screen.getByText("Enter a valid date as mm/dd/yyyy."),
+      ).toBeInTheDocument();
+    });
+
+    it("drops a committed date when the field is cleared", async () => {
+      const urls = await captureReportUrls();
+      renderWithIntl(<LaporanHasilReport />);
+
+      typeDate(screen.getByLabelText(/Date From/i), "11/11/2026");
+      await clickSearch();
+      expect(urls.at(-1)).toBe("/rest/complianceReport?dateFrom=2026-11-11");
+
+      typeDate(screen.getByLabelText(/Date From/i), "");
+      await clickSearch();
+      expect(urls.at(-1)).toBe("/rest/complianceReport?");
+    });
+  });
+
   it("finds an order by lab number, typed or scanned, without dates (OGC-1619)", async () => {
     const { getFromOpenElisServer } = await import("../../../utils/Utils");
     const urls = [];

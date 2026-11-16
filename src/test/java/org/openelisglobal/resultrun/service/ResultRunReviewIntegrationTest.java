@@ -1,6 +1,7 @@
 package org.openelisglobal.resultrun.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -12,6 +13,7 @@ import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
@@ -46,6 +48,7 @@ public class ResultRunReviewIntegrationTest extends BaseWebContextSensitiveTest 
 
     private static final String UNIT = "97750";
     private static final String TEST = "97751";
+    private static final String OTHER_TEST = "97752";
     private static final String ANALYZER = "97770";
 
     @Autowired
@@ -210,17 +213,48 @@ public class ResultRunReviewIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
-    public void everyPatientRowOfAHeldRunIsHeld() {
+    public void theRowsOfATestAFailedControlCoversAreHeldAndOnlyThose() {
+        jdbc.update("INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable,"
+                + " test_section_id, lastupdated) VALUES (?::numeric, 'Other test', 'Other test', 'Y', ?,"
+                + " 'CLINICAL', true, ?::numeric, NOW())", OTHER_TEST, UUID.randomUUID().toString(), UNIT);
         ResultRun run = open("m-held", List.of(row("15"), row("60"), withIssue(row("14"))));
-        run.setState(ResultRunState.HELD);
-        resultRunService.update(run);
-        entityManager.flush();
+        recordControl(run.getId(), OTHER_TEST, "FAIL");
 
+        assertEquals("a failed control of another test holds nothing here", 0,
+                resultRunService.getHeader(run.getId(), viewer()).orElseThrow().chipCounts().held());
+
+        recordControl(run.getId(), TEST, "FAIL");
         ResultRunChipCounts counts = resultRunService.getHeader(run.getId(), viewer()).orElseThrow().chipCounts();
 
         assertEquals(2, counts.held());
         assertEquals(1, counts.exceptions());
         assertEquals(0, counts.critical());
+    }
+
+    @Test
+    public void aRowOfATestTheRunDoesNotHoldIsStillAcceptedFromAHeldRun() {
+        jdbc.update("INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable,"
+                + " test_section_id, lastupdated) VALUES (?::numeric, 'Other test', 'Other test', 'Y', ?,"
+                + " 'CLINICAL', true, ?::numeric, NOW())", OTHER_TEST, UUID.randomUUID().toString(), UNIT);
+        SampleItem item = newSampleItemOfPatient();
+        Analysis analysis = fixtures.createAnalysis(item, testService.get(TEST));
+        AnalyzerResults staged = row("15");
+        staged.setAccessionNumber(item.getSample().getAccessionNumber());
+        ResultRun run = open("m-held-other", List.of(staged));
+        recordControl(run.getId(), OTHER_TEST, "FAIL");
+        run.setState(ResultRunState.HELD);
+        resultRunService.update(run);
+        entityManager.flush();
+
+        assertTrue("the run holds the other test only, so this value is still accepted",
+                resultRunService.stagedValueFor(staged.getId(), analysis, null).isPresent());
+    }
+
+    private void recordControl(Long runId, String testId, String verdict) {
+        jdbc.update("INSERT INTO clinlims.qc_result (id, test_id, source, result_value, run_date_time, result_status,"
+                + " sys_user_id, run_id, run_verdict, verdict_source) VALUES (?, ?::numeric, 'ASTM', 1, NOW(),"
+                + " 'PENDING', 1, ?, ?, 'COMPUTED')", UUID.randomUUID().toString(), testId, runId, verdict);
+        entityManager.flush();
     }
 
     /**

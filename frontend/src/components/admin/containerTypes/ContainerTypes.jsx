@@ -633,10 +633,18 @@ export default function ContainerTypes() {
                         </TableCell>
                         <TableCell>{type.category || "—"}</TableCell>
                         <TableCell>
-                          <FormattedMessage
-                            id="admin.containerTypes.samplesUsing"
-                            values={{ count: type.samplesUsing }}
-                          />
+                          <div>
+                            <FormattedMessage
+                              id="admin.containerTypes.testsUsing"
+                              values={{ count: type.testsUsing ?? 0 }}
+                            />
+                          </div>
+                          <div>
+                            <FormattedMessage
+                              id="admin.containerTypes.samplesUsing"
+                              values={{ count: type.samplesUsing }}
+                            />
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Tag size="sm" type={type.active ? "green" : "gray"}>

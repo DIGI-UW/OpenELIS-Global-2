@@ -1,4 +1,5 @@
 import CultureBottleFields from "./CultureBottleFields";
+import { RequiredMarker } from "../../../common/RequiredMarker";
 import React, { useState, useEffect, useRef } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
@@ -660,6 +661,7 @@ const SampleTestSection = ({
                 id="sample.orderTests"
                 defaultMessage="Order Tests"
               />
+              <RequiredMarker />
             </h6>
             <div className="selected-tags">
               {sample.tests?.map((test) => (
@@ -1785,6 +1787,7 @@ const SampleTestSection = ({
                         id="sample.orderTests"
                         defaultMessage="Order Tests"
                       />
+                      <RequiredMarker />
                     </h6>
                     <div className="selected-tags">
                       {sample.tests?.map((test) => (

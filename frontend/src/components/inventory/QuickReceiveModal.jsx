@@ -4,13 +4,13 @@ import {
   ComboBox,
   NumberInput,
   TextInput,
-  DatePicker,
   DatePickerInput,
   InlineNotification,
   FormLabel,
   Button,
   Stack,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   InventoryManagementAPI,

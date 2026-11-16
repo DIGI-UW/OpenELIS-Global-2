@@ -54,6 +54,14 @@
   <include relativeToChangelogFile="true" file="033-organization-gps-source.xml"/>
   <!-- OGC-1200 slice 3: an accepted run row keeps the analyzer-reported value beside the accepted one -->
   <include relativeToChangelogFile="true" file="034-result-analyzer-reported-value.xml"/>
+  <!-- OGC-1611 P2: tests name their expected containers; sample types a default container -->
+  <include relativeToChangelogFile="true" file="035-test-expected-containers.xml"/>
+  <!-- OGC-1611 P4: a clinical sample records the container type it was taken in -->
+  <include relativeToChangelogFile="true" file="036-sample-item-container-type.xml"/>
+  <!-- OGC-1364 v2: sequential sign-off, one signature per review level -->
+  <include relativeToChangelogFile="true" file="037-analysis-review-sign-off.xml"/>
+  <!-- OGC-1200 slice 4: what happened on a run -->
+  <include relativeToChangelogFile="true" file="038-result-run-event.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>

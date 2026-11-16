@@ -703,4 +703,5 @@
   <include relativeToChangelogFile="true" file="145-optional-reporting-decimal-places.xml"/>
   <include relativeToChangelogFile="true" file="146-explicit-log-display.xml"/>
   <include relativeToChangelogFile="true" file="147-log-display-source-and-seed.xml"/>
+  <include relativeToChangelogFile="true" file="148-facility-organization-id.xml"/>
 </databaseChangeLog>

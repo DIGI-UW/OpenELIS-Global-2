@@ -100,6 +100,9 @@ public class AnalyzerResultsController extends BaseController {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
+    @org.springframework.context.annotation.Lazy
+    @Autowired
+    private org.openelisglobal.resultrun.service.RunQcService runQcService;
     @Autowired
     private SampleHumanService sampleHumanService;
     @Autowired
@@ -394,6 +397,13 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setUserChoiceReflex(giveUserChoice(result));
         resultItem.setUserChoicePending(false);
         resultItem.setImportIssueReason(result.getImportIssueReason());
+        if (GenericValidator.isBlankOrNull(result.getImportIssueReason()) && result.getRunId() != null
+                && result.getTestId() != null
+                && runQcService.heldTestIds(result.getRunId()).contains(result.getTestId())) {
+            resultItem.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_RUN_QC_FAILED);
+            resultItem.setReadOnly(true);
+            resultItem.setHeldRunId(result.getRunId());
+        }
         resultItem.setSourceProfileId(result.getSourceProfileId());
         resultItem.setSourceProfileRevision(result.getSourceProfileRevision());
         resultItem.setSourceProtocol(result.getSourceProtocol());
