@@ -139,6 +139,7 @@ public class MicroBreakpointAdminServiceTest {
                 "ZONE", null, "30ug")).thenReturn(Optional.empty());
         org.openelisglobal.microbiology.form.MicroBreakpointRuleAdminForm request =
                 new org.openelisglobal.microbiology.form.MicroBreakpointRuleAdminForm();
+        when(organismDAO.getLabGroupNames()).thenReturn(List.of("Enterobacterales"));
         request.organismGroup = "Enterobacterales";
         request.antibioticId = "cip";
         request.method = MicroAstTechnique.DISK_DIFFUSION.name();

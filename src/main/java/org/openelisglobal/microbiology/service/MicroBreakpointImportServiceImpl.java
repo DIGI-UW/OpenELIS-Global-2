@@ -189,10 +189,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
             Map<List<String>, Optional<MicroOrganism>> organisms = new java.util.HashMap<>();
             Map<List<String>, Optional<MicroAntibiotic>> antibiotics = new java.util.HashMap<>();
             Map<String, String> groups = new java.util.HashMap<>();
-            for (MicroOrganism organism : organismDAO.getAll()) {
-                String group = organism.getOrganismGroup();
-                if (group != null)
-                    groups.putIfAbsent(group.toLowerCase(Locale.ROOT), group);
+            for (String group : organismDAO.getLabGroupNames()) {
+                groups.putIfAbsent(group.toLowerCase(Locale.ROOT), group);
             }
             for (CSVRecord record : parser) {
                 preview.totalRows++;

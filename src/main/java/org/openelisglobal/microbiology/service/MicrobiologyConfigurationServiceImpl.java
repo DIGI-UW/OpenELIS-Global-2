@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.service;
 import java.sql.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
@@ -204,8 +205,8 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
         requireText(rule == null ? null : rule.getBreakpointType(), "rule.breakpointType");
         requireUnmanagedStandard(rule.getStandardId());
         MicroBreakpointRule existing = ruleDAO.findBestRule(rule.getStandardId(), rule.getOrganismId(),
-                rule.getOrganismGroup(), rule.getAntibioticId(), rule.getMethod(), rule.getSpecimenTypeId(),
-                rule.getBreakpointType());
+                rule.getOrganismGroup() == null ? Set.of() : Set.of(rule.getOrganismGroup()), rule.getAntibioticId(),
+                rule.getMethod(), rule.getSpecimenTypeId(), rule.getBreakpointType());
         if (existing != null) {
             if (!"Y".equals(existing.getIsActive())) {
                 existing.setIsActive("Y");

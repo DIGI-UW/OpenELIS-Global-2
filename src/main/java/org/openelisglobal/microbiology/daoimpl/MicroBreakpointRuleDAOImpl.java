@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.daoimpl;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -34,15 +35,15 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
 
     @Override
     @Transactional(readOnly = true)
-    public MicroBreakpointRule findBestRule(String standardId, String organismId, String organismGroup,
+    public MicroBreakpointRule findBestRule(String standardId, String organismId, Set<String> organismGroups,
             String antibioticId, String method, String specimenTypeId, String breakpointType) {
-        return findContextualRule(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
+        return findContextualRule(standardId, organismId, organismGroups, antibioticId, method, specimenTypeId,
                 breakpointType, null, null);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MicroBreakpointRule findContextualRule(String standardId, String organismId, String organismGroup,
+    public MicroBreakpointRule findContextualRule(String standardId, String organismId, Set<String> organismGroups,
             String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext,
             String diskContent) {
         Query<MicroBreakpointRule> query = entityManager.unwrap(Session.class)
@@ -52,16 +53,17 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
                         + " and (r.diskContent = :diskContent or (r.diskContent is null and r.breakpointType <> 'ZONE'))"
                         + " and (r.method is null or r.method = :method)"
                         + " and (r.specimenTypeId is null or r.specimenTypeId = :specimenTypeId)"
-                        + " and (r.organismId = :organismId or r.organismGroup = :organismGroup"
+                        + " and (r.organismId = :organismId or r.organismGroup in (:organismGroups)"
                         + " or (r.organismId is null and r.organismGroup is null))"
                         + " and r.organismCodeType is null order by case when r.organismId = :organismId then 0"
-                        + " when r.organismGroup = :organismGroup then 1 else 2 end,"
+                        + " when r.organismGroup in (:organismGroups) then 1 else 2 end,"
                         + " case when r.clinicalContext = :clinicalContext then 0 else 1 end,"
                         + " case when r.specimenTypeId = :specimenTypeId then 0 else 1 end,"
-                        + " case when r.method = :method then 0 else 1 end", MicroBreakpointRule.class);
+                        + " case when r.method = :method then 0 else 1 end, r.id", MicroBreakpointRule.class);
         query.setParameter("standardId", standardId);
         query.setParameter("organismId", organismId);
-        query.setParameter("organismGroup", organismGroup);
+        // Hibernate 5 cannot bind an empty list; no group is ever blank.
+        query.setParameterList("organismGroups", organismGroups.isEmpty() ? Set.of("") : organismGroups);
         query.setParameter("antibioticId", antibioticId);
         query.setParameter("method", method);
         query.setParameter("specimenTypeId", specimenTypeId);

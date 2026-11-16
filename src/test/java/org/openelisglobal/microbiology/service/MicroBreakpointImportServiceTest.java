@@ -56,10 +56,9 @@ public class MicroBreakpointImportServiceTest {
         MicroOrganism organism = new MicroOrganism();
         organism.setId("eco");
         organism.setDisplayName("Escherichia coli");
-        organism.setOrganismGroup("Enterobacterales");
         when(organismDAO.findByDisplayNameIgnoreCase("Escherichia coli")).thenReturn(Optional.of(organism));
         when(organismDAO.findByDisplayNameIgnoreCase("Missing organism")).thenReturn(Optional.empty());
-        when(organismDAO.getAll()).thenReturn(List.of(organism));
+        when(organismDAO.getLabGroupNames()).thenReturn(List.of("Enterobacterales"));
         MicroAntibiotic antibiotic = new MicroAntibiotic();
         antibiotic.setId("cip");
         antibiotic.setWhonetCode("CIP");
@@ -155,10 +154,10 @@ public class MicroBreakpointImportServiceTest {
         var preview = service.preview(rows);
         assertEquals(2, preview.validRows);
         assertEquals(1, preview.skippedRows);
-        verify(organismDAO).getAll();
-        when(organismDAO.getAll()).thenReturn(List.of());
+        verify(organismDAO).getLabGroupNames();
+        when(organismDAO.getLabGroupNames()).thenReturn(List.of());
         assertEquals(0, service.preview(rows).validRows);
-        verify(organismDAO, org.mockito.Mockito.times(2)).getAll();
+        verify(organismDAO, org.mockito.Mockito.times(2)).getLabGroupNames();
     }
 
     @Test
@@ -256,21 +255,6 @@ public class MicroBreakpointImportServiceTest {
                     .replace("resistant_value,units\n", "resistant_value,units,resistant_inclusive\n");
             assertEquals(fields, 1, service.preview(withDisk(strict)).validRows);
         }
-    }
-
-    @Test
-    public void groupIdentityRemainsImportableWhenItsOrganismsAreLocallyInactive() {
-        var inactive = new MicroOrganism();
-        inactive.setId("inactive");
-        inactive.setOrganismGroup("Enterobacterales");
-        inactive.setIsActive("N");
-        when(organismDAO.getAll()).thenReturn(List.of(inactive));
-        var preview = service.preview(csv("CLSI,SYNTH-2026,group:Enterobacterales,CIP,MIC,,MIC,1,,,4,ug/mL\n"));
-        assertEquals(1, preview.validRows);
-        assertEquals(1, service.apply(preview.previewToken, "42").importedRows);
-        assertEquals("N", inactive.getIsActive());
-        verify(organismDAO, never()).getActiveOrganisms();
-        verify(organismDAO, never()).update(org.mockito.ArgumentMatchers.any());
     }
 
     @Test

@@ -1073,7 +1073,7 @@ describe("microbiology reference administration", () => {
       locallyCustomized: true,
     });
     getReferenceOptions.mockImplementation((resource) => {
-      if (resource === "organism-groups")
+      if (resource === "lab-organism-groups")
         return Promise.resolve([
           { id: "Enterobacterales", label: "Enterobacterales" },
         ]);
@@ -1095,6 +1095,9 @@ describe("microbiology reference administration", () => {
     const notes = await screen.findByLabelText(
       messages["microbiology.admin.field.notes"],
     );
+    expect(
+      await screen.findByRole("option", { name: "Enterobacterales" }),
+    ).toBeInTheDocument();
     await user.type(notes, "Local verification");
     await user.click(
       screen.getByRole("button", { name: messages["button.save"] }),
