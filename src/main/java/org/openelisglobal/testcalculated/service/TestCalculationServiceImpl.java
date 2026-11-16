@@ -54,7 +54,7 @@ public class TestCalculationServiceImpl extends AuditableBaseObjectServiceImpl<C
     @Transactional(readOnly = true)
     public void validateRule(Calculation calculation, boolean willBeActive) {
         try {
-            CalculationExpression.compile(calculation.getOperations());
+            CalculationExpression.compile(calculation.getOperations(), this::readsCodedResult);
         } catch (IllegalArgumentException e) {
             throw new CalculationRuleViolation(INVALID_LOGIC, Map.of());
         }
@@ -166,6 +166,12 @@ public class TestCalculationServiceImpl extends AuditableBaseObjectServiceImpl<C
         }
         return primaries.computeIfAbsent(testId,
                 id -> StringUtils.defaultString(ruleResultScope.primaryComponentId(id)));
+    }
+
+    private boolean readsCodedResult(Operation operation) {
+        Test test = testService.getTestById(operation.getValue());
+        return test != null && "D".equals(ruleResultScope.resultTypeForComponent(test.getId(),
+                operation.getComponentId(), testService.getResultType(test)));
     }
 
     private String testName(String testId) {

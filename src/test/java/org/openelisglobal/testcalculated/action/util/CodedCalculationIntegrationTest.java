@@ -239,12 +239,35 @@ public class CodedCalculationIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void aBlankedControlKeepsADetectedResult() {
+        threeRules();
+        record(notDetected, detected);
+        record(detected, detected);
+
+        jdbc.update("UPDATE clinlims.result SET value = '' WHERE id = ?", controlResult);
+        record(detected, null);
+
+        assertEquals(detected, outcomeValue().longValue());
+    }
+
+    @Test
     public void rulesWithDifferentAnswersShareTheResultButNotTheSameAnswer() {
         threeRules();
 
         Calculation another = ruleFor("another invalid", invalid, notDetected, notDetected);
         assertThrows(CalculationRuleViolation.class, () -> calculationService.validateRule(another, true));
         calculationService.validateRule(ruleFor("unknown", answer("CodedCalc Unknown"), detected, null), true);
+    }
+
+    @Test
+    public void aCodedCallIsNotANumber() {
+        Calculation arithmetic = ruleFor("arithmetic", detected, detected, null);
+        arithmetic.setOperations(new ArrayList<>(
+                List.of(operation(Operation.OperationType.TEST_RESULT, String.valueOf(PCR_TEST), call, 0),
+                        operation(Operation.OperationType.MATH_FUNCTION, ">=", null, 1),
+                        operation(Operation.OperationType.INTEGER, "2", null, 2))));
+
+        assertThrows(CalculationRuleViolation.class, () -> calculationService.validateRule(arithmetic, true));
     }
 
     private void threeRules() {

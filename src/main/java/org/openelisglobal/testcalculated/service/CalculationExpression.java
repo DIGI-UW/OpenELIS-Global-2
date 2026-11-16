@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import org.openelisglobal.common.util.BoundedDecimal;
 import org.openelisglobal.testcalculated.valueholder.Operation;
 import org.springframework.expression.ParseException;
@@ -26,6 +27,7 @@ public final class CalculationExpression {
             "||");
     private final SpelNode root;
     private final Map<String, Binding> bindings;
+    private final Predicate<Operation> codedOperand;
 
     public record Operand(double value, Double minimum, Double maximum, boolean coded) {
         public Operand(double value) {
@@ -80,13 +82,18 @@ public final class CalculationExpression {
         }
     }
 
-    private CalculationExpression(SpelNode root, Map<String, Binding> bindings) {
+    private CalculationExpression(SpelNode root, Map<String, Binding> bindings, Predicate<Operation> codedOperand) {
         this.root = root;
         this.bindings = bindings;
+        this.codedOperand = codedOperand;
         type(root, 0);
     }
 
     public static CalculationExpression compile(List<Operation> operations) {
+        return compile(operations, operation -> false);
+    }
+
+    public static CalculationExpression compile(List<Operation> operations, Predicate<Operation> codedOperand) {
         if (operations == null || operations.isEmpty() || operations.size() > MAX_OPERATIONS)
             throw invalid("A calculation needs between 1 and 256 operations");
         StringBuilder source = new StringBuilder();
@@ -148,7 +155,7 @@ public final class CalculationExpression {
         }
         try {
             SpelExpression parsed = (SpelExpression) new SpelExpressionParser().parseExpression(source.toString());
-            return new CalculationExpression(parsed.getAST(), bindings);
+            return new CalculationExpression(parsed.getAST(), bindings, codedOperand);
         } catch (ParseException e) {
             throw invalid("Invalid calculation syntax");
         }
@@ -190,7 +197,8 @@ public final class CalculationExpression {
             Binding binding = bindings.get(node.toStringAST());
             if (binding == null)
                 throw invalid("Unknown operand");
-            return binding.kind();
+            return binding.kind() == Kind.OPERAND && codedOperand.test(binding.operation()) ? Kind.ANSWER
+                    : binding.kind();
         }
         if (!Set.of("OpPlus", "OpMinus", "OpMultiply", "OpDivide", "OpEQ", "OpNE", "OpGE", "OpLE", "OpAnd", "OpOr")
                 .contains(kind))

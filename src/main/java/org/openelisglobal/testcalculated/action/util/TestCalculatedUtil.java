@@ -371,7 +371,7 @@ public class TestCalculatedUtil {
                 }
                 return analysis;
             }
-            if (isAnswerType(resultType) && "false".equals(value)
+            if (isAnswerType(resultType) && !"true".equals(value)
                     && !holdsOwnAnswer(resultCalculation, resultSet, calculation)) {
                 return null;
             }

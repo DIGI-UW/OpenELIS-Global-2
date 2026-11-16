@@ -251,6 +251,9 @@ public class ReflexCalcViewServiceImpl implements ReflexCalcViewService {
             String label = measurementLabel(op.getValue(), op.getScopedSampleTypeId(), op.getComponentId());
             return label == null ? op.getValue() : "[" + label + "]";
         }
+        if (Operation.OperationType.ANSWER.equals(op.getType())) {
+            return "'" + dictionaryValue(op.getValue()) + "'";
+        }
         if (op.getValue() != null && !op.getValue().isBlank()) {
             return op.getValue();
         }

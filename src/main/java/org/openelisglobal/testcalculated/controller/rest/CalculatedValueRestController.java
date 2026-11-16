@@ -112,11 +112,6 @@ public class CalculatedValueRestController {
     }
 
     /**
-     * The component a calculation writes to has to belong to its resulting test and
-     * be able to hold the value it produces: a number, or for a coded component the
-     * answer the rule names.
-     */
-    /**
      * An unset component picker posts "", which Postgres reads as a key that does
      * not exist rather than as no key at all, and the foreign key rejects it. Both
      * the destination and every operand normalise to NULL.
@@ -134,6 +129,10 @@ public class CalculatedValueRestController {
         }
     }
 
+    /**
+     * The destination must be a component of the resulting test; a coded one needs
+     * the answer the rule writes.
+     */
     private void validateDestination(Calculation calculation) {
         String componentId = calculation.getComponentId();
         if (componentId == null || componentId.isBlank() || calculation.getTestId() == null) {
