@@ -654,6 +654,20 @@ class DevStackContractTest(unittest.TestCase):
         self.assertIn("target: dev-runtime", compose)
         self.assertIn("../../target/OpenELIS-Global.war:", compose)
 
+    def test_light_image_build_leaves_the_full_only_images_alone(self):
+        # The light setup never runs the analyzer simulator or the Bridge, so
+        # their images are neither built nor renamed: a broken simulator build
+        # must not stop a light up.
+        context = self.dev_stack.make_context(REPO_ROOT)._replace(setup="light")
+        environment = {}
+        with patch.object(self.dev_stack, "run") as run:
+            self.dev_stack.build_images(context, environment)
+        command = run.call_args.args[0]
+        self.assertEqual(command[-4:], ["build", "certs", "frontend.openelis.org", "oe.openelis.org"])
+        self.assertEqual(environment["DEV_STACK_BACKEND_IMAGE"], f"{context.project}-backend:dev")
+        self.assertNotIn("DEV_STACK_MOCK_IMAGE", environment)
+        self.assertNotIn("DEV_STACK_BRIDGE_IMAGE", environment)
+
     def test_backend_running_probe_is_scoped_to_the_worktree(self):
         context = self.dev_stack.make_context(REPO_ROOT)
         environment = self.dev_stack.build_environment(context)

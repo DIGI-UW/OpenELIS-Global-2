@@ -645,11 +645,16 @@ def bootstrap_analyzer_harness(
 
 
 def build_images(context: StackContext, environment: dict[str, str]) -> None:
-    """Build every application image from the checkout and run those instead."""
-    for _, variable, _, name in APPLICATION_IMAGES:
+    """Build the application images this setup runs from the checkout and run those instead."""
+    images = [
+        image
+        for image in APPLICATION_IMAGES
+        if context.setup != "light" or image[0] in LIGHT_SERVICES
+    ]
+    for _, variable, _, name in images:
         environment[variable] = f"{context.project}-{name}:dev"
     run(
-        compose_command(context, "build", *(service for service, _, _, _ in APPLICATION_IMAGES)),
+        compose_command(context, "build", *(service for service, _, _, _ in images)),
         cwd=context.project_dir,
         environment=environment,
     )
