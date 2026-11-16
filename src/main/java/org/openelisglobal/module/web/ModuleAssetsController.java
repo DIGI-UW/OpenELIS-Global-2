@@ -7,6 +7,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import org.openelisglobal.module.runtime.ModuleRecord;
 import org.openelisglobal.module.runtime.ModuleRegistry;
 import org.springframework.http.CacheControl;
@@ -23,9 +24,13 @@ import org.springframework.web.servlet.HandlerMapping;
  * Serves a started module's prebuilt frontend from its JAR: {@code GET
  * /modules/{id}/<path>} reads {@code META-INF/resources/modules/<id>/<path>}
  * through the module's class loader. Hashed chunks are immutable for a year;
- * the remote entry and the message files are revalidated on every load.
- * Requires the authenticated session like every other page; excluded from the
- * URL interceptor like the core's static files.
+ * the remote entry and the message files are revalidated on every load. A
+ * revalidation is answered from the ETag alone, which carries the running JAR's
+ * digest, and a file is read from the JAR once per digest and kept in memory.
+ * The ETag is weak so that the connector's compression applies: Tomcat never
+ * compresses a response that carries a strong ETag. Requires the authenticated
+ * session like every other page; excluded from the URL interceptor like the
+ * core's static files.
  */
 @RestController
 public class ModuleAssetsController {
@@ -37,6 +42,7 @@ public class ModuleAssetsController {
             MediaType.valueOf("font/woff"), "txt", MediaType.TEXT_PLAIN);
 
     private final ModuleRegistry registry;
+    private final Map<String, byte[]> bytesByDigestAndPath = new ConcurrentHashMap<>();
 
     public ModuleAssetsController(ModuleRegistry registry) {
         this.registry = registry;
@@ -52,25 +58,27 @@ public class ModuleAssetsController {
         if (path == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-        URL resource = module.get().classLoader().findResource("META-INF/resources/modules/" + id + "/" + path);
-        if (resource == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        URLConnection connection = resource.openConnection();
-        connection.setUseCaches(false);
-        byte[] bytes;
-        try (InputStream in = connection.getInputStream()) {
-            bytes = in.readAllBytes();
-        }
+        String digest = module.get().sha256().substring(0, 16);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(mediaType(path));
         headers.setCacheControl(isImmutable(path) ? CacheControl.maxAge(java.time.Duration.ofDays(365)).immutable()
                 : CacheControl.noCache());
-        headers.setETag(
-                "\"" + module.get().sha256().substring(0, 16) + "-" + Integer.toHexString(path.hashCode()) + "\"");
-        String ifNoneMatch = request.getHeader(HttpHeaders.IF_NONE_MATCH);
-        if (ifNoneMatch != null && ifNoneMatch.equals(headers.getETag())) {
+        headers.setETag(etag(digest, path));
+        if (matches(request.getHeader(HttpHeaders.IF_NONE_MATCH), headers.getETag())) {
             return ResponseEntity.status(HttpStatus.NOT_MODIFIED).headers(headers).build();
+        }
+        byte[] bytes = bytesByDigestAndPath.get(digest + "/" + path);
+        if (bytes == null) {
+            URL resource = module.get().classLoader().findResource("META-INF/resources/modules/" + id + "/" + path);
+            if (resource == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            URLConnection connection = resource.openConnection();
+            connection.setUseCaches(false);
+            try (InputStream in = connection.getInputStream()) {
+                bytes = in.readAllBytes();
+            }
+            bytesByDigestAndPath.put(digest + "/" + path, bytes);
         }
         return ResponseEntity.ok().headers(headers).body(bytes);
     }
@@ -109,5 +117,27 @@ public class ModuleAssetsController {
         String file = path.substring(path.lastIndexOf('/') + 1);
         return (path.startsWith("assets/") || path.startsWith("__federation"))
                 && file.matches(".*-[0-9A-Za-z_]{6,}\\.[a-z0-9]+$");
+    }
+
+    /** A weak validator for one file of one JAR build. */
+    static String etag(String digest, String path) {
+        return "W/\"" + digest + "-" + Integer.toHexString(path.hashCode()) + "\"";
+    }
+
+    /**
+     * Whether an {@code If-None-Match} header names this ETag: the weak form the
+     * controller sends, or the strong form a proxy may have reduced it to.
+     */
+    static boolean matches(String ifNoneMatch, String etag) {
+        if (ifNoneMatch == null) {
+            return false;
+        }
+        for (String candidate : ifNoneMatch.split(",")) {
+            String value = candidate.trim();
+            if (value.equals("*") || value.equals(etag) || ("W/" + value).equals(etag)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

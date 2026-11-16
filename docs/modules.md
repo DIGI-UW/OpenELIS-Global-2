@@ -1467,6 +1467,13 @@ shared library's major version (React 18 will be one) are majors.
    request mapping, permissions become `system_module` rows (first install
    grants `defaultRoles`), menu entries join the menu in memory.
 8. **Start.** `validate`, then `onStart`. The module is `STARTED`.
+9. **Frontend files.** After login the shell reads `/rest/module-registry` and
+   loads a started module's pages from `/modules/<id>/…`, served from the JAR.
+   Hashed chunks under `assets/` are cached for a year; `remoteEntry.js` and the
+   message files are revalidated on every load with a weak `ETag` that names the
+   JAR's digest, so a revalidation is answered without reading the JAR. Text
+   responses are compressed by Tomcat's connector (`tomcat/oe_server.xml`); no
+   proxy setting is needed.
 
 Any failure after validation stops the application with the module named and the
 two ways out: the `<jar>.disabled` marker or `modules.<id>.enabled=false`, then
@@ -1496,4 +1503,5 @@ a restart.
 | A REST call answers 403                        | The user's role does not hold the handler's permission; grant it in Role Management                                                             |
 | A REST call answers 404                        | The controller is not under `backend.basePackages`, or the path lacks `/rest/modules/<id>/`                                                     |
 | The log refuses a changeset of the module      | Every changeset id must start with `<id>-` and its author must be `<id>`                                                                        |
+| Module files arrive uncompressed               | The deployment runs its own `server.xml`; copy the connector's `compression` attributes from `tomcat/oe_server.xml`                             |
 | `mvn` cannot find `openelisglobal:classes`     | The core artifacts are not installed; run `scripts/dev-stack up --module …` or the four install commands in [Build](#8-test-build-and-ci)       |
