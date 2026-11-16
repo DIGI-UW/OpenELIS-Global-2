@@ -93,6 +93,9 @@ const BreakpointRuleForm = ({
             titleText={intl.formatMessage({
               id: "microbiology.isolate.organism",
             })}
+            placeholder={intl.formatMessage({
+              id: "microbiology.admin.astRules.anyOrganism",
+            })}
             value={draft.organismId}
             onChange={(organismId) =>
               setDraft((current) => ({
