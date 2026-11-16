@@ -100,6 +100,60 @@ test.describe("OGC-1635 typed dates", () => {
     expect((await dashboard).url()).toContain("startDate=2026-11-01");
   });
 
+  test("the Validation search loads with a range typed into From and To", async ({
+    page,
+  }) => {
+    await page.goto("/validation", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#validationFromDate")).toBeVisible({
+      timeout: NAV_TIMEOUT,
+    });
+    const df = await dayFirst(page, "validationFromDate");
+    const from = asTyped(1, 11, 2026, df);
+    const to = asTyped(16, 11, 2026, df);
+    await typeInto(page, "validationFromDate", from);
+    await typeInto(page, "validationToDate", to);
+    await page.getByRole("main").getByRole("heading").first().click();
+
+    const load = page.waitForRequest((request) =>
+      request.url().includes("/rest/AccessionValidation?"),
+    );
+    await page.getByRole("button", { name: "Load results" }).click();
+    const params = new URL((await load).url()).searchParams;
+
+    expect(params.get("fromDate")).toBe(from);
+    expect(params.get("toDate")).toBe(to);
+  });
+
+  test("a holiday date typed into the field that has focus from the start is saved", async ({
+    page,
+  }) => {
+    const day = 20 + (Date.now() % 8);
+    const name = `OGC1635 ${Date.now().toString().slice(-6)}`;
+    await page.goto("/MasterListsPage/calendarManagement", {
+      waitUntil: "domcontentloaded",
+    });
+    await page
+      .getByTestId("add-holiday-button")
+      .click({ timeout: NAV_TIMEOUT });
+    const date = page.getByLabel("Date", { exact: true });
+    await expect(date).toBeFocused({ timeout: UI_TIMEOUT });
+    await page.keyboard.type(`${new Date().getFullYear()}-12-${day}`);
+    await page.getByLabel("Holiday Name", { exact: true }).fill(name);
+    const save = page.getByTestId("save-holiday-button");
+    await expect(save).toBeEnabled({ timeout: UI_TIMEOUT });
+    await save.click();
+
+    const row = page.locator("tr", { hasText: name });
+    await expect(row).toContainText(`-12-${day}`, { timeout: UI_TIMEOUT });
+
+    await row.getByRole("button", { name: "Delete" }).click();
+    await page
+      .locator(".cds--modal.is-visible")
+      .getByRole("button", { name: "Delete" })
+      .click();
+    await expect(row).toHaveCount(0, { timeout: UI_TIMEOUT });
+  });
+
   test("the Report NCE form refuses a typed future date of event and says why", async ({
     page,
   }) => {

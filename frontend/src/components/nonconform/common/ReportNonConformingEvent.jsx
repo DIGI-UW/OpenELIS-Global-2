@@ -4,7 +4,6 @@ import { labNow } from "../../utils/labClock";
 import {
   Button,
   Column,
-  DatePicker,
   DatePickerInput,
   Grid,
   Select,
@@ -21,6 +20,7 @@ import {
   Tile,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import {
@@ -39,7 +39,6 @@ import "./ReportNonConformingEvent.css";
 import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 import SearchableSelect from "../../common/SearchableSelect";
 import useSiteDateFormat from "../../common/useSiteDateFormat";
-import useTypedDateCommit from "../../common/useTypedDateCommit";
 
 const initialReportFormValues = {
   type: undefined,
@@ -85,7 +84,6 @@ export const ReportNonConformingEvent = () => {
 
   const intl = useIntl();
   const siteDate = useSiteDateFormat();
-  const typedDate = useTypedDateCommit();
   const location = useLocation();
 
   const today = format(labNow(), "MM/dd/yyyy");
@@ -596,10 +594,7 @@ export const ReportNonConformingEvent = () => {
                 parseDate={siteDate.parseDate}
                 id="date-of-event-picker"
                 datePickerType="single"
-                invalid={
-                  !!errors.dateOfEvent ||
-                  typedDate.picker("date-of-event").invalid
-                }
+                invalid={!!errors.dateOfEvent}
                 value={
                   nceForm.dateOfEvent
                     ? parse(nceForm.dateOfEvent, "MM/dd/yyyy", labNow())
@@ -622,7 +617,6 @@ export const ReportNonConformingEvent = () => {
               >
                 <DatePickerInput
                   id="date-of-event"
-                  {...typedDate.input("date-of-event")}
                   placeholder={siteDate.placeholder}
                   {...requiredProps()}
                   labelText={
@@ -634,10 +628,7 @@ export const ReportNonConformingEvent = () => {
                       <RequiredMarker />
                     </>
                   }
-                  invalidText={
-                    typedDate.input("date-of-event").invalidText ||
-                    errors.dateOfEvent
-                  }
+                  invalidText={errors.dateOfEvent}
                 />
               </DatePicker>
             </Column>

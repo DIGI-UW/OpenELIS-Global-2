@@ -15,9 +15,9 @@ import {
   SelectItem,
   Checkbox,
   TextArea,
-  DatePicker,
   DatePickerInput,
 } from "@carbon/react";
+import { DatePicker } from "../../../common/DatePicker";
 import { ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { useOrderContext } from "../../OrderContext";

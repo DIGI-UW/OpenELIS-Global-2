@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useIntl } from "react-intl";
-import useSiteDateFormat from "./useSiteDateFormat";
 
-const FULL_YEAR = /\d{4}$/;
+const FULL_YEAR = /\d{4}/;
 
 function flatpickrOf(input) {
   if (input?._flatpickr) return input._flatpickr;
@@ -21,6 +20,28 @@ function inputsOf(fp) {
       )
     : [fp.input];
   return inputs.slice(0, 2);
+}
+
+/**
+ * Whether a typed date names the date it was parsed into: the parser rolls
+ * 2026-13-45 over into 2027, so the date must format back to the same numbers
+ * (leading zeros aside).
+ */
+function sameDigits(formatted, typed) {
+  const digits = (text) =>
+    (text.match(/\d+/g) || []).map((part) => String(Number(part))).join("-");
+  return digits(formatted) === digits(typed) && !/[^\d\s/.\-:]/.test(typed);
+}
+
+/** The format a picker expects, as its field shows it (e.g. mm/dd/yyyy). */
+function formatOf(fp) {
+  return (
+    fp.input.getAttribute("placeholder") ||
+    fp.config.dateFormat
+      .replace("Y", "yyyy")
+      .replace("m", "mm")
+      .replace("d", "dd")
+  );
 }
 
 function shownText(fp, index) {
@@ -44,10 +65,12 @@ function selectedText(fp) {
  * close, blur or Enter, typed text is parsed with the picker's own parser and sent
  * through the picker's onChange, an empty field clears the date, and text that
  * is not a date stays in the field, marked invalid, while the date is cleared.
+ * A typed start of a range is kept when the click that commits it lands outside:
+ * flatpickr drops a one-date range there without telling onChange, so the page
+ * held a date the field no longer showed.
  */
 export default function useTypedDateCommit() {
   const intl = useIntl();
-  const siteDate = useSiteDateFormat();
   const [invalidKeys, setInvalidKeys] = useState({});
   const attached = useRef(new WeakSet());
 
@@ -64,6 +87,17 @@ export default function useTypedDateCommit() {
       const inputs = inputsOf(fp);
       const pending = new Map();
       let emitted = selectedText(fp);
+      let typedStartOnly = false;
+      const clear = fp.clear;
+      fp.clear = (triggerChange = true, toInitial = true) => {
+        const keep =
+          typedStartOnly &&
+          triggerChange === false &&
+          fp.selectedDates.length === 1;
+        typedStartOnly = false;
+        if (keep) return undefined;
+        return clear(triggerChange, toInitial);
+      };
 
       const reconcile = () => {
         if (pending.size === 0) return false;
@@ -83,15 +117,22 @@ export default function useTypedDateCommit() {
             input.value = texts[index];
             pending.set(input, texts[index]);
           });
-          setInvalid(key, reason);
+          setInvalid(
+            key,
+            reason === "format" ? `format|${formatOf(fp)}` : reason,
+          );
           return true;
         };
         const startMissing = fp.config.mode === "range" && !texts[0];
-        const dates = filled.map((text) =>
-          FULL_YEAR.test(text)
+        const dates = filled.map((text) => {
+          const date = FULL_YEAR.test(text)
             ? fp.parseDate(text, fp.config.dateFormat)
-            : undefined,
-        );
+            : undefined;
+          return date &&
+            sameDigits(fp.formatDate(date, fp.config.dateFormat), text)
+            ? date
+            : undefined;
+        });
         const { maxDate, minDate } = fp.config;
         if (startMissing || dates.some((date) => !date)) {
           return refuse("format");
@@ -109,6 +150,7 @@ export default function useTypedDateCommit() {
           .map((date) => fp.formatDate(date, fp.config.dateFormat))
           .join("|");
         if (typedKey !== emitted) fp.setDate(dates, true);
+        typedStartOnly = fp.config.mode === "range" && dates.length === 1;
         setInvalid(key, null);
         return false;
       };
@@ -159,17 +201,23 @@ export default function useTypedDateCommit() {
     [setInvalid],
   );
 
-  const messages = useMemo(
-    () => ({
-      format: intl.formatMessage(
+  const messageFor = (reason) => {
+    if (!reason) {
+      return undefined;
+    }
+    if (reason.startsWith("format|")) {
+      return intl.formatMessage(
         { id: "datepicker.invalidDate" },
-        { format: siteDate.placeholder },
-      ),
-      future: intl.formatMessage({ id: "datepicker.future.notAllowed" }),
-      past: intl.formatMessage({ id: "datepicker.past.notAllowed" }),
-    }),
-    [intl, siteDate.placeholder],
-  );
+        { format: reason.slice("format|".length) },
+      );
+    }
+    return intl.formatMessage({
+      id:
+        reason === "future"
+          ? "datepicker.future.notAllowed"
+          : "datepicker.past.notAllowed",
+    });
+  };
   const picker = useCallback(
     (key) => ({ invalid: Boolean(invalidKeys[key]) }),
     [invalidKeys],
@@ -180,10 +228,9 @@ export default function useTypedDateCommit() {
         const fp = flatpickrOf(event.target);
         if (fp) attach(key, fp);
       },
-      invalidText:
-        message && invalidKeys[key] ? messages[invalidKeys[key]] : undefined,
+      invalidText: message ? messageFor(invalidKeys[key]) : undefined,
     }),
-    [attach, invalidKeys, messages],
+    [attach, invalidKeys, intl],
   );
   return { picker, input };
 }

@@ -11,7 +11,6 @@ import {
   InlineNotification,
   Button,
   Column,
-  DatePicker,
   DatePickerInput,
   Grid,
   Heading,
@@ -28,6 +27,7 @@ import {
   TableRow,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   displayDateToIso,
