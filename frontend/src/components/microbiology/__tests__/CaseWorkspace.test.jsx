@@ -396,3 +396,10 @@ describe("case actions", () => {
     ).not.toBeInTheDocument();
   });
 });
+test("lets keyboard users focus and scroll the samples table", async () => {
+  const service = { getCase: vi.fn().mockResolvedValue(shell) };
+  renderPage(<CaseViewShell service={service} caseId="case-1" />);
+  expect(
+    await screen.findByRole("table", { name: messages["common.samples"] }),
+  ).toHaveAttribute("tabindex", "0");
+});
