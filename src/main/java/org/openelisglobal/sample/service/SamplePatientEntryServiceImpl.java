@@ -33,6 +33,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.compliance.service.ComplianceStandardService;
 import org.openelisglobal.compliance.valueholder.ComplianceStandard;
+import org.openelisglobal.containertype.service.ContainerProposalService;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.eqa.service.EQAPanelReceiptService;
 import org.openelisglobal.eqa.service.SampleEQAService;
@@ -116,6 +117,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
     @Autowired
     private OrganizationAddressService organizationAddressService;
+    @Lazy
+    @Autowired
+    private ContainerProposalService containerProposalService;
     @Autowired
     private TestSectionService testSectionService;
     @Autowired
@@ -566,6 +570,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 savedItem = sampleItemService.get(sampleTestCollection.existingSampleItemId);
                 if (savedItem != null) {
                     sampleItemId = savedItem.getId();
+                    if (sampleTestCollection.suppliedCollectionFields.contains("containerTypeId")) {
+                        checkContainer(sampleTestCollection.item, savedItem);
+                        savedItem.setContainerTypeId(sampleTestCollection.item.getContainerTypeId());
+                    }
                     // Update existing sample item with new collection data
                     savedItem.setSysUserId(sampleTestCollection.item.getSysUserId());
                     // Copy collection details from the incoming item
@@ -606,6 +614,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
             boolean createdInThisSave = savedItem == null;
             if (savedItem == null) {
+                checkContainer(sampleTestCollection.item, null);
                 if (GenericValidator.isBlankOrNull(sampleTestCollection.item.getFhirUuidAsString())) {
                     sampleTestCollection.item.setFhirUuid(UUID.randomUUID());
                 }
@@ -1202,6 +1211,23 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             request.setSysUserId(updateData.getCurrentUserId());
             sampleTypeRequestService.update(request);
             linkedItemIds.add(item.getId());
+        }
+    }
+
+    /**
+     * A clinical sample's container must yield its sample type, and be active
+     * unless the sample already had it (OGC-1611 FR-G3, G8).
+     */
+    private void checkContainer(SampleItem incoming, SampleItem saved) {
+        Long containerTypeId = incoming.getContainerTypeId();
+        if (containerTypeId == null) {
+            return;
+        }
+        String sampleTypeId = incoming.getTypeOfSample() != null ? incoming.getTypeOfSample().getId()
+                : saved == null ? null : saved.getTypeOfSampleId();
+        Long kept = saved == null ? null : saved.getContainerTypeId();
+        if (sampleTypeId == null || !containerProposalService.canHold(containerTypeId, sampleTypeId, kept)) {
+            throw new IllegalArgumentException("order.sample.container.refused");
         }
     }
 

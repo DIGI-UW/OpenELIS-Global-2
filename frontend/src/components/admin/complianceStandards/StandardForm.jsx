@@ -12,10 +12,10 @@ import {
   Tag,
   Button,
   Accordion,
-  DatePicker,
   DatePickerInput,
   InlineNotification,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { Add, Save, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {

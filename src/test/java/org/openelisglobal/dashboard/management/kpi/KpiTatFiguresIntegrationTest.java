@@ -15,11 +15,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -73,9 +75,14 @@ public class KpiTatFiguresIntegrationTest extends BaseWebContextSensitiveTest {
     private int samples;
     private String unitA;
     private String unitB;
+    private TimeZone runnersTimeZone;
 
     @Before
     public void seedAnalyses() {
+        // Clocks in Los Angeles move forward on 2097-03-10, inside the scope, so
+        // every runner sees one sample's turnaround span a daylight saving change.
+        runnersTimeZone = TimeZone.getDefault();
+        TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"));
         fixtures.ensureRequiredWorkflowStatuses();
         testSectionService.refreshNames();
         jdbcTemplate.update("DELETE FROM clinlims.qi_config");
@@ -113,6 +120,23 @@ public class KpiTatFiguresIntegrationTest extends BaseWebContextSensitiveTest {
         analysis(sample("2097-03-11 01:00"), testA, sectionA, "2097-03-11 03:00", Status.DONE);
     }
 
+    @After
+    public void restoreTimeZone() {
+        TimeZone.setDefault(runnersTimeZone);
+    }
+
+    @Test
+    public void turnaroundAcrossADaylightSavingChangeIsElapsedHours() {
+        // Received 2097-03-09 08:00 and released 2097-03-11 00:00: 40 hours on the
+        // wall clock, 39 elapsed.
+        BigDecimal elapsed = new BigDecimal("39.00");
+        assertEquals(elapsed, kpiService.getKpis(SCOPE).medianTat().spark().get(8));
+        assertEquals(List.of(elapsed),
+                tatReport(SCOPE.from(), SCOPE.to()).stream()
+                        .filter(r -> r.getReceived().toLocalDateTime().equals(LocalDateTime.of(2097, 3, 9, 8, 0)))
+                        .map(TATResult::getSelectedSegmentTat).toList());
+    }
+
     @Test
     public void tatFiguresMatchTheTatReportsRows() {
         ManagementKpis kpis = kpiService.getKpis(SCOPE);
@@ -139,7 +163,7 @@ public class KpiTatFiguresIntegrationTest extends BaseWebContextSensitiveTest {
         bySection.forEach((section, tat) -> byUnit.put(
                 section == null ? "Unknown" : testSectionService.getTestSectionById(section).getLocalizedName(), tat));
         assertEquals(Set.of(unitA, unitB, "Unknown"), expectedByUnit.keySet());
-        assertEquals(new SectionTat(new BigDecimal("10.00"), new BigDecimal("40.00"), new BigDecimal("60.0")),
+        assertEquals(new SectionTat(new BigDecimal("10.00"), new BigDecimal("39.00"), new BigDecimal("60.0")),
                 byUnit.get(unitB));
         assertEquals(expectedByUnit, byUnit);
     }

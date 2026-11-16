@@ -1,6 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
@@ -209,5 +210,32 @@ describe("OrderReferOutSection", () => {
     });
     expect(staged[0].referralItems).toBeUndefined();
     expect(staged[1].referralItems).toBeUndefined();
+  });
+
+  test("dispatches a saved referral that has no handoff time; the server records now", async () => {
+    orderContext.samples = [
+      tube("501", {
+        referralItems: [
+          {
+            referralId: "41",
+            referredInstituteId: "9000102",
+            referralStatus: "DRAFT",
+          },
+        ],
+      }),
+    ];
+    renderSection();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Options|Actions/ }),
+    );
+    await userEvent.click(await screen.findByText("Dispatch"));
+
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    const [url, body] = postToOpenElisServerJsonResponse.mock.calls[0];
+    expect(url).toBe("/rest/referrals/41/dispatch-subcontract");
+    expect(JSON.parse(body).handoffDatetime).toBe("");
   });
 });

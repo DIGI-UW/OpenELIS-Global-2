@@ -35,6 +35,7 @@ const SST = {
   domains: ["CLINICAL"],
   sampleTypes: [{ id: "2", value: "Serum" }],
   samplesUsing: 3,
+  testsUsing: 2,
 };
 
 const listRequests = [];
@@ -75,6 +76,7 @@ describe("Container Types (OGC-1611 P1)", () => {
     expect(row).toHaveTextContent("Clinical");
     expect(row).toHaveTextContent("Gold");
     expect(row).toHaveTextContent("Serum");
+    expect(row).toHaveTextContent("Tests: 2");
     expect(row).toHaveTextContent("Samples: 3");
     expect(row).toHaveTextContent("Active");
   });
@@ -145,6 +147,22 @@ describe("Container Types (OGC-1611 P1)", () => {
       expect(vi.mocked(postToOpenElisServerFullResponse).mock.calls[0][0]).toBe(
         "/rest/container-types/6/deactivate",
       ),
+    );
+  });
+
+  it("names the one test expecting a container type, in the singular", async () => {
+    const answer = vi.mocked(getFromOpenElisServer).getMockImplementation();
+    vi.mocked(getFromOpenElisServer).mockImplementation((url, callback) =>
+      url.endsWith("/usage")
+        ? callback({ tests: ["Creatinine(Serum)"], samples: 1 })
+        : answer(url, callback),
+    );
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Deactivate" }));
+
+    expect(await screen.findByTestId("container-type-usage")).toHaveTextContent(
+      "Used by 1 test (Creatinine(Serum)) and 1 sample. Existing samples keep it; it can no longer be proposed or chosen.",
     );
   });
 

@@ -50,6 +50,10 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
     private NCEventService ncEventService;
     @Autowired
     private ResultEntryAcknowledgementService acknowledgementService;
+    @Autowired
+    private org.openelisglobal.validationpolicy.dao.AnalysisReviewSignOffDAO signOffDAO;
+    @Autowired
+    private org.openelisglobal.role.service.RoleService roleService;
 
     @Override
     @Transactional(readOnly = true)
@@ -64,8 +68,45 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
         addReferralEvents(analysis, events);
         addNceEvents(analysis, events);
         addAcknowledgementEvents(analysis, events);
+        addSignOffEvents(analysis, events);
         events.sort(Comparator.comparingLong(AnalysisTimelineEvent::getTimestamp).reversed());
         return events;
+    }
+
+    /**
+     * OGC-1364 v2: each review level signed, and each review a modification, retest
+     * or rejection restarted.
+     */
+    private void addSignOffEvents(Analysis analysis, List<AnalysisTimelineEvent> events) {
+        try {
+            for (org.openelisglobal.validationpolicy.valueholder.AnalysisReviewSignOff signOff : signOffDAO
+                    .findByAnalysisIds(List.of(Integer.valueOf(analysis.getId())))) {
+                org.openelisglobal.role.valueholder.Role role = roleService
+                        .getRoleById(String.valueOf(signOff.getRoleId()));
+                String roleName = role == null ? "" : role.getName().trim();
+                SystemUser signer = systemUserService.get(String.valueOf(signOff.getSignerId()));
+                events.add(new AnalysisTimelineEvent("SIGN_OFF", signOff.getSignedAt().toInstant().toEpochMilli(),
+                        DateUtil.convertTimestampToStringDateAndTime(Timestamp.from(signOff.getSignedAt().toInstant())),
+                        org.openelisglobal.internationalization.MessageUtil.getMessage("validation.signOff.level",
+                                new Object[] { signOff.getLevel(), signOff.getReviewLevels(), roleName }),
+                        signer != null ? signer.getDisplayName() : ""));
+                if (signOff.isSuperseded()) {
+                    SystemUser by = signOff.getSupersededBy() == null ? null
+                            : systemUserService.get(String.valueOf(signOff.getSupersededBy()));
+                    events.add(new AnalysisTimelineEvent("REVIEW_RESTARTED",
+                            signOff.getSupersededAt().toInstant().toEpochMilli(),
+                            DateUtil.convertTimestampToStringDateAndTime(
+                                    Timestamp.from(signOff.getSupersededAt().toInstant())),
+                            org.openelisglobal.internationalization.MessageUtil.getMessage(
+                                    "validation.signOff.superseded." + signOff.getSupersededReason().name(),
+                                    new Object[] { signOff.getLevel(), signOff.getReviewLevels(),
+                                            signer != null ? signer.getNameForDisplay() : "" }),
+                            by != null ? by.getDisplayName() : ""));
+                }
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
     }
 
     /** OGC-1023 (R4): the test-referred event, from the Referral record itself. */
