@@ -193,6 +193,130 @@ export function labelTag(row: Locator) {
     .filter({ hasText: /^(Verified|Unverified)$/ });
 }
 
+/** The two stages whose sections list the slides as a table to work through. */
+export type SlideWorkStage = "STAINING" | "COVERSLIPPING";
+
+/** Each slide-work section's item id, and the id its table's parts carry. */
+const SLIDE_WORK_SECTIONS: Record<
+  SlideWorkStage,
+  { sectionId: string; tableId: string }
+> = {
+  STAINING: { sectionId: "pathology-section-staining", tableId: "staining" },
+  COVERSLIPPING: {
+    sectionId: "pathology-section-coverslipping",
+    tableId: "coverslipping",
+  },
+};
+
+/** The section of one slide-work stage. */
+export function slideWorkSection(page: Page, stage: SlideWorkStage) {
+  return page.locator(`#${SLIDE_WORK_SECTIONS[stage].sectionId}`);
+}
+
+/**
+ * One slide's row in a slide-work section's table, by the name the slide
+ * goes by under its block ("A1.1"), matched whole. Both sections list the
+ * same slides, so the row is always addressed inside its section.
+ */
+export function slideWorkRow(
+  page: Page,
+  stage: SlideWorkStage,
+  slideName: string,
+) {
+  const { tableId } = SLIDE_WORK_SECTIONS[stage];
+  return slideWorkSection(page, stage)
+    .locator(`tr[data-testid^="${tableId}Row-"]`)
+    .filter({
+      has: page.locator(".pathology-case-view__row-designation", {
+        hasText: new RegExp(`^${escapeRegExp(slideName)}$`),
+      }),
+    });
+}
+
+/**
+ * A row's own action on a slide, by its accessible name, which starts with
+ * the words the button shows and then names the slide ("Mark stained: A1.1",
+ * "Pass coverslip QC: A1.1").
+ */
+export function slideWorkButton(
+  page: Page,
+  stage: SlideWorkStage,
+  name: string,
+) {
+  return slideWorkSection(page, stage).getByRole("button", {
+    name,
+    exact: true,
+  });
+}
+
+/**
+ * The checkbox that selects one slide, or every slide, for a batch.
+ * Carbon hides the input itself, so the label it is drawn by is what a
+ * person clicks, and the input is what is read back.
+ */
+export function slideSelectCheckbox(
+  page: Page,
+  stage: SlideWorkStage,
+  slideName?: string,
+) {
+  return slideWorkSection(page, stage).getByRole("checkbox", {
+    name: slideName ? `Select ${slideName}` : "Select all slides",
+    exact: true,
+  });
+}
+
+/** Select slides for a batch by clicking each one's checkbox label. */
+export async function selectSlides(
+  page: Page,
+  stage: SlideWorkStage,
+  slideNames: string[],
+) {
+  for (const slideName of slideNames) {
+    const checkbox = slideSelectCheckbox(page, stage, slideName);
+    const id = await checkbox.getAttribute("id");
+    await slideWorkSection(page, stage).locator(`label[for="${id}"]`).click();
+    await expect(checkbox).toBeChecked();
+  }
+}
+
+/** The batch bar's one action ("Mark selected stained", "Pass selected"). */
+export function slideBatchAction(page: Page, stage: SlideWorkStage) {
+  return page.locator(`#${SLIDE_WORK_SECTIONS[stage].tableId}BatchAction`);
+}
+
+/** The row a batch is confirmed in, which names every selected slide. */
+export function slideBatchConfirm(page: Page, stage: SlideWorkStage) {
+  return page.locator(`#${SLIDE_WORK_SECTIONS[stage].tableId}BatchConfirm`);
+}
+
+/**
+ * The line above a slide-work table that says why the whole section is
+ * held, present only while it is.
+ */
+export function slideWorkHold(page: Page, stage: SlideWorkStage) {
+  return page.locator(`#${SLIDE_WORK_SECTIONS[stage].tableId}Hold`);
+}
+
+/**
+ * A wait for one slide mark (a stain status or a coverslip QC result),
+ * registered before the click that starts it.
+ */
+export function waitForSlideWork(
+  page: Page,
+  caseId: string,
+  stage: SlideWorkStage,
+) {
+  const path = `/rest/pathology/caseView/${caseId}/slides/${
+    stage === "STAINING" ? "stain-status" : "coverslip-qc"
+  }`;
+  return page.waitForResponse(
+    (r) =>
+      r.request().method() === "POST" &&
+      new URL(r.url()).pathname.endsWith(path),
+    { timeout: UI_TIMEOUT },
+  );
+}
+
 /**
  * The one row on a list carrying a designation, matched whole, so A1 never
  * also matches A10.
