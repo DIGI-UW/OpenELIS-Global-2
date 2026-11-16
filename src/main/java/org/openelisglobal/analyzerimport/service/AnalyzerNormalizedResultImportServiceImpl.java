@@ -471,7 +471,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         LocalDateTime timestamp = row.getCompleteDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
         if ("D".equals(row.getResultType())) {
             return qcResultProcessingService.processQualitativeQCResult(analyzer.getId(), row.getTestId(),
-                    row.getComponentId(), specimenIdOf(row), row.getControlLevel(), row.getResult(), timestamp);
+                    row.getComponentId(), specimenIdOf(row), row.getControlLevel(), row.getResult(), timestamp,
+                    row.getRunId());
         }
         BigDecimal value;
         try {
@@ -481,8 +482,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                     "Control result is neither numeric nor a mapped answer and remains staged for review");
             return QCResultProcessingService.Outcome.UNSUPPORTED_VALUE;
         }
-        return qcResultProcessingService.processQCResult(analyzer.getId(), row.getTestId(), specimenIdOf(row),
-                row.getControlLevel(), value, row.getUnits(), timestamp);
+        return qcResultProcessingService.processQCResult(analyzer.getId(), row.getTestId(), row.getComponentId(),
+                specimenIdOf(row), row.getControlLevel(), value, row.getUnits(), timestamp, row.getRunId());
     }
 
     private void hold(AnalyzerResults row, String reason) {

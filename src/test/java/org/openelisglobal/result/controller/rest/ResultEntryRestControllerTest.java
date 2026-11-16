@@ -285,6 +285,29 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
+     * OGC-1200 slice 4 (FR-C4, FR-D4): a result stored from a run that now holds
+     * its test is not edited. The refusal names the run as held, so the page shows
+     * the row held with the reason instead of reporting someone else's edit.
+     */
+    @Test
+    public void save_ofAResultWhoseRunHoldsItsTest_isRefused409_namingTheRunAsHeld() throws Exception {
+        String stored = resultService.get("3").getValue();
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, analyzer_id, row_count, opened_at,"
+                + " last_activity_at) VALUES (?, 'ANALYZER', 'HELD', 9201, 1, NOW(), NOW())", run);
+        jdbc.update("UPDATE clinlims.result SET run_id = ? WHERE id = 3", run);
+        jdbc.update("INSERT INTO clinlims.qc_result (id, test_id, source, result_value, run_date_time, result_status,"
+                + " sys_user_id, run_id, run_verdict, verdict_source) VALUES (?, 1, 'ASTM', 1, NOW(), 'PENDING', 1,"
+                + " ?, 'FAIL', 'COMPUTED')", java.util.UUID.randomUUID().toString(), run);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.waitingRun.label").value("RUN-" + run))
+                .andExpect(jsonPath("$.waitingRun.held").value(true)).andExpect(jsonPath("$.error").exists());
+        assertEquals("the held result is unchanged", stored, resultService.get("3").getValue());
+    }
+
+    /**
      * OGC-1200 slice 3 (FR-E10, FR-E10a, FR-E13): a value waiting in a run is
      * accepted through the Results Entry save. The technician's value is saved, the
      * run and the analyzer's own reading are kept on the result, and the staged

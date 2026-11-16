@@ -20,6 +20,7 @@ import {
   Tag,
   Tile,
 } from "@carbon/react";
+import { WarningFilled } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -28,6 +29,7 @@ import {
 import { FlagChip } from "../flags";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import RunsChip from "./RunsChip";
+import RunQcBlock, { RunQc } from "./RunQcBlock";
 import UnifiedResults from "../UnifiedResults";
 import useSiteDateFormat from "../../../common/useSiteDateFormat";
 import { formatRunTime, runSourceKey, runStateKey } from "./runFormat";
@@ -61,6 +63,7 @@ export interface RunHeader {
   total: number;
   rawAvailable: boolean;
   chipCounts?: RunChipCounts;
+  qc?: RunQc | null;
 }
 
 interface RunRow {
@@ -314,6 +317,13 @@ const RunView: React.FC<RunViewProps> = ({
         </Tag>
       );
     }
+    if (row.category === "HELD") {
+      return (
+        <Tag size="sm" type="red" renderIcon={WarningFilled}>
+          <FormattedMessage id="run.row.held" />
+        </Tag>
+      );
+    }
     return (
       <Tag size="sm" type="green">
         <FormattedMessage id="run.row.ready" />
@@ -333,9 +343,9 @@ const RunView: React.FC<RunViewProps> = ({
         ? "run.entry.duplicate"
         : row.importIssueReason
           ? "run.entry.importIssue"
-          : header?.state === "HELD"
-            ? "run.entry.held"
-            : header?.state !== "OPEN"
+          : row.category === "HELD"
+            ? "run.entry.testHeld"
+            : header?.state !== "OPEN" && header?.state !== "HELD"
               ? "run.entry.closed"
               : null;
     return (
@@ -442,6 +452,20 @@ const RunView: React.FC<RunViewProps> = ({
               lowContrast
               hideCloseButton
               title={intl.formatMessage({ id: "run.notFound" })}
+            />
+          </Column>
+        )}
+        {header?.qc && (
+          <Column lg={16} md={8} sm={4}>
+            <RunQcBlock
+              runId={header.id}
+              qc={header.qc}
+              onRecorded={(qc) => {
+                setHeader((current) =>
+                  current ? { ...current, qc } : current,
+                );
+                setReload((n) => n + 1);
+              }}
             />
           </Column>
         )}

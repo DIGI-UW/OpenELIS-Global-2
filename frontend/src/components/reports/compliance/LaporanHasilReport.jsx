@@ -5,7 +5,6 @@ import {
   Button,
   Tag,
   Tile,
-  DatePicker,
   DatePickerInput,
   Dropdown,
   DataTable,
@@ -30,6 +29,7 @@ import {
   TextInput,
   InlineLoading,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,

@@ -15,7 +15,10 @@ export default function useSiteDateFormat() {
   // The calendar keeps the parser it was created with, so a picker created
   // before the site settings loaded would keep reading dates month-first.
   const parseDate = useCallback((text) => {
-    const parsed = parse(text, patternRef.current, labNow());
+    if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(String(text).trim())) {
+      return undefined;
+    }
+    const parsed = parse(String(text).trim(), patternRef.current, labNow());
     return isValid(parsed) ? parsed : undefined;
   }, []);
   return {

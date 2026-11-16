@@ -145,11 +145,13 @@ describe("buildLanguagesFromConfig", () => {
   });
 
   it("keeps a configured locale selectable even without a bundle", () => {
+    // "xx" is not a real language, so Transifex will never add a bundle for it.
+    expect(languageMessages.xx).toBeUndefined();
     const built = buildLanguagesFromConfig([
-      { localeCode: "pt", displayName: "Português" },
+      { localeCode: "xx", displayName: "Unbundled" },
     ]);
-    expect(built["pt"].label).toBe("Português");
-    expect(built["pt"].messages).toBe(languageMessages.en);
+    expect(built["xx"].label).toBe("Unbundled");
+    expect(built["xx"].messages).toBe(languageMessages.en);
   });
 
   it("skips rows without a code and falls back to defaults when empty", () => {

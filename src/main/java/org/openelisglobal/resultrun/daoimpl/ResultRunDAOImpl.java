@@ -109,6 +109,34 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Object[]> getRunsOfAnalyses(Collection<String> analysisIds) {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            return List.of();
+        }
+        try {
+            Query<Object[]> query = session()
+                    .createQuery("SELECT DISTINCT r.analysis.id, r.runId, r.analysis.test.id FROM Result r"
+                            + " WHERE r.runId IS NOT NULL AND r.analysis.id IN (:analysisIds)", Object[].class);
+            query.setParameterList("analysisIds", analysisIds);
+            return query.list();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error finding the runs of analyses", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getTestIdsOfResults(Long runId) {
+        try {
+            return session().createQuery("SELECT DISTINCT r.analysis.test.id FROM Result r WHERE r.runId = :runId",
+                    String.class).setParameter("runId", runId).list();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error finding the tests of a run's results", e);
+        }
+    }
+
     private Session session() {
         return entityManager.unwrap(Session.class);
     }

@@ -234,4 +234,21 @@ public class QCResultDAOImpl extends BaseDAOImpl<QCResult, String> implements QC
             throw new LIMSRuntimeException("Error retrieving distinct instrument IDs from QC results", e);
         }
     }
+
+    @Override
+    public List<QCResult> findByRunIds(java.util.Collection<Long> runIds) throws LIMSRuntimeException {
+        if (runIds == null || runIds.isEmpty()) {
+            return List.of();
+        }
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<QCResult> cq = cb.createQuery(QCResult.class);
+            Root<QCResult> root = cq.from(QCResult.class);
+            cq.where(root.get("runId").in(runIds));
+            cq.orderBy(cb.asc(root.get("runDateTime")), cb.asc(root.get("id")));
+            return entityManager.createQuery(cq).getResultList();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error retrieving the QC results of runs", e);
+        }
+    }
 }

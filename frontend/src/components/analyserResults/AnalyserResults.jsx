@@ -594,6 +594,18 @@ const AnalyserResults = (props) => {
             )}
           </>
         )}
+        {row.importIssueReason === "run_qc_failed" && (
+          <>
+            <div>
+              <FormattedMessage id="analyzer.results.held.runQcFailed" />
+            </div>
+            {row.heldRunId && (
+              <CarbonLink as={RouterLink} to={`/Results?run=${row.heldRunId}`}>
+                <FormattedMessage id="analyzer.results.held.openRun" />
+              </CarbonLink>
+            )}
+          </>
+        )}
         {row.importIssueReason === "qc_value_unsupported" && (
           <div>
             <FormattedMessage id="analyzer.results.held.qcValueUnsupported" />

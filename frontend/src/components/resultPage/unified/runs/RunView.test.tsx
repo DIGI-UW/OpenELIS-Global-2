@@ -464,16 +464,21 @@ describe("OGC-1200 slice 2: chips, paging and selection", () => {
       expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
     });
 
-    it("offers nothing to accept in a held run", () => {
-      wire({ ...HEADER, state: "HELD" });
+    it("holds only the rows of the test a failed control covers", () => {
+      const held = { ...ROWS.rows[0], id: "43", category: "HELD" };
+      const open = { ...ROWS.rows[0], id: "44", category: "NORMAL" };
+      wire({ ...HEADER, state: "HELD" }, { ...ROWS, rows: [held, open] });
       renderRun();
 
-      fireEvent.click(screen.getByTestId("run-row-expand-41"));
-
-      expect(screen.getByTestId("run-row-entry-41")).toHaveTextContent(
-        "This run is held.",
+      expect(screen.getAllByText("Held: QC failed")).toHaveLength(1);
+      fireEvent.click(screen.getByTestId("run-row-expand-43"));
+      expect(screen.getByTestId("run-row-entry-43")).toHaveTextContent(
+        "A control for this test failed in this run, so this value is held",
       );
       expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("run-row-expand-44"));
+      expect(screen.getByTestId("embedded-entry")).toBeInTheDocument();
     });
 
     it("reloads the run and closes the row once the value is accepted", () => {
