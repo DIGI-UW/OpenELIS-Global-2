@@ -24,6 +24,7 @@ import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
 import org.openelisglobal.microbiology.service.MicroAstReportChoiceService;
@@ -124,6 +125,9 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
     private MicroCaseDAO caseDAO;
 
     @Autowired
+    private MicroOrganismDAO organismDAO;
+
+    @Autowired
     private MicrobiologyCaseAccessService caseAccessService;
 
     @Autowired
@@ -160,6 +164,8 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
 
         MicroOrganism correctedOrganism = fixtures.createOrganism("Klebsiella pneumoniae", "Enterobacterales",
                 fixture.panelId());
+        correctedOrganism.getLabGroups().add("Enterobacterales");
+        organismDAO.update(correctedOrganism);
         isolateService.updateIdentification(fixture.isolateId(), correctedOrganism.getId(), "Klebsiella pneumoniae",
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
                 new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());

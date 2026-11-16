@@ -142,6 +142,10 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         if (ruleId != null && !standardId.equals(rule.getStandardId())) {
             throw new IllegalArgumentException("Breakpoint rule does not belong to this standard");
         }
+        if (organismGroup != null && !organismGroup.equals(rule.getOrganismGroup())
+                && !organismDAO.getLabGroupNames().contains(organismGroup)) {
+            throw new IllegalArgumentException("Unknown organism group: " + organismGroup);
+        }
         String diskContent = trimToNull(request.diskContent);
         if ("ZONE".equals(breakpointType) && diskContent == null) {
             throw new IllegalArgumentException("Disk content is required for zone breakpoints");

@@ -130,7 +130,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
     if (!standardId) return undefined;
     const controller = new AbortController();
     Promise.all([
-      getReferenceOptions("organism-groups", controller.signal),
+      getReferenceOptions("lab-organism-groups", controller.signal),
       getReferenceOptions("antibiotics", controller.signal),
       getReferenceOptions("specimen-types", controller.signal),
     ])

@@ -108,13 +108,13 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         var standard = standard(fixture);
         var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
         var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
-        var unspecified = rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "MIC", null,
-                "MIC");
+        var unspecified = rules.findBestRule(standard.getId(), organism.getId(), java.util.Set.of(), antibiotic.getId(),
+                "MIC", null, "MIC");
         assertNull(unspecified.getClinicalContext());
         assertEquals(MicroAstInterpretation.NO_BREAKPOINT,
                 interpreter.interpret(unspecified, MicroAstMethod.MIC, new BigDecimal("4")));
-        var indicated = rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "MIC",
-                null, "MIC", "NON_MENINGITIS", null);
+        var indicated = rules.findContextualRule(standard.getId(), organism.getId(), java.util.Set.of(),
+                antibiotic.getId(), "MIC", null, "MIC", "NON_MENINGITIS", null);
         assertEquals("NON_MENINGITIS", indicated.getClinicalContext());
         assertEquals(MicroAstInterpretation.INTERMEDIATE,
                 interpreter.interpret(indicated, MicroAstMethod.MIC, new BigDecimal("4")));
@@ -137,18 +137,17 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
         var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
 
-        var matching = rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE",
-                null, "ZONE", null, "30ug");
+        var matching = rules.findContextualRule(standard.getId(), organism.getId(), java.util.Set.of(),
+                antibiotic.getId(), "ZONE", null, "ZONE", null, "30ug");
         assertEquals("30ug", matching.getDiskContent());
         assertEquals(MicroAstInterpretation.SUSCEPTIBLE,
                 interpreter.interpret(matching, MicroAstMethod.ZONE, new BigDecimal("22")));
         assertNull("Another disk must not borrow the 30ug breakpoint", rules.findContextualRule(standard.getId(),
-                organism.getId(), null, antibiotic.getId(), "ZONE", null, "ZONE", null, "10ug"));
-        assertNull("An unrecorded disk must not borrow the 30ug breakpoint",
-                rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null, "ZONE"));
-        assertNull("MIC rules ignore disk content",
-                rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "MIC", null, "MIC")
-                        .getDiskContent());
+                organism.getId(), java.util.Set.of(), antibiotic.getId(), "ZONE", null, "ZONE", null, "10ug"));
+        assertNull("An unrecorded disk must not borrow the 30ug breakpoint", rules.findBestRule(standard.getId(),
+                organism.getId(), java.util.Set.of(), antibiotic.getId(), "ZONE", null, "ZONE"));
+        assertNull("MIC rules ignore disk content", rules.findBestRule(standard.getId(), organism.getId(),
+                java.util.Set.of(), antibiotic.getId(), "MIC", null, "MIC").getDiskContent());
     }
 
     @Test
@@ -166,17 +165,15 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
 
         assertEquals(2, rules.countByStandardId(standard.getId()));
         assertEquals(MicroAstInterpretation.RESISTANT,
-                interpreter
-                        .interpret(
-                                rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(),
-                                        "ZONE", null, "ZONE", null, "30ug"),
-                                MicroAstMethod.ZONE, new BigDecimal("16")));
+                interpreter.interpret(
+                        rules.findContextualRule(standard.getId(), organism.getId(), java.util.Set.of(),
+                                antibiotic.getId(), "ZONE", null, "ZONE", null, "30ug"),
+                        MicroAstMethod.ZONE, new BigDecimal("16")));
         assertEquals(MicroAstInterpretation.SUSCEPTIBLE,
-                interpreter
-                        .interpret(
-                                rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(),
-                                        "ZONE", null, "ZONE", null, "10ug"),
-                                MicroAstMethod.ZONE, new BigDecimal("16")));
+                interpreter.interpret(
+                        rules.findContextualRule(standard.getId(), organism.getId(), java.util.Set.of(),
+                                antibiotic.getId(), "ZONE", null, "ZONE", null, "10ug"),
+                        MicroAstMethod.ZONE, new BigDecimal("16")));
     }
 
     @Test
@@ -221,12 +218,12 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         zone.setLastUpdatedBy("1");
         rules.insert(zone);
 
-        assertNull(rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null,
-                "ZONE", null, "30ug"));
-        assertNull(
-                rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null, "ZONE"));
-        assertNotNull("MIC readings are unaffected",
-                rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "MIC", null, "MIC"));
+        assertNull(rules.findContextualRule(standard.getId(), organism.getId(), java.util.Set.of(), antibiotic.getId(),
+                "ZONE", null, "ZONE", null, "30ug"));
+        assertNull(rules.findBestRule(standard.getId(), organism.getId(), java.util.Set.of(), antibiotic.getId(),
+                "ZONE", null, "ZONE"));
+        assertNotNull("MIC readings are unaffected", rules.findBestRule(standard.getId(), organism.getId(),
+                java.util.Set.of(), antibiotic.getId(), "MIC", null, "MIC"));
     }
 
     @Test
@@ -292,10 +289,10 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         form.diskContent = "30ug";
         assertEquals("30ug", administration.saveRule(standardId, null, form, "1").diskContent);
 
-        assertNotNull(rules.findContextualRule(standardId, organism.getId(), null, antibiotic.getId(), "DISK_DIFFUSION",
-                null, "ZONE", null, "30ug"));
-        assertNull(rules.findContextualRule(standardId, organism.getId(), null, antibiotic.getId(), "DISK_DIFFUSION",
-                null, "ZONE", null, "10ug"));
+        assertNotNull(rules.findContextualRule(standardId, organism.getId(), java.util.Set.of(), antibiotic.getId(),
+                "DISK_DIFFUSION", null, "ZONE", null, "30ug"));
+        assertNull(rules.findContextualRule(standardId, organism.getId(), java.util.Set.of(), antibiotic.getId(),
+                "DISK_DIFFUSION", null, "ZONE", null, "10ug"));
     }
 
     @Test
@@ -649,11 +646,10 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         String drug = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow().getId();
         var uncovered = organism("Uncovered organism " + suffix());
         var byGroup = organism("Group organism " + suffix());
-        byGroup.setOrganismGroup("Coverage group " + suffix());
-        organisms.update(byGroup);
+        String ruleGroup = "Coverage group " + suffix();
         var groupRule = new MicroBreakpointRule();
         groupRule.setStandardId(standard(fixture).getId());
-        groupRule.setOrganismGroup(byGroup.getOrganismGroup());
+        groupRule.setOrganismGroup(ruleGroup);
         groupRule.setAntibioticId(drug);
         groupRule.setBreakpointType("MIC");
         rules.insert(groupRule);
@@ -661,8 +657,9 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         tuberculosis.setSusceptibilityProtocol("TB");
         organisms.update(tuberculosis);
         String labGroup = "Coverage lab group " + suffix();
-        writeOrganismGroups(GROUPS_HEADER + covered.getDisplayName() + ",,," + labGroup + "\n"
-                + uncovered.getDisplayName() + ",,," + labGroup + "\n");
+        writeOrganismGroups(
+                GROUPS_HEADER + covered.getDisplayName() + ",,," + labGroup + "\n" + uncovered.getDisplayName() + ",,,"
+                        + labGroup + "\n" + byGroup.getDisplayName() + ",,," + ruleGroup + "\n");
         assertFalse(reloadOrganismGroups(false).hasErrors());
         var other = new MicroAntibiotic();
         other.setDisplayName("Coverage other drug " + suffix());
@@ -1055,9 +1052,8 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         var fixture = new ReferencePackageFixture("2099.1", "BLOCK_FALLBACK");
         load(fixture);
         var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
-        organism.setOrganismGroup("Synthetic blocking group");
-        organism.setSysUserId("1");
-        organisms.update(organism);
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,,Synthetic blocking group\n");
+        assertFalse(reloadOrganismGroups(false).hasErrors());
         String edition = fixture.edition + "-blocking";
         String csv = "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,"
                 + "breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,resistant_value,units\n"
@@ -1067,11 +1063,51 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertEquals(2, importer.applyConfiguration(csv, "1").importedRows);
         var standard = standards.findByAuthorityAndVersion("EUCAST", edition).orElseThrow();
         var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
-        var selected = rules.findBestRule(standard.getId(), organism.getId(), organism.getOrganismGroup(),
-                antibiotic.getId(), "MIC", null, "MIC");
+        var selected = rules.findBestRule(standard.getId(), organism.getId(),
+                java.util.Set.of("Synthetic blocking group"), antibiotic.getId(), "MIC", null, "MIC");
         assertEquals(organism.getId(), selected.getOrganismId());
         assertEquals(MicroAstInterpretation.NO_BREAKPOINT,
                 interpreter.interpret(selected, MicroAstMethod.MIC, BigDecimal.ONE));
+    }
+
+    @Test
+    public void aBreakpointRuleByGroupTakesOnlyALaboratoryGroup() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.73", "LABGROUP");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        String referenceGroup = "Reference group " + suffix();
+        organism.setOrganismGroup(referenceGroup);
+        organisms.update(organism);
+        String labGroup = "Lab group " + suffix();
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + labGroup + "\n");
+        assertFalse(reloadOrganismGroups(false).hasErrors());
+        String local = fixture.edition + "-LOCAL";
+        String row = "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,"
+                + "breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,resistant_value,units\n"
+                + "EUCAST," + local + ",group:%s," + fixture.antibiotic + ",MIC,,MIC,1,,,4,mg/L\n";
+
+        assertEquals("Unknown organism group: " + referenceGroup,
+                importer.preview(row.formatted(referenceGroup)).errors.get(0).message);
+        var imported = importer
+                .apply(importer.preview(row.formatted(labGroup.toUpperCase(java.util.Locale.ROOT))).previewToken, "1");
+        assertEquals(imported.errors.toString(), 1, imported.importedRows);
+        String standardId = standards.findByAuthorityAndVersion("EUCAST", local).orElseThrow().getId();
+        assertEquals(labGroup, rules.getByStandardId(standardId).get(0).getOrganismGroup());
+
+        var form = new MicroBreakpointRuleAdminForm();
+        form.antibioticId = antibiotics.getAll().stream().map(MicroAntibiotic::getId)
+                .filter(id -> !id.equals(rules.getByStandardId(standardId).get(0).getAntibioticId())).findFirst()
+                .orElseThrow();
+        form.method = "MIC";
+        form.breakpointType = "MIC";
+        form.susceptibleValue = new BigDecimal("2");
+        form.resistantValue = new BigDecimal("8");
+        form.organismGroup = referenceGroup;
+        assertEquals("Unknown organism group: " + referenceGroup,
+                assertThrows(IllegalArgumentException.class, () -> administration.saveRule(standardId, null, form, "1"))
+                        .getMessage());
+        form.organismGroup = labGroup;
+        assertEquals(labGroup, administration.saveRule(standardId, null, form, "1").organismGroup);
     }
 
     @Test
@@ -1156,7 +1192,7 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
                         .get(String.join("|", vector.get("version"), vector.get("organism_code"),
                                 vector.get("antibiotic_code"), method, clinicalContext == null ? "" : clinicalContext));
                 var rule = selectedRules.computeIfAbsent(key,
-                        ignored -> rules.findContextualRule(edition.getId(), org.getId(), org.getOrganismGroup(),
+                        ignored -> rules.findContextualRule(edition.getId(), org.getId(), org.getLabGroups(),
                                 agent.getId(), method, null, method, clinicalContext, diskContent));
                 assertNotNull("Every source context must resolve to an explicit rule: " + key, rule);
                 var expected = switch (vector.get("expected")) {

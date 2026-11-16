@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointStandardDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
@@ -109,18 +110,18 @@ public class MicroBreakpointServiceImpl implements MicroBreakpointService {
 
     @Override
     @Transactional(readOnly = true)
-    public MicroBreakpointRule findBreakpointRule(String standardId, String organismId, String organismGroup,
+    public MicroBreakpointRule findBreakpointRule(String standardId, String organismId, Set<String> organismGroups,
             String antibioticId, String method, String specimenTypeId, String breakpointType) {
-        return ruleDAO.findBestRule(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
+        return ruleDAO.findBestRule(standardId, organismId, organismGroups, antibioticId, method, specimenTypeId,
                 breakpointType);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MicroBreakpointRule findContextualBreakpointRule(String standardId, String organismId, String organismGroup,
-            String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext,
-            String diskContent) {
-        return ruleDAO.findContextualRule(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
+    public MicroBreakpointRule findContextualBreakpointRule(String standardId, String organismId,
+            Set<String> organismGroups, String antibioticId, String method, String specimenTypeId,
+            String breakpointType, String clinicalContext, String diskContent) {
+        return ruleDAO.findContextualRule(standardId, organismId, organismGroups, antibioticId, method, specimenTypeId,
                 breakpointType, MicroBreakpointClinicalContext.validate(clinicalContext), diskContent);
     }
 

@@ -1157,7 +1157,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         var organism = isolate.getOrganismId() == null ? null : organismDAO.get(isolate.getOrganismId()).orElse(null);
         boolean ntm = organism != null && "NTM".equals(organism.getSusceptibilityProtocol());
-        String organismGroup = organism == null || ntm ? null : organism.getOrganismGroup();
+        Set<String> organismGroups = organism == null || ntm ? Set.of() : labGroups(organism);
         String specimenTypeId = null;
         String specimenCode = null;
         if (microCase.getSampleItemId() != null) {
@@ -1168,14 +1168,14 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         String technique = run.getTechnique();
         if (technique != null && !technique.isBlank() && !MicroAstTechnique.valueOf(technique).isLegacyUnspecified()) {
-            MicroBreakpointRule techniqueRule = findContextRule(run, standardId, isolate.getOrganismId(), organismGroup,
-                    antibioticId, technique, specimenTypeId, method.name());
+            MicroBreakpointRule techniqueRule = findContextRule(run, standardId, isolate.getOrganismId(),
+                    organismGroups, antibioticId, technique, specimenTypeId, method.name());
             if (techniqueRule != null && (!ntm || isolate.getOrganismId().equals(techniqueRule.getOrganismId()))) {
                 return techniqueRule;
             }
         }
-        var rule = findContextRule(run, standardId, isolate.getOrganismId(), organismGroup, antibioticId, method.name(),
-                specimenTypeId, method.name());
+        var rule = findContextRule(run, standardId, isolate.getOrganismId(), organismGroups, antibioticId,
+                method.name(), specimenTypeId, method.name());
         if (rule == null && !ntm) {
             return breakpointService.findWhonetBreakpointRule(standardId, isolate.getOrganismId(), antibioticId,
                     method.name(), diskContent(run, antibioticId, method.name()), specimenCode,
@@ -1185,12 +1185,13 @@ public class MicroAstServiceImpl implements MicroAstService {
     }
 
     private MicroBreakpointRule findContextRule(MicroAstRun run, String standardId, String organismId,
-            String organismGroup, String antibioticId, String method, String specimenTypeId, String breakpointType) {
+            Set<String> organismGroups, String antibioticId, String method, String specimenTypeId,
+            String breakpointType) {
         String diskContent = diskContent(run, antibioticId, breakpointType);
         if (run.getClinicalContext() == null && diskContent == null)
-            return breakpointService.findBreakpointRule(standardId, organismId, organismGroup, antibioticId, method,
+            return breakpointService.findBreakpointRule(standardId, organismId, organismGroups, antibioticId, method,
                     specimenTypeId, breakpointType);
-        return breakpointService.findContextualBreakpointRule(standardId, organismId, organismGroup, antibioticId,
+        return breakpointService.findContextualBreakpointRule(standardId, organismId, organismGroups, antibioticId,
                 method, specimenTypeId, breakpointType, run.getClinicalContext(), diskContent);
     }
 

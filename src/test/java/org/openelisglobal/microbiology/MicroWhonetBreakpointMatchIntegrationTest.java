@@ -314,7 +314,8 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
         rule("ALL", "Gen", null, "1");
         String organismId = organisms.findByWhonetCodeIgnoreCase("kpn").orElseThrow().getId();
 
-        assertNull(breakpoints.findBreakpointRule(standardId, organismId, null, antibioticId, "MIC", null, "MIC"));
+        assertNull(breakpoints.findBreakpointRule(standardId, organismId, java.util.Set.of(), antibioticId, "MIC", null,
+                "MIC"));
     }
 
     @Test

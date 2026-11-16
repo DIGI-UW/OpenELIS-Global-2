@@ -1229,6 +1229,39 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     @Test
+    public void aBreakpointRuleForALabGroupInterpretsAReadingOnAnOrganismInThatGroup() {
+        String drug = thirdPanelDrug();
+        groupBreakpoint(drug, "Lab rods");
+        groupOrganism("Lab rods");
+
+        var reading = ast.recordReading(start(isolate).getId(), drug, new BigDecimal("4"), writer);
+
+        assertEquals("SUSCEPTIBLE", reading.getInterpretation());
+    }
+
+    @Test
+    public void aBreakpointRuleForTheOrganismsReferenceGroupAloneDoesNotApply() {
+        String drug = thirdPanelDrug();
+        groupBreakpoint(drug, reference.organism().getOrganismGroup());
+
+        var reading = ast.recordReading(start(isolate).getId(), drug, new BigDecimal("4"), writer);
+
+        assertEquals("NO_BREAKPOINT", reading.getInterpretation());
+    }
+
+    private void groupBreakpoint(String antibioticId, String group) {
+        var rule = new MicroBreakpointRule();
+        rule.setStandardId(reference.standard().getId());
+        rule.setOrganismGroup(group);
+        rule.setAntibioticId(antibioticId);
+        rule.setMethod("MIC");
+        rule.setBreakpointType("MIC");
+        rule.setSusceptibleValue(new BigDecimal("8"));
+        rule.setResistantValue(new BigDecimal("32"));
+        rules.insert(rule);
+    }
+
+    @Test
     public void interpretationRuleTargetsAnOrganismOrAGroup() {
         assertThrows(IllegalArgumentException.class, () -> alwaysResistant(null, null));
         assertThrows(IllegalArgumentException.class,

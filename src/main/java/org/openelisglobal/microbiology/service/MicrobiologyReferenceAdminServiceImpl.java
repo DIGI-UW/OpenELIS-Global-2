@@ -333,7 +333,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             }
             Set<String> covered = new HashSet<>(forEveryOrganism);
             covered.addAll(byOrganism.getOrDefault(organism.getId(), Set.of()));
-            covered.addAll(byGroup.getOrDefault(organism.getOrganismGroup(), Set.of()));
+            organism.getLabGroups().forEach(group -> covered.addAll(byGroup.getOrDefault(group, Set.of())));
             MicroWhonetOrganism whonetOrganism = whonetOrganism(whonet, organism);
             if (whonetOrganism != null) {
                 whonetRules.forEach((drugAndEdition, edition) -> {
@@ -524,10 +524,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             return methodService.getAllActiveMethods().stream()
                     .sorted(Comparator.comparing(Method::getMethodName, String.CASE_INSENSITIVE_ORDER))
                     .map(method -> option(method.getId(), method.getMethodName(), method.getCode())).toList();
-        }
-        if ("organism-groups".equals(resource)) {
-            return organismDAO.getActiveOrganismGroups().stream().filter(group -> !group.isBlank())
-                    .sorted(String.CASE_INSENSITIVE_ORDER).map(group -> option(group, group, null)).toList();
         }
         if ("lab-organism-groups".equals(resource)) {
             return organismDAO.getLabGroupNames().stream().map(group -> option(group, group, null)).toList();

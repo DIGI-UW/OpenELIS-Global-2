@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Set;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -101,13 +102,13 @@ public class MicroBreakpointServiceTest {
     @Test
     public void findBreakpointRuleDelegatesTheMatchingDimensions() {
         MicroBreakpointRule rule = new MicroBreakpointRule();
-        when(ruleDAO.findBestRule("std", "org", "Enterobacterales", "abx", "MIC", "7", "MIC")).thenReturn(rule);
+        when(ruleDAO.findBestRule("std", "org", Set.of("Enterobacterales"), "abx", "MIC", "7", "MIC")).thenReturn(rule);
 
         MicroBreakpointService service = new MicroBreakpointServiceImpl(standardDAO, ruleDAO, settings, null, null);
 
         org.junit.Assert.assertTrue(
-                rule == service.findBreakpointRule("std", "org", "Enterobacterales", "abx", "MIC", "7", "MIC"));
-        verify(ruleDAO).findBestRule("std", "org", "Enterobacterales", "abx", "MIC", "7", "MIC");
+                rule == service.findBreakpointRule("std", "org", Set.of("Enterobacterales"), "abx", "MIC", "7", "MIC"));
+        verify(ruleDAO).findBestRule("std", "org", Set.of("Enterobacterales"), "abx", "MIC", "7", "MIC");
     }
 
     @Test

@@ -81,13 +81,6 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
 
     @Override
     @Transactional(readOnly = true)
-    public List<String> getActiveOrganismGroups() {
-        return entityManager.unwrap(Session.class).createQuery("select distinct o.organismGroup from MicroOrganism o"
-                + " where o.isActive = 'Y' and o.organismGroup is not null", String.class).list();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public Optional<MicroOrganism> findByDisplayNameIgnoreCase(String displayName) {
         Query<MicroOrganism> query = entityManager.unwrap(Session.class).createQuery(
                 "from MicroOrganism o where lower(o.displayName) = lower(:displayName)", MicroOrganism.class);
