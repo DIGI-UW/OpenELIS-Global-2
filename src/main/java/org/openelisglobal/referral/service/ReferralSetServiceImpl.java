@@ -351,6 +351,17 @@ public class ReferralSetServiceImpl implements ReferralSetService {
             subcontract.setCocContactPhone(referralItem.getCocContactPhone());
             subcontract.setCocContactEmail(referralItem.getCocContactEmail());
             subcontract.setSubcontractNotes(referralItem.getSubcontractNotes());
+            // Transport details are saved only when the form sends them, so an
+            // edit that leaves them empty keeps what was recorded before.
+            if (!GenericValidator.isBlankOrNull(referralItem.getTransportMode())) {
+                subcontract.setTransportMode(referralItem.getTransportMode());
+            }
+            if (!GenericValidator.isBlankOrNull(referralItem.getVehicleRegistration())) {
+                subcontract.setVehicleRegistration(referralItem.getVehicleRegistration());
+            }
+            if (!GenericValidator.isBlankOrNull(referralItem.getDriverName())) {
+                subcontract.setDriverName(referralItem.getDriverName());
+            }
         }
         referralService.update(existing);
     }
@@ -366,6 +377,12 @@ public class ReferralSetServiceImpl implements ReferralSetService {
         subcontract.setCocContactPhone(referralItem.getCocContactPhone());
         subcontract.setCocContactEmail(referralItem.getCocContactEmail());
         subcontract.setSubcontractNotes(referralItem.getSubcontractNotes());
+        subcontract.setTransportMode(GenericValidator.isBlankOrNull(referralItem.getTransportMode()) ? null
+                : referralItem.getTransportMode());
+        subcontract.setVehicleRegistration(GenericValidator.isBlankOrNull(referralItem.getVehicleRegistration()) ? null
+                : referralItem.getVehicleRegistration());
+        subcontract.setDriverName(
+                GenericValidator.isBlankOrNull(referralItem.getDriverName()) ? null : referralItem.getDriverName());
         return subcontract;
     }
 

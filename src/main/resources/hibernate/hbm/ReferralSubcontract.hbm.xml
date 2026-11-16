@@ -31,5 +31,11 @@
             length="255" not-null="false" />
         <property name="subcontractNotes" column="subcontract_notes"
             length="500" not-null="false" />
+        <property name="transportMode" column="transport_mode"
+            length="50" not-null="false" />
+        <property name="vehicleRegistration"
+            column="vehicle_registration" length="50" not-null="false" />
+        <property name="driverName" column="driver_name" length="100"
+            not-null="false" />
     </class>
 </hibernate-mapping>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Transport details for an outbound referral: how the sample travels to
+         the reference lab. The hand-off date and time are already stored on
+         this table, so they are not added here. -->
+
+    <changeSet author="openelisglobal" id="referral-transport-001-add-subcontract-transport-columns">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="referral_subcontract"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="referral_subcontract" columnName="transport_mode"/>
+            </not>
+        </preConditions>
+        <comment>Add transport mode, vehicle registration and driver name to referral_subcontract</comment>
+
+        <addColumn schemaName="clinlims" tableName="referral_subcontract">
+            <column name="transport_mode" type="VARCHAR(50)"/>
+            <column name="vehicle_registration" type="VARCHAR(50)"/>
+            <column name="driver_name" type="VARCHAR(100)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
