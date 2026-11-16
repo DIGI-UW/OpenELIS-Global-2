@@ -1,7 +1,13 @@
 package org.openelisglobal.microbiology.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.LoadedRow;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
@@ -36,7 +42,7 @@ public class MicroWhonetOrganismService {
      */
     public List<LoadedRow<String>> load(List<CsvRow> rows) {
         whonetOrganisms.deleteAllRows();
-        List<LoadedRow<String>> loaded = new ArrayList<>();
+        List<MicroWhonetOrganism> entries = new ArrayList<>();
         for (CsvRow row : rows) {
             for (String column : List.of("WHONET_ORG_CODE", "ORGANISM", "TAXONOMIC_STATUS")) {
                 if (row.isBlank(column)) {
@@ -47,22 +53,62 @@ public class MicroWhonetOrganismService {
             entry.setSysUserId(ACTOR);
             whonetOrganisms.insert(entry);
             whonetOrganisms.evict(entry);
-            boolean renamed = MicroWhonetOrganism.CURRENT.equals(entry.getTaxonomicStatus()) && offer(entry);
+            entries.add(entry);
+        }
+        Map<String, List<String>> names = namesOfOneCode(entries);
+        List<LoadedRow<String>> loaded = new ArrayList<>();
+        for (MicroWhonetOrganism entry : entries) {
+            boolean renamed = MicroWhonetOrganism.CURRENT.equals(entry.getTaxonomicStatus())
+                    && offer(entry, names.getOrDefault(lower(entry.getWhonetOrgCode()), List.of()));
             loaded.add(renamed ? LoadedRow.updated(entry.getId()) : LoadedRow.created(entry.getId()));
         }
         return loaded;
     }
 
+    private static Map<String, List<String>> namesOfOneCode(List<MicroWhonetOrganism> entries) {
+        Map<String, Set<String>> codesByName = new HashMap<>();
+        for (MicroWhonetOrganism entry : entries) {
+            codesByName.computeIfAbsent(lower(entry.getOrganism()), name -> new HashSet<>()).add(target(entry));
+        }
+        Map<String, List<String>> names = new HashMap<>();
+        for (MicroWhonetOrganism entry : entries) {
+            if (codesByName.get(lower(entry.getOrganism())).size() == 1) {
+                names.computeIfAbsent(target(entry), code -> new ArrayList<>()).add(entry.getOrganism());
+            }
+        }
+        return names;
+    }
+
+    private static String target(MicroWhonetOrganism entry) {
+        return lower(entry.getReplacedBy() != null ? entry.getReplacedBy() : entry.getWhonetOrgCode());
+    }
+
+    private static String lower(String value) {
+        return value.toLowerCase(Locale.ROOT);
+    }
+
+    private Optional<MicroOrganism> onlyUncodedOrganismNamed(List<String> names) {
+        Map<String, MicroOrganism> found = new HashMap<>();
+        for (String name : names) {
+            organisms.findByDisplayNameIgnoreCase(name)
+                    .filter(organism -> organism.getWhonetCode() == null || organism.getWhonetCode().isBlank())
+                    .ifPresent(organism -> found.put(organism.getId(), organism));
+        }
+        return found.size() == 1 ? Optional.of(found.values().iterator().next()) : Optional.empty();
+    }
+
     /**
-     * The organism of a WHONET code carries the code's current name.
+     * The organism of a WHONET code carries the code's current name. An organism
+     * without a code takes the code when WHONET gives its name to this code alone.
      *
      * @return whether an organism the laboratory already had took WHONET's name or
      *         code
      */
-    private boolean offer(MicroWhonetOrganism entry) {
+    private boolean offer(MicroWhonetOrganism entry, List<String> namesOfCode) {
         String code = entry.getWhonetOrgCode(), name = entry.getOrganism();
-        var named = organisms.findByDisplayNameIgnoreCase(name);
         var coded = organisms.findByWhonetCodeIgnoreCase(code);
+        var named = organisms.findByDisplayNameIgnoreCase(name)
+                .or(() -> coded.isPresent() ? Optional.empty() : onlyUncodedOrganismNamed(namesOfCode));
         boolean sameOrganism = named.isPresent() && coded.isPresent()
                 && named.get().getId().equals(coded.get().getId());
         if (named.isPresent() && !sameOrganism && (coded.isPresent() || named.get().getWhonetCode() != null)) {

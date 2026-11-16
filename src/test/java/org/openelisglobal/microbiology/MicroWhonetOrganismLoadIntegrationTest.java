@@ -134,6 +134,46 @@ public class MicroWhonetOrganismLoadIntegrationTest extends BaseWebContextSensit
     }
 
     @Test
+    public void anOrganismWithoutACodeIsTakenOverWhenWhonetKnowsItsNameAsAnOlderOne() throws Exception {
+        executeDataSetWithStateManagement("testdata/microbiology/whonet-organism-older-names.xml");
+
+        load();
+
+        MicroOrganism klebsiella = coded("kpn");
+        assertEquals("lab-old-klebsiella", klebsiella.getId());
+        assertEquals("Lab note", klebsiella.getNotes());
+        assertEquals("Klebsiella pneumoniae ss. pneumoniae", klebsiella.getDisplayName());
+        assertFalse(organisms.findByDisplayNameIgnoreCase("Klebsiella pneumoniae").isPresent());
+    }
+
+    @Test
+    public void twoOrganismsWithOlderNamesOfOneCodeAreBothLeftAlone() throws Exception {
+        executeDataSetWithStateManagement("testdata/microbiology/whonet-organism-older-names.xml");
+
+        load();
+
+        String kluyveromyces = coded("kma").getId();
+        assertFalse("lab-old-candida".equals(kluyveromyces) || "lab-old-kluyveromyces".equals(kluyveromyces));
+        assertEquals("lab-old-candida", organisms.findByDisplayNameIgnoreCase("Candida kefyr").orElseThrow().getId());
+        assertEquals("lab-old-kluyveromyces",
+                organisms.findByDisplayNameIgnoreCase("Kluyveromyces fragilis").orElseThrow().getId());
+    }
+
+    @Test
+    public void anOlderNameWhonetGivesToTwoCodesTakesOverNeither() throws Exception {
+        executeDataSetWithStateManagement("testdata/microbiology/whonet-organism-older-names.xml");
+        String file = "WHONET_ORG_CODE\tREPLACED_BY\tORGANISM\tTAXONOMIC_STATUS\r\n" + "aaa\t\tShared older name\tO\r\n"
+                + "aaa\t\tFirst current name\tC\r\n" + "bbb\t\tShared older name\tO\r\n"
+                + "bbb\t\tSecond current name\tC\r\n";
+
+        handler.processConfiguration(new ByteArrayInputStream(file.getBytes(StandardCharsets.UTF_8)), "Organisms.txt");
+
+        assertFalse("lab-shared-name".equals(coded("aaa").getId()));
+        assertFalse("lab-shared-name".equals(coded("bbb").getId()));
+        assertEquals(null, organisms.findByDisplayNameIgnoreCase("Shared older name").orElseThrow().getWhonetCode());
+    }
+
+    @Test
     public void importCatalogDoesNotOfferTheTable() {
         CatalogImportServiceImpl catalogImport = new CatalogImportServiceImpl();
         context.getAutowireCapableBeanFactory().autowireBean(catalogImport);
