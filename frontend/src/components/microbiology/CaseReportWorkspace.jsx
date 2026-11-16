@@ -154,7 +154,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
     t = (key) => intl.formatMessage({ id: `microbiology.m6.${key}` });
   const [state, setState] = useState(null),
     [versionId, setVersionId] = useState(""),
-    [error, setError] = useState(false),
+    [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const current = useRef(detail);
   current.current = detail;
@@ -173,11 +173,11 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       .then((value) => {
         if (live) {
           setState(value);
-          setError(false);
+          setError("");
         }
       })
       .catch(() => {
-        if (live) setError(true);
+        if (live) setError("saveError");
       });
     return () => {
       live = false;
@@ -193,7 +193,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       return;
     const trigger = document.activeElement;
     setBusy(true);
-    setError(false);
+    setError("");
     try {
       await service.releaseReport(
         detail.id,
@@ -205,7 +205,9 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       setVersionId(next.versions[next.versions.length - 1].id);
       onChanged?.();
     } catch (failure) {
-      setError(serverUnreachable(failure.response) ? "unreachable" : true);
+      setError(
+        serverUnreachable(failure.response) ? "unreachable" : "saveError",
+      );
     } finally {
       setBusy(false);
       returnFocus(trigger);
@@ -214,12 +216,12 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
   const select = async (analysisId, selected) => {
     if (!current.current.canValidate) return;
     setBusy(true);
-    setError(false);
+    setError("");
     try {
       await service.selectReportResult(detail.id, analysisId, selected);
       setState(await load());
     } catch {
-      setError(true);
+      setError("saveError");
     } finally {
       setBusy(false);
     }
@@ -238,7 +240,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
               try {
                 await service.downloadEnvironmentalCertificate(detail.orderId);
               } catch {
-                setError(true);
+                setError("saveError");
               } finally {
                 setBusy(false);
               }

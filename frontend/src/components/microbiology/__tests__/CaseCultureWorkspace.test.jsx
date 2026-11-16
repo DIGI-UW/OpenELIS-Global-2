@@ -689,8 +689,9 @@ it("moves keyboard focus into the culture dialog and back to its trigger when it
   trigger.focus();
   fireEvent.click(trigger);
   const dialog = screen.getByRole("dialog");
-  expect(dialog).toContainElement(document.activeElement);
-  expect(document.activeElement.tagName).not.toBe("BUTTON");
+  expect(
+    within(dialog).getByLabelText("Source sample or aliquot"),
+  ).toHaveFocus();
   fireEvent.keyDown(dialog, { key: "Escape" });
   await waitFor(() =>
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
