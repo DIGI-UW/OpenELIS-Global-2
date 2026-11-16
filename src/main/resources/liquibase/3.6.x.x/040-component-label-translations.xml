@@ -29,4 +29,18 @@
             <dropColumn schemaName="clinlims" tableName="test_result_component" columnName="label_localization_id"/>
         </rollback>
     </changeSet>
+
+    <changeSet id="OGC-1610-component-label-localization-backfill" author="OGC">
+        <comment>Every existing result component gets an empty translation record; new ones get it when saved.</comment>
+        <sql>
+            WITH missing AS (
+                SELECT id AS component_id, nextval('clinlims.localization_seq') AS localization_id
+                FROM clinlims.test_result_component WHERE label_localization_id IS NULL),
+            created AS (
+                INSERT INTO clinlims.localization (id, description, lastupdated)
+                SELECT localization_id, 'result component label', now() FROM missing)
+            UPDATE clinlims.test_result_component c SET label_localization_id = m.localization_id
+            FROM missing m WHERE c.id = m.component_id;
+        </sql>
+    </changeSet>
 </databaseChangeLog>

@@ -13,7 +13,6 @@ import org.apache.commons.validator.GenericValidator;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.localization.valueholder.Localization;
-import org.springframework.context.i18n.LocaleContextHolder;
 
 /**
  * OGC-949 M5 / OGC-937 — a labeled result field of a test (e.g. systolic vs.
@@ -173,8 +172,7 @@ public class TestResultComponent extends BaseObject<String> {
 
     /** The label in the user's language, else the label as entered. */
     public String getLocalizedLabel() {
-        String translated = labelLocalization == null ? null
-                : labelLocalization.getValuesAsMap().get(LocaleContextHolder.getLocale().getLanguage());
+        String translated = labelLocalization == null ? null : labelLocalization.getLocalizedValue();
         return GenericValidator.isBlankOrNull(translated) ? label : translated;
     }
 

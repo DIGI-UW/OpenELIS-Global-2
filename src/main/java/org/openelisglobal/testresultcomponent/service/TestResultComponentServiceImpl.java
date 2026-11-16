@@ -383,6 +383,13 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         testService.update(test);
     }
 
+    @Override
+    @Transactional
+    public void syncDictionaryNormals(String testId, String sysUserId) {
+        syncDictionaryNormals(testId, baseObjectDAO.getActiveComponentsByTestId(testId).stream()
+                .map(TestResultComponent::getId).collect(Collectors.toSet()), sysUserId);
+    }
+
     /**
      * Result flagging, validation and reflex rules judge a select-list result
      * normal when it equals the reference limit's {@code dictionaryNormalId}; the
@@ -393,13 +400,6 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
      * stopped offering are left to {@link #dropUnreachableDictionaryRanges}. Legacy
      * limits without a component id belong to the primary.
      */
-    @Override
-    @Transactional
-    public void syncDictionaryNormals(String testId, String sysUserId) {
-        syncDictionaryNormals(testId, baseObjectDAO.getActiveComponentsByTestId(testId).stream()
-                .map(TestResultComponent::getId).collect(Collectors.toSet()), sysUserId);
-    }
-
     private void syncDictionaryNormals(String testId, Set<String> savedComponentIds, String sysUserId) {
         List<TestResultComponent> components = baseObjectDAO.getActiveComponentsByTestId(testId);
         TestResultComponent primary = pickPrimary(components);
@@ -773,18 +773,15 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
 
     @Override
     @Transactional
-    public String labelLocalizationId(String componentId, String sysUserId) {
-        TestResultComponent component = get(componentId);
+    public String insert(TestResultComponent component) {
         if (component.getLabelLocalization() == null) {
             Localization localization = new Localization();
             localization.setDescription("result component label");
-            localization.setSysUserId(sysUserId);
+            localization.setSysUserId(component.getSysUserId());
             localization.setId(localizationService.insert(localization));
             component.setLabelLocalization(localization);
-            component.setSysUserId(sysUserId);
-            update(component);
         }
-        return component.getLabelLocalization().getId();
+        return super.insert(component);
     }
 
     @Override

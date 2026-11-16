@@ -146,16 +146,15 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
             }
             rowOutcomes.add(created ? CsvLoadSummary.Outcome.CREATED : CsvLoadSummary.Outcome.UPDATED);
         }
-        Map<String, String> savedIdByCode = new HashMap<>();
+        Map<String, TestResultComponent> savedByCode = new HashMap<>();
         for (TestResultComponent saved : componentService.saveSampleResults(test.getId(),
                 new ArrayList<>(byCode.values()), null, null, SYS_USER_ID)) {
-            savedIdByCode.put(saved.getCode().toUpperCase(), saved.getId());
+            savedByCode.put(saved.getCode().toUpperCase(), saved);
         }
         for (CsvRow row : group) {
             Map<String, String> translations = row.translations();
             if (!translations.isEmpty()) {
-                String localizationId = componentService
-                        .labelLocalizationId(savedIdByCode.get(row.get("code").toUpperCase()), SYS_USER_ID);
+                String localizationId = savedByCode.get(row.get("code").toUpperCase()).getLabelLocalization().getId();
                 translations.forEach((language, label) -> localizationValueService.setTranslation(localizationId,
                         language, label, SYS_USER_ID));
             }

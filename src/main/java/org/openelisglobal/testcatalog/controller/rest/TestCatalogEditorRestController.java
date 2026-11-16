@@ -583,8 +583,7 @@ public class TestCatalogEditorRestController {
     }
 
     @GetMapping(value = "/tests/{testId}/localization", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<LocalizationRefs> getLocalizationRefs(@PathVariable String testId,
-            HttpServletRequest request) {
+    public ResponseEntity<LocalizationRefs> getLocalizationRefs(@PathVariable String testId) {
         Test test = testService.getTestById(testId);
         if (test == null) {
             return ResponseEntity.notFound().build();
@@ -599,9 +598,10 @@ public class TestCatalogEditorRestController {
             }
         }
         for (TestResultComponent component : componentService.getActiveComponentsByTestId(testId)) {
-            refs.fields.add(new LocalizationFieldRef("component:" + component.getCode(),
-                    componentService.labelLocalizationId(component.getId(), ControllerUtills.getSysUserId(request)),
-                    component.getLabel()));
+            if (component.getLabelLocalization() != null) {
+                refs.fields.add(new LocalizationFieldRef("component:" + component.getCode(),
+                        component.getLabelLocalization().getId(), component.getLabel()));
+            }
         }
         return ResponseEntity.ok(refs);
     }
