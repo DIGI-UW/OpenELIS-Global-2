@@ -532,7 +532,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             }
         }
 
-        Map<String, Long> holding = runQcService.holdingRuns(actionDataSet.getModifiedItems().stream()
+        Map<String, Long> holding = runQcService.entryHoldingRuns(actionDataSet.getModifiedItems().stream()
                 .map(TestResultItem::getAnalysisId).filter(Objects::nonNull).toList());
         if (!holding.isEmpty()) {
             Map<String, Object> refusal = new HashMap<>();
@@ -557,6 +557,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 statusRuleSet, request);
         ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
         ResultUtil.holdOpenWhileRequiredComponentsBlank(actionDataSet);
+        runQcService.detachFromDecidedRuns(java.util.stream.Stream
+                .concat(actionDataSet.getNewResults().stream(), actionDataSet.getModifiedResults().stream())
+                .map(resultSet -> resultSet.result).toList());
 
         try {
             List<Analysis> reflexAnalysises = logbookPersistService.persistDataSet(actionDataSet, updaters,

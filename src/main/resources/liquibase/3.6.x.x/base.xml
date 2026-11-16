@@ -62,6 +62,8 @@
   <include relativeToChangelogFile="true" file="037-analysis-review-sign-off.xml"/>
   <!-- OGC-1200 slice 4: what happened on a run -->
   <include relativeToChangelogFile="true" file="038-result-run-event.xml"/>
+  <!-- OGC-1200 slice 5: a held test's Retest, Reject or Accept despite -->
+  <include relativeToChangelogFile="true" file="039-result-run-test-disposition.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>

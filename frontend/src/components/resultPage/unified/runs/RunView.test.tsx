@@ -113,6 +113,60 @@ describe("OGC-1200 run view", () => {
     utilsMock.getFromOpenElisServer.mockReset();
   });
 
+  it("recounts the Runs chip once a held test is decided", () => {
+    let held = 1;
+    utilsMock.getFromOpenElisServer.mockImplementation(
+      (endPoint: string, callback: (response: unknown) => void) => {
+        if (endPoint === "/rest/result-runs/7")
+          return callback({
+            ...HEADER,
+            state: held ? "HELD" : "COMPLETE",
+            qc: {
+              overall: held ? "HELD" : "DECIDED",
+              tests: [
+                {
+                  testId: "11",
+                  testName: "Glucose",
+                  verdict: "FAIL",
+                  controls: [],
+                  decision: held ? null : "REJECT",
+                },
+              ],
+            },
+          });
+        if (endPoint.startsWith("/rest/result-runs/7/rows"))
+          return callback(ROWS);
+        if (endPoint.startsWith("/rest/result-runs"))
+          return callback({ open: 2, held, runs: [] });
+        return callback(undefined);
+      },
+    );
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (url: string, body: string, callback: (response: unknown) => void) => {
+        held = 0;
+        callback({
+          overall: "DECIDED",
+          tests: [
+            {
+              testId: "11",
+              testName: "Glucose",
+              verdict: "FAIL",
+              controls: [],
+              decision: "REJECT",
+            },
+          ],
+        });
+      },
+    );
+    renderRun();
+    expect(screen.getByTestId("runs-chip")).toHaveTextContent("2 open, 1 held");
+
+    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+    fireEvent.click(screen.getByTestId("run-qc-decide-confirm-11"));
+
+    expect(screen.getByTestId("runs-chip")).toHaveTextContent("2 open, 0 held");
+  });
+
   it("shows the run's settings, progress and values", () => {
     wire(HEADER);
     renderRun();

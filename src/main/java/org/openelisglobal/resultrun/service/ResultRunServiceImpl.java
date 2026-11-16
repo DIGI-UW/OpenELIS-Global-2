@@ -349,13 +349,14 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     }
 
     /**
-     * A row whose stored result came from a run that now holds its test carries
-     * that run, held, so it is shown held and offers no entry or edit (FR-C4,
-     * FR-D4).
+     * A row whose stored result came from a run that holds its test undecided
+     * carries that run, held, so it is shown held and offers no entry or edit
+     * (FR-C4, FR-D4). Once the test is decided the row is open to a new value.
      */
     private void markHeldResults(List<TestResultItem> items) {
-        Map<String, Long> holding = runQcService.holdingRuns(items.stream().filter(item -> item.getWaitingRun() == null)
-                .map(TestResultItem::getAnalysisId).filter(StringUtils::isNotBlank).distinct().toList());
+        Map<String, Long> holding = runQcService
+                .entryHoldingRuns(items.stream().filter(item -> item.getWaitingRun() == null)
+                        .map(TestResultItem::getAnalysisId).filter(StringUtils::isNotBlank).distinct().toList());
         if (holding.isEmpty()) {
             return;
         }

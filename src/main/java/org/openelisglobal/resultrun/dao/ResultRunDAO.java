@@ -34,4 +34,10 @@ public interface ResultRunDAO extends BaseDAO<ResultRun, Long> {
 
     /** The tests of the results stored from a run. */
     List<String> getTestIdsOfResults(Long runId);
+
+    /**
+     * The analyses of one test in a run: those with a result stored from it and
+     * those its staged values were reported for.
+     */
+    List<String> getAnalysisIdsOfRunTest(Long runId, String testId);
 }

@@ -17,6 +17,7 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import { formatRunTime } from "./runFormat";
+import RunTestDecision from "./RunTestDecision";
 
 export interface RunControlLine {
   id: string;
@@ -35,6 +36,8 @@ export interface RunQcTestLine {
   testName: string;
   verdict: string;
   controls: RunControlLine[];
+  decision?: string | null;
+  nceNumber?: string | null;
 }
 
 export interface RunQc {
@@ -90,6 +93,8 @@ const verdictTag = (verdict?: string | null) => {
     case "FAIL":
     case "HELD":
       return "red";
+    case "DECIDED":
+      return "purple";
     case "PASS":
       return "green";
     default:
@@ -105,9 +110,10 @@ const verdictTag = (verdict?: string | null) => {
  */
 const RunQcBlock: React.FC<RunQcBlockProps> = ({ runId, qc, onRecorded }) => {
   const intl = useIntl();
+  const recordable = qc.tests.filter((test) => !test.decision);
   const [recording, setRecording] = useState(false);
   const [draft, setDraft] = useState<Draft>(
-    emptyDraft(qc.tests[0]?.testId ?? ""),
+    emptyDraft(recordable[0]?.testId ?? ""),
   );
   const [lots, setLots] = useState<ControlLot[]>([]);
   const [busy, setBusy] = useState(false);
@@ -255,12 +261,7 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({ runId, qc, onRecorded }) => {
             <Tag type={verdictTag(test.verdict)} size="sm">
               {intl.formatMessage({ id: `run.verdict.${test.verdict}` })}
             </Tag>
-            {test.verdict === "FAIL" && (
-              <span className="runQcHeldNote">
-                {" "}
-                <FormattedMessage id="run.qc.testHeld" />
-              </span>
-            )}
+            <RunTestDecision runId={runId} test={test} onDecided={onRecorded} />
             {test.controls.length > 0 && (
               <ul className="runQcControls">
                 {test.controls.map((control) => (
@@ -295,9 +296,12 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({ runId, qc, onRecorded }) => {
         <Button
           kind="tertiary"
           size="sm"
-          disabled={qc.tests.length === 0}
+          disabled={recordable.length === 0}
           onClick={() => {
             setMessage(null);
+            if (!recordable.some((test) => test.testId === draft.testId)) {
+              setDraft(emptyDraft(recordable[0]?.testId ?? ""));
+            }
             setRecording(true);
           }}
           data-testid="run-qc-record"
@@ -314,7 +318,7 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({ runId, qc, onRecorded }) => {
               update({ testId: event.target.value, lotId: "" })
             }
           >
-            {qc.tests.map((test) => (
+            {recordable.map((test) => (
               <SelectItem
                 key={test.testId}
                 value={test.testId}

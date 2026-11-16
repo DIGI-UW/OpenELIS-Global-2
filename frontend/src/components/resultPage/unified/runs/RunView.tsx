@@ -420,7 +420,11 @@ const RunView: React.FC<RunViewProps> = ({
           <Button kind="tertiary" size="sm" onClick={onBack}>
             <FormattedMessage id="run.action.backToAll" />
           </Button>
-          <RunsChip activeRunId={runId} onOpenRun={onOpenRun} />
+          <RunsChip
+            activeRunId={runId}
+            onOpenRun={onOpenRun}
+            refreshKey={reload}
+          />
         </Column>
         {showFiltersNotice && (
           <Column lg={16} md={8} sm={4}>

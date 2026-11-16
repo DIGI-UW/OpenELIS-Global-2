@@ -25,6 +25,7 @@ interface RunsChipProps {
   testSectionId?: string;
   activeRunId?: number;
   onOpenRun: (runId: number) => void;
+  refreshKey?: number;
 }
 
 /**
@@ -36,6 +37,7 @@ const RunsChip: React.FC<RunsChipProps> = ({
   testSectionId,
   activeRunId,
   onOpenRun,
+  refreshKey,
 }) => {
   const intl = useIntl();
   const [list, setList] = useState<RunList | null>(null);
@@ -56,7 +58,7 @@ const RunsChip: React.FC<RunsChipProps> = ({
       controller.signal,
     );
     return () => controller.abort();
-  }, [testSectionId]);
+  }, [testSectionId, refreshKey]);
 
   const counts = intl.formatMessage(
     { id: "run.chip.counts" },
