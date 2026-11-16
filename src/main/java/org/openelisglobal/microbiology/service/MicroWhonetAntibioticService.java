@@ -69,7 +69,11 @@ public class MicroWhonetAntibioticService {
         var coded = antibiotics.findByWhonetCodeIgnoreCase(code);
         boolean sameAntibiotic = named.isPresent() && coded.isPresent()
                 && named.get().getId().equals(coded.get().getId());
-        if (named.isPresent() && !sameAntibiotic && (coded.isPresent() || named.get().getWhonetCode() != null)) {
+        // Another source's code for WHONET's name gives way to WHONET's code.
+        boolean codedByWhonet = named.isPresent()
+                && MicroWhonetOrganismService.SOURCE.equals(named.get().getReferenceSource());
+        if (named.isPresent() && !sameAntibiotic
+                && (coded.isPresent() || (named.get().getWhonetCode() != null && codedByWhonet))) {
             throw new IllegalArgumentException("WHONET names " + code + " \"" + name
                     + "\", but that name belongs to the antibiotic with code " + named.get().getWhonetCode());
         }

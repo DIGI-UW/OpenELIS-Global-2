@@ -128,6 +128,20 @@ public class MicroWhonetAntibioticLoadIntegrationTest extends BaseWebContextSens
     }
 
     @Test
+    public void anAntibioticUnderACodeWhonetDidNotGiveItTakesWhonetsCode() throws Exception {
+        executeDataSetWithStateManagement("testdata/microbiology/whonet-antibiotic-other-code.xml");
+
+        load();
+
+        MicroAntibiotic kanamycin = coded("KAN");
+        assertEquals("lab-kanamycin", kanamycin.getId());
+        assertEquals("Lab note", kanamycin.getNotes());
+        assertEquals("WHONET", kanamycin.getReferenceSource());
+        assertFalse(antibiotics.findByWhonetCodeIgnoreCase("KAN1").isPresent());
+        assertEquals(14, whonetTable.getAll().size());
+    }
+
+    @Test
     public void importCatalogDoesNotOfferTheTable() {
         CatalogImportServiceImpl catalogImport = new CatalogImportServiceImpl();
         context.getAutowireCapableBeanFactory().autowireBean(catalogImport);
