@@ -254,6 +254,38 @@ describe("InventoryItemForm — item type is a tag now", () => {
     expect(InventoryItemAPI.create).not.toHaveBeenCalled();
   });
 
+  it("shows every missing required field on one Save", async () => {
+    await renderForm();
+
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(screen.getByText("Item name is required.")).toBeInTheDocument();
+    expect(screen.getByText("Units are required.")).toBeInTheDocument();
+    for (const label of [/item name/i, /units/i]) {
+      expect(screen.getByLabelText(label)).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
+    }
+    expect(InventoryItemAPI.create).not.toHaveBeenCalled();
+  });
+
+  it("sends the name and units without surrounding spaces", async () => {
+    await renderForm();
+    fireEvent.change(screen.getByLabelText(/item name/i), {
+      target: { value: "  Examination gloves " },
+    });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: " mL " },
+    });
+
+    fireEvent.click(screen.getByText("Save"));
+
+    const payload = InventoryItemAPI.create.mock.calls[0][0];
+    expect(payload.name).toBe("Examination gloves");
+    expect(payload.units).toBe("mL");
+  });
+
   it("marks item name and units as required next to their labels", async () => {
     await renderForm();
     for (const id of ["name", "units"]) {

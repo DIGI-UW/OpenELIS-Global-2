@@ -9063,7 +9063,7 @@
   "transaction.type.ADJUSTMENT": "Adjustment",
   "transaction.type.DISPOSAL": "Disposal",
   "transaction.type.OPENING": "Opening",
-  "transaction.type.QC_TEST": "QC test",
+  "transaction.type.QC_TEST": "QC Test",
   "transaction.type.MANUAL": "Manual",
   "transaction.user": "User",
   "true.label": "True",

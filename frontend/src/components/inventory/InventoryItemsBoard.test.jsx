@@ -721,7 +721,7 @@ describe("InventoryItemsBoard", () => {
       expect(new Set(ids).size).toBe(ids.length);
     });
 
-    it("leaves used-up and disposed lots out of the count", async () => {
+    it("keeps the row count for the one live lot, counts a used-up lot below it, and leaves disposed lots out", async () => {
       const spent = (overrides) =>
         lot({
           currentQuantity: 0,
@@ -744,12 +744,19 @@ describe("InventoryItemsBoard", () => {
 
       fireEvent.click(screen.getByRole("button", { name: SYPHILIS.name }));
       expect(screen.getByRole("button", { name: "SYPH-77" })).toBeVisible();
-      expect(
-        screen.queryByRole("button", { name: "SYPH-12" }),
-      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "SYPH-12" })).toBeVisible();
       expect(
         screen.queryByRole("button", { name: "SYPH-31" }),
       ).not.toBeInTheDocument();
+
+      fireEvent.change(countField(202), { target: { value: "3" } });
+      fireEvent.click(screen.getByRole("button", { name: "Confirm count" }));
+
+      await waitFor(() =>
+        expect(InventoryCountAPI.record).toHaveBeenCalledWith([
+          { lotId: 202, countedQuantity: 3 },
+        ]),
+      );
     });
 
     it("refuses to count an item with several lots from the row", async () => {

@@ -193,10 +193,12 @@ const InventoryItemsBoard = () => {
   const countableLots = (row) =>
     (lotsByItem.get(row.itemId) || []).filter(
       (lot) =>
-        lot.status !== "CONSUMED" &&
         lot.status !== "DISPOSED" &&
         (!locationFilter || lot.location?.hierarchicalPath === locationFilter),
     );
+
+  const liveLots = (row) =>
+    countableLots(row).filter((lot) => lot.status !== "CONSUMED");
 
   // Includes the expired and QC-failed lots that row.onHand leaves out.
   const expectedFor = (row) =>
@@ -1074,11 +1076,11 @@ const InventoryItemsBoard = () => {
                     </TableCell>
                     <TableCell>
                       {countMode ? (
-                        countableLots(row).length === 1 ? (
+                        liveLots(row).length === 1 ? (
                           renderCountEntry(
                             `count-item-${row.itemId}`,
-                            countableLots(row)[0].id,
-                            countableLots(row)[0].currentQuantity || 0,
+                            liveLots(row)[0].id,
+                            liveLots(row)[0].currentQuantity || 0,
                             row.units,
                             intl.formatMessage(
                               { id: "inventory.count.countOf" },
@@ -1089,7 +1091,7 @@ const InventoryItemsBoard = () => {
                           <span className="board-muted">
                             <FormattedMessage
                               id={
-                                countableLots(row).length === 0
+                                liveLots(row).length === 0
                                   ? "inventory.count.nothingHere"
                                   : "inventory.count.perLot"
                               }
