@@ -1043,7 +1043,11 @@ describe("microbiology reference administration", () => {
       await screen.findByText("Family EBC, Meningitis"),
     ).toBeInTheDocument();
     expect(screen.getByText("Klebsiella pneumoniae")).toBeInTheDocument();
-    expect(screen.getByText("ZONE 30 mcg")).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByText("Family EBC, Meningitis").closest("tr"),
+      ).getByText("30 mcg"),
+    ).toBeInTheDocument();
   });
 
   it("loads a directly linked breakpoint correction and saves it as local", async () => {
