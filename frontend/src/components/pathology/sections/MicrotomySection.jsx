@@ -2,7 +2,6 @@ import ClinicalAttachmentPreview from "../../common/ClinicalAttachment/ClinicalA
 import React, { useEffect, useRef, useState } from "react";
 import {
   Button,
-  ComboBox,
   FileUploader,
   Heading,
   InlineNotification,
@@ -16,12 +15,12 @@ import config from "../../../config.json";
 import StatusBadge from "../../caseView/StatusBadge";
 import IdentifiedRow, { ListToolbar, RowIdentity } from "../IdentifiedRow";
 import LabelVerificationTag from "../LabelVerificationTag";
+import StainPicker from "../StainPicker";
 import {
   blockIdentifier,
   cassetteStateBadge,
   countedRows,
   deactivatedCount,
-  heldOrServedItems,
   labelStreamUrl,
   microtomyGroups,
   nextUnverifiedSlide,
@@ -125,11 +124,6 @@ const MicrotomySection = ({
   const groups = microtomyGroups(blocks, slides, showDeactivated);
 
   const { patchRow, removeRow, addRow } = rowListEditors("slides", updateCase);
-  // The stains are a dictionary category the laboratory keeps, so an empty
-  // one is a configuration gap the bench is told about. Until the list has
-  // arrived there is nothing to pick and nothing yet to say about it.
-  const stainsUnknown = !Array.isArray(stains);
-  const noStains = !stainsUnknown && stains.length === 0;
 
   const verifyLockOf = (slide) =>
     verifyLabelLock({
@@ -398,11 +392,6 @@ const MicrotomySection = ({
     // The row's place in the case's own list, not in its group, so every
     // edit lands on this row.
     const index = slides.indexOf(slide);
-    const stainItems = heldOrServedItems(
-      stains,
-      slide.stainId,
-      caseInfo.stainNames,
-    );
     const verifyLock = verifyLockOf(slide);
     const verifyLockedReason = verifyLock.reasonKey
       ? intl.formatMessage({ id: verifyLock.reasonKey })
@@ -512,36 +501,19 @@ const MicrotomySection = ({
               />
             </div>
             <div className="pathology-case-view__row-field">
-              <ComboBox
+              <StainPicker
                 id={"slideStain" + index}
-                size="md"
-                titleText={
+                slide={slide}
+                stains={stains}
+                stainNames={caseInfo.stainNames}
+                labelText={
                   <>
                     {intl.formatMessage({ id: "pathology.label.stain" })}
                     {hiddenName}
                   </>
                 }
-                placeholder={intl.formatMessage({ id: "common.select" })}
-                items={stainItems}
-                itemToString={(item) => item?.value ?? ""}
-                selectedItem={
-                  stainItems.find(
-                    (stain) => String(stain.id) === String(slide.stainId),
-                  ) ?? null
-                }
-                onChange={({ selectedItem }) =>
-                  patchRow(index, {
-                    stainId: selectedItem ? selectedItem.id : null,
-                  })
-                }
-                disabled={disabled || stainsUnknown || noStains}
-                helperText={
-                  // A row locked for its own reasons says nothing about the
-                  // list, which is not what keeps it locked.
-                  noStains && !disabled
-                    ? intl.formatMessage({ id: "pathology.empty.noStains" })
-                    : undefined
-                }
+                disabled={disabled}
+                onChange={(stainId) => patchRow(index, { stainId })}
               />
             </div>
             <div className="pathology-case-view__row-field">

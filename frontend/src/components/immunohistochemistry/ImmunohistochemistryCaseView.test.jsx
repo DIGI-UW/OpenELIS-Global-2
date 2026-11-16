@@ -228,4 +228,79 @@ describe("the pathology reading a referred case carries", () => {
     );
     expect(slideCell("9").querySelector(".cds--tag")).toBeNull();
   });
+
+  // How far each referred slide got at staining and coverslipping, read
+  // only here, and nothing for a slide with neither recorded.
+  it("tags each referred slide with its stain status and a named coverslip QC, and tags neither where none was recorded", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === CASE_URL) {
+        return callback({
+          labNumber: "ACC4",
+          reffered: true,
+          status: "IN_PROGRESS",
+          assignedTechnicianId: "1",
+          assignedPathologistId: "1",
+          grossExam: "",
+          microscopyExam: "",
+          blocks: [
+            { id: 1, designation: "A1", cassetteState: "BLOCK", active: true },
+          ],
+          slides: [
+            {
+              id: 5,
+              designation: "1",
+              blockId: 1,
+              active: true,
+              stainStatus: "STAINED",
+              coverslipQc: "PASS",
+            },
+            {
+              id: 6,
+              designation: "2",
+              blockId: 1,
+              active: true,
+              stainStatus: "UNSATISFACTORY",
+            },
+            { id: 7, designation: "9", blockId: null, active: true },
+          ],
+          labelVerifications: {},
+          reports: [],
+          requests: [],
+          techniques: [],
+          conclusions: [],
+        });
+      }
+      if (url.startsWith("/rest/paginatedDisplayList/")) {
+        return callback({
+          displayItems: [],
+          paging: { totalPages: 1, currentPage: 1 },
+        });
+      }
+      return callback([]);
+    });
+
+    renderCaseView();
+
+    const slideCell = (name) =>
+      screen.getByDisplayValue(name).closest(".cds--css-grid-column");
+    await waitFor(() => screen.getByDisplayValue("A1.1"));
+
+    expect(slideCell("A1.1")).toHaveTextContent(
+      messages["pathology.badge.stained"],
+    );
+    // Away from its column a QC result says what passed.
+    expect(slideCell("A1.1")).toHaveTextContent(
+      messages["pathology.badge.coverslipQcResult"].replace(
+        "{result}",
+        messages["pathology.badge.qcPassed"],
+      ),
+    );
+    expect(slideCell("A1.2")).toHaveTextContent(
+      messages["pathology.badge.unsatisfactory"],
+    );
+    expect(slideCell("A1.2")).not.toHaveTextContent(
+      messages["pathology.badge.qcAwaiting"],
+    );
+    expect(slideCell("9").querySelector(".cds--tag")).toBeNull();
+  });
 });

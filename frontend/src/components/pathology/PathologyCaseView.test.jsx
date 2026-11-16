@@ -95,6 +95,11 @@ const caseAtStage = (status, overrides = {}) => ({
       blockId: 1,
       active: true,
       location: "",
+      // Stained and through coverslip QC, as staining and coverslipping
+      // require before the case is sent on.
+      stainId: "31",
+      stainStatus: "STAINED",
+      coverslipQc: "PASS",
     },
   ],
   // The slide's label has been checked against its block, as microtomy
@@ -193,6 +198,27 @@ const answerMove = async (response) => {
   await act(async () => {
     callback(response);
   });
+};
+
+// Holds every read of the case, so a test can act in the window between a
+// change's answer and the read that follows it, and land or fail the read
+// when it chooses.
+const holdCaseReads = () => {
+  const held = [];
+  getFromOpenElisServer.mockImplementation((url, callback) => {
+    if (url === CASE_URL) {
+      held.push(callback);
+      return;
+    }
+    if (url.startsWith("/rest/paginatedDisplayList/")) {
+      return callback({
+        displayItems: [],
+        paging: { totalPages: 1, currentPage: 1 },
+      });
+    }
+    return callback([]);
+  });
+  return held;
 };
 
 const describedBy = (element) =>
@@ -486,23 +512,6 @@ describe("PathologyCaseView stage transitions", () => {
 
   // Until the case is read again the page still shows the stage it left, so
   // a second press would post that stage and come back as a conflict.
-  const holdCaseReads = () => {
-    const held = [];
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url === CASE_URL) {
-        held.push(callback);
-        return;
-      }
-      if (url.startsWith("/rest/paginatedDisplayList/")) {
-        return callback({
-          displayItems: [],
-          paging: { totalPages: 1, currentPage: 1 },
-        });
-      }
-      return callback([]);
-    });
-    return held;
-  };
 
   it("keeps the moves and the form held until the case is read again after a move lands", async () => {
     servedCase = caseAtStage("PROCESSING");
@@ -1404,5 +1413,249 @@ describe("Embed and Deactivate: refusals and the signed-out lock", () => {
     expect(
       screen.getByText(messages["common.deactivate"], { selector: "button" }),
     ).toBeEnabled();
+  });
+});
+
+// FR-8: a slide marked at staining or coverslipping is its own request, and
+// the case is read again after it. Until that read lands the page still
+// shows the slide as it was, so a second press in between would post the
+// same mark again, and anything typed would be overwritten by the read.
+describe("marking slides at staining and coverslipping", () => {
+  const pendingSlide = {
+    id: 5,
+    designation: "1",
+    barcode: "ACC9.A1.1",
+    blockId: 1,
+    active: true,
+    location: "",
+    stainId: "31",
+  };
+  const atStainingWithAPendingSlide = (overrides = {}) =>
+    caseAtStage("STAINING", { slides: [pendingSlide], ...overrides });
+
+  const markStained = () => document.getElementById("markStained-5");
+
+  const grossExam = () =>
+    screen.getByLabelText(messages["pathology.label.grossExam"]);
+
+  it("holds the marks, the moves and the form until the case is read again after a mark lands", async () => {
+    servedCase = atStainingWithAPendingSlide();
+    renderCaseView();
+    await loaded();
+    const heldReads = holdCaseReads();
+
+    fireEvent.click(markStained());
+    await answerMove({ slides: [{ id: 5, stainStatus: "STAINED" }] });
+
+    expect(heldReads).toHaveLength(1);
+    expect(markStained()).toBeDisabled();
+    expect(markStained()).toHaveAttribute(
+      "title",
+      messages["pathology.locked.requestInFlight"],
+    );
+    fireEvent.click(markStained());
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+    expect(saveDraftButton()).toBeDisabled();
+    expect(returnButton()).toBeDisabled();
+
+    // Typed into while the read is out, the form takes nothing, so the read
+    // cannot overwrite anything.
+    expect(grossExam()).toBeDisabled();
+    fireEvent.change(grossExam(), { target: { value: "Typed in the window" } });
+    expect(
+      screen.queryByText(messages["caseView.label.unsavedChanges"]),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      heldReads[0]({
+        ...caseAtStage("STAINING", {
+          slides: [{ ...pendingSlide, stainStatus: "STAINED" }],
+        }),
+      });
+    });
+
+    expect(saveDraftButton()).toBeEnabled();
+    expect(markStained()).toBeNull();
+    // Once the case is read, what is typed stays on the form.
+    fireEvent.change(grossExam(), {
+      target: { value: "Typed after the read" },
+    });
+    expect(grossExam()).toHaveValue("Typed after the read");
+    expect(
+      screen.getByText(messages["caseView.label.unsavedChanges"]),
+    ).toBeInTheDocument();
+  });
+
+  it("lets go of the marks when the read after a mark fails, leaving the page as it was", async () => {
+    servedCase = atStainingWithAPendingSlide();
+    renderCaseView();
+    await loaded();
+    const heldReads = holdCaseReads();
+
+    fireEvent.click(markStained());
+    await answerMove({ slides: [] });
+    await act(async () => {
+      heldReads[0](undefined);
+    });
+
+    expect(markStained()).toBeEnabled();
+    expect(saveDraftButton()).toBeEnabled();
+    expect(grossExam()).toBeEnabled();
+  });
+
+  it("shows a mark the server refuses in the reader's language, reads the case again and lets go once it lands", async () => {
+    servedCase = atStainingWithAPendingSlide();
+    renderCaseView();
+    await loaded();
+    const fetchesBefore = caseFetchCount();
+
+    fireEvent.click(markStained());
+    await answerMove({
+      status: 400,
+      error: "Save a stain first",
+      messageKey: "pathology.error.stainMissing",
+      messageArgs: { designations: "A1.1" },
+    });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: intl.formatMessage(
+          { id: "pathology.error.stainMissing" },
+          { designations: "A1.1" },
+        ),
+      }),
+    );
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(markStained()).toBeEnabled();
+  });
+
+  it("reports any other failed mark as the ordinary failure, and lets it be tried again", async () => {
+    servedCase = atStainingWithAPendingSlide();
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(markStained());
+    await answerMove({ status: 0 });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["pathology.toast.slideWorkFailed"],
+      }),
+    );
+    fireEvent.click(markStained());
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(2);
+  });
+
+  it("holds staining back on the primary until every slide is stained, naming the one outstanding", async () => {
+    servedCase = atStainingWithAPendingSlide();
+    renderCaseView();
+    await loaded();
+
+    const primary = primaryButton("pathology.action.sendForCoverslip");
+    const reason = intl.formatMessage(
+      { id: "pathology.locked.stainingIncomplete" },
+      {
+        outstanding: intl.formatMessage(
+          { id: "pathology.badge.outstanding" },
+          { designations: "A1.1" },
+        ),
+      },
+    );
+    expect(primary).toBeDisabled();
+    expect(primary).toHaveAttribute("title", reason);
+    expect(describedBy(primary)).toHaveTextContent(reason);
+  });
+
+  it("holds coverslipping back on the primary until every slide passed QC, naming a failed one", async () => {
+    servedCase = caseAtStage("COVERSLIPPING", {
+      slides: [
+        { ...pendingSlide, stainStatus: "STAINED", coverslipQc: "FAIL" },
+      ],
+    });
+    renderCaseView();
+    await loaded();
+
+    expect(primaryButton("pathology.action.sendToPathologist")).toHaveAttribute(
+      "title",
+      intl.formatMessage(
+        { id: "pathology.locked.coverslipQcIncomplete" },
+        {
+          outstanding: intl.formatMessage(
+            { id: "pathology.badge.outstanding" },
+            { designations: "A1.1" },
+          ),
+        },
+      ),
+    );
+  });
+
+  it("holds staining back on a case whose every slide is retired, as microtomy holds a case with none", async () => {
+    servedCase = caseAtStage("STAINING", {
+      slides: [{ ...pendingSlide, active: false }],
+    });
+    renderCaseView();
+    await loaded();
+
+    const primary = primaryButton("pathology.action.sendForCoverslip");
+    expect(primary).toBeDisabled();
+    expect(primary).toHaveAttribute(
+      "title",
+      messages["pathology.locked.microtomyIncomplete"],
+    );
+  });
+
+  it("shows a mark refused past the bench in the reader's language", async () => {
+    servedCase = atStainingWithAPendingSlide();
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(markStained());
+    await answerMove({
+      status: 400,
+      error: "The case is with the pathologist.",
+      messageKey: "pathology.error.slideWorkAfterBench",
+      messageArgs: {},
+    });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["pathology.error.slideWorkAfterBench"],
+      }),
+    );
+  });
+
+  it("names a stain no longer in use when the server refuses a save for it", async () => {
+    servedCase = caseAtStage("MICROTOMY");
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(saveDraftButton());
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
+    await act(async () => {
+      await callback({
+        status: 400,
+        json: async () => ({
+          error: "inactive stain",
+          messageKey: "pathology.error.stainNotInUse",
+          messageArgs: { name: "Orcein" },
+        }),
+      });
+    });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: intl.formatMessage(
+          { id: "pathology.error.stainNotInUse" },
+          { name: "Orcein" },
+        ),
+      }),
+    );
   });
 });

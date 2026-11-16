@@ -629,7 +629,7 @@ describe("PathologyCaseView sections", () => {
     await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
-      screen.getByText(messages["caseView.badge.notApplicable"]),
+      rail().getByText(messages["caseView.badge.notApplicable"]),
     ).toBeInTheDocument();
     expect(section("pathology-section-coverslipping").textContent).toContain(
       messages["pathology.locked.stageDisabled"],
@@ -3490,6 +3490,1119 @@ describe("Microtomy section", () => {
           ),
         ),
       ).toBeNull();
+    });
+  });
+});
+
+// FR-8.1 to FR-8.4: each slide is marked stained, or unsatisfactory, and its
+// coverslip passed or failed, from its own row or as a batch of selected
+// slides that the confirmation names in full. Before this the two sections
+// said OpenELIS recorded nothing at either stage.
+describe("Staining and Coverslipping sections", () => {
+  const STAINING = "pathology-section-staining";
+  const COVERSLIPPING = "pathology-section-coverslipping";
+  const asBlock = (row) => ({ ...row, cassetteState: "BLOCK" });
+
+  // Two blocks and three slides: A1.1 stained, A1.2 with a stain saved and
+  // nothing recorded, A2.1 with no stain yet.
+  const slideWork = (overrides = {}) => ({
+    blocks: [asBlock(savedBlock("1", "A1")), asBlock(savedBlock("2", "A2"))],
+    slides: [
+      savedSlide("5", "1", "1", { stainId: "31", stainStatus: "STAINED" }),
+      savedSlide("6", "2", "1", { stainId: "32" }),
+      savedSlide("7", "1", "2", { barcode: "ACC9.A2.1" }),
+    ],
+    stainNames: { 31: "H&E", 32: "PAS" },
+    stainStamps: { 5: { at: "16/11/2026 09:00", by: "Tech, Tina" } },
+    labelVerifications: {},
+    ...overrides,
+  });
+
+  const openAt = async (status, overrides = {}, configurationProperties) => {
+    servedCase = caseAtStage(status, slideWork(overrides));
+    renderCaseView(configurationProperties);
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+  };
+
+  const slideRow = (table, id) =>
+    document.querySelector(`[data-testid="${table}Row-${id}"]`);
+
+  const named = (key, slide) => intl.formatMessage({ id: key }, { slide });
+
+  const buttonNamed = (key, slide) =>
+    screen.getByRole("button", { name: named(key, slide) });
+
+  // Both tables list the same slides, so a selection is found in its own.
+  const selectBox = (sectionId, slide) =>
+    within(section(sectionId)).getByRole("checkbox", {
+      name: slide
+        ? named("pathology.label.selectSlide", slide)
+        : messages["pathology.label.selectAllSlides"],
+    });
+
+  const lastJsonPost = () => postToOpenElisServerJsonResponse.mock.calls.at(-1);
+
+  const answerSlideWork = async (response) => {
+    const callback = lastJsonPost()[2];
+    await act(async () => {
+      callback(response);
+    });
+  };
+
+  const describedBy = (element) =>
+    element
+      .getAttribute("aria-describedby")
+      .split(" ")
+      .map((id) => document.getElementById(id).textContent)
+      .join(" ");
+
+  const tagIn = (row, text) =>
+    within(row).getByText(text, { selector: ".cds--tag, .cds--tag *" });
+
+  describe("staining", () => {
+    it("lists each saved slide named under its block, with its status and who stained it", async () => {
+      await openAt("STAINING");
+
+      const stained = within(slideRow("staining", "5"));
+      expect(stained.getByText("A1.1")).toBeInTheDocument();
+      // The table has no room for the barcode: it is read out with the
+      // name and shown on hover, as the Microtomy section shows it.
+      const barcode = stained.getByText("ACC9.A1.1");
+      expect(barcode.closest(".cds--visually-hidden")).not.toBeNull();
+      expect(barcode.closest("td")).toHaveAttribute("title", "ACC9.A1.1");
+      expect(
+        stained.getByText(messages["pathology.badge.stained"]),
+      ).toBeInTheDocument();
+      expect(
+        stained.getByText(
+          intl.formatMessage(
+            { id: "pathology.label.stampedBy" },
+            { name: "Tech, Tina", date: "16/11/2026 09:00" },
+          ),
+        ),
+      ).toBeInTheDocument();
+      expect(slideRow("staining", "7")).toHaveTextContent("A2.1");
+    });
+
+    it("shows Pending in the pending color while the bench still owes the stain, through coverslipping", async () => {
+      await openAt("COVERSLIPPING");
+
+      expect(
+        tagIn(slideRow("staining", "6"), messages["common.pending"]).closest(
+          ".cds--tag",
+        ),
+      ).toHaveClass("cds--tag--purple");
+    });
+
+    it("reads a slide with nothing recorded as Not recorded, in gray, once the case is with the pathologist", async () => {
+      hasRole.mockReturnValue(true);
+      await openAt("READY_PATHOLOGIST");
+
+      expect(
+        tagIn(
+          slideRow("staining", "6"),
+          messages["common.notRecorded"],
+        ).closest(".cds--tag"),
+      ).toHaveClass("cds--tag--gray");
+    });
+
+    it("names each row action by the words it shows and then the slide", async () => {
+      await openAt("STAINING");
+
+      ["markStained-6", "markUnsatisfactory-6"].forEach((id) => {
+        const button = document.getElementById(id);
+        const label = button.getAttribute("aria-label");
+        expect(label.startsWith(button.textContent)).toBe(true);
+        expect(label).toContain("A1.2");
+      });
+      expect(
+        buttonNamed("pathology.action.markStainedOf", "A1.2"),
+      ).toHaveTextContent(messages["pathology.action.markStained"]);
+    });
+
+    it("marks one slide stained from its row, posting only that slide, and names it in a success toast", async () => {
+      await openAt("STAINING");
+      const fetchesBefore = caseFetchCount();
+
+      fireEvent.click(buttonNamed("pathology.action.markStainedOf", "A1.2"));
+
+      const [url, body] = lastJsonPost();
+      expect(url).toBe(CASE_URL + "/slides/stain-status");
+      expect(JSON.parse(body)).toEqual({ slideIds: ["6"], status: "STAINED" });
+
+      await answerSlideWork({ slides: [{ id: "6", stainStatus: "STAINED" }] });
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "success",
+          message: intl.formatMessage(
+            { id: "pathology.toast.slidesStained" },
+            { slides: "A1.2" },
+          ),
+        }),
+      );
+      expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    });
+
+    it("tells an unsatisfactory mark as information, not as a success", async () => {
+      await openAt("STAINING");
+
+      expect(
+        screen.queryByRole("button", {
+          name: named("pathology.action.markStainedOf", "A1.1"),
+        }),
+      ).toBeNull();
+      fireEvent.click(
+        buttonNamed("pathology.action.markUnsatisfactoryOf", "A1.1"),
+      );
+      expect(JSON.parse(lastJsonPost()[1])).toEqual({
+        slideIds: ["5"],
+        status: "UNSATISFACTORY",
+      });
+      await answerSlideWork({ slides: [] });
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "info",
+          message: intl.formatMessage(
+            { id: "pathology.toast.slidesUnsatisfactory" },
+            { slides: "A1.1" },
+          ),
+        }),
+      );
+    });
+
+    it("moves focus to the next slide still to stain once the case is read back", async () => {
+      await openAt("STAINING", {
+        slides: [
+          savedSlide("5", "1", "1", { stainId: "31" }),
+          savedSlide("6", "2", "1", { stainId: "32" }),
+        ],
+      });
+
+      const button = buttonNamed("pathology.action.markStainedOf", "A1.1");
+      button.focus();
+      fireEvent.click(button);
+      servedCase = caseAtStage(
+        "STAINING",
+        slideWork({
+          slides: [
+            savedSlide("5", "1", "1", {
+              stainId: "31",
+              stainStatus: "STAINED",
+            }),
+            savedSlide("6", "2", "1", { stainId: "32" }),
+          ],
+        }),
+      );
+      await answerSlideWork({ slides: [] });
+
+      await waitFor(() =>
+        expect(document.getElementById("markStained-6")).toHaveFocus(),
+      );
+    });
+
+    it("keeps the table, the selection and every button on the page, held, while a mark is out", async () => {
+      await openAt("STAINING");
+      fireEvent.click(selectBox(STAINING, "A1.2"));
+
+      fireEvent.click(buttonNamed("pathology.action.markStainedOf", "A1.2"));
+
+      expect(selectBox(STAINING, "A1.2")).toBeChecked();
+      expect(document.getElementById("stainingBatchAction")).toBeDisabled();
+      expect(document.getElementById("markStained-6")).toBeDisabled();
+      expect(document.getElementById("markUnsatisfactory-7")).toBeDisabled();
+      expect(document.getElementById("stainingStain2")).toBeDisabled();
+      expect(document.getElementById("stainingHold")).toHaveTextContent(
+        messages["pathology.locked.requestInFlight"],
+      );
+    });
+
+    // The save reads the case back, so a stain picked while it is out would
+    // be written over by the answer.
+    it("holds the staining row's stain picker while a save is out", async () => {
+      await openAt("STAINING");
+
+      fireEvent.click(saveDraftButton());
+      await waitFor(() =>
+        expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+      );
+
+      expect(document.getElementById("stainingStain2")).toBeDisabled();
+
+      const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
+      await act(async () => {
+        await callback({ status: 200, json: async () => ({}) });
+      });
+
+      expect(document.getElementById("stainingStain2")).toBeEnabled();
+    });
+
+    it("puts focus back on the button that started a refused mark once the case is read again", async () => {
+      await openAt("STAINING");
+
+      const button = document.getElementById("markStained-6");
+      button.focus();
+      fireEvent.click(button);
+      // A browser drops focus from a button once it is disabled; jsdom keeps
+      // it there, so the test drops it the way the browser would.
+      expect(button).toBeDisabled();
+      const elsewhere = document.createElement("input");
+      document.body.appendChild(elsewhere);
+      elsewhere.focus();
+      elsewhere.remove();
+      expect(document.activeElement).toBe(document.body);
+      await answerSlideWork({
+        status: 400,
+        messageKey: "pathology.error.stainMissing",
+        messageArgs: { designations: "A1.2" },
+      });
+
+      await waitFor(() =>
+        expect(document.getElementById("markStained-6")).toHaveFocus(),
+      );
+      expect(document.getElementById("markStained-6")).toBeEnabled();
+    });
+
+    it("names every selected slide before a batch is marked stained, ties the question to Confirm, and posts their ids", async () => {
+      await openAt("STAINING");
+
+      fireEvent.click(selectBox(STAINING, "A1.1"));
+      fireEvent.click(selectBox(STAINING, "A1.2"));
+      expect(
+        within(section(STAINING)).getByText(
+          intl.formatMessage(
+            { id: "pathology.label.slidesSelected" },
+            { count: 2 },
+          ),
+        ),
+      ).toBeInTheDocument();
+
+      fireEvent.click(document.getElementById("stainingBatchAction"));
+
+      const question = intl.formatMessage(
+        { id: "pathology.label.confirmStainBatch" },
+        { slides: "A1.1, A1.2" },
+      );
+      const group = screen.getByRole("group", { name: question });
+      expect(group.id).toBe("stainingBatchConfirm");
+      const confirm = document.getElementById("stainingBatchConfirmButton");
+      expect(describedBy(confirm)).toBe(question);
+      expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+      await waitFor(() => expect(confirm).toHaveFocus());
+
+      fireEvent.click(confirm);
+
+      expect(JSON.parse(lastJsonPost()[1])).toEqual({
+        slideIds: ["5", "6"],
+        status: "STAINED",
+      });
+      await answerSlideWork({ slides: [] });
+      // A1.1 was stained already, so the toast names only the slide it
+      // changed.
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: intl.formatMessage(
+            { id: "pathology.toast.slidesStained" },
+            { slides: "A1.2" },
+          ),
+        }),
+      );
+      await waitFor(() =>
+        expect(document.getElementById("stainingBatchConfirm")).toBeNull(),
+      );
+      expect(selectBox(STAINING, "A1.2")).not.toBeChecked();
+    });
+
+    it("says nothing changed when every slide in a batch already carried the mark", async () => {
+      await openAt("STAINING");
+
+      fireEvent.click(selectBox(STAINING, "A1.1"));
+      fireEvent.click(document.getElementById("stainingBatchAction"));
+      fireEvent.click(document.getElementById("stainingBatchConfirmButton"));
+      await answerSlideWork({ slides: [] });
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: intl.formatMessage(
+            { id: "pathology.toast.slidesUnchanged" },
+            { slides: "A1.1" },
+          ),
+        }),
+      );
+    });
+
+    it("puts focus back on the batch button when the confirmation is cancelled, and posts nothing", async () => {
+      await openAt("STAINING");
+
+      fireEvent.click(selectBox(STAINING, "A1.2"));
+      fireEvent.click(document.getElementById("stainingBatchAction"));
+      fireEvent.click(document.getElementById("stainingBatchCancel"));
+
+      expect(document.getElementById("stainingBatchConfirm")).toBeNull();
+      await waitFor(() =>
+        expect(document.getElementById("stainingBatchAction")).toHaveFocus(),
+      );
+      expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+    });
+
+    it("holds the batch back naming each selected slide with no stain saved", async () => {
+      await openAt("STAINING");
+
+      fireEvent.click(selectBox(STAINING));
+      fireEvent.click(document.getElementById("stainingBatchAction"));
+
+      const confirm = document.getElementById("stainingBatchConfirmButton");
+      const reason = intl.formatMessage(
+        { id: "pathology.locked.stainMissingFor" },
+        { designations: "A2.1" },
+      );
+      expect(confirm).toBeDisabled();
+      expect(confirm).toHaveAttribute("title", reason);
+      expect(describedBy(confirm)).toContain(reason);
+    });
+
+    it("holds Mark stained on a slide with no stain saved, saying why under it and in its title", async () => {
+      await openAt("STAINING");
+
+      const button = document.getElementById("markStained-7");
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute(
+        "title",
+        messages["pathology.locked.stainMissing"],
+      );
+      expect(describedBy(button)).toBe(
+        messages["pathology.locked.stainMissing"],
+      );
+      expect(document.getElementById("markUnsatisfactory-7")).toBeEnabled();
+    });
+
+    it("holds every mark while the form holds unsaved work, and says so once in a line the buttons point at", async () => {
+      await openAt("STAINING");
+
+      const user = userEvent.setup();
+      await user.click(document.getElementById("stainingStain2"));
+      await user.click(
+        within(slideRow("staining", "7")).getByRole("option", { name: "PAS" }),
+      );
+
+      const hold = document.getElementById("stainingHold");
+      expect(hold).toHaveTextContent(
+        messages["pathology.locked.saveBeforeMarking"],
+      );
+      expect(hold).not.toHaveClass("cds--visually-hidden");
+      const button = document.getElementById("markStained-6");
+      expect(button).toBeDisabled();
+      expect(button.getAttribute("aria-describedby")).toBe("stainingHold");
+    });
+
+    it("holds every mark once the case is with the pathologist, and says to return it", async () => {
+      hasRole.mockReturnValue(true);
+      await openAt("READY_PATHOLOGIST");
+
+      expect(document.getElementById("markStained-6")).toBeDisabled();
+      expect(document.getElementById("markUnsatisfactory-5")).toBeDisabled();
+      expect(document.getElementById("stainingHold")).toHaveTextContent(
+        messages["pathology.locked.slideWorkAfterBench"],
+      );
+    });
+
+    // Carbon hides its batch bar from assistive technology while nothing is
+    // selected, so nothing in it may take focus then.
+    it("keeps the batch action out of the tab order until a slide is selected", async () => {
+      await openAt("STAINING");
+
+      const batch = document.getElementById("stainingBatchAction");
+      expect(batch.closest("[aria-hidden='true']")).not.toBeNull();
+      expect(batch).toHaveAttribute("tabindex", "-1");
+
+      fireEvent.click(selectBox(STAINING, "A1.2"));
+
+      expect(batch.closest("[aria-hidden='true']")).toBeNull();
+      expect(batch).toHaveAttribute("tabindex", "0");
+    });
+
+    // The toolbar carries only the batch bar; idle, it is collapsed by the
+    // stylesheet. jsdom has no layout, so only the class is checked here.
+    it("marks the toolbar idle until a slide is selected, without taking the batch bar off the page", async () => {
+      await openAt("STAINING");
+
+      const toolbar = () =>
+        document
+          .getElementById("stainingBatchAction")
+          .closest(".pathology-case-view__slide-toolbar");
+      expect(toolbar()).toHaveClass("pathology-case-view__slide-toolbar--idle");
+
+      fireEvent.click(selectBox(STAINING, "A1.2"));
+
+      expect(toolbar()).not.toHaveClass(
+        "pathology-case-view__slide-toolbar--idle",
+      );
+    });
+
+    it("puts the table in a labelled region a keyboard can reach, to scroll it where the section is narrow", async () => {
+      await openAt("STAINING");
+
+      const region = screen.getByRole("region", {
+        name: messages["pathology.stage.staining"],
+      });
+      expect(region.id).toBe("stainingRegion");
+      expect(region).toHaveAttribute("tabindex", "0");
+      expect(region.querySelector("table")).not.toBeNull();
+    });
+
+    it.each([
+      ["READY_PATHOLOGIST", "pathology.locked.slideWorkAfterBench"],
+      ["COMPLETED", "pathology.locked.caseCompleted"],
+    ])(
+      "offers no selection and no batch on a case at %s, and keeps each row's buttons held with the reason",
+      async (status, reasonKey) => {
+        hasRole.mockReturnValue(true);
+        await openAt(status);
+
+        [STAINING, COVERSLIPPING].forEach((id) => {
+          expect(within(section(id)).queryByRole("checkbox")).toBeNull();
+          expect(section(id).querySelector(".cds--batch-actions")).toBeNull();
+        });
+        expect(document.getElementById("stainingBatchAction")).toBeNull();
+        expect(document.getElementById("markStained-6")).toBeDisabled();
+        expect(document.getElementById("stainingHold")).toHaveTextContent(
+          messages[reasonKey],
+        );
+      },
+    );
+
+    it("keeps the selection and the batch bar on the page, the batch held, while the form holds unsaved work", async () => {
+      await openAt("STAINING");
+      fireEvent.click(selectBox(STAINING, "A1.2"));
+
+      const user = userEvent.setup();
+      await user.click(document.getElementById("stainingStain2"));
+      await user.click(
+        within(slideRow("staining", "7")).getByRole("option", { name: "PAS" }),
+      );
+
+      expect(selectBox(STAINING, "A1.2")).toBeChecked();
+      expect(document.getElementById("stainingBatchAction")).toBeDisabled();
+      expect(document.getElementById("stainingHold")).toHaveTextContent(
+        messages["pathology.locked.saveBeforeMarking"],
+      );
+    });
+
+    it("names the selected slides in the confirmation and the toast in the order the case lists them", async () => {
+      await openAt("STAINING", {
+        slides: [
+          savedSlide("7", "1", "2", { stainId: "31" }),
+          savedSlide("5", "1", "1", { stainId: "31" }),
+        ],
+      });
+
+      fireEvent.click(selectBox(STAINING, "A1.1"));
+      fireEvent.click(selectBox(STAINING, "A2.1"));
+      fireEvent.click(document.getElementById("stainingBatchAction"));
+
+      expect(document.getElementById("stainingBatchConfirm")).toHaveTextContent(
+        intl.formatMessage(
+          { id: "pathology.label.confirmStainBatch" },
+          { slides: "A2.1, A1.1" },
+        ),
+      );
+      fireEvent.click(document.getElementById("stainingBatchConfirmButton"));
+      expect(JSON.parse(lastJsonPost()[1]).slideIds).toEqual(["7", "5"]);
+      await answerSlideWork({ slides: [] });
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: intl.formatMessage(
+            { id: "pathology.toast.slidesStained" },
+            { slides: "A2.1, A1.1" },
+          ),
+        }),
+      );
+    });
+
+    it("posts a stain picked on the staining row with the save, under a label that names the slide", async () => {
+      await openAt("STAINING");
+
+      const picker = screen.getByRole("combobox", {
+        name: named("pathology.label.stainFor", "A2.1"),
+      });
+      expect(picker.id).toBe("stainingStain2");
+      const user = userEvent.setup();
+      await user.click(picker);
+      await user.click(
+        within(slideRow("staining", "7")).getByRole("option", { name: "H&E" }),
+      );
+
+      const body = await postedCase();
+      expect(body.slides[2].stainId).toBe("31");
+    });
+
+    // A disabled field greys its helper text below a readable contrast, so a
+    // frozen stain is text with the way to change it beside it, not a picker.
+    it("shows the stain of a stained slide as text with how to change it on both rows, and a picker again once unsatisfactory", async () => {
+      await openAt("STAINING", {
+        slides: [
+          savedSlide("5", "1", "1", { stainId: "31", stainStatus: "STAINED" }),
+          savedSlide("6", "2", "1", {
+            stainId: "32",
+            stainStatus: "UNSATISFACTORY",
+          }),
+        ],
+      });
+
+      ["stainingStain0", "slideStain0"].forEach((id) => {
+        const stain = document.getElementById(id);
+        expect(stain.tagName).toBe("SPAN");
+        expect(stain).toHaveTextContent("H&E");
+        expect(document.getElementById(id + "Hint")).toHaveTextContent(
+          messages["pathology.locked.stainFrozen"],
+        );
+      });
+      expect(
+        screen.queryByRole("combobox", {
+          name: named("pathology.label.stainFor", "A1.1"),
+        }),
+      ).toBeNull();
+      expect(
+        within(
+          document
+            .getElementById("slideStain0")
+            .closest(".pathology-case-view__row"),
+        ).queryByRole("combobox", { name: /Stain/ }),
+      ).toBeNull();
+      ["stainingStain1", "slideStain1"].forEach((id) => {
+        const picker = document.getElementById(id);
+        expect(picker).toHaveAttribute("role", "combobox");
+        expect(picker).toBeEnabled();
+      });
+    });
+
+    it("warns which slides are still to stain while the case stands at staining", async () => {
+      await openAt("STAINING");
+
+      const banner = within(section(STAINING))
+        .getByText(
+          intl.formatMessage(
+            { id: "pathology.banner.slidesToStain" },
+            { count: 2 },
+          ),
+        )
+        .closest(".cds--inline-notification");
+      expect(banner).toHaveClass("cds--inline-notification--warning");
+      expect(banner).toHaveTextContent(
+        intl.formatMessage(
+          { id: "pathology.banner.slidesToStainDetail" },
+          { designations: "A1.2, A2.1" },
+        ),
+      );
+    });
+
+    it("names an unsatisfactory slide as holding the case only where the case stands at staining", async () => {
+      const unsatisfactory = {
+        slides: [
+          savedSlide("5", "1", "1", {
+            stainId: "31",
+            stainStatus: "UNSATISFACTORY",
+          }),
+        ],
+      };
+      await openAt("STAINING", unsatisfactory);
+
+      expect(
+        within(section(STAINING)).getByText(
+          intl.formatMessage(
+            { id: "pathology.banner.unsatisfactorySlidesHere" },
+            { designations: "A1.1" },
+          ),
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(section(STAINING)).getByText(
+          messages["pathology.banner.restainOrRecut"],
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("says an unsatisfactory slide holds a case at coverslipping too, since the coverslip gate asks for a stained slide", async () => {
+      await openAt("COVERSLIPPING", {
+        slides: [
+          savedSlide("5", "1", "1", {
+            stainId: "31",
+            stainStatus: "UNSATISFACTORY",
+          }),
+        ],
+      });
+
+      expect(
+        within(section(STAINING)).getByText(
+          intl.formatMessage(
+            { id: "pathology.banner.unsatisfactorySlidesHere" },
+            { designations: "A1.1" },
+          ),
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(section(COVERSLIPPING)).queryByText(
+          intl.formatMessage(
+            { id: "pathology.banner.unsatisfactorySlidesHere" },
+            { designations: "A1.1" },
+          ),
+        ),
+      ).toBeNull();
+    });
+
+    it("names an unsatisfactory slide without claiming it holds the case once the case is with the pathologist", async () => {
+      hasRole.mockReturnValue(true);
+      await openAt("READY_PATHOLOGIST", {
+        slides: [
+          savedSlide("5", "1", "1", {
+            stainId: "31",
+            stainStatus: "UNSATISFACTORY",
+          }),
+        ],
+      });
+
+      expect(
+        within(section(STAINING)).getByText(
+          intl.formatMessage(
+            { id: "pathology.banner.unsatisfactorySlides" },
+            { designations: "A1.1" },
+          ),
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("lists a deactivated slide only on request, and offers no selection or mark on it", async () => {
+      await openAt("STAINING", {
+        slides: [
+          savedSlide("5", "1", "1", { stainId: "31" }),
+          savedSlide("6", "2", "1", { stainId: "32", active: false }),
+        ],
+      });
+
+      expect(slideRow("staining", "6")).toBeNull();
+      fireEvent.click(
+        within(section(STAINING)).getByRole("switch", {
+          name: messages["caseView.action.showDeactivated"],
+        }),
+      );
+
+      const retired = within(slideRow("staining", "6"));
+      expect(
+        retired.getByText(messages["caseView.badge.deactivated"]),
+      ).toBeInTheDocument();
+      expect(retired.getByRole("checkbox")).toBeDisabled();
+      expect(document.getElementById("markStained-6")).toBeNull();
+      expect(document.getElementById("markUnsatisfactory-6")).toBeNull();
+      expect(document.getElementById("stainingStain1")).toBeDisabled();
+    });
+
+    it("shows the slides read-only, with the not-tracked banner, where staining is switched off and a status is on record", async () => {
+      await openAt(
+        "COVERSLIPPING",
+        {},
+        { PATHOLOGY_STAGE_STAINING_ENABLED: "false" },
+      );
+
+      expect(
+        within(section(STAINING)).getByText(
+          messages["pathology.banner.stageDisabledRows"],
+        ),
+      ).toBeInTheDocument();
+      expect(slideRow("staining", "5")).toHaveTextContent(
+        messages["pathology.badge.stained"],
+      );
+      expect(within(section(STAINING)).queryByRole("checkbox")).toBeNull();
+      expect(document.getElementById("markStained-6")).toBeNull();
+      expect(summaryValue(messages["pathology.stage.staining"])).toBe(
+        messages["caseView.badge.notApplicable"],
+      );
+    });
+
+    it("badges the section and fills the summary from the slides", async () => {
+      await openAt("STAINING");
+
+      const stainedOf = intl.formatMessage(
+        { id: "pathology.badge.stainedOf" },
+        { stained: 1, total: 3 },
+      );
+      expect(within(section(STAINING)).getAllByText(stainedOf).length).toBe(1);
+      expect(summaryValue(messages["pathology.stage.staining"])).toBe(
+        stainedOf,
+      );
+    });
+
+    it("shows no count and reads Not recorded on a case that left the bench with nothing recorded, and ticks the rail step", async () => {
+      hasRole.mockReturnValue(true);
+      await openAt("READY_PATHOLOGIST", {
+        slides: [
+          savedSlide("5", "1", "1", { stainId: "31" }),
+          savedSlide("6", "2", "1", { stainId: "32" }),
+        ],
+        stainStamps: {},
+      });
+
+      expect(
+        within(section(STAINING)).queryByText(
+          intl.formatMessage(
+            { id: "pathology.badge.stainedOf" },
+            { stained: 0, total: 2 },
+          ),
+        ),
+      ).toBeNull();
+      expect(summaryValue(messages["pathology.stage.staining"])).toBe(
+        messages["common.notRecorded"],
+      );
+      expect(summaryValue(messages["pathology.stage.coverslipping"])).toBe(
+        messages["common.notRecorded"],
+      );
+      expect(
+        rail().getByText(messages["pathology.stage.staining"]).closest("li"),
+      ).toHaveClass("cds--progress-step--complete");
+    });
+  });
+
+  describe("coverslipping", () => {
+    const checked = (overrides = {}) => ({
+      slides: [
+        savedSlide("5", "1", "1", {
+          stainId: "31",
+          stainStatus: "STAINED",
+          coverslipQc: "PASS",
+        }),
+        savedSlide("6", "2", "1", {
+          stainId: "32",
+          stainStatus: "STAINED",
+          coverslipQc: "FAIL",
+        }),
+        savedSlide("7", "1", "2", { stainId: "31", stainStatus: "STAINED" }),
+      ],
+      coverslipQcStamps: { 5: { at: "16/11/2026 11:00", by: "Tech, Tina" } },
+      ...overrides,
+    });
+
+    it("tags each slide's QC Passed, Failed or Awaiting, in words, with who checked it", async () => {
+      await openAt("COVERSLIPPING", checked());
+
+      expect(slideRow("coverslipping", "5")).toHaveTextContent(
+        messages["pathology.badge.qcPassed"],
+      );
+      expect(slideRow("coverslipping", "5")).toHaveTextContent("Tech, Tina");
+      expect(slideRow("coverslipping", "6")).toHaveTextContent(
+        messages["common.failed"],
+      );
+      expect(
+        tagIn(
+          slideRow("coverslipping", "7"),
+          messages["pathology.badge.qcAwaiting"],
+        ).closest(".cds--tag"),
+      ).toHaveClass("cds--tag--purple");
+      expect(slideRow("coverslipping", "7")).toHaveTextContent("H&E");
+    });
+
+    it("passes one slide's coverslip from its row, named by its words then the slide, in a success toast", async () => {
+      await openAt("COVERSLIPPING", checked());
+
+      const pass = document.getElementById("qcPass-7");
+      expect(pass.getAttribute("aria-label").startsWith(pass.textContent)).toBe(
+        true,
+      );
+      fireEvent.click(buttonNamed("pathology.action.qcPassOf", "A2.1"));
+
+      const [url, body] = lastJsonPost();
+      expect(url).toBe(CASE_URL + "/slides/coverslip-qc");
+      expect(JSON.parse(body)).toEqual({ slideIds: ["7"], result: "PASS" });
+      await answerSlideWork({ slides: [] });
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "success",
+          message: intl.formatMessage(
+            { id: "pathology.toast.qcPassed" },
+            { slides: "A2.1" },
+          ),
+        }),
+      );
+    });
+
+    it("fails one slide's coverslip from its row and tells it as information", async () => {
+      await openAt("COVERSLIPPING", checked());
+
+      const fail = document.getElementById("qcFail-5");
+      expect(fail.getAttribute("aria-label").startsWith(fail.textContent)).toBe(
+        true,
+      );
+      fireEvent.click(fail);
+      expect(JSON.parse(lastJsonPost()[1])).toEqual({
+        slideIds: ["5"],
+        result: "FAIL",
+      });
+      await answerSlideWork({ slides: [] });
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "info",
+          message: intl.formatMessage(
+            { id: "pathology.toast.qcFailed" },
+            { slides: "A1.1" },
+          ),
+        }),
+      );
+    });
+
+    it("holds Pass and Fail on an unstained slide while staining is tracked", async () => {
+      await openAt("COVERSLIPPING", {
+        slides: [savedSlide("7", "1", "2", { stainId: "31" })],
+      });
+
+      const pass = document.getElementById("qcPass-7");
+      expect(pass).toBeDisabled();
+      expect(pass).toHaveAttribute(
+        "title",
+        messages["pathology.locked.qcBeforeStain"],
+      );
+      expect(describedBy(pass)).toBe(
+        messages["pathology.locked.qcBeforeStain"],
+      );
+      expect(document.getElementById("qcFail-7")).toBeDisabled();
+    });
+
+    it("offers Pass on an unstained slide, and shows no stain status column, where the laboratory does not track staining", async () => {
+      await openAt(
+        "COVERSLIPPING",
+        { slides: [savedSlide("7", "1", "2", { stainId: "31" })] },
+        { PATHOLOGY_STAGE_STAINING_ENABLED: "false" },
+      );
+
+      expect(document.getElementById("qcPass-7")).toBeEnabled();
+      expect(
+        within(section(COVERSLIPPING)).queryByText(
+          messages["pathology.label.stainStatus"],
+        ),
+      ).toBeNull();
+    });
+
+    it("shows a stain status column where the laboratory tracks staining", async () => {
+      await openAt("COVERSLIPPING", checked());
+
+      expect(
+        within(section(COVERSLIPPING)).getByText(
+          messages["pathology.label.stainStatus"],
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("names every selected slide before a batch is passed, and posts their ids on Confirm", async () => {
+      await openAt("COVERSLIPPING", checked());
+
+      fireEvent.click(selectBox(COVERSLIPPING, "A1.2"));
+      fireEvent.click(selectBox(COVERSLIPPING, "A2.1"));
+      fireEvent.click(document.getElementById("coverslippingBatchAction"));
+
+      expect(
+        document.getElementById("coverslippingBatchConfirm"),
+      ).toHaveTextContent(
+        intl.formatMessage(
+          { id: "pathology.label.confirmQcBatch" },
+          { slides: "A1.2, A2.1" },
+        ),
+      );
+      fireEvent.click(
+        document.getElementById("coverslippingBatchConfirmButton"),
+      );
+
+      expect(JSON.parse(lastJsonPost()[1])).toEqual({
+        slideIds: ["6", "7"],
+        result: "PASS",
+      });
+    });
+
+    it("warns which slides await QC while the case stands at coverslipping, and names a failed one as holding the case here", async () => {
+      await openAt("COVERSLIPPING", checked());
+
+      const banner = within(section(COVERSLIPPING))
+        .getByText(
+          intl.formatMessage(
+            { id: "pathology.banner.slidesToQc" },
+            { count: 2 },
+          ),
+        )
+        .closest(".cds--inline-notification");
+      expect(banner).toHaveClass("cds--inline-notification--warning");
+      expect(banner).toHaveTextContent(
+        intl.formatMessage(
+          { id: "pathology.banner.slidesToQcDetail" },
+          { designations: "A1.2, A2.1" },
+        ),
+      );
+      expect(
+        within(section(COVERSLIPPING)).getByText(
+          intl.formatMessage(
+            { id: "pathology.banner.failedQcSlidesHere" },
+            { designations: "A1.2" },
+          ),
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(section(COVERSLIPPING)).getByText(
+          messages["pathology.banner.recoverslipOrRecut"],
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("records the coverslipping batch while the server says it can still be recorded, and posts it with the save", async () => {
+      await openAt(
+        "COVERSLIPPING",
+        checked({
+          coverslipRunReferenceEditable: true,
+          stageEvents: [
+            {
+              id: 1,
+              stage: "COVERSLIPPING",
+              direction: "FORWARD",
+              enteredAt: "16/11/2026 10:00",
+              enteredBy: "Tech, Tina",
+              completedAt: null,
+            },
+          ],
+        }),
+      );
+
+      const field = screen.getByLabelText(
+        messages["pathology.label.coverslipBatch"],
+      );
+      expect(describedBy(field)).toBe(
+        messages["pathology.label.coverslipBatchOnce"],
+      );
+      fireEvent.change(field, { target: { value: "CS-2026-1116-01" } });
+
+      const body = await postedCase();
+      expect(body.coverslipRunReference).toBe("CS-2026-1116-01");
+    });
+
+    it("shows a batch already recorded read-only and never posts it", async () => {
+      await openAt(
+        "COVERSLIPPING",
+        checked({
+          coverslipRunReference: "CS-1",
+          coverslipRunReferenceEditable: false,
+          stageEvents: [
+            {
+              id: 1,
+              stage: "COVERSLIPPING",
+              direction: "FORWARD",
+              completedAt: null,
+            },
+          ],
+        }),
+      );
+
+      const field = screen.getByLabelText(
+        messages["pathology.label.coverslipBatch"],
+      );
+      expect(field).toHaveValue("CS-1");
+      expect(field).toHaveAttribute("readonly");
+      const body = await postedCase();
+      expect(body).not.toHaveProperty("coverslipRunReference");
+    });
+
+    // A batch is written once per entry, so after a return and a new entry
+    // the field is empty again and the earlier batch is read here.
+    it("lists each coverslipping entry with its batch under the field, after a return and a new entry", async () => {
+      await openAt(
+        "COVERSLIPPING",
+        checked({
+          coverslipRunReferenceEditable: true,
+          stageEvents: [
+            {
+              id: 1,
+              stage: "COVERSLIPPING",
+              direction: "FORWARD",
+              enteredAt: "16/11/2026 10:00",
+              enteredBy: "Tech, Tina",
+              completedAt: "16/11/2026 11:00",
+              completedBy: "Tech, Tina",
+              runReference: "CS-1",
+            },
+            {
+              id: 2,
+              stage: "STAINING",
+              direction: "RETURN",
+              enteredAt: "16/11/2026 11:00",
+              enteredBy: "Tech, Tina",
+              reason: "Bubbles under the coverslip",
+              runReference: "NOT-A-BATCH",
+            },
+            {
+              id: 3,
+              stage: "COVERSLIPPING",
+              direction: "FORWARD",
+              enteredAt: "16/11/2026 12:00",
+              enteredBy: "Tech, Tina",
+              completedAt: null,
+              runReference: "CS-2",
+            },
+          ],
+        }),
+      );
+
+      const list = within(section(COVERSLIPPING)).getByRole("region", {
+        name: messages["pathology.label.coverslipBatches"],
+      });
+      const rows = list.querySelectorAll(
+        ".cds--structured-list-tbody .cds--structured-list-row",
+      );
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toHaveTextContent("CS-1");
+      expect(rows[0]).toHaveTextContent("16/11/2026 11:00");
+      expect(rows[1]).toHaveTextContent("CS-2");
+      expect(list).not.toHaveTextContent("NOT-A-BATCH");
+      const header = list.querySelector(
+        ".cds--structured-list-thead .cds--structured-list-row",
+      );
+      expect(header).toHaveTextContent(
+        messages["pathology.label.coverslipBatch"],
+      );
+      expect(header).not.toHaveTextContent(
+        messages["pathology.label.runReference"],
+      );
+    });
+
+    it("lists no coverslipping entries on a case that has none", async () => {
+      await openAt("COVERSLIPPING", checked({ stageEvents: [] }));
+
+      expect(
+        within(section(COVERSLIPPING)).queryByRole("region", {
+          name: messages["pathology.label.coverslipBatches"],
+        }),
+      ).toBeNull();
+    });
+
+    it("holds the batch field back on a case that reached coverslipping before entries were kept, and says how to record one", async () => {
+      await openAt("COVERSLIPPING", checked({ stageEvents: [] }));
+
+      const field = screen.getByLabelText(
+        messages["pathology.label.coverslipBatch"],
+      );
+      expect(field).toBeDisabled();
+      expect(describedBy(field)).toBe(
+        messages["pathology.locked.noCoverslipStageEvent"],
+      );
+    });
+
+    it("badges the section and fills the summary with how many passed", async () => {
+      await openAt("COVERSLIPPING", checked());
+
+      const passedOf = intl.formatMessage(
+        { id: "pathology.badge.qcPassedOf" },
+        { passed: 1, total: 3 },
+      );
+      expect(
+        within(section(COVERSLIPPING)).getByText(passedOf),
+      ).toBeInTheDocument();
+      expect(summaryValue(messages["pathology.stage.coverslipping"])).toBe(
+        passedOf,
+      );
     });
   });
 });
