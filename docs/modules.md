@@ -459,8 +459,31 @@ none is ever packaged inside the module JAR:
 
 The `classes` artifact brings the WAR's own dependencies in `provided` scope, so
 Spring, Hibernate and Jackson arrive at the versions the core really ships. A
-library the module adds in `compile` scope is module-only: the example's
-`maven-dependency-plugin` copies it to `lib/` inside the JAR.
+library the module adds in `compile` scope is module-only and travels in `lib/`
+inside the JAR; the example has none, so it carries no copy step. Add this
+execution with the first such library:
+
+```xml
+<plugin>
+  <groupId>org.apache.maven.plugins</groupId>
+  <artifactId>maven-dependency-plugin</artifactId>
+  <version>3.8.1</version>
+  <executions>
+    <execution>
+      <id>bundle module libraries</id>
+      <phase>prepare-package</phase>
+      <goals>
+        <goal>copy-dependencies</goal>
+      </goals>
+      <configuration>
+        <outputDirectory>${project.build.outputDirectory}/lib</outputDirectory>
+        <includeScope>runtime</includeScope>
+        <excludeScope>provided</excludeScope>
+      </configuration>
+    </execution>
+  </executions>
+</plugin>
+```
 
 The example's `pom.xml` also runs the frontend build through
 `frontend-maven-plugin` (`npm ci`, `npm run build`, and `npm test` in the test
