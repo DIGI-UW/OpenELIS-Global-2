@@ -15,7 +15,9 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.configuration.service.CatalogImportServiceImpl;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroWhonetOrganismDAO;
+import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
 import org.openelisglobal.microbiology.service.MicroWhonetOrganismConfigurationHandler;
+import org.openelisglobal.microbiology.service.MicrobiologyReferenceAdminService;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroWhonetOrganism;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +33,8 @@ public class MicroWhonetOrganismLoadIntegrationTest extends BaseWebContextSensit
     private MicroOrganismDAO organisms;
     @Autowired
     private MicroWhonetOrganismDAO whonetTable;
+    @Autowired
+    private MicrobiologyReferenceAdminService admin;
     @Autowired
     private ApplicationContext context;
 
@@ -99,6 +103,19 @@ public class MicroWhonetOrganismLoadIntegrationTest extends BaseWebContextSensit
         assertEquals("Lab note", klebsiella.getNotes());
         assertEquals("Klebsiella pneumoniae ss. pneumoniae", klebsiella.getDisplayName());
         assertEquals("lab-uncoded-ecoli", coded("eco").getId());
+    }
+
+    @Test
+    public void anOrganismWhoseWhonetCodeHasADashIsSavedFromTheAdminForm() throws Exception {
+        load();
+        MicroOrganismAdminForm form = admin.getOrganism(coded("kl-").getId());
+        form.organismGroup = "Enterobacterales";
+        form.initialSignificance = "USUALLY";
+
+        admin.saveOrganism(form.id, form, "1");
+
+        assertEquals("kl-", coded("kl-").getWhonetCode());
+        assertEquals("Enterobacterales", coded("kl-").getOrganismGroup());
     }
 
     @Test

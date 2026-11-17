@@ -51,7 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyReferenceAdminService {
 
-    private static final Pattern ORGANISM_WHONET = Pattern.compile("[a-z0-9]{3,10}");
+    private static final Pattern ORGANISM_WHONET = Pattern.compile("[a-z0-9+-]{3,10}");
     private static final Pattern ANTIBIOTIC_WHONET = Pattern.compile("[A-Z0-9]{2,10}");
     private static final Set<String> ROUTES = Set.of("ORAL", "IV", "BOTH", "TOPICAL");
 
@@ -710,7 +710,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     private String normalizeOrganismCode(String code) {
         String normalized = requireText(code, "whonetCode").toLowerCase(Locale.ROOT);
         if (!ORGANISM_WHONET.matcher(normalized).matches()) {
-            throw new IllegalArgumentException("Organism WHONET code must be 3-10 lowercase letters or digits");
+            throw new IllegalArgumentException("Organism WHONET code must be 3-10 lowercase letters, digits, + or -");
         }
         return normalized;
     }
