@@ -5,20 +5,19 @@
  * import (`openelis_core/components`, `/api`, `/hooks`, `/contexts`, `/sdk`).
  *
  * The shared singletons are the frontend contract: a module is built with the
- * same list (see the module template) and runs on the shell's copies, so a
- * second React, Router, Intl, Carbon or Query client never loads.
+ * same list and runs on the shell's copies, so a second React, Router, Intl,
+ * Carbon or Query client never loads. The list is written once, in the module
+ * SDK (packages/module-sdk/shared.js), which a module installs from this
+ * checkout.
  */
-export const SHARED_SINGLETONS = {
-  react: { singleton: true, requiredVersion: "^17.0.0" },
-  "react-dom": { singleton: true, requiredVersion: "^17.0.0" },
-  "react-router-dom": { singleton: true, requiredVersion: "^5.2.0" },
-  "react-intl": { singleton: true, requiredVersion: "^5.20.0" },
-  "@carbon/react": { singleton: true, requiredVersion: "^1.15.0" },
-  "@carbon/icons-react": { singleton: true, requiredVersion: "^11.17.0" },
-  "@tanstack/react-query": { singleton: true, requiredVersion: "^4.44.0" },
-};
+import {
+  CORE_REMOTE_NAME,
+  sharedSingletons,
+} from "./packages/module-sdk/shared.js";
 
-export const CORE_REMOTE_NAME = "openelis_core";
+export const SHARED_SINGLETONS = sharedSingletons;
+
+export { CORE_REMOTE_NAME };
 
 export const CORE_EXPOSES = {
   "./components": "./src/module-exports/components.js",

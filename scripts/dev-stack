@@ -448,8 +448,28 @@ def jar_module_id(jar: Path) -> str | None:
         return None
 
 
+def link_core_checkout(context: StackContext, module: ModuleCheckout) -> Path:
+    """Make this core checkout reachable as <module>/core, where the module's frontend installs the SDK from.
+
+    A module declares `@openelis/module-sdk` as `file:../core/frontend/packages/module-sdk`; its CI checks the
+    core out at ./core, and a developer's checkout gets a link to this one. A real directory there (a CI-style
+    checkout) is left alone.
+    """
+    link = module.path / "core"
+    if link.is_symlink():
+        if link.resolve() == context.repo_root.resolve():
+            return link
+        link.unlink()
+    elif link.exists():
+        return link
+    link.symlink_to(context.repo_root.resolve(), target_is_directory=True)
+    print(f"Module {module.module_id}: {link} -> {context.repo_root}")
+    return link
+
+
 def build_module(context: StackContext, environment: dict[str, str], module: ModuleCheckout) -> None:
     """Build the module JAR, pages included, against the core this checkout just installed."""
+    link_core_checkout(context, module)
     print(f"Building module {module.module_id} from {module.path}")
     run(
         [
@@ -572,6 +592,7 @@ def start_module_dev_server(
         )
     frontend = module.path / "frontend"
     if not (frontend / "node_modules").is_dir():
+        link_core_checkout(context, module)
         run(["npm", "ci", "--no-audit", "--no-fund"], cwd=frontend, environment=environment)
     state = module_state_dir(context)
     state.mkdir(parents=True, exist_ok=True)

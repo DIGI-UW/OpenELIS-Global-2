@@ -277,6 +277,73 @@ const siteConfig = useConfigurationProperties(); // the site's settings, e.g. da
 The full list of what `openelis_core` exposes is in the
 [frontend reference](#frontend-reference).
 
+### TypeScript and the module SDK
+
+`openelis_core/*` exists only at runtime, after the shell registers the remote
+in the browser, so on its own a module build cannot check the names it imports:
+a misspelt export builds green and fails in the browser. The module SDK,
+`@openelis/module-sdk` in `frontend/packages/module-sdk` of the core, closes
+that gap. It carries:
+
+- `types/openelis_core.d.ts`: the five entry points as ambient modules, so
+  `tsc --noEmit` checks every `openelis_core/*` import by name and props without
+  changing the import paths.
+- `shared.js`: `sharedForModule()` (the shell's shared singletons with
+  `import: false`) and `coreRemote()` for the module's Vite configuration, so
+  the shared list is written once, in the core.
+- `tsconfig.base.json`: the compiler options a module extends.
+- `testing/`: one test double per entry point and `openelisCoreAliases`, the
+  Vitest alias list that renders a page against the doubles instead of the
+  shell.
+- Its `version` is the frontend contract version: the shell reads it into
+  `FRONTEND_CONTRACT_VERSION`, the backend keeps `ModuleFrontendContract` in
+  step with it (a core test fails otherwise), and a module's
+  `requires.frontendContract` range is matched against it.
+
+The package is not published yet (ADR 0001, decision 1): a module installs it
+from the core checkout it targets. The example module keeps the core at `./core`
+(its CI checks it out there, at `CORE_REF`; `scripts/dev-stack up --module`
+links it there before `npm ci`; by hand, `ln -s <core checkout> core`) and
+declares
+
+```json
+"devDependencies": {
+  "@openelis/module-sdk": "file:../core/frontend/packages/module-sdk",
+  "@types/react": "^17.0.0",
+  "@types/react-dom": "^17.0.0",
+  "typescript": "^6.0.0"
+}
+```
+
+react-intl 5 declares an optional peer on TypeScript 4, so the module's
+`frontend/.npmrc` sets `legacy-peer-deps=true` (the core's own install needs the
+same flag); without it `npm ci` refuses TypeScript 6 and the Maven build stops.
+`tsconfig.json` extends the base and `npm run typecheck` (`tsc --noEmit`) runs
+in the `test` phase of `mvn verify`, next to the Vitest run, so a wrong import
+fails the build before the JAR is made. Pages may be `.jsx` or `.tsx`; the
+example's dashboard card is `.tsx`.
+
+```json
+{
+  "extends": "@openelis/module-sdk/tsconfig.base.json",
+  "include": ["src"]
+}
+```
+
+A page test imports nothing from the shell: the aliases hand it the doubles, and
+`openelisCoreDedupe` (the shared libraries) goes into `resolve.dedupe`, so the
+doubles, which live in the core checkout, use the module's React rather than the
+core's (two Reacts in one test is the "Invalid hook call" error). `apiResponses`
+and `apiCalls` from `@openelis/module-sdk/testing/sdk.jsx` script and record the
+API a page calls, `testPatients` in `testing/components.jsx` feeds the patient
+search, and the contexts in `testing/contexts.js` default to an administrator
+session with an empty configuration.
+
+The federation plugin shares exact keys only. Every library a module expects
+from the shell must be in the shared list under that exact name; a module that
+imports an unlisted subpath bundles its own copy, and a context read from that
+copy is `null` in the shell with no build warning.
+
 ### What reuse gives you
 
 - **Same look and behaviour:** module pages render the very components the core
@@ -706,42 +773,22 @@ one React component per page and per slot contribution, imports the core's
 components through the `openelis_core` remote, and shares the shell's React,
 router, react-intl, Carbon and query client instead of bundling copies.
 
-**`frontend/vite.config.js`** (from the example):
+**`frontend/vite.config.js`** (from the example). The shared singletons and the
+shell's remote come from the module SDK, so the list is written once, in the
+core (see [TypeScript and the module SDK](#typescript-and-the-module-sdk)):
 
 ```js
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { federation } from "@module-federation/vite";
+import { coreRemote, sharedForModule } from "@openelis/module-sdk/shared";
+import {
+  openelisCoreAliases,
+  openelisCoreDedupe,
+} from "@openelis/module-sdk/testing";
 
 const MODULE_ID = "specimen-followup";
 const REMOTE_NAME = "specimen_followup"; // the id with hyphens replaced
-
-// import: false, because the shell always provides these.
-export const SHARED_SINGLETONS = {
-  react: { singleton: true, requiredVersion: "^17.0.0", import: false },
-  "react-dom": { singleton: true, requiredVersion: "^17.0.0", import: false },
-  "react-router-dom": {
-    singleton: true,
-    requiredVersion: "^5.2.0",
-    import: false,
-  },
-  "react-intl": { singleton: true, requiredVersion: "^5.20.0", import: false },
-  "@carbon/react": {
-    singleton: true,
-    requiredVersion: "^1.15.0",
-    import: false,
-  },
-  "@carbon/icons-react": {
-    singleton: true,
-    requiredVersion: "^11.17.0",
-    import: false,
-  },
-  "@tanstack/react-query": {
-    singleton: true,
-    requiredVersion: "^4.44.0",
-    import: false,
-  },
-};
 
 export default defineConfig(({ mode }) => ({
   plugins: [
@@ -752,19 +799,18 @@ export default defineConfig(({ mode }) => ({
       exposes: {
         "./FollowUpListPage": "./src/pages/FollowUpListPage.jsx",
         "./FollowUpDetailPage": "./src/pages/FollowUpDetailPage.jsx",
-        "./FollowUpDashboardCard": "./src/slots/FollowUpDashboardCard.jsx",
+        "./FollowUpDashboardCard": "./src/slots/FollowUpDashboardCard.tsx",
       },
-      remotes: {
-        openelis_core: {
-          type: "module",
-          name: "openelis_core",
-          entry: "/remoteEntry.js",
-        },
-      },
-      shared: SHARED_SINGLETONS,
+      // The shell's own remote entry, next to its index.html on the same origin
+      remotes: { openelis_core: coreRemote() },
+      // The shell's singletons with import: false: the module bundles no copy
+      shared: sharedForModule(),
       dts: false,
     }),
   ],
+  // One React for the module and the SDK's test doubles
+  resolve: { dedupe: openelisCoreDedupe },
+  test: { environment: "jsdom", globals: true, alias: openelisCoreAliases },
   build: {
     // Straight into the Maven output, so the JAR carries the bundle.
     outDir: `../target/classes/META-INF/resources/modules/${MODULE_ID}`,
@@ -1280,9 +1326,12 @@ mvn -q -f module-test/pom.xml install -DskipTests
 ```
 
 **CI.** The example's `.github/workflows/ci.yml` checks out the core named by
-the `CORE_REPOSITORY` and `CORE_REF` repository variables, installs the core
-artifacts (cached per core commit), runs `mvn -B verify` and uploads the JAR as
-a build artifact. Copy it as it is.
+the `CORE_REPOSITORY` and `CORE_REF` repository variables into `./core`,
+installs the core artifacts (cached per core commit), runs `mvn -B verify` and
+uploads the JAR as a build artifact. Copy it as it is. The frontend's
+`@openelis/module-sdk` dependency points at
+`../core/frontend/packages/module-sdk`, so the same checkout serves the SDK
+install; locally, `scripts/dev-stack up --module` creates that `core` link.
 
 <a id="8-deploy-and-operate"></a>
 
@@ -1435,9 +1484,13 @@ With `<id_>` meaning the id with hyphens replaced by underscores:
 
 The shell shares `react`, `react-dom`, `react-router-dom`, `react-intl`,
 `@carbon/react`, `@carbon/icons-react` and `@tanstack/react-query`
-(`frontend/module-federation.config.js`). The frontend contract version is
-`1.0.0`: additions to this surface are minors; removals, prop changes and a
-shared library's major version (React 18 will be one) are majors.
+(`sharedSingletons` in `frontend/packages/module-sdk/shared.js`, which
+`frontend/module-federation.config.js` imports). The frontend contract version
+is the module SDK's package version, `1.0.0`: additions to this surface are
+minors; removals, prop changes and a shared library's major version (React 18
+will be one) are majors. The surface is typed in
+`frontend/packages/module-sdk/types/openelis_core.d.ts`; a core test keeps the
+declarations and the runtime exports in step.
 
 ### How the runtime loads a module
 
