@@ -300,7 +300,16 @@ that gap. It carries:
 - Its `version` is the frontend contract version: the shell reads it into
   `FRONTEND_CONTRACT_VERSION`, the backend keeps `ModuleFrontendContract` in
   step with it (a core test fails otherwise), and a module's
-  `requires.frontendContract` range is matched against it.
+  `requires.frontendContract` range is matched against it. Versions so far:
+  - `1.0.0`: the shared singletons (React 17, React Router 5, react-intl 5,
+    Carbon, TanStack Query 4) and the five `openelis_core` entry points.
+  - `1.1.0` (2026-11-17): the shell provides the Module Federation runtime
+    (`provideExternalRuntime`) and shares `react/jsx-runtime`; a module built
+    with the SDK's preset ships neither (its runtime chunk goes from about 19 kB
+    gzipped to under 1 kB) and declares `"frontendContract": "^1.1"`. A `1.0`
+    shell lists such a module as not loadable with that reason instead of
+    failing when its pages load; a module built against `1.0` still runs on a
+    `1.1` shell.
 
 The package is not published yet (ADR 0001, decision 1): a module installs it
 from the core checkout it targets. The example module keeps the core at `./core`
@@ -479,7 +488,7 @@ the example's manifest; every field is explained in the
   "requires": {
     "openelis": ">=3.4.0",
     "coreApi": "^1.0",
-    "frontendContract": "^1.0"
+    "frontendContract": "^1.1"
   },
   "backend": {
     "basePackages": ["org.openelisglobal.module.followup"],
@@ -798,10 +807,11 @@ and derives:
   exposes every manifest name with a chunk in the bundle;
 - the shell as the `openelis_core` remote and the shell's shared singletons with
   `import: false`, so the module bundles no copy of React, its JSX runtime, the
-  router, react-intl, Carbon or the query client. A module built with this SDK
-  expects the shell to share `react/jsx-runtime` (every shell build from
-  2026-11-17 on); on an older shell its pages fail to load with a shared-module
-  error;
+  router, react-intl, Carbon or the query client, and `externalRuntime`, so it
+  bundles no copy of the Module Federation runtime either: the shell provides
+  both from frontend contract `1.1`, which the manifest's
+  `requires.frontendContract` range states, and a `1.0` shell lists the module
+  as not loadable with that reason instead of failing when a page loads;
 - `build.outDir`, straight into the Maven output
   (`../target/classes/META-INF/resources/modules/<id>`), the dev server on port
   5174 for the shell's dev override, `resolve.dedupe` and the test aliases for
@@ -998,7 +1008,7 @@ props may still change in a frontend contract minor.
 
 | Rule          | Behaviour                                                                                                                                                                                    |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Which modules | Only `STARTED` modules whose `requires.frontendContract` accepts the shell's contract (`1.0.0`)                                                                                              |
+| Which modules | Only `STARTED` modules whose `requires.frontendContract` accepts the shell's contract (`1.1.0`)                                                                                              |
 | Order         | Ascending `order` across all modules (default 100)                                                                                                                                           |
 | Permission    | With a `permission`, only users holding `mod.<id>.<permission>` see the contribution. The manifest names a key the module declared; it is checked at install                                 |
 | Failure       | Each contribution renders in its own error boundary. One that fails to load or throws renders **nothing** (no notice in a slot) and the page carries on; the error is in the browser console |

@@ -32,6 +32,10 @@ export default {
   filename: "remoteEntry.js",
   exposes: CORE_EXPOSES,
   shared: SHARED_SINGLETONS,
+  // The shell carries the federation runtime for every module (frontend
+  // contract 1.1): a module built with the SDK's preset has `externalRuntime`
+  // and ships no copy of it.
+  experiments: { provideExternalRuntime: true },
   // The exposed index is JavaScript; the type declarations modules compile
   // against are published with the module SDK, not generated here.
   dts: false,

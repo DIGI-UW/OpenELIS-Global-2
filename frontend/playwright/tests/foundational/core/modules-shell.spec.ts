@@ -27,7 +27,7 @@ test.describe("Module shell", () => {
     );
     expect(response.status()).toBe(200);
     const registry = (await response.json()) as Registry;
-    expect(registry.frontendContractVersion).toBe("1.0.0");
+    expect(registry.frontendContractVersion).toBe("1.1.0");
     expect(Array.isArray(registry.modules)).toBe(true);
   });
 
@@ -84,7 +84,7 @@ test.describe("Module shell", () => {
     await expect(page).toHaveURL(/\/MasterListsPage\/modules$/);
     await expect(page.getByTestId("modules-admin-title")).toHaveText("Modules");
     await expect(page.getByTestId("modules-admin-versions")).toContainText(
-      "frontend contract 1.0.0",
+      "frontend contract 1.1.0",
       { timeout: UI_TIMEOUT },
     );
     if (registry.modules.length === 0) {

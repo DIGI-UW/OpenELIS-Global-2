@@ -175,6 +175,10 @@ export function federationOptionsFor(manifest, options = {}) {
     }),
     remotes: { openelis_core: coreRemote(options.coreEntry) },
     shared: sharedForModule(),
+    // The shell provides the federation runtime (frontend contract 1.1), so
+    // the module bundles no copy of it; a module built this way needs a
+    // shell of that contract, which `requires.frontendContract` states.
+    experiments: { externalRuntime: true },
     dts: false,
   };
 }
