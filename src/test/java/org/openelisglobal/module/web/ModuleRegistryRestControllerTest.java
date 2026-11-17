@@ -108,26 +108,70 @@ public class ModuleRegistryRestControllerTest {
         mockMvc.perform(get("/rest/module-registry/alpha/config")).andExpect(status().isNotFound());
     }
 
-    @Test
-    public void aStartedModuleCarriesTheMessageBundlesReadFromItsJar() throws Exception {
+    private static MockMvc controllerWithMessageBundles() throws Exception {
         Path directory = Files.createTempDirectory("module-messages");
         Path jar = ModuleJarBuilder.module().manifest(new ManifestReader().write(manifest("alpha")))
                 .resource("META-INF/resources/modules/alpha/remoteEntry.js", "export {};")
                 .resource("META-INF/resources/modules/alpha/messages/en.json",
                         "{\"mod.alpha.menu\":\"Alpha\",\"sidenav.label.home\":\"stolen\"}")
                 .resource("META-INF/resources/modules/alpha/messages/fr.json", "{\"mod.alpha.menu\":\"Alpha (fr)\"}")
+                .resource("META-INF/resources/modules/alpha/messages/fr-MG.json",
+                        "{\"mod.alpha.menu\":\"Alpha (fr-MG)\"}")
+                .resource("META-INF/resources/modules/alpha/messages/de.json", "{\"mod.alpha.menu\":\"Alpha (de)\"}")
                 .build(directory.resolve("alpha-1.2.3.jar"));
         ModuleRecord started = ModuleRecords.record(jar, manifest("alpha"));
         started.transition(ModuleState.STARTED);
         ModuleRegistry registry = new ModuleRegistry(new ModuleSystemProperties(new MockEnvironment()),
                 new ContractVersions("3.4.0-SNAPSHOT", "1.0.0", "1.0.0"), List.of(started));
-        MockMvc withJar = MockMvcBuilders
+        return MockMvcBuilders
                 .standaloneSetup(new ModuleRegistryRestController(registry, mock(ModuleContextFactory.class))).build();
+    }
+
+    @Test
+    public void aStartedModuleCarriesTheEnglishBundleReadFromItsJarByDefault() throws Exception {
+        MockMvc withJar = controllerWithMessageBundles();
 
         withJar.perform(get("/rest/module-registry")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.locale").value("en"))
                 .andExpect(jsonPath("$.modules[0].messages.en['mod.alpha.menu']").value("Alpha"))
                 .andExpect(jsonPath("$.modules[0].messages.en['sidenav.label.home']").doesNotExist())
-                .andExpect(jsonPath("$.modules[0].messages.fr['mod.alpha.menu']").value("Alpha (fr)"));
+                .andExpect(jsonPath("$.modules[0].messages.fr").doesNotExist())
+                .andExpect(jsonPath("$.modules[0].messages.de").doesNotExist())
+                .andExpect(jsonPath("$.modules[0].locales.length()").value(4))
+                .andExpect(jsonPath("$.modules[0].locales[0]").value("de"))
+                .andExpect(jsonPath("$.modules[0].locales[1]").value("en"))
+                .andExpect(jsonPath("$.modules[0].locales[2]").value("fr"))
+                .andExpect(jsonPath("$.modules[0].locales[3]").value("fr-MG"));
+    }
+
+    @Test
+    public void theRegistryCarriesTheRequestedLocaleAndItsFallbacksOnly() throws Exception {
+        MockMvc withJar = controllerWithMessageBundles();
+
+        // The shell names its active locale: the tag, its base language and
+        // English travel; the module's other bundles stay in the JAR.
+        withJar.perform(get("/rest/module-registry").param("locale", "fr-MG")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.locale").value("fr-MG"))
+                .andExpect(jsonPath("$.modules[0].messages['fr-MG']['mod.alpha.menu']").value("Alpha (fr-MG)"))
+                .andExpect(jsonPath("$.modules[0].messages.fr['mod.alpha.menu']").value("Alpha (fr)"))
+                .andExpect(jsonPath("$.modules[0].messages.en['mod.alpha.menu']").value("Alpha"))
+                .andExpect(jsonPath("$.modules[0].messages.de").doesNotExist());
+        // Either spelling of the tag finds the file
+        withJar.perform(get("/rest/module-registry").param("locale", "fr_MG")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.locale").value("fr-MG"))
+                .andExpect(jsonPath("$.modules[0].messages['fr-MG']['mod.alpha.menu']").value("Alpha (fr-MG)"));
+        // Without the parameter the browser's first language decides
+        withJar.perform(get("/rest/module-registry").header("Accept-Language", "de-CH,de;q=0.9,en;q=0.8"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.locale").value("de-CH"))
+                .andExpect(jsonPath("$.modules[0].messages.de['mod.alpha.menu']").value("Alpha (de)"))
+                .andExpect(jsonPath("$.modules[0].messages.en['mod.alpha.menu']").value("Alpha"))
+                .andExpect(jsonPath("$.modules[0].messages.fr").doesNotExist());
+        // The parameter wins over the header; a wildcard header means English
+        withJar.perform(get("/rest/module-registry").param("locale", "fr").header("Accept-Language", "de"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.modules[0].messages.fr").exists())
+                .andExpect(jsonPath("$.modules[0].messages.de").doesNotExist());
+        withJar.perform(get("/rest/module-registry").header("Accept-Language", "*")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.locale").value("en"));
     }
 
     @Test

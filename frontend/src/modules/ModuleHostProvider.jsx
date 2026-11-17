@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { IntlContext } from "react-intl";
 import { registerModuleRemotes } from "./LazyRemote";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../components/utils/Utils";
@@ -47,13 +48,19 @@ export default function ModuleHostProvider({ children }) {
   const authenticated = Boolean(
     userSessionDetails && userSessionDetails.authenticated,
   );
+  // The active locale names the message bundles the registry carries; a
+  // shell rendered without an IntlProvider (unit tests of core pages) asks
+  // for the server's default, English.
+  const intl = useContext(IntlContext);
+  const locale = (intl && intl.locale) || null;
   const [registry, setRegistry] = useState(null);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
   const [generation, setGeneration] = useState(0);
-  // The read in flight for the current generation, kept across the session
-  // answer so that a sign-in confirmed while the speculative read is still
-  // out does not start a second one.
+  // The read in flight for the current generation and locale, kept across
+  // the session answer so that a sign-in confirmed while the speculative read
+  // is still out does not start a second one. A locale switch is a new read:
+  // the registry answers with that locale's bundles.
   const inFlight = useRef(null);
 
   useEffect(() => {
@@ -63,11 +70,12 @@ export default function ModuleHostProvider({ children }) {
       setRegistry(null);
       return undefined;
     }
-    if (!inFlight.current || inFlight.current.generation !== generation) {
+    const key = `${generation}:${locale || ""}`;
+    if (!inFlight.current || inFlight.current.key !== key) {
       setStatus("loading");
       inFlight.current = {
-        generation,
-        answer: new Promise((resolve) => readRegistry(resolve)),
+        key,
+        answer: new Promise((resolve) => readRegistry(locale, resolve)),
       };
     }
     const request = inFlight.current;
@@ -94,7 +102,7 @@ export default function ModuleHostProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionAnswered, authenticated, generation]);
+  }, [sessionAnswered, authenticated, generation, locale]);
 
   const plan = useMemo(
     () => (registry ? planModules(registry, config.serverBaseUrl) : EMPTY),
@@ -144,9 +152,10 @@ export function useModuleHost() {
  * failure). Guarded so that a shell rendered with a partial client, as unit
  * tests of core pages do, simply runs without modules.
  */
-function readRegistry(callback) {
+function readRegistry(locale, callback) {
+  const query = locale ? `?locale=${encodeURIComponent(locale)}` : "";
   try {
-    getFromOpenElisServer("/rest/module-registry", callback);
+    getFromOpenElisServer(`/rest/module-registry${query}`, callback);
   } catch (reason) {
     console.error("module registry could not be requested", reason);
     callback(undefined);
