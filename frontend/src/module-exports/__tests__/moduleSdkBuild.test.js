@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   exposesFor,
   federationOptionsFor,
+  loadBuildDependency,
   openelisModule,
   outDirFor,
   readManifest,
@@ -141,6 +142,47 @@ describe("the module build preset (OGC-1641)", () => {
     );
     expect(() => openelisModule({ root, manifest: "../missing.json" })).toThrow(
       /cannot be read/,
+    );
+  });
+
+  it("loads the Vite plugins from the module's own node_modules, not from next to the SDK", async () => {
+    file("src/pages/NotesPage.jsx");
+    file("src/pages/NoteDetailPage.jsx");
+    file("src/slots/NotesCard.jsx");
+    // Marker packages in the module: the SDK sits in the core checkout, whose
+    // node_modules a module's CI does not have, so these must be the ones
+    // the preset picks up.
+    file(
+      "node_modules/@vitejs/plugin-react/package.json",
+      JSON.stringify({ name: "@vitejs/plugin-react", main: "index.cjs" }),
+    );
+    file(
+      "node_modules/@vitejs/plugin-react/index.cjs",
+      "module.exports = function react() { return { name: 'marker-react' }; };",
+    );
+    file(
+      "node_modules/@module-federation/vite/package.json",
+      JSON.stringify({ name: "@module-federation/vite", main: "index.cjs" }),
+    );
+    file(
+      "node_modules/@module-federation/vite/index.cjs",
+      "module.exports = { federation: (options) => ({ name: 'marker-federation', options }) };",
+    );
+
+    const config = await openelisModule({ root })({ mode: "production" });
+    const plugins = config.plugins.flat(Infinity);
+    expect(plugins.map((plugin) => plugin.name)).toEqual([
+      "marker-react",
+      "marker-federation",
+    ]);
+    expect(plugins[1].options.name).toBe("lab_notes");
+  });
+
+  it("names a build dependency the module does not have", async () => {
+    await expect(
+      loadBuildDependency(root, "@openelis/no-such-plugin"),
+    ).rejects.toThrow(
+      /@openelis\/no-such-plugin is not installed in the module \([^)]*frontend\)[\s\S]*add it to the module's devDependencies/,
     );
   });
 });

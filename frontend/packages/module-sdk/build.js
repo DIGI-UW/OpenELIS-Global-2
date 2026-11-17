@@ -28,12 +28,21 @@ import { openelisCoreAliases, openelisCoreDedupe } from "./testing/index.js";
  * no node_modules on a module's CI. The SDK's own location is the fallback,
  * for the core's tests.
  */
-async function loadBuildDependency(root, name) {
+export async function loadBuildDependency(root, name) {
+  const require = createRequire(resolve(root, "package.json"));
+  let fromModule;
   try {
-    const require = createRequire(resolve(root, "package.json"));
     return await import(pathToFileURL(require.resolve(name)).href);
-  } catch {
-    return import(name);
+  } catch (reason) {
+    fromModule = reason;
+  }
+  try {
+    return await import(name);
+  } catch (reason) {
+    throw new Error(
+      `openelisModule: ${name} is not installed in the module (${root}): ${fromModule.message}; add it to the module's devDependencies`,
+      { cause: reason },
+    );
   }
 }
 
