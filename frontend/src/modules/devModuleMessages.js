@@ -65,7 +65,9 @@ export async function devServerBase(module, fetchBundle) {
  * without rebuilding the JAR. Each file is re-read while the page is
  * visible, as a conditional request; a module served from its JAR is asked
  * once and then left alone, and so is a code the module does not ship (a 404,
- * or the dev server's index page, which Vite answers for any unknown path).
+ * or the dev server's index page, which Vite answers for any unknown path);
+ * a file read before that goes missing for a while (a checkout, a
+ * rename-save) is asked again until it is back.
  * A file that does not parse keeps the last good copy and says so in the
  * console.
  */
@@ -111,7 +113,9 @@ export function useDevServerMessages(
             response.status === 404 ||
             (response.ok && !type.includes("json"))
           ) {
-            missing.current.add(url);
+            if (!seen.current.has(url)) {
+              missing.current.add(url);
+            }
             continue;
           }
           if (!response.ok) {

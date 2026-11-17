@@ -178,6 +178,33 @@ describe("dev module messages", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
+  it("keeps reading a file that disappears for a while and shows it when it is back", async () => {
+    const files = {
+      "messages/en.json": '{"mod.alpha.title":"Lab notes"}',
+      "messages/fr.json": '{"mod.alpha.title":"Notes"}',
+    };
+    const { fetchBundle, requests } = devServer(files);
+    render(
+      <Probe
+        modules={[alpha]}
+        locale="fr"
+        options={{ enabled: true, intervalMs: 20, fetchBundle }}
+      />,
+    );
+    await waitFor(() =>
+      expect(shown().alpha.fr).toEqual({ "mod.alpha.title": "Notes" }),
+    );
+
+    delete files["messages/fr.json"];
+    const asked = requests.length;
+    await waitFor(() => expect(requests.length).toBeGreaterThan(asked + 4));
+    files["messages/fr.json"] = '{"mod.alpha.title":"Notes de labo"}';
+
+    await waitFor(() =>
+      expect(shown().alpha.fr).toEqual({ "mod.alpha.title": "Notes de labo" }),
+    );
+  });
+
   it("asks a JAR-served module once and then leaves it alone", async () => {
     const fetchBundle = vi.fn(async (url) => ({
       ok: true,

@@ -330,6 +330,7 @@ class DevStackContractTest(unittest.TestCase):
     def test_up_continues_with_self_signed_when_trust_setup_fails(self):
         environment = {"DEV_STACK_TLS": "local-ca", "LETSENCRYPT_DOMAIN": "localhost"}
         with (
+            patch.object(self.dev_stack, "stop_module_dev_servers"),
             patch.object(self.dev_stack, "ensure_local_env"),
             patch.object(self.dev_stack, "build_environment", return_value=environment),
             patch.object(self.dev_stack, "ensure_mkcert"),
@@ -749,6 +750,7 @@ class DevStackContractTest(unittest.TestCase):
 
     def test_up_recreates_a_running_backend_exactly_once_after_build(self):
         with (
+            patch.object(self.dev_stack, "stop_module_dev_servers"),
             patch.object(self.dev_stack, "doctor"),
             patch.object(self.dev_stack, "ensure_local_tls_trust"),
             patch.object(self.dev_stack, "ensure_local_env"),
@@ -971,6 +973,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
 
     def up_raw(self, *arguments):
         with (
+            patch.object(self.dev_stack, "stop_module_dev_servers"),
             patch.object(self.dev_stack, "doctor"),
             patch.object(self.dev_stack, "ensure_local_tls_trust"),
             patch.object(self.dev_stack, "ensure_local_env"),
@@ -994,6 +997,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
 
     def up(self, *arguments):
         with (
+            patch.object(self.dev_stack, "stop_module_dev_servers"),
             patch.object(self.dev_stack, "doctor"),
             patch.object(self.dev_stack, "ensure_local_tls_trust"),
             patch.object(self.dev_stack, "ensure_local_env"),
