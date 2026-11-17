@@ -22,6 +22,10 @@ export const CORE_ENTRY_POINTS = Object.freeze([
 
 export const sharedSingletons = Object.freeze({
   react: { singleton: true, requiredVersion: "^17.0.0" },
+  // The plugin shares exact keys: without this one every module bundles its
+  // own copy of the JSX runtime (bound to the shared React, so it works, but
+  // it is one more chunk per module).
+  "react/jsx-runtime": { singleton: true, requiredVersion: "^17.0.0" },
   "react-dom": { singleton: true, requiredVersion: "^17.0.0" },
   "react-router-dom": { singleton: true, requiredVersion: "^5.2.0" },
   "react-intl": { singleton: true, requiredVersion: "^5.20.0" },
