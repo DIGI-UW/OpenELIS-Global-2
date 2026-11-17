@@ -654,6 +654,30 @@ class DevStackContractTest(unittest.TestCase):
         self.assertIn("target: dev-runtime", compose)
         self.assertIn("../../target/OpenELIS-Global.war:", compose)
 
+    def test_module_checkout_gets_a_core_link_for_the_sdk_install(self):
+        # A module installs @openelis/module-sdk from file:../core/frontend/packages/module-sdk;
+        # its CI checks the core out at ./core, a developer's checkout is linked to this one.
+        context = self.dev_stack.make_context(REPO_ROOT)
+        with tempfile.TemporaryDirectory() as directory:
+            module_path = pathlib.Path(directory) / "module"
+            module_path.mkdir()
+            module = self.dev_stack.ModuleCheckout(module_path, "alpha", "remoteEntry.js", 5174)
+
+            link = self.dev_stack.link_core_checkout(context, module)
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(link.resolve(), REPO_ROOT.resolve())
+
+            link.unlink()
+            link.symlink_to(pathlib.Path(directory), target_is_directory=True)
+            self.dev_stack.link_core_checkout(context, module)
+            self.assertEqual(link.resolve(), REPO_ROOT.resolve(), "a stale link is replaced")
+
+            link.unlink()
+            link.mkdir()
+            (link / "pom.xml").write_text("", encoding="utf-8")
+            self.dev_stack.link_core_checkout(context, module)
+            self.assertFalse(link.is_symlink(), "a real checkout at ./core is left alone")
+
     def test_light_image_build_leaves_the_full_only_images_alone(self):
         # The light setup never runs the analyzer simulator or the Bridge, so
         # their images are neither built nor renamed: a broken simulator build

@@ -76,6 +76,7 @@ export default defineConfig({
       "**/dist/**",
       "**/cypress/**",
       "**/playwright/**",
+      "**/packages/**",
     ],
   },
   server: {

@@ -1,0 +1,55 @@
+{
+  "name": "@openelis/module-sdk",
+  "version": "1.0.0",
+  "description": "Type declarations, federation settings and test doubles for OpenELIS Global modules. The version is the frontend contract version the shell publishes.",
+  "license": "MPL-2.0",
+  "type": "module",
+  "private": false,
+  "main": "./shared.js",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./shared.js"
+    },
+    "./shared": "./shared.js",
+    "./testing": "./testing/index.js",
+    "./testing/*": "./testing/*",
+    "./types/*": "./types/*",
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "shared.js",
+    "testing",
+    "types",
+    "tsconfig.base.json",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@carbon/icons-react": "^11.17.0",
+    "@carbon/react": "^1.15.0",
+    "@tanstack/react-query": "^4.44.0",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-intl": "^5.20.12",
+    "react-router-dom": "^5.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@carbon/icons-react": {
+      "optional": true
+    },
+    "@carbon/react": {
+      "optional": true
+    },
+    "@tanstack/react-query": {
+      "optional": true
+    },
+    "react-intl": {
+      "optional": true
+    },
+    "react-router-dom": {
+      "optional": true
+    }
+  }
+}

@@ -1,13 +1,15 @@
 import semverSatisfies from "semver/functions/satisfies";
 import semverValidRange from "semver/ranges/valid";
+import moduleSdk from "../../packages/module-sdk/package.json";
 
 /**
  * The frontend contract this shell publishes: React 17, React Router 5,
- * react-intl 5, Carbon, TanStack Query 4 and the `openelis_core` surface. Kept
- * in step with the backend's ModuleFrontendContract and bumped as a major when
- * a shared singleton's major, an exposed component or a slot's props change.
+ * react-intl 5, Carbon, TanStack Query 4 and the `openelis_core` surface. Its
+ * version is the module SDK's package version, the one source; the backend's
+ * ModuleFrontendContract is kept in step by a test. Bumped as a major when a
+ * shared singleton's major, an exposed component or a slot's props change.
  */
-export const FRONTEND_CONTRACT_VERSION = "1.0.0";
+export const FRONTEND_CONTRACT_VERSION = moduleSdk.version;
 
 /** Where the backend serves a started module's prebuilt assets, through the API proxy. */
 export function assetBaseUrl(serverBaseUrl, module) {
