@@ -41,12 +41,12 @@ behavior. **If the test does not query the database, it should not extend
 Longer MockMvc and JSONPath notes live in
 [backend-testing-best-practices.md](.specify/guides/backend-testing-best-practices.md).
 
-| Pattern | Base class | When to use |
-| --- | --- | --- |
-| Full DB integration | `extends BaseWebContextSensitiveTest` | Service, DAO, or controller tests that need a real DB |
-| Security slice | `extends SecuritySliceMockMvcTest` | Controller tests that verify auth/role enforcement |
-| Standalone MockMvc | `@RunWith(MockitoJUnitRunner.class)` + `standaloneSetup` | Controller tests that verify response shape without DB |
-| Plain JUnit | No runner | Pure logic, no Spring, no DB |
+| Pattern             | Base class                                               | When to use                                            |
+| ------------------- | -------------------------------------------------------- | ------------------------------------------------------ |
+| Full DB integration | `extends BaseWebContextSensitiveTest`                    | Service, DAO, or controller tests that need a real DB  |
+| Security slice      | `extends SecuritySliceMockMvcTest`                       | Controller tests that verify auth/role enforcement     |
+| Standalone MockMvc  | `@RunWith(MockitoJUnitRunner.class)` + `standaloneSetup` | Controller tests that verify response shape without DB |
+| Plain JUnit         | No runner                                                | Pure logic, no Spring, no DB                           |
 
 ### Full DB integration
 
