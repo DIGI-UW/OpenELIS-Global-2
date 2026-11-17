@@ -122,6 +122,11 @@ test.describe("Module assets (OGC-1637)", () => {
       "the module's pages come from its dev server here",
     );
 
+    // A dev server loads more than the 250 resources the timing buffer keeps
+    // by default, and the module's files come last.
+    await page.addInitScript(() =>
+      performance.setResourceTimingBufferSize(5000),
+    );
     const route = started!.frontend!.routes![0].path;
     await page.goto(route, { waitUntil: "networkidle" });
     await expect(page.locator(".cds--side-nav")).toBeVisible({
