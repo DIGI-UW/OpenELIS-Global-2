@@ -6,37 +6,28 @@ import { exposeName } from "./moduleRegistry";
 
 const cache = new Map();
 const remotes = new Map();
-const ATTEMPTS = 3;
-const BACKOFF_MS = 300;
 
 /**
- * Imports one expose of a module remote, retrying a transient failure a few
- * times without ever reloading the page (a missing module bundle must only
- * take out its own slot or page, never the shell). A final failure drops the
- * cached lazy component, so the boundary's Retry and the next navigation
- * import the remote again instead of replaying a remembered rejection.
+ * Imports one expose of a module remote, once: the runtime keeps a failed
+ * entry and the browser keeps a failed `import()` of the same URL, so a second
+ * attempt at the same URL fails without a request. A failure drops the cached
+ * lazy component and re-registers the remote under a fresh entry URL, so the
+ * boundary's Retry and the next navigation import the remote again instead of
+ * replaying a remembered rejection. The page is never reloaded: a missing
+ * module bundle only takes out its own slot or page, never the shell.
  */
 async function importExpose(remoteName, key) {
-  let lastError;
-  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
-    try {
-      const loaded = await loadRemote(key);
-      if (!loaded) {
-        throw new Error(`module remote ${key} returned nothing`);
-      }
-      return loaded.default ? loaded : { default: loaded };
-    } catch (error) {
-      lastError = error;
-      if (attempt < ATTEMPTS) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, BACKOFF_MS * attempt),
-        );
-      }
+  try {
+    const loaded = await loadRemote(key);
+    if (!loaded) {
+      throw new Error(`module remote ${key} returned nothing`);
     }
+    return loaded.default ? loaded : { default: loaded };
+  } catch (error) {
+    cache.delete(key);
+    forgetFailedRemote(remoteName);
+    throw error;
   }
-  cache.delete(key);
-  forgetFailedRemote(remoteName);
-  throw lastError;
 }
 
 /**

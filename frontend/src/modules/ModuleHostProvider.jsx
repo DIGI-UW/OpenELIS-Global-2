@@ -30,11 +30,20 @@ export const ModuleHostContext = createContext({
  * read leaves the shell exactly as it is without modules. Plain state, no
  * query cache, so the shell renders the same with or without one.
  *
+ * The request goes out as soon as the shell mounts, next to the session
+ * check, because both carry the same cookie: a signed-in user gets the
+ * registry one round trip earlier than waiting for the session answer. A
+ * signed-out user's request is refused, the refusal is ignored, and the read
+ * runs again once the session reports a sign-in.
+ *
  * In development, `localStorage["oe.module-override.<id>"]` may point a
  * module's remote entry at the module's own Vite dev server.
  */
 export default function ModuleHostProvider({ children }) {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const sessionAnswered = Boolean(
+    userSessionDetails && userSessionDetails.authenticated !== undefined,
+  );
   const authenticated = Boolean(
     userSessionDetails && userSessionDetails.authenticated,
   );
@@ -42,33 +51,50 @@ export default function ModuleHostProvider({ children }) {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
   const [generation, setGeneration] = useState(0);
+  // The read in flight for the current generation, kept across the session
+  // answer so that a sign-in confirmed while the speculative read is still
+  // out does not start a second one.
+  const inFlight = useRef(null);
 
   useEffect(() => {
-    if (!authenticated) {
+    if (sessionAnswered && !authenticated) {
+      inFlight.current = null;
       setStatus("idle");
       setRegistry(null);
       return undefined;
     }
+    if (!inFlight.current || inFlight.current.generation !== generation) {
+      setStatus("loading");
+      inFlight.current = {
+        generation,
+        answer: new Promise((resolve) => readRegistry(resolve)),
+      };
+    }
+    const request = inFlight.current;
     let cancelled = false;
-    setStatus("loading");
-    readRegistry((data) => {
-      if (cancelled) {
+    request.answer.then((data) => {
+      if (cancelled || inFlight.current !== request) {
         return;
       }
       if (data && Array.isArray(data.modules)) {
         setRegistry(data);
         setError(null);
         setStatus("ready");
-      } else {
+      } else if (authenticated) {
         setRegistry(null);
         setError(new Error("module registry unavailable"));
         setStatus("error");
+      } else {
+        // A speculative read refused before the session answered: the run
+        // for the confirmed sign-in reads again.
+        inFlight.current = null;
+        setStatus("idle");
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [authenticated, generation]);
+  }, [sessionAnswered, authenticated, generation]);
 
   const plan = useMemo(
     () => (registry ? planModules(registry, config.serverBaseUrl) : EMPTY),

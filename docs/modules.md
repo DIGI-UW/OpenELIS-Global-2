@@ -1018,7 +1018,7 @@ props may still change in a frontend contract minor.
 | Order         | Ascending `order` across all modules (default 100)                                                                                                                                           |
 | Permission    | With a `permission`, only users holding `mod.<id>.<permission>` see the contribution. The manifest names a key the module declared; it is checked at install                                 |
 | Failure       | Each contribution renders in its own error boundary. One that fails to load or throws renders **nothing** (no notice in a slot) and the page carries on; the error is in the browser console |
-| Loading       | No spinner; the contribution appears when its code has loaded (three attempts with back-off)                                                                                                 |
+| Loading       | No spinner; the contribution appears when its code has loaded (one attempt; a failure shows the placeholder with Retry)                                                                      |
 | Slot name     | **Not checked**: a misspelled `slot` is accepted at install and simply renders nowhere. Copy the name from the catalogue                                                                     |
 
 ### Add a new slot to the core
@@ -1520,23 +1520,25 @@ declarations and the runtime exports in step.
    request mapping, permissions become `system_module` rows (first install
    grants `defaultRoles`), menu entries join the menu in memory.
 8. **Start.** `validate`, then `onStart`. The module is `STARTED`.
-9. **Frontend files.** After login the shell reads `/rest/module-registry`,
-   whose `assetBase` names the started module's files under the running JAR's
-   digest, `/modules/<id>/<sha16>/`, served from the JAR. Every file there,
-   `remoteEntry.js` and the message files included, is immutable for a year, so
-   a warm browser sends no request at all for a module; a new JAR is a new
-   `assetBase`, so the next load fetches the new files, and a request for any
-   other digest answers 404, so an old URL can never cache new bytes. The plain
-   form `/modules/<id>/<path>` stays for one release with the entry and the
-   message files revalidated on every load. Both forms carry a weak `ETag` that
-   names the digest, answered without reading the JAR. Tomcat's authenticator
-   adds its own `Cache-Control: private` header to every response (the `web.xml`
-   security constraints), so a browser sees `private` beside the controller's
-   directives: it caches the digest files as told; a shared proxy cache does not
-   store them. Text responses are compressed by Tomcat's connector
-   (`tomcat/oe_server.xml`); no proxy setting is needed. Chunk URLs inside a
-   built module resolve relative to `remoteEntry.js`, so no module is rebuilt
-   for the digest.
+9. **Frontend files.** The shell requests `/rest/module-registry` as soon as it
+   mounts, beside its session check (both carry the same cookie), keeps the
+   answer once the session reports a signed-in user, and repeats a read that was
+   refused before sign-in. The registry's `assetBase` names the started module's
+   files under the running JAR's digest, `/modules/<id>/<sha16>/`, served from
+   the JAR. Every file there, `remoteEntry.js` and the message files included,
+   is immutable for a year, so a warm browser sends no request at all for a
+   module; a new JAR is a new `assetBase`, so the next load fetches the new
+   files, and a request for any other digest answers 404, so an old URL can
+   never cache new bytes. The plain form `/modules/<id>/<path>` stays for one
+   release with the entry and the message files revalidated on every load. Both
+   forms carry a weak `ETag` that names the digest, answered without reading the
+   JAR. Tomcat's authenticator adds its own `Cache-Control: private` header to
+   every response (the `web.xml` security constraints), so a browser sees
+   `private` beside the controller's directives: it caches the digest files as
+   told; a shared proxy cache does not store them. Text responses are compressed
+   by Tomcat's connector (`tomcat/oe_server.xml`); no proxy setting is needed.
+   Chunk URLs inside a built module resolve relative to `remoteEntry.js`, so no
+   module is rebuilt for the digest.
 
 Any failure after validation stops the application with the module named and the
 two ways out: the `<jar>.disabled` marker or `modules.<id>.enabled=false`, then
