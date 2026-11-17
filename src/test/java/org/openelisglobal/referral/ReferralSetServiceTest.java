@@ -89,6 +89,7 @@ public class ReferralSetServiceTest extends BaseWebContextSensitiveTest {
         cleanRowsInCurrentConnection(new String[] { "referral_result", "referral", "analysis", "sample_item", "sample",
                 "result", "system_user" });
     }
+
     @Autowired
     private NoteService noteService;
     @Autowired
