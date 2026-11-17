@@ -4,6 +4,7 @@ import java.util.List;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.result.action.util.ResultEntryAlert;
+import org.openelisglobal.result.valueholder.Result;
 
 /**
  * Orchestrates the "accept analyzer results" workflow: extracts actionable
@@ -23,14 +24,15 @@ public interface AnalyzerResultsAcceptService {
      * @param allResults every {@link AnalyzerResultItem} on the current page
      *                   (accepted, rejected, deleted, and untouched)
      * @param sysUserId  the authenticated user's system id
+     * @return the accepted results and the results calculations wrote from them
      */
-    void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId);
+    List<Result> acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId);
 
     /**
      * The same, recording in the same transaction each acknowledgement the reviewer
      * gave for a value they retyped (OGC-1417).
      */
-    void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId, List<ResultEntryAlert> alerts);
+    List<Result> acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId, List<ResultEntryAlert> alerts);
 
     /**
      * The decimal places a staged number is shown and saved with: its component's

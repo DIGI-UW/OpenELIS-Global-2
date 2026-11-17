@@ -51,6 +51,7 @@ import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testalertrule.service.TestAlertEvaluationService;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.openelisglobal.testreflex.service.TestReflexService;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
@@ -119,6 +120,8 @@ public class AnalyzerResultsController extends BaseController {
     private AnalyzerDeliveryBundleService deliveryBundleService;
     @Autowired
     private AnalyzerResultsAcceptService acceptService;
+    @Autowired
+    private TestAlertEvaluationService testAlertEvaluationService;
     @Autowired
     private ResultEntryAcknowledgementService acknowledgementService;
     @Autowired
@@ -382,7 +385,7 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setComponentId(result.getComponentId());
         if (!GenericValidator.isBlankOrNull(result.getComponentId())) {
             resultItem.setComponentLabel(testResultComponentService.getMatch("id", result.getComponentId())
-                    .map(TestResultComponent::getLabel).orElse(null));
+                    .map(TestResultComponent::getLocalizedLabel).orElse(null));
         }
         resultItem.setCompleteDate(result.getCompleteDateForDisplay());
         resultItem.setLastUpdated(result.getLastupdated());
@@ -775,7 +778,8 @@ public class AnalyzerResultsController extends BaseController {
                 new ObjectMapper().writeValue(response.getWriter(), acknowledgementService.refusalBody(owed));
                 return;
             }
-            acceptService.acceptAndPersist(resultItemList, getSysUserId(request), alerts);
+            evaluateAlerts(acceptService.acceptAndPersist(resultItemList, getSysUserId(request), alerts),
+                    getSysUserId(request));
 
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
@@ -804,7 +808,8 @@ public class AnalyzerResultsController extends BaseController {
         List<AnalyzerResultItem> resultItemList = paging.getResults(request);
 
         try {
-            acceptService.acceptAndPersist(resultItemList, getSysUserId(request));
+            evaluateAlerts(acceptService.acceptAndPersist(resultItemList, getSysUserId(request)),
+                    getSysUserId(request));
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
             String errorMsg = "errors.UpdateException";
@@ -826,6 +831,18 @@ public class AnalyzerResultsController extends BaseController {
         // return getForwardWithParameters(findForward(FWD_SUCCESS_INSERT, form),
         // params);
         // }
+    }
+
+    // After the accept commits, as Results Entry does: an alert never fails the
+    // accept.
+    private void evaluateAlerts(List<Result> recorded, String sysUserId) {
+        for (Result result : recorded) {
+            try {
+                testAlertEvaluationService.evaluateAndDispatch(result, sysUserId);
+            } catch (RuntimeException e) {
+                LogEvent.logError(e);
+            }
+        }
     }
 
     // ── Accept business logic extracted to AnalyzerResultsAcceptServiceImpl
