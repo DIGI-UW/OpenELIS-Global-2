@@ -1018,7 +1018,7 @@ props may still change in a frontend contract minor.
 | Order         | Ascending `order` across all modules (default 100)                                                                                                                                           |
 | Permission    | With a `permission`, only users holding `mod.<id>.<permission>` see the contribution. The manifest names a key the module declared; it is checked at install                                 |
 | Failure       | Each contribution renders in its own error boundary. One that fails to load or throws renders **nothing** (no notice in a slot) and the page carries on; the error is in the browser console |
-| Loading       | No spinner; the contribution appears when its code has loaded (one attempt; a failure shows the placeholder with Retry)                                                                      |
+| Loading       | No spinner; the contribution appears when its code has loaded (one attempt; a failure renders nothing, see Failure above)                                                                    |
 | Slot name     | **Not checked**: a misspelled `slot` is accepted at install and simply renders nowhere. Copy the name from the catalogue                                                                     |
 
 ### Add a new slot to the core

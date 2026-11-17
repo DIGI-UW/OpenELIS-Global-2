@@ -75,8 +75,11 @@ describe("ModuleHostProvider", () => {
 
   it("keeps a read in flight across the session answer instead of starting a second one", async () => {
     const { session } = mount({});
+    // The read left at mount, before the session answered ...
+    expect(api.calls).toHaveLength(1);
     session({ authenticated: true });
 
+    // ... and the confirmed sign-in rides on it instead of starting another.
     expect(api.calls).toHaveLength(1);
     await answer(api.calls[0], registry);
     expect(screen.getByTestId("host")).toHaveTextContent("ready:registry");
