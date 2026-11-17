@@ -51,6 +51,49 @@ const declaredValues = () => {
   return perModule;
 };
 
+const sdkFile = (name) =>
+  path.resolve(__dirname, "../../../packages/module-sdk", name);
+
+/**
+ * The top-level declarations of one of the SDK's module declaration files:
+ * the exported value names and the modules it re-exports with `export *`.
+ */
+const declarationsOf = (file) => {
+  const source = ts.createSourceFile(
+    file,
+    readFileSync(file, "utf8"),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const values = new Set();
+  const reExported = [];
+  for (const node of source.statements) {
+    if (
+      ts.isExportDeclaration(node) &&
+      !node.exportClause &&
+      node.moduleSpecifier
+    ) {
+      reExported.push(node.moduleSpecifier.text);
+      continue;
+    }
+    const exported = node.modifiers?.some(
+      (m) => m.kind === ts.SyntaxKind.ExportKeyword,
+    );
+    if (!exported) continue;
+    if (ts.isVariableStatement(node)) {
+      for (const declaration of node.declarationList.declarations) {
+        values.add(declaration.name.getText());
+      }
+    } else if (ts.isFunctionDeclaration(node) && node.name) {
+      values.add(node.name.text);
+    }
+  }
+  return { values: [...values].sort(), reExported };
+};
+
+const doubleFile = (entry) =>
+  `testing/${entry}.${entry === "components" || entry === "sdk" ? "jsx" : "js"}`;
+
 const runtimeExports = {
   components: () => import("../components"),
   api: () => import("../api"),
@@ -83,6 +126,36 @@ describe("@openelis/module-sdk declarations", () => {
       expect(runtime.filter((name) => !doubles.includes(name))).toEqual([]);
     },
   );
+
+  it.each(CORE_ENTRY_POINTS)(
+    "declare the openelis_core/%s double: the shell's surface re-exported, then each test control",
+    async (entry) => {
+      const runtime = Object.keys(await runtimeExports[entry]());
+      const doubles = Object.keys(
+        await import(`../../../packages/module-sdk/${doubleFile(entry)}`),
+      );
+      const { values, reExported } = declarationsOf(
+        sdkFile(`testing/${entry}.d.ts`),
+      );
+      expect(reExported).toEqual([`openelis_core/${entry}`]);
+      expect(values).toEqual(
+        doubles.filter((name) => !runtime.includes(name)).sort(),
+      );
+    },
+  );
+
+  it.each([
+    ["build.js", "build.d.ts"],
+    ["shared.js", "shared.d.ts"],
+    ["testing/index.js", "testing/index.d.ts"],
+  ])("declare every export of %s in %s and nothing more", async (js, dts) => {
+    const runtime = Object.keys(
+      await import(`../../../packages/module-sdk/${js}`),
+    ).sort();
+    const { values, reExported } = declarationsOf(sdkFile(dts));
+    expect(reExported).toEqual([]);
+    expect(values).toEqual(runtime);
+  });
 
   it("hand the shell's federation plugin and a module the same shared list", () => {
     expect(federation.shared).toBe(sharedSingletons);

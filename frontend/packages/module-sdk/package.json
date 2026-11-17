@@ -22,7 +22,9 @@
   },
   "files": [
     "shared.js",
+    "shared.d.ts",
     "build.js",
+    "build.d.ts",
     "testing",
     "types",
     "tsconfig.base.json",

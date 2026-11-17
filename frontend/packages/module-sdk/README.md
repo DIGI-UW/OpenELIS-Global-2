@@ -27,9 +27,9 @@ checkout it runs from; for a hand-run build, `ln -s <core checkout> core`.
 
 ## Use
 
-`vite.config.js`, the whole of it:
+`vite.config.ts`, the whole of it (`build.d.ts` types the preset):
 
-```js
+```ts
 import { openelisModule } from "@openelis/module-sdk/build";
 
 export default openelisModule();
@@ -52,15 +52,19 @@ for a configuration written by hand.
 ```json
 {
   "extends": "@openelis/module-sdk/tsconfig.base.json",
-  "include": ["src"]
+  "compilerOptions": { "noImplicitAny": true },
+  "include": ["src", "vite.config.ts"]
 }
 ```
 
 `npx tsc --noEmit` then checks every `openelis_core/*` import by name and props.
+The base sets `preserveSymlinks`, so the declarations find React's types in the
+module's own `node_modules`: this package is installed as a link into the core
+checkout, which has no `node_modules` on a module's CI.
 
-Tests (`vite.config.js`, `test` block):
+Tests (a hand-written `vite.config.ts`; the preset sets the same):
 
-```js
+```ts
 import {
   openelisCoreAliases,
   openelisCoreDedupe,
@@ -76,4 +80,8 @@ export default defineConfig({
 The doubles answer from memory: `apiResponses` and `apiCalls` from
 `@openelis/module-sdk/testing/sdk.jsx` script and record the API a page calls,
 `testPatients` in `testing/components.jsx` feeds the patient search, and the
-contexts in `testing/contexts.js` default to an administrator session.
+contexts in `testing/contexts.js` default to an administrator session. Each
+double has its declarations next to it (`testing/<entry>.d.ts`: the entry
+point's surface plus the test controls), so a TypeScript test scripts them with
+types; a core test keeps every declaration file in step with what its
+JavaScript file exports.

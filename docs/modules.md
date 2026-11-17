@@ -83,7 +83,7 @@ What a full module can add, where it is declared, and where the example does it:
 | Permissions                            | `permissions[]`                   | `@PreAuthorize("hasAuthority('mod.<id>.<key>')")`   | `view`, `manage`                                         |
 | Menu entries                           | `menu[]`                          | Nothing                                             | Order, Specimen Follow-up                                |
 | Pages                                  | `frontend.routes[]`               | React components exposed by the module's Vite build | `frontend/src/pages/`                                    |
-| Dashboard cards and other slot content | `frontend.slots[]`                | React components exposed by the Vite build          | `frontend/src/slots/FollowUpDashboardCard.jsx`           |
+| Dashboard cards and other slot content | `frontend.slots[]`                | React components exposed by the Vite build          | `frontend/src/slots/FollowUpDashboardCard.tsx`           |
 | Translations                           | `frontend.messages`               | `messages/<locale>.json` with `mod.<id>.*` keys     | `frontend/public/messages/en.json`                       |
 | Settings                               | `configuration.properties[]`      | `ModuleContext.configuration()`, `useModuleConfig`  | `defaultDueDays`                                         |
 | Reports                                | `backend.extensions[]` (`report`) | A `ReportProvider`                                  | Not used                                                 |
@@ -199,10 +199,10 @@ transactions.
 
 The module's pages import the core's own components through the `openelis_core`
 remote, so they look and behave exactly like core pages. The example's create
-page (`frontend/src/pages/CreateFollowUpPage.jsx`, shortened) uses the core's
+page (`frontend/src/pages/CreateFollowUpPage.tsx`, shortened) uses the core's
 patient search, breadcrumb, date picker, notifications and API client:
 
-```jsx
+```tsx
 import { PageBreadCrumb, SearchPatientForm } from "openelis_core/components";
 import {
   AlertDialog,
@@ -217,11 +217,11 @@ import {
 
 export default function CreateFollowUpPage() {
   const api = useOpenElisApi(); // the core's API client: base path, session, CSRF
-  const notifications = useNotifications(); // the core's notification system
+  const notifications = useNotifications()!; // the core's notification system (always there inside the shell)
   const config = useModuleConfig("specimen-followup"); // the module's own settings
 
-  const save = async (payload) => {
-    const response = await api.post(
+  const save = async (payload: FollowUpRequest) => {
+    const response = await api.post<FollowUp>(
       "/rest/modules/specimen-followup/followups",
       payload
     );
@@ -262,7 +262,7 @@ export default function CreateFollowUpPage() {
 
 Other pages reuse the rest of the surface the same way:
 
-```jsx
+```tsx
 import {
   usePermission,
   useSession,
@@ -288,15 +288,22 @@ that gap. It carries:
 - `types/openelis_core.d.ts`: the five entry points as ambient modules, so
   `tsc --noEmit` checks every `openelis_core/*` import by name and props without
   changing the import paths.
-- `build.js`: `openelisModule()`, the whole Vite configuration of a module
-  derived from its manifest (see [Step 9: pages](#step-9-pages)).
-- `shared.js`: `sharedForModule()` (the shell's shared singletons with
-  `import: false`) and `coreRemote()` for the module's Vite configuration, so
-  the shared list is written once, in the core.
-- `tsconfig.base.json`: the compiler options a module extends.
-- `testing/`: one test double per entry point and `openelisCoreAliases`, the
-  Vitest alias list that renders a page against the doubles instead of the
-  shell.
+- `build.js` (typed by `build.d.ts`): `openelisModule()`, the whole Vite
+  configuration of a module derived from its manifest (see
+  [Step 9: pages](#step-9-pages)).
+- `shared.js` (typed by `shared.d.ts`): `sharedForModule()` (the shell's shared
+  singletons with `import: false`) and `coreRemote()` for the module's Vite
+  configuration, so the shared list is written once, in the core.
+- `tsconfig.base.json`: the compiler options a module extends. It sets
+  `preserveSymlinks`: the SDK is installed as a link into the core checkout,
+  which has no `node_modules` on a module's CI, so without it the declarations
+  could not find React's types there and every component prop would quietly turn
+  into `any`; with it they resolve from the module's own `node_modules`, locally
+  and on CI alike.
+- `testing/`: one test double per entry point, each with its declarations
+  (`testing/<entry>.d.ts`: the entry point's surface plus the double's test
+  controls), and `openelisCoreAliases`, the Vitest alias list that renders a
+  page against the doubles instead of the shell.
 - Its `version` is the frontend contract version: the shell reads it into
   `FRONTEND_CONTRACT_VERSION`, the backend keeps `ModuleFrontendContract` in
   step with it (a core test fails otherwise), and a module's
@@ -322,6 +329,7 @@ declares
   "@openelis/module-sdk": "file:../core/frontend/packages/module-sdk",
   "@types/react": "^17.0.0",
   "@types/react-dom": "^17.0.0",
+  "@types/react-router-dom": "^5.3.3",
   "typescript": "^6.0.0"
 }
 ```
@@ -331,13 +339,20 @@ react-intl 5 declares an optional peer on TypeScript 4, so the module's
 same flag); without it `npm ci` refuses TypeScript 6 and the Maven build stops.
 `tsconfig.json` extends the base and `npm run typecheck` (`tsc --noEmit`) runs
 in the `test` phase of `mvn verify`, next to the Vitest run, so a wrong import
-fails the build before the JAR is made. Pages may be `.jsx` or `.tsx`; the
-example's dashboard card is `.tsx`.
+or prop fails the build before the JAR is made. The example is TypeScript
+throughout: its pages, slot component, API helpers (`src/followUpApi.ts`, with
+types that mirror the backend's DTOs), tests and `vite.config.ts`, with
+`noImplicitAny` on. A `.jsx` page still builds and still gets the import-name
+check, but the code inside it is not type-checked (the base sets
+`checkJs: false`), so new pages are best written as `.tsx`.
 
 ```json
 {
   "extends": "@openelis/module-sdk/tsconfig.base.json",
-  "include": ["src"]
+  "compilerOptions": {
+    "noImplicitAny": true
+  },
+  "include": ["src", "vite.config.ts"]
 }
 ```
 
@@ -348,7 +363,23 @@ core's (two Reacts in one test is the "Invalid hook call" error). `apiResponses`
 and `apiCalls` from `@openelis/module-sdk/testing/sdk.jsx` script and record the
 API a page calls, `testPatients` in `testing/components.jsx` feeds the patient
 search, and the contexts in `testing/contexts.js` default to an administrator
-session with an empty configuration.
+session with an empty configuration. The doubles are typed, so a `.ts` test
+scripts them without casts:
+
+```tsx
+apiResponses["/rest/modules/specimen-followup/followups/7"] = (
+  endpoint,
+  body,
+  method
+) => (method === "DELETE" ? 204 : followUp);
+```
+
+The example tests every page this way (`src/pages/*.test.tsx`): a small
+`src/test/renderPage.tsx` mounts the page inside a router at its route, with the
+module's English or French messages and a notification context that records what
+the page announces, and each test drives the page as a user would and asserts
+what the API received. Carbon's counted `TextArea` needs `ResizeObserver`, which
+jsdom lacks; the example's `src/setupTests.ts` provides an empty one.
 
 The federation plugin shares exact keys only. Every library a module expects
 from the shell must be in the shared list under that exact name; a module that
@@ -806,15 +837,15 @@ one React component per page and per slot contribution, imports the core's
 components through the `openelis_core` remote, and shares the shell's React,
 router, react-intl, Carbon and query client instead of bundling copies.
 
-**`frontend/vite.config.js`** (from the example). The whole configuration is the
+**`frontend/vite.config.ts`** (from the example). The whole configuration is the
 module SDK's build preset, derived from the manifest (see
 [TypeScript and the module SDK](#typescript-and-the-module-sdk)):
 
-```js
+```ts
 import { openelisModule } from "@openelis/module-sdk/build";
 
 export default openelisModule({
-  test: { setupFiles: ["./src/setupTests.js"] },
+  test: { setupFiles: ["./src/setupTests.ts"] },
 });
 ```
 
@@ -823,11 +854,12 @@ and derives:
 
 - the remote name, the id with hyphens replaced (`specimen_followup`);
 - the exposes, one per `frontend.routes[].expose` and `frontend.slots[].expose`:
-  `./Name` is `src/pages/Name.jsx` (or `.tsx`, `.js`, `.ts`) for a route and
-  `src/slots/Name.jsx` for a slot contribution. The manifest is the only list; a
-  name without a file fails `vite build` with the expose and the paths tried,
-  and the core's contract test (`ModuleContractTest`) checks the built entry
-  exposes every manifest name with a chunk in the bundle;
+  `./Name` is the first of `src/pages/Name.jsx`, `.tsx`, `.js` and `.ts` that
+  exists for a route, and the same under `src/slots/` for a slot contribution
+  (the example's are `.tsx`). The manifest is the only list; a name without a
+  file fails `vite build` with the expose and the paths tried, and the core's
+  contract test (`ModuleContractTest`) checks the built entry exposes every
+  manifest name with a chunk in the bundle;
 - the shell as the `openelis_core` remote and the shell's shared singletons with
   `import: false`, so the module bundles no copy of React, its JSX runtime, the
   router, react-intl, Carbon or the query client, and `externalRuntime`, so it
@@ -859,22 +891,23 @@ module pages. A path may carry parameters, read with `useParams()`:
 
 **A page component:**
 
-```jsx
+```tsx
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { FormattedMessage } from "react-intl";
 import { PageBreadCrumb } from "openelis_core/components";
 import { useOpenElisApi, usePermission } from "openelis_core/sdk";
+import type { FollowUp } from "../followUpApi";
 
 export default function FollowUpDetailPage() {
-  const { followUpId } = useParams();
+  const { followUpId } = useParams<{ followUpId: string }>();
   const api = useOpenElisApi();
   const canManage = usePermission("mod.specimen-followup.manage");
-  const [followUp, setFollowUp] = useState(null);
+  const [followUp, setFollowUp] = useState<FollowUp | null>(null);
 
   useEffect(() => {
     api
-      .get(`/rest/modules/specimen-followup/followups/${followUpId}`)
+      .get<FollowUp>(`/rest/modules/specimen-followup/followups/${followUpId}`)
       .then(setFollowUp);
   }, [api, followUpId]);
 
@@ -891,7 +924,8 @@ export default function FollowUpDetailPage() {
 ```
 
 Pages get no module id from the shell; keep it in a constant, as the example's
-`followUpApi.js` does (`export const MODULE_ID = "specimen-followup"`).
+`followUpApi.ts` does (`export const MODULE_ID = "specimen-followup"`), next to
+the types of what its API sends and answers.
 
 **Calling the backend.** `useOpenElisApi()` returns `{ get, post, put, del }`.
 It adds the base path, the session cookie, the locale and the CSRF token:
@@ -957,24 +991,27 @@ props may still change in a frontend contract minor.
 1. Write the component. It receives the slot's context keys as props, plus
    `slot` (the slot name). This is the example's dashboard card:
 
-   ```jsx
+   ```tsx
    import React, { useEffect, useState } from "react";
    import { ClickableTile } from "@carbon/react";
    import { useHistory } from "react-router-dom";
    import { useIntl } from "react-intl";
    import { useOpenElisApi } from "openelis_core/sdk";
    import { ROUTES, endpoints } from "../followUpApi";
+   import type { FollowUpPage } from "../followUpApi";
 
    export default function FollowUpDashboardCard() {
      const intl = useIntl();
      const history = useHistory();
      const api = useOpenElisApi();
-     const [open, setOpen] = useState(null);
+     const [open, setOpen] = useState<number | null>(null);
 
      useEffect(() => {
        let cancelled = false;
        api
-         .get(endpoints.followUps({ status: "OPEN", page: 0, size: 1 }))
+         .get<FollowUpPage>(
+           endpoints.followUps({ status: "OPEN", page: 1, size: 1 })
+         )
          .then((page) => !cancelled && setOpen(page?.total ?? 0))
          .catch(() => !cancelled && setOpen(0));
        return () => {
@@ -998,12 +1035,16 @@ props may still change in a frontend contract minor.
 
    A `patient.header.actions` contribution reads the patient from its props:
 
-   ```jsx
+   ```tsx
    import React from "react";
    import { Button } from "@carbon/react";
    import { useHistory } from "react-router-dom";
 
-   export default function NewFollowUpAction({ patientId }) {
+   export default function NewFollowUpAction({
+     patientId,
+   }: {
+     patientId: string;
+   }) {
      const history = useHistory();
      return (
        <Button
@@ -1019,8 +1060,8 @@ props may still change in a frontend contract minor.
    }
    ```
 
-2. Nothing to add in `vite.config.js`: the build preset exposes
-   `src/slots/FollowUpDashboardCard.jsx` under the manifest's name once the next
+2. Nothing to add in `vite.config.ts`: the build preset exposes
+   `src/slots/FollowUpDashboardCard.tsx` under the manifest's name once the next
    step declares it (a declared name without a file fails the build).
 
 3. Declare it in the manifest's `frontend.slots`:
@@ -1503,15 +1544,16 @@ With `<id_>` meaning the id with hyphens replaced by underscores:
 | `useModuleConfig(moduleId)`    | The module's `exposeToFrontend` settings, as strings                                                                             |
 | `useModule(moduleId)`          | The module's registry entry, or `undefined`                                                                                      |
 
-The shell shares `react`, `react-dom`, `react-router-dom`, `react-intl`,
-`@carbon/react`, `@carbon/icons-react` and `@tanstack/react-query`
+The shell shares `react`, `react/jsx-runtime`, `react-dom`, `react-router-dom`,
+`react-intl`, `@carbon/react`, `@carbon/icons-react` and `@tanstack/react-query`
 (`sharedSingletons` in `frontend/packages/module-sdk/shared.js`, which
 `frontend/module-federation.config.js` imports). The frontend contract version
-is the module SDK's package version, `1.0.0`: additions to this surface are
+is the module SDK's package version, `1.1.0`: additions to this surface are
 minors; removals, prop changes and a shared library's major version (React 18
 will be one) are majors. The surface is typed in
-`frontend/packages/module-sdk/types/openelis_core.d.ts`; a core test keeps the
-declarations and the runtime exports in step.
+`frontend/packages/module-sdk/types/openelis_core.d.ts`; a core test
+(`sdkDeclaresEveryExport.test.js`) keeps those declarations, the test doubles'
+and the build preset's in step with what the files really export.
 
 ### How the runtime loads a module
 
@@ -1578,19 +1620,20 @@ a restart.
 
 ## 11. Troubleshooting
 
-| Symptom                                                                           | Cause and fix                                                                                                                                                                                                                                                 |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Admin, Modules shows `INVALID`                                                    | The reason names the broken rule (namespace, schema, missing class). Run the module's contract test; it reports the same problems at build time                                                                                                               |
-| Admin, Modules shows `INCOMPATIBLE`                                               | `requires.openelis`, `coreApi` or `spi` does not match this core, or a dependency is missing; rebuild against it or widen the range. A `frontendContract` mismatch is the shell's check: the module stays `STARTED` and its row carries the reason            |
-| The webapp stops at start-up naming the module                                    | A changeset, `validate` or `onStart` failed; the log has the cause. Add `<jar>.disabled` next to the JAR to start without it                                                                                                                                  |
-| The menu entry does not show                                                      | The user lacks the entry's permission, or its `displayKey` has no English message                                                                                                                                                                             |
-| The page shows "Module unavailable"                                               | The remote entry did not load: the dev server stopped (rerun `up --module`), or the JAR has no pages (build without `-DskipFrontend`)                                                                                                                         |
-| `vite build` fails with "the manifest names an expose the frontend does not have" | A `routes[].expose` or `slots[].expose` has no `src/pages/<Name>.*` or `src/slots/<Name>.*` file: the page was renamed or the manifest has a typo; the message lists the paths tried. A component elsewhere takes an `exposes` override in `openelisModule()` |
-| A slot contribution does not show                                                 | The `slot` name is misspelled (not checked), the user lacks its permission, or it failed (see the browser console)                                                                                                                                            |
-| A REST call answers 403                                                           | The user's role does not hold the handler's permission; grant it in Role Management                                                                                                                                                                           |
-| A REST call answers 404                                                           | The controller is not under `backend.basePackages`, or the path lacks `/rest/modules/<id>/`                                                                                                                                                                   |
-| The log refuses a changeset of the module                                         | Every changeset id must start with `<id>-` and its author must be `<id>`                                                                                                                                                                                      |
-| Module files arrive uncompressed                                                  | The deployment runs its own `server.xml`; copy the connector's `compression` attributes from `tomcat/oe_server.xml`                                                                                                                                           |
-| A module page shows the previous JAR's pages                                      | The browser never does after a restart: `assetBase` carries the new JAR's digest. A proxy cache keyed on the old URL, or a tab left open on the old entry, does; reload the page                                                                              |
-| `/modules/<id>/<digest>/…` answers 404                                            | That digest is not the running JAR's: the JAR was replaced, or the URL was copied from another installation; read `assetBase` from `/rest/module-registry`                                                                                                    |
-| `mvn` cannot find `openelisglobal:classes`                                        | The core artifacts are not installed; run `scripts/dev-stack up --module …` or the four install commands in [Build](#8-test-build-and-ci)                                                                                                                     |
+| Symptom                                                                                             | Cause and fix                                                                                                                                                                                                                                                              |
+| --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin, Modules shows `INVALID`                                                                      | The reason names the broken rule (namespace, schema, missing class). Run the module's contract test; it reports the same problems at build time                                                                                                                            |
+| Admin, Modules shows `INCOMPATIBLE`                                                                 | `requires.openelis`, `coreApi` or `spi` does not match this core, or a dependency is missing; rebuild against it or widen the range. A `frontendContract` mismatch is the shell's check: the module stays `STARTED` and its row carries the reason                         |
+| The webapp stops at start-up naming the module                                                      | A changeset, `validate` or `onStart` failed; the log has the cause. Add `<jar>.disabled` next to the JAR to start without it                                                                                                                                               |
+| The menu entry does not show                                                                        | The user lacks the entry's permission, or its `displayKey` has no English message                                                                                                                                                                                          |
+| The page shows "Module unavailable"                                                                 | The remote entry did not load: the dev server stopped (rerun `up --module`), or the JAR has no pages (build without `-DskipFrontend`)                                                                                                                                      |
+| `tsc` fails on CI only with "Parameter implicitly has an 'any' type" on a core component's callback | The module's `tsconfig.json` overrides `preserveSymlinks` (or does not extend the SDK's base): the SDK's declarations then look for React's types next to the core, which has none on CI. Extend `@openelis/module-sdk/tsconfig.base.json` and keep its `preserveSymlinks` |
+| `vite build` fails with "the manifest names an expose the frontend does not have"                   | A `routes[].expose` or `slots[].expose` has no `src/pages/<Name>.*` or `src/slots/<Name>.*` file: the page was renamed or the manifest has a typo; the message lists the paths tried. A component elsewhere takes an `exposes` override in `openelisModule()`              |
+| A slot contribution does not show                                                                   | The `slot` name is misspelled (not checked), the user lacks its permission, or it failed (see the browser console)                                                                                                                                                         |
+| A REST call answers 403                                                                             | The user's role does not hold the handler's permission; grant it in Role Management                                                                                                                                                                                        |
+| A REST call answers 404                                                                             | The controller is not under `backend.basePackages`, or the path lacks `/rest/modules/<id>/`                                                                                                                                                                                |
+| The log refuses a changeset of the module                                                           | Every changeset id must start with `<id>-` and its author must be `<id>`                                                                                                                                                                                                   |
+| Module files arrive uncompressed                                                                    | The deployment runs its own `server.xml`; copy the connector's `compression` attributes from `tomcat/oe_server.xml`                                                                                                                                                        |
+| A module page shows the previous JAR's pages                                                        | The browser never does after a restart: `assetBase` carries the new JAR's digest. A proxy cache keyed on the old URL, or a tab left open on the old entry, does; reload the page                                                                                           |
+| `/modules/<id>/<digest>/…` answers 404                                                              | That digest is not the running JAR's: the JAR was replaced, or the URL was copied from another installation; read `assetBase` from `/rest/module-registry`                                                                                                                 |
+| `mvn` cannot find `openelisglobal:classes`                                                          | The core artifacts are not installed; run `scripts/dev-stack up --module …` or the four install commands in [Build](#8-test-build-and-ci)                                                                                                                                  |

@@ -5,6 +5,7 @@
     "lib": ["dom", "dom.iterable", "es2021"],
     "module": "esnext",
     "moduleResolution": "bundler",
+    "preserveSymlinks": true,
     "jsx": "react-jsx",
     "allowJs": true,
     "checkJs": false,
