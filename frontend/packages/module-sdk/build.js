@@ -14,11 +14,42 @@
  *   export default openelisModule();
  */
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
-import react from "@vitejs/plugin-react";
-import { federation } from "@module-federation/vite";
+import { pathToFileURL } from "node:url";
 import { coreRemote, sharedForModule } from "./shared.js";
 import { openelisCoreAliases, openelisCoreDedupe } from "./testing/index.js";
+
+/**
+ * Loads a build dependency of the module (the React plugin, the federation
+ * plugin) from the module's own node_modules. The SDK is installed from the
+ * core checkout, and Node resolves a package's imports from where its files
+ * really are, so a bare import here would look next to the core, which has
+ * no node_modules on a module's CI. The SDK's own location is the fallback,
+ * for the core's tests.
+ */
+export async function loadBuildDependency(root, name) {
+  const require = createRequire(resolve(root, "package.json"));
+  let fromModule;
+  try {
+    return await import(pathToFileURL(require.resolve(name)).href);
+  } catch (reason) {
+    fromModule = reason;
+  }
+  try {
+    return await import(name);
+  } catch (reason) {
+    throw new Error(
+      `openelisModule: ${name} is not installed in the module (${root}): ${fromModule.message}; add it to the module's devDependencies`,
+      { cause: reason },
+    );
+  }
+}
+
+const unwrap = (loaded, name) =>
+  loaded[name] ||
+  (loaded.default && (loaded.default[name] || loaded.default)) ||
+  loaded;
 
 export const DEFAULT_MANIFEST =
   "../src/main/resources/META-INF/openelis-module.json";
@@ -167,8 +198,18 @@ export function openelisModule(options = {}) {
   const id = manifest.id;
   const port = options.port || 5174;
   const remote = federationOptionsFor(manifest, { ...options, root });
-  return ({ mode }) => ({
-    plugins: [react(), federation(remote), ...(options.plugins || [])],
+  return async ({ mode }) => ({
+    plugins: [
+      unwrap(
+        await loadBuildDependency(root, "@vitejs/plugin-react"),
+        "default",
+      )(),
+      unwrap(
+        await loadBuildDependency(root, "@module-federation/vite"),
+        "federation",
+      )(remote),
+      ...(options.plugins || []),
+    ],
     build: {
       outDir: options.outDir || outDirFor(id),
       emptyOutDir: true,
