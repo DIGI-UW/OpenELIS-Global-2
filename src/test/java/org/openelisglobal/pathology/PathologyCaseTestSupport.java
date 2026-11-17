@@ -8,23 +8,41 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.function.ThrowingRunnable;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.exception.LocalizedValidationException;
+import org.openelisglobal.common.services.historyservices.ProgramSampleHistoryService;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm.PathologySlideForm;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.service.PathologySampleService.LabelVerification;
+import org.openelisglobal.program.service.RequestDraft;
+import org.openelisglobal.program.service.RequestStatusChange;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
+import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Saves the fixture's pathology case the way the case view does and reads back
@@ -53,6 +71,12 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
      */
     protected static final String TECHNICIAN_ID = "1001";
 
+    /**
+     * The fixture's request on case 1: open, text, with no kind, target, author or
+     * date, as a request on file from before bench requests had them.
+     */
+    protected static final int FIXTURE_REQUEST_ID = 301;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
@@ -64,9 +88,13 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
     @Autowired
     protected ReferenceTablesService referenceTablesService;
 
+    @Autowired
+    protected PlatformTransactionManager transactionManager;
+
     protected String accessionNumber;
     protected String blockReferenceTableId;
     protected String slideReferenceTableId;
+    protected String requestReferenceTableId;
 
     @Before
     public void loadPathologyCase() throws Exception {
@@ -80,6 +108,7 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
                 String.class, CASE_ID);
         blockReferenceTableId = referenceTableId("PATHOLOGY_BLOCK");
         slideReferenceTableId = referenceTableId("PATHOLOGY_SLIDE");
+        requestReferenceTableId = referenceTableId("PATHOLOGY_REQUEST");
         clearPathologyAudit();
     }
 
@@ -343,10 +372,132 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
         return new String(history.getChanges(), StandardCharsets.UTF_8);
     }
 
-    /** Every audit entry on a block or slide, the case's own, and its moves. */
+    // two calls landing together
+
+    /** What two calls landing together each ended with, null for success. */
+    protected record Outcome(Throwable held, Throwable other) {
+    }
+
+    /**
+     * Runs the first call in a transaction held open while the second runs on
+     * another thread, gives the second a few seconds (it may be waiting on a row
+     * the first holds), commits the first, then waits for the second.
+     */
+    protected Outcome holdOpenWhile(Runnable held, Callable<?> other) {
+        ExecutorService pool = new DelegatingSecurityContextExecutorService(Executors.newSingleThreadExecutor());
+        AtomicReference<Future<?>> otherRun = new AtomicReference<>();
+        Throwable heldFailure = null;
+        try {
+            try {
+                new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                    held.run();
+                    otherRun.set(pool.submit(other));
+                    try {
+                        otherRun.get().get(3, TimeUnit.SECONDS);
+                    } catch (TimeoutException | ExecutionException waiting) {
+                        // Still waiting on a row this transaction holds, or already over.
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                });
+            } catch (RuntimeException e) {
+                heldFailure = e;
+            }
+            Throwable otherFailure = null;
+            try {
+                otherRun.get().get(60, TimeUnit.SECONDS);
+            } catch (ExecutionException e) {
+                otherFailure = e.getCause();
+            } catch (InterruptedException | TimeoutException e) {
+                throw new AssertionError("the second call did not finish", e);
+            }
+            return new Outcome(heldFailure, otherFailure);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    // bench requests
+
+    /**
+     * Closes the fixture's open request, for a test whose subject is not a request:
+     * an open request holds a case back from the pathologist's queue.
+     */
+    protected void closeTheFixtureRequest() {
+        jdbcTemplate.update("UPDATE clinlims.pathology_request SET status = 'COMPLETED' WHERE id = ?",
+                FIXTURE_REQUEST_ID);
+    }
+
+    protected PathologyRequest raise(RequestDraft draft) {
+        return pathologySampleService.raiseRequest(CASE_ID, draft, TECHNICIAN_ID);
+    }
+
+    protected static RequestDraft blockRequest(String instruction) {
+        return new RequestDraft("BLOCK", null, null, null, null, instruction);
+    }
+
+    protected static RequestDraft slideRequest(Integer blockId, String instruction) {
+        return new RequestDraft("SLIDE", blockId, null, null, null, instruction);
+    }
+
+    protected static RequestDraft stainRequest(Integer slideId, String stainId, String instruction) {
+        return new RequestDraft("STAIN", null, slideId, stainId, null, instruction);
+    }
+
+    protected PathologyRequest changeStatus(int requestId, String from, String status) {
+        return changeStatus(requestId, new RequestStatusChange(from, status, null, null, null));
+    }
+
+    protected PathologyRequest changeStatus(int requestId, RequestStatusChange change) {
+        return pathologySampleService.changeRequestStatus(CASE_ID, requestId, change, TECHNICIAN_ID);
+    }
+
+    /** Every request on the case as stored, oldest first. */
+    protected List<Map<String, Object>> requestsOnCase() {
+        return jdbcTemplate.queryForList("SELECT id, status, type, value, request_kind, target_block_id,"
+                + " target_slide_id, stain_id, priority, result_block_id, result_slide_id, cancel_reason, raised_at,"
+                + " raised_by, last_updated FROM clinlims.pathology_request WHERE pathology_sample_id = ? ORDER BY id",
+                CASE_ID);
+    }
+
+    /** The requests lines of the order's audit trail, as old and new value. */
+    protected List<List<String>> requestLines() {
+        List<AuditTrailItem> items = new TransactionTemplate(transactionManager).execute(
+                status -> new ProgramSampleHistoryService(pathologySampleService.get(CASE_ID)).getAuditTrailItems());
+        return items.stream().filter(item -> "requests".equals(item.getIdentifier())).map(item -> List
+                .of(StringUtils.defaultString(item.getOldValue()), StringUtils.defaultString(item.getNewValue())))
+                .collect(Collectors.toList());
+    }
+
+    protected Map<String, Object> requestRow(int requestId) {
+        return jdbcTemplate.queryForMap("SELECT id, pathology_sample_id, status, type, value, request_kind,"
+                + " target_block_id, target_slide_id, stain_id, priority, result_block_id, result_slide_id,"
+                + " cancel_reason, raised_at, raised_by, last_updated FROM clinlims.pathology_request WHERE id = ?",
+                requestId);
+    }
+
+    /** The audit entries with that verb on the request, oldest first. */
+    protected List<History> requestEntries(int requestId, String verb) {
+        return historyService.getHistoryByRefIdAndRefTableId(String.valueOf(requestId), requestReferenceTableId)
+                .stream()
+                .sorted((first, second) -> Long.compare(Long.parseLong(first.getId()), Long.parseLong(second.getId())))
+                .filter(history -> verb.equals(payloadOf(history).get("verb"))).collect(Collectors.toList());
+    }
+
+    /** Every audit entry on any request. */
+    protected int requestAuditCount() {
+        return jdbcTemplate.queryForObject("SELECT count(*) FROM clinlims.history WHERE reference_table = ?",
+                Integer.class, Integer.parseInt(requestReferenceTableId));
+    }
+
+    /**
+     * Every audit entry on a block, slide or request, the case's own, and its
+     * moves.
+     */
     private void clearPathologyAudit() {
-        jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table IN (?, ?)",
-                Integer.parseInt(blockReferenceTableId), Integer.parseInt(slideReferenceTableId));
+        jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table IN (?, ?, ?)",
+                Integer.parseInt(blockReferenceTableId), Integer.parseInt(slideReferenceTableId),
+                Integer.parseInt(requestReferenceTableId));
         PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_ID);
     }
 }

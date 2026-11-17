@@ -82,8 +82,8 @@ final class DictionaryRows {
     }
 
     /**
-     * The stains a test class seeded, removed on close with every slide reference
-     * to them, and the category with them when the class added it.
+     * The stains a test class seeded, removed on close with every slide and request
+     * reference to them, and the category with them when the class added it.
      */
     static final class StainEntries implements AutoCloseable {
 
@@ -119,6 +119,7 @@ final class DictionaryRows {
 
         private void forget(int id) {
             jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = NULL WHERE stain_id = ?", id);
+            jdbcTemplate.update("UPDATE clinlims.pathology_request SET stain_id = NULL WHERE stain_id = ?", id);
             removeEntries(jdbcTemplate, id);
         }
     }

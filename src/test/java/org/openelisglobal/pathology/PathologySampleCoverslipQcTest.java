@@ -17,8 +17,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
@@ -37,10 +35,7 @@ import org.openelisglobal.program.valueholder.pathology.CoverslipQc;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.StainStatus;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Coverslipping records a quality check on each slide, pass or fail, with the
@@ -63,9 +58,6 @@ public class PathologySampleCoverslipQcTest extends PathologyCaseTestSupport {
     private static final int OWN_CATEGORY = 9655;
     private static final int HE = 9656;
 
-    @Autowired
-    private PlatformTransactionManager transactionManager;
-
     private StageSwitches switches;
 
     private DictionaryRows.StainEntries stains;
@@ -76,11 +68,13 @@ public class PathologySampleCoverslipQcTest extends PathologyCaseTestSupport {
     /**
      * Three stained slides on a case standing at Coverslipping. The fixture's own
      * slide, which carries no stain, is moved to the other case, where it serves as
-     * a slide that is not this case's.
+     * a slide that is not this case's. The fixture's open request is closed, so the
+     * case moves on to the pathologist on its slides alone.
      */
     @Before
     public void stainThreeSlidesAndStandAtCoverslipping() {
         switches = StageSwitches.allOn();
+        closeTheFixtureRequest();
         stains = DictionaryRows.stainEntries(jdbcTemplate, OWN_CATEGORY).with(HE, "Haematoxylin and eosin", true);
         jdbcTemplate.update("UPDATE clinlims.pathology_slide SET pathology_sample_id = 2 WHERE id = ?",
                 LEGACY_SLIDE_ID);
@@ -503,49 +497,6 @@ public class PathologySampleCoverslipQcTest extends PathologyCaseTestSupport {
     }
 
     // helpers
-
-    /** What two calls landing together each ended with, null for success. */
-    private record Outcome(Throwable held, Throwable other) {
-    }
-
-    /**
-     * Runs the first call in a transaction held open while the second runs on
-     * another thread, gives the second a few seconds (it may be waiting on a row
-     * the first holds), commits the first, then waits for the second.
-     */
-    private Outcome holdOpenWhile(Runnable held, Callable<?> other) {
-        ExecutorService pool = new DelegatingSecurityContextExecutorService(Executors.newSingleThreadExecutor());
-        AtomicReference<Future<?>> otherRun = new AtomicReference<>();
-        Throwable heldFailure = null;
-        try {
-            try {
-                new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-                    held.run();
-                    otherRun.set(pool.submit(other));
-                    try {
-                        otherRun.get().get(3, TimeUnit.SECONDS);
-                    } catch (TimeoutException | ExecutionException waiting) {
-                        // Still waiting on a row this transaction holds, or already over.
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                });
-            } catch (RuntimeException e) {
-                heldFailure = e;
-            }
-            Throwable otherFailure = null;
-            try {
-                otherRun.get().get(60, TimeUnit.SECONDS);
-            } catch (ExecutionException e) {
-                otherFailure = e.getCause();
-            } catch (InterruptedException | TimeoutException e) {
-                throw new AssertionError("the second call did not finish", e);
-            }
-            return new Outcome(heldFailure, otherFailure);
-        } finally {
-            pool.shutdownNow();
-        }
-    }
 
     /** The slide posted back by the case view with a new location. */
     private PathologySlideForm slideMovedTo(int slideId, String location) {

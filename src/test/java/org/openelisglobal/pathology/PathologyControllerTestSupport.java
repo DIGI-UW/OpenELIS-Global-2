@@ -14,6 +14,7 @@ import org.junit.function.ThrowingRunnable;
 import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.program.controller.pathology.PathologyController;
+import org.openelisglobal.program.controller.pathology.PathologyRequestRestController;
 import org.openelisglobal.program.controller.pathology.PathologySlideWorkRestController;
 import org.openelisglobal.program.controller.pathology.PathologyStageRestController;
 import org.openelisglobal.program.service.ProgramSampleLabUnitScope;
@@ -41,7 +42,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  *
  * <p>
  * Audit entries and stage events survive the fixture reload, so they are
- * cleared after each test.
+ * cleared after each test, a request's with the rest.
  */
 abstract class PathologyControllerTestSupport extends BaseWebContextSensitiveTest {
 
@@ -55,6 +56,15 @@ abstract class PathologyControllerTestSupport extends BaseWebContextSensitiveTes
 
     /** The fixture's slide on the case, cut before slides named their block. */
     protected static final int LEGACY_SLIDE_ID = 201;
+
+    /**
+     * The fixture's open request on the case, a text request on file with no kind,
+     * target, author or date.
+     */
+    protected static final int FIXTURE_REQUEST_ID = 301;
+
+    /** The fixture's completed request on the other case. */
+    protected static final int OTHER_CASES_REQUEST_ID = 302;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -92,6 +102,12 @@ abstract class PathologyControllerTestSupport extends BaseWebContextSensitiveTes
                     .createBean(PathologySlideWorkRestController.class);
         }
 
+        /** Bench requests, built the same way over the same services. */
+        @Bean
+        PathologyRequestRestController pathologyRequestRestController(ApplicationContext context) {
+            return context.getParent().getAutowireCapableBeanFactory().createBean(PathologyRequestRestController.class);
+        }
+
         /**
          * AppTestConfig also excludes SecurityConfig, so the application's own chains
          * are unreachable from a database-backed test. This reproduces the rule that
@@ -126,8 +142,9 @@ abstract class PathologyControllerTestSupport extends BaseWebContextSensitiveTes
 
     @After
     public void clearAuditAndSecurity() {
-        jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table IN"
-                + " (SELECT id FROM clinlims.reference_tables WHERE name IN ('PATHOLOGY_BLOCK', 'PATHOLOGY_SLIDE'))");
+        jdbcTemplate.update(
+                "DELETE FROM clinlims.history WHERE reference_table IN" + " (SELECT id FROM clinlims.reference_tables"
+                        + " WHERE name IN ('PATHOLOGY_BLOCK', 'PATHOLOGY_SLIDE', 'PATHOLOGY_REQUEST'))");
         PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_ID);
         if (securityContext != null) {
             securityContext.close();

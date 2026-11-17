@@ -27,13 +27,13 @@ import org.openelisglobal.program.util.PathologyRowOrder;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.LabelVerificationView;
-import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.RequestDisplayBean;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.RequestView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.SlideStampView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.StageEventView;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologyDisplayItem;
-import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
+import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
@@ -166,10 +166,7 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
                 pathologySample.getTechniques().stream().filter(e -> e.getType() == TechniqueType.DICTIONARY)
                         .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
                         .collect(Collectors.toList()));
-        displayItem.setRequests(pathologySample.getRequests().stream()
-                .filter(e -> e.getType() == RequestType.DICTIONARY).map(e -> new RequestDisplayBean(e.getValue(),
-                        dictionaryService.get(e.getValue()).getLocalizedName(), e.getStatus()))
-                .collect(Collectors.toList()));
+        displayItem.setRequests(requestViews(pathologySample, users));
 
         SampleOrderService sampleOrderService = new SampleOrderService(pathologySample.getSample());
         SampleOrderItem sampleItem = sampleOrderService.getSampleOrderItem();
@@ -223,6 +220,38 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
             stamps.put(slide.getId(), SlideStampView.of(at.apply(slide), user));
         }
         return stamps;
+    }
+
+    /**
+     * Every request on the case, newest first, as the requests table shows it,
+     * whatever its status or kind, a request on file included. Each user is looked
+     * up once, across these and the slide stamps.
+     */
+    private List<RequestView> requestViews(PathologySample pathologySample, Map<String, SystemUser> users) {
+        if (pathologySample.getRequests() == null) {
+            return List.of();
+        }
+        Map<String, String> stainNames = dictionaryNames(
+                pathologySample.getRequests().stream().map(PathologyRequest::getStainId), dictionaryService);
+        return PathologyRowOrder.requests(pathologySample.getRequests()).stream().map(request -> {
+            SystemUser raisedBy = request.getRaisedBy() == null ? null
+                    : users.computeIfAbsent(request.getRaisedBy(), systemUserService::get);
+            SlideStampView raised = SlideStampView.of(request.getRaisedAt(), raisedBy);
+            return new RequestView(request.getId(), nameOf(request.getKind()), request.getTargetBlockId(),
+                    request.getTargetSlideId(),
+                    pathologySample.nameOfBlock(request.getTargetBlockId())
+                            .or(() -> pathologySample.nameOfSlide(request.getTargetSlideId())).orElse(null),
+                    request.getStainId(), stainNames.get(request.getStainId()), nameOf(request.getPriority()),
+                    request.instruction(dictionaryService), nameOf(request.getStatus()), request.getCancelReason(),
+                    request.getResultBlockId(), request.getResultSlideId(),
+                    pathologySample.nameOfBlock(request.getResultBlockId())
+                            .or(() -> pathologySample.nameOfSlide(request.getResultSlideId())).orElse(null),
+                    raised == null ? null : raised.at(), raised == null ? null : raised.by());
+        }).collect(Collectors.toList());
+    }
+
+    private static String nameOf(Enum<?> value) {
+        return value == null ? null : value.name();
     }
 
     /**

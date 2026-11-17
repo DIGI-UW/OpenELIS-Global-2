@@ -1,6 +1,7 @@
 package org.openelisglobal.program.service;
 
 import jakarta.transaction.Transactional;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -17,7 +18,7 @@ import org.openelisglobal.program.valueholder.immunohistochemistry.Immunohistoch
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
-import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
+import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
@@ -140,10 +141,16 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
                     .filter(e -> e.getType() == TechniqueType.DICTIONARY)
                     .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
                     .collect(Collectors.toList()));
-            displayItem.setRequests(pathologySample.getRequests().stream()
-                    .filter(e -> e.getType() == RequestType.DICTIONARY)
-                    .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
-                    .collect(Collectors.toList()));
+            // Every request still asked or done, text ones included, by its own id so
+            // two that say the same thing are two; a cancelled one asks nothing.
+            displayItem
+                    .setRequests(
+                            pathologySample.getRequests() == null ? List.of()
+                                    : PathologyRowOrder.requests(pathologySample.getRequests()).stream()
+                                            .filter(request -> request.getStatus() != RequestStatus.CANCELLED)
+                                            .map(request -> new IdValuePair(String.valueOf(request.getId()),
+                                                    request.instruction(dictionaryService)))
+                                            .collect(Collectors.toList()));
             displayItem.setSex(patient.getGender());
         }
         return displayItem;

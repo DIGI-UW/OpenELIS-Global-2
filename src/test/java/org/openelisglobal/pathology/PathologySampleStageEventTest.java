@@ -67,9 +67,15 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
 
     private StageSwitches switches;
 
+    /**
+     * The fixture's open request is closed, so a case sent to the pathologist is
+     * held by its stage work alone; one test opens it again to show it holds the
+     * case too.
+     */
     @Before
-    public void switchEveryStageOn() {
+    public void switchEveryStageOnAndCloseTheFixtureRequest() {
         switches = StageSwitches.allOn();
+        closeTheFixtureRequest();
     }
 
     @After
@@ -646,6 +652,30 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
         pathologySampleService.advance(CASE_ID, PathologyStatus.COVERSLIPPING, TECHNICIAN_ID);
 
         assertEquals("the case reaches the pathologist", "READY_PATHOLOGIST", storedStage());
+    }
+
+    /**
+     * The same send with the fixture's request still open is refused, naming it,
+     * until the request is acknowledged (FR-10.11).
+     */
+    @Test
+    public void advancingFromCoverslippingWithEverySlidePassed_whileARequestIsOpen_isRefusedNamingIt() {
+        jdbcTemplate.update("UPDATE clinlims.pathology_request SET status = 'OPENED' WHERE id = ?", FIXTURE_REQUEST_ID);
+        List<Integer> slides = twoSlidesFromA1At(PathologyStatus.COVERSLIPPING);
+        slides.forEach(slideId -> {
+            PathologyCaseRows.storeStainStatus(jdbcTemplate, slideId, StainStatus.STAINED);
+            PathologyCaseRows.storeCoverslipQc(jdbcTemplate, slideId, "PASS");
+        });
+
+        LocalizedValidationException refusal = assertRefusedWith("pathology.error.openRequestsUnacknowledged",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.COVERSLIPPING, TECHNICIAN_ID));
+
+        assertEquals("the refusal names the open request", Map.of("instructions", "Histology review"),
+                refusal.getParams());
+        assertEquals("the case stays at coverslipping", "COVERSLIPPING", storedStage());
+        pathologySampleService.advance(CASE_ID, PathologyStatus.COVERSLIPPING, TECHNICIAN_ID,
+                List.of(FIXTURE_REQUEST_ID));
+        assertEquals("acknowledged, it reaches the pathologist", "READY_PATHOLOGIST", storedStage());
     }
 
     /**

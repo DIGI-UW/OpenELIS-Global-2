@@ -5,9 +5,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.service.ProgramSampleLabUnitScope;
+import org.openelisglobal.program.util.EnumNames;
 import org.openelisglobal.program.valueholder.pathology.CoverslipQc;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.StainStatus;
@@ -53,7 +53,7 @@ public class PathologySlideWorkRestController extends PathologyRestController {
         try {
             return answer(
                     pathologySampleService.recordStainStatus(pathologySampleId, body == null ? null : body.slideIds,
-                            valueNamed(StainStatus.class, body == null ? null : body.status), sysUserId));
+                            EnumNames.valueNamed(StainStatus.class, body == null ? null : body.status), sysUserId));
         } catch (RuntimeException e) {
             return conflictOrRethrow(e);
         }
@@ -68,7 +68,7 @@ public class PathologySlideWorkRestController extends PathologyRestController {
         try {
             return answer(
                     pathologySampleService.recordCoverslipQc(pathologySampleId, body == null ? null : body.slideIds,
-                            valueNamed(CoverslipQc.class, body == null ? null : body.result), sysUserId));
+                            EnumNames.valueNamed(CoverslipQc.class, body == null ? null : body.result), sysUserId));
         } catch (RuntimeException e) {
             return conflictOrRethrow(e);
         }
@@ -105,21 +105,6 @@ public class PathologySlideWorkRestController extends PathologyRestController {
         row.put("stainStatus", slide.getStainStatus() == null ? null : slide.getStainStatus().name());
         row.put("coverslipQc", slide.getCoverslipQc() == null ? null : slide.getCoverslipQc().name());
         return row;
-    }
-
-    /**
-     * The value the request names, or null when it names none or one that does not
-     * exist; the service refuses a request that does not say what was found.
-     */
-    private static <E extends Enum<E>> E valueNamed(Class<E> type, String name) {
-        if (StringUtils.isBlank(name)) {
-            return null;
-        }
-        try {
-            return Enum.valueOf(type, name.trim());
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
     }
 
     /** The slides marked, and what staining found for them. */

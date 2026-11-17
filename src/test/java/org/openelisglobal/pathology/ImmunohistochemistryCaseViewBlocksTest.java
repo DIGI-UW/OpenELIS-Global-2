@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
 import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
@@ -32,6 +33,13 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
     private static final int LEGACY_BLOCK_ID = 101;
     private static final int LEGACY_SLIDE_ID = 201;
     private static final int IHC_SAMPLE_ID = 9701;
+
+    /** The fixture's open text request on the pathology case. */
+    private static final int FIXTURE_REQUEST_ID = 301;
+
+    /** This class's own requests on the pathology case. */
+    private static final int COMPLETED_REQUEST = 9721;
+    private static final int CANCELLED_REQUEST = 9722;
 
     /**
      * This class's own stain category id and entry, which tests seed themselves.
@@ -78,6 +86,8 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
 
     private void clearOwnRows() {
         jdbcTemplate.update("DELETE FROM clinlims.immunohistochemistry_sample WHERE id = ?", IHC_SAMPLE_ID);
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_request WHERE id IN (?, ?)", COMPLETED_REQUEST,
+                CANCELLED_REQUEST);
         PathologyCaseRows.clearLabelStamp(jdbcTemplate, LEGACY_SLIDE_ID);
         if (stains != null) {
             stains.close();
@@ -164,5 +174,27 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
         PathologySlide slide = displayItem.getSlides().get(0);
         assertEquals("the stain status rides along on the slide", StainStatus.STAINED, slide.getStainStatus());
         assertEquals("and so does the coverslip check", CoverslipQc.PASS, slide.getCoverslipQc());
+    }
+
+    /**
+     * The referred view lists what the pathologist asked of the bench: every
+     * request that is not cancelled, text ones included, by its own id and
+     * instruction, newest first, so two requests saying the same thing are still
+     * two.
+     */
+    @Test
+    public void caseView_listsEveryRequestNotCancelled_byIdAndInstruction() {
+        jdbcTemplate.update("INSERT INTO clinlims.pathology_request (id, pathology_sample_id, last_updated, status,"
+                + " type, value, request_kind, priority) VALUES (?, ?, now(), 'COMPLETED', 'TEXT', 'Iron stain',"
+                + " 'BLOCK', 'NORMAL'), (?, ?, now(), 'CANCELLED', 'TEXT', 'Asked twice', 'BLOCK', 'NORMAL')",
+                COMPLETED_REQUEST, PATHOLOGY_CASE_ID, CANCELLED_REQUEST, PATHOLOGY_CASE_ID);
+
+        ImmunohistochemistryCaseViewDisplayItem displayItem = immunohistochemistryDisplayService
+                .convertToCaseDisplayItem(IHC_SAMPLE_ID);
+
+        assertEquals("the completed request, then the fixture's open one; the cancelled one is left out",
+                List.of(String.valueOf(COMPLETED_REQUEST) + "=Iron stain",
+                        String.valueOf(FIXTURE_REQUEST_ID) + "=Histology review"),
+                displayItem.getRequests().stream().map(request -> request.getId() + "=" + request.getValue()).toList());
     }
 }

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="fixture-pathology-request-bench-work-data"
+        author="openelis">
+        <comment>A deployment whose pathologists picked stain names from a
+            list: one case with a block and a slide, and two requests on file.
+            One is a dictionary-style request with no last_updated, which 010
+            must give a version; the other is a completed text request that
+            already has one. Neither has a kind, target, priority, author or
+            date, and neither may come out of the upgrade with any.</comment>
+        <sql>
+            INSERT INTO clinlims.sample
+            (id, accession_number, entered_date, received_date, lastupdated)
+            VALUES
+            (990701, 'PRW26000000001', now(), now(), now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_sample
+            (id, sample_id, status, last_updated)
+            VALUES
+            (990701, 990701, 'READY_PATHOLOGIST', now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_block
+            (id, pathology_sample_id, designation, barcode, cassette_state, active,
+            last_updated)
+            VALUES
+            (990711, 990701, 'A1', 'PRW26000000001.A1', 'BLOCK', true, now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_slide
+            (id, pathology_sample_id, block_id, designation, barcode, active,
+            last_updated)
+            VALUES
+            (990721, 990701, 990711, '1', 'PRW26000000001.A1.1', true, now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_request
+            (id, pathology_sample_id, status, type, value, last_updated)
+            VALUES
+            (990731, 990701, 'OPENED', 'DICTIONARY', 'HISTOLOGY', NULL);
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_request
+            (id, pathology_sample_id, status, type, value, last_updated)
+            VALUES
+            (990732, 990701, 'COMPLETED', 'TEXT', 'Histology review', now());
+        </sql>
+    </changeSet>
+</databaseChangeLog>

@@ -7,6 +7,7 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.valueholder.pathology.CoverslipQc;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
+import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
@@ -63,6 +64,20 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
      * coverslipping batch at Coverslipping; the payload names the stage.
      */
     String PATHOLOGY_RUN_REFERENCE_RECORDED = "PATHOLOGY_RUN_REFERENCE_RECORDED";
+
+    /** Audit verb recorded when a pathologist raises a bench request. */
+    String PATHOLOGY_REQUEST_RAISED = "PATHOLOGY_REQUEST_RAISED";
+
+    /**
+     * Audit verb recorded when a bench request is completed, cancelled or reopened.
+     */
+    String PATHOLOGY_REQUEST_STATUS_CHANGED = "PATHOLOGY_REQUEST_STATUS_CHANGED";
+
+    /**
+     * Audit verb recorded on the case when it is sent to the pathologist with bench
+     * requests still open, naming them.
+     */
+    String PATHOLOGY_REQUEST_OVERRIDDEN = "PATHOLOGY_REQUEST_OVERRIDDEN";
 
     /** Dictionary category a laboratory fills with the tissue types it cuts. */
     String TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
@@ -171,6 +186,63 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
      *                                         {@code from}
      */
     PathologyStageEvent advance(Integer pathologySampleId, PathologyStatus from, String sysUserId);
+
+    /**
+     * {@link #advance(Integer, PathologyStatus, String)}, confirming the bench
+     * requests the page listed as open (FR-10.11). A move onto the pathologist's
+     * queue while a request is open goes ahead only when every open request is in
+     * {@code acknowledgedRequestIds}; otherwise it is refused, naming each open
+     * request's instruction, so a request raised behind an open page is shown
+     * before it is passed over. An id that is not open is ignored. A move that goes
+     * ahead past open requests records them on the case before the move itself.
+     * Every other move is unchanged.
+     *
+     * @param acknowledgedRequestIds the requests the page showed as open; null is
+     *                               none
+     */
+    PathologyStageEvent advance(Integer pathologySampleId, PathologyStatus from, String sysUserId,
+            List<Integer> acknowledgedRequestIds);
+
+    /**
+     * Raises a bench request on the case (FR-10.3 to FR-10.7), open, as the session
+     * user at the server clock, and audits it. A request may be raised at any stage
+     * until the case is signed out.
+     *
+     * <p>
+     * The refusals, in this order, each with a message id the screen translates: no
+     * kind or an unknown one, a blank instruction or one longer than its column, an
+     * unknown priority, a signed-out case; then by kind, a slide request without a
+     * block of the case in use, a stain request without a slide of the case in use,
+     * and a stain request without a stain in use on the stain list. Nothing is
+     * written before all of them pass. A block request names no target and no
+     * stain, and anything posted that the kind does not take is ignored.
+     *
+     * @return the request as stored, with its id
+     */
+    PathologyRequest raiseRequest(Integer pathologySampleId, RequestDraft draft, String sysUserId);
+
+    /**
+     * Completes, cancels or reopens a bench request (FR-10.8, FR-10.9). An open
+     * request may be completed or cancelled and a closed one reopened; a completed
+     * one is not cancelled, nor a cancelled one completed, without reopening it
+     * first. A completion may name the block or slide that fulfilled it, and a
+     * reopening clears that and any reason.
+     *
+     * <p>
+     * The refusals, in this order: no status or an unknown one, a cancellation
+     * without a reason or with one longer than its column, a signed-out case, a
+     * request not on the case; then a request no longer at {@code from} is a
+     * conflict; the status it already holds is answered as it stands with nothing
+     * written; then a transition not allowed, and for a completion a result of the
+     * wrong kind, not on the case or retired. A request on file, which has no kind,
+     * takes no result.
+     *
+     * @return the request as it now stands
+     * @throws PathologyRequestConflictException when the request is no longer at
+     *                                           {@code from}
+     */
+    PathologyRequest changeRequestStatus(Integer pathologySampleId, Integer requestId, RequestStatusChange change,
+            String sysUserId);
 
     /**
      * Returns the case to the nearest earlier stage that applies to it (FR-2.5),

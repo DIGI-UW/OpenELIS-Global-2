@@ -9,7 +9,6 @@ import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
-import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
@@ -52,7 +51,7 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
     private List<IdValuePair> techniques;
 
-    private List<RequestDisplayBean> requests;
+    private List<RequestView> requests;
 
     private List<IdValuePair> conclusions;
 
@@ -262,11 +261,11 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
         this.conclusionText = conclusionText;
     }
 
-    public List<RequestDisplayBean> getRequests() {
+    public List<RequestView> getRequests() {
         return requests;
     }
 
-    public void setRequests(List<RequestDisplayBean> requests) {
+    public void setRequests(List<RequestView> requests) {
         this.requests = requests;
     }
 
@@ -462,25 +461,20 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
         }
     }
 
-    public static class RequestDisplayBean extends IdValuePair {
-
-        public RequestDisplayBean(String id, String value) {
-            super(id, value);
-        }
-
-        public RequestDisplayBean(String id, String value, RequestStatus status) {
-            super(id, value);
-            this.status = status;
-        }
-
-        private RequestStatus status;
-
-        public RequestStatus getStatus() {
-            return status;
-        }
-
-        public void setStatus(RequestStatus status) {
-            this.status = status;
-        }
+    /**
+     * One bench request as the requests table shows it (FR-10.1), every name
+     * already rendered so the screen never composes one: the block or slide it
+     * names and the one that fulfilled it as the bench prints them, retired or not,
+     * the stain by name, and who raised it and when, formatted as the slide stamps
+     * are. Kind, priority and status are the names of their values. A request on
+     * file from before carries only its id, instruction and status.
+     *
+     * @param instruction what the bench is asked to do: the text as written, or for
+     *                    a request on file the name of the entry it was picked by
+     *                    (the stored value when no entry carries it)
+     */
+    public record RequestView(Integer id, String kind, Integer targetBlockId, Integer targetSlideId, String targetName,
+            String stainId, String stainName, String priority, String instruction, String status, String cancelReason,
+            Integer resultBlockId, Integer resultSlideId, String resultName, String raisedAt, String raisedBy) {
     }
 }

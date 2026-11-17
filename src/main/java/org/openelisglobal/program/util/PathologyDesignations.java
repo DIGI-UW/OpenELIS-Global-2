@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.IntFunction;
 import org.openelisglobal.program.util.DesignationScheme.PartScheme;
+import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
+import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 
 /**
  * Assigns the designation and the barcode a cassette or a slide carries for the
@@ -82,6 +84,14 @@ public final class PathologyDesignations {
     public static String slideOnBlockName(String blockDesignation, String slideDesignation, DesignationScheme scheme) {
         requireScheme(scheme);
         return join(scheme.getSeparator(), blockDesignation, slideDesignation);
+    }
+
+    /**
+     * A slide as its label and the bench name it, block first ("A1.1"), from the
+     * rows themselves. A slide whose block is not known is named by itself.
+     */
+    public static String slideOnBlockName(PathologyBlock block, PathologySlide slide, DesignationScheme scheme) {
+        return slideOnBlockName(block == null ? null : block.displayIdentifier(), slide.displayIdentifier(), scheme);
     }
 
     // helpers
