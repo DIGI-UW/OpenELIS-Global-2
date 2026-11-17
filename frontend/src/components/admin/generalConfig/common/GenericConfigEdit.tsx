@@ -44,7 +44,7 @@ interface GenericConfigEditProps {
 interface ConfigLocalization {
   english?: string;
   french?: string;
-  localeValues?: Record<string, string>;
+  values?: Record<string, { locale: string; value: string; id?: string }>;
 }
 
 interface FormEntryConfig {
@@ -119,10 +119,10 @@ const GenericConfigEdit = ({
     if (!res) return;
     setFormEntryConfig(res);
     setTextInputEnglishValue(
-      res.localization?.english || res.localization?.localeValues?.en || "",
+      res.localization?.values?.en?.value ?? res.localization?.english ?? "",
     );
     setTextInputFrenchValue(
-      res.localization?.french || res.localization?.localeValues?.fr || "",
+      res.localization?.values?.fr?.value ?? res.localization?.french ?? "",
     );
     setRadioValue(res.valueType === "boolean" ? res.value : "");
     setSelectedDictionaryValue(res.valueType === "dictionary" ? res.value : "");
@@ -174,25 +174,11 @@ const GenericConfigEdit = ({
   };
 
   const handleInputEnglishChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const newValue = event.target.value;
-    setTextInputEnglishValue(newValue);
-    updateFormEntryConfig({
-      localization: {
-        ...FormEntryConfig!.localization,
-        english: newValue,
-      },
-    });
+    setTextInputEnglishValue(event.target.value);
   };
 
   const handleInputFrenchChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const newValue = event.target.value;
-    setTextInputFrenchValue(newValue);
-    updateFormEntryConfig({
-      localization: {
-        ...FormEntryConfig!.localization,
-        french: newValue,
-      },
-    });
+    setTextInputFrenchValue(event.target.value);
   };
 
   const handleDictionaryChange = (event: { selectedItem: string }) => {
@@ -222,7 +208,30 @@ const GenericConfigEdit = ({
 
       postToOpenElisServerFormData(`/rest/logoUpload`, formData, handleSubmit);
     } else {
-      const body = JSON.stringify(FormEntryConfig);
+      const config = FormEntryConfig!;
+      // Submit one value per language, not the stale display aliases returned by GET.
+      const payload =
+        config.tag === "localization"
+          ? {
+              ...config,
+              localization: {
+                values: {
+                  ...config.localization?.values,
+                  en: {
+                    ...config.localization?.values?.en,
+                    locale: "en",
+                    value: textInputEnglishValue,
+                  },
+                  fr: {
+                    ...config.localization?.values?.fr,
+                    locale: "fr",
+                    value: textInputFrenchValue,
+                  },
+                },
+              },
+            }
+          : config;
+      const body = JSON.stringify(payload);
       postToOpenElisServer(`/rest/${menuType}?ID=${ID}`, body, handleSubmit);
     }
   };

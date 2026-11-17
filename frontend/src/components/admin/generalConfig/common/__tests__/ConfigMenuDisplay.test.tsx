@@ -159,6 +159,64 @@ describe("ConfigMenuDisplay", () => {
     },
   );
 
+  it.each(["display value first", "display value last"])(
+    "saves one translation map without stale display aliases (%s)",
+    async (order) => {
+      const values = {
+        en: { id: "1", locale: "en", value: "Old English" },
+        fr: { id: "2", locale: "fr", value: "Ancien français" },
+        es: { id: "3", locale: "es", value: "Texto conservado" },
+      };
+      const aliases = {
+        english: values.en.value,
+        french: values.fr.value,
+        valuesAsMap: {
+          en: values.en.value,
+          fr: values.fr.value,
+          es: values.es.value,
+        },
+      };
+      const record = {
+        ...config("12"),
+        paramName: "bannerHeading",
+        valueType: "text",
+        tag: "localization",
+        localization:
+          order === "display value first"
+            ? { values, localizedValue: values.en.value, ...aliases }
+            : { values, ...aliases, localizedValue: values.en.value },
+      };
+      vi.mocked(getFromOpenElisServer).mockImplementation((url, callback) => {
+        callback(url === `/rest/${MENU}` ? { menuList: [record] } : record);
+      });
+
+      await openTheEditor();
+      fireEvent.change(screen.getByRole("textbox", { name: "English" }), {
+        target: { value: "New English" },
+      });
+      fireEvent.change(screen.getByRole("textbox", { name: "French" }), {
+        target: { value: "Nouveau français" },
+      });
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save", exact: true }),
+      );
+
+      expect(postToOpenElisServer).toHaveBeenCalledTimes(1);
+      const posted = JSON.parse(
+        vi.mocked(postToOpenElisServer).mock.calls[0][1],
+      );
+      expect(posted.localization).toEqual({
+        values: {
+          en: { ...values.en, value: "New English" },
+          fr: { ...values.fr, value: "Nouveau français" },
+          es: values.es,
+        },
+      });
+      expect(values.en.value).toBe("Old English");
+      expect(values.fr.value).toBe("Ancien français");
+    },
+  );
+
   it("lists the configuration values", async () => {
     renderScreen();
 
