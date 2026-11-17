@@ -96,7 +96,7 @@ describe("the module build preset (OGC-1641)", () => {
     );
   });
 
-  it("derives the remote name, the output directory and the shared list from the manifest and the SDK", () => {
+  it("derives the remote name, the output directory and the shared list from the manifest and the SDK", async () => {
     file("src/pages/NotesPage.jsx");
     file("src/pages/NoteDetailPage.jsx");
     file("src/slots/NotesCard.jsx");
@@ -119,8 +119,11 @@ describe("the module build preset (OGC-1641)", () => {
     );
 
     // The federation plugin itself registers nothing under Vitest, so the
-    // options it is given are what the test reads.
-    const config = openelisModule({ root })({ mode: "production" });
+    // options it is given are what the test reads. The plugins are loaded
+    // from the module's node_modules, here the core's, so the config function
+    // is asynchronous.
+    const config = await openelisModule({ root })({ mode: "production" });
+    expect(config.plugins.flat(Infinity).length).toBeGreaterThan(0);
     expect(remoteNameFor("lab-notes")).toBe("lab_notes");
     expect(outDirFor("lab-notes")).toBe(
       "../target/classes/META-INF/resources/modules/lab-notes",
