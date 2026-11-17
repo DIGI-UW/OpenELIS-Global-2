@@ -2,9 +2,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { CORE_ENTRY_POINTS } from "../../../packages/module-sdk/shared.js";
-import { SHARED_SINGLETONS } from "../../../module-federation.config.js";
-import { sharedSingletons } from "../../../packages/module-sdk/shared.js";
+import federation from "../../../module-federation.config.js";
+import {
+  CORE_ENTRY_POINTS,
+  sharedForModule,
+  sharedSingletons,
+} from "../../../packages/module-sdk/shared.js";
 
 /**
  * The SDK's ambient declarations are hand-written, so this is what keeps them
@@ -67,7 +70,25 @@ describe("@openelis/module-sdk declarations", () => {
     },
   );
 
-  it("hand modules the shell's own shared singleton list", () => {
-    expect(sharedSingletons).toEqual(SHARED_SINGLETONS);
+  it.each(CORE_ENTRY_POINTS)(
+    "ship a test double for every runtime value of openelis_core/%s",
+    async (entry) => {
+      const runtime = Object.keys(await runtimeExports[entry]()).sort();
+      const doubles = Object.keys(
+        await import(
+          `../../../packages/module-sdk/testing/${entry}.${entry === "components" || entry === "sdk" ? "jsx" : "js"}`
+        ),
+      );
+      expect(runtime.filter((name) => !doubles.includes(name))).toEqual([]);
+    },
+  );
+
+  it("hand the shell's federation plugin and a module the same shared list", () => {
+    expect(federation.shared).toBe(sharedSingletons);
+    const forModule = sharedForModule();
+    expect(Object.keys(forModule)).toEqual(Object.keys(sharedSingletons));
+    for (const [name, options] of Object.entries(forModule)) {
+      expect(options).toEqual({ ...sharedSingletons[name], import: false });
+    }
   });
 });

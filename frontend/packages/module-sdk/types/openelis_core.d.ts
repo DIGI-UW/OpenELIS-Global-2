@@ -293,7 +293,7 @@ declare module "openelis_core/sdk" {
   export const ModuleErrorBoundary: ComponentType<ModuleErrorBoundaryProps>;
 
   export function useSession(): UserSessionContextValue;
-  /** The manifest's permission key, expanded by the shell to `mod.<id>.<key>`, or a core permission. */
+  /** The full permission key, `mod.<id>.<key>` for one of the manifest's or a core key; the shell does not expand it. */
   export function usePermission(key: string): boolean;
   export function useRole(role: string): boolean;
   /** {} outside the shell's Layout. */
@@ -304,7 +304,11 @@ declare module "openelis_core/sdk" {
   export interface OpenElisApi {
     /** Rejects on a non-2xx answer or a non-JSON body. */
     get<T = any>(endpoint: string, signal?: AbortSignal): Promise<T>;
-    /** Never rejects: a refusal resolves with an ApiFailure (statusCode set), a network error with status 0. */
+    /**
+     * Never rejects: a 2xx resolves with the parsed body, or {} when the body
+     * is empty (a 201 or 204); a refusal resolves with an ApiFailure
+     * (statusCode set), a network error with status 0.
+     */
     post<T = any>(endpoint: string, body?: unknown): Promise<T | ApiFailure>;
     put<T = any>(endpoint: string, body?: unknown): Promise<T | ApiFailure>;
     /** Resolves with the HTTP status: 0 on a network error, 401 on the login page. */

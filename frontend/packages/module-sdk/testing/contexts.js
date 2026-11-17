@@ -16,21 +16,35 @@ export const testSession = {
   permissions: [],
 };
 
+/** The shape App.jsx provides (UserSessionContextValue in the declarations). */
 export const UserSessionDetailsContext = createContext({
   userSessionDetails: testSession,
-  setUserSessionDetails: () => {},
+  errorLoadingSessionDetails: false,
+  isCheckingLogin: () => false,
+  logout: () => {},
+  refresh: async () => {},
 });
 
+export const testLocale = {
+  id: "1",
+  localeCode: "en",
+  displayName: "English",
+  active: true,
+  fallback: true,
+  sortOrder: 1,
+};
+
+/** The shape Layout provides (ConfigurationContextValue in the declarations). */
 export const ConfigurationContext = createContext({
   configurationProperties: {
-    DEFAULT_DATE_LOCALE: "en",
+    DEFAULT_DATE_LOCALE: "en-US",
     DEFAULT_LANG_LOCALE: "en",
     currentDateAsText: "01/01/2026",
     currentTimeAsText: "08:00",
   },
   reloadConfiguration: () => {},
-  supportedLocales: ["en"],
-  enabledLanguages: [{ localeCode: "en", displayName: "English" }],
+  supportedLocales: [testLocale],
+  enabledLanguages: { en: { label: "English", fallback: true } },
 });
 
 export const NotificationContext = createContext({

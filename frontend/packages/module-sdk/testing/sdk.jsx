@@ -1,9 +1,11 @@
 /**
  * Doubles for `openelis_core/sdk`. The API object answers from `apiResponses`
  * (an endpoint to a value or a function of the endpoint and body) and records
- * every call on `apiCalls`; an unscripted GET answers {}, a POST or PUT echoes
- * its body, a DELETE answers 204. Permissions are granted unless the key is in
- * `deniedPermissions`. `resetSdkStubs()` clears everything between tests.
+ * every call on `apiCalls`; an unscripted GET, POST or PUT answers {} (what
+ * the shell resolves for a 2xx with no body), a DELETE answers 204. A refusal
+ * is scripted as the shell reports it, `{ statusCode, error, fieldErrors }`.
+ * Permissions are granted unless the key is in `deniedPermissions`.
+ * `resetSdkStubs()` clears everything between tests.
  */
 import React, { useContext, useMemo } from "react";
 import {
@@ -32,9 +34,7 @@ const answer = (method, endpoint, body) => {
   const scripted = apiResponses[endpoint];
   if (typeof scripted === "function") return scripted(endpoint, body, method);
   if (scripted !== undefined) return scripted;
-  if (method === "GET") return {};
-  if (method === "DELETE") return 204;
-  return body ?? {};
+  return method === "DELETE" ? 204 : {};
 };
 
 const api = {
