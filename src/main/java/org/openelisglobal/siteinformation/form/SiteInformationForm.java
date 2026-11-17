@@ -1,5 +1,6 @@
 package org.openelisglobal.siteinformation.form;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -46,6 +47,9 @@ public class SiteInformationForm extends BaseForm {
     @Pattern(regexp = ValidationHelper.MESSAGE_KEY_REGEX)
     private String descriptionKey = "";
 
+    // Settings accept translations only through values; these aliases are
+    // display-only.
+    @JsonIgnoreProperties(value = { "english", "french", "localizedValue" }, allowGetters = true)
     @Valid
     private Localization localization;
 
