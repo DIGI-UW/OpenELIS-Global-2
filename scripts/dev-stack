@@ -75,7 +75,14 @@ SUBMODULE_SERVICES = {
 # Checkout paths baked into the backend development image; the WAR is mounted.
 BACKEND_IMAGE_INPUTS = ("Dockerfile.dev", "install", "tomcat/client-certificates", "tomcat/oe_server.xml")
 # Frontend files baked into the development image; src and public are mounted.
-FRONTEND_IMAGE_INPUTS = ("package.json", "package-lock.json", "vite.config.ts", "index.html", "tsconfig.json")
+FRONTEND_IMAGE_INPUTS = (
+    "package.json",
+    "package-lock.json",
+    "vite.config.ts",
+    "module-federation.config.js",
+    "index.html",
+    "tsconfig.json",
+)
 
 def slugify(value: str, limit: int = 28) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-") or "worktree"
