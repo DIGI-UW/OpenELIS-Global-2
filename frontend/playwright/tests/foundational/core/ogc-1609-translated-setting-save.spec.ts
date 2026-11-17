@@ -69,6 +69,34 @@ test.describe("OGC-1609 translated setting save", () => {
   test("the banner saves from Site Information and the header shows it", async ({
     page,
   }) => {
+    page.on("request", (request) => {
+      if (
+        request.method() === "POST" &&
+        request.url().includes("/rest/SiteInformation?ID=")
+      ) {
+        const localization = request.postDataJSON()?.localization;
+        if (localization) {
+          console.log(
+            "BANNER_SAVE_DIAGNOSTIC",
+            JSON.stringify({
+              language: request.headers()["accept-language"],
+              keys: Object.keys(localization),
+              english: localization.english,
+              french: localization.french,
+              localizedValue: localization.localizedValue,
+              values: Object.fromEntries(
+                Object.entries(localization.values || {}).map(
+                  ([locale, value]) => [
+                    locale,
+                    (value as { value: string }).value,
+                  ],
+                ),
+              ),
+            }),
+          );
+        }
+      }
+    });
     const siteInfo = new SiteInformationPage(page);
     await siteInfo.goto();
     const original = await readBanner(page);
