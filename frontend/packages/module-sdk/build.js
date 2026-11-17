@@ -89,7 +89,13 @@ export function exposesFor(
       continue;
     }
     if (overrides[expose]) {
-      exposes[expose] = overrides[expose];
+      if (existsSync(resolve(root, overrides[expose]))) {
+        exposes[expose] = overrides[expose];
+      } else {
+        problems.push(
+          `expose "${expose}" (${origin}) is overridden with ${overrides[expose]}, which does not exist`,
+        );
+      }
       continue;
     }
     const name = expose.replace(/^\.\//, "");

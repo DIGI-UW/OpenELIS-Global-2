@@ -85,6 +85,15 @@ describe("the module build preset (OGC-1641)", () => {
       overrides: { "./NoteDetailPage": "./src/detail/index.jsx" },
     });
     expect(exposes["./NoteDetailPage"]).toBe("./src/detail/index.jsx");
+
+    expect(() =>
+      exposesFor(manifest, {
+        root,
+        overrides: { "./NoteDetailPage": "./src/detail/missing.jsx" },
+      }),
+    ).toThrow(
+      /expose "\.\/NoteDetailPage" \(route \/m\/lab-notes\/notes\/:id\) is overridden with \.\/src\/detail\/missing\.jsx, which does not exist/,
+    );
   });
 
   it("derives the remote name, the output directory and the shared list from the manifest and the SDK", () => {

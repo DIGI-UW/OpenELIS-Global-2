@@ -200,14 +200,18 @@ public abstract class ModuleContractTest {
         }
     }
 
+    private static final Pattern EXPOSE_KEY = Pattern.compile("[\"'`]\\./[A-Za-z0-9_$-]+[\"'`]\\s*:");
+    private static final Pattern CHUNK_IMPORT = Pattern.compile("import\\([\"'`]\\./(assets/[^\"'`]+)[\"'`]\\)");
+
     /**
      * Every expose the manifest names (routes and slot contributions) is in the
-     * built entry's expose table with a chunk that ships next to it, so a page
-     * renamed without the manifest, or a manifest typo, fails the build instead of
-     * showing the error placeholder in the browser. The entry is the output of
-     * {@code @module-federation/vite}: each expose appears as a quoted
-     * {@code ./Name} key followed by an {@code import("./assets/...")} of its
-     * chunk.
+     * built entry's expose table, and every chunk that expose imports ships next to
+     * the entry, so a page renamed without the manifest, or a manifest typo, fails
+     * the build instead of showing the error placeholder in the browser. The entry
+     * is the output of {@code @module-federation/vite}: each expose appears as a
+     * quoted {@code ./Name} key whose loader imports its helper chunks and its page
+     * chunk with {@code import("./assets/...")} up to the next key, so every import
+     * between two keys belongs to the first.
      */
     @Test
     public void frontendBundleExposesEveryManifestEntry() throws Exception {
@@ -230,11 +234,18 @@ public abstract class ModuleContractTest {
                         + "; the manifest names a page or slot the frontend does not expose");
                 continue;
             }
-            Matcher chunk = Pattern.compile("import\\([\"'`]\\./(assets/[^\"'`]+)[\"'`]\\)").matcher(entry);
-            if (!chunk.find(key.end())) {
+            Matcher nextKey = EXPOSE_KEY.matcher(entry);
+            int end = nextKey.find(key.end()) ? nextKey.start() : entry.length();
+            Matcher chunk = CHUNK_IMPORT.matcher(entry).region(key.end(), end);
+            int imports = 0;
+            while (chunk.find()) {
+                imports++;
+                if (getClass().getResource(assetRoot + chunk.group(1)) == null) {
+                    problems.add("expose '" + expose + "' imports " + chunk.group(1) + ", which is not in the bundle");
+                }
+            }
+            if (imports == 0) {
                 problems.add("expose '" + expose + "' has no chunk import in " + manifest.getFrontend().getEntry());
-            } else if (getClass().getResource(assetRoot + chunk.group(1)) == null) {
-                problems.add("expose '" + expose + "' imports " + chunk.group(1) + ", which is not in the bundle");
             }
         }
         assertNoProblems(problems);

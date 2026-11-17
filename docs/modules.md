@@ -797,8 +797,11 @@ and derives:
   and the core's contract test (`ModuleContractTest`) checks the built entry
   exposes every manifest name with a chunk in the bundle;
 - the shell as the `openelis_core` remote and the shell's shared singletons with
-  `import: false`, so the module bundles no copy of React, the router,
-  react-intl, Carbon or the query client;
+  `import: false`, so the module bundles no copy of React, its JSX runtime, the
+  router, react-intl, Carbon or the query client. A module built with this SDK
+  expects the shell to share `react/jsx-runtime` (every shell build from
+  2026-11-17 on); on an older shell its pages fail to load with a shared-module
+  error;
 - `build.outDir`, straight into the Maven output
   (`../target/classes/META-INF/resources/modules/<id>`), the dev server on port
   5174 for the shell's dev override, `resolve.dedupe` and the test aliases for
