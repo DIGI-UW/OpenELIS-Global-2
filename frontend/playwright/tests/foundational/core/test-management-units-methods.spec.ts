@@ -56,7 +56,12 @@ test.describe("Test Management: units of measure, methods and result select list
       waitUntil: "domcontentloaded",
     });
     const main = page.getByRole("main");
-    const firstUnit = main.locator("tbody tr td").first();
+    const firstUnit = main
+      .getByRole("row")
+      .filter({ has: page.getByRole("button", { name: "Edit", exact: true }) })
+      .first()
+      .getByRole("cell")
+      .first();
     await expect(firstUnit).not.toBeEmpty({ timeout: NAV_TIMEOUT });
     const takenName = (await firstUnit.innerText()).trim();
 
@@ -110,7 +115,12 @@ test.describe("Test Management: units of measure, methods and result select list
       waitUntil: "domcontentloaded",
     });
     const main = page.getByRole("main");
-    const firstMethod = main.locator("tbody tr td").first();
+    const firstMethod = main
+      .getByRole("row")
+      .filter({ has: page.getByRole("button", { name: "Edit", exact: true }) })
+      .first()
+      .getByRole("cell")
+      .first();
     await expect(firstMethod).not.toBeEmpty({ timeout: NAV_TIMEOUT });
     const takenName = (await firstMethod.innerText()).trim();
 
