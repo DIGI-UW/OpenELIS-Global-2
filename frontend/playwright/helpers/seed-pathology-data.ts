@@ -716,8 +716,43 @@ export interface StoredPathologyCase {
   coverslipRunReferenceEditable?: boolean;
   reports?: unknown[];
   techniques?: { id?: string }[];
-  requests?: { id?: string; status?: string }[];
+  /** The bench requests, newest first. */
+  requests?: CaseRequest[];
   conclusions?: { id?: string }[];
+}
+
+/** What a bench request asks for: another block, slide or stain. */
+export type RequestKind = "BLOCK" | "SLIDE" | "STAIN";
+
+/** How urgently a bench request is wanted. */
+export type RequestPriority = "NORMAL" | "URGENT" | "STAT";
+
+/** Where a bench request stands. */
+export type RequestStatus = "OPENED" | "COMPLETED" | "CANCELLED";
+
+/**
+ * One bench request as the case view reads it. A request on file from
+ * before requests had a kind carries none, nor a target, priority, author or
+ * date.
+ */
+export interface CaseRequest {
+  id: number;
+  kind?: RequestKind | null;
+  targetBlockId?: number | null;
+  targetSlideId?: number | null;
+  /** The target's designation as printed (A1, A1.1). */
+  targetName?: string | null;
+  stainId?: string | null;
+  stainName?: string | null;
+  priority?: RequestPriority | null;
+  instruction: string;
+  status: RequestStatus;
+  cancelReason?: string | null;
+  resultBlockId?: number | null;
+  resultSlideId?: number | null;
+  resultName?: string | null;
+  raisedAt?: string | null;
+  raisedBy?: string | null;
 }
 
 function casePath(caseId: string) {
@@ -732,6 +767,16 @@ export async function readCase(
   return apiGet<StoredPathologyCase>(page, casePath(caseId));
 }
 
+/** How a move treats the bench requests still open on the case. */
+export interface MoveOptions {
+  /**
+   * The open requests the person sending the case on has seen and sends it
+   * with, as the case view's Send anyway names them. The server refuses to
+   * send a case to the pathologist while any open request is missing here.
+   */
+  acknowledgedRequestIds?: number[];
+}
+
 /**
  * Move a case one stage on, or one stage back with a reason, through the
  * endpoints the case view posts to, naming the stage it is moved from. Throws
@@ -744,11 +789,18 @@ export async function moveCaseOnce(
   direction: "advance" | "return",
   from: PathologyStageId,
   reason?: string,
+  options: MoveOptions = {},
 ): Promise<PathologyStageId> {
+  const body =
+    direction === "return"
+      ? { from, reason }
+      : options.acknowledgedRequestIds
+        ? { from, acknowledgedRequestIds: options.acknowledgedRequestIds }
+        : { from };
   const answer = await apiPost(
     page,
     `${casePath(caseId)}/${direction}`,
-    direction === "return" ? { from, reason } : { from },
+    body,
     `Moving case ${caseId} (${direction}) from ${from}`,
   );
   const status = (JSON.parse(answer) as { status?: PathologyStageId }).status;
@@ -776,7 +828,9 @@ export interface CaseSaveChanges {
 /**
  * Save the case through the same endpoint and with the same form the case
  * view's Save draft posts, built from the stored case, with the changes
- * given applied on top.
+ * given applied on top. Bench requests are not part of the form: each is
+ * raised and changed through its own endpoint (raiseRequest,
+ * changeRequestStatus), and a save leaves them as they are.
  */
 export async function saveCaseThroughApi(
   page: Page,
@@ -819,14 +873,141 @@ export async function saveCaseThroughApi(
       release: false,
       referToImmunoHistoChemistry: false,
       techniques: (stored.techniques ?? []).map((entry) => entry.id),
-      requests: (stored.requests ?? []).map((entry) => ({
-        value: entry.id,
-        status: entry.status,
-      })),
       conclusions: (stored.conclusions ?? []).map((entry) => entry.id),
     },
     `Saving case ${caseId}`,
   );
+}
+
+/** One bench request to raise, as the new-request row posts it. */
+export interface RequestDraft {
+  kind: RequestKind;
+  /** The block a slide request is cut from. */
+  targetBlockId?: number | string;
+  /** The slide a stain request is stained on. */
+  targetSlideId?: number | string;
+  /** The stain a stain request asks for, a Pathology Stains entry id. */
+  stainId?: string;
+  /** Normal when left out. */
+  priority?: RequestPriority;
+  instruction: string;
+}
+
+/** The answer of both request endpoints: the request and where it stands. */
+interface RequestAnswer {
+  id?: number;
+  status?: RequestStatus;
+}
+
+const idOrNull = (value: number | string | undefined) =>
+  value === undefined || value === "" ? null : Number(value);
+
+/**
+ * Raise a bench request on a case through the endpoint the Review section's
+ * Raise request posts to, with the same body. The server takes one at any
+ * stage before the case is signed out, stamped with the signed-in user and
+ * its own clock. Throws with the server's body when it is refused. Returns
+ * the new request's id.
+ */
+export async function raiseRequest(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  draft: RequestDraft,
+): Promise<number> {
+  const caseId = seeded.pathologySampleId;
+  const answer = await apiPost(
+    page,
+    `${casePath(caseId)}/requests`,
+    {
+      kind: draft.kind,
+      targetBlockId: idOrNull(draft.targetBlockId),
+      targetSlideId: idOrNull(draft.targetSlideId),
+      stainId: draft.stainId ?? null,
+      priority: draft.priority ?? "NORMAL",
+      instruction: draft.instruction,
+    },
+    `Raising a ${draft.kind} request on case ${caseId}`,
+  );
+  const id = (JSON.parse(answer) as RequestAnswer).id;
+  if (id == null) {
+    throw new Error(
+      `Raising a request on case ${caseId} answered no id: ${answer.substring(0, 400)}`,
+    );
+  }
+  return id;
+}
+
+/** One status change of a bench request. */
+export interface RequestStatusChange {
+  status: RequestStatus;
+  /**
+   * The status the change is made from. Left out, it is read from the case,
+   * which is what a page showing the request afresh would send.
+   */
+  from?: RequestStatus;
+  /** Required with CANCELLED. */
+  cancelReason?: string;
+  /** What fulfilled a completed block request. */
+  resultBlockId?: number | string;
+  /** What fulfilled a completed slide or stain request. */
+  resultSlideId?: number | string;
+}
+
+/**
+ * Complete, cancel or reopen a bench request through the endpoint the
+ * requests table posts to, with the same body: the status the change is made
+ * from, the new one, a reason only with a cancellation, and what fulfilled a
+ * completed request. Throws with the server's body when it is refused, a
+ * request changed elsewhere since `from` included (HTTP 409). Returns the
+ * status the request now has.
+ */
+export async function changeRequestStatus(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  requestId: number,
+  change: RequestStatusChange,
+): Promise<RequestStatus> {
+  const caseId = seeded.pathologySampleId;
+  let from = change.from;
+  if (!from) {
+    const stored = await readCase(page, caseId);
+    const request = (stored.requests ?? []).find(
+      (entry) => entry.id === requestId,
+    );
+    if (!request) {
+      throw new Error(`Case ${caseId} holds no request ${requestId}.`);
+    }
+    from = request.status;
+  }
+  const answer = await apiPost(
+    page,
+    `${casePath(caseId)}/requests/${requestId}/status`,
+    {
+      from,
+      status: change.status,
+      cancelReason:
+        change.status === "CANCELLED" ? (change.cancelReason ?? null) : null,
+      resultBlockId:
+        change.status === "COMPLETED" ? idOrNull(change.resultBlockId) : null,
+      resultSlideId:
+        change.status === "COMPLETED" ? idOrNull(change.resultSlideId) : null,
+    },
+    `Changing request ${requestId} of case ${caseId} from ${from} to ${change.status}`,
+  );
+  const status = (JSON.parse(answer) as RequestAnswer).status;
+  if (!status) {
+    throw new Error(
+      `Changing request ${requestId} of case ${caseId} answered no status: ${answer.substring(0, 400)}`,
+    );
+  }
+  return status;
+}
+
+/** The ids of the requests of a case still open. */
+export function openRequestIds(stored: StoredPathologyCase): number[] {
+  return (stored.requests ?? [])
+    .filter((request) => request.status === "OPENED")
+    .map((request) => request.id);
 }
 
 /**
@@ -1072,11 +1253,20 @@ export async function passCoverslipQc(
  * page has to be on the application, since the calls carry its session; the
  * screen it shows is not read again here, so a caller showing the case opens
  * it afresh afterwards.
+ *
+ * The server sends a case with open bench requests to the pathologist only
+ * when the move names every one of them. By default nothing is named, so
+ * such a case is refused there, as the screen refuses it until Send anyway;
+ * with `acknowledgeOpenRequests` the move onto Ready for Pathologist names
+ * every request open at that moment.
  */
 export async function moveCaseToStage(
   page: Page,
   seeded: Pick<SeededPathologyCase, "pathologySampleId">,
   stageId: PathologyStageId,
+  {
+    acknowledgeOpenRequests = false,
+  }: { acknowledgeOpenRequests?: boolean } = {},
 ): Promise<void> {
   const caseId = seeded.pathologySampleId;
   const target = PATHOLOGY_STAGE_ORDER.indexOf(stageId);
@@ -1175,7 +1365,18 @@ export async function moveCaseToStage(
       await passCoverslipQc(page, seeded);
     }
 
-    const now = await moveCaseOnce(page, caseId, "advance", stored.status);
+    const acknowledged =
+      acknowledgeOpenRequests && stored.nextStage === "READY_PATHOLOGIST"
+        ? { acknowledgedRequestIds: openRequestIds(stored) }
+        : {};
+    const now = await moveCaseOnce(
+      page,
+      caseId,
+      "advance",
+      stored.status,
+      undefined,
+      acknowledged,
+    );
     if (position(now) > target) {
       throw new Error(
         `Sending case ${caseId} on from ${stored.status} went to ${now}, past ${stageId}: ` +

@@ -1,5 +1,4 @@
 import AxeBuilder from "@axe-core/playwright";
-import { readFileSync } from "fs";
 import { writeFile } from "fs/promises";
 import type { Browser, Locator, Page } from "@playwright/test";
 import { test, expect } from "../../../helpers/test-base";
@@ -37,9 +36,11 @@ import {
   slideWorkRow,
   slideWorkSection,
   summaryRow,
+  toast,
   waitForSlideWork,
   type SlideWorkStage,
 } from "../../../helpers/pathology-case-view";
+import { text } from "../../../helpers/app-messages";
 import { chooseCarbonOption } from "../../../helpers/carbon-select";
 import { UI_TIMEOUT } from "../../../helpers/timeouts";
 
@@ -74,29 +75,6 @@ const STAINING_SECTION = "pathology-section-staining";
 const COVERSLIPPING_SECTION = "pathology-section-coverslipping";
 
 const WCAG_21_AA_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
-
-/**
- * The application's own English, so an expected sentence is the one the
- * screen is built from rather than a copy of it that drifts.
- */
-const MESSAGES = JSON.parse(
-  readFileSync(
-    new URL("../../../../src/languages/en.json", import.meta.url),
-    "utf8",
-  ),
-) as Record<string, string>;
-
-/** One message with its plain `{name}` placeholders filled in. */
-function text(key: string, values: Record<string, string | number> = {}) {
-  const message = MESSAGES[key];
-  if (message === undefined) {
-    throw new Error(`en.json has no message ${key}`);
-  }
-  return Object.entries(values).reduce(
-    (filled, [name, value]) => filled.split(`{${name}}`).join(String(value)),
-    message,
-  );
-}
 
 let seeded: SeededPathologyCase;
 /** The stain every slide is cut with, and the one a restain switches to. */
@@ -295,11 +273,6 @@ function slideUnder(slides: CaseSlide[], blockId: string, designation: string) {
 /** The status tag a slide's row shows in one column of its section. */
 function statusTag(page: Page, stage: SlideWorkStage, slideName: string) {
   return slideWorkRow(page, stage, slideName).locator(".cds--tag");
-}
-
-/** The toast a mark raises, carrying the sentence it was given. */
-function toast(page: Page, sentence: string | RegExp) {
-  return page.locator(".cds--toast-notification").filter({ hasText: sentence });
 }
 
 /** The warning a section opens on while slides wait for it. */
