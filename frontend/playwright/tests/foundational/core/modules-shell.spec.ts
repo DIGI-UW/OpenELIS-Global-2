@@ -171,4 +171,38 @@ test.describe("Module shell", () => {
     });
     await expect(page.getByTestId("content-wrapper")).not.toBeEmpty();
   });
+
+  test("the registry carries the requested locale's message bundles and their fallbacks only", async ({
+    page,
+  }) => {
+    await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
+    const response = await page.request.get(
+      `${API_PREFIX}/rest/module-registry?locale=fr-MG`,
+    );
+    expect(response.status()).toBe(200);
+    const registry = (await response.json()) as Registry & {
+      locale: string;
+      modules: Array<
+        RegistryModule & {
+          messages?: Record<string, unknown>;
+          locales?: string[];
+        }
+      >;
+    };
+    expect(registry.locale).toBe("fr-MG");
+    for (const module of registry.modules.filter(
+      (entry) => entry.state === "STARTED",
+    )) {
+      // Whatever the module ships, the response holds at most the tag, its
+      // base language and English; `locales` names everything in the JAR.
+      const carried = Object.keys(module.messages || {});
+      expect(
+        carried.filter((tag) => !["fr-MG", "fr_MG", "fr", "en"].includes(tag)),
+      ).toEqual([]);
+      expect(Array.isArray(module.locales)).toBe(true);
+      for (const tag of carried) {
+        expect(module.locales).toContain(tag);
+      }
+    }
+  });
 });

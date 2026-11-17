@@ -1,5 +1,6 @@
 import React from "react";
 import { act, render, screen } from "@testing-library/react";
+import { IntlProvider } from "react-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 
@@ -103,6 +104,37 @@ describe("ModuleHostProvider", () => {
 
     await answer(api.calls[0], undefined);
     expect(screen.getByTestId("host")).toHaveTextContent("error:none");
+  });
+
+  it("asks the registry for the active locale and reads again when it changes", async () => {
+    const withLocale = (locale) => (
+      <IntlProvider locale={locale} messages={{}}>
+        <UserSessionDetailsContext.Provider
+          value={{ userSessionDetails: { authenticated: true } }}
+        >
+          <ModuleHostProvider>
+            <Probe />
+          </ModuleHostProvider>
+        </UserSessionDetailsContext.Provider>
+      </IntlProvider>
+    );
+    const view = render(withLocale("fr-MG"));
+
+    expect(api.calls.map((call) => call.endpoint)).toEqual([
+      "/rest/module-registry?locale=fr-MG",
+    ]);
+    await answer(api.calls[0], registry);
+    expect(screen.getByTestId("host")).toHaveTextContent("ready:registry");
+
+    // A header locale switch: the registry carries that locale's bundles,
+    // so the shell reads it again with the new locale.
+    view.rerender(withLocale("en"));
+    expect(api.calls.map((call) => call.endpoint)).toEqual([
+      "/rest/module-registry?locale=fr-MG",
+      "/rest/module-registry?locale=en",
+    ]);
+    await answer(api.calls[1], registry);
+    expect(screen.getByTestId("host")).toHaveTextContent("ready:registry");
   });
 
   it("drops the registry and stops reading when the session is signed out", async () => {

@@ -2,8 +2,10 @@ package org.openelisglobal.module.web;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.module.api.ModuleState;
 import org.openelisglobal.module.api.manifest.ModuleManifest;
 import org.openelisglobal.module.runtime.ExtensionPoints;
@@ -14,13 +16,16 @@ import org.openelisglobal.module.runtime.ModuleRegistry;
 import org.openelisglobal.module.runtime.spring.ModuleConfigurationImpl;
 import org.openelisglobal.module.runtime.spring.ModuleContextFactory;
 import org.openelisglobal.module.runtime.spring.ModuleContextImpl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -53,16 +58,25 @@ public class ModuleRegistryRestController {
         this.factory = factory;
     }
 
+    /**
+     * The registry for one locale: each started module carries the message bundles
+     * of {@code locale} (the shell's active locale), else of the request's
+     * {@code Accept-Language}, and of their fallbacks (the base language, then
+     * English), not every bundle the module ships; {@code locales} names those.
+     */
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public Map<String, Object> list() {
+    public Map<String, Object> list(@RequestParam(value = "locale", required = false) String locale,
+            @RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
+        List<String> wanted = localeChain(locale, acceptLanguage);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("openelisVersion", registry.versions().openelis());
         body.put("coreApiVersion", registry.versions().coreApi());
         body.put("spiVersion", registry.versions().spi());
         body.put("frontendContractVersion", ModuleFrontendContract.VERSION);
+        body.put("locale", wanted.get(0));
         List<Map<String, Object>> modules = new ArrayList<>();
         for (ModuleRecord record : registry.all()) {
-            modules.add(summary(record));
+            modules.add(summary(record, wanted));
         }
         body.put("modules", modules);
         body.put("extensionPoints", extensionPoints());
@@ -71,9 +85,11 @@ public class ModuleRegistryRestController {
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('GLOBAL_ADMIN') or hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> detail(@PathVariable("id") String id) {
+    public ResponseEntity<Map<String, Object>> detail(@PathVariable("id") String id,
+            @RequestParam(value = "locale", required = false) String locale,
+            @RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
         return registry.find(id).map(record -> {
-            Map<String, Object> body = summary(record);
+            Map<String, Object> body = summary(record, localeChain(locale, acceptLanguage));
             body.put("jar", record.jarPath().getFileName().toString());
             body.put("sha256", record.sha256());
             body.put("bundledLibraries", record.bundledLibraries());
@@ -98,7 +114,37 @@ public class ModuleRegistryRestController {
         return ResponseEntity.ok(((ModuleConfigurationImpl) context.configuration()).exposedToFrontend());
     }
 
-    private Map<String, Object> summary(ModuleRecord record) {
+    /**
+     * The locales whose bundles a response carries, most specific first: the
+     * requested tag (both its {@code -} and {@code _} spellings), its base
+     * language, then English. The request's parameter wins over the
+     * {@code Accept-Language} header's first language; neither means English.
+     */
+    static List<String> localeChain(String locale, String acceptLanguage) {
+        String chosen = locale == null ? "" : locale.trim();
+        if (chosen.isEmpty() && acceptLanguage != null) {
+            chosen = acceptLanguage.split(",")[0].split(";")[0].trim();
+        }
+        if (chosen.isEmpty() || "*".equals(chosen)) {
+            chosen = "en";
+        }
+        // Bundle files are named like the locales the shell sends, "fr" and "fr-MG":
+        // a hand-written "FR" or "fr-mg" finds the same files
+        String[] parts = chosen.replace('_', '-').split("-");
+        parts[0] = parts[0].toLowerCase();
+        for (int i = 1; i < parts.length; i++) {
+            parts[i] = parts[i].toUpperCase();
+        }
+        String tag = String.join("-", parts);
+        Set<String> chain = new LinkedHashSet<>();
+        chain.add(tag);
+        chain.add(tag.replace('-', '_'));
+        chain.add(tag.split("-")[0]);
+        chain.add("en");
+        return new ArrayList<>(chain);
+    }
+
+    private Map<String, Object> summary(ModuleRecord record, List<String> wanted) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("id", record.id());
         body.put("name", record.name());
@@ -121,7 +167,15 @@ public class ModuleRegistryRestController {
                 body.put("restPrefix", manifest.getRestPrefix());
                 body.put("routePrefix", manifest.getRoutePrefix());
                 body.put("remoteName", manifest.getIdAsIdentifier());
-                body.put("messages", messages.bundles(record));
+                Map<String, Map<String, String>> bundles = messages.bundles(record);
+                Map<String, Map<String, String>> carried = new LinkedHashMap<>();
+                for (String tag : wanted) {
+                    if (bundles.containsKey(tag)) {
+                        carried.put(tag, bundles.get(tag));
+                    }
+                }
+                body.put("messages", carried);
+                body.put("locales", new ArrayList<>(bundles.keySet()));
             }
         }
         return body;
