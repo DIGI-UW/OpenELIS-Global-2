@@ -18,7 +18,7 @@ vi.mock("../../utils/Utils", () => ({
 
 // Mock the layout NotificationContext using vi.importMock pattern
 // vi.mock is hoisted so we can't use React.createContext inside the factory directly
-vi.mock("../../layout/Layout", async () => {
+vi.mock("../../layout/contexts", async () => {
   const { createContext } = await import("react");
   return {
     NotificationContext: createContext({
@@ -34,7 +34,7 @@ import {
   patchToOpenElisServerFullResponse,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/contexts";
 
 const mockPresets = [
   {

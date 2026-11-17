@@ -1,6 +1,6 @@
 import React, { useContext, useEffect } from "react";
 import { ToastNotification } from "@carbon/react";
-import { NotificationContext } from "../layout/Layout";
+import { NotificationContext } from "../layout/contexts";
 import { notificationTimeout } from "../layout/notificationList";
 
 export const NotificationKinds = {
