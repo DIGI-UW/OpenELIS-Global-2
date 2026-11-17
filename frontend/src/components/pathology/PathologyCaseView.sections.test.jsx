@@ -118,8 +118,6 @@ const caseAtStage = (status, overrides = {}) => ({
 let servedCase;
 let tissueCatalogue;
 let stainCatalogue;
-let requestCatalogue;
-let requestStatusCatalogue;
 
 const addNotification = vi.fn();
 
@@ -348,24 +346,12 @@ beforeEach(() => {
     { id: "31", value: "H&E" },
     { id: "32", value: "PAS" },
   ];
-  requestCatalogue = [];
-  requestStatusCatalogue = [
-    { id: "OPENED", value: "Opened" },
-    { id: "COMPLETED", value: "Completed" },
-    { id: "CANCELLED", value: "Cancelled" },
-  ];
   getFromOpenElisServer.mockImplementation((url, callback) => {
     if (url === "/rest/dictionary/category/pathology_tissue_types") {
       return callback(tissueCatalogue);
     }
     if (url === "/rest/dictionary/category/Pathology%20Stains") {
       return callback(stainCatalogue);
-    }
-    if (url === "/rest/displayList/PATHOLOGIST_REQUESTS") {
-      return callback(requestCatalogue);
-    }
-    if (url === "/rest/displayList/PATHOLOGY_REQUEST_STATUS") {
-      return callback(requestStatusCatalogue);
     }
     if (url === CASE_URL) {
       // A copy per fetch: the screen stamps the session user onto an
@@ -506,8 +492,8 @@ describe("PathologyCaseView sections", () => {
     hasRole.mockReturnValue(true);
     servedCase = caseAtStage("READY_PATHOLOGIST", {
       requests: [
-        { id: "1", value: "Deeper sections", status: "OPENED" },
-        { id: "2", value: "Special stain", status: "OPENED" },
+        { id: "1", instruction: "Deeper sections", status: "OPENED" },
+        { id: "2", instruction: "Special stain", status: "OPENED" },
       ],
     });
     renderCaseView();
@@ -531,8 +517,8 @@ describe("PathologyCaseView sections", () => {
     hasRole.mockReturnValue(true);
     servedCase = caseAtStage("READY_PATHOLOGIST", {
       requests: [
-        { id: "1", value: "Deeper sections", status: "COMPLETED" },
-        { id: "2", value: "Special stain", status: "CANCELLED" },
+        { id: "1", instruction: "Deeper sections", status: "COMPLETED" },
+        { id: "2", instruction: "Special stain", status: "CANCELLED" },
       ],
     });
     renderCaseView();
@@ -544,12 +530,12 @@ describe("PathologyCaseView sections", () => {
     ).not.toBeInTheDocument();
   });
 
-  // The header carries one badge, and for a technician the fact that they
-  // cannot act on the reading outranks the count of what it is waiting for;
-  // the requests are still named on the rail beside it.
-  it("keeps the read-only marker on the review a technician cannot act on, even with a request open", async () => {
+  // The bench completes requests from a read-only review, so the count is on
+  // the header it looks at, in place of the Read only marker; the requests
+  // are still named on the rail beside it.
+  it("counts the open requests on the review a technician works them from", async () => {
     servedCase = caseAtStage("READY_PATHOLOGIST", {
-      requests: [{ id: "1", value: "Deeper sections", status: "OPENED" }],
+      requests: [{ id: "1", instruction: "Deeper sections", status: "OPENED" }],
     });
     renderCaseView();
 
@@ -557,9 +543,16 @@ describe("PathologyCaseView sections", () => {
 
     const review = within(section("pathology-section-review"));
     expect(
-      review.getByText(messages["caseView.badge.readOnly"]),
+      review.getByText(
+        intl.formatMessage(
+          { id: "pathology.badge.openRequestCount" },
+          { count: 1 },
+        ),
+      ),
     ).toBeInTheDocument();
-    expect(review.queryByText(/\d+ open/)).not.toBeInTheDocument();
+    expect(
+      review.queryByText(messages["caseView.badge.readOnly"]),
+    ).not.toBeInTheDocument();
     expect(
       rail().getByText(
         intl.formatMessage(
@@ -659,8 +652,8 @@ describe("PathologyCaseView sections", () => {
       ],
       slides: [{ id: "1" }, { id: "2" }, { id: "3", active: false }],
       requests: [
-        { id: "1", value: "Deeper sections", status: "OPENED" },
-        { id: "2", value: "Special stain", status: "COMPLETED" },
+        { id: "1", instruction: "Deeper sections", status: "OPENED" },
+        { id: "2", instruction: "Special stain", status: "COMPLETED" },
       ],
       conclusions: [],
     });
@@ -684,8 +677,8 @@ describe("PathologyCaseView sections", () => {
   it("names the outstanding requests on the rail rather than counting them", async () => {
     servedCase = caseAtStage("MICROTOMY", {
       requests: [
-        { id: "1", value: "Deeper sections", status: "OPENED" },
-        { id: "2", value: "Special stain", status: "OPENED" },
+        { id: "1", instruction: "Deeper sections", status: "OPENED" },
+        { id: "2", instruction: "Special stain", status: "OPENED" },
       ],
     });
     renderCaseView();
@@ -704,7 +697,9 @@ describe("PathologyCaseView sections", () => {
 
   it("names nothing on the rail when no request is outstanding", async () => {
     servedCase = caseAtStage("MICROTOMY", {
-      requests: [{ id: "2", value: "Special stain", status: "COMPLETED" }],
+      requests: [
+        { id: "2", instruction: "Special stain", status: "COMPLETED" },
+      ],
     });
     renderCaseView();
 
@@ -787,7 +782,6 @@ describe("PathologyCaseView sections", () => {
       "referToImmunoHistoChemistry",
       "release",
       "reports",
-      "requests",
       "slides",
       "techniques",
     ]);
@@ -832,104 +826,6 @@ describe("PathologyCaseView sections", () => {
     // believing a save was still in flight and swallowed every later click.
     fireEvent.click(saveDraft());
     expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(2);
-  });
-
-  // A request raised on the screen used to reach the server with no status at
-  // all, and the server's own default was what made it open. The screen then
-  // had to treat a status-less row as open to agree with it, which is a
-  // second rule for the same fact. The request is stamped as it is raised, so
-  // there is only the one rule left.
-  it("posts a newly raised request as open", async () => {
-    hasRole.mockReturnValue(true);
-    servedCase = caseAtStage("READY_PATHOLOGIST");
-    requestCatalogue = [{ id: "3", value: "Recut" }];
-    renderCaseView();
-
-    await waitFor(() => expect(stageReadout()).not.toBeNull());
-
-    const user = userEvent.setup();
-    const review = within(section("pathology-section-review"));
-    // The filterable multiselect's own field, named for the list it filters
-    // and distinct from the two native selects beside it.
-    // Named for the list it filters, which is what distinguishes it from the
-    // two native selects beside it; its full accessible name also carries
-    // Carbon's running count of what is selected.
-    await user.click(review.getByRole("combobox", { name: /^Requests/ }));
-    await user.click(review.getByRole("option", { name: "Recut" }));
-
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: messages["caseView.action.saveDraft"],
-      }),
-    );
-
-    await waitFor(() =>
-      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
-    );
-    const body = JSON.parse(
-      postToOpenElisServerFullResponse.mock.calls.at(-1)[1],
-    );
-    expect(body.requests).toEqual([{ value: "3", status: "OPENED" }]);
-  });
-
-  // The multiselect hands back the objects it was given at mount, so a status
-  // set on one request used to be reverted to open the moment a second
-  // request was picked.
-  it("keeps a request's status when another request is raised beside it", async () => {
-    hasRole.mockReturnValue(true);
-    servedCase = caseAtStage("READY_PATHOLOGIST");
-    requestCatalogue = [
-      { id: "3", value: "Recut" },
-      { id: "4", value: "Deeper sections" },
-    ];
-    renderCaseView();
-
-    await waitFor(() => expect(stageReadout()).not.toBeNull());
-
-    const user = userEvent.setup();
-    const review = within(section("pathology-section-review"));
-    await user.click(review.getByRole("combobox", { name: /^Requests/ }));
-    await user.click(review.getByRole("option", { name: "Recut" }));
-    fireEvent.change(document.getElementById("requeststatus0"), {
-      target: { value: "COMPLETED" },
-    });
-    await user.click(review.getByRole("option", { name: "Deeper sections" }));
-
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: messages["caseView.action.saveDraft"],
-      }),
-    );
-
-    await waitFor(() =>
-      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
-    );
-    const body = JSON.parse(
-      postToOpenElisServerFullResponse.mock.calls.at(-1)[1],
-    );
-    expect(body.requests).toEqual([
-      { value: "3", status: "COMPLETED" },
-      { value: "4", status: "OPENED" },
-    ]);
-  });
-
-  // An empty option posts an empty status, which the server reads as open, so
-  // the one control for closing a request also offered a way to silently
-  // reopen it.
-  it("offers a raised request the served statuses and nothing besides", async () => {
-    hasRole.mockReturnValue(true);
-    servedCase = caseAtStage("READY_PATHOLOGIST", {
-      requests: [{ id: "1", value: "Deeper sections", status: "OPENED" }],
-    });
-    renderCaseView();
-
-    await waitFor(() => expect(stageReadout()).not.toBeNull());
-
-    const statusOfRequest = document.getElementById("requeststatus0");
-    expect(
-      Array.from(statusOfRequest.options).map((o) => o.textContent),
-    ).toEqual(requestStatusCatalogue.map((status) => status.value));
-    expect(statusOfRequest.value).toBe("OPENED");
   });
 
   it("shows the reading sections to someone who cannot sign the case out, but lets them change nothing", async () => {
@@ -1808,8 +1704,8 @@ describe("PathologyCaseView sections", () => {
   it("names the open requests on the summary row that counts them", async () => {
     servedCase = caseAtStage("MICROTOMY", {
       requests: [
-        { id: "1", value: "Deeper sections", status: "OPENED" },
-        { id: "2", value: "Special stain", status: "OPENED" },
+        { id: "1", instruction: "Deeper sections", status: "OPENED" },
+        { id: "2", instruction: "Special stain", status: "OPENED" },
       ],
     });
     renderCaseView();
@@ -1826,28 +1722,6 @@ describe("PathologyCaseView sections", () => {
     // A title is a hover and nothing more, so the same sentence has to be in
     // the row for a reader who cannot hover anything.
     expect(row).toHaveTextContent(named);
-  });
-  // Carbon's own label for a tag's close button is the English word Dismiss,
-  // and the deprecated filter Tag this replaced said "Clear filter" in
-  // English whatever the user's language.
-  it("names the request a chip removes, in the user's language", async () => {
-    hasRole.mockReturnValue(true);
-    servedCase = caseAtStage("READY_PATHOLOGIST", {
-      requests: [{ id: "1", value: "Deeper sections", status: "OPENED" }],
-    });
-    renderCaseView();
-
-    await waitFor(() => expect(stageReadout()).not.toBeNull());
-
-    expect(
-      screen.getByRole("button", {
-        name: intl.formatMessage(
-          { id: "common.removeSelection" },
-          { name: "Deeper sections" },
-        ),
-      }),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Dismiss" })).toBeNull();
   });
   // The header names what the section holds when it holds anything, derived
   // from the rows, which is the outcome badge the shell asks for and a
@@ -4604,5 +4478,489 @@ describe("Staining and Coverslipping sections", () => {
         passedOf,
       );
     });
+  });
+});
+
+// FR-10: bench requests are raised and changed one at a time through their
+// own endpoints, and the case is read again after each, as a slide mark is.
+// The Review section is open to the pathologist, and in bench mode (fields
+// read-only, status actions live) to the bench once the case holds a request.
+describe("Review section, bench requests", () => {
+  const REQUESTS_URL = CASE_URL + "/requests";
+  const REVIEW = "pathology-section-review";
+
+  const servedRequest = (overrides) => ({
+    kind: null,
+    targetBlockId: null,
+    targetSlideId: null,
+    targetName: null,
+    stainId: null,
+    stainName: null,
+    priority: null,
+    cancelReason: null,
+    resultBlockId: null,
+    resultSlideId: null,
+    resultName: null,
+    raisedAt: null,
+    raisedBy: null,
+    ...overrides,
+  });
+
+  const openSlideRequest = servedRequest({
+    id: 11,
+    kind: "SLIDE",
+    targetBlockId: 1,
+    targetName: "A1",
+    priority: "NORMAL",
+    instruction: "Two deeper levels",
+    status: "OPENED",
+    raisedAt: "17/11/2026 09:30",
+    raisedBy: "Paula Path",
+  });
+
+  const requestOnFile = servedRequest({
+    id: 14,
+    instruction: "Recut",
+    status: "OPENED",
+  });
+
+  const withRequests = (status, requests, overrides = {}) =>
+    caseAtStage(status, {
+      blocks: [savedBlock(1, "A1", { cassetteState: "BLOCK" })],
+      requests,
+      ...overrides,
+    });
+
+  const loaded = () => waitFor(() => expect(stageReadout()).not.toBeNull());
+
+  const reviewHeader = () =>
+    document.querySelector("#" + REVIEW + " button.cds--accordion__heading");
+
+  const lastJsonPost = () => postToOpenElisServerJsonResponse.mock.calls.at(-1);
+
+  const answer = async (response) => {
+    const callback = lastJsonPost()[2];
+    await act(async () => {
+      callback(response);
+    });
+  };
+
+  // Holds every read of the case, so a test can act in the window between a
+  // change's answer and the read that follows it.
+  const holdCaseReads = () => {
+    const held = [];
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === CASE_URL) {
+        held.push(callback);
+        return;
+      }
+      if (url.startsWith("/rest/paginatedDisplayList/")) {
+        return callback({
+          displayItems: [],
+          paging: { totalPages: 1, currentPage: 1 },
+        });
+      }
+      return callback([]);
+    });
+    return held;
+  };
+
+  const byId = (id) => document.getElementById(id);
+  const instruction = () => byId("requestInstruction");
+  const raiseButton = () => byId("raiseRequest");
+
+  // Opening the row puts focus on its kind, once the row is on the page.
+  const typeBlockRequest = async (text = "One more block from the margin") => {
+    fireEvent.click(byId("newRequest"));
+    await waitFor(() => expect(byId("requestKind-SLIDE")).toHaveFocus());
+    fireEvent.click(
+      screen.getByRole("radio", {
+        name: messages["pathology.requestKind.block"],
+      }),
+    );
+    fireEvent.change(instruction(), { target: { value: text } });
+  };
+
+  it("reads the requests from the case only, fetching no request list of its own", async () => {
+    servedCase = withRequests("READY_PATHOLOGIST", [requestOnFile]);
+    renderCaseView();
+    await loaded();
+
+    const urls = getFromOpenElisServer.mock.calls.map(([url]) => url);
+    expect(urls).not.toContain("/rest/displayList/PATHOLOGIST_REQUESTS");
+    expect(urls).not.toContain("/rest/displayList/PATHOLOGY_REQUEST_STATUS");
+  });
+
+  it("keeps the review locked at a bench stage while the case holds no request", async () => {
+    servedCase = withRequests("MICROTOMY", []);
+    renderCaseView();
+    await loaded();
+
+    expect(reviewHeader()).toBeDisabled();
+  });
+
+  it("opens the review to the bench at a bench stage once the case holds a request, with Complete live and no New request", async () => {
+    servedCase = withRequests("MICROTOMY", [openSlideRequest]);
+    renderCaseView();
+    await loaded();
+
+    expect(reviewHeader()).toBeEnabled();
+    expect(byId("assignedPathologist")).toBeDisabled();
+    expect(byId("completeRequest-11")).toBeEnabled();
+    expect(byId("newRequest")).toBeNull();
+    expect(
+      within(section(REVIEW)).getByText(
+        intl.formatMessage(
+          { id: "pathology.badge.openRequestCount" },
+          { count: 1 },
+        ),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("offers the pathologist New request and every action while the case is with them", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = withRequests("READY_PATHOLOGIST", [openSlideRequest]);
+    renderCaseView();
+    await loaded();
+
+    expect(byId("newRequest")).toBeEnabled();
+    expect(byId("completeRequest-11")).toBeEnabled();
+    expect(byId("cancelRequest-11")).toBeEnabled();
+    expect(byId("assignedPathologist")).toBeEnabled();
+  });
+
+  // A signed-out case takes no request action, but the review's own field
+  // behaves as it did before requests had a table: the section is complete,
+  // and still revisable, for the pathologist, and read-only for anyone else.
+  it.each([
+    ["the pathologist", true, "toBeEnabled"],
+    ["anyone else", false, "toBeDisabled"],
+  ])(
+    "shows a signed-out case's requests with no action on them, and leaves the pathologist field as it was for %s",
+    async (_label, pathologist, fieldState) => {
+      hasRole.mockReturnValue(pathologist);
+      servedCase = withRequests("COMPLETED", [openSlideRequest]);
+      renderCaseView();
+      await loaded();
+
+      expect(byId("assignedPathologist"))[fieldState]();
+      expect(
+        within(section(REVIEW)).getByText("Two deeper levels"),
+      ).toBeInTheDocument();
+      expect(byId("newRequest")).toBeNull();
+      expect(byId("completeRequest-11")).toBeNull();
+      expect(byId("cancelRequest-11")).toBeNull();
+      expect(
+        within(section(REVIEW)).queryByRole("columnheader", {
+          name: messages["common.actions"],
+        }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it("shows a technician with the case at the pathologist an empty review with no action", async () => {
+    servedCase = withRequests("READY_PATHOLOGIST", []);
+    renderCaseView();
+    await loaded();
+
+    expect(
+      within(section(REVIEW)).getByText(messages["pathology.empty.noRequests"]),
+    ).toBeInTheDocument();
+    expect(byId("newRequest")).toBeNull();
+  });
+
+  it("raises a request through its own endpoint, says so, reads the case back and puts focus on New request", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = withRequests("READY_PATHOLOGIST", []);
+    renderCaseView();
+    await loaded();
+    const fetchesBefore = caseFetchCount();
+
+    await typeBlockRequest("  One more block from the margin ");
+    fireEvent.click(raiseButton());
+
+    const [url, body] = lastJsonPost();
+    expect(url).toBe(REQUESTS_URL);
+    expect(JSON.parse(body)).toEqual({
+      kind: "BLOCK",
+      targetBlockId: null,
+      targetSlideId: null,
+      stainId: null,
+      priority: "NORMAL",
+      instruction: "One more block from the margin",
+    });
+
+    servedCase = withRequests("READY_PATHOLOGIST", [
+      servedRequest({
+        id: 20,
+        kind: "BLOCK",
+        priority: "NORMAL",
+        instruction: "One more block from the margin",
+        status: "OPENED",
+      }),
+    ]);
+    await answer({ id: 20, status: "OPENED" });
+
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "success",
+        message: messages["pathology.toast.requestRaised"],
+      }),
+    );
+    await waitFor(() => expect(instruction()).toBeNull());
+    await waitFor(() => expect(byId("newRequest")).toHaveFocus());
+  });
+
+  it("completes a request through its status endpoint, naming the status the page showed", async () => {
+    servedCase = withRequests("MICROTOMY", [requestOnFile]);
+    renderCaseView();
+    await loaded();
+
+    fireEvent.click(byId("completeRequest-14"));
+
+    const [url, body] = lastJsonPost();
+    expect(url).toBe(REQUESTS_URL + "/14/status");
+    expect(JSON.parse(body)).toEqual({
+      from: "OPENED",
+      status: "COMPLETED",
+      cancelReason: null,
+      resultBlockId: null,
+      resultSlideId: null,
+    });
+
+    await answer({ id: 14, status: "COMPLETED" });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "success",
+        message: messages["pathology.toast.requestCompleted"],
+      }),
+    );
+  });
+
+  it("says a request changed elsewhere in its own words, and reads the case again", async () => {
+    servedCase = withRequests("MICROTOMY", [requestOnFile]);
+    renderCaseView();
+    await loaded();
+    const fetchesBefore = caseFetchCount();
+
+    fireEvent.click(byId("completeRequest-14"));
+    await answer({ status: 409, conflict: "request" });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["pathology.error.requestConflict"],
+      }),
+    );
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+  });
+
+  it("tells a refusal the server names in the reader's language, keeps the request as typed, and puts focus back on Raise request", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = withRequests("READY_PATHOLOGIST", []);
+    renderCaseView();
+    await loaded();
+
+    await typeBlockRequest();
+    raiseButton().focus();
+    fireEvent.click(raiseButton());
+    await answer({
+      status: 400,
+      messageKey: "pathology.error.requestInstructionTooLong",
+    });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["pathology.error.requestInstructionTooLong"],
+      }),
+    );
+    expect(instruction()).toHaveValue("One more block from the margin");
+    await waitFor(() => expect(raiseButton()).toHaveFocus());
+  });
+
+  it("holds every request action over unsaved work, saying to save or discard first", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = withRequests("READY_PATHOLOGIST", [openSlideRequest]);
+    renderCaseView();
+    await loaded();
+
+    fireEvent.change(
+      screen.getByLabelText(messages["pathology.label.microscopyExam"]),
+      { target: { value: "Typed and not saved" } },
+    );
+
+    expect(byId("completeRequest-11")).toBeDisabled();
+    expect(byId("completeRequest-11")).toHaveAttribute(
+      "title",
+      messages["pathology.locked.saveBeforeRequest"],
+    );
+  });
+
+  // An action that re-reads the case keeps its lock until the read lands,
+  // and lets go when the read fails. Held is not read-only,
+  // so the new request and what was typed stay on the page.
+  it("holds Raise request until the case is read again, posts nothing for a second press, and keeps what was typed and focus through a failed read", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = withRequests("READY_PATHOLOGIST", []);
+    renderCaseView();
+    await loaded();
+    const heldReads = holdCaseReads();
+
+    await typeBlockRequest();
+    raiseButton().focus();
+    fireEvent.click(raiseButton());
+    await answer({
+      status: 400,
+      messageKey: "pathology.error.requestInstructionTooLong",
+    });
+
+    expect(heldReads).toHaveLength(1);
+    expect(raiseButton()).toBeDisabled();
+    expect(raiseButton()).toHaveAttribute(
+      "title",
+      messages["pathology.locked.requestInFlight"],
+    );
+    fireEvent.click(raiseButton());
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+    expect(instruction()).toBeDisabled();
+    expect(instruction()).toHaveValue("One more block from the margin");
+
+    await act(async () => {
+      heldReads[0](undefined);
+    });
+
+    expect(raiseButton()).toBeEnabled();
+    expect(instruction()).toBeEnabled();
+    expect(instruction()).toHaveValue("One more block from the margin");
+    await waitFor(() => expect(raiseButton()).toHaveFocus());
+  });
+
+  // FR-10.2 and FR-10.12: a block or slide row in Microtomy starts a request
+  // about itself, opening the review where it is collapsed.
+  describe("starting a request from a Microtomy row", () => {
+    const withSlide = (status, requests = []) =>
+      withRequests(status, requests, {
+        slides: [savedSlide("5", "1", "1")],
+      });
+
+    const requestStain = (name) =>
+      screen.queryByRole("button", {
+        name: intl.formatMessage(
+          { id: "pathology.action.requestStainOf" },
+          { name },
+        ),
+      });
+
+    const requestSlide = (name) =>
+      screen.queryByRole("button", {
+        name: intl.formatMessage(
+          { id: "pathology.action.requestSlideOf" },
+          { name },
+        ),
+      });
+
+    const kindRadio = (key) =>
+      screen.getByRole("radio", { name: messages[key] });
+
+    const collapseReview = () => {
+      if (reviewHeader().getAttribute("aria-expanded") === "true") {
+        fireEvent.click(reviewHeader());
+      }
+      expect(reviewHeader()).toHaveAttribute("aria-expanded", "false");
+    };
+
+    it("opens a collapsed review on Request stain from a slide row, with the kind and the slide set and focus on the instruction", async () => {
+      hasRole.mockReturnValue(true);
+      servedCase = withSlide("READY_PATHOLOGIST");
+      renderCaseView();
+      await loaded();
+      collapseReview();
+
+      const button = requestStain("A1.1");
+      expect(button).toHaveTextContent(
+        messages["pathology.action.requestStain"],
+      );
+      fireEvent.click(button);
+
+      expect(reviewHeader()).toHaveAttribute("aria-expanded", "true");
+      await waitFor(() =>
+        expect(kindRadio("pathology.requestKind.stain")).toBeChecked(),
+      );
+      expect(byId("requestTarget")).toHaveValue("A1.1");
+      await waitFor(() => expect(instruction()).toHaveFocus());
+      expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+    });
+
+    it("opens a collapsed review on Request slide from a block header, with the kind and the block set and focus on the instruction", async () => {
+      hasRole.mockReturnValue(true);
+      servedCase = withSlide("UNDER_REVIEW");
+      renderCaseView();
+      await loaded();
+      collapseReview();
+
+      const button = requestSlide("A1");
+      expect(button).toHaveTextContent(
+        messages["pathology.action.requestSlide"],
+      );
+      fireEvent.click(button);
+
+      expect(reviewHeader()).toHaveAttribute("aria-expanded", "true");
+      await waitFor(() =>
+        expect(kindRadio("pathology.requestKind.slide")).toBeChecked(),
+      );
+      expect(byId("requestTarget")).toHaveValue("A1");
+      await waitFor(() => expect(instruction()).toHaveFocus());
+    });
+
+    // An open review is left open: a second click on its header would close
+    // it over the request being started.
+    it("leaves an open review open and sets the request again on the next press", async () => {
+      hasRole.mockReturnValue(true);
+      servedCase = withSlide("READY_PATHOLOGIST");
+      renderCaseView();
+      await loaded();
+      if (reviewHeader().getAttribute("aria-expanded") === "false") {
+        fireEvent.click(reviewHeader());
+      }
+
+      fireEvent.click(requestStain("A1.1"));
+      expect(reviewHeader()).toHaveAttribute("aria-expanded", "true");
+      await waitFor(() => expect(instruction()).toHaveFocus());
+      fireEvent.click(requestSlide("A1"));
+
+      expect(reviewHeader()).toHaveAttribute("aria-expanded", "true");
+      await waitFor(() =>
+        expect(kindRadio("pathology.requestKind.slide")).toBeChecked(),
+      );
+      expect(byId("requestTarget")).toHaveValue("A1");
+    });
+
+    it.each([
+      ["at a bench stage", "MICROTOMY", true, [openSlideRequest]],
+      ["to anyone but the pathologist", "READY_PATHOLOGIST", false, []],
+      [
+        "in bench mode with the pathologist",
+        "READY_PATHOLOGIST",
+        false,
+        [openSlideRequest],
+      ],
+      ["once signed out", "COMPLETED", true, [openSlideRequest]],
+    ])(
+      "offers neither where the review is not open for a new request: %s",
+      async (_label, status, pathologist, requests) => {
+        hasRole.mockReturnValue(pathologist);
+        servedCase = withSlide(status, requests);
+        renderCaseView();
+        await loaded();
+
+        expect(slidesToggle("A1")).toBeInTheDocument();
+        expect(requestStain("A1.1")).toBeNull();
+        expect(requestSlide("A1")).toBeNull();
+      },
+    );
   });
 });

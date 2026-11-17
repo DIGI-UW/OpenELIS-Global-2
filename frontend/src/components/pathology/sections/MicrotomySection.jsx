@@ -21,6 +21,8 @@ import {
   cassetteStateBadge,
   countedRows,
   deactivatedCount,
+  isDeactivatedRow,
+  isUnsavedRow,
   labelStreamUrl,
   microtomyGroups,
   nextUnverifiedSlide,
@@ -75,6 +77,10 @@ const MICROTOMY_SECTION_HEADER = sectionHeader(MICROTOMY_SECTION_ID);
  * and once saved and printed its label is checked against its block
  * (FR-7.3 to FR-7.5). With the stage switched off the slides on record are
  * shown read-only.
+ *
+ * `onRequestWork(kind, targetId)`, given only while the review takes a new
+ * request, puts Request slide on each saved block in use and Request stain
+ * on each saved slide in use, which start a request about it (FR-10.2).
  */
 const MicrotomySection = ({
   caseInfo,
@@ -89,6 +95,7 @@ const MicrotomySection = ({
   moving,
   onDeactivate,
   onVerifyLabel,
+  onRequestWork,
 }) => {
   const intl = useIntl();
   const deactivateLock = rowActionLock({
@@ -136,6 +143,23 @@ const MicrotomySection = ({
       moving,
       verifying: Boolean(verifying[slide.id]),
     });
+
+  // A request names a row the server holds and still uses, so a row not yet
+  // saved, or deactivated, starts none.
+  const requestable = (row) =>
+    Boolean(onRequestWork) && !isUnsavedRow(row) && !isDeactivatedRow(row);
+
+  const requestButton = (kind, row, labelKey, nameKey, name) => (
+    <Button
+      kind="ghost"
+      size="sm"
+      id={"request" + kind + "-" + row.id}
+      aria-label={intl.formatMessage({ id: nameKey }, { name })}
+      onClick={() => onRequestWork(kind, row.id)}
+    >
+      <FormattedMessage id={labelKey} />
+    </Button>
+  );
 
   const unverified = unverifiedSlides(
     blocks,
@@ -438,6 +462,14 @@ const MicrotomySection = ({
                 <FormattedMessage id="pathology.action.verifyLabel" />
               </Button>
             )}
+            {requestable(slide) &&
+              requestButton(
+                "STAIN",
+                slide,
+                "pathology.action.requestStain",
+                "pathology.action.requestStainOf",
+                slideOnBlockName(slide, blocks),
+              )}
             {/* The server leaves a deactivated slide untouched, so an image
                 attached to one would be dropped without a word. */}
             <p
@@ -628,6 +660,15 @@ const MicrotomySection = ({
             <FormattedMessage id="pathology.action.addSlide" />
           </Button>
         )}
+        {!group.legacy &&
+          requestable(block) &&
+          requestButton(
+            "SLIDE",
+            block,
+            "pathology.action.requestSlide",
+            "pathology.action.requestSlideOf",
+            designation,
+          )}
         {/* A disabled button takes no focus and shows its title to a mouse
             only, so the reason is also written out under it. */}
         {hintText && (

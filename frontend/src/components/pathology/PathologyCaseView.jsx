@@ -6,10 +6,12 @@ import {
   Column,
   Grid,
   Heading,
+  ListItem,
   Loading,
   Section,
   Stack,
   TextInput,
+  UnorderedList,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
@@ -52,9 +54,12 @@ import {
   embeddingStatement,
   MICROTOMY_SECTION_ID,
   openRequestNames,
+  openRequests,
   PROCESSING_SECTION_ID,
   railCurrentIndex,
   returnBlockedReason,
+  REVIEW_SECTION_ID,
+  reviewTakesRequests,
   sectionBadge,
   sectionHeader,
   sectionHoldsRecords,
@@ -75,6 +80,7 @@ import {
   stripClientKeys,
 } from "./pathologyRows";
 import DeactivateRowDialog from "./DeactivateRowDialog";
+import { NEW_REQUEST_BUTTON_ID } from "./RequestsTable";
 import { focusFirstOf } from "./focus";
 import CaseInformationSection from "./sections/CaseInformationSection";
 import GrossingSection from "./sections/GrossingSection";
@@ -114,7 +120,35 @@ const RETURN_REASON_MAX_LENGTH = 255;
 const RETURN_BLOCKED_HINT_ID = "returnStageBlockedReason";
 const RETURN_CONFIRM_HINT_ID = "returnStageConfirmReason";
 
+// The confirmation that asks before a case goes to the pathologist with
+// requests still open (FR-10.11): itself, its sentence, its two buttons and
+// the sentence that says why Send anyway cannot be pressed.
+const SEND_CONFIRM_ID = "sendAnywayConfirm";
+const SEND_CONFIRM_TEXT_ID = "sendAnywayText";
+const SEND_ANYWAY_ID = "sendAnyway";
+const SEND_ANYWAY_CANCEL_ID = "sendAnywayCancel";
+const SEND_ANYWAY_HINT_ID = "sendAnywayHint";
+
+// The refusal of a move onto the pathologist that names an open request the
+// move did not, such as one raised after the page was read.
+const OPEN_REQUESTS_REFUSAL = "pathology.error.openRequestsUnacknowledged";
+
 const TISSUE_TYPES_URL = "/rest/dictionary/category/pathology_tissue_types";
+
+// Where focus lands once a request change has been read back: the table's
+// New request, or the Review section's header where it is not offered.
+const AFTER_REQUEST_CHANGE = [
+  "#" + NEW_REQUEST_BUTTON_ID,
+  sectionHeader(REVIEW_SECTION_ID),
+];
+
+// The toast a request status change ends on, by the status it posts.
+// i18n-keys: pathology.toast.request*
+const REQUEST_STATUS_TOASTS = Object.freeze({
+  COMPLETED: "pathology.toast.requestCompleted",
+  CANCELLED: "pathology.toast.requestCancelled",
+  OPENED: "pathology.toast.requestReopened",
+});
 
 const STAINS_URL =
   "/rest/dictionary/category/" + encodeURIComponent("Pathology Stains");
@@ -192,8 +226,6 @@ function PathologyCaseView() {
   const [formVersion, setFormVersion] = useState(0);
 
   const [techniques, setTechniques] = useState([]);
-  const [requests, setRequests] = useState([]);
-  const [requestStatuses, setRequestStatuses] = useState([]);
   const [conclusions, setConclusions] = useState([]);
   const [immunoHistoChemistryTests, setImmunoHistoChemistryTests] = useState(
     [],
@@ -227,6 +259,14 @@ function PathologyCaseView() {
   // The inline return row: whether it is open, and the reason typed into it.
   const [returnOpen, setReturnOpen] = useState(false);
   const [returnReason, setReturnReason] = useState("");
+  // The confirmation before sending the case to the pathologist with open
+  // requests, which shares the status slot with the return row, one at a
+  // time, and the primary that opened it, where Cancel puts focus back.
+  const [sendConfirmOpen, setSendConfirmOpen] = useState(false);
+  const primaryButton = useRef(null);
+  // A request started from a Microtomy row: its kind and target, and a nonce
+  // so each press opens the new request again (see RequestsTable).
+  const [requestPrefill, setRequestPrefill] = useState(null);
   // The selectors, in order of preference, for the control that takes focus
   // once the case is read back, and, when set, the only controls focus may be
   // taken from (see focusFirstOf).
@@ -385,6 +425,18 @@ function PathologyCaseView() {
       ? intl.formatMessage({ id: body.messageKey }, body.messageArgs ?? {})
       : null;
 
+  // What a refused change says: the server's sentence where it names one,
+  // else, for a version check lost to another change, the save's generic
+  // "another save changed this case", else the caller's own fallback.
+  const refusalMessage = (body, fallbackKey) =>
+    translatedRefusal(body) ??
+    intl.formatMessage({
+      id:
+        body?.conflict === "version"
+          ? "pathology.error.designationConflict"
+          : fallbackKey,
+    });
+
   // A network failure never reaches this as a response at all: the post
   // helper catches it and calls back with nothing. A response whose body is
   // not the JSON this endpoint promises is no more of a save than that,
@@ -429,8 +481,7 @@ function PathologyCaseView() {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message:
-          translatedRefusal(body) ?? intl.formatMessage({ id: messageId }),
+        message: refusalMessage(body, messageId),
       });
     }
   }
@@ -668,6 +719,7 @@ function PathologyCaseView() {
           });
           setReturnOpen(false);
           setReturnReason("");
+          setSendConfirmOpen(false);
           const sectionId = sectionIdOfStage(response.status);
           return sectionId
             ? [sectionHeader(sectionId), RETURN_STAGE_BUTTON]
@@ -689,7 +741,16 @@ function PathologyCaseView() {
           // closed rather than left naming a different target.
           setReturnOpen(false);
           setReturnReason("");
+          setSendConfirmOpen(false);
           return direction === "return" ? [RETURN_STAGE_BUTTON] : null;
+        }
+        // A request opened behind the page: the confirmation is shown, or
+        // stays, listing what the case read after this refusal holds open.
+        if (response?.messageKey === OPEN_REQUESTS_REFUSAL) {
+          setReturnOpen(false);
+          setReturnReason("");
+          setSendConfirmOpen(true);
+          return ["#" + SEND_ANYWAY_ID];
         }
         return null;
       },
@@ -739,30 +800,136 @@ function PathologyCaseView() {
         addNotification({
           kind: NotificationKinds.error,
           title: intl.formatMessage({ id: "notification.title" }),
-          message:
-            translatedRefusal(response) ??
-            intl.formatMessage({
-              // The key is the save's: its sentence is the generic "another
-              // save changed this case", which is what a lost mark means.
-              // A key of its own with the same words would only duplicate it.
-              id:
-                response?.conflict === "version"
-                  ? "pathology.error.designationConflict"
-                  : "pathology.toast.slideWorkFailed",
-            }),
+          message: refusalMessage(response, "pathology.toast.slideWorkFailed"),
         });
         return refusalFocusTargets;
       },
     });
   };
 
-  const advanceCase = (event) =>
+  // A bench request change (FR-10): raising one, or completing, cancelling or
+  // reopening one, each its own request that reads the case again, as a
+  // slide mark does. A refusal keeps the row the change came from as it was
+  // typed, and focus goes back to the control that sent it, also when the
+  // read after it fails.
+  const sendRequestChange = ({ path, body, toastKey, startedBy }) => {
+    const refusalTargets = [
+      ...(startedBy?.id ? ["#" + startedBy.id] : []),
+      ...AFTER_REQUEST_CHANGE,
+    ];
+    return sendHeld({
+      path,
+      body,
+      startedBy,
+      onAnswer: (response, ok) => {
+        if (ok) {
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({ id: toastKey }),
+          });
+          return AFTER_REQUEST_CHANGE;
+        }
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: refusalMessage(
+            response,
+            response?.conflict === "request"
+              ? "pathology.error.requestConflict"
+              : "error.save.msg",
+          ),
+        });
+        return refusalTargets;
+      },
+    }).then((outcome) => {
+      if (!outcome.ok && startedBy) {
+        focusFirstOf(refusalTargets, { onlyFrom: [startedBy] });
+      }
+      return outcome;
+    });
+  };
+
+  const raiseRequest = (body, startedBy) =>
+    sendRequestChange({
+      path: "/requests",
+      body,
+      toastKey: "pathology.toast.requestRaised",
+      startedBy,
+    });
+
+  const changeRequestStatus = (request, body, startedBy) =>
+    sendRequestChange({
+      path: "/requests/" + request.id + "/status",
+      body,
+      toastKey: REQUEST_STATUS_TOASTS[body.status],
+      startedBy,
+    });
+
+  const openRequestRows = openRequests(caseInfo.requests);
+  const openNames = openRequestNames(caseInfo.requests);
+
+  // FR-10.11: a case that would land on the pathologist with requests open
+  // asks first, inline, since nothing is destroyed; every other move goes at
+  // once. The return row closes, as the status slot holds one row at a time.
+  const advanceCase = (event) => {
+    primaryButton.current = event?.currentTarget ?? null;
+    if (
+      caseInfo.nextStage === "READY_PATHOLOGIST" &&
+      openRequestRows.length > 0
+    ) {
+      setReturnOpen(false);
+      setReturnReason("");
+      setSendConfirmOpen(true);
+      focusFirstOf("#" + SEND_ANYWAY_ID);
+      return;
+    }
     moveCase(
       "advance",
       {},
       "pathology.toast.stageAdvanced",
       event?.currentTarget,
     );
+  };
+
+  // The move names the requests the confirmation listed, so one opened
+  // behind the page is refused and shown before it is overridden (AC-20).
+  const sendAnyway = (event) =>
+    moveCase(
+      "advance",
+      {
+        acknowledgedRequestIds: openRequestRows.map((request) => request.id),
+      },
+      "pathology.toast.sentWithOpenRequests",
+      event?.currentTarget,
+    );
+
+  const cancelSend = () => {
+    setSendConfirmOpen(false);
+    const primary = primaryButton.current;
+    setTimeout(() => primary?.isConnected && primary.focus());
+  };
+
+  // Opens a section whose header is collapsed. CaseSection seeds its open
+  // state once and has no setter, so its own header is pressed.
+  const openSection = (sectionId) => {
+    const header = document.querySelector(sectionHeader(sectionId));
+    if (header?.getAttribute("aria-expanded") === "false") {
+      header.click();
+    }
+  };
+
+  // A request started from a block or slide in Microtomy (FR-10.2): the
+  // review opens and its new request takes the kind and the target, with
+  // focus on the instruction.
+  const startRequest = (kind, targetId) => {
+    openSection(REVIEW_SECTION_ID);
+    setRequestPrefill((previous) => ({
+      kind,
+      targetId,
+      nonce: (previous?.nonce ?? 0) + 1,
+    }));
+  };
 
   const returnCase = (event) =>
     moveCase(
@@ -773,6 +940,7 @@ function PathologyCaseView() {
     );
 
   const openReturn = () => {
+    setSendConfirmOpen(false);
     setReturnOpen(true);
     focusFirstOf("#" + RETURN_REASON_ID);
   };
@@ -873,14 +1041,6 @@ function PathologyCaseView() {
         techniques: caseInfo.techniques.map((e) => e.id),
       };
     }
-    if (caseInfo.requests) {
-      submitValues = {
-        ...submitValues,
-        requests: caseInfo.requests.map((e) => {
-          return { value: e.id, status: e.status };
-        }),
-      };
-    }
     if (caseInfo.conclusions) {
       submitValues = {
         ...submitValues,
@@ -903,14 +1063,6 @@ function PathologyCaseView() {
     getFromOpenElisServer(
       "/rest/displayList/PATHOLOGY_TECHNIQUES",
       setTechniques,
-    );
-    getFromOpenElisServer(
-      "/rest/displayList/PATHOLOGIST_REQUESTS",
-      setRequests,
-    );
-    getFromOpenElisServer(
-      "/rest/displayList/PATHOLOGY_REQUEST_STATUS",
-      setRequestStatuses,
     );
     getFromOpenElisServer(
       "/rest/displayList/IMMUNOHISTOCHEMISTRY_MARKERS_TESTS",
@@ -946,8 +1098,11 @@ function PathologyCaseView() {
     configurationProperties,
     decalcificationRequired,
     sectionHasRows: (candidate) => sectionHoldsRecords(candidate.id, caseInfo),
+    requestCount: (caseInfo.requests ?? []).length,
   });
-  const openNames = openRequestNames(caseInfo.requests);
+  const reviewOpenForRequests = reviewTakesRequests(
+    sections.find((section) => section.id === REVIEW_SECTION_ID),
+  );
 
   const sectionBody = (section, readOnly) => {
     switch (section.id) {
@@ -1037,18 +1192,30 @@ function PathologyCaseView() {
             moving={held}
             onDeactivate={setPendingDeactivation}
             onVerifyLabel={verifySlideLabel}
+            onRequestWork={reviewOpenForRequests ? startRequest : undefined}
           />
         );
-      case "pathology-section-review":
+      // As Staining: the section's own state and the change in flight apart,
+      // so a held request keeps its row and what was typed. The fields follow
+      // the section's state; the requests table offers New request and its
+      // actions only on a review that takes requests, so a signed-out case
+      // leaves its requests with no action.
+      case REVIEW_SECTION_ID:
         return (
           <ReviewSection
             caseInfo={caseInfo}
             updateCase={updateCase}
-            readOnly={readOnly}
+            readOnly={section.state === SECTION_STATE.READ_ONLY}
+            held={held}
+            takesRequests={reviewTakesRequests(section)}
+            benchRequests={Boolean(section.benchRequests)}
             pathologistUsers={pathologistUsers}
-            requests={requests}
-            requestStatuses={requestStatuses}
-            formVersion={formVersion}
+            stains={stains}
+            dirty={dirty}
+            saving={isSubmitting}
+            requestPrefill={requestPrefill}
+            onRaiseRequest={raiseRequest}
+            onChangeRequestStatus={changeRequestStatus}
           />
         );
       case "pathology-section-findings":
@@ -1135,6 +1302,74 @@ function PathologyCaseView() {
       }
     : undefined;
 
+  // FR-10.11: the case goes to the pathologist with requests open only once
+  // the person has seen each one. Inline in the status slot, not a modal, as
+  // nothing is destroyed; Send anyway is held as the primary is.
+  const sendConfirmShown = sendConfirmOpen && openRequestRows.length > 0;
+  const sendConfirmation = (
+    <div
+      id={SEND_CONFIRM_ID}
+      role="group"
+      aria-labelledby={SEND_CONFIRM_TEXT_ID}
+    >
+      <Stack gap={3}>
+        <p id={SEND_CONFIRM_TEXT_ID}>
+          <FormattedMessage
+            id="pathology.banner.openRequests"
+            values={{ count: openRequestRows.length }}
+          />
+        </p>
+        <UnorderedList>
+          {openRequestRows.map((request) => (
+            <ListItem key={request.id}>
+              {request.targetName
+                ? intl.formatMessage(
+                    { id: "pathology.label.requestOnTarget" },
+                    {
+                      instruction: request.instruction,
+                      target: request.targetName,
+                    },
+                  )
+                : request.instruction}
+            </ListItem>
+          ))}
+        </UnorderedList>
+        <div className="pathology-case-view__stage-control">
+          <Button
+            kind="secondary"
+            size="sm"
+            id={SEND_ANYWAY_ID}
+            disabled={Boolean(advanceBlocked)}
+            title={blockedText(advanceBlocked) ?? undefined}
+            aria-label={intl.formatMessage(
+              { id: "pathology.action.sendAnywayOf" },
+              { name: openNames.join(", ") },
+            )}
+            aria-describedby={advanceBlocked ? SEND_ANYWAY_HINT_ID : undefined}
+            onClick={sendAnyway}
+          >
+            <FormattedMessage id="pathology.action.sendAnyway" />
+          </Button>
+          {/* Held while the move is out, as the return row's Cancel is. */}
+          <Button
+            kind="ghost"
+            size="sm"
+            id={SEND_ANYWAY_CANCEL_ID}
+            disabled={held}
+            onClick={cancelSend}
+          >
+            <FormattedMessage id="common.cancel" />
+          </Button>
+          {advanceBlocked && (
+            <span id={SEND_ANYWAY_HINT_ID} className="case-view__locked-hint">
+              {blockedText(advanceBlocked)}
+            </span>
+          )}
+        </div>
+      </Stack>
+    </div>
+  );
+
   // The stage as text, and the return beside it. A return is not
   // destructive, so its reason is asked for inline rather than in a modal,
   // and it stays out of the action group, which holds three buttons at most.
@@ -1150,7 +1385,8 @@ function PathologyCaseView() {
           <FormattedMessage id="caseView.label.notRecorded" />
         )}
       </span>
-      {!returnOpen && (
+      {sendConfirmShown && sendConfirmation}
+      {!sendConfirmShown && !returnOpen && (
         <>
           <Button
             kind="ghost"

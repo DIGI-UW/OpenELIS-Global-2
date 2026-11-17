@@ -15,6 +15,14 @@ import {
   stageBadgeKind,
   sectionBadge,
   openRequestNames,
+  openRequests,
+  openRequestsLabel,
+  requestActionLock,
+  requestDraftBlockedReason,
+  requestDraftBody,
+  requestStatusBody,
+  REVIEW_SECTION_ID,
+  reviewTakesRequests,
   deriveCaseSections,
   railCurrentIndex,
   deriveRailItems,
@@ -536,13 +544,24 @@ describe("deriveRailItems", () => {
 describe("openRequestNames", () => {
   it("keeps the open requests in their original order and drops the closed ones", () => {
     const requests = [
-      { id: 1, value: "Recut", status: "OPENED" },
-      { id: 2, value: "Extra levels", status: "OPENED" },
-      { id: 3, value: "Special stain", status: "COMPLETED" },
-      { id: 4, value: "Deeper section", status: "CANCELLED" },
+      { id: 1, instruction: "Recut", status: "OPENED" },
+      { id: 2, instruction: "Extra levels", status: "OPENED" },
+      { id: 3, instruction: "Special stain", status: "COMPLETED" },
+      { id: 4, instruction: "Deeper section", status: "CANCELLED" },
     ];
 
     expect(openRequestNames(requests)).toEqual(["Recut", "Extra levels"]);
+    expect(openRequests(requests).map((request) => request.id)).toEqual([1, 2]);
+  });
+
+  // The case read names a request by its instruction; the old dictionary
+  // row's `value` is no longer served, so reading it would name nothing.
+  it("names a request by its instruction, not by the old dictionary value", () => {
+    expect(
+      openRequestNames([
+        { id: 1, value: "Old", instruction: "Recut", status: "OPENED" },
+      ]),
+    ).toEqual(["Recut"]);
   });
 
   // The server counts a request as open only when it says OPENED, and the
@@ -551,15 +570,51 @@ describe("openRequestNames", () => {
   it("counts a request with no status at all as closed, not as open", () => {
     expect(
       openRequestNames([
-        { id: 1, value: "Unstamped", status: null },
-        { id: 2, value: "Also unstamped" },
-        { id: 3, value: "Recut", status: "OPENED" },
+        { id: 1, instruction: "Unstamped", status: null },
+        { id: 2, instruction: "Also unstamped" },
+        { id: 3, instruction: "Recut", status: "OPENED" },
       ]),
     ).toEqual(["Recut"]);
   });
 
   it("returns nothing for a case with no requests array at all", () => {
     expect(openRequestNames(undefined)).toEqual([]);
+    expect(openRequests(undefined)).toEqual([]);
+  });
+});
+
+describe("openRequestsLabel, for instructions written as sentences", () => {
+  const long =
+    "Cut three deeper levels through block A2 and stain each with H&E";
+
+  // An instruction is free text up to 255 characters, and the rail step has
+  // two lines; the step names it short and the title names it whole.
+  it("cuts a long instruction to forty characters and an ellipsis in the visible label, and keeps it whole in the title", () => {
+    const label = openRequestsLabel(intl, [long, "Recut"]);
+
+    expect(label.visible).toBe(
+      intl.formatMessage(
+        { id: "pathology.badge.openRequests" },
+        { names: long.slice(0, 40) + "…, Recut" },
+      ),
+    );
+    expect(label.full).toBe(
+      intl.formatMessage(
+        { id: "pathology.badge.openRequests" },
+        { names: long + ", Recut" },
+      ),
+    );
+  });
+
+  it("leaves an instruction of forty characters or fewer as it is", () => {
+    const forty = "x".repeat(40);
+
+    expect(openRequestsLabel(intl, [forty]).visible).toBe(
+      intl.formatMessage(
+        { id: "pathology.badge.openRequests" },
+        { names: forty },
+      ),
+    );
   });
 });
 
@@ -670,24 +725,66 @@ describe("sectionBadge", () => {
 
   // A signed-out case with a recut still outstanding is not finished, so the
   // header has to say the outstanding thing rather than the reassuring one.
-  it("says a completed review is still outstanding when a request is open on it", () => {
-    const review = byId(sectionsAt("COMPLETED"), "pathology-section-review");
+  it("says a signed-out review is still outstanding when a request is open on it", () => {
+    const review = byId(
+      deriveCaseSections({
+        intl,
+        status: "COMPLETED",
+        isPathologist: true,
+        requestCount: 1,
+      }),
+      "pathology-section-review",
+    );
 
     expect(review.state).toBe(SECTION_STATE.COMPLETE);
     expect(sectionBadge(review, { openRequestCount: 1 }).kind).toBe("pending");
   });
 
-  // The header has one badge slot, and for someone who cannot act on the
-  // case, being unable to act on it is the more useful of the two facts. The
-  // requests are still named on the rail and counted in the summary.
-  it("leaves the read-only marker in place on a section the viewer cannot edit, however many requests are open", () => {
+  // The bench works the requests from a read-only review, so the count has to
+  // be on the header it looks at; before, the read-only return came first and
+  // the header said only Read only.
+  it.each([
+    ["at a bench stage", "MICROTOMY", true],
+    ["for someone other than the pathologist", "READY_PATHOLOGIST", false],
+  ])(
+    "counts the open requests on a review in bench mode %s",
+    (_label, status, isPathologist) => {
+      const review = byId(
+        deriveCaseSections({ intl, status, isPathologist, requestCount: 2 }),
+        "pathology-section-review",
+      );
+
+      expect(review.benchRequests).toBe(true);
+      expect(sectionBadge(review, { openRequestCount: 2 })).toEqual({
+        kind: "pending",
+        textKey: "pathology.badge.openRequestCount",
+        values: { count: 2 },
+      });
+    },
+  );
+
+  // With nothing open, a read-only review leaves the slot to the shell's own
+  // Read only marker.
+  it("leaves the read-only marker in place on a review with no open request", () => {
     const review = byId(
       sectionsAt("READY_PATHOLOGIST", false),
       "pathology-section-review",
     );
 
     expect(review.state).toBe(SECTION_STATE.READ_ONLY);
-    expect(sectionBadge(review, { openRequestCount: 2 })).toBeNull();
+    expect(sectionBadge(review, { openRequestCount: 0 })).toBeNull();
+  });
+
+  // The rule moved ahead of the read-only return for the review only: any
+  // other read-only section still leaves the slot to the shell.
+  it("leaves the read-only marker on a read-only findings section however many requests are open", () => {
+    const findings = byId(
+      sectionsAt("READY_PATHOLOGIST", false),
+      "pathology-section-findings",
+    );
+
+    expect(findings.state).toBe(SECTION_STATE.READ_ONLY);
+    expect(sectionBadge(findings, { openRequestCount: 2 })).toBeNull();
   });
 
   it("badges a section that is neither complete nor waiting on a request with nothing", () => {
@@ -2377,5 +2474,360 @@ describe("sectionHoldsRecords, for a stage switched off with work on record", ()
     const without = derive({ slides: [{ id: 5 }] });
     expect(without.state).toBe(SECTION_STATE.DISABLED);
     expect(without.lockedHintKey).toBe("pathology.locked.stageDisabled");
+  });
+});
+
+// Review section state (FR-10.12): one row of the table per test. The bench
+// works the requests from a read-only review, so "bench mode" is read-only
+// fields with the table's status actions live, and only the pathologist's
+// open review offers a new request.
+describe("the review section's state, by stage, requests on the case and viewer", () => {
+  const BENCH_STAGES = PATHOLOGY_STAGES.slice(
+    0,
+    PATHOLOGY_STAGES.indexOf("READY_PATHOLOGIST"),
+  );
+  const review = (status, requestCount, isPathologist) =>
+    byId(
+      deriveCaseSections({ intl, status, isPathologist, requestCount }),
+      REVIEW_SECTION_ID,
+    );
+
+  it.each(
+    BENCH_STAGES.flatMap((stage) => [
+      [stage, true],
+      [stage, false],
+    ]),
+  )(
+    "stays locked at %s with no request on the case (pathologist: %s)",
+    (status, isPathologist) => {
+      const section = review(status, 0, isPathologist);
+
+      expect(section.state).toBe(SECTION_STATE.DISABLED);
+      expect(section.benchRequests).toBeFalsy();
+    },
+  );
+
+  it.each(
+    BENCH_STAGES.flatMap((stage) => [
+      [stage, true],
+      [stage, false],
+    ]),
+  )(
+    "opens read-only in bench mode at %s once the case holds a request (pathologist: %s)",
+    (status, isPathologist) => {
+      const section = review(status, 1, isPathologist);
+
+      expect(section.state).toBe(SECTION_STATE.READ_ONLY);
+      expect(section.benchRequests).toBe(true);
+      expect(section.lockedHintKey).toBeUndefined();
+    },
+  );
+
+  it.each([
+    ["READY_PATHOLOGIST", 0],
+    ["READY_PATHOLOGIST", 2],
+    ["UNDER_REVIEW", 0],
+    ["UNDER_REVIEW", 2],
+  ])(
+    "is open for the pathologist at %s with %s requests on the case",
+    (status, count) => {
+      const section = review(status, count, true);
+
+      expect(section.state).toBe(SECTION_STATE.OPEN);
+      expect(section.benchRequests).toBeFalsy();
+    },
+  );
+
+  it.each(["READY_PATHOLOGIST", "UNDER_REVIEW"])(
+    "is in bench mode for anyone else at %s once the case holds a request",
+    (status) => {
+      const section = review(status, 2, false);
+
+      expect(section.state).toBe(SECTION_STATE.READ_ONLY);
+      expect(section.benchRequests).toBe(true);
+    },
+  );
+
+  it.each(["READY_PATHOLOGIST", "UNDER_REVIEW"])(
+    "is read-only with no actions for anyone else at %s with no request on the case",
+    (status) => {
+      const section = review(status, 0, false);
+
+      expect(section.state).toBe(SECTION_STATE.READ_ONLY);
+      expect(section.benchRequests).toBeFalsy();
+    },
+  );
+
+  // The review rule does not fire on a signed-out case: it is what it was
+  // before requests had a table, and the case view offers no request action
+  // there (requestActionLock and the signed-out case view test).
+  it.each([
+    [0, true, SECTION_STATE.COMPLETE],
+    [2, true, SECTION_STATE.COMPLETE],
+    [0, false, SECTION_STATE.READ_ONLY],
+    [2, false, SECTION_STATE.READ_ONLY],
+  ])(
+    "is as it was before once signed out, with %s requests (pathologist: %s), and never in bench mode",
+    (count, isPathologist, state) => {
+      const section = review("COMPLETED", count, isPathologist);
+
+      expect(section.state).toBe(state);
+      expect(section.benchRequests).toBeFalsy();
+    },
+  );
+
+  // FR-10.12: only the pathologist's open review offers New request, and
+  // Microtomy's Request slide and Request stain follow the same rule.
+  it.each([
+    ["READY_PATHOLOGIST", 0, true, true],
+    ["UNDER_REVIEW", 2, true, true],
+    ["READY_PATHOLOGIST", 2, false, false],
+    ["READY_PATHOLOGIST", 0, false, false],
+    ["MICROTOMY", 2, true, false],
+    ["MICROTOMY", 0, true, false],
+    ["COMPLETED", 2, true, false],
+    ["COMPLETED", 0, false, false],
+  ])(
+    "takes a new request at %s with %s requests (pathologist: %s): %s",
+    (status, count, isPathologist, takes) => {
+      expect(reviewTakesRequests(review(status, count, isPathologist))).toBe(
+        takes,
+      );
+    },
+  );
+
+  it("takes no request on any section but the review", () => {
+    const findings = byId(
+      deriveCaseSections({
+        intl,
+        status: "READY_PATHOLOGIST",
+        isPathologist: true,
+      }),
+      "pathology-section-findings",
+    );
+
+    expect(findings.state).toBe(SECTION_STATE.OPEN);
+    expect(reviewTakesRequests(findings)).toBe(false);
+  });
+
+  // Fail-safe: a status this build cannot place is never read as a bench
+  // stage, so a request on the case unlocks nothing there.
+  it("stays locked at a status this build does not know, whatever the case holds", () => {
+    expect(review("SOMETHING_NEW", 2, true).state).toBe(SECTION_STATE.DISABLED);
+  });
+
+  // The rule is the review's own: findings keeps the stage gate.
+  it("leaves the findings section locked at a bench stage however many requests the case holds", () => {
+    const findings = byId(
+      deriveCaseSections({
+        intl,
+        status: "MICROTOMY",
+        isPathologist: true,
+        requestCount: 2,
+      }),
+      "pathology-section-findings",
+    );
+
+    expect(findings.state).toBe(SECTION_STATE.DISABLED);
+  });
+});
+
+describe("requestActionLock", () => {
+  it("holds every request action on a signed-out case first", () => {
+    expect(
+      requestActionLock({ status: "COMPLETED", dirty: true, moving: true }),
+    ).toEqual({
+      disabled: true,
+      reasonKey: "pathology.locked.caseCompleted",
+    });
+  });
+
+  it.each([
+    ["a save", { saving: true }],
+    ["a move, a mark or another request", { moving: true }],
+  ])("holds them while %s is unanswered", (_label, flags) => {
+    expect(
+      requestActionLock({ status: "MICROTOMY", dirty: true, ...flags }),
+    ).toEqual({
+      disabled: true,
+      reasonKey: "pathology.locked.requestInFlight",
+    });
+  });
+
+  // The case is read again after every request action, which would replace
+  // what was typed.
+  it("holds them over unsaved work, saying to save or discard first", () => {
+    expect(requestActionLock({ status: "MICROTOMY", dirty: true })).toEqual({
+      disabled: true,
+      reasonKey: "pathology.locked.saveBeforeRequest",
+    });
+  });
+
+  it("lets them go on a clean, settled case", () => {
+    expect(requestActionLock({ status: "READY_PATHOLOGIST" })).toEqual({
+      disabled: false,
+      reasonKey: null,
+    });
+  });
+});
+
+describe("requestDraftBlockedReason, the first unmet rule of a new request", () => {
+  const draft = (overrides = {}) => ({
+    kind: "SLIDE",
+    targetId: "1",
+    stainId: "",
+    priority: "NORMAL",
+    instruction: "Two deeper levels",
+    ...overrides,
+  });
+
+  it("asks for an instruction first, before any target, as the server does", () => {
+    expect(
+      requestDraftBlockedReason(draft({ instruction: "   ", targetId: "" })),
+    ).toEqual({ key: "pathology.locked.requestInstructionRequired" });
+  });
+
+  it.each(["SLIDE", "STAIN"])("asks for the target of a %s request", (kind) => {
+    expect(requestDraftBlockedReason(draft({ kind, targetId: "" }))).toEqual({
+      key: "pathology.locked.requestTargetRequired",
+    });
+  });
+
+  it("asks for the stain of a stain request once its slide is picked", () => {
+    expect(
+      requestDraftBlockedReason(draft({ kind: "STAIN", stainId: "" })),
+    ).toEqual({ key: "pathology.locked.requestStainRequired" });
+  });
+
+  it("asks a block request for neither a target nor a stain", () => {
+    expect(
+      requestDraftBlockedReason(draft({ kind: "BLOCK", targetId: "" })),
+    ).toBeNull();
+  });
+
+  it("lets a complete slide or stain request go", () => {
+    expect(requestDraftBlockedReason(draft())).toBeNull();
+    expect(
+      requestDraftBlockedReason(draft({ kind: "STAIN", stainId: "31" })),
+    ).toBeNull();
+  });
+});
+
+describe("requestDraftBody, what raising a request posts", () => {
+  it("posts a slide request's block as its target and no stain", () => {
+    expect(
+      requestDraftBody({
+        kind: "SLIDE",
+        targetId: "4",
+        stainId: "31",
+        priority: "URGENT",
+        instruction: "  Two deeper levels ",
+      }),
+    ).toEqual({
+      kind: "SLIDE",
+      targetBlockId: 4,
+      targetSlideId: null,
+      stainId: null,
+      priority: "URGENT",
+      instruction: "Two deeper levels",
+    });
+  });
+
+  it("posts a stain request's slide as its target with the stain", () => {
+    expect(
+      requestDraftBody({
+        kind: "STAIN",
+        targetId: "7",
+        stainId: "31",
+        priority: "STAT",
+        instruction: "PAS",
+      }),
+    ).toEqual({
+      kind: "STAIN",
+      targetBlockId: null,
+      targetSlideId: 7,
+      stainId: "31",
+      priority: "STAT",
+      instruction: "PAS",
+    });
+  });
+
+  // A target picked for a slide request and left behind when the kind was
+  // switched must not travel with the block request.
+  it("posts no target and no stain for a block request, whatever was picked before the kind changed", () => {
+    expect(
+      requestDraftBody({
+        kind: "BLOCK",
+        targetId: "4",
+        stainId: "31",
+        priority: "NORMAL",
+        instruction: "Another block",
+      }),
+    ).toEqual({
+      kind: "BLOCK",
+      targetBlockId: null,
+      targetSlideId: null,
+      stainId: null,
+      priority: "NORMAL",
+      instruction: "Another block",
+    });
+  });
+});
+
+describe("requestStatusBody, what a status change posts", () => {
+  const request = (overrides = {}) => ({
+    id: 5,
+    kind: "SLIDE",
+    status: "OPENED",
+    ...overrides,
+  });
+
+  // `from` is the status the page showed, so a request changed in another
+  // tab is refused rather than changed twice.
+  it("names the status the page shows as the one it changes from", () => {
+    expect(
+      requestStatusBody(request({ status: "CANCELLED" }), "OPENED"),
+    ).toEqual({
+      from: "CANCELLED",
+      status: "OPENED",
+      cancelReason: null,
+      resultBlockId: null,
+      resultSlideId: null,
+    });
+  });
+
+  it("posts the fulfilling slide of a slide or stain request, and the block of a block request", () => {
+    expect(
+      requestStatusBody(request(), "COMPLETED", { resultId: "9" }),
+    ).toMatchObject({ resultBlockId: null, resultSlideId: 9 });
+    expect(
+      requestStatusBody(request({ kind: "STAIN" }), "COMPLETED", {
+        resultId: "9",
+      }),
+    ).toMatchObject({ resultBlockId: null, resultSlideId: 9 });
+    expect(
+      requestStatusBody(request({ kind: "BLOCK" }), "COMPLETED", {
+        resultId: "3",
+      }),
+    ).toMatchObject({ resultBlockId: 3, resultSlideId: null });
+  });
+
+  it("posts no result for a request on file with no kind", () => {
+    expect(
+      requestStatusBody(request({ kind: null }), "COMPLETED", {
+        resultId: "9",
+      }),
+    ).toMatchObject({ resultBlockId: null, resultSlideId: null });
+  });
+
+  it("posts the cancellation's reason trimmed, and no reason with any other status", () => {
+    expect(
+      requestStatusBody(request(), "CANCELLED", {
+        cancelReason: "  Tissue exhausted ",
+      }),
+    ).toMatchObject({ status: "CANCELLED", cancelReason: "Tissue exhausted" });
+    expect(
+      requestStatusBody(request(), "COMPLETED", { cancelReason: "x" }),
+    ).toMatchObject({ cancelReason: null });
   });
 });

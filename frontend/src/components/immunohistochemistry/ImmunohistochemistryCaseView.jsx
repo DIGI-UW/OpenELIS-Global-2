@@ -1611,14 +1611,13 @@ function ImmunohistochemistryCaseView() {
                         </h6>
                       </Column>
                       <Column lg={14} md={4} sm={2}>
-                        {immunohistochemistrySampleInfo.requests &&
-                          immunohistochemistrySampleInfo.requests.map(
-                            (technique, index) => (
-                              <>
-                                <Tag key={index}> {technique.value} </Tag>
-                              </>
-                            ),
-                          )}
+                        {/* Each request that is not cancelled, as its id
+                            and instruction; two may say the same thing. */}
+                        {(immunohistochemistrySampleInfo.requests ?? []).map(
+                          (request) => (
+                            <Tag key={request.id}>{request.value}</Tag>
+                          ),
+                        )}
                       </Column>
                       <Column lg={2} md={4} sm={2}>
                         <h6>

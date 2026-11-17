@@ -45,6 +45,9 @@ export const STAINING_SECTION_ID = "pathology-section-staining";
 
 export const COVERSLIPPING_SECTION_ID = "pathology-section-coverslipping";
 
+// The review section, which holds the case's bench requests.
+export const REVIEW_SECTION_ID = "pathology-section-review";
+
 // A section's own header, where focus lands once nothing left to do in the
 // section can take it.
 export const sectionHeader = (sectionId) =>
@@ -135,7 +138,7 @@ export const PATHOLOGY_SECTIONS = Object.freeze([
     pathologistOnly: false,
   }),
   Object.freeze({
-    id: "pathology-section-review",
+    id: REVIEW_SECTION_ID,
     number: 9,
     titleKey: "pathology.section.review",
     stages: Object.freeze(["READY_PATHOLOGIST", "UNDER_REVIEW"]),
@@ -401,6 +404,115 @@ export function rowActionLock({
     return { disabled: true, reasonKey: saveFirstKey };
   }
   return { disabled: false, reasonKey: null };
+}
+
+/**
+ * Whether a request action (Raise request, Complete, Cancel request, Reopen)
+ * can be sent, and if not, the hint that says why. Each is held as Embed is:
+ * on a signed-out case, while a save, a move, a mark or another request is
+ * unanswered (`moving` covers the last three), and over unsaved work, since
+ * the case is read again after it.
+ */
+export function requestActionLock({
+  status,
+  dirty = false,
+  saving = false,
+  moving = false,
+} = {}) {
+  return rowActionLock({
+    status,
+    dirty,
+    saving,
+    moving,
+    saveFirstKey: "pathology.locked.saveBeforeRequest",
+  });
+}
+
+// What a request names as its target, by its kind: a slide request names the
+// block to cut it from, a stain request the slide to stain.
+const REQUEST_TARGET_FIELD = Object.freeze({
+  SLIDE: "targetBlockId",
+  STAIN: "targetSlideId",
+});
+
+// What a completed request names as having fulfilled it, by its kind.
+const REQUEST_RESULT_FIELD = Object.freeze({
+  BLOCK: "resultBlockId",
+  SLIDE: "resultSlideId",
+  STAIN: "resultSlideId",
+});
+
+const blank = (value) =>
+  value === null || value === undefined || String(value).trim() === "";
+
+const idOrNull = (value) => (blank(value) ? null : Number(value));
+
+/**
+ * The first rule a new request does not meet yet, in the order the server
+ * checks them (FR-10.3 to FR-10.7): an instruction, then the target of a
+ * slide or stain request, then the stain of a stain request. Null once it
+ * can be raised. `draft` is the new-request row's own state.
+ */
+export function requestDraftBlockedReason(draft) {
+  if (blank(draft.instruction)) {
+    return { key: "pathology.locked.requestInstructionRequired" };
+  }
+  if (REQUEST_TARGET_FIELD[draft.kind] && blank(draft.targetId)) {
+    return { key: "pathology.locked.requestTargetRequired" };
+  }
+  if (draft.kind === "STAIN" && blank(draft.stainId)) {
+    return { key: "pathology.locked.requestStainRequired" };
+  }
+  return null;
+}
+
+/**
+ * What raising a request posts. Only the target field of the request's own
+ * kind is sent, and a stain only with a stain request, so a pick left behind
+ * when the kind was switched never travels with it.
+ */
+export function requestDraftBody(draft) {
+  const targetField = REQUEST_TARGET_FIELD[draft.kind];
+  const target = (field) =>
+    targetField === field ? idOrNull(draft.targetId) : null;
+  return {
+    kind: draft.kind,
+    targetBlockId: target("targetBlockId"),
+    targetSlideId: target("targetSlideId"),
+    stainId:
+      draft.kind === "STAIN" && !blank(draft.stainId)
+        ? String(draft.stainId)
+        : null,
+    priority: draft.priority,
+    instruction: (draft.instruction ?? "").trim(),
+  };
+}
+
+/**
+ * What a status change posts: the status the page shows as `from`, so a
+ * request changed elsewhere meanwhile is refused rather than changed twice;
+ * a reason only with a cancellation; and what fulfilled a completed request
+ * only in the field of its own kind. A request on file has no kind and names
+ * nothing as its result.
+ */
+export function requestStatusBody(
+  request,
+  status,
+  { cancelReason, resultId } = {},
+) {
+  const resultField =
+    status === "COMPLETED" ? REQUEST_RESULT_FIELD[request.kind] : undefined;
+  const result = (field) => (resultField === field ? idOrNull(resultId) : null);
+  return {
+    from: request.status,
+    status,
+    cancelReason:
+      status === "CANCELLED" && !blank(cancelReason)
+        ? cancelReason.trim()
+        : null,
+    resultBlockId: result("resultBlockId"),
+    resultSlideId: result("resultSlideId"),
+  };
 }
 
 /**
@@ -757,16 +869,19 @@ export function sectionBadge(
   if (section.readOnlyBecauseUntracked) {
     return { kind: "none", textKey: "pathology.locked.stageDisabled" };
   }
-  if (section.state === SECTION_STATE.READ_ONLY) {
-    return null;
-  }
-
-  if (section.id === "pathology-section-review" && openRequestCount > 0) {
+  // The bench works the requests from a read-only review, so the count is
+  // said there too; any other read-only section leaves the slot to the
+  // shell's own marker.
+  if (section.id === REVIEW_SECTION_ID && openRequestCount > 0) {
     return {
       kind: "pending",
       textKey: "pathology.badge.openRequestCount",
       values: { count: openRequestCount },
     };
+  }
+
+  if (section.state === SECTION_STATE.READ_ONLY) {
+    return null;
   }
 
   if (section.id === "pathology-section-grossing") {
@@ -928,22 +1043,34 @@ function countBadge(textKey, rows) {
 }
 
 /**
- * The names of the requests still open on a case, in the order the case
- * holds them. Open means the status the server calls open, and nothing else:
+ * The requests still open on a case, in the order the case holds them. Open
+ * means the status the server calls open, and nothing else:
  * the dashboard tile is counted with exactly that status, so reading a
  * status-less row as open here would make this screen count requests the rest
  * of the application does not.
  * Nothing on the screen can produce such a row any more either, since a
  * request is stamped open the moment it is raised.
  */
-export function openRequestNames(requests) {
-  if (!requests) {
-    return [];
-  }
-  return requests
-    .filter((request) => request.status === "OPENED")
-    .map((request) => request.value);
+export function openRequests(requests) {
+  return (requests ?? []).filter((request) => request.status === "OPENED");
 }
+
+/**
+ * The instructions of the requests still open on a case, in the order the
+ * case holds them.
+ */
+export function openRequestNames(requests) {
+  return openRequests(requests).map((request) => request.instruction);
+}
+
+// How many characters of an instruction a rail step shows; the rest is cut
+// to an ellipsis there and read in full in the step's title.
+const REQUEST_NAME_LIMIT = 40;
+
+const shortened = (name) =>
+  name.length > REQUEST_NAME_LIMIT
+    ? name.slice(0, REQUEST_NAME_LIMIT) + "\u2026"
+    : name;
 
 /**
  * How many names a rail step shows before counting the rest; the two-line
@@ -954,14 +1081,21 @@ const NAMED_LIST_LIMIT = 2;
 /**
  * A sentence naming a list of things: `visible` names the first few and
  * counts the rest, `full` names them all, for the hover title. `placeholder`
- * is the argument the two messages name the list by.
+ * is the argument the two messages name the list by, and `shorten` cuts a
+ * name in the visible label only.
  */
 export function namedListLabel(
   intl,
   names,
-  { allKey, moreKey, limit = NAMED_LIST_LIMIT, placeholder = "names" },
+  {
+    allKey,
+    moreKey,
+    limit = NAMED_LIST_LIMIT,
+    placeholder = "names",
+    shorten = (name) => name,
+  },
 ) {
-  const named = names.slice(0, limit);
+  const named = names.slice(0, limit).map(shorten);
   const remaining = names.length - named.length;
   const full = intl.formatMessage(
     { id: allKey },
@@ -969,7 +1103,13 @@ export function namedListLabel(
   );
 
   if (remaining <= 0) {
-    return { visible: full, full };
+    return {
+      visible: intl.formatMessage(
+        { id: allKey },
+        { [placeholder]: named.join(", ") },
+      ),
+      full,
+    };
   }
 
   return {
@@ -982,12 +1122,15 @@ export function namedListLabel(
 }
 
 /**
- * The rail's sentence about the requests still open.
+ * The rail's sentence about the requests still open. An instruction is free
+ * text, so the visible label cuts a long one short and the title keeps it
+ * whole.
  */
 export function openRequestsLabel(intl, names) {
   return namedListLabel(intl, names, {
     allKey: "pathology.badge.openRequests",
     moreKey: "pathology.badge.openRequestsMore",
+    shorten: shortened,
   });
 }
 
@@ -1050,9 +1193,51 @@ function notApplicableReason(
 }
 
 /**
+ * The review section's own state where the stage gate alone would be wrong,
+ * or null to leave it to the gate. The review holds the case's bench
+ * requests, and the bench works them: once the case holds a request, a
+ * bench stage shows the review read-only in bench mode (its fields
+ * read-only, the requests table's status actions live) instead of locked, and
+ * so does a case with the pathologist for anyone but the pathologist. A
+ * signed-out case is left to the gate as it always was (complete for the
+ * pathologist, read-only for anyone else); the case view offers no request
+ * action on it. A status this build cannot place is left to the gate too,
+ * which locks it.
+ */
+function reviewSectionState(status, { isPathologist, requestCount }) {
+  const benchMode = {
+    state: SECTION_STATE.READ_ONLY,
+    lockedHintKey: undefined,
+    lockedHintValues: undefined,
+    benchRequests: true,
+  };
+  const holdsRequests = requestCount > 0;
+  if (benchStillOwes(status)) {
+    return holdsRequests ? benchMode : null;
+  }
+  if (status === "READY_PATHOLOGIST" || status === "UNDER_REVIEW") {
+    return holdsRequests && !isPathologist ? benchMode : null;
+  }
+  return null;
+}
+
+/**
+ * Whether the review takes a new request (FR-10.12): only while it is
+ * open, which is the pathologist's while the case is with them. In bench
+ * mode the review's requests are worked but none is raised, and a signed-out
+ * case's review, complete for the pathologist, takes no request action.
+ */
+export function reviewTakesRequests(section) {
+  return (
+    section?.id === REVIEW_SECTION_ID && section.state === SECTION_STATE.OPEN
+  );
+}
+
+/**
  * One case view section, derived fresh from the case's status, the caller's
  * role, the laboratory's stage configuration, the grossing bench's
- * decalcification flag and whether the section holds rows of its own.
+ * decalcification flag, whether the section holds rows of its own and, for
+ * the review, how many requests the case holds.
  * Nothing here is stored: the same inputs always produce the same eleven
  * results.
  *
@@ -1069,6 +1254,7 @@ function deriveOneSection(
     configurationProperties,
     decalcificationRequired,
     sectionHasRows,
+    requestCount,
   },
 ) {
   const isCurrent = section.stages.includes(status);
@@ -1099,6 +1285,13 @@ function deriveOneSection(
       isCurrent,
       notApplicable: true,
     };
+  }
+
+  const review =
+    section.id === REVIEW_SECTION_ID &&
+    reviewSectionState(status, { isPathologist, requestCount });
+  if (review) {
+    return { ...section, ...review, isCurrent, notApplicable: false };
   }
 
   if (section.gate === null) {
@@ -1139,7 +1332,9 @@ function deriveOneSection(
  * description in PATHOLOGY_SECTIONS. Every status, known or not, yields
  * exactly eleven results: nothing is ever hidden, only locked, read-only or
  * marked not applicable. `sectionHasRows` says whether a section holds rows
- * on record; a section it is not asked about holds none.
+ * on record; a section it is not asked about holds none. `requestCount` is
+ * how many requests the case holds, whatever their status, which the review
+ * section reads.
  */
 export function deriveCaseSections({
   intl,
@@ -1148,6 +1343,7 @@ export function deriveCaseSections({
   configurationProperties,
   decalcificationRequired,
   sectionHasRows = () => false,
+  requestCount = 0,
 } = {}) {
   return PATHOLOGY_SECTIONS.map((section) => ({
     ...deriveOneSection(section, {
@@ -1157,6 +1353,7 @@ export function deriveCaseSections({
       configurationProperties,
       decalcificationRequired,
       sectionHasRows,
+      requestCount,
     }),
     openByDefault: sectionOpensByDefault(section, status),
   }));
@@ -1262,7 +1459,7 @@ export function deriveRailItems(
     }
 
     let pending;
-    if (section.id === "pathology-section-review" && names?.length > 0) {
+    if (section.id === REVIEW_SECTION_ID && names?.length > 0) {
       pending = openRequestsLabel(intl, names);
     } else if (
       section.id === EMBEDDING_SECTION_ID &&

@@ -343,13 +343,15 @@ $stain-picker-min-size: 9.5rem;
 // table's own width set the section's width, and the table, the notices
 // above it and the toolbar ran out of the column and under the summary.
 .pathology-case-view__slide-work,
-.pathology-case-view__slide-work-body {
+.pathology-case-view__slide-work-body,
+.pathology-case-view__requests {
   min-inline-size: 0;
 }
 
-// A table needs the width a paragraph does not, so these two sections give
-// up the empty quarter Carbon keeps at the end of an accordion's content.
-.cds--accordion__content:has(.pathology-case-view__slide-work) {
+// A table needs the width a paragraph does not, so the sections holding one
+// give up the empty quarter Carbon keeps at the end of an accordion's content.
+.cds--accordion__content:has(.pathology-case-view__slide-work),
+.cds--accordion__content:has(.pathology-case-view__requests) {
   padding-inline-end: spacing.$spacing-03;
 }
 
@@ -447,4 +449,51 @@ $stain-picker-min-size: 9.5rem;
   @include type.type-style("body-compact-01");
 
   flex-basis: 100%;
+}
+
+// The bench requests in the review section. They share the slide tables'
+// gutters, scroll region and stacked row buttons; what follows is their own.
+
+// The instruction takes the room the other columns leave, and a long word in
+// it wraps rather than widening the table.
+.pathology-case-view__slide-table
+  th.pathology-case-view__request-col--instruction {
+  inline-size: 100%;
+}
+
+.pathology-case-view__request-col--instruction {
+  overflow-wrap: anywhere;
+}
+
+// The new request and a request's Complete and Cancel rows: one cell across
+// every column, laid out as a row's wrapping line of fields, so they need no
+// column of their own at any width. The table row already draws the rule
+// under them, and the fields line up on their inputs.
+.pathology-case-view__request-form {
+  align-items: flex-end;
+  border-block-end: 0;
+}
+
+// A hovered row takes the layer-hover background, on which the link blue of
+// a ghost button falls under 4.5:1 (4.08). The new request and the Complete
+// and Cancel request rows are forms, not requests, so they keep the table's
+// background under the pointer and their buttons keep text contrast.
+.pathology-case-view__slide-table.cds--data-table
+  tbody
+  tr.pathology-case-view__request-form-row:hover {
+  background-color: transparent;
+}
+
+// The kind's three choices and the instruction take a line each.
+.pathology-case-view__request-form > .cds--form-item,
+.pathology-case-view__request-instruction {
+  flex-basis: 100%;
+}
+
+.pathology-case-view__request-buttons {
+  align-items: center;
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
 }
