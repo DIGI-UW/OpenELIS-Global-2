@@ -307,6 +307,28 @@ public class SampleOrderItem implements Serializable {
     private String tbDateProcessed;
 
     private String tbSignature;
+
+    private String cyCollectionMethod;
+
+    private String cyHistory;
+
+    private String cyCurrentTreatment;
+
+    private String cyPreviousTreatment;
+
+    private String cyCervixState;
+
+    private String cyCircumstances;
+
+    private String cyTherapy;
+
+    private String cyContraception;
+
+    private String cyLmp;
+
+    private String cyParity;
+
+    private String cyLastPregnancy;
     private String contactTracingIndexRecordNumber;
 
     private QuestionnaireResponse additionalQuestions;
@@ -518,6 +540,94 @@ public class SampleOrderItem implements Serializable {
 
     public void setTbSignature(String tbSignature) {
         this.tbSignature = tbSignature;
+    }
+
+    public String getCyCollectionMethod() {
+        return cyCollectionMethod;
+    }
+
+    public void setCyCollectionMethod(String cyCollectionMethod) {
+        this.cyCollectionMethod = cyCollectionMethod;
+    }
+
+    public String getCyHistory() {
+        return cyHistory;
+    }
+
+    public void setCyHistory(String cyHistory) {
+        this.cyHistory = cyHistory;
+    }
+
+    public String getCyCurrentTreatment() {
+        return cyCurrentTreatment;
+    }
+
+    public void setCyCurrentTreatment(String cyCurrentTreatment) {
+        this.cyCurrentTreatment = cyCurrentTreatment;
+    }
+
+    public String getCyPreviousTreatment() {
+        return cyPreviousTreatment;
+    }
+
+    public void setCyPreviousTreatment(String cyPreviousTreatment) {
+        this.cyPreviousTreatment = cyPreviousTreatment;
+    }
+
+    public String getCyCervixState() {
+        return cyCervixState;
+    }
+
+    public void setCyCervixState(String cyCervixState) {
+        this.cyCervixState = cyCervixState;
+    }
+
+    public String getCyCircumstances() {
+        return cyCircumstances;
+    }
+
+    public void setCyCircumstances(String cyCircumstances) {
+        this.cyCircumstances = cyCircumstances;
+    }
+
+    public String getCyTherapy() {
+        return cyTherapy;
+    }
+
+    public void setCyTherapy(String cyTherapy) {
+        this.cyTherapy = cyTherapy;
+    }
+
+    public String getCyContraception() {
+        return cyContraception;
+    }
+
+    public void setCyContraception(String cyContraception) {
+        this.cyContraception = cyContraception;
+    }
+
+    public String getCyLmp() {
+        return cyLmp;
+    }
+
+    public void setCyLmp(String cyLmp) {
+        this.cyLmp = cyLmp;
+    }
+
+    public String getCyParity() {
+        return cyParity;
+    }
+
+    public void setCyParity(String cyParity) {
+        this.cyParity = cyParity;
+    }
+
+    public String getCyLastPregnancy() {
+        return cyLastPregnancy;
+    }
+
+    public void setCyLastPregnancy(String cyLastPregnancy) {
+        this.cyLastPregnancy = cyLastPregnancy;
     }
 
     public void setOrderType(String orderType) {

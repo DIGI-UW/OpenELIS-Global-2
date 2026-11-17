@@ -1007,6 +1007,35 @@ public class SamplePatientUpdateData {
                 ValueType.LITERAL);
         createClearableObservation(sampleOrder.getTbSignature(),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.TB_SIGNATURE), ValueType.LITERAL);
+        createClearableObservation(sampleOrder.getCyCollectionMethod(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.CY_COLLECTION_METHOD),
+                ValueType.LITERAL);
+        createClearableObservation(sampleOrder.getCyHistory(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.CY_HISTORY), ValueType.LITERAL);
+        createClearableObservation(sampleOrder.getCyCurrentTreatment(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.CY_CURRENT_TREATMENT),
+                ValueType.LITERAL);
+        createClearableObservation(sampleOrder.getCyPreviousTreatment(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.CY_PREVIOUS_TREATMENT),
+                ValueType.LITERAL);
+        createClearableObservation(sampleOrder.getCyCervixState(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.CY_CERVIX_STATE),
+                ValueType.LITERAL);
+        createClearableObservation(sampleOrder.getCyCircumstances(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.CY_CIRCUMSTANCES),
+                ValueType.LITERAL);
+        createClearableObservation(sampleOrder.getCyTherapy(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.CY_THERAPY), ValueType.LITERAL);
+        createClearableObservation(sampleOrder.getCyContraception(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.CY_CONTRACEPTION),
+                ValueType.LITERAL);
+        createClearableObservation(sampleOrder.getCyLmp(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.CY_LMP), ValueType.LITERAL);
+        createClearableObservation(sampleOrder.getCyParity(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.CY_PARITY), ValueType.LITERAL);
+        createClearableObservation(sampleOrder.getCyLastPregnancy(),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.CY_LAST_PREGNANCY),
+                ValueType.LITERAL);
         createObservation(sampleOrder.getRequestDate(),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.REQUEST_DATE), ValueType.LITERAL);
         createClearableObservation(sampleOrder.getNextVisitDate(),

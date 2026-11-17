@@ -1573,6 +1573,50 @@ public class OrderSearchRestController extends BaseRestController {
         if (tbv6 != null) {
             sampleOrderItems.put("tbSignature", tbv6);
         }
+        String cyv0 = observationHistoryService.getValueForSample(ObservationType.CY_COLLECTION_METHOD, sampleId);
+        if (cyv0 != null) {
+            sampleOrderItems.put("cyCollectionMethod", cyv0);
+        }
+        String cyv1 = observationHistoryService.getValueForSample(ObservationType.CY_HISTORY, sampleId);
+        if (cyv1 != null) {
+            sampleOrderItems.put("cyHistory", cyv1);
+        }
+        String cyv2 = observationHistoryService.getValueForSample(ObservationType.CY_CURRENT_TREATMENT, sampleId);
+        if (cyv2 != null) {
+            sampleOrderItems.put("cyCurrentTreatment", cyv2);
+        }
+        String cyv3 = observationHistoryService.getValueForSample(ObservationType.CY_PREVIOUS_TREATMENT, sampleId);
+        if (cyv3 != null) {
+            sampleOrderItems.put("cyPreviousTreatment", cyv3);
+        }
+        String cyv4 = observationHistoryService.getValueForSample(ObservationType.CY_CERVIX_STATE, sampleId);
+        if (cyv4 != null) {
+            sampleOrderItems.put("cyCervixState", cyv4);
+        }
+        String cyv5 = observationHistoryService.getValueForSample(ObservationType.CY_CIRCUMSTANCES, sampleId);
+        if (cyv5 != null) {
+            sampleOrderItems.put("cyCircumstances", cyv5);
+        }
+        String cyv6 = observationHistoryService.getValueForSample(ObservationType.CY_THERAPY, sampleId);
+        if (cyv6 != null) {
+            sampleOrderItems.put("cyTherapy", cyv6);
+        }
+        String cyv7 = observationHistoryService.getValueForSample(ObservationType.CY_CONTRACEPTION, sampleId);
+        if (cyv7 != null) {
+            sampleOrderItems.put("cyContraception", cyv7);
+        }
+        String cyv8 = observationHistoryService.getValueForSample(ObservationType.CY_LMP, sampleId);
+        if (cyv8 != null) {
+            sampleOrderItems.put("cyLmp", cyv8);
+        }
+        String cyv9 = observationHistoryService.getValueForSample(ObservationType.CY_PARITY, sampleId);
+        if (cyv9 != null) {
+            sampleOrderItems.put("cyParity", cyv9);
+        }
+        String cyv10 = observationHistoryService.getValueForSample(ObservationType.CY_LAST_PREGNANCY, sampleId);
+        if (cyv10 != null) {
+            sampleOrderItems.put("cyLastPregnancy", cyv10);
+        }
 
         // Billing reference number
         String billingRef = observationHistoryService.getRawValueForSample(ObservationType.BILLING_REFERENCE_NUMBER,

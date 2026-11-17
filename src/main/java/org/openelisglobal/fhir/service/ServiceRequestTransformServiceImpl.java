@@ -310,6 +310,17 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
         addRequestFormExtension(serviceRequest, sample, ObservationType.TB_CLINICIAN_NAME, "tbClinicianName");
         addRequestFormExtension(serviceRequest, sample, ObservationType.TB_DATE_PROCESSED, "tbDateProcessed");
         addRequestFormExtension(serviceRequest, sample, ObservationType.TB_SIGNATURE, "tbSignature");
+        addRequestFormExtension(serviceRequest, sample, ObservationType.CY_COLLECTION_METHOD, "cyCollectionMethod");
+        addRequestFormExtension(serviceRequest, sample, ObservationType.CY_HISTORY, "cyHistory");
+        addRequestFormExtension(serviceRequest, sample, ObservationType.CY_CURRENT_TREATMENT, "cyCurrentTreatment");
+        addRequestFormExtension(serviceRequest, sample, ObservationType.CY_PREVIOUS_TREATMENT, "cyPreviousTreatment");
+        addRequestFormExtension(serviceRequest, sample, ObservationType.CY_CERVIX_STATE, "cyCervixState");
+        addRequestFormExtension(serviceRequest, sample, ObservationType.CY_CIRCUMSTANCES, "cyCircumstances");
+        addRequestFormExtension(serviceRequest, sample, ObservationType.CY_THERAPY, "cyTherapy");
+        addRequestFormExtension(serviceRequest, sample, ObservationType.CY_CONTRACEPTION, "cyContraception");
+        addRequestFormExtension(serviceRequest, sample, ObservationType.CY_LMP, "cyLmp");
+        addRequestFormExtension(serviceRequest, sample, ObservationType.CY_PARITY, "cyParity");
+        addRequestFormExtension(serviceRequest, sample, ObservationType.CY_LAST_PREGNANCY, "cyLastPregnancy");
     }
 
     private void addRequestFormExtension(ServiceRequest serviceRequest, Sample sample, ObservationType type,

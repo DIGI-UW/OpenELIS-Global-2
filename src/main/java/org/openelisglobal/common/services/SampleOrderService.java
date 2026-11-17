@@ -190,6 +190,27 @@ public class SampleOrderService {
                     observationHistoryService.getValueForSample(ObservationType.TB_DATE_PROCESSED, sample.getId()));
             sampleOrder.setTbSignature(
                     observationHistoryService.getValueForSample(ObservationType.TB_SIGNATURE, sample.getId()));
+            sampleOrder.setCyCollectionMethod(
+                    observationHistoryService.getValueForSample(ObservationType.CY_COLLECTION_METHOD, sample.getId()));
+            sampleOrder.setCyHistory(
+                    observationHistoryService.getValueForSample(ObservationType.CY_HISTORY, sample.getId()));
+            sampleOrder.setCyCurrentTreatment(
+                    observationHistoryService.getValueForSample(ObservationType.CY_CURRENT_TREATMENT, sample.getId()));
+            sampleOrder.setCyPreviousTreatment(
+                    observationHistoryService.getValueForSample(ObservationType.CY_PREVIOUS_TREATMENT, sample.getId()));
+            sampleOrder.setCyCervixState(
+                    observationHistoryService.getValueForSample(ObservationType.CY_CERVIX_STATE, sample.getId()));
+            sampleOrder.setCyCircumstances(
+                    observationHistoryService.getValueForSample(ObservationType.CY_CIRCUMSTANCES, sample.getId()));
+            sampleOrder.setCyTherapy(
+                    observationHistoryService.getValueForSample(ObservationType.CY_THERAPY, sample.getId()));
+            sampleOrder.setCyContraception(
+                    observationHistoryService.getValueForSample(ObservationType.CY_CONTRACEPTION, sample.getId()));
+            sampleOrder.setCyLmp(observationHistoryService.getValueForSample(ObservationType.CY_LMP, sample.getId()));
+            sampleOrder.setCyParity(
+                    observationHistoryService.getValueForSample(ObservationType.CY_PARITY, sample.getId()));
+            sampleOrder.setCyLastPregnancy(
+                    observationHistoryService.getValueForSample(ObservationType.CY_LAST_PREGNANCY, sample.getId()));
             sampleOrder.setTestLocationCode(
                     observationHistoryService.getRawValueForSample(ObservationType.TEST_LOCATION_CODE, sample.getId()));
             sampleOrder.setOtherLocationCode(observationHistoryService
@@ -445,6 +466,28 @@ public class SampleOrderService {
                 sampleOrder.getTbDateProcessed(), ValueType.LITERAL);
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.TB_SIGNATURE,
                 sampleOrder.getTbSignature(), ValueType.LITERAL);
+        createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.CY_COLLECTION_METHOD,
+                sampleOrder.getCyCollectionMethod(), ValueType.LITERAL);
+        createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.CY_HISTORY,
+                sampleOrder.getCyHistory(), ValueType.LITERAL);
+        createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.CY_CURRENT_TREATMENT,
+                sampleOrder.getCyCurrentTreatment(), ValueType.LITERAL);
+        createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.CY_PREVIOUS_TREATMENT,
+                sampleOrder.getCyPreviousTreatment(), ValueType.LITERAL);
+        createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.CY_CERVIX_STATE,
+                sampleOrder.getCyCervixState(), ValueType.LITERAL);
+        createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.CY_CIRCUMSTANCES,
+                sampleOrder.getCyCircumstances(), ValueType.LITERAL);
+        createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.CY_THERAPY,
+                sampleOrder.getCyTherapy(), ValueType.LITERAL);
+        createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.CY_CONTRACEPTION,
+                sampleOrder.getCyContraception(), ValueType.LITERAL);
+        createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.CY_LMP,
+                sampleOrder.getCyLmp(), ValueType.LITERAL);
+        createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.CY_PARITY,
+                sampleOrder.getCyParity(), ValueType.LITERAL);
+        createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.CY_LAST_PREGNANCY,
+                sampleOrder.getCyLastPregnancy(), ValueType.LITERAL);
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.REQUEST_DATE,
                 sampleOrder.getRequestDate(), ValueType.LITERAL);
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.PROGRAM,

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Lesotho NRL cellular pathology request form, cervical cytology part, saved with the order.
+         An observation whose type row is missing is dropped silently, so the types are seeded. -->
+    <changeSet id="032-cervical-cytology-request-fields" author="tumisang">
+        <sql splitStatements="true" endDelimiter=";">
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'CyCollectionMethod', 'CY_COLLECTION_METHOD', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'CyCollectionMethod');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'CyHistory', 'CY_HISTORY', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'CyHistory');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'CyCurrentTreatment', 'CY_CURRENT_TREATMENT', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'CyCurrentTreatment');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'CyPreviousTreatment', 'CY_PREVIOUS_TREATMENT', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'CyPreviousTreatment');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'CyCervixState', 'CY_CERVIX_STATE', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'CyCervixState');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'CyCircumstances', 'CY_CIRCUMSTANCES', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'CyCircumstances');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'CyTherapy', 'CY_THERAPY', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'CyTherapy');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'CyContraception', 'CY_CONTRACEPTION', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'CyContraception');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'CyLmp', 'CY_LMP', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'CyLmp');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'CyParity', 'CY_PARITY', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'CyParity');
+INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)
+SELECT nextval('clinlims.observation_history_type_seq'), 'CyLastPregnancy', 'CY_LAST_PREGNANCY', now()
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'CyLastPregnancy');
+        </sql>
+    </changeSet>
+</databaseChangeLog>

@@ -36,7 +36,11 @@ public class ObservationHistoryServiceImpl extends AuditableBaseObjectServiceImp
         TB_SAMPLE_ASPECT("TbSampleAspects"), TB_PATIENT_NUMBER("TbPatientNumber"), TB_SUSPECT_NUMBER("TbSuspectNumber"),
         TB_TEST_REQUEST("TbTestRequest"), TB_REFERRED_TO("TbReferredTo"), TB_SAMPLE_NUMBER("TbSampleNumber"),
         TB_CLINICAL_DETAILS("TbClinicalDetails"), TB_CLINICIAN_NAME("TbClinicianName"),
-        TB_DATE_PROCESSED("TbDateProcessed"), TB_SIGNATURE("TbSignature"),
+        TB_DATE_PROCESSED("TbDateProcessed"), TB_SIGNATURE("TbSignature"), CY_COLLECTION_METHOD("CyCollectionMethod"),
+        CY_HISTORY("CyHistory"), CY_CURRENT_TREATMENT("CyCurrentTreatment"),
+        CY_PREVIOUS_TREATMENT("CyPreviousTreatment"), CY_CERVIX_STATE("CyCervixState"),
+        CY_CIRCUMSTANCES("CyCircumstances"), CY_THERAPY("CyTherapy"), CY_CONTRACEPTION("CyContraception"),
+        CY_LMP("CyLmp"), CY_PARITY("CyParity"), CY_LAST_PREGNANCY("CyLastPregnancy"),
         PROVISIONAL_CLINICAL_DIAGNOSIS("provisionalClinicalDiagnosis"),
         // Environmental workflow observation types (OGC-356)
         ENV_COLLECTION_SITE_DESCRIPTION("envCollectionSiteDescription"),
