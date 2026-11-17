@@ -156,10 +156,17 @@ public class ModuleRegistryRestControllerTest {
                 .andExpect(jsonPath("$.modules[0].messages.fr['mod.alpha.menu']").value("Alpha (fr)"))
                 .andExpect(jsonPath("$.modules[0].messages.en['mod.alpha.menu']").value("Alpha"))
                 .andExpect(jsonPath("$.modules[0].messages.de").doesNotExist());
-        // Either spelling of the tag finds the file
+        // Either spelling of the tag finds the file, whatever the case
         withJar.perform(get("/rest/module-registry").param("locale", "fr_MG")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.locale").value("fr-MG"))
                 .andExpect(jsonPath("$.modules[0].messages['fr-MG']['mod.alpha.menu']").value("Alpha (fr-MG)"));
+        withJar.perform(get("/rest/module-registry").param("locale", "FR-mg")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.locale").value("fr-MG"))
+                .andExpect(jsonPath("$.modules[0].messages['fr-MG']['mod.alpha.menu']").value("Alpha (fr-MG)"))
+                .andExpect(jsonPath("$.modules[0].messages.fr['mod.alpha.menu']").value("Alpha (fr)"));
+        withJar.perform(get("/rest/module-registry").param("locale", "FR")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.locale").value("fr"))
+                .andExpect(jsonPath("$.modules[0].messages.fr['mod.alpha.menu']").value("Alpha (fr)"));
         // Without the parameter the browser's first language decides
         withJar.perform(get("/rest/module-registry").header("Accept-Language", "de-CH,de;q=0.9,en;q=0.8"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.locale").value("de-CH"))

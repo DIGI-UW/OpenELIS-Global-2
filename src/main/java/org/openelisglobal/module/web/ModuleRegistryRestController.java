@@ -128,7 +128,14 @@ public class ModuleRegistryRestController {
         if (chosen.isEmpty() || "*".equals(chosen)) {
             chosen = "en";
         }
-        String tag = chosen.replace('_', '-');
+        // Bundle files are named like the locales the shell sends, "fr" and "fr-MG":
+        // a hand-written "FR" or "fr-mg" finds the same files
+        String[] parts = chosen.replace('_', '-').split("-");
+        parts[0] = parts[0].toLowerCase();
+        for (int i = 1; i < parts.length; i++) {
+            parts[i] = parts[i].toUpperCase();
+        }
+        String tag = String.join("-", parts);
         Set<String> chain = new LinkedHashSet<>();
         chain.add(tag);
         chain.add(tag.replace('-', '_'));
