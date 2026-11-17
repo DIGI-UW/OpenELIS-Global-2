@@ -1291,11 +1291,19 @@ class DevStackModuleTest(unittest.TestCase):
         self.dev_stack.route_module_pages(context, [module])
 
         routed = config.read_text(encoding="utf-8")
-        self.assertEqual(
-            routed.count("location = /api/OpenELIS-Global/modules/lab-notes/remoteEntry.js {"), 2
-        )
+        # The registry names the entry under the JAR's digest (/modules/<id>/<sha16>/remoteEntry.js);
+        # the plain form stays one release, so the route matches both, and as a regex location it
+        # still wins over the `location /api/` prefix. Quoted: nginx reads an unquoted `{16}` as a
+        # block and the proxy restarts in a loop (2026-11-17).
+        regex = "^/api/OpenELIS-Global/modules/lab-notes/(?:[0-9a-f]{16}/)?remoteEntry\\.js$"
+        location = f'location ~ "{regex}" {{'
+        self.assertEqual(routed.count(location), 2)
         self.assertIn("return 307 http://localhost:5190/remoteEntry.js;", routed)
-        self.assertLess(routed.index("lab-notes/remoteEntry.js"), routed.index("location /api/ {"))
+        self.assertLess(routed.index("lab-notes/"), routed.index("location /api/ {"))
+        pattern = re.compile(regex)
+        self.assertTrue(pattern.match("/api/OpenELIS-Global/modules/lab-notes/remoteEntry.js"))
+        self.assertTrue(pattern.match("/api/OpenELIS-Global/modules/lab-notes/0123456789abcdef/remoteEntry.js"))
+        self.assertFalse(pattern.match("/api/OpenELIS-Global/modules/lab-notes/assets/remoteEntry.js"))
 
     def test_no_modules_leave_the_proxy_config_untouched(self):
         context = self.dev_stack.StackContext(self.root, "p", self.root / "missing", ())

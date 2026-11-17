@@ -29,10 +29,8 @@ import org.openelisglobal.module.testkit.ModuleRecords;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.env.MockEnvironment;
-import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.servlet.HandlerMapping;
 
 public class ModuleAssetsControllerTest {
 
@@ -40,12 +38,6 @@ public class ModuleAssetsControllerTest {
     private static final String ENTRY = "export const page = 1;";
 
     private MockMvc mockMvc;
-
-    private static MockHttpServletRequest request(String pathWithinMapping) {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", pathWithinMapping);
-        request.setAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE, pathWithinMapping);
-        return request;
-    }
 
     private static ModuleManifest manifest() {
         ModuleManifest manifest = new ModuleManifest();
@@ -122,20 +114,65 @@ public class ModuleAssetsControllerTest {
     }
 
     @Test
+    public void underTheRunningDigestEveryFileIsImmutable() throws Exception {
+        // The registry publishes assetBase as /modules/<id>/<sha16>/, so a new
+        // JAR is a new URL and a warm cache sends no request at all: the entry
+        // and the message files are immutable there, not only the hashed chunks.
+        mockMvc.perform(get("/modules/alpha/" + DIGEST + "/remoteEntry.js")).andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "max-age=31536000, immutable"))
+                .andExpect(header().string(HttpHeaders.ETAG, ModuleAssetsController.etag(DIGEST, "remoteEntry.js")))
+                .andExpect(content().contentType("text/javascript")).andExpect(content().string(ENTRY));
+        mockMvc.perform(get("/modules/alpha/" + DIGEST + "/assets/Page-ab12cd.js")).andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "max-age=31536000, immutable"))
+                .andExpect(content().string("export default 1;"));
+    }
+
+    @Test
+    public void anotherDigestIs404SoAnOldUrlNeverCachesNewBytes() throws Exception {
+        mockMvc.perform(get("/modules/alpha/ffffffffffffffff/remoteEntry.js")).andExpect(status().isNotFound());
+        // Upper-case hex is not a digest segment: it is a directory the JAR does not
+        // have
+        mockMvc.perform(get("/modules/alpha/FFFFFFFFFFFFFFFF/remoteEntry.js")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void theDigestUrlStillRevalidatesFromTheETag() throws Exception {
+        String etag = ModuleAssetsController.etag(DIGEST, "remoteEntry.js");
+        mockMvc.perform(get("/modules/alpha/" + DIGEST + "/remoteEntry.js").header(HttpHeaders.IF_NONE_MATCH, etag))
+                .andExpect(status().isNotModified()).andExpect(header().string(HttpHeaders.ETAG, etag));
+    }
+
+    @Test
+    public void theDigestSegmentIsParsedApartFromThePath() {
+        ModuleAssetsController.AssetRequest digested = ModuleAssetsController
+                .parse("/modules/ctx/" + DIGEST + "/assets/Page-ab12cd.js", "ctx");
+        assertEquals(DIGEST, digested.digest());
+        assertEquals("assets/Page-ab12cd.js", digested.path());
+        ModuleAssetsController.AssetRequest plain = ModuleAssetsController.parse("/modules/ctx/remoteEntry.js", "ctx");
+        assertNull(plain.digest());
+        assertEquals("remoteEntry.js", plain.path());
+        // A digest with nothing behind it, and a digest-like directory that is a real
+        // path element elsewhere
+        assertNull(ModuleAssetsController.parse("/modules/ctx/" + DIGEST, "ctx"));
+        assertNull(ModuleAssetsController.parse("/modules/ctx/" + DIGEST + "/", "ctx"));
+        assertEquals("assets/" + DIGEST + "/x.js",
+                ModuleAssetsController.parse("/modules/ctx/assets/" + DIGEST + "/x.js", "ctx").path());
+    }
+
+    @Test
     public void pathBelowTheModuleDirectoryIsAccepted() {
-        assertEquals("remoteEntry.js", ModuleAssetsController.assetPath(request("/modules/ctx/remoteEntry.js"), "ctx"));
+        assertEquals("remoteEntry.js", ModuleAssetsController.parse("/modules/ctx/remoteEntry.js", "ctx").path());
         assertEquals("assets/Page-ab12cd.js",
-                ModuleAssetsController.assetPath(request("/modules/ctx/assets/Page-ab12cd.js"), "ctx"));
-        assertEquals("messages/en.json",
-                ModuleAssetsController.assetPath(request("/modules/ctx/messages/en.json"), "ctx"));
+                ModuleAssetsController.parse("/modules/ctx/assets/Page-ab12cd.js", "ctx").path());
+        assertEquals("messages/en.json", ModuleAssetsController.parse("/modules/ctx/messages/en.json", "ctx").path());
     }
 
     @Test
     public void pathsThatLeaveTheDirectoryAreRefused() {
-        assertNull(ModuleAssetsController.assetPath(request("/modules/ctx/../other/x.js"), "ctx"));
-        assertNull(ModuleAssetsController.assetPath(request("/modules/ctx//etc/passwd"), "ctx"));
-        assertNull(ModuleAssetsController.assetPath(request("/modules/ctx/"), "ctx"));
-        assertNull(ModuleAssetsController.assetPath(request("/modules/other/remoteEntry.js"), "ctx"));
+        assertNull(ModuleAssetsController.parse("/modules/ctx/../other/x.js", "ctx"));
+        assertNull(ModuleAssetsController.parse("/modules/ctx//etc/passwd", "ctx"));
+        assertNull(ModuleAssetsController.parse("/modules/ctx/", "ctx"));
+        assertNull(ModuleAssetsController.parse("/modules/other/remoteEntry.js", "ctx"));
     }
 
     @Test

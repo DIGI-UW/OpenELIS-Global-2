@@ -15,7 +15,8 @@ const started = (overrides = {}) => ({
   state: "STARTED",
   requires: { openelis: ">=3.4.0", frontendContract: "^1.0" },
   remoteName: "specimen_followup",
-  assetBase: "/modules/specimen-followup/",
+  // The registry names the files under the running JAR's digest (OGC-1638)
+  assetBase: "/modules/specimen-followup/0123456789abcdef/",
   frontend: {
     entry: "remoteEntry.js",
     messages: "messages/{locale}.json",
@@ -109,7 +110,8 @@ describe("planModules", () => {
     expect(plan.remotes).toEqual([
       {
         name: "specimen_followup",
-        entry: "/api/OpenELIS-Global/modules/specimen-followup/remoteEntry.js",
+        entry:
+          "/api/OpenELIS-Global/modules/specimen-followup/0123456789abcdef/remoteEntry.js",
         type: "module",
       },
     ]);

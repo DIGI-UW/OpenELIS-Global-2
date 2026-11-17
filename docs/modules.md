@@ -1520,14 +1520,23 @@ declarations and the runtime exports in step.
    request mapping, permissions become `system_module` rows (first install
    grants `defaultRoles`), menu entries join the menu in memory.
 8. **Start.** `validate`, then `onStart`. The module is `STARTED`.
-9. **Frontend files.** After login the shell reads `/rest/module-registry` and
-   loads a started module's pages from `/modules/<id>/…`, served from the JAR.
-   Hashed chunks under `assets/` are cached for a year; `remoteEntry.js` and the
-   message files are revalidated on every load with a weak `ETag` that names the
-   JAR's digest, so a revalidation is answered without reading the JAR, and a
-   new JAR changes the tag, so a browser holding the old entry downloads the new
-   one at its next load. Text responses are compressed by Tomcat's connector
-   (`tomcat/oe_server.xml`); no proxy setting is needed.
+9. **Frontend files.** After login the shell reads `/rest/module-registry`,
+   whose `assetBase` names the started module's files under the running JAR's
+   digest, `/modules/<id>/<sha16>/`, served from the JAR. Every file there,
+   `remoteEntry.js` and the message files included, is immutable for a year, so
+   a warm browser sends no request at all for a module; a new JAR is a new
+   `assetBase`, so the next load fetches the new files, and a request for any
+   other digest answers 404, so an old URL can never cache new bytes. The plain
+   form `/modules/<id>/<path>` stays for one release with the entry and the
+   message files revalidated on every load. Both forms carry a weak `ETag` that
+   names the digest, answered without reading the JAR. Tomcat's authenticator
+   adds its own `Cache-Control: private` header to every response (the `web.xml`
+   security constraints), so a browser sees `private` beside the controller's
+   directives: it caches the digest files as told; a shared proxy cache does not
+   store them. Text responses are compressed by Tomcat's connector
+   (`tomcat/oe_server.xml`); no proxy setting is needed. Chunk URLs inside a
+   built module resolve relative to `remoteEntry.js`, so no module is rebuilt
+   for the digest.
 
 Any failure after validation stops the application with the module named and the
 two ways out: the `<jar>.disabled` marker or `modules.<id>.enabled=false`, then
@@ -1546,16 +1555,18 @@ a restart.
 
 ## 11. Troubleshooting
 
-| Symptom                                        | Cause and fix                                                                                                                                   |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Admin, Modules shows `INVALID`                 | The reason names the broken rule (namespace, schema, missing class). Run the module's contract test; it reports the same problems at build time |
-| Admin, Modules shows `INCOMPATIBLE`            | `requires.openelis`, `coreApi`, `spi` or `frontendContract` does not match this core; rebuild against it or widen the range                     |
-| The webapp stops at start-up naming the module | A changeset, `validate` or `onStart` failed; the log has the cause. Add `<jar>.disabled` next to the JAR to start without it                    |
-| The menu entry does not show                   | The user lacks the entry's permission, or its `displayKey` has no English message                                                               |
-| The page shows "Module unavailable"            | The remote entry did not load: the dev server stopped (rerun `up --module`), or the JAR has no pages (build without `-DskipFrontend`)           |
-| A slot contribution does not show              | The `slot` name is misspelled (not checked), the user lacks its permission, or it failed (see the browser console)                              |
-| A REST call answers 403                        | The user's role does not hold the handler's permission; grant it in Role Management                                                             |
-| A REST call answers 404                        | The controller is not under `backend.basePackages`, or the path lacks `/rest/modules/<id>/`                                                     |
-| The log refuses a changeset of the module      | Every changeset id must start with `<id>-` and its author must be `<id>`                                                                        |
-| Module files arrive uncompressed               | The deployment runs its own `server.xml`; copy the connector's `compression` attributes from `tomcat/oe_server.xml`                             |
-| `mvn` cannot find `openelisglobal:classes`     | The core artifacts are not installed; run `scripts/dev-stack up --module …` or the four install commands in [Build](#8-test-build-and-ci)       |
+| Symptom                                        | Cause and fix                                                                                                                                                                    |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin, Modules shows `INVALID`                 | The reason names the broken rule (namespace, schema, missing class). Run the module's contract test; it reports the same problems at build time                                  |
+| Admin, Modules shows `INCOMPATIBLE`            | `requires.openelis`, `coreApi`, `spi` or `frontendContract` does not match this core; rebuild against it or widen the range                                                      |
+| The webapp stops at start-up naming the module | A changeset, `validate` or `onStart` failed; the log has the cause. Add `<jar>.disabled` next to the JAR to start without it                                                     |
+| The menu entry does not show                   | The user lacks the entry's permission, or its `displayKey` has no English message                                                                                                |
+| The page shows "Module unavailable"            | The remote entry did not load: the dev server stopped (rerun `up --module`), or the JAR has no pages (build without `-DskipFrontend`)                                            |
+| A slot contribution does not show              | The `slot` name is misspelled (not checked), the user lacks its permission, or it failed (see the browser console)                                                               |
+| A REST call answers 403                        | The user's role does not hold the handler's permission; grant it in Role Management                                                                                              |
+| A REST call answers 404                        | The controller is not under `backend.basePackages`, or the path lacks `/rest/modules/<id>/`                                                                                      |
+| The log refuses a changeset of the module      | Every changeset id must start with `<id>-` and its author must be `<id>`                                                                                                         |
+| Module files arrive uncompressed               | The deployment runs its own `server.xml`; copy the connector's `compression` attributes from `tomcat/oe_server.xml`                                                              |
+| A module page shows the previous JAR's pages   | The browser never does after a restart: `assetBase` carries the new JAR's digest. A proxy cache keyed on the old URL, or a tab left open on the old entry, does; reload the page |
+| `/modules/<id>/<digest>/…` answers 404         | That digest is not the running JAR's: the JAR was replaced, or the URL was copied from another installation; read `assetBase` from `/rest/module-registry`                       |
+| `mvn` cannot find `openelisglobal:classes`     | The core artifacts are not installed; run `scripts/dev-stack up --module …` or the four install commands in [Build](#8-test-build-and-ci)                                        |

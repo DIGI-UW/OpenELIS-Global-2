@@ -637,12 +637,17 @@ def route_module_pages(context: StackContext, modules: Sequence[ModuleCheckout])
         return
     config = context.project_dir / "volume" / "nginx" / "nginx.conf"
     text = config.read_text(encoding="utf-8")
+    # The registry names the entry under the JAR's digest (/modules/<id>/<sha16>/<entry>); the plain
+    # form stays one release. A regex location matches both and still wins over `location /api/`.
+    # Quoted, because nginx reads the `{16}` of an unquoted regex as a block.
     blocks = "".join(
         f"        # dev-stack up --module: pages of {module.module_id} from its Vite dev server\n"
-        f"        location = /api/OpenELIS-Global/modules/{module.module_id}/{module.entry} {{\n"
+        f'        location ~ "^/api/OpenELIS-Global/modules/{module.module_id}/(?:[0-9a-f]{{16}}/)?'
+        f'{entry_pattern}$" {{\n'
         f"            return 307 http://localhost:{module.dev_port}/{module.entry};\n"
         "        }\n\n"
         for module in modules
+        for entry_pattern in [module.entry.replace(".", "\\.")]
     )
     routed, count = re.subn(r"^[ \t]*location /api/ \{", lambda match: blocks + match.group(0), text, flags=re.M)
     if not count:

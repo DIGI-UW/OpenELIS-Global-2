@@ -85,7 +85,7 @@ public class ModuleRegistryRestControllerTest {
                 .andExpect(jsonPath("$.modules[0].id").value("alpha"))
                 .andExpect(jsonPath("$.modules[0].state").value("STARTED"))
                 .andExpect(jsonPath("$.modules[0].remoteName").value("alpha"))
-                .andExpect(jsonPath("$.modules[0].assetBase").value("/modules/alpha/"))
+                .andExpect(jsonPath("$.modules[0].assetBase").value("/modules/alpha/" + "0".repeat(16) + "/"))
                 .andExpect(jsonPath("$.modules[0].routePrefix").value("/m/alpha/"))
                 .andExpect(jsonPath("$.modules[0].frontend.routes[0].path").value("/m/alpha/home"))
                 .andExpect(jsonPath("$.modules[0].menu[0].elementId").value("menu_mod_alpha"))
