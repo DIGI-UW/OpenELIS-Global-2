@@ -1471,9 +1471,10 @@ shared library's major version (React 18 will be one) are majors.
    loads a started module's pages from `/modules/<id>/…`, served from the JAR.
    Hashed chunks under `assets/` are cached for a year; `remoteEntry.js` and the
    message files are revalidated on every load with a weak `ETag` that names the
-   JAR's digest, so a revalidation is answered without reading the JAR. Text
-   responses are compressed by Tomcat's connector (`tomcat/oe_server.xml`); no
-   proxy setting is needed.
+   JAR's digest, so a revalidation is answered without reading the JAR, and a
+   new JAR changes the tag, so a browser holding the old entry downloads the new
+   one at its next load. Text responses are compressed by Tomcat's connector
+   (`tomcat/oe_server.xml`); no proxy setting is needed.
 
 Any failure after validation stops the application with the module named and the
 two ways out: the `<jar>.disabled` marker or `modules.<id>.enabled=false`, then
