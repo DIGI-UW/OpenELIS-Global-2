@@ -115,7 +115,9 @@ public class ModuleRegistryRestController {
                 body.put("permissions", manifest.getPermissions());
                 body.put("menu", manifest.getMenu());
                 body.put("frontend", manifest.getFrontend());
-                body.put("assetBase", "/modules/" + record.id() + "/");
+                // The running JAR's digest in the path: every file under it is immutable, a new
+                // JAR is a new URL
+                body.put("assetBase", "/modules/" + record.id() + "/" + record.sha256().substring(0, 16) + "/");
                 body.put("restPrefix", manifest.getRestPrefix());
                 body.put("routePrefix", manifest.getRoutePrefix());
                 body.put("remoteName", manifest.getIdAsIdentifier());
