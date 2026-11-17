@@ -454,7 +454,7 @@ class DevStackContractTest(unittest.TestCase):
             self.dev_stack.os.environ,
             {"LETSENCRYPT_DOMAIN": "dev.example.org"},
             clear=True,
-        ):
+        ), patch.object(self.dev_stack, "read_dotenv", return_value={}):
             environment = self.dev_stack.build_environment(context)
 
         self.assertEqual(environment["DEV_STACK_INGRESS_BIND_ADDRESS"], "0.0.0.0")
@@ -1304,6 +1304,52 @@ class DevStackModuleTest(unittest.TestCase):
         self.assertTrue(pattern.match("/api/OpenELIS-Global/modules/lab-notes/remoteEntry.js"))
         self.assertTrue(pattern.match("/api/OpenELIS-Global/modules/lab-notes/0123456789abcdef/remoteEntry.js"))
         self.assertFalse(pattern.match("/api/OpenELIS-Global/modules/lab-notes/assets/remoteEntry.js"))
+
+    def test_proxy_sends_the_message_bundles_to_the_dev_server(self):
+        harness = self.root / "harness"
+        config = harness / "volume" / "nginx" / "nginx.conf"
+        config.parent.mkdir(parents=True)
+        config.write_text("server {\n        location /api/ {\n        }\n}\n", encoding="utf-8")
+        context = self.dev_stack.StackContext(self.root, "p", harness, ())
+        module = self.dev_stack.ModuleCheckout(
+            self.root, "lab-notes", "remoteEntry.js", 5190, "messages/{locale}.json"
+        )
+
+        self.dev_stack.route_module_pages(context, [module])
+
+        routed = config.read_text(encoding="utf-8")
+        regex = "^/api/OpenELIS-Global/modules/lab-notes/(?:[0-9a-f]{16}/)?messages/([A-Za-z0-9_-]+)\\.json$"
+        self.assertIn(f'location ~ "{regex}" {{', routed)
+        self.assertIn("return 307 http://localhost:5190/messages/$1.json;", routed)
+        self.assertLess(routed.index("messages/"), routed.index("location /api/ {"))
+        pattern = re.compile(regex)
+        self.assertEqual(
+            pattern.match("/api/OpenELIS-Global/modules/lab-notes/0123456789abcdef/messages/fr.json").group(1), "fr"
+        )
+        self.assertEqual(pattern.match("/api/OpenELIS-Global/modules/lab-notes/messages/fr-MG.json").group(1), "fr-MG")
+        self.assertFalse(pattern.match("/api/OpenELIS-Global/modules/lab-notes/assets/messages/fr.json"))
+        self.assertFalse(pattern.match("/api/OpenELIS-Global/modules/lab-notes/messages/../en.json"))
+
+    def test_a_module_without_a_messages_pattern_gets_no_bundle_route(self):
+        module = self.dev_stack.ModuleCheckout(self.root, "lab-notes", "remoteEntry.js", 5190)
+
+        self.assertEqual(self.dev_stack.module_messages_route(module), "")
+
+    def test_module_checkout_reads_the_messages_pattern(self):
+        module_path = self.root / "lab-notes"
+        (module_path / "frontend").mkdir(parents=True)
+        (module_path / "pom.xml").write_text("<project/>", encoding="utf-8")
+        manifest = module_path / "src/main/resources/META-INF/openelis-module.json"
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text(
+            '{"id": "lab-notes", "frontend": {"entry": "remoteEntry.js", "messages": "messages/{locale}.json"}}',
+            encoding="utf-8",
+        )
+        (module_path / "frontend" / "package.json").write_text('{"scripts": {"dev": "vite"}}', encoding="utf-8")
+
+        module = self.dev_stack.read_module_checkout(str(module_path))
+
+        self.assertEqual(module.messages, "messages/{locale}.json")
 
     def test_no_modules_leave_the_proxy_config_untouched(self):
         context = self.dev_stack.StackContext(self.root, "p", self.root / "missing", ())
