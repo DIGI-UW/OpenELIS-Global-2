@@ -79,10 +79,9 @@ public class ModuleAssetsController {
         String path = asset.path();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(mediaType(path));
-        CacheControl forAYear = CacheControl.maxAge(java.time.Duration.ofDays(365)).cachePublic().immutable();
-        headers.setCacheControl(asset.digest() != null ? forAYear
-                : isImmutable(path) ? CacheControl.maxAge(java.time.Duration.ofDays(365)).immutable()
-                        : CacheControl.noCache());
+        headers.setCacheControl(asset.digest() != null || isImmutable(path)
+                ? CacheControl.maxAge(java.time.Duration.ofDays(365)).immutable()
+                : CacheControl.noCache());
         headers.setETag(etag(digest, path));
         if (matches(request.getHeader(HttpHeaders.IF_NONE_MATCH), headers.getETag())) {
             return ResponseEntity.status(HttpStatus.NOT_MODIFIED).headers(headers).build();
@@ -106,15 +105,6 @@ public class ModuleAssetsController {
     static String requestedPath(HttpServletRequest request) {
         String full = (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
         return full != null ? full : request.getRequestURI().substring(request.getContextPath().length());
-    }
-
-    /**
-     * The path below {@code /modules/{id}/} (digest segment stripped), or null when
-     * the URL is refused.
-     */
-    static String assetPath(HttpServletRequest request, String id) {
-        AssetRequest asset = parse(requestedPath(request), id);
-        return asset == null ? null : asset.path();
     }
 
     /**
