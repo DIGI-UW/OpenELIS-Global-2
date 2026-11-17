@@ -1212,6 +1212,25 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                       )}
                     </Field>
                   </Column>
+                  {/* LESOTHO: passport number, saved as the PASSPORT identity */}
+                  <Column lg={8} md={4} sm={4}>
+                    <Field name="passportNumber">
+                      {({ field }: { field: { name: string } }) => (
+                        <TextInput
+                          value={values.passportNumber || ""}
+                          name={field.name}
+                          id="passportNumber"
+                          maxLength={50}
+                          labelText={intl.formatMessage({
+                            id: "lesotho.patient.passportNumber",
+                          })}
+                          placeholder={intl.formatMessage({
+                            id: "lesotho.patient.passportNumber.placeholder",
+                          })}
+                        />
+                      )}
+                    </Field>
+                  </Column>
                   <Column lg={16} md={8} sm={4}>
                     {" "}
                     <br></br>

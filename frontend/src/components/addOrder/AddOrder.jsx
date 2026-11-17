@@ -46,6 +46,8 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
 import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 import SearchableSelect from "../common/SearchableSelect";
+import ClinicalInformation from "../../lesotho/clinicalInformation/ClinicalInformation"; // LESOTHO
+import { formsForTests } from "../../lesotho/clinicalInformation/testForms"; // LESOTHO
 const AddOrder = (props) => {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -65,6 +67,8 @@ const AddOrder = (props) => {
     setChanged,
     stagedAttachments,
     setStagedAttachments,
+    clinicalInformation, // LESOTHO
+    setClinicalInformation, // LESOTHO
   } = props;
   const [otherTestLocationCodeId, setOtherTestLocationCodeId] = useState("");
   const [providers, setProviders] = useState([]);
@@ -868,6 +872,23 @@ const AddOrder = (props) => {
     () => (samples || []).filter((s) => s.tests && s.tests.length > 0),
     [samples],
   );
+
+  // LESOTHO: the request forms whose clinical fields apply, from the tests on
+  // the order (for example HIV DNA PCR -> the DNA-PCR form), kept in the
+  // section's values so they are saved with it.
+  const lesothoForms = useMemo(
+    () => formsForTests((samples || []).flatMap((s) => s.tests || [])),
+    [samples],
+  );
+  const lesothoFormsKey = lesothoForms.join(",");
+  useEffect(() => {
+    if (isModifyOrder || !setClinicalInformation) return;
+    setClinicalInformation((prev) => {
+      if ((prev?.forms || []).join(",") === lesothoFormsKey) return prev;
+      if (!prev && !lesothoFormsKey) return prev;
+      return { ...(prev || {}), forms: lesothoForms };
+    });
+  }, [lesothoFormsKey]);
 
   // The specimen names the sample-type picker offers, so the heading a sample is
   // given here reads as the type the user chose on it rather than the number of
@@ -1680,6 +1701,20 @@ const AddOrder = (props) => {
             )}
           </Grid>
         </div>
+        {/* LESOTHO: clinical information from the MOH request form, per order */}
+        {!isModifyOrder && setClinicalInformation && (
+          <div className="orderLegendBody" data-testid="order-clinical-info">
+            <h3>
+              <FormattedMessage id="lesotho.clinicalInfo.title" />
+            </h3>
+            <ClinicalInformation
+              values={clinicalInformation}
+              forms={lesothoForms}
+              patientSex={orderFormValues?.patientProperties?.gender}
+              onChange={setClinicalInformation}
+            />
+          </div>
+        )}
         {(isTbOrder || !!orderFormValues?.sampleOrderItems?.tbOrderReason) && (
           <div className="orderLegendBody">
             <h3>

@@ -75,6 +75,7 @@ export interface PatientRecord {
   primaryPhone?: string;
   contactPhone?: string;
   email?: string;
+  passportNumber?: string; // LESOTHO
   contactEmail?: string;
   healthRegion?: string;
   education?: string;

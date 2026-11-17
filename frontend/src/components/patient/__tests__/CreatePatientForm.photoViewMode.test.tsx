@@ -113,7 +113,10 @@ beforeEach(() => {
   testState.selectorProps.length = 0;
 });
 
-describe("CreatePatientForm — the photo tile follows view and edit mode", () => {
+// LESOTHO: the Add Photo tile is hidden on the patient form for the Lesotho
+// deployment (see CreatePatientForm.tsx), so these photo tests are skipped.
+// Remove ".skip" if the tile is restored.
+describe.skip("CreatePatientForm — the photo tile follows view and edit mode", () => {
   test("an existing patient opens with the photo tile read-only", () => {
     renderForm({
       patientPK: "EXISTING-1",

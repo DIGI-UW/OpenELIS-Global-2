@@ -304,6 +304,7 @@ public class PatientTransformServiceImpl implements PatientTransformService {
         patientInfo.setInsuranceNumber(types.getIdentityValue(identities, "INSURANCE"));
         patientInfo.setOccupation(types.getIdentityValue(identities, "OCCUPATION"));
         patientInfo.setCustomNotes(types.getIdentityValue(identities, "CUSTOM_NOTES"));
+        patientInfo.setPassportNumber(types.getIdentityValue(identities, "PASSPORT")); // LESOTHO
         patientInfo.setTargetDiseaseProgramme(types.getIdentityValue(identities, "DISEASE_PROGRAMME"));
         patientInfo.setMothersInitial(types.getIdentityValue(identities, "MOTHERS_INITIAL"));
         patientInfo.setEducation(types.getIdentityValue(identities, "EDUCATION"));

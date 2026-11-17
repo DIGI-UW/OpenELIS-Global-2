@@ -716,6 +716,7 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
         persistIdentityType(patientInfo.getInsuranceNumber(), "INSURANCE", patientInfo, patient, sysUserId);
         persistIdentityType(patientInfo.getOccupation(), "OCCUPATION", patientInfo, patient, sysUserId);
         persistIdentityType(patientInfo.getCustomNotes(), "CUSTOM_NOTES", patientInfo, patient, sysUserId);
+        persistIdentityType(patientInfo.getPassportNumber(), "PASSPORT", patientInfo, patient, sysUserId); // LESOTHO
         // Only while the field is on the form: a hidden field sends nothing and saving
         // would wipe a stored value.
         if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.PATIENT_ART_NUMBER_SHOWN, "true")

@@ -42,6 +42,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { createOrderEntryValidationSchema } from "../formModel/validationSchema/OrderEntryValidationSchema";
 import config from "../../config.json";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { saveClinicalInformation } from "../../lesotho/clinicalInformation/clinicalInformationApi"; // LESOTHO
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrumb.label.addOrder", link: "/SamplePatientEntry" },
@@ -97,6 +98,9 @@ const Index = () => {
     contactPhone: { body: "", status: true },
   });
   const [stagedAttachments, setStagedAttachments] = useState([]);
+  // LESOTHO: the order's Clinical Information section, saved after the order
+  // for its lab number (like the staged attachments).
+  const [clinicalInformation, setClinicalInformation] = useState(undefined);
   // OGC-1145 FR-8 — e-order tests/panels whose sample type couldn't be resolved
   // from the message (multi-specimen test, no specimen coding): the accessioner
   // picks the specimen here, which files the orderable under that sample type.
@@ -674,6 +678,21 @@ const Index = () => {
         NotificationKinds.success,
       );
       uploadStagedAttachments(response?.sampleOrderItems?.labNo);
+      // LESOTHO: save the Clinical Information section for the saved order
+      saveClinicalInformation(
+        response?.sampleOrderItems?.labNo,
+        clinicalInformation,
+        (ok) => {
+          if (ok) {
+            setClinicalInformation(undefined);
+          } else {
+            showAlertMessage(
+              <FormattedMessage id="lesotho.clinicalInfo.saveFailed" />,
+              NotificationKinds.warning,
+            );
+          }
+        },
+      );
       setCurrentStep(STEP_SUCCESS);
     } else {
       showAlertMessage(
@@ -1044,6 +1063,8 @@ const Index = () => {
                     setChanged={setChanged}
                     stagedAttachments={stagedAttachments}
                     setStagedAttachments={setStagedAttachments}
+                    clinicalInformation={clinicalInformation} // LESOTHO
+                    setClinicalInformation={setClinicalInformation} // LESOTHO
                   />
                 )}
 
