@@ -1,4 +1,4 @@
-import { test, expect } from "../../../helpers/test-base";
+import { test, expect, Page } from "../../../helpers/test-base";
 import { API_PREFIX } from "../../../helpers/admin-ui";
 import { UI_TIMEOUT } from "../../../helpers/timeouts";
 
@@ -6,11 +6,30 @@ interface RegistryModule {
   id: string;
   state: string;
   assetBase?: string;
-  frontend?: { entry?: string; routes?: Array<{ path: string }> } | null;
+  frontend?: {
+    entry?: string;
+    routes?: Array<{ path: string; expose?: string }>;
+  } | null;
 }
 
 interface Registry {
   modules: RegistryModule[];
+}
+
+/** How many more of the module's files the page requested over 1.5 s. */
+function moduleRequestsOverASecond(
+  page: Page,
+  assetBase: string,
+): Promise<number> {
+  return page.evaluate(async (base) => {
+    const count = () =>
+      performance
+        .getEntriesByType("resource")
+        .filter((entry) => entry.name.includes(base)).length;
+    const before = count();
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return count() - before;
+  }, assetBase);
 }
 
 // Tomcat's connector compresses every text response above 1 kB, so the REST
@@ -121,6 +140,18 @@ test.describe("Module assets (OGC-1637)", () => {
       served.status() === 307,
       "the module's pages come from its dev server here",
     );
+    // Under the shell's own dev server a page's late chunks (the ones first
+    // fetched after other module files were already cached) are fetched
+    // again on a warm load, whatever their headers; a built shell caches
+    // every one of them (verified on an openelis-docker deployment). The case
+    // is about the built shell, so it runs against one.
+    const shellFromDevServer = await page.evaluate(() =>
+      Boolean(document.querySelector('script[src*="/@vite/client"]')),
+    );
+    test.skip(
+      shellFromDevServer,
+      "the shell comes from its dev server here; run against a built shell",
+    );
 
     // A dev server loads more than the 250 resources the timing buffer keeps
     // by default, and the module's files come last.
@@ -132,6 +163,43 @@ test.describe("Module assets (OGC-1637)", () => {
     await expect(page.locator(".cds--side-nav")).toBeVisible({
       timeout: UI_TIMEOUT,
     });
+    // The page's own chunk arrives only once the shell has read the registry
+    // and the remote entry, later than the navigation's network-idle, and the
+    // page pulls in more chunks after it renders. Wait for the page's chunk,
+    // then until the module's requests stop: whatever the warm load fetches
+    // first would count as a transfer.
+    const pageChunk = `assets/${started!.frontend!.routes![0].expose!.replace(/^\.\//, "")}-`;
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            ({ base, chunk }) =>
+              performance
+                .getEntriesByType("resource")
+                .some(
+                  (entry) =>
+                    entry.name.includes(base) && entry.name.includes(chunk),
+                ),
+            { base: started!.assetBase!, chunk: pageChunk },
+          ),
+        { timeout: UI_TIMEOUT },
+      )
+      .toBe(true);
+    await expect
+      .poll(() => moduleRequestsOverASecond(page, started!.assetBase!), {
+        timeout: UI_TIMEOUT,
+      })
+      .toBe(0);
+    const coldFiles = new Set(
+      await page.evaluate(
+        (base) =>
+          performance
+            .getEntriesByType("resource")
+            .filter((entry) => entry.name.includes(base))
+            .map((entry) => entry.name),
+        started!.assetBase!,
+      ),
+    );
 
     await page.goto(route, { waitUntil: "networkidle" });
     await expect(page.locator(".cds--side-nav")).toBeVisible({
@@ -154,6 +222,12 @@ test.describe("Module assets (OGC-1637)", () => {
       started!.assetBase!,
     );
     expect(moduleTransfers.length).toBeGreaterThan(0);
-    expect(moduleTransfers.filter((entry) => entry.transfer > 0)).toEqual([]);
+    // A file the cold load never reached is fetched for the first time here;
+    // every file it did fetch must come back without a byte from the server.
+    expect(
+      moduleTransfers.filter(
+        (entry) => coldFiles.has(entry.url) && entry.transfer > 0,
+      ),
+    ).toEqual([]);
   });
 });

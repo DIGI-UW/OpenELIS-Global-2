@@ -27,20 +27,25 @@ checkout it runs from; for a hand-run build, `ln -s <core checkout> core`.
 
 ## Use
 
-`vite.config.js`:
+`vite.config.js`, the whole of it:
 
 ```js
-import { coreRemote, sharedForModule } from "@openelis/module-sdk/shared";
+import { openelisModule } from "@openelis/module-sdk/build";
 
-federation({
-  name: "specimen_followup",
-  filename: "remoteEntry.js",
-  exposes: { "./ListPage": "./src/pages/ListPage.tsx" },
-  remotes: { openelis_core: coreRemote() },
-  shared: sharedForModule(),
-  dts: false,
-});
+export default openelisModule();
 ```
+
+The preset reads the manifest and derives the remote name from the id, the
+exposes from `frontend.routes[].expose` and `frontend.slots[].expose`
+(`./ListPage` is `src/pages/ListPage.(jsx|tsx|js|ts)`, a slot's `./Card` is
+`src/slots/Card.*`; a name without a file fails the build naming it), the
+`openelis_core` remote, the shared singletons (`import: false`), the output
+directory inside the Maven build, the dev server port, dedupe and the test
+aliases. Options: `exposes` (file overrides), `pages`, `slots`, `manifest`,
+`coreEntry`, `outDir`, `port`, `build`, `server`, `resolve`, `test`,
+`plugins`. The pieces are exported too (`shared.js`: `coreRemote()`,
+`sharedForModule()`; `build.js`: `exposesFor()`, `federationOptionsFor()`)
+for a configuration written by hand.
 
 `tsconfig.json`:
 

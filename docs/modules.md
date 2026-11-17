@@ -288,6 +288,8 @@ that gap. It carries:
 - `types/openelis_core.d.ts`: the five entry points as ambient modules, so
   `tsc --noEmit` checks every `openelis_core/*` import by name and props without
   changing the import paths.
+- `build.js`: `openelisModule()`, the whole Vite configuration of a module
+  derived from its manifest (see [Step 9: pages](#step-9-pages)).
 - `shared.js`: `sharedForModule()` (the shell's shared singletons with
   `import: false`) and `coreRemote()` for the module's Vite configuration, so
   the shared list is written once, in the core.
@@ -380,20 +382,19 @@ a letter, letters, digits and hyphens, 3 to 41 characters, for example
 `lab-notes`. Every namespace the module owns derives from it. Replace
 `specimen-followup` (and `specimen_followup`, `followup`) in these places:
 
-| Place                                                | Example value for `lab-notes`                          |
-| ---------------------------------------------------- | ------------------------------------------------------ |
-| Manifest `id`                                        | `lab-notes`                                            |
-| Java package                                         | `org.openelisglobal.module.labnotes`                   |
-| `pom.xml` `module.id` and `artifactId`               | `lab-notes`, `openelis-module-lab-notes`               |
-| `frontend/vite.config.js` `MODULE_ID`, `REMOTE_NAME` | `lab-notes`, `lab_notes`                               |
-| `frontend/src/…Api.js` `MODULE_ID`                   | `lab-notes`                                            |
-| Message keys                                         | `mod.lab-notes.*`                                      |
-| Liquibase folder, changeset ids and author           | `liquibase/lab-notes/`, `lab-notes-001-…`, `lab-notes` |
-| Table names                                          | `mod_lab_notes_*`                                      |
-| REST prefix                                          | `/rest/modules/lab-notes/`                             |
-| Page routes                                          | `/m/lab-notes/…`                                       |
-| Menu element ids                                     | `menu_mod_lab_notes`, `menu_mod_lab_notes_*`           |
-| Permissions in code                                  | `mod.lab-notes.view`, `mod.lab-notes.manage`           |
+| Place                                      | Example value for `lab-notes`                          |
+| ------------------------------------------ | ------------------------------------------------------ |
+| Manifest `id`                              | `lab-notes`                                            |
+| Java package                               | `org.openelisglobal.module.labnotes`                   |
+| `pom.xml` `module.id` and `artifactId`     | `lab-notes`, `openelis-module-lab-notes`               |
+| `frontend/src/…Api.js` `MODULE_ID`         | `lab-notes`                                            |
+| Message keys                               | `mod.lab-notes.*`                                      |
+| Liquibase folder, changeset ids and author | `liquibase/lab-notes/`, `lab-notes-001-…`, `lab-notes` |
+| Table names                                | `mod_lab_notes_*`                                      |
+| REST prefix                                | `/rest/modules/lab-notes/`                             |
+| Page routes                                | `/m/lab-notes/…`                                       |
+| Menu element ids                           | `menu_mod_lab_notes`, `menu_mod_lab_notes_*`           |
+| Permissions in code                        | `mod.lab-notes.view`, `mod.lab-notes.manage`           |
 
 The core refuses a module that breaks one of these namespaces; see
 [Namespace rules](#namespace-rules).
@@ -773,58 +774,40 @@ one React component per page and per slot contribution, imports the core's
 components through the `openelis_core` remote, and shares the shell's React,
 router, react-intl, Carbon and query client instead of bundling copies.
 
-**`frontend/vite.config.js`** (from the example). The shared singletons and the
-shell's remote come from the module SDK, so the list is written once, in the
-core (see [TypeScript and the module SDK](#typescript-and-the-module-sdk)):
+**`frontend/vite.config.js`** (from the example). The whole configuration is the
+module SDK's build preset, derived from the manifest (see
+[TypeScript and the module SDK](#typescript-and-the-module-sdk)):
 
 ```js
-import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react";
-import { federation } from "@module-federation/vite";
-import { coreRemote, sharedForModule } from "@openelis/module-sdk/shared";
-import {
-  openelisCoreAliases,
-  openelisCoreDedupe,
-} from "@openelis/module-sdk/testing";
+import { openelisModule } from "@openelis/module-sdk/build";
 
-const MODULE_ID = "specimen-followup";
-const REMOTE_NAME = "specimen_followup"; // the id with hyphens replaced
-
-export default defineConfig(({ mode }) => ({
-  plugins: [
-    react(),
-    federation({
-      name: REMOTE_NAME,
-      filename: "remoteEntry.js",
-      exposes: {
-        "./FollowUpListPage": "./src/pages/FollowUpListPage.jsx",
-        "./FollowUpDetailPage": "./src/pages/FollowUpDetailPage.jsx",
-        "./FollowUpDashboardCard": "./src/slots/FollowUpDashboardCard.tsx",
-      },
-      // The shell's own remote entry, next to its index.html on the same origin
-      remotes: { openelis_core: coreRemote() },
-      // The shell's singletons with import: false: the module bundles no copy
-      shared: sharedForModule(),
-      dts: false,
-    }),
-  ],
-  // One React for the module and the SDK's test doubles
-  resolve: { dedupe: openelisCoreDedupe },
-  test: { environment: "jsdom", globals: true, alias: openelisCoreAliases },
-  build: {
-    // Straight into the Maven output, so the JAR carries the bundle.
-    outDir: `../target/classes/META-INF/resources/modules/${MODULE_ID}`,
-    emptyOutDir: true,
-    target: "es2020",
-  },
-  server: {
-    port: 5174,
-    strictPort: true,
-    cors: true,
-    origin: "http://localhost:5174",
-  },
-}));
+export default openelisModule({
+  test: { setupFiles: ["./src/setupTests.js"] },
+});
 ```
+
+`openelisModule()` reads `../src/main/resources/META-INF/openelis-module.json`
+and derives:
+
+- the remote name, the id with hyphens replaced (`specimen_followup`);
+- the exposes, one per `frontend.routes[].expose` and `frontend.slots[].expose`:
+  `./Name` is `src/pages/Name.jsx` (or `.tsx`, `.js`, `.ts`) for a route and
+  `src/slots/Name.jsx` for a slot contribution. The manifest is the only list; a
+  name without a file fails `vite build` with the expose and the paths tried,
+  and the core's contract test (`ModuleContractTest`) checks the built entry
+  exposes every manifest name with a chunk in the bundle;
+- the shell as the `openelis_core` remote and the shell's shared singletons with
+  `import: false`, so the module bundles no copy of React, the router,
+  react-intl, Carbon or the query client;
+- `build.outDir`, straight into the Maven output
+  (`../target/classes/META-INF/resources/modules/<id>`), the dev server on port
+  5174 for the shell's dev override, `resolve.dedupe` and the test aliases for
+  the SDK's doubles.
+
+Options, all optional: `exposes` (file overrides by expose name, for a component
+that does not follow the convention), `pages` and `slots` (directories),
+`manifest` (path), `coreEntry`, `outDir`, `port`, and `build`, `server`,
+`resolve`, `test` (merged over the defaults) and `plugins` (appended).
 
 **Routes.** Each `frontend.routes[]` entry maps a path under `/m/<id>/` to an
 exposed component and names a `permission` (or a `role`): there are no anonymous
@@ -996,11 +979,9 @@ props may still change in a frontend contract minor.
    }
    ```
 
-2. Expose it in `vite.config.js`:
-
-   ```js
-   exposes: { "./FollowUpDashboardCard": "./src/slots/FollowUpDashboardCard.jsx" }
-   ```
+2. Nothing to add in `vite.config.js`: the build preset exposes
+   `src/slots/FollowUpDashboardCard.jsx` under the manifest's name once the next
+   step declares it (a declared name without a file fails the build).
 
 3. Declare it in the manifest's `frontend.slots`:
 
@@ -1557,18 +1538,19 @@ a restart.
 
 ## 11. Troubleshooting
 
-| Symptom                                        | Cause and fix                                                                                                                                                                    |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Admin, Modules shows `INVALID`                 | The reason names the broken rule (namespace, schema, missing class). Run the module's contract test; it reports the same problems at build time                                  |
-| Admin, Modules shows `INCOMPATIBLE`            | `requires.openelis`, `coreApi`, `spi` or `frontendContract` does not match this core; rebuild against it or widen the range                                                      |
-| The webapp stops at start-up naming the module | A changeset, `validate` or `onStart` failed; the log has the cause. Add `<jar>.disabled` next to the JAR to start without it                                                     |
-| The menu entry does not show                   | The user lacks the entry's permission, or its `displayKey` has no English message                                                                                                |
-| The page shows "Module unavailable"            | The remote entry did not load: the dev server stopped (rerun `up --module`), or the JAR has no pages (build without `-DskipFrontend`)                                            |
-| A slot contribution does not show              | The `slot` name is misspelled (not checked), the user lacks its permission, or it failed (see the browser console)                                                               |
-| A REST call answers 403                        | The user's role does not hold the handler's permission; grant it in Role Management                                                                                              |
-| A REST call answers 404                        | The controller is not under `backend.basePackages`, or the path lacks `/rest/modules/<id>/`                                                                                      |
-| The log refuses a changeset of the module      | Every changeset id must start with `<id>-` and its author must be `<id>`                                                                                                         |
-| Module files arrive uncompressed               | The deployment runs its own `server.xml`; copy the connector's `compression` attributes from `tomcat/oe_server.xml`                                                              |
-| A module page shows the previous JAR's pages   | The browser never does after a restart: `assetBase` carries the new JAR's digest. A proxy cache keyed on the old URL, or a tab left open on the old entry, does; reload the page |
-| `/modules/<id>/<digest>/…` answers 404         | That digest is not the running JAR's: the JAR was replaced, or the URL was copied from another installation; read `assetBase` from `/rest/module-registry`                       |
-| `mvn` cannot find `openelisglobal:classes`     | The core artifacts are not installed; run `scripts/dev-stack up --module …` or the four install commands in [Build](#8-test-build-and-ci)                                        |
+| Symptom                                                                           | Cause and fix                                                                                                                                                                                                                                                 |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin, Modules shows `INVALID`                                                    | The reason names the broken rule (namespace, schema, missing class). Run the module's contract test; it reports the same problems at build time                                                                                                               |
+| Admin, Modules shows `INCOMPATIBLE`                                               | `requires.openelis`, `coreApi`, `spi` or `frontendContract` does not match this core; rebuild against it or widen the range                                                                                                                                   |
+| The webapp stops at start-up naming the module                                    | A changeset, `validate` or `onStart` failed; the log has the cause. Add `<jar>.disabled` next to the JAR to start without it                                                                                                                                  |
+| The menu entry does not show                                                      | The user lacks the entry's permission, or its `displayKey` has no English message                                                                                                                                                                             |
+| The page shows "Module unavailable"                                               | The remote entry did not load: the dev server stopped (rerun `up --module`), or the JAR has no pages (build without `-DskipFrontend`)                                                                                                                         |
+| `vite build` fails with "the manifest names an expose the frontend does not have" | A `routes[].expose` or `slots[].expose` has no `src/pages/<Name>.*` or `src/slots/<Name>.*` file: the page was renamed or the manifest has a typo; the message lists the paths tried. A component elsewhere takes an `exposes` override in `openelisModule()` |
+| A slot contribution does not show                                                 | The `slot` name is misspelled (not checked), the user lacks its permission, or it failed (see the browser console)                                                                                                                                            |
+| A REST call answers 403                                                           | The user's role does not hold the handler's permission; grant it in Role Management                                                                                                                                                                           |
+| A REST call answers 404                                                           | The controller is not under `backend.basePackages`, or the path lacks `/rest/modules/<id>/`                                                                                                                                                                   |
+| The log refuses a changeset of the module                                         | Every changeset id must start with `<id>-` and its author must be `<id>`                                                                                                                                                                                      |
+| Module files arrive uncompressed                                                  | The deployment runs its own `server.xml`; copy the connector's `compression` attributes from `tomcat/oe_server.xml`                                                                                                                                           |
+| A module page shows the previous JAR's pages                                      | The browser never does after a restart: `assetBase` carries the new JAR's digest. A proxy cache keyed on the old URL, or a tab left open on the old entry, does; reload the page                                                                              |
+| `/modules/<id>/<digest>/…` answers 404                                            | That digest is not the running JAR's: the JAR was replaced, or the URL was copied from another installation; read `assetBase` from `/rest/module-registry`                                                                                                    |
+| `mvn` cannot find `openelisglobal:classes`                                        | The core artifacts are not installed; run `scripts/dev-stack up --module …` or the four install commands in [Build](#8-test-build-and-ci)                                                                                                                     |

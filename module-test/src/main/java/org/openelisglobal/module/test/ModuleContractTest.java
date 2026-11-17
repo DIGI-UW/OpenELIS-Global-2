@@ -15,12 +15,15 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.Test;
 import org.openelisglobal.module.api.ModuleKind;
 import org.openelisglobal.module.api.OpenElisModule;
 import org.openelisglobal.module.api.manifest.BackendSection;
+import org.openelisglobal.module.api.manifest.FrontendSection;
 import org.openelisglobal.module.api.manifest.ModuleManifest;
 import org.openelisglobal.module.manifest.ManifestValidation;
 import org.openelisglobal.module.manifest.ManifestValidator;
@@ -195,6 +198,61 @@ public abstract class ModuleContractTest {
             }
             assertNoProblems(problems);
         }
+    }
+
+    /**
+     * Every expose the manifest names (routes and slot contributions) is in the
+     * built entry's expose table with a chunk that ships next to it, so a page
+     * renamed without the manifest, or a manifest typo, fails the build instead of
+     * showing the error placeholder in the browser. The entry is the output of
+     * {@code @module-federation/vite}: each expose appears as a quoted
+     * {@code ./Name} key followed by an {@code import("./assets/...")} of its
+     * chunk.
+     */
+    @Test
+    public void frontendBundleExposesEveryManifestEntry() throws Exception {
+        ModuleManifest manifest = manifest();
+        if (manifest.getFrontend() == null || "true".equals(System.getProperty("skipFrontend"))) {
+            return;
+        }
+        String assetRoot = "/META-INF/resources/modules/" + manifest.getId() + "/";
+        String entry;
+        try (InputStream in = getClass().getResourceAsStream(assetRoot + manifest.getFrontend().getEntry())) {
+            assertNotNull(
+                    "frontend entry " + assetRoot + manifest.getFrontend().getEntry() + " is not on the classpath", in);
+            entry = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        List<String> problems = new ArrayList<>();
+        for (String expose : manifestExposes(manifest)) {
+            Matcher key = Pattern.compile("[\"'`]" + Pattern.quote(expose) + "[\"'`]\\s*:").matcher(entry);
+            if (!key.find()) {
+                problems.add("expose '" + expose + "' is not in " + manifest.getFrontend().getEntry()
+                        + "; the manifest names a page or slot the frontend does not expose");
+                continue;
+            }
+            Matcher chunk = Pattern.compile("import\\([\"'`]\\./(assets/[^\"'`]+)[\"'`]\\)").matcher(entry);
+            if (!chunk.find(key.end())) {
+                problems.add("expose '" + expose + "' has no chunk import in " + manifest.getFrontend().getEntry());
+            } else if (getClass().getResource(assetRoot + chunk.group(1)) == null) {
+                problems.add("expose '" + expose + "' imports " + chunk.group(1) + ", which is not in the bundle");
+            }
+        }
+        assertNoProblems(problems);
+    }
+
+    private static List<String> manifestExposes(ModuleManifest manifest) {
+        List<String> exposes = new ArrayList<>();
+        for (FrontendSection.RouteDeclaration route : manifest.getFrontend().getRoutes()) {
+            if (route.getExpose() != null && !exposes.contains(route.getExpose())) {
+                exposes.add(route.getExpose());
+            }
+        }
+        for (FrontendSection.SlotDeclaration slot : manifest.getFrontend().getSlots()) {
+            if (slot.getExpose() != null && !exposes.contains(slot.getExpose())) {
+                exposes.add(slot.getExpose());
+            }
+        }
+        return exposes;
     }
 
     private String manifestText() {
