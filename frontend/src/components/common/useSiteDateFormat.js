@@ -1,7 +1,7 @@
 import { useCallback, useContext, useRef } from "react";
 import { useIntl } from "react-intl";
 import { isValid, parse } from "date-fns";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext } from "../layout/contexts";
 import { labNow } from "../utils/labClock";
 
 export default function useSiteDateFormat() {
