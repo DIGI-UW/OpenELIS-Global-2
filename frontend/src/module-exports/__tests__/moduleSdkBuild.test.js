@@ -113,6 +113,7 @@ describe("the module build preset (OGC-1641)", () => {
       },
       remotes: { openelis_core: coreRemote() },
       shared: sharedForModule(),
+      experiments: { externalRuntime: true },
       dts: false,
     });
     expect(Object.values(remote.shared).every((s) => s.import === false)).toBe(

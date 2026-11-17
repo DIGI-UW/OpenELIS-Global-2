@@ -14,8 +14,10 @@ import {
   UserSessionDetailsContext,
   testSession,
 } from "./contexts.js";
+import moduleSdk from "../package.json";
 
-export const FRONTEND_CONTRACT_VERSION = "1.0.0";
+// The same value the shell exports: the SDK's version is the contract version.
+export const FRONTEND_CONTRACT_VERSION = moduleSdk.version;
 
 export const apiCalls = [];
 export const apiResponses = {};

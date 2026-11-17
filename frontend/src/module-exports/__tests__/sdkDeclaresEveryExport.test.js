@@ -3,6 +3,7 @@ import path from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import federation from "../../../module-federation.config.js";
+import { federationOptionsFor } from "../../../packages/module-sdk/build.js";
 import {
   CORE_ENTRY_POINTS,
   sharedForModule,
@@ -90,5 +91,14 @@ describe("@openelis/module-sdk declarations", () => {
     for (const [name, options] of Object.entries(forModule)) {
       expect(options).toEqual({ ...sharedSingletons[name], import: false });
     }
+  });
+
+  it("has the shell provide the federation runtime that a preset-built module leaves out (contract 1.1)", () => {
+    // A module built with externalRuntime throws at load on a shell without
+    // provideExternalRuntime; nothing else in the unit tests or CI's E2E run
+    // (no module installed) would notice the shell side going missing.
+    expect(federation.experiments).toEqual({ provideExternalRuntime: true });
+    const remote = federationOptionsFor({ id: "any-module", frontend: {} });
+    expect(remote.experiments).toEqual({ externalRuntime: true });
   });
 });
