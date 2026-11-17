@@ -9,7 +9,11 @@ import {
 } from "@carbon/react";
 import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  parseIsoDate,
+  toLocalIsoDate,
+} from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { formatActionType } from "../../nonconform/common/actionTypes";
 import QASimpleTable from "../common/QASimpleTable";
@@ -220,7 +224,10 @@ const CapaRegister = () => {
             <DatePicker
               datePickerType="range"
               dateFormat="Y-m-d"
-              value={[range.fromDate, range.toDate]}
+              value={[
+                parseIsoDate(range.fromDate) || "",
+                parseIsoDate(range.toDate) || "",
+              ]}
               onChange={(dates) => {
                 setPage(0);
                 setRange({
