@@ -28,6 +28,7 @@ import {
 import { NotificationContext } from "../../../layout/Layout";
 import useDomains from "../../../common/useDomains";
 import ActivationAckModal from "./ActivationAckModal";
+import { priceErrorId } from "../priceValidation";
 
 /**
  * OGC-949 / OGC-1112 — Basic Info section.
@@ -310,6 +311,7 @@ const BasicInfoSection = ({ testId }) => {
   const editSampleTypesMissing = form
     ? editSampleTypeIds.length === 0 && (!!form.active || !!form.orderable)
     : false;
+  const priceError = form ? priceErrorId(form.priceRupees) : null;
 
   // ── Create (FR-2/FR-3/FR-4) ───────────────────────────────────────────────
 
@@ -766,6 +768,19 @@ const BasicInfoSection = ({ testId }) => {
         onChange={(e) => update({ description: e.target.value })}
         rows={2}
       />
+      <TextInput
+        id="basic-info-price"
+        labelText={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.price",
+        })}
+        helperText={intl.formatMessage({
+          id: "helper.testCatalog.basicInfo.price",
+        })}
+        value={form.priceRupees || ""}
+        onChange={(e) => update({ priceRupees: e.target.value })}
+        invalid={!!priceError}
+        invalidText={priceError ? intl.formatMessage({ id: priceError }) : ""}
+      />
 
       <ComboBox
         id="basic-info-edit-lab-unit"
@@ -1066,7 +1081,8 @@ const BasicInfoSection = ({ testId }) => {
             timeHoldingInvalid ||
             invalidThresholds.length > 0 ||
             editSampleTypesMissing ||
-            editIncompatibleTypes.length > 0
+            editIncompatibleTypes.length > 0 ||
+            !!priceError
           }
           onClick={handleSave}
         >

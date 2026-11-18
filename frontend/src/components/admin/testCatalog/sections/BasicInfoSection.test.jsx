@@ -1032,3 +1032,51 @@ describe("BasicInfoSection holding time, report and QC fields", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("BasicInfoSection price", () => {
+  const withSavedPrice = (priceRupees) => {
+    const base = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      base(url, (data) =>
+        cb(
+          data && !Array.isArray(data) && data.code === "GLU"
+            ? { ...data, priceRupees }
+            : data,
+        ),
+      ),
+    );
+  };
+
+  it("shows the saved price", async () => {
+    withSavedPrice("250.00");
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    expect(document.querySelector("#basic-info-price")).toHaveValue("250.00");
+  });
+
+  it("saves a changed price with the basic info", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    fireEvent.change(document.querySelector("#basic-info-price"), {
+      target: { value: "499.50" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(putToOpenElisServerJsonResponse).toHaveBeenCalled());
+    expect(JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]).priceRupees).toBe(
+      "499.50",
+    );
+  });
+
+  it("a bad price shows why and blocks Save", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    fireEvent.change(document.querySelector("#basic-info-price"), {
+      target: { value: "10.555" },
+    });
+    expect(screen.getByText(messages["error.price.decimals"])).toBeVisible();
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    fireEvent.click(save);
+    expect(putToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+  });
+});

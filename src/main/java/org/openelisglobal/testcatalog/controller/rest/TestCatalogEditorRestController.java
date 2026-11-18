@@ -29,6 +29,7 @@ import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.qc.valueholder.TestQcThreshold;
+import org.openelisglobal.payment.Money;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.spring.util.SpringContext;
@@ -704,6 +705,8 @@ public class TestCatalogEditorRestController {
         public String lastupdated;
         public String messageKey;
         public Map<String, Object> messageArgs;
+        // Price in rupees as entered (e.g. "1234.50"). Null = not sent; blank = clear.
+        public String priceRupees;
     }
 
     @GetMapping(value = "/tests/{testId}/basic-info", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -734,6 +737,16 @@ public class TestCatalogEditorRestController {
         boolean sets = body.collectedInSets == null ? test.isCollectedInSets() : body.collectedInSets;
         if (!List.of("CULTURE", "DIRECT", "CASE").contains(role) || (sets && (!opensCase || !"CULTURE".equals(role)))) {
             return ResponseEntity.unprocessableEntity().build();
+        }
+        // Parse the price up front so a bad value refuses the whole request before any
+        // change.
+        Long pricePaise = null;
+        if (body.priceRupees != null) {
+            try {
+                pricePaise = Money.parseRupeesToPaise(body.priceRupees);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
         }
         // OGC-1145 FR-1/2/3 — validate the sample-type set up front so a rejected
         // request leaves the test untouched. Absent list + blank scalar means the
@@ -805,6 +818,9 @@ public class TestCatalogEditorRestController {
         }
         if (body.orderable != null) {
             test.setOrderable(body.orderable);
+        }
+        if (body.priceRupees != null) {
+            test.setPricePaise(pricePaise);
         }
         if (body.timeHolding != null) {
             test.setTimeHolding(isBlank(body.timeHolding) ? null : body.timeHolding.trim());
@@ -1053,6 +1069,7 @@ public class TestCatalogEditorRestController {
         info.qcRpdThreshold = thresholdText(threshold == null ? null : threshold.getRpdThreshold());
         info.qcRecoveryWindowPct = thresholdText(threshold == null ? null : threshold.getRecoveryWindowPct());
         info.lastupdated = StaleSaveGuard.token(test.getLastupdated());
+        info.priceRupees = Money.formatPaiseAsRupees(test.getPricePaise());
         return info;
     }
 
@@ -2492,6 +2509,8 @@ public class TestCatalogEditorRestController {
         public String domain;
         public boolean active;
         public Integer sortOrder;
+        /** Price in rupees (e.g. "1234.50"); null when unpriced. */
+        public String priceRupees;
         public int testCount;
         /** Derived from the member tests — panels store no sample types. */
         public List<String> sampleTypes = new ArrayList<>();
@@ -2598,6 +2617,7 @@ public class TestCatalogEditorRestController {
         o.name = p.getPanelName();
         o.description = p.getDescription();
         o.loinc = p.getLoinc();
+        o.priceRupees = Money.formatPaiseAsRupees(p.getPricePaise());
         o.domain = Domain.normalize(p.getDomain());
         o.active = "Y".equals(p.getIsActive());
         o.sortOrder = p.getSortOrderInt();
@@ -2652,6 +2672,8 @@ public class TestCatalogEditorRestController {
         public String description;
         public String domain;
         public Boolean active;
+        // Price in rupees as entered. Null = not sent; blank = clear.
+        public String priceRupees;
     }
 
     /** getPanelById throws on unknown AND non-numeric ids — both are a 404. */
@@ -2932,6 +2954,15 @@ public class TestCatalogEditorRestController {
             return ResponseEntity.notFound().build();
         }
         String sysUserId = ControllerUtills.getSysUserId(request);
+        // Parse the price before any change so a bad value refuses the whole request.
+        Long pricePaise = null;
+        if (body.priceRupees != null) {
+            try {
+                pricePaise = Money.parseRupeesToPaise(body.priceRupees);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+        }
 
         String name = body.name == null ? null : body.name.trim();
         boolean renamed = name != null && !name.equals(panel.getPanelName());
@@ -2996,6 +3027,9 @@ public class TestCatalogEditorRestController {
         }
         if (body.active != null) {
             panel.setIsActive(body.active ? "Y" : "N");
+        }
+        if (body.priceRupees != null) {
+            panel.setPricePaise(pricePaise);
         }
         panel.setSysUserId(sysUserId);
         panelService.update(panel);

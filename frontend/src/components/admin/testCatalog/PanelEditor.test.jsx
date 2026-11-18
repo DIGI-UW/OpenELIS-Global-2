@@ -229,6 +229,7 @@ describe("PanelBasicInfoSection (FRS rules)", () => {
         description: "Chem bundle",
         domain: "CLINICAL",
         active: true,
+        priceRupees: "",
       }),
       expect.any(Function),
     );
@@ -353,5 +354,47 @@ describe("PanelBasicInfoSection (FRS rules)", () => {
       JSON.stringify({ name: "Anemia Workup", active: false }),
       expect.any(Function),
     );
+  });
+
+  it("a valid price is sent with the basic info", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    fireEvent.change(document.querySelector("#panel-price"), {
+      target: { value: "400.50" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    expect(putToOpenElisServerFullResponse).toHaveBeenCalledWith(
+      "/rest/test-catalog/panels/1/basic-info",
+      expect.stringContaining('"priceRupees":"400.50"'),
+      expect.any(Function),
+    );
+  });
+
+  it("a bad price shows why and blocks Save", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    fireEvent.change(document.querySelector("#panel-price"), {
+      target: { value: "1e5" },
+    });
+    expect(screen.getByText(messages["error.price.format"])).toBeVisible();
+    const save = screen.getByRole("button", { name: /^save$/i });
+    expect(save).toBeDisabled();
+    fireEvent.click(save);
+    expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
+  });
+
+  it("a new panel with a bad price is never created", async () => {
+    mockParams = { panelId: "new", section: "basic-info" };
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    fireEvent.change(document.querySelector("#panel-name"), {
+      target: { value: "Anemia Workup" },
+    });
+    fireEvent.change(document.querySelector("#panel-price"), {
+      target: { value: "2000000" },
+    });
+    expect(screen.getByText(messages["error.price.max"])).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
   });
 });

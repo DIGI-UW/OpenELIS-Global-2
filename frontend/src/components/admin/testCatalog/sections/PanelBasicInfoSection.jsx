@@ -18,6 +18,7 @@ import {
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
+import { priceErrorId } from "../priceValidation";
 
 /**
  * OGC-224 — Panel editor · Basic Info (FRS v2.2).
@@ -52,6 +53,7 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
     isCreate ? "CLINICAL" : panel?.domain || "CLINICAL",
   );
   const [active, setActive] = useState(isCreate ? false : !!panel?.active);
+  const [price, setPrice] = useState(isCreate ? "" : panel?.priceRupees || "");
   const [saving, setSaving] = useState(false);
   // OGC-1232 — the domain guard's refusal, kept on screen until the operator
   // changes the domain again or a save goes through, so the form never shows a
@@ -64,6 +66,7 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
       setDescription(panel.description || "");
       setDomain(panel.domain || "CLINICAL");
       setActive(!!panel.active);
+      setPrice(panel.priceRupees || "");
     }
   }, [panel, isCreate]);
 
@@ -97,7 +100,13 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
   const saveExisting = (panelId) => {
     putToOpenElisServerFullResponse(
       `/rest/test-catalog/panels/${panelId}/basic-info`,
-      JSON.stringify({ name: name.trim(), description, domain, active }),
+      JSON.stringify({
+        name: name.trim(),
+        description,
+        domain,
+        active,
+        priceRupees: price,
+      }),
       async (response) => {
         setSaving(false);
         if (response && response.ok) {
@@ -131,9 +140,16 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
     );
   };
 
+  // Checked before saving: a new panel is created first and its Basic Info
+  // (with the price) saved second, so a bad price must never reach the server.
+  const priceError = priceErrorId(price);
+
   const handleSave = () => {
     if (!name.trim()) {
       notify(NotificationKinds.error, "error.panel.nameRequired");
+      return;
+    }
+    if (priceError) {
       return;
     }
     setSaving(true);
@@ -262,6 +278,15 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
         value={description}
         onChange={(e) => setDescription(e.target.value)}
       />
+      <TextInput
+        id="panel-price"
+        labelText={intl.formatMessage({ id: "label.panel.price" })}
+        helperText={intl.formatMessage({ id: "helper.panel.price" })}
+        value={price}
+        onChange={(e) => setPrice(e.target.value)}
+        invalid={!!priceError}
+        invalidText={priceError ? intl.formatMessage({ id: priceError }) : ""}
+      />
       <div>
         <Toggle
           id="panel-active"
@@ -283,7 +308,11 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
         )}
       </div>
       <div>
-        <Button kind="primary" onClick={handleSave} disabled={saving}>
+        <Button
+          kind="primary"
+          onClick={handleSave}
+          disabled={saving || !!priceError}
+        >
           <FormattedMessage id="label.button.save" />
         </Button>
       </div>
