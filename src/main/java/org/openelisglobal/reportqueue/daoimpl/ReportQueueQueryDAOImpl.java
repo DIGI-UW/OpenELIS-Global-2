@@ -105,7 +105,10 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
                       OR (NOT st.awaiting_validation AND (st.added OR st.changed_or_removed OR st.micro_newer))) AS unprinted,
                      (st.version_amended OR (NOT st.awaiting_validation AND (st.changed_or_removed OR st.micro_amended))
                       OR (st.legacy AND st.any_corrected)) AS amended,
-                     (st.released_count < st.total_count) AS partial
+                     (st.released_count < st.total_count OR EXISTS (
+                        SELECT 1 FROM clinlims.micro_case mo
+                        WHERE mo.sample_id = st.sample_id AND mo.status = 'ACTIVE'
+                          AND mo.final_release_state IN ('NOT_READY', 'PRELIMINARY_RELEASED'))) AS partial
               FROM state st
             )
             """;

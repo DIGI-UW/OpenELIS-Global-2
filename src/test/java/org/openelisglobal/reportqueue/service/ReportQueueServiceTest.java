@@ -424,6 +424,28 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("PRINTED", row.getPrintStatus());
     }
 
+    @Test
+    public void anOrderStaysPartialUntilItsMicrobiologyCaseIsFinallyReleased() throws Exception {
+        release("9302");
+        MicroCase culture = openCase();
+
+        assertEquals("PARTIAL", row(list("all")).getState());
+        String text = PdfText.of(reportQueueService.print(SAMPLE, ADMIN).orElseThrow().getPdf());
+        assertTrue(text, text.contains("Results: partial report"));
+
+        microVersions.recordPreliminary(culture.getId(), microReport("Ampicillin"), ADMIN);
+        setReleaseState(culture, "PRELIMINARY_RELEASED");
+        assertEquals("PARTIAL", row(list("all")).getState());
+        text = PdfText.of(reportQueueService.print(SAMPLE, ADMIN).orElseThrow().getPdf());
+        assertTrue(text, text.contains("Escherichia coli") && text.contains("Results: partial report"));
+
+        microVersions.recordInitialFinal(culture.getId(), microReport("Ampicillin"), ADMIN);
+        setReleaseState(culture, "FINAL_RELEASED");
+        assertEquals("FINAL", row(list("all")).getState());
+        text = PdfText.of(reportQueueService.print(SAMPLE, ADMIN).orElseThrow().getPdf());
+        assertTrue(text, text.contains("Results: final report"));
+    }
+
     @After
     public void removeMicrobiology() {
         String cases = "(SELECT id FROM clinlims.micro_case WHERE sample_id = 9301)";
