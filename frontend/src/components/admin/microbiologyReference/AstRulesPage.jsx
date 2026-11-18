@@ -73,6 +73,12 @@ const noteWhens = {
   WHEN_S: "noteWhenS",
 };
 
+const indications = {
+  MENINGITIS: "MENINGITIS",
+  ENDOCARDITIS: "ENDOCARDITIS",
+  NON_MENINGITIS: "neither",
+};
+
 const displayValue = (value) => {
   if (value === null || value === undefined) return "";
   if (Array.isArray(value)) return value.join(", ");
@@ -83,6 +89,16 @@ export default function AstRulesPage() {
   const intl = useIntl();
   const t = (key) =>
     intl.formatMessage({ id: `microbiology.admin.astRules.${key}` });
+  const indication = (key) =>
+    intl.formatMessage({ id: `microbiology.m6.clinicalContext.${key}` });
+  const indicationItems = (
+    <>
+      <SelectItem value="" text={t("any")} />
+      {Object.entries(indications).map(([value, key]) => (
+        <SelectItem key={value} value={value} text={indication(key)} />
+      ))}
+    </>
+  );
   const [rules, setRules] = useState([]);
   const [interpretationRules, setInterpretationRules] = useState([]);
   const [settings, setSettings] = useState({});
@@ -397,8 +413,8 @@ export default function AstRulesPage() {
                       : t("anySampleType")}
                   </TableCell>
                   <TableCell>
-                    {rule.clinicalContext === "NON_MENINGITIS"
-                      ? t("nonMeningitis")
+                    {rule.clinicalContext
+                      ? indication(rule.clinicalContext)
                       : t("any")}
                   </TableCell>
                   <TableCell>{t(behaviors[rule.reportBehavior])}</TableCell>
@@ -638,8 +654,7 @@ export default function AstRulesPage() {
                 }
                 disabled={busy}
               >
-                <SelectItem value="" text={t("any")} />
-                <SelectItem value="NON_MENINGITIS" text={t("nonMeningitis")} />
+                {indicationItems}
               </Select>
               <Select
                 id="reporting-rule-report-behavior"
@@ -770,8 +785,7 @@ export default function AstRulesPage() {
             changePreview({ ...preview, clinicalContext: event.target.value })
           }
         >
-          <SelectItem value="" text={t("any")} />
-          <SelectItem value="NON_MENINGITIS" text={t("nonMeningitis")} />
+          {indicationItems}
         </Select>
         {preview.readings.map((reading, index) => (
           <div key={index}>

@@ -169,6 +169,80 @@ it("adds a rule and reloads the table", async () => {
   await waitFor(() => expect(getReportingRules).toHaveBeenCalledTimes(2));
 });
 
+const indications = [
+  "Any",
+  "Meningitis",
+  "Endocarditis",
+  "Neither (other than meningitis or endocarditis)",
+];
+const optionNames = (select) =>
+  within(select)
+    .getAllByRole("option")
+    .map((option) => option.textContent);
+
+it("offers every indication in the rule editor and saves the chosen one", async () => {
+  saveReportingRule.mockResolvedValue({});
+  show();
+  fireEvent.click(await screen.findByRole("button", { name: "Add rule" }));
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.change(await within(dialog).findByLabelText("Antibiotic"), {
+    target: { value: "amk" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Organism group"), {
+    target: { value: "Enterobacterales" },
+  });
+  const indication = within(dialog).getByLabelText("Indication");
+  expect(optionNames(indication)).toEqual(indications);
+  fireEvent.change(indication, { target: { value: "ENDOCARDITIS" } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+  await waitFor(() =>
+    expect(saveReportingRule).toHaveBeenCalledWith(
+      expect.objectContaining({ clinicalContext: "ENDOCARDITIS" }),
+    ),
+  );
+});
+
+it("names each rule's indication in the list", async () => {
+  getReportingRules.mockResolvedValue([
+    { ...rule, id: "r1", antibioticName: "Ceftriaxone", clinicalContext: null },
+    {
+      ...rule,
+      id: "r2",
+      antibioticName: "Amikacin",
+      clinicalContext: "MENINGITIS",
+    },
+    {
+      ...rule,
+      id: "r3",
+      antibioticName: "Gentamicin",
+      clinicalContext: "ENDOCARDITIS",
+    },
+    {
+      ...rule,
+      id: "r4",
+      antibioticName: "Ampicillin",
+      clinicalContext: "NON_MENINGITIS",
+    },
+  ]);
+  show();
+  const table = await screen.findByRole("table", { name: "Reporting rules" });
+  const indicationOf = (antibiotic) =>
+    within(within(table).getByText(antibiotic).closest("tr")).getAllByRole(
+      "cell",
+    )[2].textContent;
+  expect({
+    Ceftriaxone: indicationOf("Ceftriaxone"),
+    Amikacin: indicationOf("Amikacin"),
+    Gentamicin: indicationOf("Gentamicin"),
+    Ampicillin: indicationOf("Ampicillin"),
+  }).toEqual({
+    Ceftriaxone: "Any",
+    Amikacin: "Meningitis",
+    Gentamicin: "Endocarditis",
+    Ampicillin: "Neither meningitis nor endocarditis",
+  });
+});
+
 it("shows the cascade fields only for a Cascade rule", async () => {
   show();
   fireEvent.click(await screen.findByRole("button", { name: "Add rule" }));
@@ -495,6 +569,21 @@ it("previews what an isolate would report and why", async () => {
   ).not.toBeInTheDocument();
   expect(within(result).getByText("Consider meropenem")).toBeInTheDocument();
   expect(screen.getByText("Default panel: Gram neg stamp")).toBeInTheDocument();
+});
+
+it("previews for every indication", async () => {
+  previewReportingRules.mockResolvedValue({ defaultPanelName: null, rows: [] });
+  show();
+  await pickPreviewOrganism();
+  const indication = screen.getByLabelText("Preview indication");
+  expect(optionNames(indication)).toEqual(indications);
+  fireEvent.change(indication, { target: { value: "MENINGITIS" } });
+  fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+  await waitFor(() =>
+    expect(previewReportingRules).toHaveBeenCalledWith(
+      expect.objectContaining({ clinicalContext: "MENINGITIS" }),
+    ),
+  );
 });
 
 it("previews only once an organism is picked and shows results as S, I or R", async () => {
