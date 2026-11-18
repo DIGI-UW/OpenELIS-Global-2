@@ -257,10 +257,10 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
                 "ZONE", null, "ZONE", null, null).orElseThrow();
         assertNull(blocking.getSusceptibleValue());
         assertNull(blocking.getResistantValue());
-        assertNull(
-                rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null, "ZONE"));
-        assertNull(rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null,
-                "ZONE", null, "30ug"));
+        assertNull(rules.findBestRule(standard.getId(), organism.getId(), java.util.Set.of(), antibiotic.getId(),
+                "ZONE", null, "ZONE"));
+        assertNull(rules.findContextualRule(standard.getId(), organism.getId(), java.util.Set.of(), antibiotic.getId(),
+                "ZONE", null, "ZONE", null, "30ug"));
     }
 
     @Test
@@ -1781,15 +1781,25 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         String drug = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow().getId();
         whonetRule(fixture, drug, "GENUS_CODE", "STA", "2");
         whonetRule(fixture, drug, "WHONET_ORG_CODE", "sau", null);
+        var edition = standard(fixture);
+        edition.setIsActive("Y");
+        edition.setLifecycleStatus("ACTIVE");
+        standards.update(edition);
+        try {
+            var coverage = referenceAdmin.getPanelOrganismCoverage(java.util.List.of(drug), "GENERAL");
 
-        var coverage = referenceAdmin.getPanelOrganismCoverage(java.util.List.of(drug), "GENERAL");
-
-        java.util.function.Function<String, Integer> covered = name -> coverage.stream()
-                .filter(row -> row.value.equals(name)).findFirst().orElseThrow().covered;
-        assertEquals(Integer.valueOf(1), covered.apply("Staphylococcus epidermidis"));
-        assertEquals("A closer rule without values means no breakpoint", Integer.valueOf(0),
-                covered.apply("Staphylococcus aureus ss. aureus"));
-        assertEquals(Integer.valueOf(0), covered.apply("Escherichia coli"));
+            java.util.function.Function<String, Integer> covered = name -> coverage.stream()
+                    .filter(row -> row.value.equals(name)).findFirst().orElseThrow().covered;
+            assertEquals(Integer.valueOf(1), covered.apply("Staphylococcus epidermidis"));
+            assertEquals("A closer rule without values means no breakpoint", Integer.valueOf(0),
+                    covered.apply("Staphylococcus aureus ss. aureus"));
+            assertEquals(Integer.valueOf(0), covered.apply("Escherichia coli"));
+        } finally {
+            var loadedAgain = standard(fixture);
+            loadedAgain.setIsActive("N");
+            loadedAgain.setLifecycleStatus("LOADED");
+            standards.update(loadedAgain);
+        }
     }
 
     private void loadWhonetOrganisms(String rows) throws Exception {
