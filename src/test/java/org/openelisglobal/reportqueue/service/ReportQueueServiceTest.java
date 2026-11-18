@@ -29,6 +29,17 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.form.MicroPatientReportForm;
+import org.openelisglobal.microbiology.service.MicroPatientReportService;
+import org.openelisglobal.microbiology.service.MicroReportProjectionResult;
+import org.openelisglobal.microbiology.service.MicroReportVersionService;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
+import org.openelisglobal.microbiology.valueholder.MicroCaseRole;
 import org.openelisglobal.reportqueue.dao.ReportQueueCriteria;
 import org.openelisglobal.reportqueue.dao.ReportQueueQueryDAO;
 import org.openelisglobal.reportqueue.dto.ReportQueuePageDTO;
@@ -37,6 +48,7 @@ import org.openelisglobal.reportqueue.dto.ReportQueueRequest;
 import org.openelisglobal.reportqueue.dto.ReportQueueRowDTO;
 import org.openelisglobal.reportqueue.dto.ReportQueueRowDetailDTO;
 import org.openelisglobal.reportqueue.service.ReportQueueService.PrintOutcome;
+import org.openelisglobal.testsupport.PdfText;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -67,6 +79,21 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private UserRoleService userRoleService;
+
+    @Autowired
+    private MicroCaseDAO microCases;
+
+    @Autowired
+    private MicroCaseAnalysisDAO microCaseAnalyses;
+
+    @Autowired
+    private MicroCaseAmendmentDAO microCaseAmendments;
+
+    @Autowired
+    private MicroReportVersionService microVersions;
+
+    @Autowired
+    private MicroPatientReportService microPatientReports;
 
     private String originalBillingLabel;
 
@@ -342,6 +369,70 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
                 "SELECT change_summary FROM clinlims.report_version WHERE sample_id = ? AND version = 2", String.class,
                 SAMPLE);
         assertTrue(summary, summary.contains("Removed"));
+    }
+
+    @Test
+    public void aMicrobiologyFinalReleaseAfterAPrintIsPrintedAsANewVersion() throws Exception {
+        release("9302");
+        MicroCase culture = openCase();
+        reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+
+        microVersions.recordInitialFinal(culture.getId(), microReport("Ampicillin"), ADMIN);
+        setReleaseState(culture, "FINAL_RELEASED");
+
+        ReportQueueRowDTO row = row(list("all"));
+        assertEquals("UNPRINTED", row.getPrintStatus());
+        assertEquals("FINAL", row.getState());
+        PrintOutcome second = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        assertEquals(2, second.getVersion());
+        assertFalse(second.isReprint());
+        assertEquals(Boolean.FALSE,
+                jdbcTemplate.queryForObject(
+                        "SELECT amended FROM clinlims.report_version WHERE sample_id = ? AND version = 2",
+                        Boolean.class, SAMPLE));
+        String text = PdfText.of(second.getPdf());
+        assertTrue(text, text.contains("Escherichia coli"));
+        PrintOutcome third = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        assertTrue(third.isReprint());
+        assertEquals(2, third.getVersion());
+    }
+
+    @Test
+    public void anAmendedMicrobiologyReportAmendsTheOrderAndReachesThePdf() throws Exception {
+        MicroCase culture = openCase();
+        microVersions.recordInitialFinal(culture.getId(), microReport("Ampicillin"), ADMIN);
+        setReleaseState(culture, "FINAL_RELEASED");
+        PrintOutcome first = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        assertFalse(PdfText.of(first.getPdf()).contains("Ceftriaxone"));
+
+        microVersions.recordAmendedFinal(amendment(culture), microReport("Ampicillin", "Ceftriaxone"), ADMIN);
+
+        ReportQueueRowDTO row = row(list("all"));
+        assertEquals("AMENDED", row.getState());
+        assertEquals("UNPRINTED", row.getPrintStatus());
+        assertEquals(1, list("all").getAmendedToPrint());
+        PrintOutcome amended = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        assertEquals(2, amended.getVersion());
+        assertEquals(Boolean.TRUE,
+                jdbcTemplate.queryForObject(
+                        "SELECT amended FROM clinlims.report_version WHERE sample_id = ? AND version = 2",
+                        Boolean.class, SAMPLE));
+        String text = PdfText.of(amended.getPdf());
+        assertTrue(text, text.contains("Ceftriaxone"));
+        row = row(list("all"));
+        assertEquals("AMENDED", row.getState());
+        assertEquals("PRINTED", row.getPrintStatus());
+    }
+
+    @After
+    public void removeMicrobiology() {
+        String cases = "(SELECT id FROM clinlims.micro_case WHERE sample_id = 9301)";
+        jdbcTemplate.update("DELETE FROM clinlims.micro_report_version_source WHERE report_version_id IN"
+                + " (SELECT id FROM clinlims.micro_report_version WHERE case_id IN " + cases + ")");
+        jdbcTemplate.update("DELETE FROM clinlims.micro_report_version WHERE case_id IN " + cases);
+        jdbcTemplate.update("DELETE FROM clinlims.micro_case_amendment WHERE case_id IN " + cases);
+        jdbcTemplate.update("DELETE FROM clinlims.micro_case_analysis WHERE case_id IN " + cases);
+        jdbcTemplate.update("DELETE FROM clinlims.micro_case WHERE sample_id = 9301");
     }
 
     @Test
@@ -726,6 +817,57 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
                 "UPDATE clinlims.analysis SET status_id = CAST(? AS numeric), corrected = true, lastupdated = now()"
                         + " WHERE id = CAST(? AS numeric)",
                 statusService.getStatusID(AnalysisStatus.TechnicalAcceptance), analysisId);
+    }
+
+    private MicroCase openCase() {
+        MicroCase microCase = new MicroCase();
+        microCase.setSampleId(String.valueOf(SAMPLE));
+        microCase.setSampleItemId("9301");
+        microCase.setLabUnitId("9301");
+        microCase.setCreatedBy(ADMIN);
+        microCases.insert(microCase);
+        MicroCaseAnalysis gram = new MicroCaseAnalysis();
+        gram.setCaseId(microCase.getId());
+        gram.setAnalysisId("9301");
+        gram.setCaseRole(MicroCaseRole.DIRECT);
+        gram.setPlacement("INITIAL");
+        microCaseAnalyses.insert(gram);
+        return microCase;
+    }
+
+    private MicroReportProjectionResult microReport(String... agents) {
+        MicroPatientReportForm report = new MicroPatientReportForm();
+        report.labUnitId = "9301";
+        report.labUnitName = "Chemistry";
+        report.classification = "NOT_APPLICABLE";
+        List<MicroPatientReportForm.Susceptibility> rows = new ArrayList<>();
+        for (String agent : agents) {
+            rows.add(new MicroPatientReportForm.Susceptibility(agent, agent, agent, "run", "1", "mg/L", "RESISTANT",
+                    "EUCAST", "2026", "EXACT"));
+        }
+        report.isolates
+                .add(new MicroPatientReportForm.Isolate("isolate", "ISO-1", "Escherichia coli", rows, rows.size()));
+        MicroReportProjectionResult projection = new MicroReportProjectionResult("ISO-1: Escherichia coli", true,
+                List.of());
+        projection.structuredContent = microPatientReports.encode(report);
+        return projection;
+    }
+
+    private void setReleaseState(MicroCase microCase, String state) {
+        jdbcTemplate.update("UPDATE clinlims.micro_case SET final_release_state = ? WHERE id = ?", state,
+                microCase.getId());
+    }
+
+    private MicroCaseAmendment amendment(MicroCase microCase) {
+        MicroCaseAmendment amendment = new MicroCaseAmendment();
+        amendment.setCaseId(microCase.getId());
+        amendment.setSequenceNumber(1);
+        amendment.setStatus("RELEASED");
+        amendment.setReason("Ceftriaxone added");
+        amendment.setOpenedAt(new Timestamp(System.currentTimeMillis()));
+        amendment.setOpenedBy(ADMIN);
+        microCaseAmendments.insert(amendment);
+        return amendment;
     }
 
     private void insertLegacyVersion(String issuedAt) {

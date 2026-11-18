@@ -86,7 +86,15 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
                         JOIN clinlims.sample_item si3 ON si3.id = a3.sampitem_id
                         WHERE si3.samp_id = sc.sample_id AND a3.status_id = :finalized
                           AND NOT EXISTS (SELECT 1 FROM clinlims.report_version_item i2
-                                          WHERE i2.report_version_id = lv.id AND i2.analysis_id = a3.id))) AS added
+                                          WHERE i2.report_version_id = lv.id AND i2.analysis_id = a3.id))) AS added,
+                     EXISTS (SELECT 1 FROM clinlims.micro_report_version mv
+                             JOIN clinlims.micro_case mc ON mc.id = mv.case_id
+                             WHERE mc.sample_id = sc.sample_id AND mv.structured_content IS NOT NULL
+                               AND mv.released_at > lv.issued_at) AS micro_newer,
+                     EXISTS (SELECT 1 FROM clinlims.micro_report_version mv
+                             JOIN clinlims.micro_case mc ON mc.id = mv.case_id
+                             WHERE mc.sample_id = sc.sample_id AND mv.structured_content IS NOT NULL
+                               AND mv.released_at > lv.issued_at AND mv.release_type = 'AMENDED') AS micro_amended
               FROM scope sc
               LEFT JOIN lastv lv ON lv.sample_id = sc.sample_id
             ),
@@ -94,8 +102,8 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
               SELECT st.*,
                      (st.version_id IS NULL
                       OR (st.legacy AND st.latest_release > st.issued_at)
-                      OR (NOT st.awaiting_validation AND (st.added OR st.changed_or_removed))) AS unprinted,
-                     (st.version_amended OR (NOT st.awaiting_validation AND st.changed_or_removed)
+                      OR (NOT st.awaiting_validation AND (st.added OR st.changed_or_removed OR st.micro_newer))) AS unprinted,
+                     (st.version_amended OR (NOT st.awaiting_validation AND (st.changed_or_removed OR st.micro_amended))
                       OR (st.legacy AND st.any_corrected)) AS amended,
                      (st.released_count < st.total_count) AS partial
               FROM state st
