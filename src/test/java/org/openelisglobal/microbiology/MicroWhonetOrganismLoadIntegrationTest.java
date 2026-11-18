@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -116,6 +117,35 @@ public class MicroWhonetOrganismLoadIntegrationTest extends BaseWebContextSensit
 
         assertEquals("kl-", coded("kl-").getWhonetCode());
         assertEquals("Enterobacterales", coded("kl-").getOrganismGroup());
+    }
+
+    @Test
+    public void aWhonetOrganismIsSavedWithNoGroupOrSignificance() throws Exception {
+        load();
+        MicroOrganismAdminForm form = admin.getOrganism(coded("kl-").getId());
+        form.notes = "Seen in wound swabs";
+
+        admin.saveOrganism(form.id, form, "1");
+
+        assertEquals("Seen in wound swabs", coded("kl-").getNotes());
+        assertNull(coded("kl-").getOrganismGroup());
+        assertNull(coded("kl-").getInitialSignificance());
+    }
+
+    @Test
+    public void emptyingTheGroupAndSignificanceClearsThem() throws Exception {
+        load();
+        MicroOrganismAdminForm form = admin.getOrganism(coded("kl-").getId());
+        form.organismGroup = "Enterobacterales";
+        form.initialSignificance = "USUALLY";
+        admin.saveOrganism(form.id, form, "1");
+        form.organismGroup = "";
+        form.initialSignificance = "";
+
+        admin.saveOrganism(form.id, form, "1");
+
+        assertNull(coded("kl-").getOrganismGroup());
+        assertNull(coded("kl-").getInitialSignificance());
     }
 
     @Test

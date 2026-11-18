@@ -92,8 +92,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         }
         String name = requireText(request.displayName, "displayName");
         String code = normalizeOrganismCode(request.whonetCode);
-        requireText(request.organismGroup, "organismGroup");
-        requireText(request.initialSignificance, "initialSignificance");
         assertAvailable(organismDAO.findByDisplayNameIgnoreCase(name), id, "Organism name is already in use");
         assertAvailable(organismDAO.findByWhonetCodeIgnoreCase(code), id, "WHONET code is already in use");
 
@@ -103,11 +101,12 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         organism.setShortName(trimToNull(request.shortName));
         organism.setWhonetCode(code);
         organism.setOclCode(trimToNull(request.oclCode));
-        organism.setOrganismGroup(request.organismGroup.trim());
+        organism.setOrganismGroup(trimToNull(request.organismGroup));
         organism.setSusceptibilityProtocol(
                 MicroTbResistanceClassifier.Protocol.valueOf(request.susceptibilityProtocol).name());
         organism.setGramStain(trimToNull(request.gramStain));
-        organism.setInitialSignificance(request.initialSignificance.trim().toUpperCase(Locale.ROOT));
+        String significance = trimToNull(request.initialSignificance);
+        organism.setInitialSignificance(significance == null ? null : significance.toUpperCase(Locale.ROOT));
         organism.setDefaultAstPanelId(trimToNull(request.defaultAstPanelId));
         organism.setNotes(trimToNull(request.notes));
         organism.setIsActive(request.active ? "Y" : "N");
