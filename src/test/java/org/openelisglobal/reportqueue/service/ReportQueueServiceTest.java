@@ -35,6 +35,7 @@ import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.form.MicroPatientReportForm;
 import org.openelisglobal.microbiology.service.MicroPatientReportService;
 import org.openelisglobal.microbiology.service.MicroReportProjectionResult;
+import org.openelisglobal.microbiology.service.MicroReportProjectionService;
 import org.openelisglobal.microbiology.service.MicroReportVersionService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
@@ -94,6 +95,9 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private MicroPatientReportService microPatientReports;
+
+    @Autowired
+    private MicroReportProjectionService microProjections;
 
     private String originalBillingLabel;
 
@@ -446,6 +450,50 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
         assertTrue(text, text.contains("Results: final report"));
     }
 
+    @Test
+    public void aCultureOrderIsListedAsFinalOnceItsCaseIsFinallyReleased() throws Exception {
+        jdbcTemplate.update("UPDATE clinlims.analysis SET status_id = CAST(? AS numeric) WHERE id IN (9301, 9305)",
+                statusService.getStatusID(AnalysisStatus.Canceled));
+        MicroCase culture = emptyCase();
+        orderCulture(culture);
+        assertNull(find(list("all")));
+
+        releaseFinal(culture);
+
+        ReportQueueRowDTO row = row(list("all"));
+        assertEquals("FINAL", row.getState());
+        assertEquals("UNPRINTED", row.getPrintStatus());
+        PrintOutcome first = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        assertEquals(1, first.getVersion());
+        assertFalse(first.isReprint());
+        assertEquals(Boolean.FALSE,
+                jdbcTemplate.queryForObject(
+                        "SELECT amended FROM clinlims.report_version WHERE sample_id = ? AND version = 1",
+                        Boolean.class, SAMPLE));
+        String text = PdfText.of(first.getPdf());
+        assertTrue(text, text.contains("Escherichia coli") && text.contains("Results: final report"));
+        PrintOutcome second = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        assertTrue(second.isReprint());
+        assertEquals(1, second.getVersion());
+    }
+
+    @Test
+    public void aCultureOrderFinallyReleasedAfterAPartialPrintIsPrintedAsANewFinalVersion() {
+        MicroCase culture = openCase();
+        orderCulture(culture);
+        assertEquals("PARTIAL", row(list("all")).getState());
+        reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+
+        releaseFinal(culture);
+
+        ReportQueueRowDTO row = row(list("all"));
+        assertEquals("UNPRINTED", row.getPrintStatus());
+        assertEquals("FINAL", row.getState());
+        PrintOutcome second = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        assertEquals(2, second.getVersion());
+        assertFalse(second.isReprint());
+    }
+
     @After
     public void removeMicrobiology() {
         String cases = "(SELECT id FROM clinlims.micro_case WHERE sample_id = 9301)";
@@ -762,7 +810,7 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
 
     @After
     public void removeRequesterAndHistory() {
-        jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_id = 9301 AND reference_table = ?",
+        jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_id IN (9301, 9302) AND reference_table = ?",
                 Integer.valueOf(AnalysisServiceImpl.getTableReferenceId()));
         jdbcTemplate.update("DELETE FROM clinlims.sample_requester WHERE id = 99301");
         jdbcTemplate.update("DELETE FROM clinlims.person WHERE id = 99301");
@@ -842,19 +890,41 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
     }
 
     private MicroCase openCase() {
+        MicroCase microCase = emptyCase();
+        link(microCase, "9301", MicroCaseRole.DIRECT);
+        return microCase;
+    }
+
+    private MicroCase emptyCase() {
         MicroCase microCase = new MicroCase();
         microCase.setSampleId(String.valueOf(SAMPLE));
         microCase.setSampleItemId("9301");
         microCase.setLabUnitId("9301");
         microCase.setCreatedBy(ADMIN);
         microCases.insert(microCase);
-        MicroCaseAnalysis gram = new MicroCaseAnalysis();
-        gram.setCaseId(microCase.getId());
-        gram.setAnalysisId("9301");
-        gram.setCaseRole(MicroCaseRole.DIRECT);
-        gram.setPlacement("INITIAL");
-        microCaseAnalyses.insert(gram);
         return microCase;
+    }
+
+    private void link(MicroCase microCase, String analysisId, MicroCaseRole role) {
+        MicroCaseAnalysis link = new MicroCaseAnalysis();
+        link.setCaseId(microCase.getId());
+        link.setAnalysisId(analysisId);
+        link.setCaseRole(role);
+        link.setPlacement("INITIAL");
+        microCaseAnalyses.insert(link);
+    }
+
+    private void orderCulture(MicroCase microCase) {
+        jdbcTemplate.update("DELETE FROM clinlims.result WHERE analysis_id = 9302");
+        jdbcTemplate.update("UPDATE clinlims.analysis SET status_id = CAST(? AS numeric) WHERE id = 9302",
+                statusService.getStatusID(AnalysisStatus.NotStarted));
+        link(microCase, "9302", MicroCaseRole.CULTURE);
+    }
+
+    private void releaseFinal(MicroCase microCase) {
+        microProjections.releaseFinal(microCase.getId(), ADMIN);
+        microVersions.recordInitialFinal(microCase.getId(), microReport("Ampicillin"), ADMIN);
+        setReleaseState(microCase, "FINAL_RELEASED");
     }
 
     private MicroReportProjectionResult microReport(String... agents) {
