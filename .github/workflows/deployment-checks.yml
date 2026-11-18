@@ -20,4 +20,6 @@ jobs:
       - run: python3 -m pip install PyYAML==6.0.2
       - run: node --test .github/scripts/publish-checkpoints.test.cjs .github/scripts/publish-source.test.cjs .github/scripts/publish-release-manifest.test.cjs
       - run: python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
+      - name: Bootstrap analyzer harness config (creates volume/database/database.env)
+        run: bash projects/analyzer-harness/bootstrap.sh
       - run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
