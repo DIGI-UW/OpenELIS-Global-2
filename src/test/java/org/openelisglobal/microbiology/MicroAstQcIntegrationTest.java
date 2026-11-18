@@ -316,6 +316,19 @@ public class MicroAstQcIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(QCStatus.PENDING, inventoryLots.get(newLot.getId()).getQcStatus());
     }
 
+    @Test
+    public void aRunWhoseControlLostAQcRowIsStillReviewable() {
+        var run = start(isolate("ISO-GONE"), List.of());
+        enter(run, "4");
+        MicroAstQcResultForm recorded = qc.recordControl(run.getId(),
+                request(List.of(lot(QCStatus.PENDING).getId()), "2", "8"), writer);
+        qcResults.delete(qcResults.get(recorded.rows.get(0).qcResultId));
+        em.flush();
+        em.clear();
+
+        assertEquals(MicroAstRunStatus.REVIEWED.name(), ast.reviewRun(run.getId(), validator).getStatus());
+    }
+
     private void assertHeld(MicroAstRun run) {
         var error = assertThrows(MicroAstConflictException.class, () -> ast.reviewRun(run.getId(), validator));
         assertEquals("AST_QC_HOLD", error.getMessage());

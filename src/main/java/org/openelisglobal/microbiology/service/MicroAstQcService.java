@@ -33,8 +33,6 @@ import org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroQcRange;
-import org.openelisglobal.qaevent.service.NCEventService;
-import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qc.form.BenchQCCaptureForm;
 import org.openelisglobal.qc.service.QCControlLotService;
 import org.openelisglobal.qc.service.QCResultService;
@@ -42,7 +40,6 @@ import org.openelisglobal.qc.service.QcHoldService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCQualitativeOutcome;
 import org.openelisglobal.qc.valueholder.QCResult;
-import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.openelisglobal.qc.valueholder.QCSource;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
@@ -69,7 +66,6 @@ public class MicroAstQcService {
     private final MicroAstQcLotDAO astQcLots;
     private final MicroInventoryUsageLinkDAO usageLinks;
     private final InventoryLotService inventoryLots;
-    private final NCEventService ncEvents;
     private final QcHoldService qcHold;
     private final MicroCaseAuthorizationService authorization;
 
@@ -77,7 +73,7 @@ public class MicroAstQcService {
             QCControlLotService controlLots, MicroAstRunAntibioticDAO runAntibiotics, MicroAntibioticDAO antibiotics,
             MicroQcRangeService qcRanges, QCResultService qcResults, MicroAstQcResultDAO astQcResults,
             MicroAstQcLotDAO astQcLots, MicroInventoryUsageLinkDAO usageLinks, InventoryLotService inventoryLots,
-            NCEventService ncEvents, QcHoldService qcHold, MicroCaseAuthorizationService authorization) {
+            QcHoldService qcHold, MicroCaseAuthorizationService authorization) {
         this.runs = runs;
         this.isolates = isolates;
         this.siteInformation = siteInformation;
@@ -90,7 +86,6 @@ public class MicroAstQcService {
         this.astQcLots = astQcLots;
         this.usageLinks = usageLinks;
         this.inventoryLots = inventoryLots;
-        this.ncEvents = ncEvents;
         this.qcHold = qcHold;
         this.authorization = authorization;
     }
@@ -234,24 +229,7 @@ public class MicroAstQcService {
             controlIds.add(result.getControlId());
         }
         controlIds.addAll(astQcLots.getControlIdsByLotIds(usageLinks.getAstRunLotIds(runId)));
-        if (controlIds.isEmpty()) {
-            return false;
-        }
-        for (MicroAstQcResult result : astQcResults.getByControlIds(controlIds)) {
-            QCResult qcResult = qcResults.get(result.getQcResultId());
-            if (qcResult == null || !"REJECTED".equals(qcResult.getResultStatus())) {
-                continue;
-            }
-            Optional<QCRuleViolation> violation = astQcResults.getViolationByTriggeringResultId(result.getQcResultId());
-            if (violation.isEmpty()) {
-                return true;
-            }
-            NcEvent nce = ncEvents.findByTriggerSource("QC_VIOLATION", violation.get().getId());
-            if (nce == null || (!"Closed".equals(nce.getStatus()) && !"Completed".equals(nce.getStatus()))) {
-                return true;
-            }
-        }
-        return false;
+        return !controlIds.isEmpty() && astQcResults.hasUnresolvedRejection(controlIds);
     }
 
     private record PlannedRow(String antibioticId, BigDecimal measuredValue, MicroQcRange range) {
