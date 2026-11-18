@@ -135,30 +135,46 @@ public class MicroBreakpointServiceImpl implements MicroBreakpointService {
         if (organism == null) {
             return null;
         }
+        boolean urine = URINE.equalsIgnoreCase(specimenCode), spinalFluid = SPINAL_FLUID.equalsIgnoreCase(specimenCode);
+        boolean meningitis = spinalFluid || "MENINGITIS".equals(clinicalContext);
+        boolean endocarditis = "ENDOCARDITIS".equals(clinicalContext);
+        boolean stated = spinalFluid || clinicalContext != null;
+        // As in the AMR package, a rule for another specimen or indication is dropped
+        // before the closest organism level is chosen.
         List<MicroBreakpointRule> rules = ruleDAO.findWhonetRules(standardId, antibioticId, breakpointType).stream()
                 .filter(rule -> "ZONE".equals(breakpointType)
                         ? disk(rule.getDiskContent()) != null && disk(rule.getDiskContent()).equals(disk(diskContent))
                         : rule.getDiskContent() == null)
-                .toList();
-        boolean urine = URINE.equalsIgnoreCase(specimenCode), spinalFluid = SPINAL_FLUID.equalsIgnoreCase(specimenCode);
-        boolean nonMeningitis = "NON_MENINGITIS".equals(clinicalContext);
-        // A broader rule never stands in for a closer one that does not apply to this
-        // specimen or indication.
-        int closest = rules.stream().mapToInt(rule -> level(rule, organism)).min().orElse(NO_LEVEL);
-        return rules.stream().filter(rule -> closest < NO_LEVEL && level(rule, organism) == closest)
                 .filter(rule -> urine || !urinary(rule))
-                .filter(rule -> spinalFluid ? !names(rule, "non-meningitis")
-                        : !names(rule, "meningitis") && (nonMeningitis || !names(rule, "non-meningitis")))
+                .filter(rule -> !stated || !forInfection(rule) || has(rule, meningitis, endocarditis))
+                .filter(rule -> !names(rule, "non-meningitis") || !meningitis)
+                .filter(rule -> !names(rule, "non-endocarditis") || !endocarditis).toList();
+        int closest = rules.stream().mapToInt(rule -> level(rule, organism)).min().orElse(NO_LEVEL);
+        // An indication that was not stated is not guessed, and no broader rule stands
+        // in for the rules that depend on it.
+        return rules.stream().filter(rule -> closest < NO_LEVEL && level(rule, organism) == closest)
+                .filter(rule -> stated
+                        || !forInfection(rule) && !names(rule, "non-meningitis") && !names(rule, "non-endocarditis"))
                 .min(Comparator.comparingInt((MicroBreakpointRule rule) -> urine && urinary(rule) ? 0 : 1)
-                        .thenComparingInt(rule -> spinalFluid && names(rule, "meningitis") ? 0 : 1)
+                        .thenComparingInt(rule -> has(rule, meningitis, endocarditis) ? 0 : 1)
                         .thenComparingInt(rule -> site(rule.getSiteOfInfection())))
                 .orElse(null);
     }
 
-    /**
-     * WHONET's specimen codes for urine and spinal fluid, as set on a sample type.
-     */
+    // WHONET specimen codes, set on the sample type.
     private static final String URINE = "ur", SPINAL_FLUID = "sf";
+
+    private static boolean forEndocarditis(MicroBreakpointRule rule) {
+        return names(rule, "endocarditis") || names(rule, "endocarditis with combination treatment");
+    }
+
+    private static boolean forInfection(MicroBreakpointRule rule) {
+        return names(rule, "meningitis") || forEndocarditis(rule);
+    }
+
+    private static boolean has(MicroBreakpointRule rule, boolean meningitis, boolean endocarditis) {
+        return meningitis && names(rule, "meningitis") || endocarditis && forEndocarditis(rule);
+    }
 
     private static boolean names(MicroBreakpointRule rule, String site) {
         return rule.getSiteOfInfection() != null && Arrays.stream(rule.getSiteOfInfection().split(","))

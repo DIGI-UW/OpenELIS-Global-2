@@ -131,8 +131,16 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
     }
 
     @Test
+    public void aCloserUrinaryRuleGivesWayToABroaderGeneralOneOutsideUrine() {
+        String general = rule("FAMILY_CODE", "EBC", null, "2");
+        String urinary = rule("GENUS_CODE", "KL-", "Uncomplicated urinary tract infection", "3");
+
+        assertEquals(general, match("kpn", "bl", null).getId());
+        assertEquals(urinary, match("kpn", "ur", null).getId());
+    }
+
+    @Test
     public void anOrganismWithOnlyAUrinaryRuleHasNoBreakpointOutsideUrine() {
-        rule("FAMILY_CODE", "EBC", null, "2");
         String urinary = rule("GENUS_CODE", "KL-", "Uncomplicated urinary tract infection", "3");
 
         assertNull(match("kpn", "bl", null));
@@ -179,6 +187,60 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
         rule("FAMILY_CODE", "EBC", "Non-meningitis", "2");
 
         assertNull(match("kpn", "sf", null));
+    }
+
+    @Test
+    public void aRunForMeningitisTakesTheMeningitisRuleOnAnySpecimen() {
+        String meningitis = rule("FAMILY_CODE", "EBC", "Meningitis", "1");
+        String nonMeningitis = rule("FAMILY_CODE", "EBC", "Non-meningitis", "2");
+        rule("FAMILY_CODE", "EBC", null, "3");
+
+        assertEquals(meningitis, match("kpn", "bl", "MENINGITIS").getId());
+        assertEquals(nonMeningitis, match("kpn", "bl", "ENDOCARDITIS").getId());
+    }
+
+    @Test
+    public void aRunForEndocarditisTakesTheEndocarditisRule() {
+        String endocarditis = rule("FAMILY_CODE", "EBC", "Endocarditis", "1");
+        rule("FAMILY_CODE", "EBC", "Endocarditis with combination treatment", "4");
+        String nonEndocarditis = rule("FAMILY_CODE", "EBC", "Non-endocarditis", "2");
+
+        assertEquals(endocarditis, match("kpn", "bl", "ENDOCARDITIS").getId());
+        assertEquals(nonEndocarditis, match("kpn", "bl", "NON_MENINGITIS").getId());
+        assertEquals(nonEndocarditis, match("kpn", "bl", "MENINGITIS").getId());
+        assertEquals(nonEndocarditis, match("kpn", "sf", null).getId());
+        assertNull(match("kpn", "bl", null));
+    }
+
+    @Test
+    public void aRuleSharedByMeningitisAndEndocarditisServesEither() {
+        String shared = rule("FAMILY_CODE", "EBC", "Meningitis, Endocarditis", "1");
+        String neither = rule("FAMILY_CODE", "EBC", "Non-meningitis, Non-endocarditis", "2");
+
+        assertEquals(shared, match("kpn", "bl", "MENINGITIS").getId());
+        assertEquals(shared, match("kpn", "bl", "ENDOCARDITIS").getId());
+        assertEquals(neither, match("kpn", "bl", "NON_MENINGITIS").getId());
+        assertNull(match("kpn", "bl", null));
+    }
+
+    @Test
+    public void noBroaderRuleStandsInWhenTheIndicationIsNotStated() {
+        rule("ALL", "Gen", null, "1");
+        rule("FAMILY_CODE", "EBC", "Meningitis", "2");
+        String nonMeningitis = rule("FAMILY_CODE", "EBC", "Non-meningitis", "3");
+
+        assertNull(match("kpn", "bl", null));
+        assertEquals(nonMeningitis, match("kpn", "bl", "NON_MENINGITIS").getId());
+    }
+
+    @Test
+    public void aBroaderRuleStandsInForACloserOneTheStatedIndicationRulesOut() {
+        String general = rule("ALL", "Gen", null, "1");
+        rule("FAMILY_CODE", "EBC", "Meningitis", "2");
+
+        assertEquals(general, match("kpn", "bl", "NON_MENINGITIS").getId());
+        assertEquals(general, match("kpn", "bl", "ENDOCARDITIS").getId());
+        assertNull(match("kpn", "bl", null));
     }
 
     @Test

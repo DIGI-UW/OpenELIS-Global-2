@@ -32,6 +32,8 @@ import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Runs on rows cut unchanged from WHONET's Breakpoints.txt, release v26.3.26.
@@ -60,6 +62,8 @@ public class MicroWhonetBreakpointEditionIntegrationTest extends BaseWebContextS
     private MicroAstInterpretationService interpreter;
     @Autowired
     private MicroBreakpointAdminService breakpointAdmin;
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @Before
     public void whonetOrganismsAndAntibiotics() throws Exception {
@@ -294,6 +298,36 @@ public class MicroWhonetBreakpointEditionIntegrationTest extends BaseWebContextS
         assertEquals(6, standards.getAll().size());
         assertEquals(clsi, edition("CLSI", "2026-2026.4").getId());
         assertEquals(ruleCount, rules.getAll().size());
+    }
+
+    @Test
+    public void aLaterPackageThatAddsAMissingAntibioticCompletesItsEdition() throws Exception {
+        load(fileText(), PACKAGE_FILE);
+        String antibioticTableText;
+        try (InputStream file = getClass().getClassLoader()
+                .getResourceAsStream("testdata/microbiology/whonet-antibiotics.txt")) {
+            antibioticTableText = new String(file.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        antibioticTable.processConfiguration(
+                new ByteArrayInputStream(
+                        (antibioticTableText + "FIX\t\t\t\t\t\tCefixime\r\n").getBytes(StandardCharsets.UTF_8)),
+                "Antibiotics.txt");
+
+        String cefixime = antibiotics.findByWhonetCodeIgnoreCase("FIX").orElseThrow().getId();
+        try {
+            load(fileText(), "pkg--amr-reference-clsi--2026.5--Breakpoints.txt");
+
+            assertEquals(7, standards.getAll().size());
+            assertEquals(12, rulesOf("EUCAST", "2026-2026.4").size());
+            List<MicroBreakpointRule> completed = rulesOf("EUCAST", "2026-2026.5");
+            assertEquals(13, completed.size());
+            assertEquals(1, completed.stream().filter(rule -> cefixime.equals(rule.getAntibioticId())).count());
+        } finally {
+            new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                rules.getAll().stream().filter(rule -> cefixime.equals(rule.getAntibioticId())).forEach(rules::delete);
+                antibiotics.delete(antibiotics.get(cefixime).orElseThrow());
+            });
+        }
     }
 
     @Test

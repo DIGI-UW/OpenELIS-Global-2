@@ -237,6 +237,10 @@ export default function CaseAstWorkspace({
             detail.id,
             {
               ...request,
+              clinicalContext:
+                draft.clinicalContext === "NOT_STATED"
+                  ? ""
+                  : draft.clinicalContext,
               lotSelections: Object.values(selectedLots),
               rawValue:
                 draft.action === "reading" ? Number(draft.rawValue) : null,
@@ -300,7 +304,9 @@ export default function CaseAstWorkspace({
           !Number.isFinite(Number(draft.rawValue)) ||
           Number(draft.rawValue) < 0)) ||
       (draft.action === "start" &&
-        (!draft.panelId || !draft.breakpointStandardId)) ||
+        (!draft.panelId ||
+          !draft.breakpointStandardId ||
+          !draft.clinicalContext)) ||
       (draft.action === "assign" && !draft.panelId) ||
       (draft.action === "invalidate" &&
         draft.analyzerInstrumentId &&
@@ -365,9 +371,7 @@ export default function CaseAstWorkspace({
                     <p>
                       {t("clinicalContext")}:{" "}
                       {t(
-                        run.clinicalContext === "NON_MENINGITIS"
-                          ? "clinicalContext.nonMeningitis"
-                          : "clinicalContext.unspecified",
+                        `clinicalContext.${run.clinicalContext || "unspecified"}`,
                       )}
                     </p>
                     <ContainerLabelButton
@@ -868,13 +872,22 @@ export default function CaseAstWorkspace({
                     setDraft({ ...draft, clinicalContext: event.target.value })
                   }
                 >
+                  <SelectItem value="" text={t("choose")} />
                   <SelectItem
-                    value=""
-                    text={t("clinicalContext.unspecified")}
+                    value="MENINGITIS"
+                    text={t("clinicalContext.MENINGITIS")}
+                  />
+                  <SelectItem
+                    value="ENDOCARDITIS"
+                    text={t("clinicalContext.ENDOCARDITIS")}
                   />
                   <SelectItem
                     value="NON_MENINGITIS"
-                    text={t("clinicalContext.nonMeningitis")}
+                    text={t("clinicalContext.neither")}
+                  />
+                  <SelectItem
+                    value="NOT_STATED"
+                    text={t("clinicalContext.unspecified")}
                   />
                 </Select>
                 <ReagentLotPicker
