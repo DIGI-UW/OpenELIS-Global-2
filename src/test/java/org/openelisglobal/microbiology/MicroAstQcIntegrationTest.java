@@ -327,7 +327,7 @@ public class MicroAstQcIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void aRunWhoseControlLostAQcRowIsStillReviewable() {
-        var run = start(isolate("ISO-GONE"), List.of());
+        var run = start(isolate("ISO-GONE"), List.of(selection(lot(QCStatus.PASSED))));
         enter(run, "4");
         MicroAstQcResultForm recorded = qc.recordControl(run.getId(),
                 request(List.of(lot(QCStatus.PENDING).getId()), "2", "8"), writer);
@@ -335,6 +335,9 @@ public class MicroAstQcIntegrationTest extends BaseWebContextSensitiveTest {
         em.flush();
         em.clear();
 
+        var control = qc.getView(c.getId(), run.getId(), writer).controls.get(0);
+        assertFalse(control.passed);
+        assertEquals(1, control.rows.size());
         assertEquals(MicroAstRunStatus.REVIEWED.name(), ast.reviewRun(run.getId(), validator).getStatus());
     }
 

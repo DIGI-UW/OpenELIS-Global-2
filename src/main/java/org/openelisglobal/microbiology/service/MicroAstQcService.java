@@ -300,7 +300,7 @@ public class MicroAstQcService {
             control.controlId = entry.getKey();
             control.passed = true;
             for (MicroAstQcResult stored : entry.getValue()) {
-                QCResult qcResult = qcResults.get(stored.getQcResultId());
+                QCResult qcResult = qcResults.getMatch("id", stored.getQcResultId()).orElse(null);
                 if (qcResult == null) {
                     control.passed = false;
                     continue;
