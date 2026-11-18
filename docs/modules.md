@@ -342,9 +342,10 @@ in the `test` phase of `mvn verify`, next to the Vitest run, so a wrong import
 or prop fails the build before the JAR is made. The example is TypeScript
 throughout: its pages, slot component, API helpers (`src/followUpApi.ts`, with
 types that mirror the backend's DTOs), tests and `vite.config.ts`, with
-`noImplicitAny` on. A `.jsx` page still builds and still gets the import-name
-check, but the code inside it is not type-checked (the base sets
-`checkJs: false`), so new pages are best written as `.tsx`.
+`noImplicitAny` on. A `.jsx` page still builds, but `tsc` checks neither its
+`openelis_core/*` imports nor the code inside it (the base sets
+`checkJs: false`), so a misspelt import there fails only in the browser: write
+pages as `.tsx`.
 
 ```json
 {
