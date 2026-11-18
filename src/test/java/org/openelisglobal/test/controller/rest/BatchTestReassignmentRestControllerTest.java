@@ -13,6 +13,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,18 +71,23 @@ public class BatchTestReassignmentRestControllerTest extends BaseWebContextSensi
         AnalysisService mockAnalysisService = Mockito.mock(AnalysisService.class);
         Mockito.doThrow(new LIMSRuntimeException("database update failed")).when(mockAnalysisService)
                 .updateAnalysises(Mockito.anyList(), Mockito.anyList(), Mockito.anyString());
+        FhirTransformService mockFhirTransformService = Mockito.mock(FhirTransformService.class);
 
         Object target = AopProxyUtils.getSingletonTarget(controller);
         Object targetController = target != null ? target : controller;
         Object originalService = ReflectionTestUtils.getField(targetController, "analysisService");
+        Object originalFhirService = ReflectionTestUtils.getField(targetController, "fhirTransformService");
 
         try {
             ReflectionTestUtils.setField(targetController, "analysisService", mockAnalysisService);
+            ReflectionTestUtils.setField(targetController, "fhirTransformService", mockFhirTransformService);
             save("{" + EMPTY_LISTS + ",\"replace\":[]}").andExpect(status().isInternalServerError())
                     .andExpect(jsonPath("$.error").value("saveFailed"))
                     .andExpect(jsonPath("$.message").value("The change was not saved."));
+            Mockito.verify(mockFhirTransformService, Mockito.never()).transformAnalysisByIds(Mockito.anyList());
         } finally {
             ReflectionTestUtils.setField(targetController, "analysisService", originalService);
+            ReflectionTestUtils.setField(targetController, "fhirTransformService", originalFhirService);
         }
     }
 
