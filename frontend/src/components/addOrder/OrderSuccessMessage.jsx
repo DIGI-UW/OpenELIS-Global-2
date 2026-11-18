@@ -10,6 +10,7 @@ import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
 import RangeNotAppliedWarning from "../order/RangeNotAppliedWarning";
+import PaymentPanel from "../payment/PaymentPanel";
 
 // Single Order print fallback for an order with no persisted label snapshot
 // (e.g. a no-test order: AddOrder only fetches the test-driven aggregation when
@@ -216,6 +217,13 @@ const OrderSuccessMessage = (props) => {
           tests={saveResponse?.rangeNotAppliedTests}
           labNumber={accessionNumber}
         />
+        {accessionNumber && (
+          <PaymentPanel
+            key={accessionNumber}
+            accessionNumber={accessionNumber}
+            watchForAutoLink
+          />
+        )}
         <div className="orderEntrySuccessPrintPanel">
           <PostSavePrintDialog
             accessionNumber={accessionNumber}

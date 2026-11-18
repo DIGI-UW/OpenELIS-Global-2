@@ -37,6 +37,18 @@ vi.mock("../utils/Utils", () => ({
   getFromOpenElisServer: getFromOpenElisServerMock,
 }));
 
+// The payment panel has its own tests; here we only check it is handed the
+// just-saved order and told to wait for the background payment link.
+vi.mock("../payment/PaymentPanel", () => ({
+  default: ({ accessionNumber, watchForAutoLink }) => (
+    <div
+      data-testid="payment-panel-stub"
+      data-accession={accessionNumber}
+      data-watch={String(Boolean(watchForAutoLink))}
+    />
+  ),
+}));
+
 import OrderSuccessMessage from "./OrderSuccessMessage";
 
 const renderWithIntl = (ui) =>
@@ -305,5 +317,15 @@ describe("OrderSuccessMessage", () => {
       "/api/orders/by-accession/ACC-1/labels",
       expect.any(Function),
     );
+  });
+
+  test("shows the saved order's payment, waiting for the background link", async () => {
+    mockLabelsEndpoint([]);
+
+    renderWithIntl(<OrderSuccessMessage {...baseProps()} />);
+
+    const panel = await screen.findByTestId("payment-panel-stub");
+    expect(panel).toHaveAttribute("data-accession", "ACC-1");
+    expect(panel).toHaveAttribute("data-watch", "true");
   });
 });

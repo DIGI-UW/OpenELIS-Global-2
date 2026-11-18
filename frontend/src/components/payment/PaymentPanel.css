@@ -1,0 +1,31 @@
+.payment-panel {
+  margin: 1rem 0;
+}
+
+.payment-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.payment-panel__amounts {
+  max-width: 24rem;
+  margin-bottom: 0.5rem;
+}
+
+.payment-panel__amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.payment-panel__link {
+  margin: 0.5rem 0;
+  word-break: break-all;
+}
+
+.payment-panel__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}

@@ -27,6 +27,7 @@ import PatientHeader from "../common/PatientHeader";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import createModifyOrderEntryValidationSchema from "../formModel/validationSchema/ModifyOrderEntryValidationSchema";
 import { sampleObject } from "../addOrder/Index";
+import PaymentPanel from "../payment/PaymentPanel";
 import {
   missingTestsTitle,
   samplesMissingTests,
@@ -407,6 +408,12 @@ const ModifyOrder = () => {
           <Stack gap={10}>
             <div className="pageContent">
               {notificationVisible === true ? <AlertDialog /> : ""}
+              {patientHeaderInfo.accessionNumber && (
+                <PaymentPanel
+                  key={patientHeaderInfo.accessionNumber}
+                  accessionNumber={patientHeaderInfo.accessionNumber}
+                />
+              )}
               {orderLoad === "loading" && (
                 <InlineLoading
                   data-cy="modify-order-loading"

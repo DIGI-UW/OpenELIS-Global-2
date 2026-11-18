@@ -48,6 +48,8 @@ vi.mock("./EditOrderEntryAdditionalQuestions", () => ({
   default: () => <div />,
 }));
 vi.mock("../addOrder/OrderSuccessMessage", () => ({ default: () => <div /> }));
+// Covered by its own tests; it needs session roles the Utils mock above leaves out.
+vi.mock("../payment/PaymentPanel", () => ({ default: () => <div /> }));
 vi.mock("../common/PatientHeader", () => ({ default: () => <div /> }));
 vi.mock("../common/PageBreadCrumb", () => ({ default: () => <div /> }));
 vi.mock("../addOrder/Index", () => ({
