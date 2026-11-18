@@ -197,6 +197,12 @@ it("outside readers see readings and history without mutation controls", async (
       screen.queryByRole("button", { name: t(`action.${action}`) }),
     ).not.toBeInTheDocument();
 });
+it("names the breakpoint standard's authority beside its version on each reading", async () => {
+  const data = workspace();
+  data.isolates[0].runs[0].breakpointAuthority = "EUCAST";
+  show(data);
+  expect((await screen.findAllByText(/EUCAST 2026/)).length).toBeGreaterThan(0);
+});
 it("keeps raw input after rejection and rejects negative values before submission", async () => {
   const service = show(workspace("IN_PROGRESS"));
   service.astAction.mockRejectedValue(new Error("Conflict"));
