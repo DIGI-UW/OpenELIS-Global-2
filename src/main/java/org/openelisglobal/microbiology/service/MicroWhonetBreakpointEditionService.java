@@ -73,7 +73,21 @@ public class MicroWhonetBreakpointEditionService {
         String packageVersion = packageFile.find() ? packageFile.group(1) : "local";
         Map<String, Optional<MicroAntibiotic>> byCode = new HashMap<>();
         TreeSet<String> unknownAntibiotics = new TreeSet<>();
-        for (List<MicroWhonetBreakpoint> rows : editions.values()) {
+        for (List<MicroWhonetBreakpoint> editionRows : editions.values()) {
+            List<MicroWhonetBreakpoint> rows = new ArrayList<>();
+            for (MicroWhonetBreakpoint row : editionRows) {
+                if (row.getWhonetAbxCode() == null || row.getOrganismCodeType() == null) {
+                    continue;
+                }
+                if (byCode.computeIfAbsent(row.getWhonetAbxCode(), antibiotics::findByWhonetCodeIgnoreCase).isEmpty()) {
+                    unknownAntibiotics.add(row.getWhonetAbxCode());
+                    continue;
+                }
+                rows.add(row);
+            }
+            if (rows.isEmpty()) {
+                continue;
+            }
             String authority = rows.get(0).getGuidelines();
             String version = rows.get(0).getYear() + "-" + packageVersion;
             String hash = hash(rows);
@@ -94,16 +108,7 @@ public class MicroWhonetBreakpointEditionService {
             standard.setSysUserId(ACTOR);
             String standardId = standards.insert(standard);
             for (MicroWhonetBreakpoint row : rows) {
-                if (row.getWhonetAbxCode() == null || row.getOrganismCodeType() == null) {
-                    continue;
-                }
-                Optional<MicroAntibiotic> antibiotic = byCode.computeIfAbsent(row.getWhonetAbxCode(),
-                        antibiotics::findByWhonetCodeIgnoreCase);
-                if (antibiotic.isEmpty()) {
-                    unknownAntibiotics.add(row.getWhonetAbxCode());
-                    continue;
-                }
-                MicroBreakpointRule rule = rule(row, standardId, antibiotic.get().getId());
+                MicroBreakpointRule rule = rule(row, standardId, byCode.get(row.getWhonetAbxCode()).get().getId());
                 rules.insert(rule);
                 rules.evict(rule);
             }

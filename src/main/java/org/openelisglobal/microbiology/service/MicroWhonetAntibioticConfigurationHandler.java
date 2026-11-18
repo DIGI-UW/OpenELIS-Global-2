@@ -7,7 +7,6 @@ import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.RowTransactionRunner;
 import org.springframework.stereotype.Component;
 
-/** Loads WHONET's antibiotic table, Antibiotics.txt, as WHONET publishes it. */
 @Component
 public class MicroWhonetAntibioticConfigurationHandler extends AbstractCatalogCsvHandler {
     private final MicroWhonetAntibioticService whonetAntibiotics;
@@ -36,10 +35,7 @@ public class MicroWhonetAntibioticConfigurationHandler extends AbstractCatalogCs
         return 306;
     }
 
-    /**
-     * The table comes with the reference package, so Import Catalog does not offer
-     * it.
-     */
+    // Ships with the reference package, so Import Catalog doesn't offer it.
     @Override
     public boolean supportsDryRun() {
         return false;

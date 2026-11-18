@@ -9,7 +9,6 @@ import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.RowTransactionRunner;
 import org.springframework.stereotype.Component;
 
-/** Loads WHONET's breakpoint table, Breakpoints.txt, as WHONET publishes it. */
 @Component
 public class MicroWhonetBreakpointConfigurationHandler extends AbstractCatalogCsvHandler {
     private final MicroWhonetBreakpointService whonetBreakpoints;
@@ -41,10 +40,7 @@ public class MicroWhonetBreakpointConfigurationHandler extends AbstractCatalogCs
         return 307;
     }
 
-    /**
-     * The table comes with the reference package, so Import Catalog does not offer
-     * it.
-     */
+    // Ships with the reference package, so Import Catalog doesn't offer it.
     @Override
     public boolean supportsDryRun() {
         return false;

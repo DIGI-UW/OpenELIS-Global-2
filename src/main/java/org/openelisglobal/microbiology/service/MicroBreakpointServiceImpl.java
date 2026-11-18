@@ -134,29 +134,26 @@ public class MicroBreakpointServiceImpl implements MicroBreakpointService {
         if (organism == null) {
             return null;
         }
+        boolean urine = URINE.equalsIgnoreCase(specimenCode), spinalFluid = SPINAL_FLUID.equalsIgnoreCase(specimenCode);
+        boolean nonMeningitis = "NON_MENINGITIS".equals(clinicalContext);
+        // As in the AMR package, a rule for another specimen or indication is dropped
+        // before the closest organism level is chosen.
         List<MicroBreakpointRule> rules = ruleDAO.findWhonetRules(standardId, antibioticId, breakpointType).stream()
                 .filter(rule -> "ZONE".equals(breakpointType)
                         ? disk(rule.getDiskContent()) != null && disk(rule.getDiskContent()).equals(disk(diskContent))
                         : rule.getDiskContent() == null)
+                .filter(rule -> urine || !urinary(rule)).filter(rule -> spinalFluid ? !names(rule, "non-meningitis")
+                        : !names(rule, "meningitis") && (nonMeningitis || !names(rule, "non-meningitis")))
                 .toList();
-        boolean urine = URINE.equalsIgnoreCase(specimenCode), spinalFluid = SPINAL_FLUID.equalsIgnoreCase(specimenCode);
-        boolean nonMeningitis = "NON_MENINGITIS".equals(clinicalContext);
-        // A broader rule never stands in for a closer one that does not apply to this
-        // specimen or indication.
         int closest = rules.stream().mapToInt(rule -> level(rule, organism)).min().orElse(NO_LEVEL);
         return rules.stream().filter(rule -> closest < NO_LEVEL && level(rule, organism) == closest)
-                .filter(rule -> urine || !urinary(rule))
-                .filter(rule -> spinalFluid ? !names(rule, "non-meningitis")
-                        : !names(rule, "meningitis") && (nonMeningitis || !names(rule, "non-meningitis")))
                 .min(Comparator.comparingInt((MicroBreakpointRule rule) -> urine && urinary(rule) ? 0 : 1)
                         .thenComparingInt(rule -> spinalFluid && names(rule, "meningitis") ? 0 : 1)
                         .thenComparingInt(rule -> site(rule.getSiteOfInfection())))
                 .orElse(null);
     }
 
-    /**
-     * WHONET's specimen codes for urine and spinal fluid, as set on a sample type.
-     */
+    // WHONET specimen codes, set on the sample type.
     private static final String URINE = "ur", SPINAL_FLUID = "sf";
 
     private static boolean names(MicroBreakpointRule rule, String site) {
