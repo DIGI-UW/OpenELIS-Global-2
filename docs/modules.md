@@ -952,14 +952,16 @@ labels exist before the pages load: the shell asks for its active locale
 (`/rest/module-registry?locale=fr-MG`; without the parameter the request's
 `Accept-Language`, else English) and the registry carries that tag's bundle, the
 base language's and the English one, not every bundle the module ships
-(`locales` names those). A header locale switch reads the registry again. For
-each key the shell takes the exact locale's text, then the base language's, then
-the English one, so a partial translation shows English for the keys it lacks
-rather than raw ids; a menu entry whose key has no message in any bundle stays
-hidden rather than show the key. The core's own translations load the same way:
-only the active locale's bundle is downloaded, so a module adds no locale files
-to the first page load. Add new English keys only; other languages follow the
-core's translation process.
+(`locales` names those). A header locale switch reads the registry again; in
+development the shell also reads the files from the module's dev server (see
+[Develop on the dev stack](#7-develop-on-the-dev-stack)). For each key the shell
+takes the exact locale's text, then the base language's, then the English one,
+so a partial translation shows English for the keys it lacks rather than raw
+ids; a menu entry whose key has no message in any bundle stays hidden rather
+than show the key. The core's own translations load the same way: only the
+active locale's bundle is downloaded, so a module adds no locale files to the
+first page load. Add new English keys only; other languages follow the core's
+translation process.
 
 **The core surface.** Import core components, API helpers, hooks and contexts
 from `openelis_core/*`; the full list is in the
@@ -1010,7 +1012,7 @@ props may still change in a frontend contract minor.
        let cancelled = false;
        api
          .get<FollowUpPage>(
-           endpoints.followUps({ status: "OPEN", page: 1, size: 1 })
+           endpoints.followUps({ status: "OPEN", page: 0, size: 1 })
          )
          .then((page) => !cancelled && setOpen(page?.total ?? 0))
          .catch(() => !cancelled && setOpen(0));
@@ -1318,6 +1320,7 @@ several modules.
 | Start it without FHIR, the Bridge and the simulator | `scripts/dev-stack up --setup light --module ../my-module`                              |
 | Print the address to open                           | `scripts/dev-stack url`                                                                 |
 | Change a page or a slot component                   | Save the file; the browser updates (the module's Vite dev server serves the pages)      |
+| Change a translation (`frontend/public/messages/`)  | Save the file; the open page shows the new text within a second, no reload              |
 | Change Java code, Liquibase files or the manifest   | Run the same `up --module …` command again; it rebuilds the JAR and restarts the webapp |
 | Follow the webapp log                               | `scripts/dev-stack logs -f oe.openelis.org` (the module logs as `[module:<id>]`)        |
 | Read the module dev server log                      | `.dev-stack/modules/<id>-vite.log` in the core checkout                                 |
@@ -1332,12 +1335,26 @@ What `up --module` does, every run:
 2. Builds the module JAR (`mvn package`, pages included) and installs it as
    `volume/modules/<id>.jar`, replacing any other copy of the module.
 3. Starts the module's Vite dev server (`npm run dev`) and routes the shell's
-   request for the module's pages to it.
+   requests for the module's pages and message bundles to it.
 4. Restarts the webapp, which migrates the module's tables and starts it.
 
 Outside the dev stack,
 `localStorage["oe.module-override.<id>"] = "http://localhost:5174/remoteEntry.js"`
-points a development shell at a module's dev server.
+points a development shell at a module's dev server, pages and message bundles
+alike.
+
+**Translations while you work.** The registry reads a module's bundles from the
+installed JAR, so on their own they change only with a rebuilt JAR. A
+development build of the shell also finds each module's dev server (the dev
+stack's redirect of the module's `messages/en.json`, or the override above) and
+re-reads the active locale's bundle files from it about once a second while the
+page is visible, as conditional requests; each file it reads replaces the
+registry's copy of that language. A saved `fr.json` therefore shows on the open
+page without a reload, a key deleted from it falls back to English as it would
+in the rebuilt JAR, and a file saved half-edited keeps its last good copy with a
+console warning. A module served from its JAR is asked once and left alone, and
+a production build of the shell does none of this: it reads the bundles from the
+registry only.
 
 <a id="7-test-build-and-ci"></a>
 

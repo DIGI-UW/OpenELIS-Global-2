@@ -44,6 +44,8 @@ class ModuleCheckout(NamedTuple):
     module_id: str
     entry: str | None
     dev_port: int | None
+    # The manifest's frontend.messages, such as "messages/{locale}.json"
+    messages: str | None = None
 
 
 MODULE_MANIFEST = Path("src/main/resources/META-INF/openelis-module.json")
@@ -417,6 +419,9 @@ def read_module_checkout(path_text: str) -> ModuleCheckout:
         raise RuntimeError(f"--module {path_text}: the manifest has no valid id")
     frontend = manifest.get("frontend") if isinstance(manifest.get("frontend"), dict) else None
     entry = frontend.get("entry") if frontend else None
+    messages = frontend.get("messages") if frontend else None
+    if not isinstance(messages, str) or "{locale}" not in messages:
+        messages = None
     dev_port = None
     package_json = path / "frontend" / "package.json"
     if entry and package_json.is_file():
@@ -430,7 +435,7 @@ def read_module_checkout(path_text: str) -> ModuleCheckout:
                     if match:
                         dev_port = int(match.group(1))
                     break
-    return ModuleCheckout(path, module_id, entry, dev_port)
+    return ModuleCheckout(path, module_id, entry, dev_port, messages)
 
 
 def read_module_checkouts(paths: Sequence[str]) -> list[ModuleCheckout]:
@@ -634,8 +639,28 @@ def start_module_dev_server(
     )
 
 
+def module_messages_route(module: ModuleCheckout) -> str:
+    """The proxy route that sends a module's message bundles to its Vite dev server.
+
+    The dev server serves `frontend/public/messages/fr.json` at `/messages/fr.json`, the path the
+    build copies it to under the module's asset base, so a development shell that reads the
+    bundles from the asset base gets the file as saved, without a JAR rebuild.
+    """
+    if not module.messages or not module.dev_port:
+        return ""
+    before, after = module.messages.split("{locale}", 1)
+    pattern = before.replace(".", "\\.") + "([A-Za-z0-9_-]+)" + after.replace(".", "\\.")
+    target = f"{before}$1{after}"
+    return (
+        f"        # dev-stack up --module: message bundles of {module.module_id} from its Vite dev server\n"
+        f'        location ~ "^/api/OpenELIS-Global/modules/{module.module_id}/(?:[0-9a-f]{{16}}/)?{pattern}$" {{\n'
+        f"            return 307 http://localhost:{module.dev_port}/{target};\n"
+        "        }\n\n"
+    )
+
+
 def route_module_pages(context: StackContext, modules: Sequence[ModuleCheckout]) -> None:
-    """Send the shell's request for a module's remote entry to that module's Vite dev server.
+    """Send the shell's requests for a module's remote entry and message bundles to its Vite dev server.
 
     bootstrap.sh writes a fresh nginx.conf on every up, so the routes last until the next up.
     The file is rewritten in place because the proxy mounts that single file.
@@ -653,6 +678,7 @@ def route_module_pages(context: StackContext, modules: Sequence[ModuleCheckout])
         f'{entry_pattern}$" {{\n'
         f"            return 307 http://localhost:{module.dev_port}/{module.entry};\n"
         "        }\n\n"
+        + module_messages_route(module)
         for module in modules
         for entry_pattern in [module.entry.replace(".", "\\.")]
     )
