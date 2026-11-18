@@ -13,6 +13,7 @@ import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.Alternat
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
+import org.openelisglobal.microbiology.service.MicroAstResponseService;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroBreakpointAdminService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
@@ -45,6 +46,9 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private MicroAstService astService;
+
+    @Autowired
+    private MicroAstResponseService astResponses;
 
     @Autowired
     private MicroBreakpointAdminService breakpointAdminService;
@@ -183,6 +187,27 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
         MicroWorklistPageForm secondPage = worklistService.getWorklistPage(query);
         assertEquals(1, secondPage.total);
         assertEquals(0, secondPage.rows.size());
+    }
+
+    @Test
+    public void runFormNamesTheAuthorityOfItsBreakpointStandard() {
+        AlternativeBreakpointData eucast = fixtures.createAlternativeBreakpoint(referenceData);
+        breakpointAdminService.activate(eucast.standard().getId(), new Date(System.currentTimeMillis()),
+                fixtures.defaultUserId());
+        MicroAstRun run = astService.startRun(identifiedIsolate().getId(), referenceData.panel().getId(),
+                eucast.standard().getId(), fixtures.defaultUserId());
+
+        assertEquals("EUCAST", astResponses.toRunForm(run).breakpointAuthority);
+    }
+
+    private MicroIsolate identifiedIsolate() {
+        MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
+        microCase = fixtures.prepareAstCase(microCase, fixtures.defaultUserId());
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                fixtures.defaultUserId());
+        identify(isolate);
+        return isolate;
     }
 
     private void identify(MicroIsolate isolate) {

@@ -19,6 +19,8 @@ public class MicroAstResponseService {
     private org.openelisglobal.microbiology.dao.MicroIsolateDAO isolates;
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.microbiology.dao.MicroCaseDAO cases;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroBreakpointStandardDAO standards;
     private final MicroAstService astService;
 
     public MicroAstResponseService(MicroAstService astService) {
@@ -60,6 +62,8 @@ public class MicroAstResponseService {
         form.panelProvenance = run.getPanelProvenance();
         form.panelAdjustmentReason = run.getPanelAdjustmentReason();
         form.breakpointStandardId = run.getBreakpointStandardId();
+        form.breakpointAuthority = run.getBreakpointStandardId() == null ? null
+                : standards.get(run.getBreakpointStandardId()).map(MicroBreakpointStandard::getAuthority).orElse(null);
         form.breakpointVersion = run.getBreakpointVersion();
         form.attemptType = run.getAttemptType();
         form.sourceRunId = run.getSourceRunId();
