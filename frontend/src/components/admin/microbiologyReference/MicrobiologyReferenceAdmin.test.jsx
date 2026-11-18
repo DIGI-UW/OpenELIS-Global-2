@@ -197,14 +197,15 @@ describe("microbiology reference administration", () => {
       />,
     );
 
-    for (const name of ["WHONET code", "Initial significance"]) {
-      const label = (await screen.findAllByText(name)).find((node) =>
-        node.closest("label"),
-      );
-      expect(
-        label.closest("label").querySelector(".requiredlabel"),
-      ).not.toBeNull();
-    }
+    const marker = async (name) =>
+      (await screen.findAllByText(name))
+        .find((node) => node.closest("label"))
+        .closest("label")
+        .querySelector(".requiredlabel");
+
+    expect(await marker("WHONET code")).not.toBeNull();
+    expect(await marker("Organism group")).toBeNull();
+    expect(await marker("Initial significance")).toBeNull();
   });
 
   it("returns focus to the exact reference command when the editor closes", async () => {
