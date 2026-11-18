@@ -13,7 +13,6 @@ import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.LoadedRow;
 import org.openelisglobal.configuration.service.RowTransactionRunner;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
-import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
@@ -33,14 +32,12 @@ import org.springframework.stereotype.Component;
 public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler {
     private final MicrobiologyReferenceAdminService admin;
     private final MicroAstPanelDAO panels;
-    private final MicroOrganismDAO organisms;
     private final CatalogReferenceResolver resolver;
 
     public MicroAstPanelConfigurationHandler(MicrobiologyReferenceAdminService admin, MicroAstPanelDAO panels,
-            MicroOrganismDAO organisms, CatalogReferenceResolver resolver) {
+            CatalogReferenceResolver resolver) {
         this.admin = admin;
         this.panels = panels;
-        this.organisms = organisms;
         this.resolver = resolver;
     }
 

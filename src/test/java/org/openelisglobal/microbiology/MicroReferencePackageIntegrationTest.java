@@ -659,20 +659,48 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         writeOrganismGroups(GROUPS_HEADER + covered.getDisplayName() + ",,," + labGroup + "\n"
                 + uncovered.getDisplayName() + ",,," + labGroup + "\n");
         assertFalse(reloadOrganismGroups(false).hasErrors());
-        String otherDrug = antibiotics.getAll().stream().map(MicroAntibiotic::getId).filter(id -> !id.equals(drug))
-                .findFirst().orElseThrow();
+        var other = new MicroAntibiotic();
+        other.setDisplayName("Coverage other drug " + suffix());
+        other.setWhonetCode("O" + suffix());
+        antibiotics.insert(other);
+        String otherDrug = other.getId();
+        var loadedOnly = organism("Loaded edition organism " + suffix());
+        var loaded = new MicroBreakpointStandard();
+        loaded.setAuthority("CLSI");
+        loaded.setVersion("coverage-" + suffix());
+        loaded.setLifecycleStatus("LOADED");
+        loaded.setIsActive("N");
+        loaded.setLastUpdatedBy("1");
+        loaded.setSysUserId("1");
+        var loadedRule = new MicroBreakpointRule();
+        loadedRule.setStandardId(standards.insert(loaded));
+        loadedRule.setOrganismId(loadedOnly.getId());
+        loadedRule.setAntibioticId(drug);
+        loadedRule.setBreakpointType("MIC");
+        rules.insert(loadedRule);
+        var edition = standard(fixture);
+        edition.setIsActive("Y");
+        edition.setLifecycleStatus("ACTIVE");
+        standards.update(edition);
+        try {
+            var coverage = referenceAdmin.getPanelOrganismCoverage(java.util.List.of(drug, otherDrug), "GENERAL");
 
-        var coverage = referenceAdmin.getPanelOrganismCoverage(java.util.List.of(drug, otherDrug), "GENERAL");
-
-        java.util.function.Function<String, String> row = name -> coverage.stream()
-                .filter(entry -> entry.value.equals(name))
-                .map(entry -> entry.group + " " + entry.covered + "/" + entry.total).findFirst().orElse("absent");
-        assertEquals("false 1/2", row.apply(covered.getDisplayName()));
-        assertEquals("false 1/2", row.apply(byGroup.getDisplayName()));
-        assertEquals("false 0/2", row.apply(uncovered.getDisplayName()));
-        assertEquals("true 1/2", row.apply(labGroup));
-        assertEquals("absent", row.apply(tuberculosis.getDisplayName()));
-        assertTrue("Most covered first", coverage.get(0).covered >= coverage.get(coverage.size() - 1).covered);
+            java.util.function.Function<String, String> row = name -> coverage.stream()
+                    .filter(entry -> entry.value.equals(name))
+                    .map(entry -> entry.group + " " + entry.covered + "/" + entry.total).findFirst().orElse("absent");
+            assertEquals("false 1/2", row.apply(covered.getDisplayName()));
+            assertEquals("false 1/2", row.apply(byGroup.getDisplayName()));
+            assertEquals("false 0/2", row.apply(uncovered.getDisplayName()));
+            assertEquals("false 0/2", row.apply(loadedOnly.getDisplayName()));
+            assertEquals("true 1/2", row.apply(labGroup));
+            assertEquals("absent", row.apply(tuberculosis.getDisplayName()));
+            assertTrue("Most covered first", coverage.get(0).covered >= coverage.get(coverage.size() - 1).covered);
+        } finally {
+            var loadedAgain = standard(fixture);
+            loadedAgain.setIsActive("N");
+            loadedAgain.setLifecycleStatus("LOADED");
+            standards.update(loadedAgain);
+        }
     }
 
     @Test
@@ -708,6 +736,25 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertFalse(reloadPanels(true).hasErrors());
         assertEquals("A list cleared on the page stays cleared", java.util.List.of(), referenceAdmin
                 .getAstPanel(panels.findCurrentByNameIgnoreCase("Synthetic page panel").getId()).defaultFor);
+    }
+
+    @Test
+    public void aPanelsPageDefaultForThatMatchesNoOrganismIsRefused() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.67", "PAGEUNMATCHED");
+        load(fixture);
+        writePanels("panelName,antibioticWhonetCode\nSynthetic unmatched panel," + fixture.antibiotic + "\n");
+        assertFalse(reloadPanels(false).hasErrors());
+        String current = panels.findCurrentByNameIgnoreCase("Synthetic unmatched panel").getId();
+        var panel = referenceAdmin.getAstPanel(current);
+        String typo = "Escherichia colli " + suffix();
+        panel.defaultFor = java.util.List.of(typo);
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> referenceAdmin.publishPanelVersion(current, panel, "1"));
+
+        assertEquals("Panel \"Synthetic unmatched panel\": defaultFor \"" + typo + "\" matches no organism",
+                refused.getMessage());
+        assertEquals(current, panels.findCurrentByNameIgnoreCase("Synthetic unmatched panel").getId());
     }
 
     @Test

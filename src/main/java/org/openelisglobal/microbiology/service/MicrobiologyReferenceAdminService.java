@@ -40,8 +40,8 @@ public interface MicrobiologyReferenceAdminService {
     List<MicroPanelCoverageForm> getPanelOrganismCoverage(List<String> antibioticIds, String protocol);
 
     /**
-     * Fails when a defaultFor entry of a panel in {@code lines} (panel id to file
-     * line) matches no active organism.
+     * Assigns each active organism its most specific claiming panel; panels in
+     * {@code lines} (id to file line) also fail on an unmatched entry.
      */
     void assignPanelDefaults(Map<String, Integer> lines, String actorId);
 

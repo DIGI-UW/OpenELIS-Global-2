@@ -113,7 +113,10 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
             return List.of();
         }
         return entityManager.unwrap(Session.class)
-                .createQuery("from MicroBreakpointRule r where r.isActive = 'Y' and r.antibioticId in (:antibioticIds)",
+                .createQuery(
+                        "from MicroBreakpointRule r where r.isActive = 'Y' and r.antibioticId in (:antibioticIds)"
+                                + " and r.standardId in (select s.id from MicroBreakpointStandard s"
+                                + " where s.isActive = 'Y' and s.lifecycleStatus = 'ACTIVE')",
                         MicroBreakpointRule.class)
                 .setParameterList("antibioticIds", antibioticIds).list();
     }

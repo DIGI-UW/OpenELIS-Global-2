@@ -242,7 +242,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         panelDAO.insert(panel);
         savePanelRows(panel.getId(), request.antibiotics);
         if (defaultsChanged) {
-            assignPanelDefaults(Map.of(), actorId);
+            assignPanelDefaults(Map.of(), Set.of(panel.getId()), actorId);
         }
         return toPanelForm(panel);
     }
@@ -282,7 +282,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             assignmentDAO.update(assignment);
         }
         if (defaultsChanged) {
-            assignPanelDefaults(Map.of(), actorId);
+            assignPanelDefaults(Map.of(), Set.of(published.getId()), actorId);
         }
         return toPanelForm(published);
     }
@@ -347,6 +347,10 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     @Override
     @Transactional
     public void assignPanelDefaults(Map<String, Integer> lines, String actorId) {
+        assignPanelDefaults(lines, lines.keySet(), actorId);
+    }
+
+    private void assignPanelDefaults(Map<String, Integer> lines, Set<String> checkedPanelIds, String actorId) {
         List<MicroAstPanel> claimants = panelDAO.getAll().stream()
                 .filter(p -> "Y".equals(p.getIsCurrent()) && "Y".equals(p.getIsActive())
                         && !defaultForEntries(p.getDefaultFor()).isEmpty())
@@ -399,7 +403,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             }
         }
         for (var panel : claimants) {
-            if (lines.containsKey(panel.getId())) {
+            if (checkedPanelIds.contains(panel.getId())) {
                 for (String entry : defaultForEntries(panel.getDefaultFor())) {
                     if (!matched.contains(panel.getId() + "\n" + entry)) {
                         errors.add(line(lines, panel) + "Panel \"" + panel.getName() + "\": defaultFor \"" + entry
