@@ -12,6 +12,10 @@ import {
 import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
 import { newSampleKey, rejectedWithoutReason } from "./sampleTypeUpdate";
+import OrderEntryAdditionalQuestions, {
+  programDomainForOrder,
+} from "./OrderEntryAdditionalQuestions";
+import { useProgramByTest } from "./useProgramByTest";
 import {
   missingTestsTitle,
   samplesMissingTests,
@@ -29,7 +33,6 @@ import {
   postToOpenElisServerJsonResponse,
   resolveApiErrorMessage,
 } from "../utils/Utils";
-import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
 import OrderEntryMissingFieldsNotice from "./OrderEntryMissingFieldsNotice";
 import EQASampleEntry from "../eqa/EQASampleEntry";
@@ -107,6 +110,12 @@ const Index = () => {
   const [crossTests, setCrossTests] = useState([]);
   const [crossPanels, setCrossPanels] = useState([]);
 
+  const programTriggered = useProgramByTest({
+    samples,
+    orderFormValues,
+    setOrderFormValues,
+    domain: programDomainForOrder(orderFormValues),
+  });
   // Derived step values
   const domain = orderFormValues?.sampleOrderItems?.domain;
   const isNonClinicalDomain = domain === "E" || domain === "V";
@@ -1065,6 +1074,15 @@ const Index = () => {
                     setStagedAttachments={setStagedAttachments}
                     clinicalInformation={clinicalInformation} // LESOTHO
                     setClinicalInformation={setClinicalInformation} // LESOTHO
+                    programQuestionnaire={
+                      programTriggered ? (
+                        <OrderEntryAdditionalQuestions
+                          hideProgramSelect
+                          orderFormValues={orderFormValues}
+                          setOrderFormValues={setOrderFormValues}
+                        />
+                      ) : null
+                    }
                   />
                 )}
 

@@ -69,6 +69,7 @@ const AddOrder = (props) => {
     setStagedAttachments,
     clinicalInformation, // LESOTHO
     setClinicalInformation, // LESOTHO
+    programQuestionnaire,
   } = props;
   const [otherTestLocationCodeId, setOtherTestLocationCodeId] = useState("");
   const [providers, setProviders] = useState([]);
@@ -2037,6 +2038,12 @@ const AddOrder = (props) => {
                 />
               </Column>
             </Grid>
+          </div>
+        )}
+        {programQuestionnaire && (
+          <div className="orderLegendBody clinical-information-section">
+            <h3>Clinical Information</h3>
+            {programQuestionnaire}
           </div>
         )}
         {!isModifyOrder && setStagedAttachments && (
