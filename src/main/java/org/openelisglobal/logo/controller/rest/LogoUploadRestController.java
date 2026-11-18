@@ -63,15 +63,14 @@ public class LogoUploadRestController {
         String whichLogo = form.getLogoName();
         boolean removeImage = "true".equals(request.getParameter("removeImage"));
 
-        if (removeImage) {
-            removeImage(whichLogo);
-        } else {
-            updateImage(form.getLogoFile(), whichLogo);
+        boolean success = removeImage ? removeImage(whichLogo) : updateImage(form.getLogoFile(), whichLogo);
+        if (!success) {
+            return ResponseEntity.internalServerError().build();
         }
         return ResponseEntity.ok().build();
     }
 
-    private void removeImage(String logoName) {
+    private boolean removeImage(String logoName) {
         File previewFile = new File(imageService.getFullPreviewPath() + imageService.getImageNameFilePath(logoName));
 
         boolean deleteSuccess = previewFile.delete();
@@ -82,7 +81,7 @@ public class LogoUploadRestController {
         SiteInformation logoInformation = siteInformationService.getSiteInformationByName(logoName);
 
         if (logoInformation == null) {
-            return;
+            return true;
         }
 
         String imageId = logoInformation.getValue();
@@ -94,11 +93,13 @@ public class LogoUploadRestController {
                 logoUploadService.removeImage(image, logoInformation);
             } catch (LIMSRuntimeException e) {
                 LogEvent.logError(e);
+                return false;
             }
         }
+        return true;
     }
 
-    private void updateImage(MultipartFile logoFile, String whichLogo) throws ServletException {
+    private boolean updateImage(MultipartFile logoFile, String whichLogo) throws ServletException {
         try {
             if (validToWrite(logoFile)) {
 
@@ -107,23 +108,24 @@ public class LogoUploadRestController {
 
                 logoFile.transferTo(previewFile);
 
-                writeFileImageToDatabase(previewFile, whichLogo);
+                return writeFileImageToDatabase(previewFile, whichLogo);
             }
         } catch (RuntimeException e) {
             throw new ServletException(e);
         } catch (Exception e) {
             throw new ServletException(e);
         }
+        return true;
     }
 
-    private void writeFileImageToDatabase(File file, String logoName) {
+    private boolean writeFileImageToDatabase(File file, String logoName) {
         if (!fileInImageDirectory(file)) {
-            return;
+            return true;
         }
         SiteInformation logoInformation = siteInformationService.getSiteInformationByName(logoName);
 
         if (logoInformation == null) {
-            return;
+            return true;
         }
 
         String imageId = logoInformation.getValue();
@@ -160,7 +162,9 @@ public class LogoUploadRestController {
             logoUploadService.saveImage(image, newImage, imageId, logoInformation);
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e);
+            return false;
         }
+        return true;
     }
 
     private boolean fileInImageDirectory(File file) {
