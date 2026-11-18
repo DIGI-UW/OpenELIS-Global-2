@@ -459,50 +459,90 @@ it.each([
   },
 );
 
-it("sends an explicitly chosen clinical indication on new runs", async () => {
+const startDialog = async (provenance = "ORGANISM_DEFAULT", runs) => {
   const data = workspace("IN_PROGRESS");
   data.isolates[0].panels = [{ id: "panel", label: "Routine panel" }];
-  data.isolates[0].assignments = [
-    { panelId: "panel", provenance: "ORGANISM_DEFAULT" },
-  ];
+  data.isolates[0].assignments = [{ panelId: "panel", provenance }];
+  if (runs) data.isolates[0].runs = runs(data.isolates[0].runs[0]);
   const service = show(data);
   fireEvent.click(
     await screen.findByRole("button", { name: t("action.start") }),
   );
   const modal = screen.getByRole("dialog");
-  expect(within(modal).getByLabelText(t("clinicalContext"))).toHaveValue("");
-  fireEvent.change(within(modal).getByLabelText(t("clinicalContext")), {
-    target: { value: "NON_MENINGITIS" },
-  });
+  return {
+    service,
+    modal,
+    indication: within(modal).getByLabelText(t("clinicalContext")),
+    save: within(modal).getByRole("button", { name: t("save"), exact: true }),
+  };
+};
+
+it("starts a run only after the technician picks a clinical indication", async () => {
+  const { service, modal, indication, save } = await startDialog();
+  expect(indication).toHaveValue("");
+  expect(
+    within(indication)
+      .getAllByRole("option")
+      .map((option) => option.textContent),
+  ).toEqual([
+    t("choose"),
+    "Meningitis",
+    "Endocarditis",
+    "Neither (other than meningitis or endocarditis)",
+    "Not stated",
+  ]);
+  expect(save).toBeDisabled();
+  fireEvent.change(indication, { target: { value: "MENINGITIS" } });
   expect(within(modal).queryByLabelText(t("reason"))).toBeNull();
-  fireEvent.click(
-    within(modal).getByRole("button", { name: t("save"), exact: true }),
-  );
+  expect(save).toBeEnabled();
+  fireEvent.click(save);
   await waitFor(() =>
     expect(service.astAction).toHaveBeenCalledWith(
       "c1",
       expect.objectContaining({
         action: "start",
-        clinicalContext: "NON_MENINGITIS",
+        clinicalContext: "MENINGITIS",
       }),
       false,
     ),
   );
 });
 
-it("asks for a panel adjustment reason only when the run does not use the organism default panel", async () => {
-  const data = workspace("IN_PROGRESS");
-  data.isolates[0].panels = [{ id: "panel", label: "Routine panel" }];
-  data.isolates[0].assignments = [{ panelId: "panel", provenance: "MANUAL" }];
-  show(data);
-  fireEvent.click(
-    await screen.findByRole("button", { name: t("action.start") }),
+it("sends no indication when the technician picks Not stated", async () => {
+  const { service, indication, save } = await startDialog();
+  fireEvent.change(indication, { target: { value: "NOT_STATED" } });
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ action: "start", clinicalContext: "" }),
+      false,
+    ),
   );
-  const modal = screen.getByRole("dialog");
-  const save = within(modal).getByRole("button", {
-    name: t("save"),
-    exact: true,
-  });
+});
+
+it("shows each run's clinical indication", async () => {
+  await startDialog("ORGANISM_DEFAULT", (run) => [
+    { ...run, id: "r1", clinicalContext: "MENINGITIS" },
+    { ...run, id: "r2", clinicalContext: "ENDOCARDITIS" },
+    { ...run, id: "r3", clinicalContext: "NON_MENINGITIS" },
+    { ...run, id: "r4" },
+  ]);
+  const indication = (run) =>
+    within(screen.getByTestId(`ast-run-${run}`)).getByText(
+      new RegExp(`^${t("clinicalContext")}:`),
+    );
+  expect(indication("r1")).toHaveTextContent(/: Meningitis$/);
+  expect(indication("r2")).toHaveTextContent(/: Endocarditis$/);
+  expect(indication("r3")).toHaveTextContent(
+    /: Neither meningitis nor endocarditis$/,
+  );
+  expect(indication("r4")).toHaveTextContent(/: Not stated$/);
+});
+
+it("asks for a panel adjustment reason only when the run does not use the organism default panel", async () => {
+  const { modal, indication, save } = await startDialog("MANUAL");
+  fireEvent.change(indication, { target: { value: "NON_MENINGITIS" } });
   expect(save).toBeDisabled();
   fireEvent.change(
     within(modal).getByLabelText(
