@@ -149,11 +149,12 @@ public class MicroBreakpointServiceImpl implements MicroBreakpointService {
                 .filter(rule -> !names(rule, "non-meningitis") || !meningitis)
                 .filter(rule -> !names(rule, "non-endocarditis") || !endocarditis).toList();
         int closest = rules.stream().mapToInt(rule -> level(rule, organism)).min().orElse(NO_LEVEL);
+        boolean byIndication = !stated && rules.stream().anyMatch(rule -> level(rule, organism) == closest
+                && (forInfection(rule) || names(rule, "non-meningitis") || names(rule, "non-endocarditis")));
         // An indication that was not stated is not guessed, and no broader rule stands
         // in for the rules that depend on it.
         return rules.stream().filter(rule -> closest < NO_LEVEL && level(rule, organism) == closest)
-                .filter(rule -> stated
-                        || !forInfection(rule) && !names(rule, "non-meningitis") && !names(rule, "non-endocarditis"))
+                .filter(rule -> !byIndication || rule.getSiteOfInfection() == null)
                 .min(Comparator.comparingInt((MicroBreakpointRule rule) -> urine && urinary(rule) ? 0 : 1)
                         .thenComparingInt(rule -> has(rule, meningitis, endocarditis) ? 0 : 1)
                         .thenComparingInt(rule -> site(rule.getSiteOfInfection())))

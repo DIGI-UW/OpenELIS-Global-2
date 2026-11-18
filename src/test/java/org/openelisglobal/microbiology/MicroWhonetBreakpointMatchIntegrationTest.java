@@ -244,6 +244,34 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
     }
 
     @Test
+    public void anOralRuleDoesNotStandInForTheIndicationRulesWhenNoneIsStated() {
+        String meningitis = rule("FAMILY_CODE", "EBC", "Meningitis, Endocarditis", "1");
+        String neither = rule("FAMILY_CODE", "EBC", "Non-meningitis, Non-endocarditis", "2");
+        rule("FAMILY_CODE", "EBC", "Oral", "4");
+
+        assertNull(match("kpn", "bl", null));
+        assertEquals(meningitis, match("kpn", "bl", "MENINGITIS").getId());
+        assertEquals(neither, match("kpn", "bl", "NON_MENINGITIS").getId());
+    }
+
+    @Test
+    public void aScreenRuleAnswersWhenItsLevelHasNoIndicationRules() {
+        rule("FAMILY_CODE", "EBC", "Meningitis", "1");
+        String screen = rule("GENUS_CODE", "KL-", "Screen", "2");
+
+        assertEquals(screen, match("kpn", "bl", null).getId());
+    }
+
+    @Test
+    public void aScreenRuleDoesNotStandInForTheEndocarditisRulesWhenNoIndicationIsStated() {
+        rule("FAMILY_CODE", "EBC", "Endocarditis", "1");
+        rule("FAMILY_CODE", "EBC", "Non-endocarditis", "2");
+        rule("FAMILY_CODE", "EBC", "Screen", "4");
+
+        assertNull(match("kpn", "bl", null));
+    }
+
+    @Test
     public void noRuleMatchesAnOrganismOutsideEveryLevel() {
         rule("FAMILY_CODE", "EBC", null, "2");
 
