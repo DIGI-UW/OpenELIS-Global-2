@@ -86,7 +86,11 @@ public class SampleEditController extends BaseController {
             "sampleOrderItems.tbOrderReason", "sampleOrderItems.tbPatientNumber", "sampleOrderItems.tbSuspectNumber",
             "sampleOrderItems.tbTestRequest", "sampleOrderItems.tbReferredTo", "sampleOrderItems.tbSampleNumber",
             "sampleOrderItems.tbClinicalDetails", "sampleOrderItems.tbClinicianName",
-            "sampleOrderItems.tbDateProcessed", "sampleOrderItems.tbSignature", "sampleOrderItems.testLocationCode",
+            "sampleOrderItems.tbDateProcessed", "sampleOrderItems.tbSignature", "sampleOrderItems.cyCollectionMethod",
+            "sampleOrderItems.cyHistory", "sampleOrderItems.cyCurrentTreatment", "sampleOrderItems.cyPreviousTreatment",
+            "sampleOrderItems.cyCervixState", "sampleOrderItems.cyCircumstances", "sampleOrderItems.cyTherapy",
+            "sampleOrderItems.cyContraception", "sampleOrderItems.cyLmp", "sampleOrderItems.cyParity",
+            "sampleOrderItems.cyLastPregnancy", "sampleOrderItems.testLocationCode",
             "sampleOrderItems.otherLocationCode", "sampleOrderItems.priority",
             //
             "accessionNumber", "newAccessionNumber", "isEditable", "maxAccessionNumber",

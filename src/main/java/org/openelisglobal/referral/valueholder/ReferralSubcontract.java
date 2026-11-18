@@ -38,6 +38,9 @@ public class ReferralSubcontract extends BaseObject<String> {
     private String cocContactPhone;
     private String cocContactEmail;
     private String subcontractNotes;
+    private String transportMode;
+    private String vehicleRegistration;
+    private String driverName;
 
     @Override
     public String getId() {
@@ -124,6 +127,30 @@ public class ReferralSubcontract extends BaseObject<String> {
 
     public void setSubcontractNotes(String subcontractNotes) {
         this.subcontractNotes = subcontractNotes;
+    }
+
+    public String getTransportMode() {
+        return transportMode;
+    }
+
+    public void setTransportMode(String transportMode) {
+        this.transportMode = transportMode;
+    }
+
+    public String getVehicleRegistration() {
+        return vehicleRegistration;
+    }
+
+    public void setVehicleRegistration(String vehicleRegistration) {
+        this.vehicleRegistration = vehicleRegistration;
+    }
+
+    public String getDriverName() {
+        return driverName;
+    }
+
+    public void setDriverName(String driverName) {
+        this.driverName = driverName;
     }
 
     @Override

@@ -18,6 +18,8 @@
         <!-- entities -->
         <class>org.openelisglobal.projectorganization.valueholder.ProjectOrganization</class>
         <class>org.openelisglobal.patient.valueholder.PatientIdDocument</class>
+        <!-- LESOTHO -->
+        <class>org.openelisglobal.lesotho.clinicalinfo.valueholder.OrderClinicalInfo</class>
         <class>org.openelisglobal.menu.valueholder.Menu</class>
         <class>org.openelisglobal.localization.valueholder.Localization</class>
         <class>org.openelisglobal.localization.valueholder.LocalizationValue</class>

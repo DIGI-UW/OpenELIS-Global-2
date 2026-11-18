@@ -132,6 +132,12 @@ public class ReferralItem implements IReferralResultTest, Serializable {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
     private String cocContactEmail;
 
+    private String transportMode;
+
+    private String vehicleRegistration;
+
+    private String driverName;
+
     @Size(max = 500)
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
     private String subcontractNotes;
@@ -434,6 +440,30 @@ public class ReferralItem implements IReferralResultTest, Serializable {
 
     public void setCocContactEmail(String cocContactEmail) {
         this.cocContactEmail = cocContactEmail;
+    }
+
+    public String getTransportMode() {
+        return transportMode;
+    }
+
+    public void setTransportMode(String transportMode) {
+        this.transportMode = transportMode;
+    }
+
+    public String getVehicleRegistration() {
+        return vehicleRegistration;
+    }
+
+    public void setVehicleRegistration(String vehicleRegistration) {
+        this.vehicleRegistration = vehicleRegistration;
+    }
+
+    public String getDriverName() {
+        return driverName;
+    }
+
+    public void setDriverName(String driverName) {
+        this.driverName = driverName;
     }
 
     public String getSubcontractNotes() {

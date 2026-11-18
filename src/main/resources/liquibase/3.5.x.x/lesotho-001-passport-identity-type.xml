@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <property name="now" value="now()" dbms="postgresql"/>
+    <!--
+       LESOTHO: identity type for the patient's passport number, captured on
+       the patient form under the phone and email fields. Follows the pattern
+       of 018-add-patient-extra-fields.xml (Custom Notes).
+    -->
+    <changeSet author="lesotho" id="lesotho-001-passport-identity-type">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                select count(*) from clinlims.patient_identity_type where identity_type = 'PASSPORT';
+            </sqlCheck>
+        </preConditions>
+        <comment>Identity type for the patient's passport number.</comment>
+        <insert tableName="patient_identity_type" schemaName="clinlims">
+            <column name="id" valueSequenceNext="patient_identity_type_seq"/>
+            <column name="identity_type" value="PASSPORT"/>
+            <column name="description" value="Passport Number"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

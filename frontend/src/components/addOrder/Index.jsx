@@ -12,6 +12,10 @@ import {
 import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
 import { newSampleKey, rejectedWithoutReason } from "./sampleTypeUpdate";
+import OrderEntryAdditionalQuestions, {
+  programDomainForOrder,
+} from "./OrderEntryAdditionalQuestions";
+import { useProgramByTest } from "./useProgramByTest";
 import {
   missingTestsTitle,
   samplesMissingTests,
@@ -29,7 +33,6 @@ import {
   postToOpenElisServerJsonResponse,
   resolveApiErrorMessage,
 } from "../utils/Utils";
-import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
 import OrderEntryMissingFieldsNotice from "./OrderEntryMissingFieldsNotice";
 import EQASampleEntry from "../eqa/EQASampleEntry";
@@ -42,6 +45,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { createOrderEntryValidationSchema } from "../formModel/validationSchema/OrderEntryValidationSchema";
 import config from "../../config.json";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { saveClinicalInformation } from "../../lesotho/clinicalInformation/clinicalInformationApi"; // LESOTHO
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrumb.label.addOrder", link: "/SamplePatientEntry" },
@@ -97,12 +101,21 @@ const Index = () => {
     contactPhone: { body: "", status: true },
   });
   const [stagedAttachments, setStagedAttachments] = useState([]);
+  // LESOTHO: the order's Clinical Information section, saved after the order
+  // for its lab number (like the staged attachments).
+  const [clinicalInformation, setClinicalInformation] = useState(undefined);
   // OGC-1145 FR-8 — e-order tests/panels whose sample type couldn't be resolved
   // from the message (multi-specimen test, no specimen coding): the accessioner
   // picks the specimen here, which files the orderable under that sample type.
   const [crossTests, setCrossTests] = useState([]);
   const [crossPanels, setCrossPanels] = useState([]);
 
+  const programTriggered = useProgramByTest({
+    samples,
+    orderFormValues,
+    setOrderFormValues,
+    domain: programDomainForOrder(orderFormValues),
+  });
   // Derived step values
   const domain = orderFormValues?.sampleOrderItems?.domain;
   const isNonClinicalDomain = domain === "E" || domain === "V";
@@ -674,6 +687,21 @@ const Index = () => {
         NotificationKinds.success,
       );
       uploadStagedAttachments(response?.sampleOrderItems?.labNo);
+      // LESOTHO: save the Clinical Information section for the saved order
+      saveClinicalInformation(
+        response?.sampleOrderItems?.labNo,
+        clinicalInformation,
+        (ok) => {
+          if (ok) {
+            setClinicalInformation(undefined);
+          } else {
+            showAlertMessage(
+              <FormattedMessage id="lesotho.clinicalInfo.saveFailed" />,
+              NotificationKinds.warning,
+            );
+          }
+        },
+      );
       setCurrentStep(STEP_SUCCESS);
     } else {
       showAlertMessage(
@@ -841,6 +869,15 @@ const Index = () => {
                   referredTestId: testId,
                   referredSendDate: referral.sentDate || "",
                   referralReasonId: referral.reasonForReferral || "",
+                  // Hand-off date and time: the row's sent date plus its time.
+                  // Left out (not sent as "") when no time was entered, as before.
+                  handoffDatetime:
+                    referral.sentDate && referral.sentTime
+                      ? `${referral.sentDate} ${referral.sentTime}`
+                      : undefined,
+                  transportMode: referral.transportMode || "",
+                  vehicleRegistration: referral.vehicleRegistration || "",
+                  driverName: referral.driverName || "",
                 });
               });
             });
@@ -1044,6 +1081,17 @@ const Index = () => {
                     setChanged={setChanged}
                     stagedAttachments={stagedAttachments}
                     setStagedAttachments={setStagedAttachments}
+                    clinicalInformation={clinicalInformation} // LESOTHO
+                    setClinicalInformation={setClinicalInformation} // LESOTHO
+                    programQuestionnaire={
+                      programTriggered ? (
+                        <OrderEntryAdditionalQuestions
+                          hideProgramSelect
+                          orderFormValues={orderFormValues}
+                          setOrderFormValues={setOrderFormValues}
+                        />
+                      ) : null
+                    }
                   />
                 )}
 

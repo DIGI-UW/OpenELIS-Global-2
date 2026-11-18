@@ -183,6 +183,7 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         persistIdentityType(patientInfo.getInsuranceNumber(), "INSURANCE");
         persistIdentityType(patientInfo.getOccupation(), "OCCUPATION");
         persistIdentityType(patientInfo.getCustomNotes(), "CUSTOM_NOTES");
+        persistIdentityType(patientInfo.getPassportNumber(), "PASSPORT"); // LESOTHO
         if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.PATIENT_ART_NUMBER_SHOWN, "true")
                 || ConfigurationProperties.getInstance().isPropertyValueEqual(Property.PATIENT_ART_NUMBER_REQUIRED,
                         "true")) {

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <!--
+       LESOTHO: clinical information moves from the patient to the order.
+       Clinical details (viral load, CD4, transfusion, PCR...) change with every
+       request, so each order keeps its own; the patient form keeps only
+       details that do not change (such as the passport number).
+       lesotho-002 stays included because databases that already ran it must
+       still find it; the table it made is dropped below.
+    -->
+    <changeSet author="lesotho" id="lesotho-003-order-clinical-info-table">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lesotho_order_clinical_info" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Clinical information captured with each order</comment>
+        <createSequence incrementBy="1" schemaName="clinlims" sequenceName="lesotho_order_clinical_info_seq" startValue="1"/>
+        <createTable tableName="lesotho_order_clinical_info" schemaName="clinlims">
+            <column name="id" type="INTEGER" valueSequenceNext="lesotho_order_clinical_info_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="clinical_data" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <createIndex tableName="lesotho_order_clinical_info" schemaName="clinlims"
+                     indexName="idx_lesotho_order_clinical_info_sample_id">
+            <column name="sample_id"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="lesotho" id="lesotho-003-order-clinical-info-audit">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                 WHERE LOWER(name) = 'lesotho_order_clinical_info'
+            </sqlCheck>
+        </preConditions>
+        <comment>Register the table so changes are kept in the audit trail</comment>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="lesotho_order_clinical_info"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+    </changeSet>
+    <changeSet author="lesotho" id="lesotho-003-drop-patient-clinical-info">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="lesotho_patient_clinical_info" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Remove the patient-level clinical information (test data only; never released)</comment>
+        <dropTable tableName="lesotho_patient_clinical_info" schemaName="clinlims"/>
+        <dropSequence sequenceName="lesotho_patient_clinical_info_seq" schemaName="clinlims"/>
+        <delete schemaName="clinlims" tableName="reference_tables">
+            <where>LOWER(name) = 'lesotho_patient_clinical_info'</where>
+        </delete>
+    </changeSet>
+</databaseChangeLog>

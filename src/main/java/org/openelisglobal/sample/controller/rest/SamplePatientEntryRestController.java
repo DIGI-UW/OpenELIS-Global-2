@@ -149,7 +149,11 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             "sampleOrderItems.tbOrderReason", "sampleOrderItems.tbPatientNumber", "sampleOrderItems.tbSuspectNumber",
             "sampleOrderItems.tbTestRequest", "sampleOrderItems.tbReferredTo", "sampleOrderItems.tbSampleNumber",
             "sampleOrderItems.tbClinicalDetails", "sampleOrderItems.tbClinicianName",
-            "sampleOrderItems.tbDateProcessed", "sampleOrderItems.tbSignature", "sampleOrderItems.testLocationCode",
+            "sampleOrderItems.tbDateProcessed", "sampleOrderItems.tbSignature", "sampleOrderItems.cyCollectionMethod",
+            "sampleOrderItems.cyHistory", "sampleOrderItems.cyCurrentTreatment", "sampleOrderItems.cyPreviousTreatment",
+            "sampleOrderItems.cyCervixState", "sampleOrderItems.cyCircumstances", "sampleOrderItems.cyTherapy",
+            "sampleOrderItems.cyContraception", "sampleOrderItems.cyLmp", "sampleOrderItems.cyParity",
+            "sampleOrderItems.cyLastPregnancy", "sampleOrderItems.testLocationCode",
             "sampleOrderItems.otherLocationCode", "sampleOrderItems.contactTracingIndexName",
             "sampleOrderItems.contactTracingIndexRecordNumber", "sampleOrderItems.consentGiven",
             "sampleOrderItems.consentFormReference", "sampleOrderItems.consentRecordedAt",
@@ -165,7 +169,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             // S-14 / OGC-624 subcontract metadata (per-referral)
             "referralItems*.agreementReference", "referralItems*.handoffDatetime", "referralItems*.expectedReturnDate",
             "referralItems*.cocContactName", "referralItems*.cocContactPhone", "referralItems*.cocContactEmail",
-            "referralItems*.subcontractNotes",
+            "referralItems*.subcontractNotes", "referralItems*.transportMode", "referralItems*.vehicleRegistration",
+            "referralItems*.driverName",
             //
             "useReferral", "sampleOrderItems.additionalQuestions", "sampleOrderItems.programId", "orderEntryOnly",
             "cancelReason" };

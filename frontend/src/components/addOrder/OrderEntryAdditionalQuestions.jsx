@@ -162,11 +162,42 @@ export const ProgramSelect = ({
   );
 };
 
+/**
+ * Builds the blank QuestionnaireResponse (one empty answer per question) for a
+ * program's questionnaire. Exported so other order-entry code, such as
+ * useProgramByTest, can attach a program's questions the same way.
+ */
+export function convertQuestionnaireToResponse(questionnaire) {
+  var items = [];
+  if (questionnaire && "item" in questionnaire) {
+    for (let i = 0; i < questionnaire.item.length; i++) {
+      let currentItem = questionnaire.item[i];
+      items.push({
+        linkId: currentItem.linkId,
+        definition: currentItem.definition,
+        text: currentItem.text,
+        answer: [],
+      });
+    }
+
+    var convertedQuestionnaireResponse = {
+      resourceType: "QuestionnaireResponse",
+      id: "",
+      questionnaire: "Questionnaire/" + questionnaire.id,
+      status: "in-progress",
+      item: items,
+    };
+    return convertedQuestionnaireResponse;
+  }
+  return null;
+}
+
 const OrderEntryAdditionalQuestions = ({
   orderFormValues,
   setOrderFormValues = () => {
     console.debug("default setOrderFormValues change function does nothing");
   },
+  hideProgramSelect = false,
 }) => {
   const [questionnaire, setQuestionnaire] = useState(
     orderFormValues?.sampleOrderItems?.questionnaire,
@@ -204,31 +235,6 @@ const OrderEntryAdditionalQuestions = ({
       );
     }
   };
-
-  function convertQuestionnaireToResponse(questionnaire) {
-    var items = [];
-    if (questionnaire && "item" in questionnaire) {
-      for (let i = 0; i < questionnaire.item.length; i++) {
-        let currentItem = questionnaire.item[i];
-        items.push({
-          linkId: currentItem.linkId,
-          definition: currentItem.definition,
-          text: currentItem.text,
-          answer: [],
-        });
-      }
-
-      var convertedQuestionnaireResponse = {
-        resourceType: "QuestionnaireResponse",
-        id: "",
-        questionnaire: "Questionnaire/" + questionnaire.id,
-        status: "in-progress",
-        item: items,
-      };
-      return convertedQuestionnaireResponse;
-    }
-    return null;
-  }
 
   function setAdditionalQuestions(res, event) {
     console.debug(res);
@@ -383,14 +389,18 @@ const OrderEntryAdditionalQuestions = ({
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <div className="orderLegendBody">
-            <h3>
-              <FormattedMessage id="select.program" />
-            </h3>
-            <ProgramSelect
-              programChange={handleProgramSelection}
-              orderFormValues={orderFormValues}
-              domain={programDomainForOrder(orderFormValues)}
-            />
+            {!hideProgramSelect && (
+              <>
+                <h3>
+                  <FormattedMessage id="select.program" />
+                </h3>
+                <ProgramSelect
+                  programChange={handleProgramSelection}
+                  orderFormValues={orderFormValues}
+                  domain={programDomainForOrder(orderFormValues)}
+                />
+              </>
+            )}
             <Questionnaire
               questionnaire={questionnaire}
               onAnswerChange={answerChange}

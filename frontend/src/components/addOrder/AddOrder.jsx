@@ -46,6 +46,8 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
 import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 import SearchableSelect from "../common/SearchableSelect";
+import ClinicalInformation from "../../lesotho/clinicalInformation/ClinicalInformation"; // LESOTHO
+import { formsForTests } from "../../lesotho/clinicalInformation/testForms"; // LESOTHO
 const AddOrder = (props) => {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -65,6 +67,9 @@ const AddOrder = (props) => {
     setChanged,
     stagedAttachments,
     setStagedAttachments,
+    clinicalInformation, // LESOTHO
+    setClinicalInformation, // LESOTHO
+    programQuestionnaire,
   } = props;
   const [otherTestLocationCodeId, setOtherTestLocationCodeId] = useState("");
   const [providers, setProviders] = useState([]);
@@ -368,6 +373,40 @@ const AddOrder = (props) => {
         tbSuspectNumber: e.target.value,
       },
     });
+  }
+
+  // The cervical cytology section appears only when a selected test looks cervical.
+  const CERVICAL_TEST_PATTERN = /cervical|pap smear/i;
+  const isCervicalOrder = (samples || []).some((s) =>
+    (s.tests || []).some((t) => CERVICAL_TEST_PATTERN.test(JSON.stringify(t))),
+  );
+  const CY_METHOD_OPTIONS = [
+    { code: "CERVICAL", label: "order.cy.method.cervical" },
+    { code: "VAULT", label: "order.cy.method.vault" },
+    { code: "ENDOBRUSH", label: "order.cy.method.endobrush" },
+    { code: "ENDOPAP", label: "order.cy.method.endopap" },
+  ];
+  const CY_CERVIX_OPTIONS = [
+    { code: "NORMAL", label: "order.cy.cervix.normal" },
+    { code: "ERODED", label: "order.cy.cervix.eroded" },
+    { code: "SUSPICIOUS", label: "order.cy.cervix.suspicious" },
+    { code: "FIRST_SMEAR", label: "order.cy.cervix.firstSmear" },
+  ];
+  const CY_CIRCUMSTANCE_OPTIONS = [
+    { code: "ROUTINE", label: "order.cy.circ.routine" },
+    { code: "PREGNANT", label: "order.cy.circ.pregnant" },
+    { code: "POSTNATAL", label: "order.cy.circ.postnatal" },
+    { code: "POSTMENOPAUSAL", label: "order.cy.circ.postmenopausal" },
+  ];
+  const cySelected = (field) =>
+    (orderFormValues.sampleOrderItems[field] ?? "").split(",").filter(Boolean);
+
+  function handleCyToggle(field, code, checked) {
+    const current = cySelected(field);
+    const next = checked
+      ? [...current.filter((c) => c !== code), code]
+      : current.filter((c) => c !== code);
+    handleTbField(field, next.join(","));
   }
 
   const TB_TEST_OPTIONS = [
@@ -834,6 +873,23 @@ const AddOrder = (props) => {
     () => (samples || []).filter((s) => s.tests && s.tests.length > 0),
     [samples],
   );
+
+  // LESOTHO: the request forms whose clinical fields apply, from the tests on
+  // the order (for example HIV DNA PCR -> the DNA-PCR form), kept in the
+  // section's values so they are saved with it.
+  const lesothoForms = useMemo(
+    () => formsForTests((samples || []).flatMap((s) => s.tests || [])),
+    [samples],
+  );
+  const lesothoFormsKey = lesothoForms.join(",");
+  useEffect(() => {
+    if (isModifyOrder || !setClinicalInformation) return;
+    setClinicalInformation((prev) => {
+      if ((prev?.forms || []).join(",") === lesothoFormsKey) return prev;
+      if (!prev && !lesothoFormsKey) return prev;
+      return { ...(prev || {}), forms: lesothoForms };
+    });
+  }, [lesothoFormsKey]);
 
   // The specimen names the sample-type picker offers, so the heading a sample is
   // given here reads as the type the user chose on it rather than the number of
@@ -1646,6 +1702,20 @@ const AddOrder = (props) => {
             )}
           </Grid>
         </div>
+        {/* LESOTHO: clinical information from the MOH request form, per order */}
+        {!isModifyOrder && setClinicalInformation && (
+          <div className="orderLegendBody" data-testid="order-clinical-info">
+            <h3>
+              <FormattedMessage id="lesotho.clinicalInfo.title" />
+            </h3>
+            <ClinicalInformation
+              values={clinicalInformation}
+              forms={lesothoForms}
+              patientSex={orderFormValues?.patientProperties?.gender}
+              onChange={setClinicalInformation}
+            />
+          </div>
+        )}
         {(isTbOrder || !!orderFormValues?.sampleOrderItems?.tbOrderReason) && (
           <div className="orderLegendBody">
             <h3>
@@ -1799,6 +1869,181 @@ const AddOrder = (props) => {
                 />
               </Column>
             </Grid>
+          </div>
+        )}
+        {(isCervicalOrder ||
+          !!orderFormValues?.sampleOrderItems?.cyCollectionMethod) && (
+          <div className="orderLegendBody">
+            <h3>
+              <FormattedMessage id="order.cy.heading" />
+            </h3>
+            <Grid fullWidth={true}>
+              <Column lg={16} md={8} sm={4}>
+                <RadioButtonGroup
+                  legendText={intl.formatMessage({
+                    id: "order.cy.collectionMethod.label",
+                  })}
+                  name="cyCollectionMethod"
+                  orientation="horizontal"
+                  valueSelected={
+                    orderFormValues.sampleOrderItems.cyCollectionMethod ?? ""
+                  }
+                  onChange={(value) =>
+                    handleTbField("cyCollectionMethod", value)
+                  }
+                >
+                  {CY_METHOD_OPTIONS.map((opt) => (
+                    <RadioButton
+                      key={opt.code}
+                      id={`cyMethod-${opt.code}`}
+                      labelText={intl.formatMessage({ id: opt.label })}
+                      value={opt.code}
+                    />
+                  ))}
+                </RadioButtonGroup>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <TextArea
+                  id="cyHistoryId"
+                  name="cyHistory"
+                  rows={3}
+                  labelText={intl.formatMessage({
+                    id: "order.cy.history.label",
+                  })}
+                  value={orderFormValues.sampleOrderItems.cyHistory ?? ""}
+                  onChange={(e) => handleTbField("cyHistory", e.target.value)}
+                />
+              </Column>
+              <Column lg={8} md={4} sm={4}>
+                <TextInput
+                  id="cyCurrentTreatmentId"
+                  name="cyCurrentTreatment"
+                  labelText={intl.formatMessage({
+                    id: "order.cy.currentTreatment.label",
+                  })}
+                  value={
+                    orderFormValues.sampleOrderItems.cyCurrentTreatment ?? ""
+                  }
+                  onChange={(e) =>
+                    handleTbField("cyCurrentTreatment", e.target.value)
+                  }
+                />
+              </Column>
+              <Column lg={8} md={4} sm={4}>
+                <TextInput
+                  id="cyPreviousTreatmentId"
+                  name="cyPreviousTreatment"
+                  labelText={intl.formatMessage({
+                    id: "order.cy.previousTreatment.label",
+                  })}
+                  value={
+                    orderFormValues.sampleOrderItems.cyPreviousTreatment ?? ""
+                  }
+                  onChange={(e) =>
+                    handleTbField("cyPreviousTreatment", e.target.value)
+                  }
+                />
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <fieldset className="cds--fieldset">
+                  <legend className="cds--label">
+                    <FormattedMessage id="order.cy.cervixState.label" />
+                  </legend>
+                  {CY_CERVIX_OPTIONS.map((opt) => (
+                    <Checkbox
+                      key={opt.code}
+                      id={`cyCervixState-${opt.code}`}
+                      labelText={intl.formatMessage({ id: opt.label })}
+                      checked={cySelected("cyCervixState").includes(opt.code)}
+                      onChange={(_event, { checked }) =>
+                        handleCyToggle("cyCervixState", opt.code, checked)
+                      }
+                    />
+                  ))}
+                </fieldset>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <fieldset className="cds--fieldset">
+                  <legend className="cds--label">
+                    <FormattedMessage id="order.cy.circumstances.label" />
+                  </legend>
+                  {CY_CIRCUMSTANCE_OPTIONS.map((opt) => (
+                    <Checkbox
+                      key={opt.code}
+                      id={`cyCircumstances-${opt.code}`}
+                      labelText={intl.formatMessage({ id: opt.label })}
+                      checked={cySelected("cyCircumstances").includes(opt.code)}
+                      onChange={(_event, { checked }) =>
+                        handleCyToggle("cyCircumstances", opt.code, checked)
+                      }
+                    />
+                  ))}
+                </fieldset>
+              </Column>
+              <Column lg={8} md={4} sm={4}>
+                <TextInput
+                  id="cyTherapyId"
+                  name="cyTherapy"
+                  labelText={intl.formatMessage({
+                    id: "order.cy.therapy.label",
+                  })}
+                  value={orderFormValues.sampleOrderItems.cyTherapy ?? ""}
+                  onChange={(e) => handleTbField("cyTherapy", e.target.value)}
+                />
+              </Column>
+              <Column lg={8} md={4} sm={4}>
+                <TextInput
+                  id="cyContraceptionId"
+                  name="cyContraception"
+                  labelText={intl.formatMessage({
+                    id: "order.cy.contraception.label",
+                  })}
+                  value={orderFormValues.sampleOrderItems.cyContraception ?? ""}
+                  onChange={(e) =>
+                    handleTbField("cyContraception", e.target.value)
+                  }
+                />
+              </Column>
+              <Column lg={8} md={4} sm={4}>
+                <TextInput
+                  id="cyLmpId"
+                  name="cyLmp"
+                  labelText={intl.formatMessage({ id: "order.cy.lmp.label" })}
+                  value={orderFormValues.sampleOrderItems.cyLmp ?? ""}
+                  onChange={(e) => handleTbField("cyLmp", e.target.value)}
+                />
+              </Column>
+              <Column lg={8} md={4} sm={4}>
+                <TextInput
+                  id="cyParityId"
+                  name="cyParity"
+                  labelText={intl.formatMessage({
+                    id: "order.cy.parity.label",
+                  })}
+                  value={orderFormValues.sampleOrderItems.cyParity ?? ""}
+                  onChange={(e) => handleTbField("cyParity", e.target.value)}
+                />
+              </Column>
+              <Column lg={8} md={4} sm={4}>
+                <TextInput
+                  id="cyLastPregnancyId"
+                  name="cyLastPregnancy"
+                  labelText={intl.formatMessage({
+                    id: "order.cy.lastPregnancy.label",
+                  })}
+                  value={orderFormValues.sampleOrderItems.cyLastPregnancy ?? ""}
+                  onChange={(e) =>
+                    handleTbField("cyLastPregnancy", e.target.value)
+                  }
+                />
+              </Column>
+            </Grid>
+          </div>
+        )}
+        {programQuestionnaire && (
+          <div className="orderLegendBody clinical-information-section">
+            <h3>Clinical Information</h3>
+            {programQuestionnaire}
           </div>
         )}
         {!isModifyOrder && setStagedAttachments && (

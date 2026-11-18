@@ -69,5 +69,8 @@
     <include relativeToChangelogFile="true" file="028-tb-order-reason-list.xml"/>
     <include relativeToChangelogFile="true" file="029-tb-request-numbers.xml"/>
     <include relativeToChangelogFile="true" file="031-tb-request-form-fields.xml"/>
+    <include relativeToChangelogFile="true" file="032-cervical-cytology-request-fields.xml"/>
 
+  <!-- Referral transport details: mode of transport, vehicle, driver -->
+  <include relativeToChangelogFile="true" file="referral-transport-001-subcontract-transport-details.xml"/>
 </databaseChangeLog>

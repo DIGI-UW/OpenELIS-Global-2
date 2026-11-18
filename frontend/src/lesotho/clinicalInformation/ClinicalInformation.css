@@ -1,0 +1,25 @@
+/* LESOTHO: Clinical Information section */
+.clinical-info .cds--inline-notification {
+  max-width: 100%;
+  margin-bottom: 1rem;
+}
+.clinical-info-heading {
+  margin: 1.5rem 0 0.5rem;
+}
+.clinical-info-subheading {
+  margin-top: 1rem;
+  font-weight: 600;
+}
+.clinical-info-grid {
+  padding-left: 0;
+  padding-right: 0;
+  row-gap: 1rem;
+}
+.clinical-info-checklist {
+  margin-top: 1rem;
+}
+.clinical-info-checklist .cds--checkbox-wrapper {
+  display: inline-flex;
+  min-width: 11rem;
+  margin-right: 1rem;
+}

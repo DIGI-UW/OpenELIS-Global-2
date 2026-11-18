@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <!--
+       LESOTHO: saved versions of the Clinical Information section of the
+       patient form (one row per change; the newest row is current).
+       Follows patient_id_document.xml and 026 (audit registration).
+    -->
+    <changeSet author="lesotho" id="lesotho-002-patient-clinical-info-table">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="lesotho_patient_clinical_info" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Clinical information captured on the patient form</comment>
+        <createSequence incrementBy="1" schemaName="clinlims" sequenceName="lesotho_patient_clinical_info_seq" startValue="1"/>
+        <createTable tableName="lesotho_patient_clinical_info" schemaName="clinlims">
+            <column name="id" type="INTEGER" valueSequenceNext="lesotho_patient_clinical_info_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="patient_id" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="clinical_data" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="datetime"/>
+        </createTable>
+        <createIndex tableName="lesotho_patient_clinical_info" schemaName="clinlims"
+                     indexName="idx_lesotho_clinical_info_patient_id">
+            <column name="patient_id"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="lesotho" id="lesotho-002-patient-clinical-info-audit">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                 WHERE LOWER(name) = 'lesotho_patient_clinical_info'
+            </sqlCheck>
+        </preConditions>
+        <comment>Register the table so changes are kept in the audit trail</comment>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="lesotho_patient_clinical_info"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

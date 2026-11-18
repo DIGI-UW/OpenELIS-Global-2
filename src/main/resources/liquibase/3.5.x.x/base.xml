@@ -703,4 +703,10 @@
   <include relativeToChangelogFile="true" file="145-optional-reporting-decimal-places.xml"/>
   <include relativeToChangelogFile="true" file="146-explicit-log-display.xml"/>
   <include relativeToChangelogFile="true" file="147-log-display-source-and-seed.xml"/>
+  <!-- LESOTHO: passport number on the patient form -->
+  <include relativeToChangelogFile="true" file="lesotho-001-passport-identity-type.xml"/>
+  <!-- LESOTHO: clinical information on the patient form (replaced by 003) -->
+  <include relativeToChangelogFile="true" file="lesotho-002-patient-clinical-info.xml"/>
+  <!-- LESOTHO: clinical information moves to the order -->
+  <include relativeToChangelogFile="true" file="lesotho-003-order-clinical-info.xml"/>
 </databaseChangeLog>
