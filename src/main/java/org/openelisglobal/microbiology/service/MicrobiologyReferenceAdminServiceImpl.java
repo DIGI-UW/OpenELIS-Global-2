@@ -179,12 +179,13 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         if (request == null) {
             throw new IllegalArgumentException("Antibiotic is required");
         }
-        String name = requireText(request.displayName, "Name");
+        String name = maxLength(requireText(request.displayName, "Name"), 255, "Name");
         String code = normalizeAntibioticCode(request.whonetCode);
-        String antibioticClass = requireText(request.antibioticClass, "antibioticClass");
-        String route = requireText(request.route, "route").toUpperCase(Locale.ROOT);
-        if (!ROUTES.contains(route)) {
-            throw new IllegalArgumentException("route must be ORAL, IV, BOTH, or TOPICAL");
+        String antibioticClass = maxLength(trimToNull(request.antibioticClass), 255, "Class");
+        String route = trimToNull(request.route);
+        route = route == null ? null : route.toUpperCase(Locale.ROOT);
+        if (route != null && !ROUTES.contains(route)) {
+            throw new IllegalArgumentException("Route must be ORAL, IV, BOTH or TOPICAL");
         }
         assertAvailable(antibioticDAO.findByDisplayNameIgnoreCase(name), id, "Antibiotic name is already in use");
         assertAvailable(antibioticDAO.findByWhonetCodeIgnoreCase(code), id, "WHONET code is already in use");
@@ -726,7 +727,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     private String normalizeAntibioticCode(String code) {
         String normalized = requireText(code, "WHONET code").toUpperCase(Locale.ROOT);
         if (!ANTIBIOTIC_WHONET.matcher(normalized).matches()) {
-            throw new IllegalArgumentException("Antibiotic WHONET code must be 2-10 uppercase letters or digits");
+            throw new IllegalArgumentException("Antibiotic WHONET code must be 2-10 letters or digits");
         }
         return normalized;
     }

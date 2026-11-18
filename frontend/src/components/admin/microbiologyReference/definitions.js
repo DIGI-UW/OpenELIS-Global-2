@@ -114,7 +114,6 @@ export const REFERENCE_DEFINITIONS = {
       {
         key: "antibioticClass",
         label: "microbiology.admin.field.class",
-        required: true,
       },
       {
         key: "resistanceRole",

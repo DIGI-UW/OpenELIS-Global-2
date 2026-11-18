@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -154,6 +155,75 @@ public class MicroWhonetAntibioticLoadIntegrationTest extends BaseWebContextSens
         form.displayName = "Amikacin";
         assertEquals("WHONET code is required",
                 assertThrows(IllegalArgumentException.class, () -> admin.saveAntibiotic(null, form, "1")).getMessage());
+    }
+
+    @Test
+    public void aWhonetAntibioticIsSavedWithNoClassOrRoute() throws Exception {
+        String file = "WHONET_ABX_CODE\tANTIBIOTIC\tCLASS\tABX_NUMBER\r\n" + "BDQ\tBedaquiline\t\t511\r\n";
+        handler.processConfiguration(new ByteArrayInputStream(file.getBytes(StandardCharsets.UTF_8)),
+                "Antibiotics.txt");
+        MicroAntibioticAdminForm form = admin.getAntibiotic(coded("BDQ").getId());
+        form.notes = "Held for resistant tuberculosis";
+
+        admin.saveAntibiotic(form.id, form, "1");
+
+        assertEquals("Held for resistant tuberculosis", coded("BDQ").getNotes());
+        assertNull(coded("BDQ").getAntibioticClass());
+        assertNull(coded("BDQ").getRoute());
+    }
+
+    @Test
+    public void emptyingTheClassAndRouteClearsThem() throws Exception {
+        load();
+        MicroAntibioticAdminForm form = admin.getAntibiotic(coded("AMC").getId());
+        form.route = "ORAL";
+        admin.saveAntibiotic(form.id, form, "1");
+        form.antibioticClass = "";
+        form.route = "";
+
+        admin.saveAntibiotic(form.id, form, "1");
+
+        assertNull(coded("AMC").getAntibioticClass());
+        assertNull(coded("AMC").getRoute());
+    }
+
+    @Test
+    public void routeIsOneOfTheFormsChoices() throws Exception {
+        load();
+        MicroAntibioticAdminForm form = admin.getAntibiotic(coded("AMC").getId());
+        form.route = "NASAL";
+        assertEquals("Route must be ORAL, IV, BOTH or TOPICAL", refusal(form));
+
+        form.route = " iv ";
+        admin.saveAntibiotic(form.id, form, "1");
+        assertEquals("IV", coded("AMC").getRoute());
+    }
+
+    @Test
+    public void aLowerCaseWhonetCodeIsRaisedSoTheRefusalDoesNotAskForUppercase() {
+        MicroAntibioticAdminForm form = admin.getAntibiotic("lab-amikacin");
+        form.whonetCode = "a";
+        assertEquals("Antibiotic WHONET code must be 2-10 letters or digits", refusal(form));
+
+        form.whonetCode = "amk";
+        admin.saveAntibiotic(form.id, form, "1");
+        assertEquals("AMK", coded("AMK").getWhonetCode());
+    }
+
+    @Test
+    public void aValueLongerThanItsColumnIsRefusedNamingTheField() {
+        MicroAntibioticAdminForm form = admin.getAntibiotic("lab-amikacin");
+        form.route = "ORAL";
+        form.antibioticClass = "x".repeat(256);
+        assertEquals("Class is longer than 255 characters", refusal(form));
+        form.antibioticClass = "Aminoglycosides";
+        form.displayName = "x".repeat(256);
+        assertEquals("Name is longer than 255 characters", refusal(form));
+    }
+
+    private String refusal(MicroAntibioticAdminForm form) {
+        return assertThrows(IllegalArgumentException.class, () -> admin.saveAntibiotic(form.id, form, "1"))
+                .getMessage();
     }
 
     @Test

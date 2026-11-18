@@ -208,6 +208,29 @@ describe("microbiology reference administration", () => {
     expect(await marker("Initial significance")).toBeNull();
   });
 
+  it("marks the antibiotic fields the server requires", async () => {
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+
+    renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS.antibiotics}
+        query={{ ...query, edit: "new" }}
+        setQuery={vi.fn()}
+      />,
+    );
+
+    const marker = async (name) =>
+      (await screen.findAllByText(name))
+        .find((node) => node.closest("label"))
+        .closest("label")
+        .querySelector(".requiredlabel");
+
+    expect(await marker("Name")).not.toBeNull();
+    expect(await marker("WHONET code")).not.toBeNull();
+    expect(await marker("Class")).toBeNull();
+    expect(await marker("Route")).toBeNull();
+  });
+
   it("drops the saved notice when a later save is refused", async () => {
     const user = userEvent.setup();
     getReferencePage.mockResolvedValue({ rows: [], total: 0 });
