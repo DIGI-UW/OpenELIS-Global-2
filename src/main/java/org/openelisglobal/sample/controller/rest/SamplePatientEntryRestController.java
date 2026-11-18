@@ -169,7 +169,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             // S-14 / OGC-624 subcontract metadata (per-referral)
             "referralItems*.agreementReference", "referralItems*.handoffDatetime", "referralItems*.expectedReturnDate",
             "referralItems*.cocContactName", "referralItems*.cocContactPhone", "referralItems*.cocContactEmail",
-            "referralItems*.subcontractNotes",
+            "referralItems*.subcontractNotes", "referralItems*.transportMode", "referralItems*.vehicleRegistration",
+            "referralItems*.driverName",
             //
             "useReferral", "sampleOrderItems.additionalQuestions", "sampleOrderItems.programId", "orderEntryOnly",
             "cancelReason" };

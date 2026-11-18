@@ -259,6 +259,10 @@ const SampleType = (props) => {
             userSessionDetails.firstName + " " + userSessionDetails.lastName,
           institute: referralOrganizations[0]?.id ?? "",
           sentDate: "",
+          sentTime: "",
+          transportMode: "",
+          vehicleRegistration: "",
+          driverName: "",
           testId: test.id,
         });
       });

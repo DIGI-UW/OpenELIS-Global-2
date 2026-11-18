@@ -6,6 +6,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TextInput,
 } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import CustomTextInput from "../common/CustomTextInput";
@@ -63,6 +64,38 @@ const OrderReferralRequest = ({
     }
   }
 
+  // Transport details are written straight onto the referral row.
+  function handleRowField(field, value, index) {
+    const update = [...referralRequests];
+    if (update[index]) {
+      update[index][field] = value;
+    }
+    setReferralRequests(update);
+  }
+
+  const transportModes = [
+    {
+      id: "CAR",
+      value: intl.formatMessage({ id: "referral.transportMode.car" }),
+    },
+    {
+      id: "MOTORCYCLE",
+      value: intl.formatMessage({ id: "referral.transportMode.motorcycle" }),
+    },
+    {
+      id: "COURIER",
+      value: intl.formatMessage({ id: "referral.transportMode.courier" }),
+    },
+    {
+      id: "HAND_CARRIED",
+      value: intl.formatMessage({ id: "referral.transportMode.handCarried" }),
+    },
+    {
+      id: "OTHER",
+      value: intl.formatMessage({ id: "referral.transportMode.other" }),
+    },
+  ];
+
   const header = [
     {
       key: "reason",
@@ -85,6 +118,25 @@ const OrderReferralRequest = ({
         "(dd/mm/yyyy)",
     },
     {
+      key: "sentTime",
+      header:
+        intl.formatMessage({ id: "referral.label.senttime" }) +
+        "\n" +
+        "(hh:mm)",
+    },
+    {
+      key: "transportMode",
+      header: intl.formatMessage({ id: "referral.label.transportMode" }),
+    },
+    {
+      key: "vehicleRegistration",
+      header: intl.formatMessage({ id: "referral.label.vehicleRegistration" }),
+    },
+    {
+      key: "driverName",
+      header: intl.formatMessage({ id: "referral.label.driverName" }),
+    },
+    {
       key: "name",
       header: requiredSymbol(intl.formatMessage({ id: "search.label.test" })),
     },
@@ -100,6 +152,10 @@ const OrderReferralRequest = ({
     referrer: userSessionDetails.firstName + " " + userSessionDetails.lastName,
     institute: referralOrganizations[0]?.id ?? null,
     sentDate: "",
+    sentTime: "",
+    transportMode: "",
+    vehicleRegistration: "",
+    driverName: "",
     testId: test.id,
   });
 
@@ -163,6 +219,44 @@ const OrderReferralRequest = ({
           className="orderReferralSentDate"
           value={request?.sentDate ? request.sentDate : null}
           onChange={(date) => handleSentDatePicker(date, i)}
+          labelText={""}
+        />
+      ),
+      sentTime: (
+        <TextInput
+          id={"sendTime_" + id}
+          type="time"
+          labelText={""}
+          aria-label={intl.formatMessage({ id: "referral.label.senttime" })}
+          value={request?.sentTime ?? ""}
+          onChange={(e) => handleRowField("sentTime", e.target.value, i)}
+        />
+      ),
+      transportMode: (
+        <CustomSelect
+          id={"transportMode_" + id}
+          aria-label={intl.formatMessage({
+            id: "referral.label.transportMode",
+          })}
+          options={transportModes}
+          value={request?.transportMode ? request.transportMode : null}
+          onChange={(e) => handleRowField("transportMode", e, i)}
+          defaultSelect={{ id: "", value: "" }}
+        />
+      ),
+      vehicleRegistration: (
+        <CustomTextInput
+          id={"vehicleRegistration_" + id}
+          defaultValue={request?.vehicleRegistration ?? ""}
+          onChange={(value) => handleRowField("vehicleRegistration", value, i)}
+          labelText={""}
+        />
+      ),
+      driverName: (
+        <CustomTextInput
+          id={"driverName_" + id}
+          defaultValue={request?.driverName ?? ""}
+          onChange={(value) => handleRowField("driverName", value, i)}
           labelText={""}
         />
       ),

@@ -974,6 +974,9 @@ public class OrderSearchRestController extends BaseRestController {
                         referralData.put("cocContactPhone", subcontract.getCocContactPhone());
                         referralData.put("cocContactEmail", subcontract.getCocContactEmail());
                         referralData.put("subcontractNotes", subcontract.getSubcontractNotes());
+                        referralData.put("transportMode", subcontract.getTransportMode());
+                        referralData.put("vehicleRegistration", subcontract.getVehicleRegistration());
+                        referralData.put("driverName", subcontract.getDriverName());
                     }
                     referralItemsData.add(referralData);
                 }

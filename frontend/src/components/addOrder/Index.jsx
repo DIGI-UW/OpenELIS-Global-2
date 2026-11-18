@@ -869,6 +869,15 @@ const Index = () => {
                   referredTestId: testId,
                   referredSendDate: referral.sentDate || "",
                   referralReasonId: referral.reasonForReferral || "",
+                  // Hand-off date and time: the row's sent date plus its time.
+                  // Left out (not sent as "") when no time was entered, as before.
+                  handoffDatetime:
+                    referral.sentDate && referral.sentTime
+                      ? `${referral.sentDate} ${referral.sentTime}`
+                      : undefined,
+                  transportMode: referral.transportMode || "",
+                  vehicleRegistration: referral.vehicleRegistration || "",
+                  driverName: referral.driverName || "",
                 });
               });
             });
