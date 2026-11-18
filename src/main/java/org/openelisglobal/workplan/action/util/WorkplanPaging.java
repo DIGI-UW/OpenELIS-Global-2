@@ -21,6 +21,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.paging.IPageDivider;
 import org.openelisglobal.common.paging.IPageFlattener;
 import org.openelisglobal.common.paging.IPageUpdater;
+import org.openelisglobal.common.paging.PagingBean;
 import org.openelisglobal.common.paging.PagingProperties;
 import org.openelisglobal.common.paging.PagingUtility;
 import org.openelisglobal.common.util.IdValuePair;
@@ -41,7 +42,7 @@ public class WorkplanPaging {
         List<TestResultItem> resultPage = paging.getPage(1, request.getSession());
         if (resultPage != null) {
             form.setWorkplanTests(resultPage);
-            form.setPaging(paging.getPagingBeanWithSearchMapping(1, request.getSession()));
+            form.setPaging(withTotal(paging.getPagingBeanWithSearchMapping(1, request.getSession()), request));
         }
     }
 
@@ -57,8 +58,21 @@ public class WorkplanPaging {
         if (resultPage != null) {
             form.setWorkplanTests(resultPage);
             form.setTestSectionId("0");
-            form.setPaging(paging.getPagingBeanWithSearchMapping(newPage, request.getSession()));
+            form.setPaging(withTotal(paging.getPagingBeanWithSearchMapping(newPage, request.getSession()), request));
         }
+    }
+
+    /**
+     * The tests in the whole workplan, not the page on screen: "Total Tests" read
+     * the page's rows, 100 of about 1,450 (OGC-1647). Rows that only head a test
+     * group are not tests and are not counted.
+     */
+    private PagingBean withTotal(PagingBean bean, HttpServletRequest request) {
+        List<List<TestResultItem>> pages = paging.getAllPages(request.getSession());
+        long tests = pages == null ? 0
+                : pages.stream().flatMap(List::stream).filter(item -> !item.isServingAsTestGroupIdentifier()).count();
+        bean.setTotalResults(String.valueOf(tests));
+        return bean;
     }
 
     public List<TestResultItem> getResults(HttpServletRequest request) {

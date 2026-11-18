@@ -25,6 +25,7 @@ import "./wpStyle.css";
 import { FormattedMessage, useIntl } from "react-intl";
 import WorkplanSearchForm from "./WorkplanSearchForm";
 import {
+  getFromOpenElisServer,
   postToOpenElisServerForPDF,
   convertAlphaNumLabNumForDisplay,
 } from "../utils/Utils";
@@ -41,6 +42,11 @@ import {
 import ServerPageArrows from "../common/ServerPageArrows";
 
 import useInAppNavigation from "../common/useInAppNavigation";
+
+/** A workplan row is one analysis; its id stays the same on every page. */
+const rowKey = (row) =>
+  row.analysisId || `${row.accessionNumber}|${row.testName}`;
+
 export default function Workplan(props) {
   const navigate = useInAppNavigation();
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -68,6 +74,13 @@ export default function Workplan(props) {
     (pageNumber) => pageLoader.current?.(pageNumber),
     [],
   );
+  // The address of the list's pages, so Print can take every page.
+  const pageSource = useRef(null);
+  const registerPageSource = useCallback((source) => {
+    pageSource.current = source;
+  }, []);
+  const [excluded, setExcluded] = useState(() => new Set());
+  const [printing, setPrinting] = useState(false);
 
   const arrows = serverPageArrowsProps({ paging, onPageRequest: loadPage });
 
@@ -137,27 +150,76 @@ export default function Workplan(props) {
   };
   const handleSelectedValue = (val) => {
     setSelectedValue(val);
+    setExcluded(new Set());
   };
   const handleSelectedLabel = (val) => {
     setSelectedLabel(val);
   };
 
-  const printWorkplan = () => {
-    let form = {
-      type: type,
-      testTypeID: "",
-      testSectionId: selectedValue,
-      testName: selectedLabel,
-      workplanTests: buildWorlplanTestFromTestList(testsList),
-    };
-    if (type === "priority") {
-      delete form.testSectionId;
+  const fetchPage = (pageNumber) =>
+    new Promise((resolve) => {
+      getFromOpenElisServer(
+        `${pageSource.current}&page=${pageNumber}`,
+        (response) => resolve(response),
+      );
+    });
+
+  /**
+   * Every test in the workplan, not only the page on screen: the printed bench
+   * sheet listed one page of many with no notice (OGC-1647).
+   */
+  const wholeWorkplan = async () => {
+    const totalPages = Number(paging?.totalPages) || 1;
+    if (totalPages <= 1 || !pageSource.current) {
+      return testsList;
     }
-    postToOpenElisServerForPDF(
-      "/rest/PrintWorkplanReport",
-      JSON.stringify(form),
-      reportStatus,
-    );
+    const rows = [];
+    for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
+      const response = await fetchPage(pageNumber);
+      if (!Array.isArray(response?.workplanTests)) {
+        return null;
+      }
+      rows.push(...response.workplanTests);
+    }
+    return rows;
+  };
+
+  const printWorkplan = async () => {
+    setPrinting(true);
+    try {
+      const rows = await wholeWorkplan();
+      if (!rows) {
+        setNotificationVisible(true);
+        addNotification({
+          kind: NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({ id: "workplan.print.pagesFailed" }),
+        });
+        return;
+      }
+      let form = {
+        type: type,
+        testTypeID: "",
+        testSectionId: selectedValue,
+        testName: selectedLabel,
+        workplanTests: buildWorlplanTestFromTestList(
+          rows.map((row) => ({
+            ...row,
+            notIncludedInWorkplan: excluded.has(rowKey(row)),
+          })),
+        ),
+      };
+      if (type === "priority") {
+        delete form.testSectionId;
+      }
+      postToOpenElisServerForPDF(
+        "/rest/PrintWorkplanReport",
+        JSON.stringify(form),
+        reportStatus,
+      );
+    } finally {
+      setPrinting(false);
+    }
   };
 
   const buildWorlplanTestFromTestList = (rawData) => {
@@ -184,16 +246,23 @@ export default function Workplan(props) {
     return output;
   };
 
-  const disableEnableTest = (checkbox, index) => {
-    if (checkbox.checked) {
-      document.querySelector("#row_" + index).style.backgroundColor = "#cccccc";
-      testsList[index].notIncludedInWorkplan = true;
-    } else {
-      checkbox.checked = "";
-      document.querySelector("#row_" + index).style.backgroundColor = "";
-      testsList[index].notIncludedInWorkplan = false;
-    }
+  const setIncluded = (row, removed) => {
+    const key = rowKey(row);
+    setExcluded((previous) => {
+      const next = new Set(previous);
+      if (removed) {
+        next.add(key);
+      } else {
+        next.delete(key);
+      }
+      return next;
+    });
   };
+
+  const totalTests =
+    paging?.totalResults !== undefined && paging?.totalResults !== null
+      ? Number(paging.totalResults)
+      : testsList.filter((row) => !row.servingAsTestGroupIdentifier).length;
 
   let rowColorIndex = 2;
   let showAccessionNumber = false;
@@ -228,6 +297,7 @@ export default function Workplan(props) {
               selectedValue={handleSelectedValue}
               selectedLabel={handleSelectedLabel}
               registerPageLoader={registerPageLoader}
+              registerPageSource={registerPageSource}
             />
           </Column>
         </Grid>
@@ -242,6 +312,7 @@ export default function Workplan(props) {
                   type="button"
                   name="print"
                   id="print-top"
+                  disabled={printing}
                   onClick={printWorkplan}
                 >
                   <FormattedMessage id="workplan.print" />
@@ -251,7 +322,7 @@ export default function Workplan(props) {
             <br />
             <Grid fullWidth={true}>
               <Column sm={4} md={8} lg={16}>
-                <FormattedMessage id="label.total.tests" /> = {testsList.length}
+                <FormattedMessage id="label.total.tests" /> = {totalTests}
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                 <img
                   src={`images/nonconforming.gif`}
@@ -314,21 +385,26 @@ export default function Workplan(props) {
                         }
                         return (
                           <TableRow
-                            key={index}
+                            key={rowKey(row) || index}
                             id={"row_" + index}
                             className={
                               rowColorIndex % 2 === 0 ? "evenRow" : "oddRow"
+                            }
+                            style={
+                              excluded.has(rowKey(row))
+                                ? { backgroundColor: "#cccccc" }
+                                : undefined
                             }
                           >
                             {!row.servingAsTestGroupIdentifier && (
                               <TableCell>
                                 <input
                                   type="checkbox"
-                                  value={row.notIncludedInWorkplan}
+                                  checked={excluded.has(rowKey(row))}
                                   id={"includedCheck_" + index}
                                   className="includedCheck"
-                                  onClick={(e) =>
-                                    disableEnableTest(e.target, index)
+                                  onChange={(e) =>
+                                    setIncluded(row, e.target.checked)
                                   }
                                 />
                               </TableCell>
@@ -419,6 +495,7 @@ export default function Workplan(props) {
                   type="button"
                   name="print"
                   id="print-bottom"
+                  disabled={printing}
                   onClick={printWorkplan}
                 >
                   <FormattedMessage id="workplan.print" />

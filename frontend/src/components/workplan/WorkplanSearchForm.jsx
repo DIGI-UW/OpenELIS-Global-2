@@ -63,7 +63,8 @@ export default function WorkplanSearchForm(props) {
 
   useEffect(() => {
     props.registerPageLoader?.(url ? loadResultsPage : null);
-  }, [url, props.registerPageLoader]);
+    props.registerPageSource?.(url || null);
+  }, [url, props.registerPageLoader, props.registerPageSource]);
 
   useEffect(() => {
     mounted.current = true;
