@@ -30,12 +30,15 @@ test("offers only eligible culture lots and retains exact culture and AST proven
   await dialog
     .getByLabel("Bottle or plate identifier")
     .fill("UAT-MICRO-BOTTLE-R1");
-  const lot = dialog.getByLabel("Medium lot", { exact: true });
+  const lot = dialog.getByRole("combobox", { name: "Medium lot", exact: true });
   expect(await lot.locator("option").allTextContents()).not.toContain(
     "UAT-MICRO-MEDIA-EXPIRED",
   );
   await lot.selectOption({ label: "UAT-MICRO-MEDIA-FEFO" });
-  const atmosphere = dialog.getByLabel("Atmosphere", { exact: true });
+  const atmosphere = dialog.getByRole("combobox", {
+    name: "Atmosphere",
+    exact: true,
+  });
   const value = await atmosphere
     .locator("option")
     .evaluateAll((rows) =>
@@ -43,9 +46,11 @@ test("offers only eligible culture lots and retains exact culture and AST proven
     );
   await atmosphere.selectOption(value!);
   await dialog.getByLabel("Temperature (°C)", { exact: true }).fill("35");
-  await dialog.getByLabel("Incubation duration", { exact: true }).fill("48");
   await dialog
-    .getByLabel("Duration unit", { exact: true })
+    .getByRole("spinbutton", { name: "Incubation duration", exact: true })
+    .fill("48");
+  await dialog
+    .getByRole("combobox", { name: "Duration unit", exact: true })
     .selectOption("HOURS");
   await expect(
     dialog.getByRole("button", { name: "Save", exact: true }),
@@ -64,7 +69,7 @@ test("offers only eligible culture lots and retains exact culture and AST proven
   await page
     .getByRole("button", { name: "Start AST run", exact: true })
     .click();
-  const panel = dialog.getByLabel("Panel", { exact: true });
+  const panel = dialog.getByRole("combobox", { name: "Panel", exact: true });
   const panelValue = await panel
     .locator("option")
     .evaluateAll((rows) =>
@@ -83,7 +88,7 @@ test("offers only eligible culture lots and retains exact culture and AST proven
   await scanner.press("Enter");
   await expect(card).toBeChecked();
   await dialog
-    .getByLabel("Clinical indication", { exact: true })
+    .getByRole("combobox", { name: "Clinical indication", exact: true })
     .selectOption("NOT_STATED");
   await expect(dialog.getByLabel(/Reason/)).toHaveCount(0);
   await dialog.getByRole("button", { name: "Save", exact: true }).click();

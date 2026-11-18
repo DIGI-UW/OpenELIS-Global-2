@@ -59,7 +59,7 @@ test("completes missing clinical context through release blockers, preserves row
   await dialog.getByLabel("Bottle or plate identifier").fill("M9-PLATE");
   await selectCultureMedium(page, seeded.mediumItemId!);
   for (const label of ["Medium lot", "Atmosphere"]) {
-    const field = dialog.getByLabel(label, { exact: true });
+    const field = dialog.getByRole("combobox", { name: label, exact: true });
     const value = await field
       .locator("option")
       .evaluateAll((options) =>

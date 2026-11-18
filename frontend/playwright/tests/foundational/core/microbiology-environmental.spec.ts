@@ -47,7 +47,7 @@ test("routes a site subject, records environmental culture context and releases 
   await dialog.getByLabel("Bottle or plate identifier").fill("M8-WATER-PLATE");
   await selectCultureMedium(page, seeded.mediumItemId!);
   for (const label of ["Medium lot", "Atmosphere"]) {
-    const field = dialog.getByLabel(label, { exact: true });
+    const field = dialog.getByRole("combobox", { name: label, exact: true });
     const value = await field
       .locator("option")
       .evaluateAll((options) =>

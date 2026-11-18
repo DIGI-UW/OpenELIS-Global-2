@@ -10,6 +10,7 @@ import ContainerLabelButton from "./ContainerLabelButton";
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import MacroTextArea from "../common/textMacro/MacroTextArea";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 import {
   Accordion,
   AccordionItem,
@@ -153,10 +154,16 @@ function CultureActionForm({
       };
     });
   };
-  const select = (key, values, label = key) => (
+  const select = (key, values, label = key, required = false) => (
     <Select
       id={`culture-${key}`}
-      labelText={t(label)}
+      {...requiredProps(required)}
+      labelText={
+        <>
+          {t(label)}
+          <RequiredMarker required={required} />
+        </>
+      }
       value={draft[key] || ""}
       disabled={
         key === "sourceSampleItemId" &&
@@ -184,11 +191,17 @@ function CultureActionForm({
       ))}
     </Select>
   );
-  const input = (key, type = "text", label = key) => (
+  const input = (key, type = "text", label = key, required = false) => (
     <TextInput
       id={`culture-${key}`}
       type={type}
-      labelText={t(label)}
+      {...requiredProps(required)}
+      labelText={
+        <>
+          {t(label)}
+          <RequiredMarker required={required} />
+        </>
+      }
       value={draft[key] ?? ""}
       maxLength={key === "containerIdentifier" ? 80 : undefined}
       step={
@@ -275,6 +288,7 @@ function CultureActionForm({
                   value: row.containerIdentifier,
                 })),
                 "parentCulture",
+                true,
               )}
             {select(
               "sourceSampleItemId",
@@ -282,6 +296,8 @@ function CultureActionForm({
                 id: s.sampleItemId,
                 value: s.label || s.specimenType,
               })),
+              "sourceSampleItemId",
+              true,
             )}
             {draft.parentId && (
               <>
@@ -300,10 +316,16 @@ function CultureActionForm({
                 )}
               </>
             )}
-            {input("containerIdentifier")}
+            {input("containerIdentifier", "text", "containerIdentifier", true)}
             <ComboBox
               id="culture-mediumItemId"
-              titleText={t("mediumItemId")}
+              {...requiredProps()}
+              titleText={
+                <>
+                  {t("mediumItemId")}
+                  <RequiredMarker />
+                </>
+              }
               items={options.media}
               selectedItem={medium || null}
               itemToString={(m) =>
@@ -327,14 +349,15 @@ function CultureActionForm({
               disabled={tracked}
               onChange={(_, { checked }) => change("notTracked", checked)}
             />
-            {!draft.notTracked && select("lotId", medium?.lots || [])}
-            {select("atmosphereId", options.atmospheres)}
+            {!draft.notTracked &&
+              select("lotId", medium?.lots || [], "lotId", true)}
+            {select("atmosphereId", options.atmospheres, "atmosphereId", true)}
             {input("temperature", "number")}
-            {input("duration", "number")}
-            {select("durationUnit", unitChoices)}
+            {input("duration", "number", "duration", true)}
+            {select("durationUnit", unitChoices, "durationUnit", true)}
             {input("checkIntervalHours", "number")}
             {input("loopVolume", "number")}
-            {input("inoculatedAt", "datetime-local")}
+            {input("inoculatedAt", "datetime-local", "inoculatedAt", true)}
           </>
         )}
         {action.kind === "reading" && (

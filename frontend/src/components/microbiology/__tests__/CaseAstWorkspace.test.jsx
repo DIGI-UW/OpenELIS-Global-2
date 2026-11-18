@@ -691,7 +691,9 @@ it.each([
       await screen.findByRole("button", { name: t("action.start") }),
     );
     expect(
-      within(screen.getByRole("dialog")).getByLabelText(t("breakpoint")),
+      within(screen.getByRole("dialog")).getByLabelText(t("breakpoint"), {
+        exact: false,
+      }),
     ).toHaveValue(expected);
   },
 );
@@ -709,10 +711,28 @@ const startDialog = async (provenance = "ORGANISM_DEFAULT", runs) => {
   return {
     service,
     modal,
-    indication: within(modal).getByLabelText(t("clinicalContext")),
+    indication: within(modal).getByLabelText(t("clinicalContext"), {
+      exact: false,
+    }),
     save: within(modal).getByRole("button", { name: t("save"), exact: true }),
   };
 };
+
+it("marks the panel, breakpoint standard and indication as required to start a run", async () => {
+  const { modal } = await startDialog();
+  const required = ["ast-clinical-context", "ast-panel", "ast-standard"];
+  expect(
+    Array.from(modal.querySelectorAll(".requiredlabel"), (marker) =>
+      marker.closest("label").getAttribute("for"),
+    ),
+  ).toEqual(required);
+  expect(
+    Array.from(
+      modal.querySelectorAll('[aria-required="true"]'),
+      (field) => field.id,
+    ),
+  ).toEqual(required);
+});
 
 it("starts a run only after the technician picks a clinical indication", async () => {
   const { service, modal, indication, save } = await startDialog();

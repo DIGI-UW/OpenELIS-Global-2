@@ -30,10 +30,17 @@ test("inoculates cultures, appends readings, extends, subcultures and attaches G
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Bottle or plate identifier").fill("M4-PARENT");
   await selectCultureMedium(page, seeded.mediumItemId!);
-  await firstOption(dialog.getByLabel("Medium lot", { exact: true }));
-  await firstOption(dialog.getByLabel("Atmosphere", { exact: true }));
+  await firstOption(
+    dialog.getByRole("combobox", { name: "Medium lot", exact: true }),
+  );
+  await firstOption(
+    dialog.getByRole("combobox", { name: "Atmosphere", exact: true }),
+  );
   await expect(
-    dialog.getByLabel("Incubation duration", { exact: true }),
+    dialog.getByRole("spinbutton", {
+      name: "Incubation duration",
+      exact: true,
+    }),
   ).toHaveValue("48");
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   const parent = page
@@ -105,7 +112,9 @@ test("inoculates cultures, appends readings, extends, subcultures and attaches G
     .first()
     .click();
   await dialog.getByLabel("Bottle or plate identifier").fill("M4-CHILD");
-  await firstOption(dialog.getByLabel("Medium lot", { exact: true }));
+  await firstOption(
+    dialog.getByRole("combobox", { name: "Medium lot", exact: true }),
+  );
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   const child = page
     .locator('[data-testid^="culture-row-"]')

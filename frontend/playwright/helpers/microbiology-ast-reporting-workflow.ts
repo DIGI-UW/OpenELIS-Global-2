@@ -19,10 +19,10 @@ export async function startAstRun(
     .click();
   const dialog = page.getByRole("dialog");
   await dialog
-    .getByLabel("Breakpoint standard", { exact: true })
+    .getByRole("combobox", { name: "Breakpoint standard", exact: true })
     .selectOption(breakpointStandardId);
   await dialog
-    .getByLabel("Clinical indication", { exact: true })
+    .getByRole("combobox", { name: "Clinical indication", exact: true })
     .selectOption("NOT_STATED");
   await expect(dialog.getByLabel(/Reason/)).toHaveCount(0);
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
