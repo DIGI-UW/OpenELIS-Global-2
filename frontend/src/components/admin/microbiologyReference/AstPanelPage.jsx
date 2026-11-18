@@ -547,7 +547,7 @@ const AstPanelPage = ({ query, setQuery }) => {
                         id: "microbiology.admin.astPanels.diskContent",
                       })}
                       helperText={intl.formatMessage({
-                        id: "microbiology.admin.astPanels.diskContent.help",
+                        id: "microbiology.admin.astPanels.diskContent.strengthHelp",
                       })}
                       value={row.diskContent || ""}
                       maxLength={40}
