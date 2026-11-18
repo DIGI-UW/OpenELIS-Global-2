@@ -1081,7 +1081,7 @@ const BasicInfoSection = ({ testId }) => {
             timeHoldingInvalid ||
             invalidThresholds.length > 0 ||
             editSampleTypesMissing ||
-            editIncompatibleTypes.length > 0 ||
+            editIncompatibleTypes.length > 0 ||
             !!priceError
           }
           onClick={handleSave}

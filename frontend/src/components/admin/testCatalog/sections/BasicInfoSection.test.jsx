@@ -1061,10 +1061,12 @@ describe("BasicInfoSection price", () => {
       target: { value: "499.50" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(putToOpenElisServerJsonResponse).toHaveBeenCalled());
-    expect(JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]).priceRupees).toBe(
-      "499.50",
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
     );
+    expect(
+      JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]).priceRupees,
+    ).toBe("499.50");
   });
 
   it("a bad price shows why and blocks Save", async () => {
