@@ -29,6 +29,9 @@ public class Panel extends EnumValueItemImpl {
     private String description;
     private String loinc;
 
+    /** Price in paise (INR minor units); null means unpriced. */
+    private Long pricePaise;
+
     /**
      * OGC-224 — the panel's single required domain (CLINICAL / ENVIRONMENTAL /
      * VECTOR), mirroring test.domain (OGC-936). Membership is domain-guarded: a
@@ -76,6 +79,14 @@ public class Panel extends EnumValueItemImpl {
 
     public void setLoinc(String loinc) {
         this.loinc = loinc;
+    }
+
+    public Long getPricePaise() {
+        return pricePaise;
+    }
+
+    public void setPricePaise(Long pricePaise) {
+        this.pricePaise = pricePaise;
     }
 
     public String getDomain() {

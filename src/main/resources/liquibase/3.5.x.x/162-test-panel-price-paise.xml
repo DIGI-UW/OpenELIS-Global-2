@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Price per test and per panel, stored in paise (INR minor units) as an integer.
+      Nullable: a test with no price is unbilled, and existing rows stay valid.
+    -->
+    <changeSet id="162-test-panel-price-paise" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="test" columnName="price_paise"/>
+            </not>
+        </preConditions>
+        <comment>Add nullable price_paise to test and panel.</comment>
+        <addColumn schemaName="clinlims" tableName="test">
+            <column name="price_paise" type="BIGINT"/>
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="panel">
+            <column name="price_paise" type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

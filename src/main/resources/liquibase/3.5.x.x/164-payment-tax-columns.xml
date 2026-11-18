@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Keep the test subtotal and the GST apart from the total on each payment.
+      amount_paise stays the total the patient pays (subtotal plus GST). Nullable:
+      payments created before this change have no split.
+    -->
+    <changeSet id="164-payment-tax-columns" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="payment" columnName="subtotal_paise"/>
+            </not>
+        </preConditions>
+        <comment>Add subtotal_paise and gst_paise to payment.</comment>
+        <addColumn schemaName="clinlims" tableName="payment">
+            <column name="subtotal_paise" type="BIGINT"/>
+            <column name="gst_paise" type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

@@ -721,4 +721,7 @@
   <!-- WHONET's breakpoint table, and the organism level its rules are matched on (OGC-1629). -->
   <include relativeToChangelogFile="true" file="160-whonet-breakpoints.xml"/>
   <include relativeToChangelogFile="true" file="161-whonet-breakpoint-rule-levels.xml"/>
+  <include relativeToChangelogFile="true" file="162-test-panel-price-paise.xml"/>
+  <include relativeToChangelogFile="true" file="163-payment-table.xml"/>
+  <include relativeToChangelogFile="true" file="164-payment-tax-columns.xml"/>
 </databaseChangeLog>

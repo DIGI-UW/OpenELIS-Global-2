@@ -119,6 +119,9 @@ public class Test extends EnumValueItemImpl {
 
     private String guid;
 
+    /** Price in paise (INR minor units); null means unpriced. */
+    private Long pricePaise;
+
     @JsonIgnore
     private ValueHolder defaultTestResult;
 
@@ -533,6 +536,14 @@ public class Test extends EnumValueItemImpl {
 
     public void setLocalizedReportingName(Localization localizedReportingName) {
         this.localizedReportingName.setValue(localizedReportingName);
+    }
+
+    public Long getPricePaise() {
+        return pricePaise;
+    }
+
+    public void setPricePaise(Long pricePaise) {
+        this.pricePaise = pricePaise;
     }
 
     public String getGuid() {

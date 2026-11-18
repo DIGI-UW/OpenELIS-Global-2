@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      One payment request per order (Razorpay payment link). Card data is never stored:
+      only the gateway's link/payment identifiers and the status.
+      gateway_event_id is unique so a replayed webhook cannot apply twice.
+    -->
+    <changeSet id="163-payment-table" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="payment"/>
+            </not>
+        </preConditions>
+        <comment>Create payment table for gateway-backed order payments.</comment>
+        <createTable schemaName="clinlims" tableName="payment">
+            <column name="id" type="VARCHAR(40)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sample_id" type="NUMERIC(10,0)">
+                <constraints nullable="false" foreignKeyName="fk_payment_sample" references="clinlims.sample(id)"/>
+            </column>
+            <column name="amount_paise" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency" type="VARCHAR(3)" defaultValue="INR">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="gateway" type="VARCHAR(20)" defaultValue="RAZORPAY">
+                <constraints nullable="false"/>
+            </column>
+            <column name="gateway_link_id" type="VARCHAR(100)"/>
+            <column name="gateway_payment_id" type="VARCHAR(100)"/>
+            <column name="short_url" type="VARCHAR(255)"/>
+            <column name="gateway_event_id" type="VARCHAR(100)">
+                <constraints unique="true" uniqueConstraintName="uq_payment_gateway_event"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex schemaName="clinlims" tableName="payment" indexName="idx_payment_sample">
+            <column name="sample_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
