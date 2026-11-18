@@ -54,6 +54,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     private static final Pattern ORGANISM_WHONET = Pattern.compile("[a-z0-9+-]{3,10}");
     private static final Pattern ANTIBIOTIC_WHONET = Pattern.compile("[A-Z0-9]{2,10}");
     private static final Set<String> ROUTES = Set.of("ORAL", "IV", "BOTH", "TOPICAL");
+    private static final Set<String> SIGNIFICANCE = Set.of("USUALLY", "POSSIBLE", "RARE");
 
     private final MicroOrganismDAO organismDAO;
     private final MicroAntibioticDAO antibioticDAO;
@@ -107,7 +108,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         if (request == null) {
             throw new IllegalArgumentException("Organism is required");
         }
-        String name = requireText(request.displayName, "displayName");
+        String name = maxLength(requireText(request.displayName, "Name"), 255, "Name");
         String code = normalizeOrganismCode(request.whonetCode);
         assertAvailable(organismDAO.findByDisplayNameIgnoreCase(name), id, "Organism name is already in use");
         assertAvailable(organismDAO.findByWhonetCodeIgnoreCase(code), id, "WHONET code is already in use");
@@ -115,15 +116,19 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         MicroOrganism organism = id == null ? new MicroOrganism()
                 : organismDAO.get(id).orElseThrow(() -> new IllegalArgumentException("Organism not found: " + id));
         organism.setDisplayName(name);
-        organism.setShortName(trimToNull(request.shortName));
+        organism.setShortName(maxLength(trimToNull(request.shortName), 100, "Short name"));
         organism.setWhonetCode(code);
-        organism.setOclCode(trimToNull(request.oclCode));
-        organism.setOrganismGroup(trimToNull(request.organismGroup));
+        organism.setOclCode(maxLength(trimToNull(request.oclCode), 100, "OCL code"));
+        organism.setOrganismGroup(maxLength(trimToNull(request.organismGroup), 100, "Organism group"));
         organism.setSusceptibilityProtocol(
                 MicroTbResistanceClassifier.Protocol.valueOf(request.susceptibilityProtocol).name());
-        organism.setGramStain(trimToNull(request.gramStain));
+        organism.setGramStain(maxLength(trimToNull(request.gramStain), 20, "Gram stain"));
         String significance = trimToNull(request.initialSignificance);
-        organism.setInitialSignificance(significance == null ? null : significance.toUpperCase(Locale.ROOT));
+        significance = significance == null ? null : significance.toUpperCase(Locale.ROOT);
+        if (significance != null && !SIGNIFICANCE.contains(significance)) {
+            throw new IllegalArgumentException("Initial significance must be USUALLY, POSSIBLE or RARE");
+        }
+        organism.setInitialSignificance(significance);
         organism.setDefaultAstPanelId(trimToNull(request.defaultAstPanelId));
         organism.setNotes(trimToNull(request.notes));
         organism.setIsActive(request.active ? "Y" : "N");
@@ -174,7 +179,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         if (request == null) {
             throw new IllegalArgumentException("Antibiotic is required");
         }
-        String name = requireText(request.displayName, "displayName");
+        String name = requireText(request.displayName, "Name");
         String code = normalizeAntibioticCode(request.whonetCode);
         String antibioticClass = requireText(request.antibioticClass, "antibioticClass");
         String route = requireText(request.route, "route").toUpperCase(Locale.ROOT);
@@ -711,15 +716,15 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     }
 
     private String normalizeOrganismCode(String code) {
-        String normalized = requireText(code, "whonetCode").toLowerCase(Locale.ROOT);
+        String normalized = requireText(code, "WHONET code").toLowerCase(Locale.ROOT);
         if (!ORGANISM_WHONET.matcher(normalized).matches()) {
-            throw new IllegalArgumentException("Organism WHONET code must be 3-10 lowercase letters, digits, + or -");
+            throw new IllegalArgumentException("Organism WHONET code must be 3-10 letters, digits, + or -");
         }
         return normalized;
     }
 
     private String normalizeAntibioticCode(String code) {
-        String normalized = requireText(code, "whonetCode").toUpperCase(Locale.ROOT);
+        String normalized = requireText(code, "WHONET code").toUpperCase(Locale.ROOT);
         if (!ANTIBIOTIC_WHONET.matcher(normalized).matches()) {
             throw new IllegalArgumentException("Antibiotic WHONET code must be 2-10 uppercase letters or digits");
         }
@@ -732,6 +737,13 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             throw new IllegalArgumentException(field + " is required");
         }
         return normalized;
+    }
+
+    private String maxLength(String value, int max, String field) {
+        if (value != null && value.length() > max) {
+            throw new IllegalArgumentException(field + " is longer than " + max + " characters");
+        }
+        return value;
     }
 
     private void requireActor(String actorId) {

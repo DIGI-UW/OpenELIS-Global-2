@@ -15,7 +15,9 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.configuration.service.CatalogImportServiceImpl;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroWhonetAntibioticDAO;
+import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.service.MicroWhonetAntibioticConfigurationHandler;
+import org.openelisglobal.microbiology.service.MicrobiologyReferenceAdminService;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroWhonetAntibiotic;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +33,8 @@ public class MicroWhonetAntibioticLoadIntegrationTest extends BaseWebContextSens
     private MicroAntibioticDAO antibiotics;
     @Autowired
     private MicroWhonetAntibioticDAO whonetTable;
+    @Autowired
+    private MicrobiologyReferenceAdminService admin;
     @Autowired
     private ApplicationContext context;
 
@@ -139,6 +143,17 @@ public class MicroWhonetAntibioticLoadIntegrationTest extends BaseWebContextSens
         assertEquals("WHONET", kanamycin.getReferenceSource());
         assertFalse(antibiotics.findByWhonetCodeIgnoreCase("KAN1").isPresent());
         assertEquals(14, whonetTable.getAll().size());
+    }
+
+    @Test
+    public void aBlankNameOrWhonetCodeIsRefusedUnderTheLabelOnTheForm() {
+        MicroAntibioticAdminForm form = new MicroAntibioticAdminForm();
+        assertEquals("Name is required",
+                assertThrows(IllegalArgumentException.class, () -> admin.saveAntibiotic(null, form, "1")).getMessage());
+
+        form.displayName = "Amikacin";
+        assertEquals("WHONET code is required",
+                assertThrows(IllegalArgumentException.class, () -> admin.saveAntibiotic(null, form, "1")).getMessage());
     }
 
     @Test
