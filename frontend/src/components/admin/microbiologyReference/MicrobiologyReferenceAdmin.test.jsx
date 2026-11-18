@@ -201,6 +201,35 @@ describe("microbiology reference administration", () => {
     }
   });
 
+  it("drops the saved notice when a later save is refused", async () => {
+    const user = userEvent.setup();
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+    saveReference
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error("Name is required"));
+
+    renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS.organisms}
+        query={{ ...query, edit: "new" }}
+        setQuery={vi.fn()}
+      />,
+    );
+    const save = within(await screen.findByRole("dialog")).getByRole("button", {
+      name: messages["button.save"],
+    });
+
+    await user.click(save);
+    expect(
+      await screen.findByText(messages["microbiology.admin.saved"]),
+    ).toBeInTheDocument();
+    await user.click(save);
+    expect(await screen.findByText("Name is required")).toBeInTheDocument();
+    expect(
+      screen.queryByText(messages["microbiology.admin.saved"]),
+    ).not.toBeInTheDocument();
+  });
+
   it("returns focus to the exact reference command when the editor closes", async () => {
     const user = userEvent.setup();
     getReferencePage.mockResolvedValue({ rows: [], total: 0 });
