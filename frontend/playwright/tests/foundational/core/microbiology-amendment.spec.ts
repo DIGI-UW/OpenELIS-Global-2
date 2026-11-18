@@ -30,7 +30,7 @@ test.describe("Microbiology final-report amendments", () => {
     await test.step("Verify the original issued patient report", async () => {
       const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
       expect(text).toContain("ISO-1: Escherichia coli");
-      expect(text).toContain("Ciprofloxacin (UAT) 4 ug/mL Susceptible");
+      expect(text).toContain("Ciprofloxacin (UAT) 4 mg/L Susceptible");
       await testInfo.attach("original-patient-report.pdf", {
         body: pdf,
         contentType: "application/pdf",
@@ -154,7 +154,7 @@ test.describe("Microbiology final-report amendments", () => {
     await test.step("Verify both patient results and the restored mutation lock", async () => {
       const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
       expect(text).toContain("ISO-1: Klebsiella pneumoniae (UAT)");
-      expect(text).toContain("Ciprofloxacin (UAT) 4 ug/mL Susceptible");
+      expect(text).toContain("Ciprofloxacin (UAT) 4 mg/L Susceptible");
       expect(text).not.toContain("Escherichia coli");
       await testInfo.attach("amended-patient-report.pdf", {
         body: pdf,

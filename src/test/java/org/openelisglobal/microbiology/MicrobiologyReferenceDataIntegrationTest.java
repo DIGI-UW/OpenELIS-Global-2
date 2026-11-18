@@ -291,8 +291,8 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
         report.initializeReport(form);
         String text = org.openelisglobal.testsupport.PdfText.of(report.runReport()).replaceAll("\\s+", " ");
         assertTrue(text, text.contains("ISO-1: Escherichia coli (UAT)"));
-        assertTrue(text, text.contains("Ciprofloxacin (UAT) 4 ug/mL Resistant CLSI 2026"));
-        assertTrue(text, text.contains("Gentamicin (UAT) 4 ug/mL Susceptible CLSI 2026"));
+        assertTrue(text, text.contains("Ciprofloxacin (UAT) 4 mg/L Resistant CLSI 2026"));
+        assertTrue(text, text.contains("Gentamicin (UAT) 4 mg/L Susceptible CLSI 2026"));
     }
 
     private MicroAntibiotic uatAntibiotic(String whonetCode) {

@@ -186,7 +186,7 @@ public class MicroAstQcService {
             BigDecimal uncertainty = range.getHigh().subtract(range.getLow()).divide(BigDecimal.valueOf(2));
             QCResult qcResult = qcResults
                     .createBenchQCResult(new BenchQCCaptureForm(QCSource.MANUAL, qcTestId, testSectionId,
-                            request.controlLotId, displayName, value, method == MicroAstMethod.MIC ? "ug/mL" : "mm",
+                            request.controlLotId, displayName, value, method == MicroAstMethod.MIC ? "mg/L" : "mm",
                             outcome, expectedValue, uncertainty, runDateTime, "AST run " + runId), sysUserId);
             MicroAstQcResult stored = new MicroAstQcResult();
             stored.setControlId(controlId);

@@ -1227,7 +1227,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     }
 
     private String defaultUnits(MicroAstMethod method) {
-        return MicroAstMethod.ZONE.equals(method) ? "mm" : "ug/mL";
+        return MicroAstMethod.ZONE.equals(method) ? "mm" : "mg/L";
     }
 
     private void applyReportDefault(MicroAstRun run, String antibioticId, String interpretation) {
