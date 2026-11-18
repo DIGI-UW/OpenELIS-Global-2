@@ -1756,27 +1756,26 @@
   }
 }
 
-.env-manifest-datetime {
-  height: 2rem;
-  font-size: 0.8125rem;
-  font-family: inherit;
-  padding: 0 0.5rem;
-  border: 1px solid var(--cds-border-strong-01, #8d8d8d);
-  background: var(--cds-field-01, #fff);
-  color: var(--cds-text-primary, #161616);
-  border-radius: 0;
-  width: 100%;
-  min-width: 10rem;
-  outline: none;
+.env-manifest-when {
+  display: flex;
+  gap: 0.25rem;
+  align-items: flex-start;
 
-  &:focus {
-    outline: 2px solid var(--cds-focus, #0f62fe);
-    outline-offset: -2px;
+  > .cds--form-item {
+    flex: 0 0 auto;
   }
 
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
+  .cds--date-picker__input {
+    inline-size: 8.5rem;
+  }
+
+  .cds--time-picker__input-field {
+    width: 6.5rem !important;
+  }
+
+  .cds--form-requirement {
+    white-space: normal;
+    max-width: 10rem;
   }
 }
 

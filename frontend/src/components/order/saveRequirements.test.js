@@ -109,3 +109,42 @@ describe("environmental and vector order requirements (OGC-1060)", () => {
     ).toBe("Add a sampling site before saving.");
   });
 });
+
+// OGC-1657 review: a sample time such as "1430" or "25:99" saved as a dropped
+// receipt date or the next day, so Save waits for times that read as times.
+describe("environmental and vector sample times", () => {
+  const withTimes = (collectionTime, receivedTime) =>
+    fieldOrderRequirements({
+      labNumber: "ENV-1",
+      hasSite: true,
+      siteLabelId: "order.save.requirement.samplingSite",
+      sampleOrderItems: { requestorLastName: "Sari" },
+      samples: [
+        {
+          sampleTypeId: "54",
+          tests: [{ id: "1" }],
+          collectionTime,
+          receivedTime,
+        },
+      ],
+    });
+
+  it.each([
+    ["09:15", "14:20"],
+    ["9:15", ""],
+    ["", ""],
+    [undefined, undefined],
+  ])("saves with collected %j and received %j", (collected, received) => {
+    expect(unmetRequirements(withTimes(collected, received))).toEqual([]);
+  });
+
+  it.each([
+    ["1430", ""],
+    ["", "25:99"],
+    ["09:15", "14:2x"],
+  ])("waits with collected %j and received %j", (collected, received) => {
+    expect(
+      describeUnmetRequirements(intl, withTimes(collected, received)),
+    ).toBe("Add collection and received times as hh:mm before saving.");
+  });
+});
