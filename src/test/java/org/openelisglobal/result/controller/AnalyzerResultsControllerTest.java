@@ -258,6 +258,56 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void aMismatchedInstrumentPatientIsShownAndKeepsTheGroupingUnticked() throws Exception {
+        stageMismatchedPatient();
+
+        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.resultList[0].placement.state").value("RESOLVED"))
+                .andExpect(jsonPath("$.resultList[0].placement.patient.status").value("MISMATCH"))
+                .andExpect(jsonPath("$.resultList[0].placement.patient.instrumentId").value("SOMEONE-ELSE"))
+                .andExpect(jsonPath("$.resultList[0].placement.patient.orderName").isNotEmpty())
+                .andExpect(jsonPath("$.resultList[0].isAccepted").value(false));
+    }
+
+    /**
+     * OGC-1662 — a selected row the save keeps in review is named in the answer, so
+     * the page does not report it saved.
+     */
+    @Test
+    public void aSelectedMismatchSavedWithoutANote_isNamedAsLeftInReview() throws Exception {
+        stageMismatchedPatient();
+        MockHttpSession session = new MockHttpSession();
+        String loaded = mockMvc.perform(
+                get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        mockMvc.perform(post("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).with(csrf()).session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(acceptRowWithNote(loaded, "1001", null)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.leftInReview.length()").value(1))
+                .andExpect(jsonPath("$.leftInReview[0].id").value("1001"))
+                .andExpect(jsonPath("$.leftInReview[0].accessionNumber").value("ACC123456"))
+                .andExpect(jsonPath("$.leftInReview[0].reason").value("awaiting_placement"));
+    }
+
+    @Test
+    public void aSelectedMismatchSavedWithANote_isSavedAndNothingIsLeftInReview() throws Exception {
+        stageMismatchedPatient();
+        MockHttpSession session = new MockHttpSession();
+        String loaded = mockMvc.perform(
+                get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        String body = mockMvc
+                .perform(post("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).with(csrf()).session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(acceptRowWithNote(loaded, "1001", "Relabelled tube, checked with the ward")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        org.junit.Assert.assertEquals("", body);
+        org.junit.Assert.assertEquals(Integer.valueOf(0), new JdbcTemplate(dataSource)
+                .queryForObject("SELECT count(*)::int FROM clinlims.analyzer_results WHERE id = 1001", Integer.class));
+    }
+
+    private void stageMismatchedPatient() {
         orderFor("ACC123456", 4001, true);
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         long person = jdbc.queryForObject("SELECT nextval('person_seq')", Long.class);
@@ -272,13 +322,6 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
                 + " VALUES (nextval('sample_human_seq'), ?, ?, NOW())", patient, sample);
         jdbc.update("UPDATE clinlims.analyzer_results SET instrument_patient_id = 'SOMEONE-ELSE',"
                 + " instrument_patient_name = 'Roe, Rick' WHERE id = 1001");
-
-        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.resultList[0].placement.state").value("RESOLVED"))
-                .andExpect(jsonPath("$.resultList[0].placement.patient.status").value("MISMATCH"))
-                .andExpect(jsonPath("$.resultList[0].placement.patient.instrumentId").value("SOMEONE-ELSE"))
-                .andExpect(jsonPath("$.resultList[0].placement.patient.orderName").isNotEmpty())
-                .andExpect(jsonPath("$.resultList[0].isAccepted").value(false));
     }
 
     private long orderFor(String accession, long testId, boolean awaitingResult) {
@@ -466,6 +509,19 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
             if (rowId.equals(row.path("id").asText())) {
                 ((com.fasterxml.jackson.databind.node.ObjectNode) row).put("result", value);
                 ((com.fasterxml.jackson.databind.node.ObjectNode) row).put("isAccepted", true);
+            }
+        }
+        return mapper.writeValueAsString(form);
+    }
+
+    private static String acceptRowWithNote(String loaded, String rowId, String note) throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.node.ObjectNode form = (com.fasterxml.jackson.databind.node.ObjectNode) mapper
+                .readTree(loaded);
+        for (com.fasterxml.jackson.databind.JsonNode row : form.withArray("resultList")) {
+            if (rowId.equals(row.path("id").asText())) {
+                ((com.fasterxml.jackson.databind.node.ObjectNode) row).put("isAccepted", true);
+                ((com.fasterxml.jackson.databind.node.ObjectNode) row).put("note", note);
             }
         }
         return mapper.writeValueAsString(form);

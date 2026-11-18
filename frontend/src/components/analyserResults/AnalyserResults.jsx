@@ -48,6 +48,20 @@ import RedirectControl from "./RedirectControl";
 // Held for a decision the reviewer can make on the page, not for a mapping fix.
 const REVIEWABLE_HOLDS = ["awaiting_specimen", "awaiting_placement"];
 
+// What a reviewer does next for a selected result the server kept in review.
+const LEFT_IN_REVIEW_GUIDANCE = {
+  awaiting_placement: "analyzer.results.save.leftInReview.placement",
+  awaiting_specimen: "analyzer.results.save.leftInReview.specimen",
+};
+
+const readJson = async (response) => {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+};
+
 export const buildAnalyzerResultsRedirectUrl = (analyzerId) => {
   if (!analyzerId) {
     return "/AnalyzerResults";
@@ -90,6 +104,7 @@ export const buildHeldResultResolutionUrl = (row, analyzerId) => {
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
   const draftEdits = useRef({});
+  const generation = useRef({ results: undefined, count: 0 });
   const removalLauncher = useRef(null);
   const history = useHistory();
   const location = useLocation();
@@ -162,6 +177,13 @@ const AnalyserResults = (props) => {
     history.push(resolutionUrl, { worklistDraft });
   };
 
+  if (generation.current.results !== props.results) {
+    generation.current = {
+      results: props.results,
+      count: generation.current.count + 1,
+    };
+  }
+  const resultsGeneration = generation.current.count;
   const allResults = props.results?.resultList ?? [];
   const setupResults = allResults.filter(
     (row) => row.importIssueReason === "setup_capture",
@@ -290,6 +312,23 @@ const AnalyserResults = (props) => {
       handleResponse,
     );
   };
+  const describeLeftInReview = (rows) => {
+    const described = new Map();
+    rows.forEach((row) => {
+      const labNumber = formatLabNum
+        ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
+        : row.accessionNumber;
+      const name = [labNumber, row.testName].filter(Boolean).join(" ");
+      if (described.has(name)) return;
+      const guidance = LEFT_IN_REVIEW_GUIDANCE[row.reason];
+      described.set(
+        name,
+        guidance ? intl.formatMessage({ id: guidance }, { row: name }) : name,
+      );
+    });
+    return [...described.values()].join("; ");
+  };
+
   const handleResponse = async (response) => {
     let message = intl.formatMessage({ id: "validation.save.error" });
     let kind = NotificationKinds.error;
@@ -305,9 +344,20 @@ const AnalyserResults = (props) => {
       }
     }
     if (response.status == 200) {
-      message = intl.formatMessage({ id: "validation.save.success" });
-      kind = NotificationKinds.success;
-      props.refreshResults?.(Number(props.results?.paging?.currentPage) || 1);
+      const leftInReview = (await readJson(response))?.leftInReview ?? [];
+      if (leftInReview.length > 0) {
+        message = intl.formatMessage(
+          { id: "analyzer.results.save.leftInReview" },
+          { rows: describeLeftInReview(leftInReview) },
+        );
+        kind = NotificationKinds.warning;
+      } else {
+        message = intl.formatMessage({ id: "validation.save.success" });
+        kind = NotificationKinds.success;
+      }
+      props.refreshResults?.(Number(props.results?.paging?.currentPage) || 1, {
+        ...draftEdits.current,
+      });
     } else {
       const detail = await response.text().catch(() => "");
       if (detail) {
@@ -630,7 +680,17 @@ const AnalyserResults = (props) => {
     );
   };
 
-  const renderCell = (row, index, column, id) => {
+  /**
+   * The inputs are uncontrolled: a reread keeps the row ids, so each cell is
+   * rebuilt from the reread row instead of keeping the last row's typing.
+   */
+  const renderCell = (row, index, column, id) => (
+    <React.Fragment key={resultsGeneration}>
+      {renderCellContent(row, index, column, id)}
+    </React.Fragment>
+  );
+
+  const renderCellContent = (row, index, column, id) => {
     const held = Boolean(row.importIssueReason);
     const awaitingReview = REVIEWABLE_HOLDS.includes(row.importIssueReason);
     switch (column.id) {
@@ -962,7 +1022,11 @@ const AnalyserResults = (props) => {
         </Tag>
       )}
       {actionablePatientResults.length > 0 && (
-        <Grid style={{ marginTop: "20px" }} className="gridBoundary">
+        <Grid
+          key={resultsGeneration}
+          style={{ marginTop: "20px" }}
+          className="gridBoundary"
+        >
           <Column lg={7} md={8} sm={2}>
             <picture>
               <img

@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzerresults.service;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.result.action.util.ResultEntryAlert;
@@ -33,6 +34,13 @@ public interface AnalyzerResultsAcceptService {
      * gave for a value they retyped (OGC-1417).
      */
     List<Result> acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId, List<ResultEntryAlert> alerts);
+
+    /**
+     * The rows the reviewer acted on that are still staged after an accept, each
+     * with the reason it is held ("" when it carries none). A saved, retested or
+     * ignored row leaves staging, so these are the ones the save did not take.
+     */
+    Map<String, String> stillInReview(List<AnalyzerResultItem> allResults);
 
     /**
      * The decimal places a staged number is shown and saved with: its component's
