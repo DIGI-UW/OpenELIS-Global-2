@@ -53,7 +53,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * cleared before and after each test; otherwise a count asserted in one test
  * would include the entries another test wrote.
  */
-abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
+public abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
 
     protected static final int CASE_ID = 1;
 

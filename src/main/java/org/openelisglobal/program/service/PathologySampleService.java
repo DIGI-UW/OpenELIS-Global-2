@@ -79,8 +79,26 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
      */
     String PATHOLOGY_REQUEST_OVERRIDDEN = "PATHOLOGY_REQUEST_OVERRIDDEN";
 
+    /**
+     * Audit verb recorded on the case when a save changes its coded or narrative
+     * conclusion; the payload names the codes, never the narrative.
+     */
+    String PATHOLOGY_CONCLUSION_SAVED = "PATHOLOGY_CONCLUSION_SAVED";
+
+    /**
+     * Audit verb recorded on the case when a save refers it to immunohistochemistry
+     * or orders more markers on the referral.
+     */
+    String PATHOLOGY_IHC_REFERRED = "PATHOLOGY_IHC_REFERRED";
+
     /** Dictionary category a laboratory fills with the tissue types it cuts. */
     String TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
+
+    /** Dictionary category of the coded diagnoses a pathologist may conclude. */
+    String CONCLUSION_CATEGORY = "pathologist_conclusions";
+
+    /** Dictionary category of the techniques a case's findings may record. */
+    String TECHNIQUE_CATEGORY = "pathology_techniques";
 
     /**
      * Dictionary category of the stains a slide may carry, shipped by the
@@ -319,4 +337,24 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
      * queue, or it stands at Completed with no release on record.
      */
     boolean isReleasable(PathologySample pathologySample);
+
+    /**
+     * The stage at which the findings are written on this deployment: Under
+     * Pathologist Review where it uses that stage, else Ready for Pathologist.
+     */
+    PathologyStatus readingStage();
+
+    /**
+     * Whether a save takes a change to the findings now (FR-12.1): the case is
+     * under review (also when parked there), stands at the reading stage, or at
+     * Completed and never released.
+     */
+    boolean findingsOpen(PathologySample pathologySample);
+
+    /**
+     * The tests the case's order already holds as immunohistochemistry referral
+     * analyses, in the order's analysis order; a save does not order these again.
+     * Empty when none.
+     */
+    List<String> ihcReferredTestIds(PathologySample pathologySample);
 }

@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,6 +49,9 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
     private static final int STAIN = 9711;
     private static final String STAIN_NAME = "Masson trichrome";
 
+    /** This class's own conclusion and technique rows on the pathology case. */
+    private static final int[] FINDING_ROWS = { 9731, 9732, 9733, 9734, 9735 };
+
     private DictionaryRows.StainEntries stains;
 
     @Autowired
@@ -85,6 +89,10 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
     }
 
     private void clearOwnRows() {
+        for (int id : FINDING_ROWS) {
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_conclusion WHERE id = ?", id);
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_technique WHERE id = ?", id);
+        }
         jdbcTemplate.update("DELETE FROM clinlims.immunohistochemistry_sample WHERE id = ?", IHC_SAMPLE_ID);
         jdbcTemplate.update("DELETE FROM clinlims.pathology_request WHERE id IN (?, ?)", COMPLETED_REQUEST,
                 CANCELLED_REQUEST);
@@ -196,5 +204,42 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
                 List.of(String.valueOf(COMPLETED_REQUEST) + "=Iron stain",
                         String.valueOf(FIXTURE_REQUEST_ID) + "=Histology review"),
                 displayItem.getRequests().stream().map(request -> request.getId() + "=" + request.getValue()).toList());
+    }
+
+    /**
+     * A referred case shows the pathology findings read only; a conclusion or
+     * technique stored before codes were checked may name no entry, and the view is
+     * still read, without it.
+     */
+    @Test
+    public void aReferredCaseShowsThePathologyFindings_andSkipsAnEntryThatNoLongerExists() {
+        try (PathologyFindingsDictionary dictionary = PathologyFindingsDictionary.seed(jdbcTemplate)) {
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_conclusion WHERE pathology_sample_id = ?",
+                    PATHOLOGY_CASE_ID);
+            insertFinding("pathology_conclusion", 9731, "DICTIONARY", PathologyFindingsDictionary.ADENOCARCINOMA);
+            insertFinding("pathology_conclusion", 9732, "DICTIONARY", PathologyFindingsDictionary.NO_ENTRY);
+            insertFinding("pathology_conclusion", 9733, "DICTIONARY", PathologyFindingsDictionary.CHRONIC_GASTRITIS);
+            insertFinding("pathology_conclusion", 9734, "TEXT", "Narrative");
+            insertFinding("pathology_technique", 9731, "DICTIONARY", PathologyFindingsDictionary.NO_ENTRY);
+            insertFinding("pathology_technique", 9732, "DICTIONARY", PathologyFindingsDictionary.FROZEN_SECTION);
+
+            ImmunohistochemistryCaseViewDisplayItem displayItem = immunohistochemistryDisplayService
+                    .convertToCaseDisplayItem(IHC_SAMPLE_ID);
+
+            assertEquals("the diagnoses that name an entry, in the stored order, with their names",
+                    List.of("9101=Adenocarcinoma", "9102=Chronic gastritis"), displayItem.getConclusions().stream()
+                            .map(pair -> pair.getId() + "=" + pair.getValue()).collect(Collectors.toList()));
+            assertEquals("the technique that names no entry is left out", List.of("9201=Frozen section"),
+                    displayItem.getTechniques().stream().map(pair -> pair.getId() + "=" + pair.getValue())
+                            .collect(Collectors.toList()));
+            assertEquals("the narrative is read as before", "Narrative", displayItem.getConclusionText());
+            assertNotNull("and the descriptions come from the pathology case", displayItem.getGrossExam());
+            assertNotNull(displayItem.getMicroscopyExam());
+        }
+    }
+
+    private void insertFinding(String table, int id, String type, String value) {
+        jdbcTemplate.update("INSERT INTO clinlims." + table + " (id, pathology_sample_id, type, value, last_updated)"
+                + " VALUES (?, ?, ?, ?, now())", id, PATHOLOGY_CASE_ID, type, value);
     }
 }

@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,9 +22,11 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologyDisplayService;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.valueholder.pathology.ConclusionEntry;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.LabelVerificationView;
@@ -83,6 +86,14 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
     private static final int A2_1 = 9410;
     private static final int A1_1 = 9411;
     private static final int A1_2 = 9412;
+
+    /** An immunohistochemistry case of this class's own. */
+    private static final int REFERRAL_CASE = 9413;
+
+    /** A marker the order holds in the immunohistochemistry section. */
+    private static final int REFERRAL_SECTION = 9414;
+    private static final int REFERRED_MARKER = 9415;
+    private static final int REFERRED_MARKER_ANALYSIS = 9416;
 
     private boolean insertedTheCategory;
 
@@ -475,6 +486,138 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
 
         assertTrue("no entries are invented", displayItem.getStageEvents().isEmpty());
         assertNull("nor a run", displayItem.getRunReference());
+    }
+
+    /**
+     * The case says at which stage its findings are written and whether a save
+     * takes them now, one row of the reading window at a time (W1 to W7).
+     */
+    @Test
+    public void theCaseSaysItsReadingStage_andWhetherFindingsAreOpen() {
+        try (StageSwitches switches = StageSwitches.allOn()) {
+            for (PathologyStatus stage : List.of(PathologyStatus.ACCESSIONED, PathologyStatus.GROSSING,
+                    PathologyStatus.DECALCIFICATION, PathologyStatus.PROCESSING, PathologyStatus.EMBEDDING,
+                    PathologyStatus.MICROTOMY, PathologyStatus.STAINING, PathologyStatus.COVERSLIPPING)) {
+                assertReadingWindow("W1 at " + stage, stage, "UNDER_REVIEW", false);
+            }
+            assertReadingWindow("W2", PathologyStatus.READY_PATHOLOGIST, "UNDER_REVIEW", false);
+            assertReadingWindow("W4", PathologyStatus.UNDER_REVIEW, "UNDER_REVIEW", true);
+            assertReadingWindow("W6", PathologyStatus.COMPLETED, "UNDER_REVIEW", true);
+
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.UNDER_REVIEW);
+            PathologySampleForm release = formWithRunReference(null);
+            release.setRelease(true);
+            pathologySampleService.updateWithFormValues(CASE_WITH_TWO_SPECIMEN_ITEMS, release);
+            PathologyCaseViewDisplayItem released = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertFalse("W7: a signed-out case takes no findings", released.isFindingsOpen());
+
+            ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED,
+                    "false");
+            assertReadingWindow("W3", PathologyStatus.READY_PATHOLOGIST, "READY_PATHOLOGIST", true);
+            assertReadingWindow("W5", PathologyStatus.UNDER_REVIEW, "READY_PATHOLOGIST", true);
+        } finally {
+            PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        }
+    }
+
+    /** Each coded conclusion carries its code, the entry's abbreviation. */
+    @Test
+    public void codedConclusionsCarryTheirCode() {
+        try (PathologyFindingsDictionary dictionary = PathologyFindingsDictionary.seed(jdbcTemplate)) {
+            insertCaseRow("pathology_conclusion", 9421, PathologyFindingsDictionary.CHRONIC_GASTRITIS);
+            insertCaseRow("pathology_conclusion", 9422, PathologyFindingsDictionary.ADENOCARCINOMA);
+            insertCaseRow("pathology_conclusion", 9423, PathologyFindingsDictionary.OLD_TERM);
+
+            assertEquals("id, name and code, in the stored order; no abbreviation is an empty code",
+                    List.of(new ConclusionEntry("9102", "Chronic gastritis", "K29.5"),
+                            new ConclusionEntry("9101", "Adenocarcinoma", "C80.1"),
+                            new ConclusionEntry("9103", "Old term", "")),
+                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).getConclusions());
+        }
+    }
+
+    /** The case says it was referred, and to which immunohistochemistry case. */
+    @Test
+    public void theCaseSaysItWasReferred_andNamesTheIhcCase() {
+        PathologyCaseViewDisplayItem notReferred = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+        assertFalse("a case nobody referred says so", notReferred.isReferredToIhc());
+        assertNull("and names no case", notReferred.getIhcCaseId());
+        assertEquals("and lists no referred marker, as a list rather than nothing", List.of(),
+                notReferred.getIhcReferredTestIds());
+
+        try {
+            jdbcTemplate.update("INSERT INTO clinlims.immunohistochemistry_sample (id, last_updated, program_id,"
+                    + " sample_id, status, pathology_sample_id, reffered) VALUES (?, now(), 1, 1, 'IN_PROGRESS', ?,"
+                    + " true)", REFERRAL_CASE, CASE_WITH_TWO_SPECIMEN_ITEMS);
+            jdbcTemplate.update(
+                    "INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, 'Ki-67', now())",
+                    REFERRAL_SECTION);
+            jdbcTemplate.update("INSERT INTO clinlims.test_section (id, name, description, is_external, lastupdated,"
+                    + " sort_order, domain, name_localization_id) VALUES (?, 'Immunohistochemistry',"
+                    + " 'Referral section', 'N', now(), 1, 'CLINICAL', ?)", REFERRAL_SECTION, REFERRAL_SECTION);
+            jdbcTemplate.update("INSERT INTO clinlims.test (id, description, name, local_code, lastupdated,"
+                    + " test_section_id, is_active, orderable, sort_order, guid, name_localization_id) VALUES (?,"
+                    + " 'Ki-67 marker', 'Ki-67', 'Ki67', now(), ?, 'Y', true, 1, gen_random_uuid(), ?)",
+                    REFERRED_MARKER, REFERRAL_SECTION, REFERRAL_SECTION);
+            jdbcTemplate.update("INSERT INTO clinlims.analysis (id, sampitem_id, test_sect_id, test_id, revision,"
+                    + " analysis_type, lastupdated, fhir_uuid, referred_out, corrected, result_calculated,"
+                    + " reflex_trigger) VALUES (?, ?, ?, ?, 0, 'MANUAL', now(), gen_random_uuid(), false, false,"
+                    + " false, false)", REFERRED_MARKER_ANALYSIS, FIRST_SPECIMEN_ITEM, REFERRAL_SECTION,
+                    REFERRED_MARKER);
+
+            PathologyCaseViewDisplayItem referred = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertTrue("a referred case says so", referred.isReferredToIhc());
+            assertEquals("and names the case", Integer.valueOf(REFERRAL_CASE), referred.getIhcCaseId());
+            assertEquals("and lists the marker the order holds in the immunohistochemistry section",
+                    List.of(String.valueOf(REFERRED_MARKER)), referred.getIhcReferredTestIds());
+        } finally {
+            jdbcTemplate.update("DELETE FROM clinlims.analysis WHERE id = ?", REFERRED_MARKER_ANALYSIS);
+            jdbcTemplate.update("DELETE FROM clinlims.test WHERE id = ?", REFERRED_MARKER);
+            jdbcTemplate.update("DELETE FROM clinlims.test_section WHERE id = ?", REFERRAL_SECTION);
+            jdbcTemplate.update("DELETE FROM clinlims.localization WHERE id = ?", REFERRAL_SECTION);
+            jdbcTemplate.update("DELETE FROM clinlims.immunohistochemistry_sample WHERE id = ?", REFERRAL_CASE);
+        }
+    }
+
+    /**
+     * A conclusion or technique stored before codes were checked may name no entry;
+     * the case is still read, without it.
+     */
+    @Test
+    public void aStoredCodeThatNamesNoEntry_isLeftOut_notThrownOn() {
+        try (PathologyFindingsDictionary dictionary = PathologyFindingsDictionary.seed(jdbcTemplate)) {
+            insertCaseRow("pathology_conclusion", 9421, PathologyFindingsDictionary.ADENOCARCINOMA);
+            insertCaseRow("pathology_conclusion", 9422, PathologyFindingsDictionary.NO_ENTRY);
+            insertCaseRow("pathology_technique", 9424, PathologyFindingsDictionary.NO_ENTRY);
+            insertCaseRow("pathology_technique", 9425, PathologyFindingsDictionary.FROZEN_SECTION);
+
+            PathologyCaseViewDisplayItem read = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+            assertEquals("the conclusion that names no entry is left out", List.of("9101"),
+                    read.getConclusions().stream().map(ConclusionEntry::id).collect(Collectors.toList()));
+            assertEquals("and so is the technique", List.of("9201"),
+                    read.getTechniques().stream().map(IdValuePair::getId).collect(Collectors.toList()));
+        }
+    }
+
+    private void assertReadingWindow(String row, PathologyStatus stage, String readingStage, boolean open) {
+        PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, stage);
+        PathologyCaseViewDisplayItem read = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+        assertEquals(row + ": the reading stage", readingStage, read.getReadingStage());
+        assertEquals(row + ": whether the findings are open", open, read.isFindingsOpen());
+    }
+
+    /**
+     * A coded row of the case, as a save writes it; the fixture reload clears it.
+     */
+    private void insertCaseRow(String table, int id, String code) {
+        jdbcTemplate.update("INSERT INTO clinlims." + table + " (id, pathology_sample_id, type, value, last_updated)"
+                + " VALUES (?, ?, 'DICTIONARY', ?, now())", id, CASE_WITH_TWO_SPECIMEN_ITEMS, code);
     }
 
     /** What the screen posts at Processing: the case as it stands, plus the run. */

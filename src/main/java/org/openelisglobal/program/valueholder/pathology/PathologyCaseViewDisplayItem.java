@@ -53,13 +53,15 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
     private List<RequestView> requests;
 
-    private List<IdValuePair> conclusions;
+    private List<ConclusionEntry> conclusions;
 
     private String conclusionText;
 
     private String grossExam;
 
     private String microscopyExam;
+
+    private String reviewNotes;
 
     private boolean decalcificationRequired;
 
@@ -124,6 +126,24 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
      * refused on.
      */
     private boolean releasable;
+
+    /**
+     * The stage at which the findings are written on this deployment (FR-12.1).
+     */
+    private String readingStage;
+
+    /** Whether a save would take a change to the findings now. */
+    private boolean findingsOpen;
+
+    private boolean referredToIhc;
+
+    /** The immunohistochemistry case this case was referred to; null if none. */
+    private Integer ihcCaseId;
+
+    /**
+     * The tests already referred to immunohistochemistry on the order; never null.
+     */
+    private List<String> ihcReferredTestIds = List.of();
 
     public LocalDate getReceivedDate() {
         return receivedDate;
@@ -197,11 +217,11 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
         this.slides = slides;
     }
 
-    public List<IdValuePair> getConclusions() {
+    public List<ConclusionEntry> getConclusions() {
         return conclusions;
     }
 
-    public void setConclusions(List<IdValuePair> conclusions) {
+    public void setConclusions(List<ConclusionEntry> conclusions) {
         this.conclusions = conclusions;
     }
 
@@ -395,6 +415,54 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
     public void setReleasable(boolean releasable) {
         this.releasable = releasable;
+    }
+
+    public String getReviewNotes() {
+        return reviewNotes;
+    }
+
+    public void setReviewNotes(String reviewNotes) {
+        this.reviewNotes = reviewNotes;
+    }
+
+    public String getReadingStage() {
+        return readingStage;
+    }
+
+    public void setReadingStage(String readingStage) {
+        this.readingStage = readingStage;
+    }
+
+    public boolean isFindingsOpen() {
+        return findingsOpen;
+    }
+
+    public void setFindingsOpen(boolean findingsOpen) {
+        this.findingsOpen = findingsOpen;
+    }
+
+    public boolean isReferredToIhc() {
+        return referredToIhc;
+    }
+
+    public void setReferredToIhc(boolean referredToIhc) {
+        this.referredToIhc = referredToIhc;
+    }
+
+    public Integer getIhcCaseId() {
+        return ihcCaseId;
+    }
+
+    public void setIhcCaseId(Integer ihcCaseId) {
+        this.ihcCaseId = ihcCaseId;
+    }
+
+    public List<String> getIhcReferredTestIds() {
+        return ihcReferredTestIds;
+    }
+
+    public void setIhcReferredTestIds(List<String> ihcReferredTestIds) {
+        this.ihcReferredTestIds = ihcReferredTestIds == null ? List.of() : ihcReferredTestIds;
     }
 
     /**

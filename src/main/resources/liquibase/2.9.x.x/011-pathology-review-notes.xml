@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    The pathologist's own notes on a case: kept with the case, never printed on
+    the report. The column is nullable and no case on file gets a value.
+    -->
+
+    <changeSet id="OGC-264-pathology-review-notes" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="pathology_sample"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="pathology_sample" columnName="review_notes"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Add the pathologist's review notes to a case</comment>
+        <addColumn schemaName="clinlims" tableName="pathology_sample">
+            <column name="review_notes" type="TEXT"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="pathology_sample" columnName="review_notes"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

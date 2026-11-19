@@ -783,12 +783,20 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
         assertEquals("and the case moves on to the pathologist", "READY_PATHOLOGIST", storedStage());
     }
 
-    /** From the pathologist's queue the bench has nothing to send the case to. */
+    /**
+     * Where review is switched off nothing follows the pathologist's queue, and a
+     * case under review is moved only by a release or a return.
+     */
     @Test
     public void advancingBeyondTheBench_isRefused() {
+        ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED, "false");
         storeAt(PathologyStatus.READY_PATHOLOGIST);
         assertRefusedWith("pathology.error.advanceBeyondBench",
                 () -> pathologySampleService.advance(CASE_ID, PathologyStatus.READY_PATHOLOGIST, TECHNICIAN_ID));
+
+        storeAt(PathologyStatus.UNDER_REVIEW);
+        assertRefusedWith("pathology.error.advanceBeyondBench",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.UNDER_REVIEW, TECHNICIAN_ID));
 
         storeAt(PathologyStatus.COMPLETED);
         assertRefusedWith("pathology.error.caseCompleted",

@@ -8,6 +8,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -95,10 +96,12 @@ public class PathologySample extends ProgramSample {
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "pathology_sample_id")
+    @OrderBy("id")
     private List<PathologyTechnique> techniques;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "pathology_sample_id")
+    @OrderBy("id")
     private List<PathologyConclusion> conclusions;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
@@ -110,6 +113,10 @@ public class PathologySample extends ProgramSample {
 
     @Column(name = "microscopy_exam")
     private String microscopyExam;
+
+    /** The pathologist's own notes on the case, kept with it and not printed. */
+    @Column(name = "review_notes")
+    private String reviewNotes;
 
     /**
      * Whether the specimen needs decalcifying before processing, which is what
@@ -198,11 +205,14 @@ public class PathologySample extends ProgramSample {
         if (techniques == null) {
             return null;
         } else {
-            return StringUtils.join(techniques.stream()
-                    .map(e -> "Value: " + (e.getType() == TechniqueType.DICTIONARY
-                            ? SpringContext.getBean(DictionaryService.class).get(e.getValue()).getDisplayValue()
-                            : "" + e.getValue()))
-                    .collect(Collectors.toList()), "; ");
+            DictionaryService dictionaryService = SpringContext.getBean(DictionaryService.class);
+            return StringUtils
+                    .join(techniques.stream()
+                            .map(e -> "Value: " + (e.getType() == TechniqueType.DICTIONARY
+                                    ? DictionaryEntryNames.localizedNameOf(dictionaryService, e.getValue())
+                                            .orElse("" + e.getValue())
+                                    : "" + e.getValue()))
+                            .collect(Collectors.toList()), "; ");
         }
     }
 
@@ -218,11 +228,14 @@ public class PathologySample extends ProgramSample {
         if (conclusions == null) {
             return null;
         } else {
-            return StringUtils.join(conclusions.stream()
-                    .map(e -> "Value: " + (e.getType() == ConclusionType.DICTIONARY
-                            ? SpringContext.getBean(DictionaryService.class).get(e.getValue()).getDisplayValue()
-                            : "" + e.getValue()))
-                    .collect(Collectors.toList()), "; ");
+            DictionaryService dictionaryService = SpringContext.getBean(DictionaryService.class);
+            return StringUtils
+                    .join(conclusions.stream()
+                            .map(e -> "Value: " + (e.getType() == ConclusionType.DICTIONARY
+                                    ? DictionaryEntryNames.localizedNameOf(dictionaryService, e.getValue())
+                                            .orElse("" + e.getValue())
+                                    : "" + e.getValue()))
+                            .collect(Collectors.toList()), "; ");
         }
     }
 
@@ -347,6 +360,14 @@ public class PathologySample extends ProgramSample {
 
     public void setMicroscopyExam(String microscopyExam) {
         this.microscopyExam = microscopyExam;
+    }
+
+    public String getReviewNotes() {
+        return reviewNotes;
+    }
+
+    public void setReviewNotes(String reviewNotes) {
+        this.reviewNotes = reviewNotes;
     }
 
     public boolean isDecalcificationRequired() {

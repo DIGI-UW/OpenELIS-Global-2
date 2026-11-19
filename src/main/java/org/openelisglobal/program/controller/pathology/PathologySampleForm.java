@@ -47,6 +47,9 @@ public class PathologySampleForm {
 
     private String microscopyExam;
 
+    /** Null when the client did not post it, so the stored notes stand. */
+    private String reviewNotes;
+
     /** Null when the client did not post it, so the stored flag stands. */
     private Boolean decalcificationRequired;
 
@@ -166,6 +169,14 @@ public class PathologySampleForm {
 
     public void setMicroscopyExam(String microscopyExam) {
         this.microscopyExam = microscopyExam;
+    }
+
+    public String getReviewNotes() {
+        return reviewNotes;
+    }
+
+    public void setReviewNotes(String reviewNotes) {
+        this.reviewNotes = reviewNotes;
     }
 
     public Boolean getDecalcificationRequired() {

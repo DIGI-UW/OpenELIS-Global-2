@@ -17,13 +17,13 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.util.PathologyRowOrder;
+import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.LabelVerificationView;
@@ -38,6 +38,7 @@ import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
+import org.openelisglobal.program.valueholder.pathology.PathologyTechnique;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.bean.SampleOrderItem;
@@ -67,6 +68,8 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
     private SampleItemService sampleItemService;
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private ImmunohistochemistrySampleService immunohistochemistrySampleService;
 
     @Override
     @Transactional
@@ -129,6 +132,7 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
 
         displayItem.setGrossExam(pathologySample.getGrossExam());
         displayItem.setMicroscopyExam(pathologySample.getMicroscopyExam());
+        displayItem.setReviewNotes(pathologySample.getReviewNotes());
         displayItem.setDecalcificationRequired(pathologySample.isDecalcificationRequired());
         displayItem.setTissueTypeNames(dictionaryNames(
                 pathologySample.getBlocks().stream().map(PathologyBlock::getTissueTypeId), dictionaryService));
@@ -152,20 +156,26 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         displayItem
                 .setPreviousStage(pathologySampleService.previousStage(pathologySample).map(Enum::name).orElse(null));
         displayItem.setReleasable(pathologySampleService.isReleasable(pathologySample));
+        displayItem.setReadingStage(pathologySampleService.readingStage().name());
+        displayItem.setFindingsOpen(pathologySampleService.findingsOpen(pathologySample));
+        ImmunohistochemistrySample referral = immunohistochemistrySampleService
+                .getByPathologySampleId(pathologySample.getId());
+        displayItem.setReferredToIhc(referral != null);
+        displayItem.setIhcCaseId(referral == null ? null : referral.getId());
+        displayItem.setIhcReferredTestIds(pathologySampleService.ihcReferredTestIds(pathologySample));
 
+        // An id that names no entry (written before codes were checked) is left out.
         displayItem.setConclusions(
                 pathologySample.getConclusions().stream().filter(e -> e.getType() == ConclusionType.DICTIONARY)
-                        .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
+                        .flatMap(e -> DictionaryEntryNames.conclusionEntryOf(dictionaryService, e.getValue()).stream())
                         .collect(Collectors.toList()));
         Optional<PathologyConclusion> conclusion = pathologySample.getConclusions().stream()
                 .filter(e -> e.getType() == ConclusionType.TEXT).findFirst();
         if (conclusion.isPresent())
             displayItem.setConclusionText(conclusion.get().getValue());
 
-        displayItem.setTechniques(
-                pathologySample.getTechniques().stream().filter(e -> e.getType() == TechniqueType.DICTIONARY)
-                        .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
-                        .collect(Collectors.toList()));
+        displayItem.setTechniques(DictionaryEntryNames.namedPairs(dictionaryService, pathologySample.getTechniques()
+                .stream().filter(e -> e.getType() == TechniqueType.DICTIONARY).map(PathologyTechnique::getValue)));
         displayItem.setRequests(requestViews(pathologySample, users));
 
         SampleOrderService sampleOrderService = new SampleOrderService(pathologySample.getSample());

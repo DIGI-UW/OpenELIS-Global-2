@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -117,6 +118,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * point at.
      */
     private static final String CASE_REFERENCE_TABLE = "PATHOLOGY_SAMPLE";
+
+    /** The narrative conclusion's column holds this many characters. */
+    private static final int CONCLUSION_TEXT_MAX_LENGTH = 255;
 
     /** reference_tables row a bench request's own audit entries point at. */
     private static final String REQUEST_REFERENCE_TABLE = "PATHOLOGY_REQUEST";
@@ -243,6 +247,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         pathologySample.setQuestionnaireResponseUuid(oldPathologySample.getQuestionnaireResponseUuid());
         pathologySample.setReports(new ArrayList<>(oldPathologySample.getReports()));
         pathologySample.setRequests(new ArrayList<>(oldPathologySample.getRequests()));
+        pathologySample.setReviewNotes(oldPathologySample.getReviewNotes());
         pathologySample.setSample(oldPathologySample.getSample());
         pathologySample.setSlides(new ArrayList<>(oldPathologySample.getSlides()));
         pathologySample.setStatus(oldPathologySample.getStatus());
@@ -351,11 +356,14 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         if (form.getRelease()) {
             refuseReleaseOutsideReview(storedCase);
         }
+        // Worked out against the stored case, before the copy.
+        ReviewChanges changes = reviewChangesOf(storedCase, form);
+        refuseReviewChanges(storedCase, changes, form);
         // Copy only after validating all new or changed attachments.
         PathologySample pathologySample = copyPathologySample(storedCase);
         PathologySample storedState = auditedStateOf(storedCase);
         pathologySample.setSysUserId(form.getSystemUserId());
-        if (!GenericValidator.isBlankOrNull(form.getAssignedPathologistId())) {
+        if (changes.pathologist()) {
             pathologySample.setPathologist(systemUserService.get(form.getAssignedPathologistId()));
         }
         if (!GenericValidator.isBlankOrNull(form.getAssignedTechnicianId())) {
@@ -366,7 +374,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                 : pathologySample.getSample().getAccessionNumber();
         List<String> cassettesCut = reconcileBlocks(pathologySample, form.getBlocks(), scheme, accessionNumber);
         List<SlideCut> slidesCut = reconcileSlides(pathologySample, form.getSlides(), scheme, accessionNumber);
-        pathologySample.setGrossExam(form.getGrossExam());
+        if (changes.grossExam()) {
+            pathologySample.setGrossExam(form.getGrossExam());
+        }
         // The flag records what grossing found. Past the stage an untick would make a
         // decalcified specimen read as one that never needed it, so it is no longer
         // taken.
@@ -381,25 +391,40 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             recordRunReference(storedCase, PathologyStatus.COVERSLIPPING, form.getCoverslipRunReference(),
                     pathologySample.getSysUserId());
         }
-        pathologySample.setMicroscopyExam(form.getMicroscopyExam());
-        pathologySample.getConclusions().removeAll(pathologySample.getConclusions());
-        pathologySample.getConclusions().add(createConclusion(form.getConclusionText(), ConclusionType.TEXT));
-        if (form.getConclusions() != null)
-            pathologySample.getConclusions().addAll(form.getConclusions().stream()
-                    .map(e -> createConclusion(e, ConclusionType.DICTIONARY)).collect(Collectors.toList()));
+        if (changes.microscopyExam()) {
+            pathologySample.setMicroscopyExam(form.getMicroscopyExam());
+        }
+        if (changes.reviewNotes()) {
+            pathologySample.setReviewNotes(form.getReviewNotes());
+        }
+        // Conclusions and techniques are rewritten only when they changed, so
+        // unchanged rows keep their ids.
+        List<String> codesBefore = conclusionCodes(storedCase.getConclusions());
+        List<String> codesAfter = changes.conclusions() == null ? codesBefore : changes.conclusions();
+        if (changes.narrative() || changes.conclusions() != null) {
+            String narrative = changes.narrative() ? form.getConclusionText() : storedNarrative(storedCase);
+            pathologySample.getConclusions().clear();
+            pathologySample.getConclusions()
+                    .add(createConclusion(StringUtils.defaultString(narrative), ConclusionType.TEXT));
+            codesAfter.forEach(
+                    code -> pathologySample.getConclusions().add(createConclusion(code, ConclusionType.DICTIONARY)));
+        }
         // Requests are raised and change status through their own calls, so a save
         // carries the case's requests as they stand and never writes them.
-        pathologySample.getTechniques().removeAll(pathologySample.getTechniques());
-        if (form.getTechniques() != null)
-            pathologySample.getTechniques().addAll(form.getTechniques().stream()
-                    .map(e -> createTechnique(e, TechniqueType.DICTIONARY)).collect(Collectors.toList()));
+        if (changes.techniques() != null) {
+            pathologySample.getTechniques().clear();
+            changes.techniques().forEach(
+                    code -> pathologySample.getTechniques().add(createTechnique(code, TechniqueType.DICTIONARY)));
+        }
         pathologySample.getReports().removeAll(pathologySample.getReports());
         if (form.getReports() != null)
             form.getReports().stream().forEach(e -> e.setId(null));
         pathologySample.getReports().addAll(form.getReports());
-        if (form.getReferToImmunoHistoChemistry()) {
-            referToImmunoHistoChemistry(pathologySample, form);
+        if (form.getRelease()) {
+            refuseReleaseWithoutDescriptions(pathologySample);
         }
+        Optional<Referral> referral = changes.referral() == null ? Optional.empty()
+                : referToImmunoHistoChemistry(pathologySample, changes.referral(), form.getSystemUserId());
         if (form.getRelease()) {
             if (storedCase.getStatus() == PathologyStatus.COMPLETED) {
                 // Already at Completed, so there is no stage to enter; the release is
@@ -417,6 +442,11 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             PathologySample savedCase = updateAgainst(pathologySample, storedState);
             recordCassettesCut(savedCase, cassettesCut, pathologySample.getSysUserId());
             recordSlidesCut(savedCase, slidesCut, pathologySample.getSysUserId());
+            if (changes.narrative() || changes.conclusions() != null) {
+                recordConclusionSaved(savedCase, codesBefore, codesAfter, changes.narrative(),
+                        pathologySample.getSysUserId());
+            }
+            referral.ifPresent(made -> recordReferral(savedCase, made, pathologySample.getSysUserId()));
             persistPathologyBarcodeCountsIfSupplied(pathologySample, form);
             populatePathologyWorkflowPrintModels(pathologySample, form);
         } catch (RuntimeException e) {
@@ -767,7 +797,14 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         if (next == PathologyStatus.READY_PATHOLOGIST) {
             overrideOpenRequests(storedCase, acknowledgedRequestIds, sysUserId);
         }
-        return move(storedCase, next, StageDirection.FORWARD, null, sysUserId);
+        // Whoever begins the review is the one reading the case, unless it is
+        // already assigned (FR-12.1).
+        Consumer<PathologySample> takeTheCase = next == PathologyStatus.UNDER_REVIEW
+                && storedCase.getPathologist() == null
+                        ? movedCase -> movedCase.setPathologist(systemUserService.get(sysUserId))
+                        : movedCase -> {
+                        };
+        return move(storedCase, next, StageDirection.FORWARD, null, sysUserId, takeTheCase);
     }
 
     /**
@@ -1098,7 +1135,19 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      */
     private PathologyStageEvent move(PathologySample storedCase, PathologyStatus to, StageDirection direction,
             String reason, String sysUserId) {
+        return move(storedCase, to, direction, reason, sysUserId, movedCase -> {
+        });
+    }
+
+    /**
+     * As {@link #move}, with a change made to the moved copy alongside the stage,
+     * so the case's diff row records both. The stored case itself is never changed:
+     * a change made there would not reach that row.
+     */
+    private PathologyStageEvent move(PathologySample storedCase, PathologyStatus to, StageDirection direction,
+            String reason, String sysUserId, Consumer<PathologySample> alongside) {
         PathologySample movedCase = copyPathologySample(storedCase);
+        alongside.accept(movedCase);
         PathologyStageEvent entered = applyTransition(movedCase, storedCase, to, direction, reason, sysUserId);
         update(movedCase);
         return entered;
@@ -1325,10 +1374,32 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         case UNDER_REVIEW:
             return true;
         case COMPLETED:
-            return !hasBeenReleased(pathologySample);
+            return !isSignedOut(pathologySample);
         default:
             return false;
         }
+    }
+
+    @Transactional
+    @Override
+    public PathologyStatus readingStage() {
+        return PathologyStages.readingStage(deploymentEnabled());
+    }
+
+    @Transactional
+    @Override
+    public boolean findingsOpen(PathologySample pathologySample) {
+        PathologyStatus status = pathologySample.getStatus();
+        if (status == null) {
+            return false;
+        }
+        return status == PathologyStatus.UNDER_REVIEW || status == readingStage()
+                || (status == PathologyStatus.COMPLETED && !isSignedOut(pathologySample));
+    }
+
+    /** Signed out: on Completed and released, so nothing on the case changes. */
+    private boolean isSignedOut(PathologySample pathologySample) {
+        return pathologySample.getStatus() == PathologyStatus.COMPLETED && hasBeenReleased(pathologySample);
     }
 
     private boolean hasBeenReleased(PathologySample pathologySample) {
@@ -2040,41 +2111,42 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         }
     }
 
-    private void referToImmunoHistoChemistry(PathologySample pathologySample, PathologySampleForm form) {
-        List<Test> immunoHistologyTests = new ArrayList<>();
-        if (!form.getImmunoHistoChemistryTestIds().isEmpty()) {
-            form.getImmunoHistoChemistryTestIds().forEach(id -> {
-                Test t = testService.get(id);
-                if (t != null) {
-                    immunoHistologyTests.add(t);
-                }
+    /**
+     * Refers the case to immunohistochemistry, creating its case there when there
+     * is none, and orders the planned markers under the order's own analysis (the
+     * first that is not itself a referral, so a second referral never hangs off an
+     * earlier marker).
+     *
+     * @return what this save referred, when it created the case or ordered a marker
+     */
+    private Optional<Referral> referToImmunoHistoChemistry(PathologySample pathologySample, ReferralPlan plan,
+            String sysUserId) {
+        ImmunohistochemistrySample immunoHistoSample = plan.existing();
+        boolean created = immunoHistoSample == null;
+        if (created) {
+            immunoHistoSample = new ImmunohistochemistrySample();
+            immunoHistoSample.setProgram(pathologySample.getProgram());
+            immunoHistoSample.setQuestionnaireResponseUuid(pathologySample.getQuestionnaireResponseUuid());
+            immunoHistoSample.setSample(pathologySample.getSample());
+            immunoHistoSample.setPathologySample(pathologySample);
+            immunoHistoSample.setReffered(true);
+            immunoHistoSample = immunohistochemistrySampleService.save(immunoHistoSample);
+        }
+        List<Test> immunoHistologyTests = plan.testIds().stream().map(testService::get).filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        Optional<Analysis> parentAnalysis = plan.analyses().stream()
+                .filter(analysis -> !ProgramCaseAnalyses.isImmunohistochemistryReferral(analysis)).findFirst();
+        List<String> ordered = new ArrayList<>();
+        if (parentAnalysis.isPresent()) {
+            immunoHistologyTests.forEach(test -> {
+                CreateNewAnalysis(test, parentAnalysis.get(), pathologySample.getProgram().getProgramName(), sysUserId);
+                ordered.add(test.getId());
             });
         }
-
-        ImmunohistochemistrySample immunoHistoSample = immunohistochemistrySampleService
-                .getByPathologySampleId(pathologySample.getId());
-        if (immunoHistoSample == null) {
-            immunoHistoSample = new ImmunohistochemistrySample();
+        if (!created && ordered.isEmpty()) {
+            return Optional.empty();
         }
-        immunoHistoSample.setProgram(pathologySample.getProgram());
-        immunoHistoSample.setQuestionnaireResponseUuid(pathologySample.getQuestionnaireResponseUuid());
-        immunoHistoSample.setSample(pathologySample.getSample());
-        immunoHistoSample.setPathologySample(pathologySample);
-        immunoHistoSample.setReffered(true);
-        immunohistochemistrySampleService.save(immunoHistoSample);
-
-        if (immunoHistologyTests.isEmpty()) {
-            return;
-        }
-        List<Analysis> analyses = analysisService.getAnalysesBySampleId(pathologySample.getSample().getId());
-        if (analyses == null || analyses.isEmpty()) {
-            return;
-        }
-        Analysis currentAnalysis = analyses.get(0);
-        immunoHistologyTests.forEach(test -> {
-            CreateNewAnalysis(test, currentAnalysis, pathologySample.getProgram().getProgramName(),
-                    form.getSystemUserId());
-        });
+        return Optional.of(new Referral(immunoHistoSample.getId(), ordered, created));
     }
 
     private void CreateNewAnalysis(Test immunoHistologyTest, Analysis currentAnalysis, String programmeName,
@@ -2103,6 +2175,200 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             notes.add(note);
         }
         noteService.saveAll(notes);
+    }
+
+    /**
+     * What a case save changes of the review and the findings, against the stored
+     * case (D5): a field not sent is no change, and a text posted as it is stored,
+     * null and empty being the same, is none either. A list is the posted codes
+     * with repeats dropped, or null when unchanged.
+     */
+    private record ReviewChanges(boolean grossExam, boolean microscopyExam, boolean reviewNotes, boolean narrative,
+            List<String> conclusions, List<String> techniques, boolean pathologist, ReferralPlan referral) {
+
+        boolean any() {
+            return grossExam || reviewNotes || pathologist || findings();
+        }
+
+        /** The fields written only while the case is being read (D3). */
+        boolean findings() {
+            return microscopyExam || narrative || conclusions != null || techniques != null || referral != null;
+        }
+    }
+
+    /**
+     * A referral a save makes: the case's immunohistochemistry case, null when it
+     * is to be created, the markers the order does not hold yet, and the order's
+     * analyses.
+     */
+    private record ReferralPlan(ImmunohistochemistrySample existing, List<String> testIds, List<Analysis> analyses) {
+    }
+
+    /** What a save referred, for its audit row. */
+    private record Referral(Integer ihcCaseId, List<String> testIds, boolean created) {
+    }
+
+    private ReviewChanges reviewChangesOf(PathologySample storedCase, PathologySampleForm form) {
+        return new ReviewChanges(textChanged(form.getGrossExam(), storedCase.getGrossExam()),
+                textChanged(form.getMicroscopyExam(), storedCase.getMicroscopyExam()),
+                textChanged(form.getReviewNotes(), storedCase.getReviewNotes()),
+                textChanged(form.getConclusionText(), storedNarrative(storedCase)),
+                changedCodes(form.getConclusions(), conclusionCodes(storedCase.getConclusions())),
+                changedCodes(form.getTechniques(), techniqueCodes(storedCase.getTechniques())),
+                !GenericValidator.isBlankOrNull(form.getAssignedPathologistId()) && (storedCase.getPathologist() == null
+                        || !form.getAssignedPathologistId().equals(storedCase.getPathologist().getId())),
+                Boolean.TRUE.equals(form.getReferToImmunoHistoChemistry()) ? referralPlanOf(storedCase, form) : null);
+    }
+
+    private static boolean textChanged(String posted, String stored) {
+        return posted != null && !posted.equals(StringUtils.defaultString(stored));
+    }
+
+    /**
+     * The posted codes without repeats, or null when they are the stored ones. A
+     * stored id that names no entry is not counted, so leaving it off is no change.
+     */
+    private List<String> changedCodes(List<String> posted, List<String> stored) {
+        if (posted == null) {
+            return null;
+        }
+        List<String> codes = new ArrayList<>(new LinkedHashSet<>(posted));
+        if (codes.equals(stored)) {
+            return null;
+        }
+        List<String> named = stored.stream()
+                .filter(code -> DictionaryEntryNames.localizedNameOf(dictionaryService, code).isPresent())
+                .collect(Collectors.toList());
+        return codes.equals(named) ? null : codes;
+    }
+
+    /**
+     * The referral a save asks for, or null when it asks for nothing new: the case
+     * is referred already and every posted marker is on the order as a referral.
+     */
+    private ReferralPlan referralPlanOf(PathologySample storedCase, PathologySampleForm form) {
+        ImmunohistochemistrySample existing = immunohistochemistrySampleService
+                .getByPathologySampleId(storedCase.getId());
+        List<Analysis> analyses = analysesOf(storedCase);
+        Set<String> held = referredTestIds(analyses);
+        List<String> posted = form.getImmunoHistoChemistryTestIds() == null ? List.of()
+                : form.getImmunoHistoChemistryTestIds();
+        List<String> toOrder = new LinkedHashSet<>(posted).stream().filter(testId -> !held.contains(testId))
+                .collect(Collectors.toList());
+        return existing != null && toOrder.isEmpty() ? null : new ReferralPlan(existing, toOrder, analyses);
+    }
+
+    @Transactional
+    @Override
+    public List<String> ihcReferredTestIds(PathologySample pathologySample) {
+        return new ArrayList<>(referredTestIds(analysesOf(pathologySample)));
+    }
+
+    private List<Analysis> analysesOf(PathologySample pathologySample) {
+        return pathologySample.getSample() == null ? List.of()
+                : Optional.ofNullable(analysisService.getAnalysesBySampleId(pathologySample.getSample().getId()))
+                        .orElse(List.of());
+    }
+
+    /** The tests of the analyses that are immunohistochemistry referrals. */
+    private static Set<String> referredTestIds(List<Analysis> analyses) {
+        return analyses.stream().filter(ProgramCaseAnalyses::isImmunohistochemistryReferral)
+                .filter(analysis -> analysis.getTest() != null).map(analysis -> analysis.getTest().getId())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    /**
+     * The review and findings rules of a case save, in the order the design lists
+     * them; each refuses the whole save before anything is written.
+     */
+    private void refuseReviewChanges(PathologySample storedCase, ReviewChanges changes, PathologySampleForm form) {
+        if (!changes.any()) {
+            return;
+        }
+        if (isSignedOut(storedCase)) {
+            throw caseCompleted();
+        }
+        if (changes.findings() && !findingsOpen(storedCase)) {
+            throw new LocalizedValidationException("pathology.error.findingsLocked",
+                    "pathology case " + storedCase.getId() + " stands at " + storedCase.getStatus()
+                            + ", where its findings are not written");
+        }
+        if (changes.narrative() && form.getConclusionText().length() > CONCLUSION_TEXT_MAX_LENGTH) {
+            throw new LocalizedValidationException("pathology.error.conclusionTooLong",
+                    "the narrative conclusion is longer than " + CONCLUSION_TEXT_MAX_LENGTH + " characters");
+        }
+        refuseNewCodesUnlessInUse(changes.conclusions(), conclusionCodes(storedCase.getConclusions()),
+                CONCLUSION_CATEGORY, "pathology.error.conclusionNotInUse");
+        refuseNewCodesUnlessInUse(changes.techniques(), techniqueCodes(storedCase.getTechniques()), TECHNIQUE_CATEGORY,
+                "pathology.error.techniqueNotInUse");
+    }
+
+    /**
+     * A posted code the case does not hold yet must be an entry in use in its
+     * category; a stored code stays even after its entry is retired. Null posted
+     * codes are no change.
+     */
+    private void refuseNewCodesUnlessInUse(List<String> posted, List<String> stored, String category,
+            String retiredKey) {
+        if (posted == null) {
+            return;
+        }
+        posted.stream().filter(code -> !stored.contains(code))
+                .forEach(code -> refuseUnlessInUse(code, category, PathologyCaseRuleException::new, retiredKey));
+    }
+
+    /** FR-12.5: a case is signed out only with both descriptions written. */
+    private static void refuseReleaseWithoutDescriptions(PathologySample caseToSave) {
+        if (StringUtils.isBlank(caseToSave.getGrossExam()) || StringUtils.isBlank(caseToSave.getMicroscopyExam())) {
+            throw new LocalizedValidationException("pathology.error.releaseWithoutDescriptions",
+                    "pathology case " + caseToSave.getId() + " lacks a macroscopic or microscopic description");
+        }
+    }
+
+    /** The narrative conclusion: the value of the case's first text row. */
+    private static String storedNarrative(PathologySample storedCase) {
+        return storedCase.getConclusions().stream().filter(row -> row.getType() == ConclusionType.TEXT).findFirst()
+                .map(PathologyConclusion::getValue).orElse(null);
+    }
+
+    /** The coded conclusions' dictionary ids, in row order. */
+    private static List<String> conclusionCodes(List<PathologyConclusion> conclusions) {
+        return conclusions.stream().filter(row -> row.getType() == ConclusionType.DICTIONARY)
+                .map(PathologyConclusion::getValue).collect(Collectors.toList());
+    }
+
+    private static List<String> techniqueCodes(List<PathologyTechnique> techniques) {
+        return techniques.stream().filter(row -> row.getType() == TechniqueType.DICTIONARY)
+                .map(PathologyTechnique::getValue).collect(Collectors.toList());
+    }
+
+    /**
+     * Records a change of the coded or narrative conclusion: the codes after the
+     * save, those added and removed, and whether the narrative changed, never its
+     * text.
+     */
+    private void recordConclusionSaved(PathologySample savedCase, List<String> codesBefore, List<String> codesAfter,
+            boolean narrativeChanged, String sysUserId) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_CONCLUSION_SAVED);
+        payload.put("coded", codesAfter);
+        payload.put("added",
+                codesAfter.stream().filter(code -> !codesBefore.contains(code)).collect(Collectors.toList()));
+        payload.put("removed",
+                codesBefore.stream().filter(code -> !codesAfter.contains(code)).collect(Collectors.toList()));
+        payload.put("narrativeChanged", narrativeChanged);
+        recordRowEvent(CASE_REFERENCE_TABLE, savedCase.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
+    }
+
+    private void recordReferral(PathologySample savedCase, Referral referral, String sysUserId) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_IHC_REFERRED);
+        payload.put("ihcCaseId", referral.ihcCaseId());
+        payload.put("testIds", referral.testIds());
+        payload.put("created", referral.created());
+        recordRowEvent(CASE_REFERENCE_TABLE, savedCase.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
     }
 
     private PathologyConclusion createConclusion(String text, ConclusionType type) {

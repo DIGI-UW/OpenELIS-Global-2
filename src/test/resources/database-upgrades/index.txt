@@ -10,3 +10,4 @@ pathology-stage-event
 pathology-slide-label-verification
 pathology-slide-staining-qc
 pathology-request-bench-work
+pathology-review-notes
