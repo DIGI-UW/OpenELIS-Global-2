@@ -8,7 +8,7 @@ public class MicroDstForm {
     public boolean unresolvedDiscordance;
     public List<Drug> drugs = List.of();
 
-    public record Evidence(String source, String sourceId, String interpretation, boolean validated) {
+    public record Evidence(String source, String sourceId, String interpretation) {
     }
 
     public record Drug(String antibioticId, String label, String role, String interpretation, boolean discordant,

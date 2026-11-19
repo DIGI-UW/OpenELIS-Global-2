@@ -168,7 +168,8 @@ export default function CaseAstWorkspace({
       runId: run?.id,
       readingId: reading?.id,
       antibioticId: antibioticId || reading?.antibioticId,
-      panelId: isolate?.assignments?.[0]?.panelId || "",
+      panelId:
+        isolate?.defaultPanelId || isolate?.assignments?.[0]?.panelId || "",
       breakpointStandardId: data.defaultStandard?.configured
         ? data.defaultStandard.available
           ? data.defaultStandard.standardId
@@ -221,7 +222,7 @@ export default function CaseAstWorkspace({
     setBusy(true);
     setError(false);
     try {
-      const { adjustPanel, label, ...request } = draft;
+      const { adjustPanel, label, panelId, ...request } = draft;
       if (draft.action === "resolve") {
         const { antibioticId, evidenceFingerprint, interpretation, reason } =
           draft;
@@ -242,6 +243,9 @@ export default function CaseAstWorkspace({
                 draft.clinicalContext === "NOT_STATED"
                   ? ""
                   : draft.clinicalContext,
+              ...(["start", "assign"].includes(draft.action)
+                ? { panelId }
+                : {}),
               lotSelections: Object.values(selectedLots),
               rawValue:
                 draft.action === "reading" ? Number(draft.rawValue) : null,
@@ -292,9 +296,7 @@ export default function CaseAstWorkspace({
   const activeIsolate = data?.isolates?.find((i) => i.id === draft?.isolateId);
   const panelChanged =
     draft?.action === "start" &&
-    (draft.adjustPanel ||
-      activeIsolate?.assignments?.find((a) => a.panelId === draft.panelId)
-        ?.provenance !== "ORGANISM_DEFAULT");
+    (draft.adjustPanel || draft.panelId !== activeIsolate?.defaultPanelId);
   const needsReason = draft && (reasons.includes(draft.action) || panelChanged);
   const invalid =
     draft &&
@@ -321,7 +323,7 @@ export default function CaseAstWorkspace({
   return (
     <Stack gap={5}>
       <h3>{t("ast")}</h3>
-      {error && (
+      {error && !draft && (
         <InlineNotification kind="error" title={errorMessage} hideCloseButton />
       )}
       {data?.defaultStandard?.configured && !data.defaultStandard.available && (
@@ -369,6 +371,11 @@ export default function CaseAstWorkspace({
                   open
                 >
                   <Stack gap={4}>
+                    {run.panelLabel && (
+                      <p>
+                        {t("panel")}: {run.panelLabel}
+                      </p>
+                    )}
                     <p>
                       {t("clinicalContext")}:{" "}
                       {t(
@@ -576,7 +583,13 @@ export default function CaseAstWorkspace({
                                         hideLabel
                                         checked={!!agent.reported}
                                         disabled={
-                                          !(canEnter || canValidate) || busy
+                                          !(canEnter || canValidate) ||
+                                          busy ||
+                                          [
+                                            "INVALIDATED",
+                                            "CANCELLED",
+                                            "RERUN_REQUIRED",
+                                          ].includes(run.status)
                                         }
                                         onChange={(_, { checked }) =>
                                           reportAction({
@@ -746,8 +759,7 @@ export default function CaseAstWorkspace({
               {drug.evidence.map((item) => (
                 <p key={`${item.source}-${item.sourceId}`}>
                   {t(`source.${item.source}`)}:{" "}
-                  {t(`interpretation.${item.interpretation}`)} ·{" "}
-                  {t(item.validated ? "validated" : "pending")}
+                  {t(`interpretation.${item.interpretation}`)}
                 </p>
               ))}
               {drug.resolutionReason && (
@@ -782,8 +794,12 @@ export default function CaseAstWorkspace({
         <Modal
           open
           modalHeading={t(`action.${draft.label || draft.action}`)}
-          primaryButtonText={t("save")}
-          secondaryButtonText={t("cancel")}
+          primaryButtonText={t(
+            draft.action === "cancel" ? "action.cancel" : "save",
+          )}
+          secondaryButtonText={t(
+            draft.action === "cancel" ? "keepRun" : "cancel",
+          )}
           primaryButtonDisabled={
             busy ||
             invalid ||

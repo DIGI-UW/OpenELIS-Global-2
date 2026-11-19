@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
@@ -34,6 +35,7 @@ import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
+import org.openelisglobal.microbiology.service.MicroAstPanelAssignmentService;
 import org.openelisglobal.microbiology.service.MicroAstReportChoiceService;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroBreakpointAdminService;
@@ -45,6 +47,7 @@ import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.openelisglobal.microbiology.service.MicroReportReleaseService;
 import org.openelisglobal.microbiology.service.MicroReportVersionService;
 import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
+import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstReportChoice;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
@@ -82,6 +85,12 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private AnalysisService analysisService;
+
+    @Autowired
+    private MicroAstPanelAssignmentService panelAssignments;
+
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroAstPanelDAO panelDAO;
 
     @Autowired
     private AnalyteService analyteService;
@@ -250,6 +259,80 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         assertTrue(restored.isReportable());
     }
 
+    @Test
+    public void cancellingAnAmendmentRestoresAReviewedRunTheReportDidNotSelect() {
+        FinalCase fixture = createFinalCase(2);
+        Map<String, Boolean> released = reportableByRun(fixture.isolateId());
+        assertEquals(List.of(false, true), released.values().stream().sorted().toList());
+        amendmentService.openAmendment(fixture.caseId(), "Correct identification", fixture.userId());
+        MicroOrganism correctedOrganism = fixtures.createOrganism("Klebsiella oxytoca " + UUID.randomUUID(),
+                "Enterobacterales", fixture.panelId());
+        isolateService.updateIdentification(fixture.isolateId(), correctedOrganism.getId(), null,
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
+        assertEquals(List.of("RERUN_REQUIRED", "RERUN_REQUIRED"), statuses(fixture.isolateId()));
+
+        amendmentService.cancelAmendment(fixture.caseId(), "Withdraw the correction", fixture.userId());
+
+        assertEquals(List.of("REVIEWED", "REVIEWED"), statuses(fixture.isolateId()));
+        assertEquals(released, reportableByRun(fixture.isolateId()));
+    }
+
+    @Test
+    public void cancellingAnAmendmentGivesTheOriginalOrganismItsPanelBack() {
+        FinalCase fixture = createFinalCase();
+        assertEquals(List.of(fixture.panelId()), activePanels(fixture.isolateId()));
+        amendmentService.openAmendment(fixture.caseId(), "Correct identification", fixture.userId());
+        MicroOrganism staphylococcus = fixtures.createOrganism("Staphylococcus aureus " + UUID.randomUUID(),
+                "Staphylococci", null);
+        isolateService.updateIdentification(fixture.isolateId(), staphylococcus.getId(), null,
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
+        assertEquals(List.of(), activePanels(fixture.isolateId()));
+
+        amendmentService.cancelAmendment(fixture.caseId(), "Withdraw the correction", fixture.userId());
+
+        assertEquals(List.of(fixture.panelId()), activePanels(fixture.isolateId()));
+    }
+
+    @Test
+    public void cancellingAnAmendmentRestoresTheRetiredPanelNotTheCurrentDefault() {
+        FinalCase fixture = createFinalCase();
+        var currentDefault = new org.openelisglobal.microbiology.valueholder.MicroAstPanel();
+        currentDefault.setName("Current default " + UUID.randomUUID());
+        currentDefault.setOrganismGroup("Enterobacterales");
+        currentDefault.setPublishedAt(new Timestamp(System.currentTimeMillis()));
+        currentDefault.setPublishedBy(fixture.userId());
+        panelDAO.insert(currentDefault);
+        var organism = organismDAO.get(fixture.organismId()).orElseThrow();
+        organism.setDefaultAstPanelId(currentDefault.getId());
+        organismDAO.update(organism);
+        amendmentService.openAmendment(fixture.caseId(), "Correct identification", fixture.userId());
+        MicroOrganism staphylococcus = fixtures.createOrganism("Staphylococcus aureus " + UUID.randomUUID(),
+                "Staphylococci", null);
+        isolateService.updateIdentification(fixture.isolateId(), staphylococcus.getId(), null,
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
+        assertEquals(List.of(), activePanels(fixture.isolateId()));
+
+        amendmentService.cancelAmendment(fixture.caseId(), "Withdraw the correction", fixture.userId());
+
+        assertEquals(List.of(fixture.panelId()), activePanels(fixture.isolateId()));
+    }
+
+    private List<String> activePanels(String isolateId) {
+        return panelAssignments.getAssignments(isolateId).stream().map(a -> a.getPanelId()).toList();
+    }
+
+    private Map<String, Boolean> reportableByRun(String isolateId) {
+        return astService.getRunsForIsolate(isolateId).stream()
+                .collect(java.util.stream.Collectors.toMap(MicroAstRun::getId, MicroAstRun::isReportable));
+    }
+
+    private List<String> statuses(String isolateId) {
+        return astService.getRunsForIsolate(isolateId).stream().map(MicroAstRun::getStatus).toList();
+    }
+
     private List<String> selectedReadingIds(String isolateId) {
         return reportChoiceService.getChoices(isolateId).stream().map(MicroAstReportChoice::getReadingId).sorted()
                 .toList();
@@ -312,11 +395,19 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     private FinalCase createFinalCase() {
-        return createFinalCase((microCase, sampleItem) -> {
+        return createFinalCase(1);
+    }
+
+    private FinalCase createFinalCase(int reviewedRuns) {
+        return createFinalCase(reviewedRuns, (microCase, sampleItem) -> {
         });
     }
 
     private FinalCase createFinalCase(BiConsumer<MicroCase, SampleItem> beforeRelease) {
+        return createFinalCase(1, beforeRelease);
+    }
+
+    private FinalCase createFinalCase(int reviewedRuns, BiConsumer<MicroCase, SampleItem> beforeRelease) {
         fixtures.ensureRequiredWorkflowStatuses();
         String labUnitId = fixtures.createLabUnit().getId();
         String userId = createValidator(labUnitId);
@@ -346,10 +437,16 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
                 MicroIsolateIdentificationStatus.CONFIRMED, "MALDI_TOF", new BigDecimal("99.5"), userId);
         MicroAstRun run = astService.startRun(isolate.getId(), referenceData.panel().getId(),
                 referenceData.standard().getId(), userId);
-        astService.getPanelAntibiotics(referenceData.panel().getId())
-                .forEach(ordered -> astService.recordReading(run.getId(), ordered.getAntibioticId(), MicroAstMethod.MIC,
-                        new BigDecimal("4"), userId));
-        astService.reviewRun(run.getId(), userId);
+        for (int n = 1;; n++) {
+            for (var ordered : astService.getPanelAntibiotics(referenceData.panel().getId()))
+                astService.recordReading(run.getId(), ordered.getAntibioticId(), MicroAstMethod.MIC,
+                        new BigDecimal("4"), userId);
+            astService.reviewRun(run.getId(), userId);
+            if (n == reviewedRuns)
+                break;
+            run = astService.startRepeatRun(run.getId(), MicroAstAttemptType.RETEST, "Confirm the reading",
+                    MicroAstMethod.MIC, userId);
+        }
         fixtures.prepareFinalCase(microCase, userId);
         beforeRelease.accept(microCase, sampleItem);
         reportReleaseService.releaseFinal(microCase.getId(), userId);
