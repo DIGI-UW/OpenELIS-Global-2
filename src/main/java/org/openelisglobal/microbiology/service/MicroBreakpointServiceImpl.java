@@ -139,21 +139,22 @@ public class MicroBreakpointServiceImpl implements MicroBreakpointService {
         boolean endocarditis = "ENDOCARDITIS".equals(clinicalContext);
         boolean stated = spinalFluid || clinicalContext != null;
         boolean neither = stated && !meningitis && !endocarditis;
-        // As in the AMR package, a rule for another specimen, or for meningitis or
-        // endocarditis when the run is not, is dropped before the level is chosen.
+        // A meningitis or endocarditis rule for another indication is dropped before
+        // the level is chosen, as in the AMR package; a urinary rule keeps its level.
         List<MicroBreakpointRule> rules = ruleDAO.findWhonetRules(standardId, antibioticId, breakpointType).stream()
                 .filter(rule -> "ZONE".equals(breakpointType)
                         ? disk(rule.getDiskContent()) != null && disk(rule.getDiskContent()).equals(disk(diskContent))
                         : rule.getDiskContent() == null)
-                .filter(rule -> urine || !urinary(rule))
                 .filter(rule -> !stated || !forInfection(rule) || has(rule, meningitis, endocarditis)).toList();
         int closest = rules.stream().mapToInt(rule -> level(rule, organism)).min().orElse(NO_LEVEL);
         boolean byIndication = !neither && rules.stream().anyMatch(rule -> level(rule, organism) == closest
                 && (forInfection(rule) || names(rule, "non-meningitis") || names(rule, "non-endocarditis")));
         // If the closest level has indication rules, a meningitis, endocarditis or
         // unstated run reads only a rule for its indication or one with no site.
-        return rules.stream().filter(rule -> closest < NO_LEVEL && level(rule, organism) == closest).filter(
-                rule -> !byIndication || rule.getSiteOfInfection() == null || has(rule, meningitis, endocarditis))
+        return rules.stream().filter(rule -> closest < NO_LEVEL && level(rule, organism) == closest)
+                .filter(rule -> urine || !urinary(rule))
+                .filter(rule -> !byIndication || rule.getSiteOfInfection() == null
+                        || has(rule, meningitis, endocarditis))
                 .min(Comparator.comparingInt((MicroBreakpointRule rule) -> urine && urinary(rule) ? 0 : 1)
                         .thenComparingInt(rule -> has(rule, meningitis, endocarditis) ? 0 : 1)
                         .thenComparingInt(rule -> site(rule.getSiteOfInfection())))

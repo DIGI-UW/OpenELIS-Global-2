@@ -131,11 +131,14 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
     }
 
     @Test
-    public void aCloserUrinaryRuleGivesWayToABroaderGeneralOneOutsideUrine() {
-        String general = rule("FAMILY_CODE", "EBC", null, "2");
+    public void aCloserUrinaryRuleLeavesOtherSpecimensWithoutABreakpoint() {
+        rule("ALL", "Gen", null, "1");
+        rule("FAMILY_CODE", "EBC", null, "2");
         String urinary = rule("GENUS_CODE", "KL-", "Uncomplicated urinary tract infection", "3");
 
-        assertEquals(general, match("kpn", "bl", null).getId());
+        assertNull(match("kpn", "bl", null));
+        assertNull(match("kpn", null, null));
+        assertNull(match("kpn", "bl", "NON_MENINGITIS"));
         assertEquals(urinary, match("kpn", "ur", null).getId());
     }
 
