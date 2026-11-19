@@ -199,7 +199,11 @@ const caseViewShellScreen: CaseScreen = {
   },
   async pathologist(page, program) {
     await expandSection(page, "pathology-section-review");
-    return page.getByLabel(program.pathologistLabel, { exact: true });
+    // The picker's label names its list as well as its box.
+    return page.getByRole("combobox", {
+      name: program.pathologistLabel,
+      exact: true,
+    });
   },
   // A typed picker: the first name it offers is typed in and picked.
   async choosePathologist(page, program) {
