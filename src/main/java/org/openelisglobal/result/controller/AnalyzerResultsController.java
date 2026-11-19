@@ -8,6 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -717,6 +718,32 @@ public class AnalyzerResultsController extends BaseController {
         return idParam == null || idParam.isBlank() ? null : idParam;
     }
 
+    /**
+     * A save answers 200 when it took some rows and kept others in review, so it
+     * names each row the reviewer acted on that is still staged, with the reason it
+     * is held, rather than letting the page report every row saved.
+     */
+    private void writeLeftInReview(HttpServletResponse response, List<AnalyzerResultItem> resultItemList,
+            Map<String, String> reasons) throws java.io.IOException {
+        if (reasons.isEmpty()) {
+            return;
+        }
+        List<Map<String, String>> leftInReview = new ArrayList<>();
+        for (AnalyzerResultItem item : resultItemList) {
+            if (reasons.containsKey(item.getId())) {
+                Map<String, String> row = new LinkedHashMap<>();
+                row.put("id", item.getId());
+                row.put("accessionNumber", item.getAccessionNumber());
+                row.put("testName", item.getTestName());
+                row.put("reason", reasons.get(item.getId()));
+                leftInReview.add(row);
+            }
+        }
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        new ObjectMapper().writeValue(response.getWriter(), Map.of("leftInReview", leftInReview));
+    }
+
     private void writeErrorResponse(HttpServletResponse response, String safeMessage) {
         try {
             response.setContentType("text/plain");
@@ -780,6 +807,7 @@ public class AnalyzerResultsController extends BaseController {
             }
             evaluateAlerts(acceptService.acceptAndPersist(resultItemList, getSysUserId(request), alerts),
                     getSysUserId(request));
+            writeLeftInReview(response, resultItemList, acceptService.stillInReview(resultItemList));
 
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
