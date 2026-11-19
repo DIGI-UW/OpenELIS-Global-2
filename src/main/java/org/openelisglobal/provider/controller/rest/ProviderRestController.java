@@ -5,7 +5,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.apache.commons.validator.GenericValidator;
+import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -43,15 +45,22 @@ public class ProviderRestController {
     @GetMapping(value = "/Provider/raw/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Provider> getProvider(@PathVariable String id) {
-        Provider provider = providerService.get(id);
-        return ResponseEntity.ok(provider);
+        return findOrNotFound(() -> providerService.get(id));
     }
 
     @GetMapping(value = "/Provider/Person/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Person> getPerson(@PathVariable String id) {
-        Person person = personService.get(id);
-        return ResponseEntity.ok(person);
+        return findOrNotFound(() -> personService.get(id));
+    }
+
+    private <T> ResponseEntity<T> findOrNotFound(Supplier<T> lookup) {
+        try {
+            T entity = lookup.get();
+            return entity != null ? ResponseEntity.ok(entity) : ResponseEntity.notFound().build();
+        } catch (ObjectNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PostMapping(value = "/Provider/FhirUuid", produces = MediaType.APPLICATION_JSON_VALUE)
