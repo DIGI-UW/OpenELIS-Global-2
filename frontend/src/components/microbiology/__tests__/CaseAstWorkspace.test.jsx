@@ -16,6 +16,26 @@ import {
   typePhraseCode,
 } from "./phraseFields";
 const t = (key) => messages[`microbiology.m6.${key}`];
+const astActionFormFields = [
+  "isolateId",
+  "action",
+  "runId",
+  "readingId",
+  "panelId",
+  "technique",
+  "breakpointStandardId",
+  "antibioticId",
+  "interpretation",
+  "reason",
+  "analyzerCardId",
+  "analyzerInstrumentId",
+  "clinicalContext",
+  "awaitAnalyzerResults",
+  "reported",
+  "lotSelections",
+  "orderedAntibioticIds",
+  "rawValue",
+];
 const reading = (id, antibioticId, value) => ({
   id,
   antibioticId,
@@ -100,6 +120,33 @@ it("expands an override-reason phrase and records the expanded reason", async ()
     ),
   );
 });
+it("each AST run shows its Run QC", async () => {
+  const service = {
+    getAstWorkspace: vi.fn().mockResolvedValue(workspace()),
+    astAction: vi.fn(),
+    getAstQc: vi.fn().mockResolvedValue({
+      configured: true,
+      canRecord: false,
+      antibiotics: [],
+      controlLots: [],
+      lots: [],
+      candidateLots: [],
+      controls: [],
+    }),
+  };
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseAstWorkspace
+        detail={{ id: "c1", canWrite: true, canValidate: true }}
+        service={service}
+      />
+    </IntlProvider>,
+  );
+  expect(
+    await screen.findByRole("region", { name: "Run QC" }),
+  ).toBeInTheDocument();
+  expect(service.getAstQc).toHaveBeenCalledWith("c1", "run");
+});
 it("selects only the requested validated drug with a recorded reason", async () => {
   const service = show(workspace());
   fireEvent.click(
@@ -129,6 +176,11 @@ it("selects only the requested validated drug with a recorded reason", async () 
       true,
     ),
   );
+  expect(
+    Object.keys(service.astAction.mock.calls[0][1]).filter(
+      (field) => !astActionFormFields.includes(field),
+    ),
+  ).toEqual([]);
 });
 it("outside readers see readings and history without mutation controls", async () => {
   show(workspace(), { canWrite: false, canValidate: false });
@@ -198,6 +250,145 @@ it("requires and submits a replacement card when invalidating an instrument run"
   );
 });
 
+it("reloads the reagent lots after a control is recorded so a released lot can be picked", async () => {
+  const qcView = {
+    configured: true,
+    canRecord: true,
+    antibiotics: [{ id: "a", name: "Ampicillin" }],
+    controlLots: [
+      {
+        id: "ecoli",
+        label: "E. coli ATCC 25922",
+        ranges: { a: { low: 1, high: 4 } },
+      },
+    ],
+    lots: [],
+    candidateLots: [],
+    controls: [],
+  };
+  const service = {
+    getAstWorkspace: vi.fn(() => Promise.resolve(workspace())),
+    astAction: vi.fn(),
+    getReagentLotOverview: vi
+      .fn()
+      .mockResolvedValue({ requirements: [], usages: [] }),
+    getAstQc: vi.fn().mockResolvedValue(qcView),
+    recordAstQc: vi.fn().mockResolvedValue(qcView),
+  };
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseAstWorkspace
+        detail={{ id: "c1", canWrite: true, canValidate: true }}
+        service={service}
+      />
+    </IntlProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Record control result" }),
+  );
+  const dialog = await screen.findByRole("dialog", {
+    name: "Record control result",
+  });
+  fireEvent.change(within(dialog).getByLabelText("Control lot"), {
+    target: { value: "ecoli" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Measured value Ampicillin"), {
+    target: { value: "2" },
+  });
+  const lotLoads = service.getReagentLotOverview.mock.calls.length;
+  fireEvent.click(within(dialog).getByRole("button", { name: "Record" }));
+  await waitFor(() => expect(service.recordAstQc).toHaveBeenCalled());
+  await waitFor(() =>
+    expect(service.getReagentLotOverview.mock.calls.length).toBeGreaterThan(
+      lotLoads,
+    ),
+  );
+});
+
+it("reloads every run's QC after a control is recorded so a shared lot shows its new status", async () => {
+  const twoRuns = () => {
+    const data = workspace();
+    data.isolates[0].runs.push({ ...data.isolates[0].runs[0], id: "run2" });
+    return data;
+  };
+  let released = false;
+  const qcView = (runId) => ({
+    configured: true,
+    canRecord: runId === "run",
+    antibiotics: [{ id: "a", name: "Ampicillin" }],
+    controlLots: [
+      {
+        id: "ecoli",
+        label: "E. coli ATCC 25922",
+        ranges: { a: { low: 1, high: 4 } },
+      },
+    ],
+    lots: [
+      {
+        id: 7,
+        lotNumber: "LOT-7",
+        itemName: "AST cards",
+        qcStatus: released ? "PASSED" : "PENDING",
+      },
+    ],
+    candidateLots: [],
+    controls: [],
+  });
+  const service = {
+    getAstWorkspace: vi.fn(() => Promise.resolve(twoRuns())),
+    astAction: vi.fn(),
+    getReagentLotOverview: vi
+      .fn()
+      .mockResolvedValue({ requirements: [], usages: [] }),
+    getAstQc: vi.fn((caseId, runId) => Promise.resolve(qcView(runId))),
+    recordAstQc: vi.fn(() => {
+      released = true;
+      return Promise.resolve(qcView("run"));
+    }),
+  };
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseAstWorkspace
+        detail={{ id: "c1", canWrite: true, canValidate: true }}
+        service={service}
+      />
+    </IntlProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Record control result" }),
+  );
+  const dialog = await screen.findByRole("dialog", {
+    name: "Record control result",
+  });
+  fireEvent.change(within(dialog).getByLabelText("Control lot"), {
+    target: { value: "ecoli" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Measured value Ampicillin"), {
+    target: { value: "2" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Record" }));
+  const otherRun = screen.getAllByRole("region", { name: "Run QC" })[1];
+  expect(await within(otherRun).findByText("QC passed")).toBeInTheDocument();
+});
+
+it("says a failing QC control holds validation until its NCE is closed", async () => {
+  const service = show(workspace("IN_PROGRESS"));
+  service.astAction.mockRejectedValue({ response: { message: "AST_QC_HOLD" } });
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.review") }),
+  );
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: t("save"),
+      exact: true,
+    }),
+  );
+  expect(
+    await within(screen.getByRole("dialog")).findByText(
+      "A failing AST control covers this run. Close its nonconformity before validating.",
+    ),
+  ).toBeInTheDocument();
+});
 it("explains a validation blocker and clears it when another action opens", async () => {
   const service = show(workspace("IN_PROGRESS"));
   service.astAction.mockRejectedValue({
@@ -693,5 +884,164 @@ it("does not offer cancel once a run has readings", async () => {
   expect(await screen.findByText("Ampicillin")).toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: t("action.cancel") }),
+  ).not.toBeInTheDocument();
+});
+const ticks = () => {
+  const data = workspace("IN_PROGRESS");
+  data.isolates[0].runs[0].orderedAntibiotics = [
+    {
+      antibioticId: "a",
+      antibioticName: "Ampicillin",
+      reportBehavior: "ALWAYS",
+      reported: true,
+      reportManual: false,
+    },
+    {
+      antibioticId: "b",
+      antibioticName: "Ceftriaxone",
+      reportBehavior: "SUPPRESS_UNLESS_RESISTANT",
+      reported: false,
+      reportManual: false,
+    },
+  ];
+  return data;
+};
+it("shows each drug's report tick with its reason only when the reason is not routine", async () => {
+  show(ticks());
+  expect(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  ).toBeChecked();
+  expect(
+    screen.getByRole("checkbox", { name: "Report Ceftriaxone" }),
+  ).not.toBeChecked();
+  expect(screen.getByText("Reported only if resistant")).toBeInTheDocument();
+  expect(screen.queryByText("Changed by staff")).not.toBeInTheDocument();
+});
+it("unticking a drug saves the report choice for that run", async () => {
+  const service = show(ticks());
+  fireEvent.click(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  );
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        action: "report",
+        isolateId: "i1",
+        runId: "run",
+        antibioticId: "a",
+        reported: false,
+      }),
+      false,
+    ),
+  );
+});
+it("a tick changed by hand says so and can be reset to the defaults", async () => {
+  const data = ticks();
+  const drugs = data.isolates[0].runs[0].orderedAntibiotics;
+  drugs[1] = { ...drugs[1], reported: true, reportManual: true };
+  const service = show(data);
+  expect(await screen.findByText("Changed by staff")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Reset report choices" }));
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ action: "report-reset", isolateId: "i1" }),
+      false,
+    ),
+  );
+});
+it("readers see report ticks they cannot change", async () => {
+  const data = ticks();
+  const drugs = data.isolates[0].runs[0].orderedAntibiotics;
+  drugs[0] = { ...drugs[0], reportManual: true };
+  show(data, { canWrite: false, canValidate: false });
+  expect(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  ).toBeDisabled();
+  expect(
+    screen.queryByRole("button", { name: "Reset report choices" }),
+  ).not.toBeInTheDocument();
+});
+it("shows a drug's report tick only on the run whose reading is chosen for the report", async () => {
+  const data = ticks();
+  const first = data.isolates[0].runs[0];
+  data.isolates[0].choices = [{ antibioticId: "b", readingId: "r-b" }];
+  data.isolates[0].runs.push({
+    ...first,
+    id: "retest",
+    orderedAntibiotics: first.orderedAntibiotics.map((agent) => ({
+      ...agent,
+    })),
+    readings: [reading("r-a2", "a", 4), reading("r-b2", "b", 4)],
+  });
+  show(data);
+  const name = (agent) => ({ name: `Report ${agent}`, hidden: true });
+  await screen.findAllByRole("checkbox", name("Ampicillin"));
+  expect(screen.getAllByRole("checkbox", name("Ceftriaxone"))).toHaveLength(1);
+  expect(screen.getAllByRole("checkbox", name("Ampicillin"))).toHaveLength(2);
+});
+it("says when a reporting rule leaves a drug off the report", async () => {
+  const data = ticks();
+  const drugs = data.isolates[0].runs[0].orderedAntibiotics;
+  drugs[0] = { ...drugs[0], reportBehavior: "DONT_REPORT", reported: false };
+  show(data);
+  expect(
+    await screen.findByText("Not reported by a reporting rule"),
+  ).toBeInTheDocument();
+});
+it("shows a reporting rule's note under its drug, tagged as coming from the rule", async () => {
+  const data = ticks();
+  const drugs = data.isolates[0].runs[0].orderedAntibiotics;
+  drugs[0] = { ...drugs[0], ruleNote: "Consider meropenem" };
+  show(data);
+  expect(await screen.findByText("Consider meropenem")).toBeInTheDocument();
+  expect(screen.getByText("From rule")).toBeInTheDocument();
+});
+
+it("marks an expert rule override and asks for the identification to be checked", async () => {
+  const data = ticks();
+  const run = data.isolates[0].runs[0];
+  run.intrinsicContradiction = true;
+  run.readings[0] = {
+    ...run.readings[0],
+    interpretation: "SUSCEPTIBLE",
+    overrideInterpretation: "RESISTANT",
+    overrideRuleId: "rule-1",
+    overrideReason: "Expert rule: Klebsiella, Ampicillin always R",
+  };
+  show(data);
+  expect(await screen.findByText("Expert rule")).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      "A measured result contradicts an expected resistance. Check the identification, then confirm it before review.",
+    ),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirm identification" }),
+  );
+  expect(
+    await screen.findByRole("dialog", { name: "Confirm identification" }),
+  ).toBeInTheDocument();
+});
+
+it("words an expert rule override from the rule, not from the stored audit reason", async () => {
+  const data = ticks();
+  const run = data.isolates[0].runs[0];
+  run.readings[0] = {
+    ...run.readings[0],
+    interpretation: "SUSCEPTIBLE",
+    overrideInterpretation: "RESISTANT",
+    overrideRuleId: "rule-1",
+    overrideReason: "Expert rule: Klebsiella, Ampicillin always R",
+  };
+  show(data);
+  expect(
+    await screen.findByText(
+      "Escherichia coli is always resistant to Ampicillin",
+    ),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByText("Expert rule: Klebsiella, Ampicillin always R"),
   ).not.toBeInTheDocument();
 });

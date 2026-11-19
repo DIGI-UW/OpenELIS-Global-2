@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+<changeSet id="155-amr-v3-panel-report-cleanup" author="openelis">
+<sql>ALTER TABLE clinlims.micro_ast_panel_antibiotic DROP CONSTRAINT micro_ast_panel_antibiotic_tier_chk</sql>
+<sql>ALTER TABLE clinlims.micro_ast_panel_antibiotic DROP CONSTRAINT micro_ast_panel_antibiotic_report_chk</sql>
+<dropColumn schemaName="clinlims" tableName="micro_ast_panel_antibiotic" columnName="tier"/>
+<dropColumn schemaName="clinlims" tableName="micro_ast_panel_antibiotic" columnName="report_behavior"/>
+<dropColumn schemaName="clinlims" tableName="micro_ast_run_antibiotic" columnName="tier"/>
+<rollback>
+<addColumn schemaName="clinlims" tableName="micro_ast_panel_antibiotic">
+<column name="tier" type="INTEGER" defaultValueNumeric="1"><constraints nullable="false"/></column>
+<column name="report_behavior" type="VARCHAR(30)" defaultValue="ALWAYS"><constraints nullable="false"/></column>
+</addColumn>
+<addColumn schemaName="clinlims" tableName="micro_ast_run_antibiotic">
+<column name="tier" type="INTEGER" defaultValueNumeric="1"><constraints nullable="false"/></column>
+</addColumn>
+<sql>ALTER TABLE clinlims.micro_ast_panel_antibiotic ADD CONSTRAINT micro_ast_panel_antibiotic_tier_chk CHECK (tier BETWEEN 1 AND 3)</sql>
+<sql>ALTER TABLE clinlims.micro_ast_panel_antibiotic ADD CONSTRAINT micro_ast_panel_antibiotic_report_chk CHECK (report_behavior IN ('ALWAYS', 'CASCADE', 'SUPPRESS_UNLESS_RESISTANT'))</sql>
+</rollback>
+</changeSet>
+</databaseChangeLog>

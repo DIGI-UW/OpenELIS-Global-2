@@ -7,12 +7,15 @@ read release archives, download metadata or run R.
 
 ## Configuration domains
 
-| Folder under `configuration/backend/` | Required columns                         | Order |
-| ------------------------------------- | ---------------------------------------- | ----- |
-| `microbiology-whonet-organisms/`      | WHONET's `Organisms.txt`, see below      | 305   |
-| `microbiology-organisms/`             | `source,code,displayName,whonetCode`     | 310   |
-| `microbiology-antimicrobials/`        | `source,code,displayName,whonetCode`     | 320   |
-| `microbiology-breakpoints/`           | Existing breakpoint import columns below | 330   |
+| Folder under `configuration/backend/` | Required columns                                              | Order |
+| ------------------------------------- | ------------------------------------------------------------- | ----- |
+| `microbiology-whonet-organisms/`      | WHONET's `Organisms.txt`, see below                           | 305   |
+| `microbiology-organisms/`             | `source,code,displayName,whonetCode`                          | 310   |
+| `microbiology-organism-groups/`       | `organism,group`                                              | 315   |
+| `microbiology-antimicrobials/`        | `source,code,displayName,whonetCode`                          | 320   |
+| `microbiology-breakpoints/`           | Existing breakpoint import columns below                      | 330   |
+| `microbiology-reporting-rules/`       | `organism_level,organism,specimen_group,agent,report_default` | 350   |
+| `microbiology-qc-ranges/`             | `qc_strain,agent,method,guideline,version,low,high`           | 360   |
 
 Organisms also accept `gramStain`; antimicrobials accept `antibioticClass`.
 `source` and `code` identify a reference concept independently of its local name
@@ -20,6 +23,18 @@ and database identifier. An existing source identity retains local values and
 activity. Unambiguous pre-existing name/code matches can adopt an identity;
 conflicting matches fail the catalog import. These files do not choose a site's
 panels, routing, significance or clinical protocol.
+
+Organism group files carry one membership per row,
+`organism,organism_source,organism_code,group`. `organism` is the display name,
+or `organism_source` and `organism_code` when both are filled, as for a SPECIES
+rule. An organism can be in several groups. The file sets the full member list
+of each group it names, so a reload without a row removes that membership;
+groups the file does not name are left alone. The file is applied whole or not
+at all and a failed load lists every bad row. A load fails, naming the rows,
+when it would put an organism in two groups whose reporting rules for the same
+antibiotic, indication and sample types disagree. Laboratory groups drive
+reporting rules and always-resistant rules; breakpoints and AST panel defaults
+still use the reference package's organism group.
 
 ## WHONET's organism list
 
@@ -54,6 +69,47 @@ Optional columns are `resistant_inclusive`, `organism_source`, `organism_code`,
 concepts without installation-specific IDs. `resistant_inclusive=false`
 preserves strict resistance boundaries; omission retains the existing inclusive
 convention. Imports validate supported measurements and exact storage precision.
+
+Reporting rule files carry one rule per row:
+
+```text
+organism_level,organism,specimen_group,agent,agent_name,report_default,cascade_when,trigger_agents,report_as,always_report_R,comment,comment_when,sop_section,note,indication,cascade_condition,add_automatically,active
+```
+
+Columns may appear in any order and unknown columns are ignored.
+`organism_level` is `SPECIES` (the display name, or `organism_source` and
+`organism_code` when both are filled), `GROUP` (a laboratory organism group, as
+written, which must exist in an organism group file) or `ANY`. `specimen_group`
+is `ANY`, blank, or sample type names separated by `;`. `agent` is a WHONET
+code. `report_default` is `REPORT`, `REPORT_IF_R`, `CASCADE` or `DONT_REPORT`;
+blank adds no reporting rule. The stored cascade condition is
+`cascade_condition`, or `cascade_when` and `trigger_agents` joined by a space.
+`comment` becomes the note, with `comment_when` one of `ALWAYS`, `WHEN_R`,
+`WHEN_S` and `ALWAYS` when blank. `indication` is blank or `NON_MENINGITIS`.
+`add_automatically: YES` marks a cascade rule to add its antibiotic without a
+click; when the column is absent the existing value is kept.
+`always_report_R: YES` also upserts an always-resistant interpretation rule for
+the same species or group and antibiotic. `active: NO` keeps the rule inactive;
+blank or `YES` saves it active. An always-resistant rule that already exists
+keeps its own source. `(isolate)` rows are skipped, because isolate-level notes
+are not supported yet. Two group rules that would disagree for an organism in
+both groups fail the load and name both rows.
+
+Each row upserts the rule whose antibiotic, organism or group, sample types and
+indication match, and saves it active unless `active: NO`. A reporting rule file
+is applied whole or not at all: a bad row rolls back every row before it. A
+failed load lists every bad row with its line number. A reload of an unchanged
+file writes no revision history. Rules absent from the file are left alone, and
+the AST rules page exports the same format, so an export re-imports without
+changes. An antibiotic that no rule matches is reported.
+
+QC range files carry one expected range per row:
+`qc_strain,agent,method,disk_content,guideline,version,low,high`. `agent` is a
+WHONET code, `method` is `MIC` or `ZONE`, `disk_content` only for `ZONE`, and
+`guideline` and `version` name a loaded breakpoint standard. Each row upserts
+the range for its strain, antibiotic, method, disk content and standard. The
+file is applied whole or not at all, and ranges absent from the file are left
+alone.
 
 ## Import, preview and reload
 

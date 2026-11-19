@@ -65,7 +65,16 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
         page.page = q.page;
         page.pageSize = q.pageSize;
         page.total = searchDAO.count(q, ids);
-        page.rows = searchDAO.search(q, ids).stream().map(v -> summary(v, new MicroCaseSummaryForm())).toList();
+        var openReferrals = searchDAO.openReferralCases();
+        var returnedReferrals = searchDAO.referralAttentionCases();
+        page.rows = searchDAO.search(q, ids).stream().map(v -> {
+            MicroCaseSummaryForm row = summary(v, new MicroCaseSummaryForm());
+            if (returnedReferrals.contains(row.id))
+                row.statusTags.add(0, "REFERRAL_RETURNED");
+            if (openReferrals.contains(row.id))
+                row.statusTags.add(0, "REFERRED");
+            return row;
+        }).toList();
         // Include units containing retained cases, even after their catalog tests are
         // deactivated.
         page.labUnits = units.getAllTestSections().stream()
@@ -107,9 +116,15 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
                 && access.hasLabUnitRole(userId, c.getLabUnitId(), Constants.ROLE_VALIDATION);
         f.canValidate = mutable && access.hasLabUnitRole(userId, c.getLabUnitId(), Constants.ROLE_VALIDATION);
         context.compile(c, f);
-        f.referred = referrals
-                .getWorkspaceReferrals(cultureRows.getSources(id).stream().map(si -> si.getId()).distinct().toList())
-                .stream().anyMatch(r -> r.getStatus() != null && !r.getStatus().isTerminal());
+        var workspaceReferrals = referrals
+                .getWorkspaceReferrals(cultureRows.getSources(id).stream().map(si -> si.getId()).distinct().toList());
+        f.referred = workspaceReferrals.stream().anyMatch(r -> r.getStatus() != null && !r.getStatus().isTerminal());
+        if (workspaceReferrals.stream()
+                .anyMatch(r -> org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED.equals(r.getStatus())
+                        && !Boolean.TRUE.equals(r.getReconciled())))
+            f.statusTags.add(0, "REFERRAL_RETURNED");
+        if (f.referred)
+            f.statusTags.add(0, "REFERRED");
         for (var si : searchDAO.getSamples(id)) {
             MicroCaseSpecimenForm s = new MicroCaseSpecimenForm();
             s.id = si.getId();
@@ -212,11 +227,20 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
         f.stage = c.getStage();
         f.priority = c.getPriority();
         f.createdAt = c.getCreatedAt();
+        f.caseStatus = c.getStatus() == MicroCaseStatus.ACTIVE ? (String) v[13] : c.getStatus().name();
+        f.stat = org.openelisglobal.sample.valueholder.OrderPriority.STAT.equals(v[12]);
+        if ("AMENDMENT_IN_PROGRESS".equals(c.getFinalReleaseState()))
+            f.statusTags.add("AMENDMENT_OPEN");
         return f;
     }
 
     private void normalize(MicroCaseSearchForm q) {
         q.status = text(q.status);
+        q.caseStatus = text(q.caseStatus);
+        if (q.caseStatus != null && !java.util.List
+                .of("IN_PROGRESS", "PARTIAL", "FINAL", "AMENDED", "REFERRED", "REFERRAL_RETURNED", "AMENDMENT_OPEN")
+                .contains(q.caseStatus))
+            throw new IllegalArgumentException("Invalid case status filter");
         q.labUnitId = text(q.labUnitId);
         q.q = text(q.q);
         q.patientId = text(q.patientId);

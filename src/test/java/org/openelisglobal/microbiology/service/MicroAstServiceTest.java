@@ -133,8 +133,14 @@ public class MicroAstServiceTest {
         org.springframework.test.util.ReflectionTestUtils.setField(service, "authorization",
                 org.mockito.Mockito.mock(MicroCaseAuthorizationService.class));
         org.springframework.test.util.ReflectionTestUtils.setField(service, "reportChoices", reportChoices);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "reportingRuleDAO",
+                org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroReportingRuleDAO.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "interpretationRuleDAO",
+                org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroInterpretationRuleDAO.class));
         org.springframework.test.util.ReflectionTestUtils.setField(service, "panelAssignments",
                 org.mockito.Mockito.mock(MicroAstPanelAssignmentService.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "astQc",
+                org.mockito.Mockito.mock(MicroAstQcService.class));
         org.mockito.Mockito.lenient().when(caseDAO.getForUpdate(any(String.class)))
                 .thenAnswer(invocation -> caseDAO.get((String) invocation.getArgument(0)).orElse(null));
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));

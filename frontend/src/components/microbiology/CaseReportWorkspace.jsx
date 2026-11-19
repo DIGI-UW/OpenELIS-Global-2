@@ -18,9 +18,7 @@ import {
   TableRow,
   Tile,
 } from "@carbon/react";
-import { returnFocus } from "./returnFocus";
-import { useOnline } from "./OfflineNotice";
-import { serverUnreachable } from "../utils/requestOutcome";
+import CaseReleaseActions from "./CaseReleaseActions";
 
 export function MicrobiologyReportBlock({ report }) {
   const intl = useIntl(),
@@ -33,7 +31,9 @@ export function MicrobiologyReportBlock({ report }) {
       )
       .map((note, index) => (
         <p key={index}>
-          {note.text} · {note.author} · {labTimestamp(intl, note.at)}
+          {note.fromRule
+            ? `${note.text} · ${t("fromRule")}`
+            : `${note.text} · ${note.author} · ${labTimestamp(intl, note.at)}`}
         </p>
       ));
   const testRows = (tests) =>
@@ -85,44 +85,54 @@ export function MicrobiologyReportBlock({ report }) {
           <p>{t(`classification.${report.classification}`)}</p>
         )}
         {report.isolates.map((isolate) => (
-          <TableContainer
-            key={isolate.id}
-            title={`${isolate.label}: ${isolate.organism}`}
-          >
-            <Table tabIndex={0} aria-label={`${isolate.label} ${t("ast")}`}>
-              <TableHead>
-                <TableRow>
-                  {["agent", "raw", "interpretation", "breakpoint"].map(
-                    (key) => (
-                      <TableHeader key={key}>{t(key)}</TableHeader>
-                    ),
-                  )}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {isolate.susceptibilities.map((row) => (
-                  <TableRow key={row.antibioticId}>
-                    <TableCell>
-                      {row.agent}
-                      {notesFor("DRUG", row.readingId)}
-                    </TableCell>
-                    <TableCell>
-                      {row.raw} {row.units}
-                    </TableCell>
-                    <TableCell>
-                      {t(`interpretation.${row.interpretation}`)}
-                    </TableCell>
-                    <TableCell>
-                      {row.standard} {row.version}
-                      {row.clinicalContext === "NON_MENINGITIS" && (
-                        <p>{t("clinicalContext.nonMeningitis")}</p>
-                      )}
-                    </TableCell>
+          <React.Fragment key={isolate.id}>
+            {isolate.tested > 0 && (
+              <p>
+                {intl.formatMessage(
+                  { id: "microbiology.m6.reportedOfTested" },
+                  {
+                    reported: isolate.susceptibilities.length,
+                    tested: isolate.tested,
+                  },
+                )}
+              </p>
+            )}
+            <TableContainer title={`${isolate.label}: ${isolate.organism}`}>
+              <Table tabIndex={0} aria-label={`${isolate.label} ${t("ast")}`}>
+                <TableHead>
+                  <TableRow>
+                    {["agent", "raw", "interpretation", "breakpoint"].map(
+                      (key) => (
+                        <TableHeader key={key}>{t(key)}</TableHeader>
+                      ),
+                    )}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {isolate.susceptibilities.map((row) => (
+                    <TableRow key={row.antibioticId}>
+                      <TableCell>
+                        {row.agent}
+                        {notesFor("DRUG", row.readingId)}
+                      </TableCell>
+                      <TableCell>
+                        {row.raw} {row.units}
+                      </TableCell>
+                      <TableCell>
+                        {t(`interpretation.${row.interpretation}`)}
+                      </TableCell>
+                      <TableCell>
+                        {row.standard} {row.version}
+                        {row.clinicalContext === "NON_MENINGITIS" && (
+                          <p>{t("clinicalContext.nonMeningitis")}</p>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </React.Fragment>
         ))}
       </section>
       <section>
@@ -149,7 +159,6 @@ export function MicrobiologyReportBlock({ report }) {
   );
 }
 export default function CaseReportWorkspace({ detail, service, onChanged }) {
-  const online = useOnline();
   const intl = useIntl(),
     t = (key) => intl.formatMessage({ id: `microbiology.m6.${key}` });
   const [state, setState] = useState(null),
@@ -183,34 +192,14 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       live = false;
     };
   }, [detail, service]);
-  const [confirmIncoming, setConfirmIncoming] = useState(false);
-  const release = async (type) => {
-    if (
-      !(type === "preliminary"
-        ? current.current.canWrite
-        : current.current.canValidate)
-    )
-      return;
-    const trigger = document.activeElement;
-    setBusy(true);
-    setError("");
+  const released = async () => {
     try {
-      await service.releaseReport(
-        detail.id,
-        type,
-        confirmIncoming ? state.readiness.pendingIncomingIds || [] : [],
-      );
       const next = await load();
       setState(next);
       setVersionId(next.versions[next.versions.length - 1].id);
       onChanged?.();
-    } catch (failure) {
-      setError(
-        serverUnreachable(failure.response) ? "unreachable" : "saveError",
-      );
-    } finally {
-      setBusy(false);
-      returnFocus(trigger);
+    } catch {
+      setError("saveError");
     }
   };
   const select = async (analysisId, selected) => {
@@ -255,13 +244,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       {error && (
         <InlineNotification
           kind="error"
-          title={
-            error === "unreachable"
-              ? intl.formatMessage({
-                  id: "microbiology.case.serverUnreachable",
-                })
-              : t("saveError")
-          }
+          title={t("saveError")}
           hideCloseButton
         />
       )}
@@ -309,13 +292,17 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
                 <ul>
                   {state.readiness.blockers.map((blocker) => {
                     const [code, field] = blocker.split(":");
+                    // i18n-keys: microbiology.m6.field.*
                     const label =
-                      t(`blocker.${code}`) +
-                      (code === "CLINICAL_FIELD_REQUIRED"
-                        ? `: ${t(`field.${field}`)}`
-                        : state.readiness.blockerLabels?.[blocker]
-                          ? `: ${state.readiness.blockerLabels[blocker]}`
-                          : "");
+                      code === "CLINICAL_FIELD_REQUIRED"
+                        ? intl.formatMessage(
+                            { id: "microbiology.m6.blocker.fieldRequired" },
+                            { field: t(`field.${field}`) },
+                          )
+                        : t(`blocker.${code}`) +
+                          (state.readiness.blockerLabels?.[blocker]
+                            ? `: ${state.readiness.blockerLabels[blocker]}`
+                            : "");
                     const context = [
                       "CLINICAL_FIELD_REQUIRED",
                       "PROGRAM_REQUIRED",
@@ -348,48 +335,13 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
           <Tile>
             <MicrobiologyReportBlock report={report} />
           </Tile>
-          {(state.readiness.pendingIncomingIds || []).length > 0 && (
-            <Checkbox
-              id="confirm-incoming-release"
-              aria-label={intl.formatMessage({
-                id: "microbiology.incoming.confirmRelease",
-              })}
-              labelText={intl.formatMessage({
-                id: "microbiology.incoming.confirmRelease",
-              })}
-              checked={confirmIncoming}
-              onChange={(_, { checked }) => setConfirmIncoming(checked)}
-            />
-          )}
-          <div>
-            {detail.canWrite && !detail.amendmentOpen && (
-              <Button
-                kind="tertiary"
-                disabled={
-                  busy || !online || state.report.validatedResults === 0
-                }
-                onClick={() => release("preliminary")}
-              >
-                {t("partialRelease")}
-              </Button>
-            )}
-            {detail.canValidate && (
-              <Button
-                disabled={
-                  busy ||
-                  !online ||
-                  !state.readiness.finalReleaseReady ||
-                  ((state.readiness.pendingIncomingIds || []).length > 0 &&
-                    !confirmIncoming)
-                }
-                onClick={() =>
-                  release(detail.amendmentOpen ? "amended" : "final")
-                }
-              >
-                {t(detail.amendmentOpen ? "amendedRelease" : "finalRelease")}
-              </Button>
-            )}
-          </div>
+          <CaseReleaseActions
+            detail={detail}
+            service={service}
+            readiness={state.readiness}
+            onReleased={released}
+            partialReady={state.report.validatedResults > 0}
+          />
         </>
       )}
     </Stack>

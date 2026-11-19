@@ -110,6 +110,8 @@ public class MicroAstWorkspaceService {
                 choices.select(isolate.getId(), request.antibioticId, request.readingId, request.reason, actor);
             case "acknowledge" -> ast.acknowledgeAnalyzerFlags(request.runId, request.reason, actor);
             case "qc-override" -> ast.overrideQcFailure(request.runId, request.reason, actor);
+            case "report" -> ast.setReported(request.runId, request.antibioticId, request.reported, actor);
+            case "report-reset" -> ast.resetReportDefaults(isolate.getId(), actor);
             default -> throw new IllegalArgumentException("Unknown validation action");
             }
         else
@@ -138,6 +140,8 @@ public class MicroAstWorkspaceService {
                     request.orderedAntibioticIds, actor);
             case "invalidate" -> ast.invalidateAndRepeat(request.runId, request.reason, request.analyzerCardId, actor);
             case "cancel" -> ast.cancelRun(request.runId, request.reason, actor);
+            case "report" -> ast.setReported(request.runId, request.antibioticId, request.reported, actor);
+            case "report-reset" -> ast.resetReportDefaults(isolate.getId(), actor);
             default -> throw new IllegalArgumentException("Unknown AST action");
             }
         return get(caseId, actor);
