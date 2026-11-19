@@ -47,6 +47,11 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
         return "csv";
     }
 
+    /** True for a file whose values are separated by tabs and never quoted. */
+    protected boolean tabSeparated() {
+        return false;
+    }
+
     @Override
     public boolean supportsDryRun() {
         return true;
@@ -65,11 +70,11 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
     @Override
     public void processConfiguration(InputStream inputStream, String fileName, boolean dryRun) throws Exception {
         LineNumberReader reader = new LineNumberReader(CsvParsingUtil.openCsvReader(inputStream));
-        String headerLine = CsvParsingUtil.readCsvRecord(reader);
+        String headerLine = readRecord(reader);
         if (headerLine == null) {
             throw new IllegalArgumentException(getDomainName() + " configuration file " + fileName + " is empty");
         }
-        String[] headers = CsvParsingUtil.parseCsvLine(headerLine);
+        String[] headers = values(headerLine);
         Map<String, Integer> columns = indexColumns(headers);
         Map<String, String> headerText = headerText(headers);
         for (String required : requiredColumns()) {
@@ -82,12 +87,12 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
         List<CsvRow> rows = new ArrayList<>();
         String line;
         int lineNumber = reader.getLineNumber() + 1;
-        while ((line = CsvParsingUtil.readCsvRecord(reader)) != null) {
+        while ((line = readRecord(reader)) != null) {
             if (line.trim().isEmpty() || line.trim().startsWith("#")) {
                 lineNumber = reader.getLineNumber() + 1;
                 continue;
             }
-            rows.add(new CsvRow(columns, CsvParsingUtil.parseCsvLine(line), lineNumber, headerText));
+            rows.add(new CsvRow(columns, values(line), lineNumber, headerText));
             lineNumber = reader.getLineNumber() + 1;
         }
 
@@ -109,6 +114,14 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
         if (unresolvedReferenceService != null) {
             unresolvedReferenceService.recordPending(getDomainName(), fileName, lineNumber);
         }
+    }
+
+    private String readRecord(LineNumberReader reader) throws java.io.IOException {
+        return tabSeparated() ? reader.readLine() : CsvParsingUtil.readCsvRecord(reader);
+    }
+
+    private String[] values(String line) {
+        return tabSeparated() ? line.split("\t", -1) : CsvParsingUtil.parseCsvLine(line);
     }
 
     private static Map<String, String> headerText(String[] headers) {

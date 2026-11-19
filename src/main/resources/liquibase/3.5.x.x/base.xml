@@ -704,4 +704,6 @@
   <include relativeToChangelogFile="true" file="146-explicit-log-display.xml"/>
   <include relativeToChangelogFile="true" file="147-log-display-source-and-seed.xml"/>
   <include relativeToChangelogFile="true" file="148-facility-organization-id.xml"/>
+  <!-- WHONET's organism table, held as published (OGC-1629). -->
+  <include relativeToChangelogFile="true" file="157-whonet-organisms.xml"/>
 </databaseChangeLog>
