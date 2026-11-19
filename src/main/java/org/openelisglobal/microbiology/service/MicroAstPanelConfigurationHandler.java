@@ -2,24 +2,20 @@ package org.openelisglobal.microbiology.service;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import org.openelisglobal.configuration.service.AbstractCatalogCsvHandler;
+import org.openelisglobal.configuration.service.CatalogReferenceResolver;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.LoadedRow;
 import org.openelisglobal.configuration.service.RowTransactionRunner;
-import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
-import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
-import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,22 +23,22 @@ import org.springframework.stereotype.Component;
  * changed panel is published as a new version; an unchanged one is left alone.
  * {@code defaultFor} lists, separated by semicolons, the organisms the panel is
  * the default for: a species name, a genus, or a laboratory organism group from
- * the organism groups file. When several panels claim an organism, the most
- * specific entry wins (species, then genus, then group).
+ * the organism groups file. When several panels, in any panel file, claim an
+ * organism, the most specific entry wins (species, then genus, then group); two
+ * equally specific entries from different panels fail the load. A list set on
+ * the AST panels page wins over the file's.
  */
 @Component
 public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler {
     private final MicrobiologyReferenceAdminService admin;
     private final MicroAstPanelDAO panels;
-    private final MicroAntibioticDAO antibiotics;
-    private final MicroOrganismDAO organisms;
+    private final CatalogReferenceResolver resolver;
 
     public MicroAstPanelConfigurationHandler(MicrobiologyReferenceAdminService admin, MicroAstPanelDAO panels,
-            MicroAntibioticDAO antibiotics, MicroOrganismDAO organisms) {
+            CatalogReferenceResolver resolver) {
         this.admin = admin;
         this.panels = panels;
-        this.antibiotics = antibiotics;
-        this.organisms = organisms;
+        this.resolver = resolver;
     }
 
     @Override
@@ -68,24 +64,39 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
                     .add(row);
         }
         transaction.run(() -> {
-            Map<String, List<String>> defaults = new LinkedHashMap<>();
+            Map<String, Integer> claimLines = new LinkedHashMap<>();
             List<String> errors = new ArrayList<>();
             for (List<CsvRow> panelRows : byPanel.values()) {
                 try {
                     LoadedRow<String> outcome = loadPanel(panelRows);
                     for (CsvRow row : panelRows) {
                         summary.record(outcome, getClass().getSimpleName(), row.lineNumber());
-                    }
-                    String claims = sameValue(panelRows, "defaultFor", "");
-                    if (!claims.isBlank()) {
-                        MicroAstPanel current = panels
-                                .findCurrentByNameIgnoreCase(required(panelRows.get(0), "panelName"));
-                        if (current != null) {
-                            defaults.put(current.getId(), List.of(claims.split("\\s*;\\s*")));
+                        String behavior = row.get("reportBehavior").toUpperCase(Locale.ROOT);
+                        if (!outcome.isSkipped() && !behavior.isEmpty() && !behavior.equals("ALWAYS")) {
+                            summary.warned(getClass().getSimpleName(), row.lineNumber(), "reportBehavior " + behavior
+                                    + " is not read from panel files: set it as a rule on the AST rules page");
                         }
                     }
+                    String claims = blankToNull(sameValue(panelRows, "defaultFor", ""));
+                    MicroAstPanel current = claims == null ? null
+                            : panels.findCurrentByNameIgnoreCase(required(panelRows.get(0), "panelName"));
+                    if (current != null && current.getDefaultFor() != null && current.getDefaultForFile() == null
+                            && !MicrobiologyReferenceAdminServiceImpl.defaultForEntries(current.getDefaultFor())
+                                    .equals(MicrobiologyReferenceAdminServiceImpl.defaultForEntries(claims))) {
+                        summary.warned(getClass().getSimpleName(), panelRows.get(0).lineNumber(),
+                                "defaultFor set on the AST panels page; file value not applied");
+                    } else if (current != null) {
+                        claimLines.put(current.getId(), panelRows.get(0).lineNumber());
+                        claim(current, claims, fileName);
+                    }
+                } catch (IllegalArgumentException e) {
+                    errors.add(rowError(panelRows.get(0).lineNumber(), e));
                 } catch (RuntimeException e) {
-                    errors.add(CsvLoadSummary.reason(e));
+                    // Suppressed, not a cause: the file error reports the deepest cause's message.
+                    IllegalStateException failure = new IllegalStateException(
+                            rowError(panelRows.get(0).lineNumber(), e));
+                    failure.addSuppressed(e);
+                    throw failure;
                 } finally {
                     flushUnresolvedReferences(fileName, panelRows.get(0).lineNumber());
                 }
@@ -93,75 +104,27 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
             if (!errors.isEmpty()) {
                 throw new IllegalArgumentException(String.join("; ", errors));
             }
-            if (!defaults.isEmpty()) {
-                assignDefaults(defaults);
+            for (MicroAstPanel panel : currentPanels()) {
+                if (fileName.equals(panel.getDefaultForFile()) && !claimLines.containsKey(panel.getId())) {
+                    claim(panel, null, null);
+                }
             }
+            admin.assignPanelDefaults(claimLines, SYS_USER_ID);
             return null;
         });
     }
 
-    private int assignDefaults(Map<String, List<String>> claimsByPanel) {
-        List<MicroOrganism> active = organisms.getActiveOrganisms();
-        Map<String, String> bestByOrganismId = new LinkedHashMap<>();
-        Set<String> matched = new LinkedHashSet<>();
-        for (var organism : active) {
-            String best = null;
-            int bestRank = 0;
-            for (var claim : claimsByPanel.entrySet()) {
-                for (String entry : claim.getValue()) {
-                    int rank = specificity(entry, organism.getDisplayName(), organism.getLabGroups());
-                    if (rank > 0) {
-                        matched.add(entry);
-                    }
-                    if (rank > bestRank) {
-                        bestRank = rank;
-                        best = claim.getKey();
-                    }
-                }
-            }
-            bestByOrganismId.put(organism.getId(), best);
+    private void claim(MicroAstPanel panel, String defaultFor, String fileName) {
+        if (!Objects.equals(defaultFor, panel.getDefaultFor())
+                || !Objects.equals(fileName, panel.getDefaultForFile())) {
+            panel.setDefaultFor(defaultFor);
+            panel.setDefaultForFile(fileName);
+            panels.update(panel);
         }
-        List<String> errors = new ArrayList<>();
-        for (var claim : claimsByPanel.entrySet()) {
-            String panelName = panels.get(claim.getKey()).map(MicroAstPanel::getName).orElse(claim.getKey());
-            for (String entry : claim.getValue()) {
-                if (!matched.contains(entry)) {
-                    errors.add("Panel \"" + panelName + "\": defaultFor \"" + entry + "\" matches no organism");
-                }
-            }
-        }
-        if (!errors.isEmpty()) {
-            throw new IllegalArgumentException(String.join("; ", errors));
-        }
-        int changed = 0;
-        for (var organism : active) {
-            String best = bestByOrganismId.get(organism.getId());
-            if (best != null && !best.equals(organism.getDefaultAstPanelId())) {
-                organism.setDefaultAstPanelId(best);
-                organism.setLastUpdatedBy(SYS_USER_ID);
-                organisms.update(organism);
-                changed++;
-            }
-        }
-        return changed;
     }
 
-    /**
-     * 3 for the species itself, 2 for its genus, 1 for one of its laboratory
-     * groups, 0 otherwise.
-     */
-    static int specificity(String entry, String organismName, Set<String> labGroups) {
-        if (entry.isBlank() || organismName == null) {
-            return 0;
-        }
-        String name = organismName.trim();
-        if (name.equalsIgnoreCase(entry)) {
-            return 3;
-        }
-        if (name.toLowerCase(Locale.ROOT).startsWith(entry.toLowerCase(Locale.ROOT) + " ")) {
-            return 2;
-        }
-        return labGroups.stream().anyMatch(entry::equalsIgnoreCase) ? 1 : 0;
+    private List<MicroAstPanel> currentPanels() {
+        return panels.getAll().stream().filter(p -> "Y".equals(p.getIsCurrent())).toList();
     }
 
     private LoadedRow<String> loadPanel(List<CsvRow> rows) {
@@ -173,9 +136,10 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
         for (CsvRow row : rows) {
             try {
                 String code = required(row, "antibioticWhonetCode");
-                var antibiotic = antibiotics.findByWhonetCodeIgnoreCase(code)
-                        .orElseThrow(() -> new IllegalArgumentException(
-                                "Line " + row.lineNumber() + ": unknown antibiotic " + code));
+                var antibiotic = resolver.resolveAntibiotic(code, getDomainName());
+                if (antibiotic == null) {
+                    throw new IllegalArgumentException("Line " + row.lineNumber() + ": unknown antibiotic " + code);
+                }
                 MicroAstPanelAntibioticAdminForm drug = new MicroAstPanelAntibioticAdminForm();
                 drug.antibioticId = antibiotic.getId();
                 drug.diskContent = blankToNull(row.get("diskContent"));
@@ -188,14 +152,39 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
             throw new IllegalArgumentException(String.join("; ", errors));
         }
 
+        String wanted = content(form);
         MicroAstPanel current = panels.findCurrentByNameIgnoreCase(form.name);
         if (current == null) {
-            return LoadedRow.created(admin.createPanel(form, SYS_USER_ID).id);
+            return LoadedRow.created(applied(admin.createPanel(form, SYS_USER_ID).id, wanted));
         }
-        if (sameContent(admin.getAstPanel(current.getId()), form)) {
-            return LoadedRow.skipped("Panel unchanged");
+        MicroAstPanelAdminForm existing = admin.getAstPanel(current.getId());
+        if (sameContent(existing, form)) {
+            applied(current.getId(), wanted);
+            return LoadedRow.unchanged("Panel unchanged");
         }
-        return LoadedRow.updated(admin.publishPanelVersion(current.getId(), form, SYS_USER_ID).id);
+        if (current.getConfigurationContent() != null && !current.getConfigurationContent().equals(content(existing))) {
+            return LoadedRow.skipped("Panel edited locally; package version not applied");
+        }
+        return LoadedRow.updated(applied(admin.publishPanelVersion(current.getId(), form, SYS_USER_ID).id, wanted));
+    }
+
+    private String applied(String panelId, String content) {
+        MicroAstPanel panel = panels.get(panelId).orElseThrow();
+        if (!content.equals(panel.getConfigurationContent())) {
+            panel.setConfigurationContent(content);
+            panels.update(panel);
+        }
+        return panelId;
+    }
+
+    private static String content(MicroAstPanelAdminForm form) {
+        StringBuilder content = new StringBuilder(Objects.toString(form.susceptibilityProtocol, "")).append('|')
+                .append(Objects.toString(form.organismGroup, "")).append('|')
+                .append(Objects.toString(form.specimenTypeId, "")).append('|').append(form.active);
+        for (var drug : form.antibiotics) {
+            content.append('|').append(drug.antibioticId).append(':').append(Objects.toString(drug.diskContent, ""));
+        }
+        return content.toString();
     }
 
     private static boolean sameContent(MicroAstPanelAdminForm existing, MicroAstPanelAdminForm wanted) {

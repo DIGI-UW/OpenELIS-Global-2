@@ -24,6 +24,7 @@ import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAssignmentDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
+import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
@@ -58,13 +59,15 @@ public class MicrobiologyReferenceAdminServiceTest {
     private MethodService methodService;
     @Mock
     private TypeOfSampleService typeOfSampleService;
+    @Mock
+    private MicroBreakpointRuleDAO breakpointRuleDAO;
 
     private MicrobiologyReferenceAdminService service;
 
     @Before
     public void setUp() {
         service = new MicrobiologyReferenceAdminServiceImpl(organismDAO, antibioticDAO, panelDAO, panelAntibioticDAO,
-                patientOriginDAO, methodService, typeOfSampleService, assignmentDAO);
+                patientOriginDAO, methodService, typeOfSampleService, assignmentDAO, breakpointRuleDAO);
     }
 
     @Test

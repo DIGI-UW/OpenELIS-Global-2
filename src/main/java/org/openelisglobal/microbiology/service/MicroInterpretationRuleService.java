@@ -44,6 +44,10 @@ public class MicroInterpretationRuleService {
         }
         MicroInterpretationRule rule = form.id == null ? new MicroInterpretationRule()
                 : rules.get(form.id).orElseThrow(() -> new IllegalArgumentException("INTERPRETATION_RULE_NOT_FOUND"));
+        if (organismGroup != null && !organismGroup.equals(rule.getOrganismGroup())
+                && !organisms.getLabGroupNames().contains(organismGroup)) {
+            throw new IllegalArgumentException("INTERPRETATION_RULE_GROUP_INVALID");
+        }
         rule.setAntibioticId(antibioticId);
         rule.setOrganismId(organismId);
         rule.setOrganismGroup(organismGroup);

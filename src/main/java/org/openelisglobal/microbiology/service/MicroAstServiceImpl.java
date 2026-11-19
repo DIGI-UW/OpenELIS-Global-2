@@ -265,9 +265,9 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstSetupForm form = new MicroAstSetupForm();
         form.isolateId = isolateId;
         form.panelProvenance = "UNASSIGNED";
-        if (!"NTM".equals(organism.getSusceptibilityProtocol()) && organism.getDefaultAstPanelId() != null
-                && !organism.getDefaultAstPanelId().isBlank()) {
-            MicroAstPanel panel = panelDAO.get(organism.getDefaultAstPanelId())
+        String defaultPanelId = MicroAstPanelAssignmentService.defaultPanelId(organism);
+        if (defaultPanelId != null && !defaultPanelId.isBlank()) {
+            MicroAstPanel panel = panelDAO.get(defaultPanelId)
                     .orElseThrow(() -> new IllegalStateException("AST_ORDERED_PANEL_NOT_FOUND"));
             form.orderedPanelId = panel.getId();
             form.orderedPanelLabel = panel.getName();
@@ -755,6 +755,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         authorization.requireWrite(isolate.getCaseId(), performedBy,
                 org.openelisglobal.common.constants.Constants.ROLE_RESULTS,
                 org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
+        requireOpenRun(run);
         MicroAstRunAntibiotic ordered = runAntibioticDAO.getByRunIdAndAntibioticId(runId, antibioticId)
                 .orElseThrow(() -> new MicroAstConflictException("AST_ANTIBIOTIC_NOT_ORDERED"));
         ordered.setReported(reported);
@@ -859,7 +860,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     private boolean reapplyReportingRule(MicroAstRun run, MicroAstRunAntibiotic ordered) {
         String antibioticId = ordered.getAntibioticId();
         var rule = findReportingRule(run, antibioticId);
-        String reportBehavior = rule.map(MicroReportingRule::getReportBehavior).orElse("ALWAYS");
+        String reportBehavior = reportBehavior(rule);
         ordered.setReportBehavior(reportBehavior);
         ordered.setReportRuleId(rule.map(MicroReportingRule::getId).orElse(null));
         boolean changed = false;
@@ -1072,7 +1073,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     private void snapshotOrderedAntibiotics(MicroAstRun run, List<OrderedAntibiotic> antibiotics) {
         for (OrderedAntibiotic source : antibiotics) {
             var rule = findReportingRule(run, source.antibioticId);
-            String reportBehavior = rule.map(MicroReportingRule::getReportBehavior).orElse("ALWAYS");
+            String reportBehavior = reportBehavior(rule);
             MicroAstRunAntibiotic ordered = new MicroAstRunAntibiotic();
             ordered.setAstRunId(run.getId());
             ordered.setAntibioticId(source.antibioticId);
@@ -1221,6 +1222,10 @@ public class MicroAstServiceImpl implements MicroAstService {
         runAntibioticDAO.update(ordered);
     }
 
+    private static String reportBehavior(java.util.Optional<MicroReportingRule> rule) {
+        return rule.map(MicroReportingRule::getReportBehavior).orElse("ALWAYS");
+    }
+
     static boolean defaultReported(String reportBehavior, String interpretation) {
         if ("DONT_REPORT".equals(reportBehavior)) {
             return false;
@@ -1266,7 +1271,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         Set<String> organismGroups = labGroups(organism);
         String clinicalContext = MicroBreakpointClinicalContext.validate(request.clinicalContext);
         String sampleTypeId = trimToNull(request.sampleTypeId);
-        String defaultPanelId = defaultPanelId(organism);
+        String defaultPanelId = MicroAstPanelAssignmentService.defaultPanelId(organism);
         MicroReportingRulePreviewResultForm result = new MicroReportingRulePreviewResultForm();
         result.defaultPanelName = defaultPanelId == null ? null
                 : panelDAO.get(defaultPanelId).map(MicroAstPanel::getName).orElse(null);
@@ -1291,13 +1296,11 @@ public class MicroAstServiceImpl implements MicroAstService {
                     });
             var reportingRule = reportingRuleDAO.findBest(antibioticId, organismId, organismGroups, sampleTypeId,
                     clinicalContext);
+            row.reportBehavior = reportBehavior(reportingRule);
             if (reportingRule.isPresent()) {
                 MicroReportingRule rule = reportingRule.get();
-                row.reportBehavior = rule.getReportBehavior();
                 row.reportRuleId = rule.getId();
                 row.note = rule.noteFor(row.interpretation);
-            } else {
-                row.reportBehavior = "ALWAYS";
             }
             row.reported = defaultReported(row.reportBehavior, row.interpretation);
             result.rows.add(row);
@@ -1394,12 +1397,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
     }
 
-    private String defaultPanelId(MicroOrganism organism) {
-        return "NTM".equals(organism.getSusceptibilityProtocol()) ? null : organism.getDefaultAstPanelId();
-    }
-
     private PanelSelection resolvePanel(MicroOrganism organism, String requestedPanelId) {
-        String orderedPanelId = defaultPanelId(organism);
+        String orderedPanelId = MicroAstPanelAssignmentService.defaultPanelId(organism);
         String selectedPanelId = requestedPanelId == null || requestedPanelId.isBlank() ? orderedPanelId
                 : requestedPanelId;
         if (selectedPanelId == null || selectedPanelId.isBlank()) {
@@ -1513,6 +1512,10 @@ public class MicroAstServiceImpl implements MicroAstService {
         if (MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())) {
             throw new MicroAstConflictException("AST_RUN_ALREADY_REVIEWED");
         }
+        requireOpenRun(run);
+    }
+
+    private void requireOpenRun(MicroAstRun run) {
         if (Set.of("INVALIDATED", "RERUN_REQUIRED", "CANCELLED").contains(run.getStatus())) {
             throw new MicroAstConflictException("AST_RUN_NOT_EDITABLE");
         }
