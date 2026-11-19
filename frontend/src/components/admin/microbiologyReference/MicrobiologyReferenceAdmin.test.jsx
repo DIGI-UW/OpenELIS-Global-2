@@ -19,6 +19,12 @@ vi.mock("./api", () => ({
   applyBreakpointImport: vi.fn(),
 }));
 
+vi.mock("../../microbiology/OrganismSearch", () => ({
+  searchOrganisms: vi.fn().mockResolvedValue([]),
+  getOrganism: vi.fn().mockResolvedValue(null),
+  organismText: (organism) => organism?.label || "",
+}));
+
 import React from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
