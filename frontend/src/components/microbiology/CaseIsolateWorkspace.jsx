@@ -417,12 +417,15 @@ export default function CaseIsolateWorkspace({
       }
     } catch (failure) {
       if (!mounted.current) return;
+      const code = failure.response?.message;
       setError(
         failure.response?.status === 409
           ? "conflict"
           : serverUnreachable(failure.response)
             ? "unreachable"
-            : "saveError",
+            : intl.messages[`microbiology.isolateWorkspace.${code}`]
+              ? code
+              : "saveError",
       );
     } finally {
       if (mounted.current) setSaving(false);
