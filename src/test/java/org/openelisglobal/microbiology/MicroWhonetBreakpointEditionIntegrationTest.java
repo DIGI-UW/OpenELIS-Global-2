@@ -11,7 +11,9 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.sql.Date;
 import java.util.List;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -24,6 +26,7 @@ import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
 import org.openelisglobal.microbiology.service.MicroAstInterpretationService;
 import org.openelisglobal.microbiology.service.MicroBreakpointAdminService;
 import org.openelisglobal.microbiology.service.MicroBreakpointService;
+import org.openelisglobal.microbiology.service.MicroBreakpointServiceImpl;
 import org.openelisglobal.microbiology.service.MicroWhonetAntibioticConfigurationHandler;
 import org.openelisglobal.microbiology.service.MicroWhonetBreakpointConfigurationHandler;
 import org.openelisglobal.microbiology.service.MicroWhonetOrganismConfigurationHandler;
@@ -31,6 +34,8 @@ import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
+import org.openelisglobal.siteinformation.service.SiteInformationService;
+import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -64,12 +69,38 @@ public class MicroWhonetBreakpointEditionIntegrationTest extends BaseWebContextS
     private MicroBreakpointAdminService breakpointAdmin;
     @Autowired
     private PlatformTransactionManager transactionManager;
+    @Autowired
+    private SiteInformationService settings;
 
     @Before
     public void whonetOrganismsAndAntibiotics() throws Exception {
         executeDataSetWithStateManagement("testdata/microbiology/whonet-breakpoint-match.xml");
         load(organismTable, "testdata/microbiology/whonet-organisms.txt", "Organisms.txt");
         load(antibioticTable, "testdata/microbiology/whonet-antibiotics.txt", "Antibiotics.txt");
+    }
+
+    @After
+    public void noDefaultAndNoActiveEdition() throws Exception {
+        defaultEdition("", "");
+        cleanRowsInCurrentConnection(new String[] { "micro_breakpoint_standard" });
+    }
+
+    private void defaultEdition(String authority, String version) {
+        setting(MicroBreakpointServiceImpl.DEFAULT_AUTHORITY, authority);
+        setting(MicroBreakpointServiceImpl.DEFAULT_VERSION, version);
+    }
+
+    private void setting(String name, String value) {
+        SiteInformation setting = settings.getSiteInformationByName(name);
+        boolean isNew = setting == null;
+        if (isNew) {
+            setting = new SiteInformation();
+            setting.setName(name);
+            setting.setValueType("text");
+        }
+        setting.setValue(value);
+        setting.setSysUserId("1");
+        settings.persistData(setting, isNew);
     }
 
     private static void load(org.openelisglobal.configuration.service.DomainConfigurationHandler handler,
@@ -121,6 +152,52 @@ public class MicroWhonetBreakpointEditionIntegrationTest extends BaseWebContextS
             }
             assertFalse(standards.findByAuthorityAndVersion(authority, "2023-2026.4").isPresent());
         }
+    }
+
+    @Test
+    public void theDefaultEditionIsActivatedWhenNoEditionIsActive() throws Exception {
+        defaultEdition("CLSI", "2026-2026.4");
+
+        load(fileText(), PACKAGE_FILE);
+
+        for (String authority : List.of("CLSI", "EUCAST")) {
+            for (String year : List.of("2024", "2025", "2026")) {
+                MicroBreakpointStandard edition = edition(authority, year + "-2026.4");
+                boolean isDefault = "CLSI".equals(authority) && "2026".equals(year);
+                assertEquals(isDefault ? "Y" : "N", edition.getIsActive());
+                assertEquals(isDefault ? "ACTIVE" : "LOADED", edition.getLifecycleStatus());
+            }
+        }
+    }
+
+    @Test
+    public void aLaterLoadActivatesADefaultSetAfterTheEditionsWereLoaded() throws Exception {
+        load(fileText(), PACKAGE_FILE);
+        defaultEdition("CLSI", "2026-2026.4");
+
+        load(fileText(), PACKAGE_FILE);
+
+        assertEquals("ACTIVE", edition("CLSI", "2026-2026.4").getLifecycleStatus());
+    }
+
+    @Test
+    public void theDefaultEditionIsNotActivatedWhileAnotherEditionIsActive() throws Exception {
+        load(fileText(), PACKAGE_FILE);
+        String eucast = edition("EUCAST", "2025-2026.4").getId();
+        breakpointAdmin.activate(eucast, Date.valueOf("2026-01-01"), "1");
+        defaultEdition("CLSI", "2026-2026.4");
+
+        load(fileText(), PACKAGE_FILE);
+
+        assertEquals(List.of(eucast),
+                standards.getActiveStandards().stream().map(MicroBreakpointStandard::getId).toList());
+    }
+
+    @Test
+    public void withoutADefaultEditionNoEditionIsActivated() throws Exception {
+        load(fileText(), PACKAGE_FILE);
+
+        assertTrue(standards.getActiveStandards().isEmpty());
     }
 
     @Test
