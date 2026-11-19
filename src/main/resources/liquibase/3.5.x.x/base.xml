@@ -675,7 +675,6 @@
   <!-- Analyzer Bridge pairing: OpenELIS's client key pair and the pinned Bridge certificate. -->
   <include relativeToChangelogFile="true" file="131-analyzer-bridge-pairing.xml"/>
 
-
   <!-- Result component codes are unique among a test's active components (OGC-1458). -->
   <include relativeToChangelogFile="true" file="136-result-component-active-code-unique.xml"/>
 
@@ -704,4 +703,8 @@
   <include relativeToChangelogFile="true" file="146-explicit-log-display.xml"/>
   <include relativeToChangelogFile="true" file="147-log-display-source-and-seed.xml"/>
   <include relativeToChangelogFile="true" file="148-facility-organization-id.xml"/>
+
+  <!-- Future changelogs are placed in changes/ and named by UTC timestamp.
+       Liquibase executes them in alphabetical order, avoiding base.xml merge conflicts. -->
+  <includeAll path="changes/" relativeToChangelogFile="true" errorIfMissingOrEmpty="false"/>
 </databaseChangeLog>
