@@ -337,6 +337,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         rows.forEach(row -> byComponent.put(row.getTestResultComponentId(), row));
         Set<String> supplied = new HashSet<>();
         List<TestResultItem> changed = new ArrayList<>();
+        var user = users.get(actor);
+        String technician = user == null ? actor : user.getFirstName() + " " + user.getLastName();
         for (var input : request.components) {
             if (input == null || !supplied.add(input.componentId) || !byComponent.containsKey(input.componentId))
                 bad("MICROBIOLOGY_COMPONENT_MISMATCH");
@@ -349,7 +351,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             row.setInvalidResultConfirmed(input.invalidResultConfirmed);
             row.setModified(true);
             row.setReadOnly(false);
-            row.setTechnician(actor);
+            row.setTechnician(technician);
             changed.add(row);
         }
         if (changed.stream().noneMatch(ResultUtil::areResults))
@@ -536,17 +538,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         }
         if ("N".equals(row.getResultType()) && !value.isEmpty()) {
             try {
-                String normalized = org.openelisglobal.common.util.StringUtil
-                        .normalizeScientificNotation(value.replaceFirst("^[<>]=?\\s*", ""));
-                new java.math.BigDecimal(normalized); // Validate the entire number, including its exponent.
-                int exponent = Math.max(normalized.indexOf('e'), normalized.indexOf('E'));
-                String mantissa = exponent < 0 ? normalized : normalized.substring(0, exponent);
-                int dot = mantissa.indexOf('.');
-                int places = dot < 0 ? 0 : mantissa.length() - dot - 1;
-                int configured = row.getReportingDecimalPlaces();
-                if (!Objects.equals(value, row.getRawResultValue()) && configured >= 0
-                        && (exponent < 0 || configured > 0) && places > configured)
-                    bad("MICROBIOLOGY_INVALID_PRECISION");
+                new java.math.BigDecimal(org.openelisglobal.common.util.StringUtil
+                        .normalizeScientificNotation(value.replaceFirst("^[<>]=?\\s*", "")));
             } catch (NumberFormatException invalid) {
                 bad("MICROBIOLOGY_INVALID_RESULT");
             }
