@@ -183,20 +183,22 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
     }
 
     @Test
-    public void aSpinalFluidSpecimenNeverTakesANonMeningitisRule() {
+    public void aMeningitisRunNeverTakesANonMeningitisRuleNorABroaderOne() {
+        rule("ALL", "Gen", null, "1");
         rule("FAMILY_CODE", "EBC", "Non-meningitis", "2");
 
         assertNull(match("kpn", "sf", null));
+        assertNull(match("kpn", "bl", "MENINGITIS"));
     }
 
     @Test
     public void aRunForMeningitisTakesTheMeningitisRuleOnAnySpecimen() {
         String meningitis = rule("FAMILY_CODE", "EBC", "Meningitis", "1");
-        String nonMeningitis = rule("FAMILY_CODE", "EBC", "Non-meningitis", "2");
-        rule("FAMILY_CODE", "EBC", null, "3");
+        rule("FAMILY_CODE", "EBC", "Non-meningitis", "2");
+        String general = rule("FAMILY_CODE", "EBC", null, "3");
 
         assertEquals(meningitis, match("kpn", "bl", "MENINGITIS").getId());
-        assertEquals(nonMeningitis, match("kpn", "bl", "ENDOCARDITIS").getId());
+        assertEquals(general, match("kpn", "bl", "ENDOCARDITIS").getId());
     }
 
     @Test
@@ -207,9 +209,27 @@ public class MicroWhonetBreakpointMatchIntegrationTest extends BaseWebContextSen
 
         assertEquals(endocarditis, match("kpn", "bl", "ENDOCARDITIS").getId());
         assertEquals(nonEndocarditis, match("kpn", "bl", "NON_MENINGITIS").getId());
-        assertEquals(nonEndocarditis, match("kpn", "bl", "MENINGITIS").getId());
-        assertEquals(nonEndocarditis, match("kpn", "sf", null).getId());
         assertNull(match("kpn", "bl", null));
+    }
+
+    @Test
+    public void aMeningitisRunTakesNeitherANonEndocarditisRuleNorAScreenOneNorABroaderOne() {
+        rule("ALL", "Gen", null, "1");
+        rule("FAMILY_CODE", "EBC", "Endocarditis", "2");
+        rule("FAMILY_CODE", "EBC", "Non-endocarditis", "3");
+        rule("FAMILY_CODE", "EBC", "Screen", "4");
+
+        assertNull(match("kpn", "bl", "MENINGITIS"));
+        assertNull(match("kpn", "sf", null));
+    }
+
+    @Test
+    public void anEndocarditisRunTakesNeitherANonMeningitisRuleNorABroaderOne() {
+        rule("ALL", "Gen", null, "1");
+        rule("FAMILY_CODE", "EBC", "Meningitis", "2");
+        rule("FAMILY_CODE", "EBC", "Non-meningitis", "3");
+
+        assertNull(match("kpn", "bl", "ENDOCARDITIS"));
     }
 
     @Test
