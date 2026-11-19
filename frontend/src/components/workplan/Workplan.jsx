@@ -85,6 +85,7 @@ export default function Workplan(props) {
   }, []);
   const [excluded, setExcluded] = useState(() => new Set());
   const [printing, setPrinting] = useState(false);
+  const [pageFailures, setPageFailures] = useState(0);
 
   const arrows = serverPageArrowsProps({ paging, onPageRequest: loadPage });
 
@@ -139,6 +140,20 @@ export default function Workplan(props) {
         message: intl.formatMessage({ id: "error.report.status" }),
       });
     }
+  };
+
+  /**
+   * The page on screen stays; the pager is rebuilt so it shows that page again
+   * rather than the one asked for.
+   */
+  const pageFailed = () => {
+    setPageFailures((failures) => failures + 1);
+    setNotificationVisible(true);
+    addNotification({
+      kind: NotificationKinds.error,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({ id: "workplan.load.failed" }),
+    });
   };
 
   const handleTestsList = (tests) => {
@@ -276,6 +291,13 @@ export default function Workplan(props) {
   };
 
   const currentPage = Number(paging?.currentPage) || 1;
+  const pagerProps = serverPaginationProps({
+    paging,
+    rowsOnPage: testsList.length,
+    pageSize: serverPageSize,
+    onPageRequest: loadPage,
+    intl,
+  });
   const totalTests =
     paging?.totalResults !== undefined && paging?.totalResults !== null
       ? Number(paging.totalResults)
@@ -311,6 +333,7 @@ export default function Workplan(props) {
             <WorkplanSearchForm
               type={type}
               createTestsList={handleTestsList}
+              onPageFailed={pageFailed}
               selectedValue={handleSelectedValue}
               selectedLabel={handleSelectedLabel}
               registerPageLoader={registerPageLoader}
@@ -493,13 +516,8 @@ export default function Workplan(props) {
                     </TableBody>
                   </Table>
                   <Pagination
-                    {...serverPaginationProps({
-                      paging,
-                      rowsOnPage: testsList.length,
-                      pageSize: serverPageSize,
-                      onPageRequest: loadPage,
-                      intl,
-                    })}
+                    {...pagerProps}
+                    key={`${pagerProps.key}-${pageFailures}`}
                   />
                 </>
               </Column>

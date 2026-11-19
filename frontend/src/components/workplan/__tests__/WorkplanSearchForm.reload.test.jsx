@@ -8,7 +8,7 @@ import WorkplanSearchForm from "../WorkplanSearchForm";
 
 const { requests, server } = vi.hoisted(() => ({
   requests: [],
-  server: { dropped: false },
+  server: { dropped: false, failing: false },
 }));
 
 vi.mock("../../utils/Utils", async (importOriginal) => ({
@@ -23,6 +23,7 @@ vi.mock("../../utils/Utils", async (importOriginal) => ({
         paging: { currentPage: "1", totalPages: "2" },
       });
     }
+    if (server.failing) return callback(undefined);
     if (server.dropped) return callback({ workplanTests: [] });
     callback({
       workplanTests: [{ accessionNumber: `ACC-${page}` }],
@@ -69,5 +70,38 @@ describe("Workplan search form paging", () => {
       "/rest/WorkPlanByTest?test_id=",
       "/rest/WorkPlanByTest?test_id=&page=2",
     ]);
+  });
+
+  // A page that fails on both tries threw on the missing answer, left the
+  // spinner running and said nothing.
+  it("keeps the page on screen and reports it when the page fails twice", async () => {
+    const shown = vi.fn();
+    const failed = vi.fn();
+    let loadPage;
+    const { container } = render(
+      <IntlProvider locale="en" messages={messages}>
+        <WorkplanSearchForm
+          type="test"
+          selectedValue={vi.fn()}
+          selectedLabel={vi.fn()}
+          createTestsList={shown}
+          onPageFailed={failed}
+          registerPageLoader={(loader) => {
+            loadPage = loader;
+          }}
+          registerPageSource={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+    await waitFor(() => expect(loadPage).toBeTruthy());
+    shown.mockClear();
+    server.failing = true;
+
+    act(() => loadPage(2));
+
+    await waitFor(() => expect(failed).toHaveBeenCalledTimes(1));
+    expect(shown).not.toHaveBeenCalled();
+    expect(container.querySelector('img[alt="Loading ..."]')).toBeNull();
+    server.failing = false;
   });
 });

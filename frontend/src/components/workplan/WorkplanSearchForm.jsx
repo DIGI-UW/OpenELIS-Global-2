@@ -50,8 +50,12 @@ export default function WorkplanSearchForm(props) {
 
   const getTestsList = (res) => {
     if (mounted.current) {
-      props.createTestsList(res);
       setIsLoading(false);
+      if (res) {
+        props.createTestsList(res);
+      } else {
+        props.onPageFailed?.();
+      }
     }
   };
 
@@ -59,6 +63,7 @@ export default function WorkplanSearchForm(props) {
    * One server page, the same request for the arrows and for Carbon. A page
    * without paging means the session no longer holds this workplan, having kept
    * the ones opened since, so the search runs again before the page is read.
+   * A page that fails again leaves the page on screen in place and says so.
    */
   const loadResultsPage = (pageNumber) => {
     setIsLoading(true);
@@ -69,7 +74,9 @@ export default function WorkplanSearchForm(props) {
         return;
       }
       getFromOpenElisServer(url, () =>
-        getFromOpenElisServer(pageAddress, getTestsList),
+        getFromOpenElisServer(pageAddress, (retried) =>
+          getTestsList(retried?.paging ? retried : undefined),
+        ),
       );
     });
   };

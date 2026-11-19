@@ -31,7 +31,13 @@ const { pages, printed, show } = vi.hoisted(() => {
       },
     },
     printed: vi.fn(),
-    show: { page: null, failPage: null, pages: null, dropped: false },
+    show: {
+      page: null,
+      failPage: null,
+      pages: null,
+      dropped: false,
+      arrowsFail: false,
+    },
   };
 });
 
@@ -40,11 +46,14 @@ vi.mock("../WorkplanSearchForm", () => ({
     createTestsList,
     registerPageLoader,
     registerPageSource,
+    onPageFailed,
   }) {
     useEffect(() => {
       registerPageSource("/rest/WorkPlanByTest?test_id=5");
       const served = show.pages || pages;
-      registerPageLoader((n) => createTestsList(served[n]));
+      registerPageLoader((n) =>
+        show.arrowsFail ? onPageFailed() : createTestsList(served[n]),
+      );
       show.page = (n) => createTestsList(served[n]);
       createTestsList(served[1]);
     }, []);
@@ -96,6 +105,7 @@ describe("Workplan across pages", () => {
     show.failPage = null;
     show.pages = null;
     show.dropped = false;
+    show.arrowsFail = false;
   });
 
   it("counts every test in the workplan", async () => {
@@ -209,6 +219,31 @@ describe("Workplan across pages", () => {
       "Glucose",
       "Creatinine",
     ]);
+  });
+
+  it("keeps the page shown and says so when the next page cannot be loaded", async () => {
+    const { container } = renderWorkplan();
+    await screen.findByText(/Total Tests\s*=\s*3/);
+    show.arrowsFail = true;
+
+    fireEvent.click(screen.getAllByRole("button", { name: /next page/i })[0]);
+
+    await waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: "The workplan could not be loaded. Try again.",
+        }),
+      ),
+    );
+    expect(
+      [...container.querySelectorAll("tbody tr")].map((row) =>
+        row.textContent.includes("DEV0100000000000001"),
+      ),
+    ).toContain(true);
+    expect(
+      container.querySelector(".cds--pagination__right select").value,
+    ).toBe("1");
   });
 
   it("prints nothing and says why when a page cannot be loaded", async () => {

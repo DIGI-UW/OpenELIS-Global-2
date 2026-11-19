@@ -9359,6 +9359,7 @@
   "workplan.panel.types": "Panel Type",
   "workplan.print": "Print Workplan",
   "workplan.print.pagesFailed": "Not every page of the workplan could be loaded, so nothing was printed. Try again.",
+  "workplan.load.failed": "The workplan could not be loaded. Try again.",
   "workplan.priority.list": "Priority",
   "workplan.priority.title": "Workplan By Priority",
   "workplan.run": "Get Workplan",
