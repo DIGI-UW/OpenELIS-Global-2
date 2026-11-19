@@ -34,6 +34,7 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import ConfirmPopup from "../common/ConfirmPopup";
 import PatientHeader from "../common/PatientHeader";
+import PriorResultsPanel from "../common/PriorResultsPanel";
 import QuestionnaireResponse from "../common/QuestionnaireResponse";
 import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -455,6 +456,7 @@ function CytologyCaseView() {
               >
                 {" "}
               </PatientHeader>
+              <PriorResultsPanel bench="cytology" caseId={cytologySampleId} />
             </Section>
           </Section>
           <Section>
