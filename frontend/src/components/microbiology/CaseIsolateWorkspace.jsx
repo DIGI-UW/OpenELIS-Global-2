@@ -35,9 +35,13 @@ import {
 } from "@carbon/react";
 import ReferralStatusTag from "../order/steps/referOut/referralStatusTag";
 import OrderReferOutForm from "../order/steps/referOut/OrderReferOutForm";
+import { MODAL_FIRST_FIELD, useReturnFocus } from "./returnFocus";
+import OfflineNotice, { useOnline } from "./OfflineNotice";
+import { serverUnreachable } from "../utils/requestOutcome";
 
 const labels = {
   referred: "label.results.history.event.REFERRAL",
+  unreachable: "microbiology.case.serverUnreachable",
 
   title: "microbiology.case.isolates",
   gramStain: "microbiology.isolate.gramStain",
@@ -73,6 +77,8 @@ function IsolateAction({
   onClose,
 }) {
   const intl = useIntl();
+  const online = useOnline();
+  useReturnFocus();
   const t = (key, values) =>
     intl.formatMessage(
       { id: labels[key] || `microbiology.isolateWorkspace.${key}` },
@@ -216,7 +222,8 @@ function IsolateAction({
       passiveModal={referral}
       primaryButtonText={t("save")}
       secondaryButtonText={t("cancel")}
-      primaryButtonDisabled={!valid || saving}
+      primaryButtonDisabled={!valid || saving || !online}
+      selectorPrimaryFocus={MODAL_FIRST_FIELD}
       onRequestSubmit={submit}
       onRequestClose={() => {
         if (!saving) onClose();
@@ -224,6 +231,7 @@ function IsolateAction({
       preventCloseOnClickOutside
     >
       <Stack gap={5}>
+        <OfflineNotice />
         {error && (
           <InlineNotification kind="error" title={t(error)} hideCloseButton />
         )}
@@ -409,7 +417,13 @@ export default function CaseIsolateWorkspace({
       }
     } catch (failure) {
       if (!mounted.current) return;
-      setError(failure.response?.status === 409 ? "conflict" : "saveError");
+      setError(
+        failure.response?.status === 409
+          ? "conflict"
+          : serverUnreachable(failure.response)
+            ? "unreachable"
+            : "saveError",
+      );
     } finally {
       if (mounted.current) setSaving(false);
     }
@@ -686,7 +700,7 @@ export default function CaseIsolateWorkspace({
             </Tile>
           ))}
           <TableContainer title={t("referrals")}>
-            <Table aria-label={t("referrals")}>
+            <Table tabIndex={0} aria-label={t("referrals")}>
               <TableHead>
                 <TableRow>
                   {[

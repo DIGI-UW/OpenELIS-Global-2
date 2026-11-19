@@ -45,6 +45,8 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.containertype.form.ContainerTypeView;
+import org.openelisglobal.containertype.service.ContainerTypeService;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.eqa.service.SampleEQAService;
@@ -132,6 +134,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/order")
 public class OrderSearchRestController extends BaseRestController {
 
+    @Lazy
+    @Autowired
+    private ContainerTypeService containerTypeService;
     @Lazy
     @Autowired
     private FhirTransformService fhirTransformService;
@@ -832,6 +837,12 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleItemData.put("specimenOrigin",
                         sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
                 putReceiptAndArrival(sampleItemData, sampleItem);
+                sampleItemData.put("containerTypeId",
+                        sampleItem.getContainerTypeId() != null ? sampleItem.getContainerTypeId().toString() : "");
+                sampleItemData.put("containerTypeName",
+                        sampleItem.getContainerTypeId() == null ? ""
+                                : containerTypeService.get(sampleItem.getContainerTypeId()).map(ContainerTypeView::name)
+                                        .orElse(""));
 
                 String receivedDateDisplay = "";
                 String receivedTimeDisplay = "";

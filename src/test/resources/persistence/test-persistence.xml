@@ -88,6 +88,7 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroReportVersionSource</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroInventoryUsageLink</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroWhonetExportRun</class>
+        <class>org.openelisglobal.textmacro.valueholder.TextMacro</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
@@ -191,9 +192,13 @@
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.resultrun.valueholder.ResultRun</class>
+        <class>org.openelisglobal.resultrun.valueholder.ResultRunEvent</class>
+        <class>org.openelisglobal.resultrun.valueholder.ResultRunTestDisposition</class>
         <class>org.openelisglobal.containertype.valueholder.ContainerType</class>
         <class>org.openelisglobal.containertype.valueholder.TestExpectedContainer</class>
         <class>org.openelisglobal.validationpolicy.valueholder.ValidationPolicy</class>
+        <class>org.openelisglobal.validationpolicy.valueholder.AnalysisReviewPlan</class>
+        <class>org.openelisglobal.validationpolicy.valueholder.AnalysisReviewSignOff</class>
 
         <!-- Westgard QC entities (003-westgard-qc) -->
         <class>org.openelisglobal.qc.valueholder.QCControlLot</class>

@@ -4,21 +4,20 @@ package org.openelisglobal.dataexchange.fhir;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.context.FhirVersionEnum;
 import ca.uhn.fhir.rest.client.apache.ApacheRestfulClientFactory;
-import ca.uhn.fhir.rest.client.api.IClientInterceptor;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.api.IRestfulClientFactory;
-import ca.uhn.fhir.rest.client.interceptor.BasicAuthInterceptor;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
-import org.apache.commons.validator.GenericValidator;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.ResourceType;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -62,7 +61,11 @@ public class FhirConfig {
     private List<String> remoteStoreIdentifier;
 
     @Autowired
+    @Qualifier("localFhirHttpClient")
     CloseableHttpClient httpClient;
+
+    @Autowired
+    private ObjectProvider<FhirClientFactory> clients;
 
     @Bean
     public FhirContext fhirContext() {
@@ -83,12 +86,7 @@ public class FhirConfig {
         if (remoteStoreIdentifier.contains(ResourceType.Practitioner + "/*")) {
             List<String> fetchedIdentifiers = new ArrayList<>();
             for (String remoteStorePath : getRemoteStorePaths()) {
-                IGenericClient fhirClient = fhirContext().newRestfulGenericClient(remoteStorePath);
-                if (!GenericValidator.isBlankOrNull(getUsername())
-                        && !getLocalFhirStorePath().equals(remoteStorePath)) {
-                    IClientInterceptor authInterceptor = new BasicAuthInterceptor(getUsername(), getPassword());
-                    fhirClient.registerInterceptor(authInterceptor);
-                }
+                IGenericClient fhirClient = clients.getObject().create(remoteStorePath);
                 List<Bundle> allBundles = new ArrayList<>();
                 Bundle practitionerBundle = fhirClient.search().forResource(Practitioner.class)
                         .returnBundle(Bundle.class).execute();

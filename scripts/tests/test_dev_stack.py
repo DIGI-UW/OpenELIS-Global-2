@@ -47,6 +47,17 @@ def isolated_git_environment(home):
     return environment
 
 
+def keep_terminal_record_out_of_the_checkout(test):
+    """An up in a test records the terminal in a temporary file, never in .dev-stack of the checkout."""
+    state = tempfile.TemporaryDirectory()
+    test.addCleanup(state.cleanup)
+    record = patch.object(
+        test.dev_stack, "terminal_pull_record", return_value=pathlib.Path(state.name) / "pulled-terminal"
+    )
+    record.start()
+    test.addCleanup(record.stop)
+
+
 class SubmoduleFixture:
     """A parent repository pinning tools/sub to the first of two commits."""
 
@@ -212,6 +223,9 @@ class DevStackContractTest(unittest.TestCase):
     def setUpClass(cls):
         cls.dev_stack = load_dev_stack()
 
+    def setUp(self):
+        keep_terminal_record_out_of_the_checkout(self)
+
     def test_project_identity_is_deterministic_per_worktree(self):
         first = self.dev_stack.make_context(REPO_ROOT)
         second = self.dev_stack.make_context(REPO_ROOT)
@@ -316,6 +330,7 @@ class DevStackContractTest(unittest.TestCase):
     def test_up_continues_with_self_signed_when_trust_setup_fails(self):
         environment = {"DEV_STACK_TLS": "local-ca", "LETSENCRYPT_DOMAIN": "localhost"}
         with (
+            patch.object(self.dev_stack, "stop_module_dev_servers"),
             patch.object(self.dev_stack, "ensure_local_env"),
             patch.object(self.dev_stack, "build_environment", return_value=environment),
             patch.object(self.dev_stack, "ensure_mkcert"),
@@ -440,7 +455,7 @@ class DevStackContractTest(unittest.TestCase):
             self.dev_stack.os.environ,
             {"LETSENCRYPT_DOMAIN": "dev.example.org"},
             clear=True,
-        ):
+        ), patch.object(self.dev_stack, "read_dotenv", return_value={}):
             environment = self.dev_stack.build_environment(context)
 
         self.assertEqual(environment["DEV_STACK_INGRESS_BIND_ADDRESS"], "0.0.0.0")
@@ -640,6 +655,44 @@ class DevStackContractTest(unittest.TestCase):
         self.assertIn("target: dev-runtime", compose)
         self.assertIn("../../target/OpenELIS-Global.war:", compose)
 
+    def test_module_checkout_gets_a_core_link_for_the_sdk_install(self):
+        # A module installs @openelis/module-sdk from file:../core/frontend/packages/module-sdk;
+        # its CI checks the core out at ./core, a developer's checkout is linked to this one.
+        context = self.dev_stack.make_context(REPO_ROOT)
+        with tempfile.TemporaryDirectory() as directory:
+            module_path = pathlib.Path(directory) / "module"
+            module_path.mkdir()
+            module = self.dev_stack.ModuleCheckout(module_path, "alpha", "remoteEntry.js", 5174)
+
+            link = self.dev_stack.link_core_checkout(context, module)
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(link.resolve(), REPO_ROOT.resolve())
+
+            link.unlink()
+            link.symlink_to(pathlib.Path(directory), target_is_directory=True)
+            self.dev_stack.link_core_checkout(context, module)
+            self.assertEqual(link.resolve(), REPO_ROOT.resolve(), "a stale link is replaced")
+
+            link.unlink()
+            link.mkdir()
+            (link / "pom.xml").write_text("", encoding="utf-8")
+            self.dev_stack.link_core_checkout(context, module)
+            self.assertFalse(link.is_symlink(), "a real checkout at ./core is left alone")
+
+    def test_light_image_build_leaves_the_full_only_images_alone(self):
+        # The light setup never runs the analyzer simulator or the Bridge, so
+        # their images are neither built nor renamed: a broken simulator build
+        # must not stop a light up.
+        context = self.dev_stack.make_context(REPO_ROOT)._replace(setup="light")
+        environment = {}
+        with patch.object(self.dev_stack, "run") as run:
+            self.dev_stack.build_images(context, environment)
+        command = run.call_args.args[0]
+        self.assertEqual(command[-4:], ["build", "certs", "frontend.openelis.org", "oe.openelis.org"])
+        self.assertEqual(environment["DEV_STACK_BACKEND_IMAGE"], f"{context.project}-backend:dev")
+        self.assertNotIn("DEV_STACK_MOCK_IMAGE", environment)
+        self.assertNotIn("DEV_STACK_BRIDGE_IMAGE", environment)
+
     def test_backend_running_probe_is_scoped_to_the_worktree(self):
         context = self.dev_stack.make_context(REPO_ROOT)
         environment = self.dev_stack.build_environment(context)
@@ -697,6 +750,7 @@ class DevStackContractTest(unittest.TestCase):
 
     def test_up_recreates_a_running_backend_exactly_once_after_build(self):
         with (
+            patch.object(self.dev_stack, "stop_module_dev_servers"),
             patch.object(self.dev_stack, "doctor"),
             patch.object(self.dev_stack, "ensure_local_tls_trust"),
             patch.object(self.dev_stack, "ensure_local_env"),
@@ -779,6 +833,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
     def setUp(self):
         self.context = self.dev_stack.make_context(REPO_ROOT)
         self.environment = self.dev_stack.build_environment(self.context)
+        keep_terminal_record_out_of_the_checkout(self)
 
     def pull(self, changed_submodules=(), run=None, differences=(), backend_differences=(), always=True):
         printed = io.StringIO()
@@ -918,6 +973,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
 
     def up_raw(self, *arguments):
         with (
+            patch.object(self.dev_stack, "stop_module_dev_servers"),
             patch.object(self.dev_stack, "doctor"),
             patch.object(self.dev_stack, "ensure_local_tls_trust"),
             patch.object(self.dev_stack, "ensure_local_env"),
@@ -941,6 +997,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
 
     def up(self, *arguments):
         with (
+            patch.object(self.dev_stack, "stop_module_dev_servers"),
             patch.object(self.dev_stack, "doctor"),
             patch.object(self.dev_stack, "ensure_local_tls_trust"),
             patch.object(self.dev_stack, "ensure_local_env"),
@@ -1238,11 +1295,65 @@ class DevStackModuleTest(unittest.TestCase):
         self.dev_stack.route_module_pages(context, [module])
 
         routed = config.read_text(encoding="utf-8")
-        self.assertEqual(
-            routed.count("location = /api/OpenELIS-Global/modules/lab-notes/remoteEntry.js {"), 2
-        )
+        # The registry names the entry under the JAR's digest (/modules/<id>/<sha16>/remoteEntry.js);
+        # the plain form stays one release, so the route matches both, and as a regex location it
+        # still wins over the `location /api/` prefix. Quoted: nginx reads an unquoted `{16}` as a
+        # block and the proxy restarts in a loop (2026-11-17).
+        regex = "^/api/OpenELIS-Global/modules/lab-notes/(?:[0-9a-f]{16}/)?remoteEntry\\.js$"
+        location = f'location ~ "{regex}" {{'
+        self.assertEqual(routed.count(location), 2)
         self.assertIn("return 307 http://localhost:5190/remoteEntry.js;", routed)
-        self.assertLess(routed.index("lab-notes/remoteEntry.js"), routed.index("location /api/ {"))
+        self.assertLess(routed.index("lab-notes/"), routed.index("location /api/ {"))
+        pattern = re.compile(regex)
+        self.assertTrue(pattern.match("/api/OpenELIS-Global/modules/lab-notes/remoteEntry.js"))
+        self.assertTrue(pattern.match("/api/OpenELIS-Global/modules/lab-notes/0123456789abcdef/remoteEntry.js"))
+        self.assertFalse(pattern.match("/api/OpenELIS-Global/modules/lab-notes/assets/remoteEntry.js"))
+
+    def test_proxy_sends_the_message_bundles_to_the_dev_server(self):
+        harness = self.root / "harness"
+        config = harness / "volume" / "nginx" / "nginx.conf"
+        config.parent.mkdir(parents=True)
+        config.write_text("server {\n        location /api/ {\n        }\n}\n", encoding="utf-8")
+        context = self.dev_stack.StackContext(self.root, "p", harness, ())
+        module = self.dev_stack.ModuleCheckout(
+            self.root, "lab-notes", "remoteEntry.js", 5190, "messages/{locale}.json"
+        )
+
+        self.dev_stack.route_module_pages(context, [module])
+
+        routed = config.read_text(encoding="utf-8")
+        regex = "^/api/OpenELIS-Global/modules/lab-notes/(?:[0-9a-f]{16}/)?messages/([A-Za-z0-9_-]+)\\.json$"
+        self.assertIn(f'location ~ "{regex}" {{', routed)
+        self.assertIn("return 307 http://localhost:5190/messages/$1.json;", routed)
+        self.assertLess(routed.index("messages/"), routed.index("location /api/ {"))
+        pattern = re.compile(regex)
+        self.assertEqual(
+            pattern.match("/api/OpenELIS-Global/modules/lab-notes/0123456789abcdef/messages/fr.json").group(1), "fr"
+        )
+        self.assertEqual(pattern.match("/api/OpenELIS-Global/modules/lab-notes/messages/fr-MG.json").group(1), "fr-MG")
+        self.assertFalse(pattern.match("/api/OpenELIS-Global/modules/lab-notes/assets/messages/fr.json"))
+        self.assertFalse(pattern.match("/api/OpenELIS-Global/modules/lab-notes/messages/../en.json"))
+
+    def test_a_module_without_a_messages_pattern_gets_no_bundle_route(self):
+        module = self.dev_stack.ModuleCheckout(self.root, "lab-notes", "remoteEntry.js", 5190)
+
+        self.assertEqual(self.dev_stack.module_messages_route(module), "")
+
+    def test_module_checkout_reads_the_messages_pattern(self):
+        module_path = self.root / "lab-notes"
+        (module_path / "frontend").mkdir(parents=True)
+        (module_path / "pom.xml").write_text("<project/>", encoding="utf-8")
+        manifest = module_path / "src/main/resources/META-INF/openelis-module.json"
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text(
+            '{"id": "lab-notes", "frontend": {"entry": "remoteEntry.js", "messages": "messages/{locale}.json"}}',
+            encoding="utf-8",
+        )
+        (module_path / "frontend" / "package.json").write_text('{"scripts": {"dev": "vite"}}', encoding="utf-8")
+
+        module = self.dev_stack.read_module_checkout(str(module_path))
+
+        self.assertEqual(module.messages, "messages/{locale}.json")
 
     def test_no_modules_leave_the_proxy_config_untouched(self):
         context = self.dev_stack.StackContext(self.root, "p", self.root / "missing", ())

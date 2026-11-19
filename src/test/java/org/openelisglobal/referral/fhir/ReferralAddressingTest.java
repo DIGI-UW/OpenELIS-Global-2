@@ -121,6 +121,10 @@ public class ReferralAddressingTest {
 
         ReflectionTestUtils.invokeMethod(locations, "applyReferralFhirId", lab, "not-a-uuid", errors);
         assertNotNull(errors.get("referral.fhirId"));
+        errors.clear();
+        ReflectionTestUtils.invokeMethod(locations, "applyReferralFhirId", lab, "1-2-3-4-5", errors);
+        assertNotNull("a short form is not a FHIR id", errors.get("referral.fhirId"));
+        assertEquals(FACILITY, lab.getFhirUuidAsString());
 
         org.openelisglobal.organization.valueholder.Organization other = new org.openelisglobal.organization.valueholder.Organization();
         other.setId("9");

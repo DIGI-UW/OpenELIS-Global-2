@@ -38,6 +38,19 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        // Each locale bundle is its own chunk (src/languages/index.js). Named
+        // apart from the code chunks, since Carbon ships an `es-<hash>.js` of
+        // its own, so a cache rule, a spec or an operator reading a network
+        // log can tell a translation download from application code.
+        chunkFileNames: (chunk) =>
+          chunk.facadeModuleId &&
+          /[\\/]src[\\/]languages[\\/][^\\/]+\.json$/.test(chunk.facadeModuleId)
+            ? "assets/messages-[name]-[hash].js"
+            : "assets/[name]-[hash].js",
+      },
+    },
   },
   test: {
     alias: [
@@ -63,6 +76,7 @@ export default defineConfig({
       "**/dist/**",
       "**/cypress/**",
       "**/playwright/**",
+      "**/packages/**",
     ],
   },
   server: {

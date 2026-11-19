@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  DatePicker,
   DatePickerInput,
   FilterableMultiSelect,
   MultiSelect,
   Select,
   SelectItem,
 } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { useIntl } from "react-intl";
 import { getWhonetDatePreset, getWhonetDateRange } from "./WhonetRoutes";
 import "./MicrobiologySurveillanceFilters.scss";

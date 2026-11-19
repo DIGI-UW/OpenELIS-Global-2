@@ -181,7 +181,7 @@ describe("isStaleResponse (OGC-1030)", () => {
       "label.validation.review.error.rejectionDisabled",
     );
     expect(errorMessageKey({ error: "qcHold" })).toBe(
-      "label.validation.review.error.qcHold",
+      "label.validation.review.error.qcHeld",
     );
   });
 });

@@ -11,7 +11,6 @@ import {
   InlineNotification,
   Button,
   Column,
-  DatePicker,
   DatePickerInput,
   Grid,
   Heading,
@@ -28,6 +27,7 @@ import {
   TableRow,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   displayDateToIso,
@@ -281,6 +281,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   );
   const [showPatientSearch, setShowPatientSearch] = useState<boolean>(false);
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [showHeld, setShowHeld] = useState(true);
   const [rows, setRows] = useState<WorklistRow[]>([]);
   const [rowStates, setRowStates] = useState<Record<string, RowEditState>>({});
   const [staleInfo, setStaleInfo] = useState<
@@ -503,6 +504,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               row.multiSelectResultValues !== "{}",
             ),
           Boolean(row.waitingRun),
+          Boolean(row.waitingRun?.held),
         );
         if (unsaved[worklistRowKey(row)]) {
           states[worklistRowKey(row)] =
@@ -729,12 +731,17 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
     return counts;
   }, [rows]);
 
+  const heldCount = useMemo(
+    () => rows.filter((row) => row.waitingRun?.held).length,
+    [rows],
+  );
   const filteredRows = useMemo(
     () =>
-      statusFilter === "ALL"
+      (statusFilter === "ALL"
         ? rows
-        : rows.filter((row) => row.analysisStatusId === statusFilter),
-    [rows, statusFilter],
+        : rows.filter((row) => row.analysisStatusId === statusFilter)
+      ).filter((row) => showHeld || !row.waitingRun?.held),
+    [rows, statusFilter, showHeld],
   );
 
   const pagedRows = filteredRows;
@@ -1767,6 +1774,17 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                   {status.value} ({statusCounts[status.id]})
                 </Tag>
               ))}
+            {(heldCount > 0 || !showHeld) && (
+              <Tag
+                type={showHeld ? "blue" : "gray"}
+                onClick={() => setShowHeld((shown) => !shown)}
+                className="unifiedResultsChip"
+                data-testid="held-chip"
+                aria-pressed={showHeld}
+              >
+                <FormattedMessage id="run.filter.held" /> ({heldCount})
+              </Tag>
+            )}
           </Column>
         )}
 
@@ -2068,6 +2086,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               domain={domain}
                               editable={isRowEditable(state)}
                               editing={isModifyingSavedResult(state)}
+                              inRun={state === "WAITING"}
                               testSectionId={selectedLabUnit || undefined}
                               loadedAnalyzerId={loadedAnalyzers[key]}
                               methods={methods}

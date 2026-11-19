@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { vi } from "vitest";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import PageBreadCrumb from "./PageBreadCrumb";
@@ -11,9 +12,9 @@ const messages = {
   "reports.label.status": "Patient Status Report",
 };
 
-const wrap = (breadcrumbs) =>
+const wrap = (breadcrumbs, onError, locale = "en") =>
   render(
-    <IntlProvider locale="en" messages={messages}>
+    <IntlProvider locale={locale} messages={messages} onError={onError}>
       <MemoryRouter>
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
       </MemoryRouter>
@@ -28,6 +29,29 @@ const crumbLinks = () =>
   ).map((a) => a.textContent);
 
 describe("PageBreadCrumb", () => {
+  // The analyzer mapping page passed its profile's name as a crumb, which
+  // logged a missing-message error on every render (16 a load).
+  it("shows a crumb that is not a message id as written, without a missing-message error", () => {
+    const onError = vi.fn();
+    wrap(
+      [
+        { label: "home.label", link: "/" },
+        {
+          label: "Cepheid GeneXpert (ASTM Mode) mappings",
+          isCurrentPage: true,
+        },
+      ],
+      onError,
+      "en-US",
+    );
+
+    expect(
+      screen.getByText("Cepheid GeneXpert (ASTM Mode) mappings"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Home")).toBeInTheDocument();
+    expect(onError).not.toHaveBeenCalled();
+  });
+
   it("keeps a category crumb visible but unclickable when it has no destination", () => {
     // the shape every report leaf uses: Home / <category, no page> / <this report>
     wrap([

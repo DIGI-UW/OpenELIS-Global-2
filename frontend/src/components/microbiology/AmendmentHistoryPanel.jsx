@@ -8,9 +8,9 @@ import {
   StructuredListRow,
   StructuredListWrapper,
   Tag,
-  TextArea,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import MacroTextArea from "../common/textMacro/MacroTextArea";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyService from "./MicrobiologyService";
 import { MicrobiologyReportBlock } from "./CaseReportWorkspace";
@@ -157,8 +157,9 @@ const AmendmentHistoryPanel = ({
 
       {canAmend && (finalReleased || amendmentOpen) && (
         <div className="microbiology-amendment-actions">
-          <TextArea
+          <MacroTextArea
             id="microbiology-amendment-reason"
+            context="MICROBIOLOGY_AMENDMENT_REASON"
             labelText={intl.formatMessage({
               id: amendmentOpen
                 ? "microbiology.amendment.cancelReason"

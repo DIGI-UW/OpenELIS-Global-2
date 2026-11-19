@@ -18,6 +18,9 @@ import {
   TableRow,
   Tile,
 } from "@carbon/react";
+import { returnFocus } from "./returnFocus";
+import { useOnline } from "./OfflineNotice";
+import { serverUnreachable } from "../utils/requestOutcome";
 
 export function MicrobiologyReportBlock({ report }) {
   const intl = useIntl(),
@@ -86,7 +89,7 @@ export function MicrobiologyReportBlock({ report }) {
             key={isolate.id}
             title={`${isolate.label}: ${isolate.organism}`}
           >
-            <Table aria-label={`${isolate.label} ${t("ast")}`}>
+            <Table tabIndex={0} aria-label={`${isolate.label} ${t("ast")}`}>
               <TableHead>
                 <TableRow>
                   {["agent", "raw", "interpretation", "breakpoint"].map(
@@ -146,11 +149,12 @@ export function MicrobiologyReportBlock({ report }) {
   );
 }
 export default function CaseReportWorkspace({ detail, service, onChanged }) {
+  const online = useOnline();
   const intl = useIntl(),
     t = (key) => intl.formatMessage({ id: `microbiology.m6.${key}` });
   const [state, setState] = useState(null),
     [versionId, setVersionId] = useState(""),
-    [error, setError] = useState(false),
+    [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const current = useRef(detail);
   current.current = detail;
@@ -169,11 +173,11 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       .then((value) => {
         if (live) {
           setState(value);
-          setError(false);
+          setError("");
         }
       })
       .catch(() => {
-        if (live) setError(true);
+        if (live) setError("saveError");
       });
     return () => {
       live = false;
@@ -187,8 +191,9 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
         : current.current.canValidate)
     )
       return;
+    const trigger = document.activeElement;
     setBusy(true);
-    setError(false);
+    setError("");
     try {
       await service.releaseReport(
         detail.id,
@@ -199,21 +204,24 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       setState(next);
       setVersionId(next.versions[next.versions.length - 1].id);
       onChanged?.();
-    } catch {
-      setError(true);
+    } catch (failure) {
+      setError(
+        serverUnreachable(failure.response) ? "unreachable" : "saveError",
+      );
     } finally {
       setBusy(false);
+      returnFocus(trigger);
     }
   };
   const select = async (analysisId, selected) => {
     if (!current.current.canValidate) return;
     setBusy(true);
-    setError(false);
+    setError("");
     try {
       await service.selectReportResult(detail.id, analysisId, selected);
       setState(await load());
     } catch {
-      setError(true);
+      setError("saveError");
     } finally {
       setBusy(false);
     }
@@ -232,7 +240,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
               try {
                 await service.downloadEnvironmentalCertificate(detail.orderId);
               } catch {
-                setError(true);
+                setError("saveError");
               } finally {
                 setBusy(false);
               }
@@ -247,7 +255,13 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       {error && (
         <InlineNotification
           kind="error"
-          title={t("saveError")}
+          title={
+            error === "unreachable"
+              ? intl.formatMessage({
+                  id: "microbiology.case.serverUnreachable",
+                })
+              : t("saveError")
+          }
           hideCloseButton
         />
       )}
@@ -351,7 +365,9 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
             {detail.canWrite && !detail.amendmentOpen && (
               <Button
                 kind="tertiary"
-                disabled={busy || state.report.validatedResults === 0}
+                disabled={
+                  busy || !online || state.report.validatedResults === 0
+                }
                 onClick={() => release("preliminary")}
               >
                 {t("partialRelease")}
@@ -361,6 +377,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
               <Button
                 disabled={
                   busy ||
+                  !online ||
                   !state.readiness.finalReleaseReady ||
                   ((state.readiness.pendingIncomingIds || []).length > 0 &&
                     !confirmIncoming)

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  DatePicker,
   DatePickerInput,
   Dropdown,
   Checkbox,
@@ -9,6 +8,7 @@ import {
   Switch,
   FilterableMultiSelect,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { Search, Reset } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";

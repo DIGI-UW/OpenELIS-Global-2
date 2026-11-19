@@ -407,6 +407,27 @@ describe("AnalyserResults", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("says a value is held by a failed control in its run and opens the run", async () => {
+    renderResults([
+      {
+        ...heldResult,
+        testId: "301",
+        heldRunId: 12,
+        readOnly: true,
+        importIssueReason: "run_qc_failed",
+      },
+    ]);
+    expect(
+      await screen.findByText(
+        "A control for this test failed in this run, so the value is held and cannot be saved here.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open the run" })).toHaveAttribute(
+      "href",
+      "/Results?run=12",
+    );
+  });
+
   it("explains why an off-scale control cannot be charted as an exact measurement", async () => {
     renderResults([
       {

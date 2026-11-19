@@ -1022,8 +1022,8 @@ public class ResultsLoadUtility {
         }
 
         if (component != null && !isConclusion && !isCD4Conclusion
-                && !GenericValidator.isBlankOrNull(component.getLabel())) {
-            displayTestName += " — " + component.getLabel();
+                && !GenericValidator.isBlankOrNull(component.getLocalizedLabel())) {
+            displayTestName += " — " + component.getLocalizedLabel();
         }
 
         String referralId = null;

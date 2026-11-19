@@ -467,7 +467,7 @@ export default function CaseViewShell({
                       )}
                     <h2>{t("common.samples")}</h2>
                     <TableContainer>
-                      <Table>
+                      <Table tabIndex={0} aria-label={t("common.samples")}>
                         <TableHead>
                           <TableRow>
                             <TableHeader>{t("common.labNumber")}</TableHeader>

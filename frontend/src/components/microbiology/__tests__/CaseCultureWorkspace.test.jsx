@@ -1,11 +1,20 @@
 import React from "react";
 import { vi } from "vitest";
+vi.mock("../../common/textMacro/TextMacroService", () => ({
+  getTextMacros: vi.fn(() => Promise.resolve([])),
+}));
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider, createIntl } from "react-intl";
 import messages from "../../../languages/en.json";
 import { labTimeZone } from "../MicrobiologyTime";
 import CaseCultureWorkspace from "../CaseCultureWorkspace";
+import { getTextMacros } from "../../common/textMacro/TextMacroService";
+import {
+  expandedPhrase,
+  offerOnePhrasePerContext,
+  typePhraseCode,
+} from "./phraseFields";
 const sources = [
   {
     sampleItemId: "s1",
@@ -198,6 +207,34 @@ it("an unconfirmed instrument proposal leaves the row incubating", async () => {
       outcome: "NO_GROWTH",
       proposalId: "proposal1",
     }),
+  );
+});
+it("expands a culture-reading phrase into the reading note and saves it", async () => {
+  offerOnePhrasePerContext();
+  const service = api();
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Add reading" }));
+  change("Reading", "growth");
+  const field = screen.getByLabelText("Note");
+  await typePhraseCode(field);
+
+  expect(field).toHaveValue("Seen Phrase for MICROBIOLOGY_CULTURE_READING ");
+  expect(getTextMacros).toHaveBeenCalledWith(
+    "MICROBIOLOGY_CULTURE_READING",
+    expect.any(AbortSignal),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.cultureAction).toHaveBeenCalledWith(
+      "c1",
+      "r1",
+      "reading",
+      expect.objectContaining({
+        note: expect.stringMatching(
+          expandedPhrase("MICROBIOLOGY_CULTURE_READING"),
+        ),
+      }),
+    ),
   );
 });
 it("a failed reading save retains its input and shows validation feedback", async () => {
@@ -680,4 +717,50 @@ it("routed subculture requires an eligible parent and preserves its specimen", a
     ),
   );
   expect(consumed).toHaveBeenCalledTimes(1);
+});
+it("moves keyboard focus into the culture dialog and back to its trigger when it closes", async () => {
+  show(api([]));
+  const trigger = await screen.findByRole("button", {
+    name: "Inoculate culture",
+  });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const dialog = screen.getByRole("dialog");
+  expect(
+    within(dialog).getByLabelText("Source sample or aliquot"),
+  ).toHaveFocus();
+  fireEvent.keyDown(dialog, { key: "Escape" });
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Inoculate culture" }),
+    ).toHaveFocus(),
+  );
+});
+
+it("keeps Save off while the browser is offline", async () => {
+  const onLine = vi
+    .spyOn(window.navigator, "onLine", "get")
+    .mockReturnValue(false);
+  try {
+    show(api([]));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Inoculate culture" }),
+    );
+    change("Bottle or plate identifier", "P-OFFLINE");
+    change("Medium lot", "20");
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByText(
+        "Working offline; refresh when network returns.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Save", exact: true }),
+    ).toBeDisabled();
+  } finally {
+    onLine.mockRestore();
+  }
 });

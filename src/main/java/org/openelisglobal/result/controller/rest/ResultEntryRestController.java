@@ -59,6 +59,7 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.resultrun.form.WaitingRun;
 import org.openelisglobal.resultrun.service.ResultRunService;
+import org.openelisglobal.resultrun.service.RunQcService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -123,6 +124,8 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     private AnalysisService analysisService;
     @Autowired
     private ResultRunService resultRunService;
+    @Autowired
+    private RunQcService runQcService;
     @Lazy
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
@@ -344,8 +347,17 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         Optional<WaitingRun> waiting = resultRunService.waitingFor(analysis, item.getTestResultComponentId());
         Long acceptedRun = runValue.map(AnalyzerResults::getRunId).orElse(null);
         if (waiting.isPresent() && !waiting.get().runId().equals(acceptedRun)) {
-            body.put("error", MessageUtil.getMessage("run.refusal.waiting", new String[] { waiting.get().label() }));
+            body.put("error", MessageUtil.getMessage(waiting.get().held() ? "run.refusal.held" : "run.refusal.waiting",
+                    new String[] { waiting.get().label() }));
             body.put("waitingRun", waiting.get());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+        }
+
+        Optional<Long> holdingRun = holdingRun(acceptedRun, analysis);
+        if (holdingRun.isPresent()) {
+            WaitingRun held = resultRunService.heldRun(holdingRun.get());
+            body.put("error", MessageUtil.getMessage("run.refusal.held", new String[] { held.label() }));
+            body.put("waitingRun", held);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
         }
 
@@ -404,7 +416,11 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         ResultUtil.createAnalysisOnlyUpdates(dataSet, request);
         ResultUtil.holdOpenWhileRequiredComponentsBlank(dataSet);
 
-        runValue.ifPresent(staged -> recordRunProvenance(dataSet, analysisId, staged));
+        if (runValue.isPresent()) {
+            recordRunProvenance(dataSet, analysisId, runValue.get());
+        } else {
+            runQcService.detachFromDecidedRuns(resultsOf(dataSet));
+        }
 
         List<IResultUpdate> updaters = new ArrayList<>(ResultUpdateRegister.getRegisteredUpdaters());
         updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
@@ -733,6 +749,11 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                 });
     }
 
+    private static List<Result> resultsOf(ResultsUpdateDataSet dataSet) {
+        return Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream())
+                .map(resultSet -> resultSet.result).toList();
+    }
+
     /** The accepted value leaves staging in the same transaction as the save. */
     private IResultUpdate leavesStaging(AnalyzerResults staged, String sysUserId) {
         return new IResultUpdate() {
@@ -745,6 +766,19 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             public void postTransactionalCommitUpdate(IResultSaveService saveService) {
             }
         };
+    }
+
+    /**
+     * The run that holds this analysis's test (OGC-1200 FR-C4): the run a value is
+     * being accepted from, or the run its stored result came from. A held row is
+     * not accepted, entered or edited until the hold is dispositioned.
+     */
+    private Optional<Long> holdingRun(Long acceptedRun, Analysis analysis) {
+        String testId = analysis.getTest() == null ? null : analysis.getTest().getId();
+        if (acceptedRun != null && testId != null && runQcService.heldTestIds(acceptedRun).contains(testId)) {
+            return Optional.of(acceptedRun);
+        }
+        return Optional.ofNullable(runQcService.entryHoldingRuns(List.of(analysis.getId())).get(analysis.getId()));
     }
 
     private ResponseEntity<Map<String, Object>> rejectIfStale(TestResultItem item, Analysis analysis,

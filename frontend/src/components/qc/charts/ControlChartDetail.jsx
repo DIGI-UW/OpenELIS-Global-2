@@ -16,7 +16,6 @@ import React, { useState, useEffect } from "react";
 import {
   Grid,
   Column,
-  DatePicker,
   DatePickerInput,
   Dropdown,
   Button,
@@ -29,6 +28,7 @@ import {
   TabPanel,
   Tag,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { Download, ZoomIn, ZoomOut, FitToScreen } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useParams, useHistory } from "react-router-dom";
