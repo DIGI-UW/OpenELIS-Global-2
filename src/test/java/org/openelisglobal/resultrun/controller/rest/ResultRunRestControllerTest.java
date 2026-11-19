@@ -43,11 +43,11 @@ public class ResultRunRestControllerTest extends BaseWebContextSensitiveTest {
                 + " VALUES (9251, 'Run endpoint analyzer', true, NOW()) ON CONFLICT (id) DO NOTHING");
         jdbc.update("INSERT INTO clinlims.user_lab_unit_roles (system_user_id, last_updated) VALUES (1, NOW())"
                 + " ON CONFLICT (system_user_id) DO NOTHING");
-        jdbc.update("INSERT INTO clinlims.lab_unit_role_map (lab_unit_role_map_id, lab_unit) VALUES (9351,"
+        jdbc.update("INSERT INTO clinlims.lab_unit_role_map (lab_unit_role_map_id, lab_unit) VALUES (-9351,"
                 + " 'AllLabUnits') ON CONFLICT (lab_unit_role_map_id) DO NOTHING");
-        jdbc.update("INSERT INTO clinlims.lab_unit_roles (system_user_id, lab_unit_role_map_id) VALUES (1, 9351)"
+        jdbc.update("INSERT INTO clinlims.lab_unit_roles (system_user_id, lab_unit_role_map_id) VALUES (1, -9351)"
                 + " ON CONFLICT DO NOTHING");
-        jdbc.update("INSERT INTO clinlims.lab_roles (lab_unit_role_map_id, role) VALUES (9351, '5')"
+        jdbc.update("INSERT INTO clinlims.lab_roles (lab_unit_role_map_id, role) VALUES (-9351, '5')"
                 + " ON CONFLICT DO NOTHING");
         jdbc.update("DELETE FROM clinlims.analyzer_delivery_receipt WHERE id = 'receipt-run-endpoint'");
         jdbc.update("INSERT INTO clinlims.analyzer_delivery_receipt (id, connection_id, message_id, analyzer_id,"
