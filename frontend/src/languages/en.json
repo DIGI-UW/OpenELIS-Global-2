@@ -11526,6 +11526,12 @@
   "microbiology.admin.astPanels.readOnly": "This historical version is read-only. Open the current version to publish a change.",
   "microbiology.admin.astPanels.diskContent": "Disk content",
   "microbiology.admin.astPanels.diskContent.help": "For disk diffusion, as the breakpoint package spells it, for example 30ug",
+  "microbiology.admin.astPanels.defaultFor": "Default for",
+  "microbiology.admin.astPanels.defaultFor.help": "Organisms and laboratory groups that get this panel when an isolate is identified, ranked by how many of the panel's antibiotics have breakpoints for them",
+  "microbiology.admin.astPanels.defaultFor.placeholder": "Search organisms or groups",
+  "microbiology.admin.astPanels.defaultFor.organism": "{name} · {covered} of {total} with breakpoints",
+  "microbiology.admin.astPanels.defaultFor.group": "{name} (group) · {covered} of {total} with breakpoints",
+  "microbiology.admin.astPanels.defaultFor.showAll": "Show organisms with no breakpoints for these antibiotics",
   "microbiology.admin.astPanels.title": "AST panels",
   "microbiology.admin.astPanels.version": "Version",
   "microbiology.admin.astPanels.versionNotice": "Saving creates a new panel version; existing AST runs keep their original version.",
@@ -11557,6 +11563,7 @@
   "microbiology.admin.astRules.edit": "Edit",
   "microbiology.admin.astRules.editRule": "Edit rule",
   "microbiology.admin.astRules.error": "The reporting rules could not be updated.",
+  "microbiology.admin.astRules.error.REPORTING_RULE_GROUP_CONFLICT": "Another active group rule gives a different answer for an organism that is in both groups. Add a rule for that organism, or change one of the group rules.",
   "microbiology.admin.astRules.export": "Export",
   "microbiology.admin.astRules.history": "History",
   "microbiology.admin.astRules.historyFor": "History {antibiotic}",
@@ -15389,5 +15396,6 @@
   "microbiology.astQc.pass": "Pass",
   "microbiology.astQc.fail": "Fail",
   "microbiology.astQc.rangeMissing": "Load a QC range for every antibiotic before recording this control.",
-  "microbiology.astQc.saveError": "The control could not be recorded."
+  "microbiology.astQc.saveError": "The control could not be recorded.",
+  "microbiology.admin.field.labGroups": "Laboratory groups"
 }

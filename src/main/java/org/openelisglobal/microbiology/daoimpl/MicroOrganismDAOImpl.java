@@ -23,7 +23,8 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
     @Transactional(readOnly = true)
     public List<MicroOrganism> getActiveOrganisms() {
         return entityManager.unwrap(Session.class)
-                .createQuery("from MicroOrganism o where o.isActive = 'Y' order by o.displayName", MicroOrganism.class)
+                .createQuery("select distinct o from MicroOrganism o left join fetch o.labGroups where o.isActive = 'Y'"
+                        + " order by o.displayName", MicroOrganism.class)
                 .list();
     }
 

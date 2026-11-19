@@ -1001,6 +1001,27 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     @Test
+    public void ruleForAGroupTheLaboratoryHasNotDefinedIsRejected() {
+        String group = "No such group " + java.util.UUID.randomUUID();
+        assertEquals("REPORTING_RULE_GROUP_INVALID",
+                assertThrows(IllegalArgumentException.class,
+                        () -> reportingRules.save(reportingRuleForm(null, group, List.of(), "DONT_REPORT"), writer))
+                        .getMessage());
+        assertEquals("INTERPRETATION_RULE_GROUP_INVALID",
+                assertThrows(IllegalArgumentException.class, () -> alwaysResistant(null, group)).getMessage());
+
+        groupOrganism(group);
+        var rule = reportingRule(null, group, List.of(), "DONT_REPORT");
+        reference.organism().getLabGroups().remove(group);
+        organisms.update(reference.organism());
+        em.flush();
+        var deactivate = reportingRuleForm(null, group, List.of(), "DONT_REPORT");
+        deactivate.id = rule.getId();
+        deactivate.active = false;
+        assertFalse(reportingRules.save(deactivate, writer).isActive());
+    }
+
+    @Test
     public void ruleNoteNeedsAKnownCondition() {
         var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "ALWAYS");
         form.note = "Sometimes";
@@ -1193,11 +1214,13 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
 
     @Test
     public void aRuleForThePackagesOrganismGroupAloneNoLongerApplies() {
+        groupOrganism("Enterobacterales");
+        reportingRule(null, "Enterobacterales", List.of(), "DONT_REPORT");
+        alwaysResistant(null, "Enterobacterales");
+        reference.organism().getLabGroups().remove("Enterobacterales");
         reference.organism().setOrganismGroup("Enterobacterales");
         organisms.update(reference.organism());
         em.flush();
-        reportingRule(null, "Enterobacterales", List.of(), "DONT_REPORT");
-        alwaysResistant(null, "Enterobacterales");
 
         assertTrue(agent(start(isolate), drugB).isReported());
         var result = previewFor(reference.organism().getId());
