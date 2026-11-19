@@ -19,9 +19,9 @@ import { Link } from "react-router-dom";
 // rather than as a <Link to={undefined}>, which would navigate nowhere.
 //
 // `label` is a message id. Callers that already hold a literal string (a
-// sample's accession number, a box label) can pass it directly: an id that
-// has no translation falls back to itself instead of raising a react-intl
-// missing-message error.
+// sample's accession number, a box label) can pass it directly: a label the
+// catalogue does not hold shows as written, without asking react-intl for it,
+// which logged a missing-message error on every render.
 const PageBreadCrumb = ({ breadcrumbs }) => {
   const intl = useIntl();
   const anyExplicitCurrent = breadcrumbs.some((b) => b.isCurrentPage === true);
@@ -35,10 +35,9 @@ const PageBreadCrumb = ({ breadcrumbs }) => {
           {breadcrumbs.map((breadcrumb, index) => {
             const label =
               breadcrumb.text ??
-              intl.formatMessage({
-                id: breadcrumb.label,
-                defaultMessage: breadcrumb.label,
-              });
+              (breadcrumb.label in (intl.messages || {})
+                ? intl.formatMessage({ id: breadcrumb.label })
+                : breadcrumb.label);
             const isCurrent =
               breadcrumb.isCurrentPage === true ||
               (defaultsLastAsCurrent && index === lastIndex);

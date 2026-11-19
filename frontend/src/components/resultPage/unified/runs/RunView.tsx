@@ -20,6 +20,7 @@ import {
   Tag,
   Tile,
 } from "@carbon/react";
+import { WarningFilled } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -28,7 +29,9 @@ import {
 import { FlagChip } from "../flags";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import RunsChip from "./RunsChip";
+import RunQcBlock, { RunQc } from "./RunQcBlock";
 import UnifiedResults from "../UnifiedResults";
+import useSiteDateFormat from "../../../common/useSiteDateFormat";
 import { formatRunTime, runSourceKey, runStateKey } from "./runFormat";
 import {
   EMPTY_SELECTION,
@@ -60,6 +63,7 @@ export interface RunHeader {
   total: number;
   rawAvailable: boolean;
   chipCounts?: RunChipCounts;
+  qc?: RunQc | null;
 }
 
 interface RunRow {
@@ -148,6 +152,7 @@ const RunView: React.FC<RunViewProps> = ({
   onOpenRun,
 }) => {
   const intl = useIntl();
+  const { pattern } = useSiteDateFormat();
   const [header, setHeader] = useState<RunHeader | null>(null);
   const [headerState, setHeaderState] = useState<
     "loading" | "ready" | "missing"
@@ -312,6 +317,13 @@ const RunView: React.FC<RunViewProps> = ({
         </Tag>
       );
     }
+    if (row.category === "HELD") {
+      return (
+        <Tag size="sm" type="red" renderIcon={WarningFilled}>
+          <FormattedMessage id="run.row.held" />
+        </Tag>
+      );
+    }
     return (
       <Tag size="sm" type="green">
         <FormattedMessage id="run.row.ready" />
@@ -331,9 +343,9 @@ const RunView: React.FC<RunViewProps> = ({
         ? "run.entry.duplicate"
         : row.importIssueReason
           ? "run.entry.importIssue"
-          : header?.state === "HELD"
-            ? "run.entry.held"
-            : header?.state !== "OPEN"
+          : row.category === "HELD"
+            ? "run.entry.testHeld"
+            : header?.state !== "OPEN" && header?.state !== "HELD"
               ? "run.entry.closed"
               : null;
     return (
@@ -410,7 +422,11 @@ const RunView: React.FC<RunViewProps> = ({
           <Button kind="tertiary" size="sm" onClick={onBack}>
             <FormattedMessage id="run.action.backToAll" />
           </Button>
-          <RunsChip activeRunId={runId} onOpenRun={onOpenRun} />
+          <RunsChip
+            activeRunId={runId}
+            onOpenRun={onOpenRun}
+            refreshKey={reload}
+          />
         </Column>
         {showFiltersNotice && (
           <Column lg={16} md={8} sm={4}>
@@ -443,6 +459,20 @@ const RunView: React.FC<RunViewProps> = ({
             />
           </Column>
         )}
+        {header?.qc && (
+          <Column lg={16} md={8} sm={4}>
+            <RunQcBlock
+              runId={header.id}
+              qc={header.qc}
+              onRecorded={(qc) => {
+                setHeader((current) =>
+                  current ? { ...current, qc } : current,
+                );
+                setReload((n) => n + 1);
+              }}
+            />
+          </Column>
+        )}
         {header && (
           <Column lg={16} md={8} sm={4}>
             <Tile className="runHeaderTile" data-testid="run-settings">
@@ -460,12 +490,13 @@ const RunView: React.FC<RunViewProps> = ({
                 {setting("run.label.operator", header.operatorName)}
                 {setting(
                   "run.label.opened",
-                  header.openedAt && formatRunTime(intl, header.openedAt),
+                  header.openedAt &&
+                    formatRunTime(intl, header.openedAt, pattern),
                 )}
                 {setting(
                   "run.label.lastActivity",
                   header.lastActivityAt &&
-                    formatRunTime(intl, header.lastActivityAt),
+                    formatRunTime(intl, header.lastActivityAt, pattern),
                 )}
                 {setting(
                   "run.label.state",

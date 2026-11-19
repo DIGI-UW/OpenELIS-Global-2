@@ -1,8 +1,6 @@
 package org.openelisglobal.dataexchange.fhir.service;
 
-import ca.uhn.fhir.rest.client.api.IClientInterceptor;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
-import ca.uhn.fhir.rest.client.interceptor.BasicAuthInterceptor;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
@@ -277,13 +275,6 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
 
             try {
                 IGenericClient remoteFhirClient = fhirUtil.getFhirClient(remotePath);
-
-                String localPath = fhirConfig.getLocalFhirStorePath();
-                if (StringUtils.isNotBlank(fhirConfig.getUsername()) && !remotePath.equals(localPath)) {
-                    IClientInterceptor authInterceptor = new BasicAuthInterceptor(fhirConfig.getUsername(),
-                            fhirConfig.getPassword());
-                    remoteFhirClient.registerInterceptor(authInterceptor);
-                }
 
                 remoteFhirClient.update().resource(facilityOrganization).execute();
                 LogEvent.logInfo(this.getClass().getSimpleName(), "syncToRemoteFhirServers",

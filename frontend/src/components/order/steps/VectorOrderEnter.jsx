@@ -18,7 +18,7 @@ import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
 import {
   describeUnmetRequirements,
-  hasRequesterOrRequestor,
+  fieldOrderRequirements,
 } from "../saveRequirements";
 import SaveRequirementsNotice from "../SaveRequirementsNotice";
 import { NotificationContext } from "../../layout/Layout";
@@ -123,22 +123,13 @@ const VectorOrderEnter = () => {
     envFields.vecCollectionSiteName ||
     envFields.vecOrganismGroupId
   );
-  const hasSampleTypes = samples.some((s) => s.sampleTypeId);
-  const saveRequirements = [
-    {
-      met: Boolean(localLabNumber),
-      labelId: "order.save.requirement.labNumber",
-    },
-    {
-      met: hasCollectionSite,
-      labelId: "order.save.requirement.collectionSite",
-    },
-    {
-      met: hasRequesterOrRequestor(orderData?.sampleOrderItems),
-      labelId: "order.save.requirement.requesterOrRequestor",
-    },
-    { met: hasSampleTypes, labelId: "order.save.requirement.sampleType" },
-  ];
+  const saveRequirements = fieldOrderRequirements({
+    labNumber: localLabNumber,
+    hasSite: hasCollectionSite,
+    siteLabelId: "order.save.requirement.collectionSite",
+    sampleOrderItems: orderData?.sampleOrderItems,
+    samples,
+  });
   const canSave = saveRequirements.every((requirement) => requirement.met);
   const canProceed = canSave;
 

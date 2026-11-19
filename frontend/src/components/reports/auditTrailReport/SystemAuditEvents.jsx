@@ -14,13 +14,13 @@ import {
   TableHead,
   Pagination,
   Button,
-  DatePicker,
   DatePickerInput,
   Dropdown,
   Tag,
   TextInput,
   Loading,
 } from "@carbon/react";
+import { DatePicker } from "../../common/DatePicker";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";

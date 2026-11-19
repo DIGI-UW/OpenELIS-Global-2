@@ -1,11 +1,20 @@
 import React from "react";
 import { vi } from "vitest";
+vi.mock("../../common/textMacro/TextMacroService", () => ({
+  getTextMacros: vi.fn(() => Promise.resolve([])),
+}));
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import CaseAstWorkspace from "../CaseAstWorkspace";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import { getTextMacros } from "../../common/textMacro/TextMacroService";
+import {
+  expandedPhrase,
+  offerOnePhrasePerContext,
+  typePhraseCode,
+} from "./phraseFields";
 const t = (key) => messages[`microbiology.m6.${key}`];
 const reading = (id, antibioticId, value) => ({
   id,
@@ -60,6 +69,37 @@ const show = (data, rights = { canWrite: true, canValidate: true }) => {
   );
   return service;
 };
+it("expands an override-reason phrase and records the expanded reason", async () => {
+  offerOnePhrasePerContext();
+  const service = show(workspace());
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.select") }),
+  );
+  const modal = screen.getByRole("dialog");
+  const field = within(modal).getByLabelText(t("reason"));
+  await typePhraseCode(field);
+
+  expect(field).toHaveValue("Seen Phrase for MICROBIOLOGY_OVERRIDE_REASON ");
+  expect(getTextMacros).toHaveBeenCalledWith(
+    "MICROBIOLOGY_OVERRIDE_REASON",
+    expect.any(AbortSignal),
+  );
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        action: "select",
+        reason: expect.stringMatching(
+          expandedPhrase("MICROBIOLOGY_OVERRIDE_REASON"),
+        ),
+      }),
+      true,
+    ),
+  );
+});
 it("selects only the requested validated drug with a recorded reason", async () => {
   const service = show(workspace());
   fireEvent.click(

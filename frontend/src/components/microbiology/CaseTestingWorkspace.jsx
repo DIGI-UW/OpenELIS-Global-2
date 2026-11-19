@@ -9,6 +9,7 @@ import CaseAstWorkspace from "./CaseAstWorkspace";
 import CaseReportWorkspace from "./CaseReportWorkspace";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
+import MacroTextArea from "../common/textMacro/MacroTextArea";
 import {
   Button,
   Accordion,
@@ -1089,8 +1090,9 @@ export default function CaseTestingWorkspace({
           </TableContainer>
           {detail.canWrite && (
             <>
-              <TextArea
+              <MacroTextArea
                 id="case-note-text"
+                context="MICROBIOLOGY_CASE_NOTE"
                 labelText={t("microbiology.testing.newNote")}
                 value={note}
                 maxLength={4000}

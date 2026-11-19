@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="OGC-1200-result-run-test-disposition" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <tableExists schemaName="clinlims" tableName="result_run_test_disposition"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1200 FR-C5: what was decided for a test a run holds (Retest, Reject, or Accept despite the QC failure with a non-conformity), by whom and when. One decision per test and run; never changed.</comment>
+  <createSequence schemaName="clinlims" sequenceName="result_run_test_disposition_seq" startValue="1" incrementBy="1"/>
+  <createTable schemaName="clinlims" tableName="result_run_test_disposition">
+   <column name="id" type="BIGINT">
+    <constraints primaryKey="true" nullable="false" primaryKeyName="pk_result_run_test_disposition"/>
+   </column>
+   <column name="run_id" type="BIGINT">
+    <constraints nullable="false" foreignKeyName="fk_run_test_disposition_run" references="clinlims.result_run(id)"/>
+   </column>
+   <column name="test_id" type="numeric(10)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="action" type="VARCHAR(20)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="reason" type="VARCHAR(1000)"/>
+   <column name="nce_id" type="INTEGER"/>
+   <column name="sys_user_id" type="numeric(10)"/>
+   <column name="decided_at" type="TIMESTAMP">
+    <constraints nullable="false"/>
+   </column>
+   <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+  </createTable>
+  <addUniqueConstraint schemaName="clinlims" tableName="result_run_test_disposition" columnNames="run_id, test_id"
+   constraintName="uq_run_test_disposition"/>
+ </changeSet>
+</databaseChangeLog>

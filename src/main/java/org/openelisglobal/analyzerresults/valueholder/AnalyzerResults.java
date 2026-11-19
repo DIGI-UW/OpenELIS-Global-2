@@ -104,6 +104,11 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     public static final String IMPORT_ISSUE_RUN_FAILED = "run_failed";
     /** A control that reports an answer, for a test and level with no QC target. */
     public static final String IMPORT_ISSUE_QC_LOT_MISSING = "qc_lot_missing";
+    /**
+     * Shown, never stored: a control for this row's test failed in its run, so the
+     * value is held there (OGC-1200 FR-C4).
+     */
+    public static final String IMPORT_ISSUE_RUN_QC_FAILED = "run_qc_failed";
     public static final String IMPORT_ISSUE_QC_VALUE_UNSUPPORTED = "qc_value_unsupported";
     public static final String IMPORT_ISSUE_QC_TARGET_MISSING = "qc_target_missing";
     /**

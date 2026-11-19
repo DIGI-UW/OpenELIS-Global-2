@@ -380,6 +380,11 @@
     background: transparent;
     cursor: not-allowed;
   }
+
+  /* An NCE can be reported on an order that can no longer be edited. */
+  .inline-nce-form {
+    pointer-events: auto;
+  }
 }
 
 /* ==========================================================================
@@ -1751,27 +1756,26 @@
   }
 }
 
-.env-manifest-datetime {
-  height: 2rem;
-  font-size: 0.8125rem;
-  font-family: inherit;
-  padding: 0 0.5rem;
-  border: 1px solid var(--cds-border-strong-01, #8d8d8d);
-  background: var(--cds-field-01, #fff);
-  color: var(--cds-text-primary, #161616);
-  border-radius: 0;
-  width: 100%;
-  min-width: 10rem;
-  outline: none;
+.env-manifest-when {
+  display: flex;
+  gap: 0.25rem;
+  align-items: flex-start;
 
-  &:focus {
-    outline: 2px solid var(--cds-focus, #0f62fe);
-    outline-offset: -2px;
+  > .cds--form-item {
+    flex: 0 0 auto;
   }
 
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
+  .cds--date-picker__input {
+    inline-size: 8.5rem;
+  }
+
+  .cds--time-picker__input-field {
+    width: 6.5rem !important;
+  }
+
+  .cds--form-requirement {
+    white-space: normal;
+    max-width: 10rem;
   }
 }
 
@@ -1833,5 +1837,47 @@
 
   .cds--inline-notification {
     margin: 0;
+  }
+}
+
+// OGC-1611 FR-B24, B26: a clinical sample's container with its cap colour
+// and the Proposed, Draw and Edited tags.
+.sample-container-field {
+  .sample-container-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+    min-height: 1.5rem;
+  }
+
+  .containerTypeSwatch {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 1px solid var(--cds-border-strong, #8d8d8d);
+    border-radius: 50%;
+  }
+
+  .sample-container-proposed {
+    display: inline-flex;
+  }
+}
+
+// The Prepare Samples test picker shows each name in full. Carbon truncates a
+// long tag label and then wraps it in a tooltip button, which put a button
+// inside the clickable tag's own button.
+.available-tags,
+.selected-tags {
+  .cds--tag {
+    max-inline-size: none;
+    block-size: auto;
+  }
+
+  .cds--tag__label {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
   }
 }

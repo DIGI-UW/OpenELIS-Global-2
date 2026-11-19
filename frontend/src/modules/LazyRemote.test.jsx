@@ -65,7 +65,7 @@ describe("LazyRemote", () => {
     expect(runtime.loadRemote).toHaveBeenCalledWith("alpha/Page");
   });
 
-  it("retries a failed import without reloading, then recovers on Retry with a fresh entry", async () => {
+  it("shows the placeholder after one failed import, then recovers on Retry with a fresh entry", async () => {
     runtime.loadRemote.mockRejectedValue(
       new Error(
         "[ Federation Runtime ]: Failed to load script resources. #RUNTIME-008",
@@ -79,7 +79,9 @@ describe("LazyRemote", () => {
         "The module alpha could not be shown: Failed to load script resources. #RUNTIME-008",
       ),
     ).toBeInTheDocument();
-    expect(runtime.loadRemote).toHaveBeenCalledTimes(3);
+    // The runtime keeps a failed entry, so a second attempt at the same URL
+    // would fail without a request: one attempt, then a fresh entry URL.
+    expect(runtime.loadRemote).toHaveBeenCalledTimes(1);
     expect(runtime.registerRemotes).toHaveBeenCalledTimes(2);
     const [refreshed, options] = runtime.registerRemotes.mock.calls[1];
     expect(options).toEqual({ force: true });
@@ -91,6 +93,6 @@ describe("LazyRemote", () => {
     });
 
     expect(await screen.findByText("remote page for 83")).toBeInTheDocument();
-    expect(runtime.loadRemote).toHaveBeenCalledTimes(4);
+    expect(runtime.loadRemote).toHaveBeenCalledTimes(2);
   });
 });

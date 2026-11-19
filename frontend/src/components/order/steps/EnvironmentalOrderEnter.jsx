@@ -18,7 +18,7 @@ import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
 import {
   describeUnmetRequirements,
-  hasRequesterOrRequestor,
+  fieldOrderRequirements,
 } from "../saveRequirements";
 import SaveRequirementsNotice from "../SaveRequirementsNotice";
 import { NotificationContext } from "../../layout/Layout";
@@ -139,26 +139,13 @@ const EnvironmentalOrderEnter = () => {
     envFields.vecCollectionSiteId ||
     envFields.vecCollectionSiteName
   );
-  const hasSampleTypes = samples.some((s) => s.sampleTypeId);
-  const allSamplesHaveTests = samples
-    .filter((s) => s.sampleTypeId)
-    .every((s) => (s.tests?.length || 0) + (s.panels?.length || 0) > 0);
-  const saveRequirements = [
-    {
-      met: Boolean(localLabNumber),
-      labelId: "order.save.requirement.labNumber",
-    },
-    { met: hasPatientOrSite, labelId: "order.save.requirement.samplingSite" },
-    {
-      met: hasRequesterOrRequestor(orderData?.sampleOrderItems),
-      labelId: "order.save.requirement.requesterOrRequestor",
-    },
-    { met: hasSampleTypes, labelId: "order.save.requirement.sampleType" },
-    {
-      met: hasSampleTypes && allSamplesHaveTests,
-      labelId: "order.save.requirement.testsPerSample",
-    },
-  ];
+  const saveRequirements = fieldOrderRequirements({
+    labNumber: localLabNumber,
+    hasSite: hasPatientOrSite,
+    siteLabelId: "order.save.requirement.samplingSite",
+    sampleOrderItems: orderData?.sampleOrderItems,
+    samples,
+  });
   const canSave = saveRequirements.every((requirement) => requirement.met);
   const canProceed = canSave;
 

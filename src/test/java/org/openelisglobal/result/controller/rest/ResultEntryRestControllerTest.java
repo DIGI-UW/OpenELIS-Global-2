@@ -35,6 +35,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.resultrun.service.RunQcService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -64,6 +65,8 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
     private IStatusService statusService;
     @Autowired
     private javax.sql.DataSource dataSource;
+    @Autowired
+    private RunQcService runQcService;
 
     private JdbcTemplate jdbc;
     private MockHttpSession session;
@@ -282,6 +285,62 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                 .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
                 .andExpect(status().isOk());
         assertEquals("90.0", resultService.get("3").getValue());
+    }
+
+    /**
+     * OGC-1200 slice 4 (FR-C4, FR-D4): a result stored from a run that now holds
+     * its test is not edited. The refusal names the run as held, so the page shows
+     * the row held with the reason instead of reporting someone else's edit.
+     */
+    @Test
+    public void save_ofAResultWhoseRunHoldsItsTest_isRefused409_namingTheRunAsHeld() throws Exception {
+        String stored = resultService.get("3").getValue();
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, analyzer_id, row_count, opened_at,"
+                + " last_activity_at) VALUES (?, 'ANALYZER', 'HELD', 9201, 1, NOW(), NOW())", run);
+        jdbc.update("UPDATE clinlims.result SET run_id = ? WHERE id = 3", run);
+        jdbc.update("INSERT INTO clinlims.qc_result (id, test_id, source, result_value, run_date_time, result_status,"
+                + " sys_user_id, run_id, run_verdict, verdict_source) VALUES (?, 1, 'ASTM', 1, NOW(), 'PENDING', 1,"
+                + " ?, 'FAIL', 'COMPUTED')", java.util.UUID.randomUUID().toString(), run);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.waitingRun.label").value("RUN-" + run))
+                .andExpect(jsonPath("$.waitingRun.held").value(true)).andExpect(jsonPath("$.error").exists());
+        assertEquals("the held result is unchanged", stored, resultService.get("3").getValue());
+    }
+
+    /**
+     * OGC-1200 FR-C5: once a held test is decided Retest, its stored result is open
+     * to a new value. The value typed in no longer comes from the run, so the run
+     * no longer keeps it from release; the run's own value never was released.
+     */
+    @Test
+    public void save_ofAResultWhoseRunTestWasDecidedRetest_takesTheNewValue_andLeavesTheRun() throws Exception {
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, analyzer_id, row_count, opened_at,"
+                + " last_activity_at) VALUES (?, 'ANALYZER', 'COMPLETE', 9201, 1, NOW(), NOW())", run);
+        jdbc.update("UPDATE clinlims.result SET run_id = ?, analyzer_reported_value = '88' WHERE id = 3", run);
+        jdbc.update("INSERT INTO clinlims.qc_result (id, test_id, source, result_value, run_date_time, result_status,"
+                + " sys_user_id, run_id, run_verdict, verdict_source) VALUES (?, 1, 'ASTM', 1, NOW(), 'PENDING', 1,"
+                + " ?, 'FAIL', 'COMPUTED')", java.util.UUID.randomUUID().toString(), run);
+        jdbc.update("INSERT INTO clinlims.result_run_test_disposition (id, run_id, test_id, action, sys_user_id,"
+                + " decided_at) VALUES (nextval('clinlims.result_run_test_disposition_seq'), ?, 1, 'RETEST', 1,"
+                + " NOW())", run);
+        assertEquals("the run's own value is kept from release", java.util.Set.of("1"),
+                runQcService.heldAnalysisIds(List.of("1")));
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+
+        java.util.Map<String, Object> result = jdbc
+                .queryForMap("SELECT value, run_id, analyzer_reported_value FROM clinlims.result WHERE id = 3");
+        assertEquals("90.0", result.get("value"));
+        assertNull("the new value is not the run's", result.get("run_id"));
+        assertNull(result.get("analyzer_reported_value"));
+        assertTrue("the run no longer keeps the new value from release",
+                runQcService.heldAnalysisIds(List.of("1")).isEmpty());
     }
 
     /**
@@ -935,6 +994,73 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
 
         assertEquals(MessageUtil.getMessage("result.critical.defaultMessage"), jdbc.queryForObject(
                 "SELECT message FROM clinlims.result_entry_acknowledgement WHERE analysis_id = 1", String.class));
+    }
+
+    @Test
+    public void save_criticalCodedAnswer_isRefusedUntilAcknowledged_thenRaisesTheCriticalAlert() throws Exception {
+        String detected = codedAnswer("OGC1610 Detected", true);
+        String notDetected = codedAnswer("OGC1610 Not detected", false);
+        storeCodedAnswer(notDetected);
+        try {
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(detected, "")).session(session)).andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"))
+                    .andExpect(jsonPath("$.acknowledgementRequired[0].value").value("OGC1610 Detected"));
+            assertEquals(notDetected, resultService.get("3").getValue());
+
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(detected, ",\"criticalAcknowledged\":true")).session(session))
+                    .andExpect(status().isOk());
+            assertEquals(detected, resultService.get("3").getValue());
+            assertEquals(Integer.valueOf(1), acknowledgementCount());
+            assertEquals("OGC1610 Detected",
+                    jdbc.queryForObject(
+                            "SELECT context_data->>'value' FROM clinlims.alert WHERE alert_type ="
+                                    + " 'CRITICAL_RESULT' AND alert_entity_type = 'ANALYSIS' AND alert_entity_id = 1",
+                            String.class));
+
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(detected, "")).session(session)).andExpect(status().isOk());
+            assertEquals("the stored answer was acknowledged when it was saved", Integer.valueOf(1),
+                    acknowledgementCount());
+        } finally {
+            jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry LIKE 'OGC1610 %'");
+        }
+    }
+
+    @Test
+    public void save_codedAnswerNotMarkedCritical_owesNothing() throws Exception {
+        String notDetected = codedAnswer("OGC1610 Not detected", false);
+        storeCodedAnswer(codedAnswer("OGC1610 Detected", true));
+        try {
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(codedSaveBody(notDetected, "")).session(session)).andExpect(status().isOk());
+            assertEquals(notDetected, resultService.get("3").getValue());
+            assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                    "SELECT count(*) FROM clinlims.alert WHERE alert_type = 'CRITICAL_RESULT'", Integer.class));
+        } finally {
+            jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry LIKE 'OGC1610 %'");
+        }
+    }
+
+    private String codedAnswer(String entry, boolean critical) {
+        String id = jdbc.queryForObject("SELECT nextval('clinlims.dictionary_seq')::text", String.class);
+        jdbc.update("INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated) VALUES (?::numeric, ?,"
+                + " 'Y', NOW())", id, entry);
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, sort_order, is_active,"
+                + " is_critical, lastupdated) VALUES (nextval('clinlims.test_result_seq'), 1, 'D', ?, 1, true, ?,"
+                + " NOW())", id, critical);
+        return id;
+    }
+
+    private void storeCodedAnswer(String answer) {
+        jdbc.update("UPDATE clinlims.result SET result_type = 'D', value = ?, test_result_id = (SELECT id FROM"
+                + " clinlims.test_result WHERE test_id = 1 AND value = ?) WHERE id = 3", answer, answer);
+    }
+
+    private String codedSaveBody(String answer, String extras) {
+        return saveBodyWithExtras("1", "3", "1", answer, currentToken("1"), "\"note\":\"\"" + extras)
+                .replace("\"resultType\":\"N\"", "\"resultType\":\"D\"");
     }
 
     /**

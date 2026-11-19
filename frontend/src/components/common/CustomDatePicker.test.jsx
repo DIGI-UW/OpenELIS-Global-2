@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -159,5 +159,38 @@ describe("CustomDatePicker — typed dates outside the allowed range", () => {
 
     expect(onChange).toHaveBeenCalledWith("");
     expect(screen.getByText("Pick today or a later date.")).toBeInTheDocument();
+  });
+});
+
+describe("CustomDatePicker — retyped text that is not a full date (OGC-1635)", () => {
+  const clickElsewhere = () => {
+    act(() => {
+      fireEvent.touchStart(document.body);
+      fireEvent.mouseDown(document.body);
+      findInput().blur();
+    });
+  };
+
+  const retype = (text) => {
+    const input = findInput();
+    act(() => input.focus());
+    fireEvent.click(input);
+    fireEvent.input(input, { target: { value: text } });
+  };
+
+  test("drops the earlier date and marks the text when a 2-digit year replaces it", () => {
+    const onChange = vi.fn();
+    renderWithConfig({ id: "dob", value: "", onChange });
+
+    retype("03/09/1990");
+    clickElsewhere();
+    expect(onChange).toHaveBeenLastCalledWith("03/09/1990");
+
+    retype("03/09/85");
+    clickElsewhere();
+
+    expect(onChange).toHaveBeenLastCalledWith("");
+    expect(findInput()).toHaveValue("03/09/85");
+    expect(findInput()).toHaveAttribute("data-invalid");
   });
 });
