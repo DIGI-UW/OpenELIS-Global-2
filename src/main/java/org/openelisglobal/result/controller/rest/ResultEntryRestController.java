@@ -29,6 +29,7 @@ import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IResultSaveService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.registration.ResultUpdateRegister;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -40,6 +41,7 @@ import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.eqa.service.EQACycleSubmissionService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -62,6 +64,7 @@ import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.resultrun.service.RunQcService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -76,6 +79,7 @@ import org.openelisglobal.testresultcomponent.service.TestResultComponentService
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testresultinterpretation.service.TestResultInterpretationService;
 import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
+import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -517,9 +521,23 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                 .filter(r -> r != null && r.getId() != null).findFirst().ifPresent(r -> {
                     body.put("resultId", r.getId());
                     body.put("rawResultValue", StringUtil.blankIfNull(r.getEnteredValue()));
-                    body.put("resultValue", resultService.formatResultForDisplay(r, false));
+                    body.put("resultValue",
+                            TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(r.getResultType())
+                                    ? componentSelections(r)
+                                    : resultService.formatResultForDisplay(r, false));
                 });
         return ResponseEntity.ok(body);
+    }
+
+    private String componentSelections(Result saved) {
+        RuleResultScope scope = SpringContext.getBean(RuleResultScope.class);
+        DictionaryService dictionaries = SpringContext.getBean(DictionaryService.class);
+        String componentId = scope.componentIdOf(saved);
+        return resultService.getResultsByAnalysis(saved.getAnalysis()).stream()
+                .filter(r -> TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(r.getResultType())
+                        && !GenericValidator.isBlankOrNull(r.getValue())
+                        && java.util.Objects.equals(scope.componentIdOf(r), componentId))
+                .map(r -> dictionaries.getDataForId(r.getValue()).getDictEntry()).collect(Collectors.joining(","));
     }
 
     /**

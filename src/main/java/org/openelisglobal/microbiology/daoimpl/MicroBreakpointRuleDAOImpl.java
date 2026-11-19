@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.daoimpl;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.hibernate.Session;
@@ -36,7 +37,7 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
                 .createQuery("from MicroBreakpointRule r where r.isActive = 'Y' and r.standardId = :standardId"
                         + " and r.antibioticId = :antibioticId and r.breakpointType = :breakpointType"
                         + " and (r.clinicalContext is null or r.clinicalContext = :clinicalContext)"
-                        + " and (r.diskContent is null or r.diskContent = :diskContent)"
+                        + " and (r.diskContent = :diskContent or (r.diskContent is null and r.breakpointType <> 'ZONE'))"
                         + " and (r.method is null or r.method = :method)"
                         + " and (r.specimenTypeId is null or r.specimenTypeId = :specimenTypeId)"
                         + " and (r.organismId = :organismId or r.organismGroup = :organismGroup"
@@ -74,14 +75,14 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
     public Optional<MicroBreakpointRule> findByNaturalKey(String standardId, String organismId, String organismGroup,
             String antibioticId, String method, String specimenTypeId, String breakpointType) {
         return findByContextualNaturalKey(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
-                breakpointType, null);
+                breakpointType, null, null);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<MicroBreakpointRule> findByContextualNaturalKey(String standardId, String organismId,
             String organismGroup, String antibioticId, String method, String specimenTypeId, String breakpointType,
-            String clinicalContext) {
+            String clinicalContext, String diskContent) {
         Query<MicroBreakpointRule> query = entityManager.unwrap(Session.class)
                 .createQuery("from MicroBreakpointRule r where r.standardId = :standardId"
                         + " and ((r.organismId = :organismId) or (r.organismId is null and :organismId is null))"
@@ -90,7 +91,8 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
                         + " and ((r.method = :method) or (r.method is null and :method is null))"
                         + " and ((r.specimenTypeId = :specimenTypeId) or (r.specimenTypeId is null and :specimenTypeId is null))"
                         + " and r.breakpointType = :breakpointType"
-                        + " and (r.clinicalContext = :clinicalContext or (r.clinicalContext is null and :clinicalContext is null))",
+                        + " and (r.clinicalContext = :clinicalContext or (r.clinicalContext is null and :clinicalContext is null))"
+                        + " and (r.diskContent = :diskContent or (r.diskContent is null and :diskContent is null))",
                         MicroBreakpointRule.class);
         query.setParameter("standardId", standardId);
         query.setParameter("organismId", organismId);
@@ -100,7 +102,23 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
         query.setParameter("specimenTypeId", specimenTypeId);
         query.setParameter("breakpointType", breakpointType);
         query.setParameter("clinicalContext", clinicalContext);
+        query.setParameter("diskContent", diskContent);
         return query.uniqueResultOptional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroBreakpointRule> getActiveByAntibioticIds(Collection<String> antibioticIds) {
+        if (antibioticIds.isEmpty()) {
+            return List.of();
+        }
+        return entityManager.unwrap(Session.class)
+                .createQuery(
+                        "from MicroBreakpointRule r where r.isActive = 'Y' and r.antibioticId in (:antibioticIds)"
+                                + " and r.standardId in (select s.id from MicroBreakpointStandard s"
+                                + " where s.isActive = 'Y' and s.lifecycleStatus = 'ACTIVE')",
+                        MicroBreakpointRule.class)
+                .setParameterList("antibioticIds", antibioticIds).list();
     }
 
     @Override

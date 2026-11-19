@@ -7,7 +7,9 @@ import messages from "../../../languages/en.json";
 import CaseIsolateWorkspace from "../CaseIsolateWorkspace";
 
 vi.mock("../OrganismSearch", () => ({
-  searchOrganisms: vi.fn().mockResolvedValue([]),
+  searchOrganisms: vi
+    .fn()
+    .mockResolvedValue([{ id: "o1", label: "Escherichia coli" }]),
   getOrganism: vi.fn().mockResolvedValue(null),
   organismText: (organism) => organism?.label || "",
 }));
@@ -55,11 +57,11 @@ const api = (rows = [isolate]) => ({
     .fn()
     .mockResolvedValue({ isolates: rows, referrals: [], referred: false }),
 });
-const show = (service, canWrite = true) =>
+const show = (service, canWrite = true, amendmentOpen = false) =>
   render(
     <IntlProvider locale="en" messages={messages}>
       <CaseIsolateWorkspace
-        detail={{ id: "c1", labUnitId: "unit1", canWrite }}
+        detail={{ id: "c1", labUnitId: "unit1", canWrite, amendmentOpen }}
         service={service}
       />
     </IntlProvider>,
@@ -156,12 +158,9 @@ it("a validator must provide a reason to acknowledge the sender mismatch", async
     exact: true,
   });
   expect(save).toBeDisabled();
-  fireEvent.change(
-    within(dialog).getByLabelText(
-      messages["microbiology.isolate.identificationReason"],
-    ),
-    { target: { value: "Reviewed sending laboratory report" } },
-  );
+  fireEvent.change(within(dialog).getByLabelText(/Re-identification reason/), {
+    target: { value: "Reviewed sending laboratory report" },
+  });
   fireEvent.click(save);
   await waitFor(() =>
     expect(service.isolateAction).toHaveBeenCalledWith(
@@ -225,6 +224,58 @@ it("says the server did not answer when a pick gets no response", async () => {
   ).not.toBeInTheDocument();
 });
 
+const identify = async () => {
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Identify organism" }),
+  );
+  const fields = within(screen.getByRole("dialog"));
+  fireEvent.change(
+    fields.getByRole("combobox", {
+      name: messages["microbiology.isolate.organism"],
+    }),
+    { target: { value: "Escherichia" } },
+  );
+  fireEvent.click(
+    await fields.findByRole("option", { name: "Escherichia coli" }),
+  );
+  fireEvent.change(
+    fields.getByLabelText(
+      messages["microbiology.isolate.identificationMethod"],
+    ),
+    { target: { value: "m1" } },
+  );
+  return fields;
+};
+
+it("a first identification during an amendment requires a reason", async () => {
+  show(api(), true, true);
+  const fields = await identify();
+  const reason = fields.getByLabelText(/Re-identification reason/);
+  const save = fields.getByRole("button", { name: "Save", exact: true });
+  expect(reason).toHaveAttribute("aria-required", "true");
+  expect(save).toBeDisabled();
+  fireEvent.change(reason, { target: { value: "Amended after sequencing" } });
+  expect(save).toBeEnabled();
+});
+
+it("shows why the server refused an identification", async () => {
+  const service = api();
+  service.isolateAction.mockRejectedValue({
+    response: { status: 400, message: "REIDENTIFICATION_REASON_REQUIRED" },
+  });
+  show(service);
+  const fields = await identify();
+  expect(fields.getByLabelText(/Re-identification reason/)).not.toHaveAttribute(
+    "aria-required",
+  );
+  fireEvent.click(fields.getByRole("button", { name: "Save", exact: true }));
+  expect(
+    await fields.findByText(
+      "Give a reason for this identification. Re-identifying an isolate, or identifying one during an amendment, needs a reason.",
+    ),
+  ).toBeVisible();
+});
+
 it("requires a reason and valid confidence before submitting a versioned reidentification", async () => {
   const service = api([
     {
@@ -244,7 +295,7 @@ it("requires a reason and valid confidence before submitting a versioned reident
   const dialog = screen.getByRole("dialog");
   const fields = within(dialog);
   const save = fields.getByRole("button", { name: "Save", exact: true });
-  const reason = fields.getByLabelText("Re-identification reason");
+  const reason = fields.getByLabelText(/Re-identification reason/);
   expect(save).toBeDisabled();
   fireEvent.change(reason, { target: { value: "   " } });
   expect(save).toBeDisabled();
@@ -281,6 +332,41 @@ it("requires a reason and valid confidence before submitting a versioned reident
         version: "v1",
         reason: "Corrected after confirmatory panel",
       }),
+    ),
+  );
+});
+
+it("reidentifies with the stored method when the lab's method list lacks it", async () => {
+  const service = api([
+    {
+      ...isolate,
+      organismId: "o1",
+      status: "FINAL",
+      method: "MALDI_TOF",
+      canIdentify: false,
+      canReidentify: true,
+    },
+  ]);
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Reidentify", exact: true }),
+  );
+  const fields = within(screen.getByRole("dialog"));
+  expect(
+    fields.getByLabelText(
+      messages["microbiology.isolate.identificationMethod"],
+    ),
+  ).toHaveValue("MALDI_TOF");
+  fireEvent.change(fields.getByLabelText(/Re-identification reason/), {
+    target: { value: "Corrected after confirmatory panel" },
+  });
+  fireEvent.click(fields.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.isolateAction).toHaveBeenCalledWith(
+      "c1",
+      "i1",
+      "reidentify",
+      expect.objectContaining({ identificationMethod: "MALDI_TOF" }),
     ),
   );
 });
@@ -392,6 +478,52 @@ it("submits the shared specimen referral with only a receiving lab and scoped te
   );
   expect(
     screen.getByText(messages["label.results.history.event.REFERRAL"]),
+  ).toBeVisible();
+});
+
+it("explains a refused referral for a test that is already referred", async () => {
+  const service = api([]);
+  service.getIsolateOptions.mockResolvedValue({
+    ...options,
+    referralOrganizations: [{ id: "lab1", value: "Reference facility" }],
+    tests: [
+      { id: "test1", name: "Confirmatory PCR", sampleTypeIds: ["specimen"] },
+    ],
+  });
+  service.referSpecimen = vi.fn().mockRejectedValue(
+    Object.assign(new Error("request failed"), {
+      response: {
+        status: 400,
+        error: "MICROBIOLOGY_VALIDATION_ERROR",
+        message: "MICROBIOLOGY_ISOLATE_REFERRAL_EXISTS",
+      },
+    }),
+  );
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Refer specimen out" }),
+  );
+  const fields = within(screen.getByRole("dialog"));
+  fireEvent.change(fields.getByLabelText("Isolate or specimen item"), {
+    target: { value: "s1" },
+  });
+  fireEvent.change(
+    fields.getByLabelText("Requested referral or confirmatory test"),
+    { target: { value: "test1" } },
+  );
+  fireEvent.change(fields.getByRole("combobox", { name: "Reference lab" }), {
+    target: { value: "Reference facility" },
+  });
+  fireEvent.click(
+    await fields.findByRole("option", { name: "Reference facility" }),
+  );
+  fireEvent.click(fields.getByRole("button", { name: "Save Referral" }));
+  expect(
+    await fields.findByText(
+      messages[
+        "microbiology.isolateWorkspace.MICROBIOLOGY_ISOLATE_REFERRAL_EXISTS"
+      ],
+    ),
   ).toBeVisible();
 });
 

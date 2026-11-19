@@ -51,6 +51,7 @@ import serviceDefault from "./CaseWorkspaceService";
 import {
   MICROBIOLOGY_CASE_PATH,
   MICROBIOLOGY_WORKLIST_PATH,
+  routedScope,
 } from "./MicrobiologyRoutes";
 
 export default function CaseViewShell({
@@ -70,7 +71,7 @@ export default function CaseViewShell({
     ),
   );
   const history = useHistory();
-  const selectScope = (scope, parameters = {}) => {
+  const selectScope = (scope, parameters = {}, push = !!parameters.action) => {
     const next = new URLSearchParams(location.search);
     [
       "view",
@@ -85,12 +86,17 @@ export default function CaseViewShell({
     ].forEach((key) => next.delete(key));
     next.set("scope", scope);
     Object.entries(parameters).forEach(([key, value]) => next.set(key, value));
-    history.replace({ pathname: location.pathname, search: next.toString() });
+    history[push ? "push" : "replace"]({
+      pathname: location.pathname,
+      search: next.toString(),
+    });
   };
-  const openSection = (scope, parameters) => {
-    selectScope(scope, parameters);
+  const openSection = (scope, parameters, push) => {
+    selectScope(scope, parameters, push);
     setJump({ scope });
   };
+  const openCaseAction = (scope, parameters) =>
+    openSection(scope, parameters, true);
   const worklistSearch = new URLSearchParams(location.search);
   [
     "view",
@@ -142,12 +148,15 @@ export default function CaseViewShell({
       live = false;
     };
   }, [detail, service]);
+  const caseId = detail?.id;
+  useEffect(() => {
+    setReadiness(null);
+    setPartialReady(false);
+  }, [caseId]);
   useEffect(() => {
     let live = true;
     if (!detail || !service.getReadiness || !service.getReport)
       return undefined;
-    setReadiness(null);
-    setPartialReady(false);
     Promise.all([service.getReadiness(detail.id), service.getReport(detail.id)])
       .then(([value, report]) => {
         if (live) {
@@ -225,7 +234,7 @@ export default function CaseViewShell({
         if (currentCase.current === id) setDetail(next);
       })
       .catch(() => setError(true));
-  const currentScope = new URLSearchParams(location.search).get("scope");
+  const currentScope = routedScope(location.search);
   const worklistLink = (
     <RouterLink
       to={`${MICROBIOLOGY_WORKLIST_PATH}${worklistSearch.toString() ? `?${worklistSearch}` : ""}`}
@@ -318,7 +327,7 @@ export default function CaseViewShell({
                       <OverflowMenuItem
                         itemText={t("microbiology.critical.logNotification")}
                         onClick={() =>
-                          openSection("CRITICAL", {
+                          openCaseAction("CRITICAL", {
                             action: "log-critical",
                             targetType: "CASE",
                             targetId: id,
@@ -329,14 +338,14 @@ export default function CaseViewShell({
                     {detail.canWrite && (
                       <OverflowMenuItem
                         itemText={t("microbiology.nce.report")}
-                        onClick={() => openSection("NONCONFORMANCE")}
+                        onClick={() => openCaseAction("NONCONFORMANCE")}
                       />
                     )}
                     {detail.canAmend &&
                       detail.finalReleaseState === "FINAL_RELEASED" && (
                         <OverflowMenuItem
                           itemText={t("microbiology.amendment.open")}
-                          onClick={() => openSection("AMENDMENT")}
+                          onClick={() => openCaseAction("AMENDMENT")}
                         />
                       )}
                     {detail.canWrite && (
@@ -345,7 +354,9 @@ export default function CaseViewShell({
                         isDelete
                         hasDivider
                         onClick={() =>
-                          openSection("NONCONFORMANCE", { action: "mark-lost" })
+                          openCaseAction("NONCONFORMANCE", {
+                            action: "mark-lost",
+                          })
                         }
                       />
                     )}
