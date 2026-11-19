@@ -210,7 +210,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             AnalyzerResults row = item.getAnalyzerId() == null
                     ? analyzerResultsService.getMatch("id", item.getId()).orElse(null)
                     : staged.get(item.getId());
-            if (row != null) {
+            if (row != null && !row.isReadOnly()) {
                 reasons.put(item.getId(), Objects.toString(row.getImportIssueReason(), ""));
             }
         }

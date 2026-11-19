@@ -332,6 +332,7 @@ const AnalyserResults = (props) => {
   const handleResponse = async (response) => {
     let message = intl.formatMessage({ id: "validation.save.error" });
     let kind = NotificationKinds.error;
+    let timeout;
     setIsSubmitting(false);
     if (response.status == 422) {
       const body = await response.json().catch(() => null);
@@ -351,6 +352,7 @@ const AnalyserResults = (props) => {
           { rows: describeLeftInReview(leftInReview) },
         );
         kind = NotificationKinds.warning;
+        timeout = 0;
       } else {
         message = intl.formatMessage({ id: "validation.save.success" });
         kind = NotificationKinds.success;
@@ -368,6 +370,7 @@ const AnalyserResults = (props) => {
       kind: kind,
       title: intl.formatMessage({ id: "notification.title" }),
       message: message,
+      timeout,
     });
     setNotificationVisible(true);
   };
@@ -955,7 +958,7 @@ const AnalyserResults = (props) => {
                   name={"resultList[?(@.id == " + row.id + ")].result"}
                   disabled={false}
                   type="text"
-                  value={row.result}
+                  defaultValue={row.result}
                   labelText=""
                   size="lg"
                   onChange={(e) => handleChange(e, row.id)}

@@ -288,6 +288,32 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.leftInReview[0].reason").value("awaiting_placement"));
     }
 
+    /**
+     * A read-only copy of the test (a re-export) is ticked with it on the page but
+     * never saves; the save still stored the test and must not call it unsaved.
+     */
+    @Test
+    public void aReadOnlyCopyOfASavedTest_isNotNamedAsLeftInReview() throws Exception {
+        orderWithPatientFor("ACC123456");
+        new JdbcTemplate(dataSource).update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number,"
+                + " test_name, result, iscontrol, read_only, test_id, last_updated) VALUES (1009, 2001, 'ACC123456',"
+                + " 'Glucose', '5.6', false, true, 4001, NOW())");
+        MockHttpSession session = new MockHttpSession();
+        String loaded = mockMvc.perform(
+                get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001").session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        String body = mockMvc
+                .perform(post("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).with(csrf()).session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(acceptRowWithNote(acceptRowWithNote(loaded, "1001", null), "1009", null)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        org.junit.Assert.assertEquals("", body);
+        org.junit.Assert.assertEquals(Integer.valueOf(0), new JdbcTemplate(dataSource)
+                .queryForObject("SELECT count(*)::int FROM clinlims.analyzer_results WHERE id = 1001", Integer.class));
+    }
+
     @Test
     public void aSelectedMismatchSavedWithANote_isSavedAndNothingIsLeftInReview() throws Exception {
         stageMismatchedPatient();
@@ -308,7 +334,13 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
     }
 
     private void stageMismatchedPatient() {
-        orderFor("ACC123456", 4001, true);
+        orderWithPatientFor("ACC123456");
+        new JdbcTemplate(dataSource).update("UPDATE clinlims.analyzer_results SET instrument_patient_id ="
+                + " 'SOMEONE-ELSE', instrument_patient_name = 'Roe, Rick' WHERE id = 1001");
+    }
+
+    private void orderWithPatientFor(String accession) {
+        orderFor(accession, 4001, true);
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         long person = jdbc.queryForObject("SELECT nextval('person_seq')", Long.class);
         jdbc.update("INSERT INTO clinlims.person (id, last_name, first_name, lastupdated)"
@@ -316,12 +348,10 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
         long patient = jdbc.queryForObject("SELECT nextval('patient_seq')", Long.class);
         jdbc.update("INSERT INTO clinlims.patient (id, person_id, gender, birth_date, external_id, lastupdated)"
                 + " VALUES (?, ?, 'F', '1990-01-01', 'EXT-REAL-1', NOW())", patient, person);
-        long sample = jdbc.queryForObject("SELECT id FROM clinlims.sample WHERE accession_number = 'ACC123456'",
-                Long.class);
+        long sample = jdbc.queryForObject("SELECT id FROM clinlims.sample WHERE accession_number = ?", Long.class,
+                accession);
         jdbc.update("INSERT INTO clinlims.sample_human (id, patient_id, samp_id, lastupdated)"
                 + " VALUES (nextval('sample_human_seq'), ?, ?, NOW())", patient, sample);
-        jdbc.update("UPDATE clinlims.analyzer_results SET instrument_patient_id = 'SOMEONE-ELSE',"
-                + " instrument_patient_name = 'Roe, Rick' WHERE id = 1001");
     }
 
     private long orderFor(String accession, long testId, boolean awaitingResult) {

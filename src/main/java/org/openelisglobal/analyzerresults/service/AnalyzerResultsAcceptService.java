@@ -38,7 +38,8 @@ public interface AnalyzerResultsAcceptService {
     /**
      * The rows the reviewer acted on that are still staged after an accept, each
      * with the reason it is held ("" when it carries none). A saved, retested or
-     * ignored row leaves staging, so these are the ones the save did not take.
+     * ignored row leaves staging, so these are the ones the save did not take. A
+     * read-only copy of a test, such as a re-export, never saves and is left out.
      */
     Map<String, String> stillInReview(List<AnalyzerResultItem> allResults);
 

@@ -319,6 +319,31 @@ describe("Analyzer results worklist", () => {
     expect(document.getElementById("resultList5.isAccepted")).toBeChecked();
   });
 
+  // The box showed the old value while the typed keys went into the save:
+  // "7" typed into 1009.64 stored 17009.64.
+  it("shows the value typed in the result box and saves that value", async () => {
+    worklist = {
+      resultList: [{ ...row(3), isAccepted: true }],
+      type: "Demo Analyzer",
+    };
+    renderScreen();
+    await screen.findByText(/ACC3/);
+    const box = document.getElementById("resultList3.result");
+
+    fireEvent.change(box, { target: { value: "157" } });
+
+    expect(box).toHaveValue("157");
+    postToOpenElisServerFullResponse.mockImplementation((url, body, callback) =>
+      callback({ status: 200 }),
+    );
+    fireEvent.click(screen.getByTestId("Save-btn"));
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const sent = JSON.parse(postToOpenElisServerFullResponse.mock.calls[0][1]);
+    expect(sent.resultList.find((r) => r.id === "3").result).toBe("157");
+  });
+
   it("names the selected results a save left in review instead of reporting success", async () => {
     worklist = { resultList: [row(2)], type: "Demo Analyzer" };
     renderScreen();
@@ -346,6 +371,7 @@ describe("Analyzer results worklist", () => {
       expect(addNotification).toHaveBeenCalledWith(
         expect.objectContaining({
           kind: "warning",
+          timeout: 0,
           message: expect.stringMatching(
             /ACC2 Test 2: choose its analysis or order, or explain the patient mismatch in the note/,
           ),
