@@ -1,6 +1,8 @@
 package org.openelisglobal.microbiology.service;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import org.openelisglobal.microbiology.dao.MicroReportingRuleDAO;
 import org.openelisglobal.microbiology.form.*;
 import org.openelisglobal.microbiology.valueholder.*;
 import org.springframework.stereotype.Service;
@@ -11,6 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class MicroAstResponseService {
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.microbiology.dao.MicroAntibioticDAO antibiotics;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroReportingRuleDAO reportingRules;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroIsolateDAO isolates;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseDAO cases;
     private final MicroAstService astService;
 
     public MicroAstResponseService(MicroAstService astService) {
@@ -30,8 +38,6 @@ public class MicroAstResponseService {
             var f = new MicroAstRunAntibioticForm();
             f.antibioticId = ordered.getAntibioticId();
             f.displayOrder = ordered.getDisplayOrder();
-            f.tier = ordered.getTier();
-            f.reportBehavior = ordered.getReportBehavior();
             return f;
         }).toList();
     }
@@ -87,13 +93,29 @@ public class MicroAstResponseService {
         form.analyzerCompletedAt = run.getAnalyzerCompletedAt();
         form.analyzerMessageCodes = run.getAnalyzerMessageCodes();
         form.sourceEventId = run.getSourceEventId();
-        for (MicroAstRunAntibiotic ordered : astService.getOrderedAntibioticsForRun(run.getId())) {
+        var readings = astService.getReadingsForRun(run.getId());
+        form.intrinsicContradiction = astService.latestReadings(run.getId()).stream()
+                .anyMatch(MicroAstReading::contradictsExpertRule);
+        var orderedAntibiotics = astService.getOrderedAntibioticsForRun(run.getId());
+        boolean released = orderedAntibiotics.stream().anyMatch(ordered -> ordered.getReportRuleId() != null)
+                && finalReleased(run);
+        Map<String, MicroAstReading> lastReadings = readings.stream().collect(
+                Collectors.toMap(MicroAstReading::getAntibioticId, reading -> reading, (first, second) -> second));
+        for (MicroAstRunAntibiotic ordered : orderedAntibiotics) {
             MicroAstRunAntibioticForm orderedForm = new MicroAstRunAntibioticForm();
             orderedForm.antibioticId = ordered.getAntibioticId();
             orderedForm.antibioticName = antibiotics.get(ordered.getAntibioticId()).orElseThrow().getDisplayName();
             orderedForm.displayOrder = ordered.getDisplayOrder();
-            orderedForm.tier = ordered.getTier();
             orderedForm.reportBehavior = ordered.getReportBehavior();
+            orderedForm.reportRuleId = ordered.getReportRuleId();
+            if (orderedForm.reportRuleId != null && !released) {
+                var last = lastReadings.get(ordered.getAntibioticId());
+                var interpretation = last == null ? null : MicroAstReportChoiceService.interpretation(last);
+                var rule = reportingRules.get(orderedForm.reportRuleId).orElse(null);
+                orderedForm.ruleNote = rule == null ? null : rule.noteFor(interpretation);
+            }
+            orderedForm.reported = ordered.isReported();
+            orderedForm.reportManual = ordered.isReportManual();
             form.orderedAntibiotics.add(orderedForm);
         }
         return form;
@@ -121,10 +143,16 @@ public class MicroAstResponseService {
         form.analyzerResultReference = reading.getAnalyzerResultReference();
         form.overrideInterpretation = reading.getOverrideInterpretation();
         form.overrideReason = reading.getOverrideReason();
+        form.overrideRuleId = reading.getOverrideRuleId();
         form.createdAt = reading.getCreatedAt();
         form.createdBy = reading.getCreatedBy();
         form.overrideHistory = overrideHistory.stream().filter(event -> reading.getId().equals(event.readingId))
                 .toList();
         return form;
+    }
+
+    private boolean finalReleased(MicroAstRun run) {
+        return isolates.get(run.getIsolateId()).flatMap(isolate -> cases.get(isolate.getCaseId()))
+                .map(c -> "FINAL_RELEASED".equals(c.getFinalReleaseState())).orElse(false);
     }
 }

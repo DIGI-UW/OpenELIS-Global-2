@@ -216,7 +216,7 @@ public class MicrobiologyReferenceAdminServiceTest {
 
         MicroAstPanelAdminForm request = new MicroAstPanelAdminForm();
         request.name = "Gram negative panel";
-        request.antibiotics = List.of(panelAntibiotic("gen", 1, "ALWAYS"), panelAntibiotic("cip", 2, "CASCADE"));
+        request.antibiotics = List.of(panelAntibiotic("gen"), panelAntibiotic("cip"));
 
         MicroAstPanelAdminForm result = service.publishPanelVersion("panel-v1", request, "42");
 
@@ -255,11 +255,9 @@ public class MicrobiologyReferenceAdminServiceTest {
         return antibiotic;
     }
 
-    private MicroAstPanelAntibioticAdminForm panelAntibiotic(String id, int tier, String behavior) {
+    private MicroAstPanelAntibioticAdminForm panelAntibiotic(String id) {
         MicroAstPanelAntibioticAdminForm form = new MicroAstPanelAntibioticAdminForm();
         form.antibioticId = id;
-        form.tier = tier;
-        form.reportBehavior = behavior;
         return form;
     }
 }

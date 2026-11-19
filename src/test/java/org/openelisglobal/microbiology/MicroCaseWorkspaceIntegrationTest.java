@@ -357,6 +357,81 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     @Test
+    public void statusIsWorkedOutFromReleasesWithAmendmentOpenAsATag() {
+        assertStatus("IN_PROGRESS");
+        own.setFinalReleaseState(MicroCaseFinalReleaseState.PRELIMINARY_RELEASED.name());
+        assertStatus("PARTIAL");
+        own.setFinalReleaseState(MicroCaseFinalReleaseState.FINAL_RELEASED.name());
+        assertStatus("FINAL");
+        var first = amendment(1, MicroCaseAmendmentStatus.OPEN);
+        own.setFinalReleaseState(MicroCaseFinalReleaseState.AMENDMENT_IN_PROGRESS.name());
+        assertStatus("FINAL", "AMENDMENT_OPEN");
+        first.setStatus(MicroCaseAmendmentStatus.RELEASED.name());
+        own.setFinalReleaseState(MicroCaseFinalReleaseState.FINAL_RELEASED.name());
+        assertStatus("AMENDED");
+        amendment(2, MicroCaseAmendmentStatus.OPEN);
+        own.setFinalReleaseState(MicroCaseFinalReleaseState.AMENDMENT_IN_PROGRESS.name());
+        assertStatus("AMENDED", "AMENDMENT_OPEN");
+        own.setStatus(MicroCaseStatus.CANCELLED);
+        assertEquals("CANCELLED", workspace.get(own.getId(), viewer).caseStatus);
+        var q = query();
+        q.caseStatus = "ACTIVE";
+        assertThrows(IllegalArgumentException.class, () -> workspace.search(q, viewer));
+    }
+
+    @Test
+    public void statOrderPriorityTagsTheCase() {
+        assertFalse(workspace.get(own.getId(), viewer).stat);
+        em.find(org.openelisglobal.sample.valueholder.Sample.class, own.getSampleId())
+                .setPriority(org.openelisglobal.sample.valueholder.OrderPriority.STAT);
+        em.flush();
+        assertTrue(workspace.get(own.getId(), viewer).stat);
+        assertTrue(workspace.search(query(), viewer).rows.get(0).stat);
+    }
+
+    private MicroCaseAmendment amendment(int sequence, MicroCaseAmendmentStatus status) {
+        var a = new MicroCaseAmendment();
+        a.setCaseId(own.getId());
+        a.setSequenceNumber(sequence);
+        a.setStatus(status.name());
+        a.setReason("Corrected organism");
+        a.setOpenedAt(new java.sql.Timestamp(System.currentTimeMillis()));
+        a.setOpenedBy(actor);
+        em.persist(a);
+        return a;
+    }
+
+    private void assertStatus(String status, String... tags) {
+        em.flush();
+        var shell = workspace.get(own.getId(), viewer);
+        assertEquals(status, shell.caseStatus);
+        assertEquals(List.of(tags), shell.statusTags);
+        var row = workspace.search(query(), viewer).rows.get(0);
+        assertEquals(status, row.caseStatus);
+        assertEquals(List.of(tags), row.statusTags);
+        for (String filter : List.of("IN_PROGRESS", "PARTIAL", "FINAL", "AMENDED", "AMENDMENT_OPEN")) {
+            var q = query();
+            q.caseStatus = filter;
+            assertEquals(filter, filter.equals(status) || List.of(tags).contains(filter),
+                    workspace.search(q, viewer).rows.stream().anyMatch(r -> r.id.equals(own.getId())));
+        }
+    }
+
+    @Test
+    public void blockedFinalReleaseAnswersConflictNamingWhatIsMissing() throws Exception {
+        grantRole(Constants.ROLE_VALIDATION, source.getId());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .post("/rest/microbiology/cases/" + own.getId() + "/release/final")
+                .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, sessionActor())
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isConflict())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.error")
+                        .value("MICROBIOLOGY_RELEASE_BLOCKED"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.blockers",
+                        org.hamcrest.CoreMatchers.hasItem("REPORTABLE_WORK_REQUIRED")));
+    }
+
+    @Test
     public void pendingCaseHeaderLoadsBeforePhysicalSampleExists() {
         var shell = workspace.get(own.getId(), viewer);
         assertEquals(workspaceAccession(), shell.accessionNumber);

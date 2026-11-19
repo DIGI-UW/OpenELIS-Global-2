@@ -22,6 +22,7 @@ const report = () => ({
       id: "i1",
       label: "ISO-1",
       organism: "E. coli",
+      tested: 3,
       susceptibilities: [
         {
           antibioticId: "a",
@@ -82,7 +83,7 @@ it("shows four ordered sections and the chosen raw drug reading with its standar
   expect(within(table).getByText("4 ug/mL")).toBeInTheDocument();
   expect(within(table).getByText("CLSI 2026")).toBeInTheDocument();
   expect(
-    screen.getByRole("button", { name: t("finalRelease") }),
+    screen.getByRole("button", { name: "Release final report (1 missing)" }),
   ).toBeDisabled();
   expect(
     screen.getByRole("button", { name: t("partialRelease") }),
@@ -149,11 +150,11 @@ it("identifies the program and missing question when final release is blocked", 
     await screen.findByText(/Tuberculosis: Previous treatment/),
   ).toBeInTheDocument();
   expect(
-    screen.getByRole("button", { name: t("finalRelease") }),
+    screen.getByRole("button", { name: "Release final report (1 missing)" }),
   ).toBeDisabled();
 });
 
-it("requires confirmation of the exact waiting incoming results before final release", async () => {
+it("asks to confirm the exact waiting incoming results in the final release dialog", async () => {
   const service = show(
     { canWrite: true, canValidate: true },
     {
@@ -162,21 +163,36 @@ it("requires confirmation of the exact waiting incoming results before final rel
       pendingIncomingIds: ["incoming-1"],
     },
   );
-  await screen.findByText("Microbiology unit");
-  const button = screen.getByRole("button", { name: t("finalRelease") });
-  expect(button).toBeDisabled();
+  service.releaseReport.mockResolvedValue({});
   fireEvent.click(
-    screen.getByRole("checkbox", {
+    await screen.findByRole("button", { name: t("finalRelease") }),
+  );
+  const dialog = await screen.findByRole("dialog", {
+    name: "Release final report?",
+  });
+  const confirm = await within(dialog).findByRole("button", {
+    name: "Release final",
+  });
+  expect(confirm).toBeDisabled();
+  fireEvent.click(
+    within(dialog).getByRole("checkbox", {
       name: messages["microbiology.incoming.confirmRelease"],
     }),
   );
-  expect(button).toBeEnabled();
-  fireEvent.click(button);
+  expect(confirm).toBeEnabled();
+  fireEvent.click(confirm);
   await waitFor(() =>
     expect(service.releaseReport).toHaveBeenCalledWith("c1", "final", [
       "incoming-1",
     ]),
   );
+});
+
+it("names a missing clinical field in a sentence", async () => {
+  show(undefined, { blockers: ["CLINICAL_FIELD_REQUIRED:patientOrigin"] });
+  expect(
+    await screen.findByText("Patient origin is required before final release."),
+  ).toBeInTheDocument();
 });
 
 it("allows a partial report from no-growth-ready without requiring final release", async () => {
@@ -211,4 +227,65 @@ it("disables report release while the browser is offline", async () => {
   } finally {
     onLine.mockRestore();
   }
+});
+it("says how many of the isolate's tested antibiotics are reported", async () => {
+  show();
+  expect(
+    await screen.findByText("1 of 3 antibiotics reported"),
+  ).toBeInTheDocument();
+});
+it("prints a rule note under its drug without an author", async () => {
+  const data = report();
+  data.isolates[0].susceptibilities[0].readingId = "ra";
+  data.notes = [
+    {
+      text: "Consider meropenem",
+      fromRule: true,
+      targetType: "DRUG",
+      targetId: "ra",
+    },
+  ];
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseReportWorkspace
+        detail={{ id: "c1", canWrite: true, canValidate: true }}
+        service={{
+          getReport: vi.fn().mockResolvedValue(data),
+          getReportVersions: vi.fn().mockResolvedValue([]),
+          getReadiness: vi
+            .fn()
+            .mockResolvedValue({ blockers: [], finalReleaseReady: false }),
+          getTests: vi.fn().mockResolvedValue([]),
+          releaseReport: vi.fn(),
+        }}
+      />
+    </IntlProvider>,
+  );
+  expect(
+    await screen.findByText("Consider meropenem · From rule"),
+  ).toBeInTheDocument();
+});
+
+it("offers no partial release before any result is validated", async () => {
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseReportWorkspace
+        detail={{ id: "c1", canWrite: true, canValidate: true }}
+        service={{
+          getReport: vi
+            .fn()
+            .mockResolvedValue({ ...report(), validatedResults: 0 }),
+          getReportVersions: vi.fn().mockResolvedValue([]),
+          getReadiness: vi
+            .fn()
+            .mockResolvedValue({ blockers: [], finalReleaseReady: false }),
+          getTests: vi.fn().mockResolvedValue([]),
+          releaseReport: vi.fn(),
+        }}
+      />
+    </IntlProvider>,
+  );
+  expect(
+    await screen.findByRole("button", { name: t("partialRelease") }),
+  ).toBeDisabled();
 });

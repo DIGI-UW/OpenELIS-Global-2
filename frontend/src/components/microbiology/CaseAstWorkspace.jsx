@@ -1,5 +1,6 @@
 import ReagentLotPicker, { formatReagentLotConflict } from "./ReagentLotPicker";
 import ReagentUsageHistory from "./ReagentUsageHistory";
+import CaseAstRunQc from "./CaseAstRunQc";
 import { labTimestamp } from "./MicrobiologyTime";
 import ContainerLabelButton from "./ContainerLabelButton";
 import React, { useContext, useEffect, useRef, useState } from "react";
@@ -150,11 +151,18 @@ export default function CaseAstWorkspace({
   }, [detail.id, data, service, canListAnalyzers]);
   const canEnter = !readOnly && detail.canWrite && data?.canEnter;
   const canValidate = !readOnly && detail.canValidate && data?.canValidate;
+  const actionLabel = (action, run) =>
+    action === "acknowledge" &&
+    run?.intrinsicContradiction &&
+    !run?.analyzerExpertFlags
+      ? "confirmIdentification"
+      : action;
   const open = (action, isolate, run, reading, antibioticId) => {
     setError(false);
     setSelectedLots({});
     setDraft({
       action,
+      label: actionLabel(action, run),
       isolateId: isolate?.id,
       runId: run?.id,
       readingId: reading?.id,
@@ -212,7 +220,7 @@ export default function CaseAstWorkspace({
     setBusy(true);
     setError(false);
     try {
-      const { adjustPanel, ...request } = draft;
+      const { adjustPanel, label, ...request } = draft;
       if (draft.action === "resolve") {
         const { antibioticId, evidenceFingerprint, interpretation, reason } =
           draft;
@@ -254,6 +262,18 @@ export default function CaseAstWorkspace({
       setBusy(false);
     }
   };
+  const reportAction = async (body) => {
+    setBusy(true);
+    setError(false);
+    try {
+      setData(await service.astAction(detail.id, body, !canEnter));
+      onChanged?.();
+    } catch (failure) {
+      setError(failure.response?.message || failure.response?.error || true);
+    } finally {
+      setBusy(false);
+    }
+  };
   const button = (action, isolate, run, reading, antibioticId) => (
     <Button
       key={action}
@@ -261,7 +281,7 @@ export default function CaseAstWorkspace({
       kind="ghost"
       onClick={() => open(action, isolate, run, reading, antibioticId)}
     >
-      {t(`action.${action}`)}
+      {t(`action.${actionLabel(action, run)}`)}
     </Button>
   );
   const activeIsolate = data?.isolates?.find((i) => i.id === draft?.isolateId);
@@ -374,6 +394,18 @@ export default function CaseAstWorkspace({
                         </p>
                       </Stack>
                     )}
+                    <CaseAstRunQc
+                      caseId={detail.id}
+                      runId={run.id}
+                      service={service}
+                      reloadKey={data}
+                      onRecorded={() =>
+                        service
+                          .getAstWorkspace(detail.id)
+                          .then(setData)
+                          .catch(() => setError(true))
+                      }
+                    />
                     {run.status === "QC_FAILED" && (
                       <InlineNotification
                         kind="error"
@@ -401,6 +433,15 @@ export default function CaseAstWorkspace({
                         hideCloseButton
                       />
                     )}
+                    {run.intrinsicContradiction &&
+                      !run.analyzerFlagsAcknowledgedAt && (
+                        <InlineNotification
+                          kind="warning"
+                          lowContrast
+                          title={t("intrinsicContradiction")}
+                          hideCloseButton
+                        />
+                      )}
                     <TableContainer>
                       <Table
                         size="sm"
@@ -413,6 +454,7 @@ export default function CaseAstWorkspace({
                               "raw",
                               "interpretation",
                               "selected",
+                              "reportTick",
                               "actions",
                             ].map((key) => (
                               <TableHeader key={key}>{t(key)}</TableHeader>
@@ -429,6 +471,11 @@ export default function CaseAstWorkspace({
                               reading &&
                               isolate.choices.some(
                                 (c) => c.readingId === reading.id,
+                              );
+                            const showTick =
+                              selected ||
+                              !isolate.choices.some(
+                                (c) => c.antibioticId === agent.antibioticId,
                               );
                             const editable = ![
                               "REVIEWED",
@@ -467,8 +514,28 @@ export default function CaseAstWorkspace({
                                           )}
                                         </p>
                                       )}
-                                      {reading.overrideInterpretation && (
-                                        <Tag type="purple">{t("manual")}</Tag>
+                                      {reading.overrideRuleId ? (
+                                        <>
+                                          <Tag type="teal">
+                                            {t("expertRule")}
+                                          </Tag>
+                                          <p>
+                                            {intl.formatMessage(
+                                              {
+                                                id: "microbiology.m6.expertRuleLine",
+                                              },
+                                              {
+                                                organism: isolate.organism,
+                                                antibiotic:
+                                                  agent.antibioticName,
+                                              },
+                                            )}
+                                          </p>
+                                        </>
+                                      ) : (
+                                        reading.overrideInterpretation && (
+                                          <Tag type="purple">{t("manual")}</Tag>
+                                        )
                                       )}
                                       <br />
                                       {t("breakpoint")}: {run.breakpointVersion}{" "}
@@ -484,6 +551,56 @@ export default function CaseAstWorkspace({
                                     <Tag type="green">{t("selected")}</Tag>
                                   ) : (
                                     t("none")
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {showTick && (
+                                    <>
+                                      <Checkbox
+                                        id={`report-${run.id}-${agent.antibioticId}`}
+                                        labelText={intl.formatMessage(
+                                          { id: "microbiology.m6.reportAgent" },
+                                          { agent: agent.antibioticName },
+                                        )}
+                                        aria-label={intl.formatMessage(
+                                          { id: "microbiology.m6.reportAgent" },
+                                          { agent: agent.antibioticName },
+                                        )}
+                                        hideLabel
+                                        checked={!!agent.reported}
+                                        disabled={
+                                          !(canEnter || canValidate) || busy
+                                        }
+                                        onChange={(_, { checked }) =>
+                                          reportAction({
+                                            action: "report",
+                                            isolateId: isolate.id,
+                                            runId: run.id,
+                                            antibioticId: agent.antibioticId,
+                                            reported: checked,
+                                          })
+                                        }
+                                      />
+                                      {agent.reportManual ? (
+                                        <p>{t("reportReason.manual")}</p>
+                                      ) : (
+                                        agent.reportBehavior !== "ALWAYS" && (
+                                          <p>
+                                            {t(
+                                              `reportReason.${agent.reportBehavior}`,
+                                            )}
+                                          </p>
+                                        )
+                                      )}
+                                    </>
+                                  )}
+                                  {agent.ruleNote && (
+                                    <>
+                                      <Tag size="sm" type="teal">
+                                        {t("fromRule")}
+                                      </Tag>
+                                      <p>{agent.ruleNote}</p>
+                                    </>
                                   )}
                                 </TableCell>
                                 <TableCell>
@@ -539,7 +656,8 @@ export default function CaseAstWorkspace({
                         run.status === "QC_FAILED" &&
                         button("qc-override", isolate, run)}
                       {canValidate &&
-                        run.analyzerExpertFlags &&
+                        (run.analyzerExpertFlags ||
+                          run.intrinsicContradiction) &&
                         !run.analyzerFlagsAcknowledgedAt &&
                         button("acknowledge", isolate, run)}
                     </div>
@@ -585,6 +703,26 @@ export default function CaseAstWorkspace({
                 </AccordionItem>
               ))}
             </Accordion>
+            {(canEnter || canValidate) &&
+              isolate.runs.some((run) =>
+                run.orderedAntibiotics.some((agent) => agent.reportManual),
+              ) && (
+                <div>
+                  <Button
+                    size="sm"
+                    kind="ghost"
+                    disabled={busy}
+                    onClick={() =>
+                      reportAction({
+                        action: "report-reset",
+                        isolateId: isolate.id,
+                      })
+                    }
+                  >
+                    {t("action.report-reset")}
+                  </Button>
+                </div>
+              )}
           </Stack>
         </Tile>
       ))}
@@ -636,7 +774,7 @@ export default function CaseAstWorkspace({
       {draft && (
         <Modal
           open
-          modalHeading={t(`action.${draft.action}`)}
+          modalHeading={t(`action.${draft.label || draft.action}`)}
           primaryButtonText={t("save")}
           secondaryButtonText={t("cancel")}
           primaryButtonDisabled={
