@@ -49,7 +49,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyReferenceAdminService {
 
-    private static final Pattern ORGANISM_WHONET = Pattern.compile("[a-z0-9]{3,10}");
+    private static final Pattern ORGANISM_WHONET = Pattern.compile("[a-z0-9+-]{3,10}");
     private static final Pattern ANTIBIOTIC_WHONET = Pattern.compile("[A-Z0-9]{2,10}");
     private static final Set<String> ROUTES = Set.of("ORAL", "IV", "BOTH", "TOPICAL");
 
@@ -105,8 +105,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         }
         String name = requireText(request.displayName, "displayName");
         String code = normalizeOrganismCode(request.whonetCode);
-        requireText(request.organismGroup, "organismGroup");
-        requireText(request.initialSignificance, "initialSignificance");
         assertAvailable(organismDAO.findByDisplayNameIgnoreCase(name), id, "Organism name is already in use");
         assertAvailable(organismDAO.findByWhonetCodeIgnoreCase(code), id, "WHONET code is already in use");
 
@@ -116,11 +114,12 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         organism.setShortName(trimToNull(request.shortName));
         organism.setWhonetCode(code);
         organism.setOclCode(trimToNull(request.oclCode));
-        organism.setOrganismGroup(request.organismGroup.trim());
+        organism.setOrganismGroup(trimToNull(request.organismGroup));
         organism.setSusceptibilityProtocol(
                 MicroTbResistanceClassifier.Protocol.valueOf(request.susceptibilityProtocol).name());
         organism.setGramStain(trimToNull(request.gramStain));
-        organism.setInitialSignificance(request.initialSignificance.trim().toUpperCase(Locale.ROOT));
+        String significance = trimToNull(request.initialSignificance);
+        organism.setInitialSignificance(significance == null ? null : significance.toUpperCase(Locale.ROOT));
         organism.setDefaultAstPanelId(trimToNull(request.defaultAstPanelId));
         organism.setNotes(trimToNull(request.notes));
         organism.setIsActive(request.active ? "Y" : "N");
@@ -479,15 +478,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                     .sorted(Comparator.comparing(Method::getMethodName, String.CASE_INSENSITIVE_ORDER))
                     .map(method -> option(method.getId(), method.getMethodName(), method.getCode())).toList();
         }
-        if ("organisms".equals(resource)) {
-            return organismDAO.getActiveOrganisms().stream()
-                    .map(organism -> option(organism.getId(), organism.getDisplayName(), organism.getWhonetCode()))
-                    .toList();
-        }
         if ("organism-groups".equals(resource)) {
-            return organismDAO.getActiveOrganisms().stream().map(MicroOrganism::getOrganismGroup)
-                    .filter(group -> group != null && !group.isBlank()).distinct().sorted(String.CASE_INSENSITIVE_ORDER)
-                    .map(group -> option(group, group, null)).toList();
+            return organismDAO.getActiveOrganismGroups().stream().filter(group -> !group.isBlank())
+                    .sorted(String.CASE_INSENSITIVE_ORDER).map(group -> option(group, group, null)).toList();
         }
         if ("lab-organism-groups".equals(resource)) {
             return organismDAO.getLabGroupNames().stream().map(group -> option(group, group, null)).toList();
@@ -677,7 +670,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     private String normalizeOrganismCode(String code) {
         String normalized = requireText(code, "whonetCode").toLowerCase(Locale.ROOT);
         if (!ORGANISM_WHONET.matcher(normalized).matches()) {
-            throw new IllegalArgumentException("Organism WHONET code must be 3-10 lowercase letters or digits");
+            throw new IllegalArgumentException("Organism WHONET code must be 3-10 lowercase letters, digits, + or -");
         }
         return normalized;
     }

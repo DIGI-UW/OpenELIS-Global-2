@@ -48,8 +48,10 @@ District → Sub-District → Village).
 
 ### [Microbiology Reference Configuration](microbiology-reference-packages.md)
 
-- **Locations:** `configuration/backend/microbiology-organisms/`,
-  `microbiology-antimicrobials/`, and `microbiology-breakpoints/`
+- **Locations:** `configuration/backend/microbiology-whonet-organisms/`,
+  `microbiology-whonet-antibiotics/`, `microbiology-whonet-breakpoints/`,
+  `microbiology-organisms/`, `microbiology-antimicrobials/`, and
+  `microbiology-breakpoints/`
 - **Format:** ordinary configuration CSVs, optionally installed from an
   independently published, deployment-pinned metadata package
 - **Features:** shared catalog preview/apply/reload, source identities, local

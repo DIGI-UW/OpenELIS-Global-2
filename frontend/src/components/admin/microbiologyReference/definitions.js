@@ -49,11 +49,7 @@ export const REFERENCE_DEFINITIONS = {
         required: true,
       },
       { key: "oclCode", label: "microbiology.admin.field.oclCode" },
-      {
-        key: "organismGroup",
-        label: "microbiology.admin.field.group",
-        required: true,
-      },
+      { key: "organismGroup", label: "microbiology.admin.field.group" },
       {
         key: "susceptibilityProtocol",
         label: "microbiology.m6.protocol",

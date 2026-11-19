@@ -39,7 +39,7 @@ public class MicroBreakpointServiceTest {
         standard.setLifecycleStatus("ACTIVE");
         when(standardDAO.findByAuthorityAndVersion("EUCAST", "2026-2026.1"))
                 .thenReturn(java.util.Optional.of(standard));
-        var service = new MicroBreakpointServiceImpl(standardDAO, ruleDAO, settings);
+        var service = new MicroBreakpointServiceImpl(standardDAO, ruleDAO, settings, null, null);
         var result = service.getDefaultStandard();
         org.junit.Assert.assertTrue(result.configured && result.available);
         assertEquals("portable-id", result.standardId);
@@ -64,7 +64,7 @@ public class MicroBreakpointServiceTest {
         when(standardDAO.get("eu")).thenReturn(java.util.Optional.of(standard));
         when(standardDAO.findByAuthorityAndVersion("EUCAST", "2026-2026.1"))
                 .thenReturn(java.util.Optional.of(standard));
-        new MicroBreakpointServiceImpl(standardDAO, ruleDAO, settings).setDefaultStandard("eu", "42");
+        new MicroBreakpointServiceImpl(standardDAO, ruleDAO, settings, null, null).setDefaultStandard("eu", "42");
         assertEquals("EUCAST", authority.getValue());
         assertEquals("2026-2026.1", edition.getValue());
         assertEquals("42", authority.getSysUserId());
@@ -80,7 +80,7 @@ public class MicroBreakpointServiceTest {
         standard.setLifecycleStatus("LOADED");
         when(standardDAO.get("eu")).thenReturn(java.util.Optional.of(standard));
         try {
-            new MicroBreakpointServiceImpl(standardDAO, ruleDAO, settings).setDefaultStandard("eu", "42");
+            new MicroBreakpointServiceImpl(standardDAO, ruleDAO, settings, null, null).setDefaultStandard("eu", "42");
             org.junit.Assert.fail("Activate before choosing a default");
         } catch (IllegalArgumentException expected) {
             assertEquals("AST_BREAKPOINT_STANDARD_NOT_AVAILABLE", expected.getMessage());
@@ -93,7 +93,7 @@ public class MicroBreakpointServiceTest {
         MicroBreakpointStandard standard = new MicroBreakpointStandard();
         when(standardDAO.getActiveStandard("CLSI", "2026")).thenReturn(standard);
 
-        MicroBreakpointService service = new MicroBreakpointServiceImpl(standardDAO, ruleDAO, settings);
+        MicroBreakpointService service = new MicroBreakpointServiceImpl(standardDAO, ruleDAO, settings, null, null);
 
         org.junit.Assert.assertTrue(standard == service.getActiveStandard("CLSI", "2026"));
     }
@@ -103,7 +103,7 @@ public class MicroBreakpointServiceTest {
         MicroBreakpointRule rule = new MicroBreakpointRule();
         when(ruleDAO.findBestRule("std", "org", "Enterobacterales", "abx", "MIC", "7", "MIC")).thenReturn(rule);
 
-        MicroBreakpointService service = new MicroBreakpointServiceImpl(standardDAO, ruleDAO, settings);
+        MicroBreakpointService service = new MicroBreakpointServiceImpl(standardDAO, ruleDAO, settings, null, null);
 
         org.junit.Assert.assertTrue(
                 rule == service.findBreakpointRule("std", "org", "Enterobacterales", "abx", "MIC", "7", "MIC"));
@@ -116,7 +116,7 @@ public class MicroBreakpointServiceTest {
         MicroBreakpointStandard eucast = new MicroBreakpointStandard();
         when(standardDAO.getActiveStandards()).thenReturn(List.of(clsi, eucast));
 
-        MicroBreakpointService service = new MicroBreakpointServiceImpl(standardDAO, ruleDAO, settings);
+        MicroBreakpointService service = new MicroBreakpointServiceImpl(standardDAO, ruleDAO, settings, null, null);
 
         assertEquals(List.of(clsi, eucast), service.getActiveStandards());
     }

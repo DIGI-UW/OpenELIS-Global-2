@@ -18,6 +18,8 @@ public interface MicroBreakpointRuleDAO extends BaseDAO<MicroBreakpointRule, Str
             String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext,
             String diskContent);
 
+    List<MicroBreakpointRule> findWhonetRules(String standardId, String antibioticId, String breakpointType);
+
     Optional<MicroBreakpointRule> findBySourceRowHash(String sourceRowHash);
 
     Optional<MicroBreakpointRule> findByNaturalKey(String standardId, String organismId, String organismGroup,

@@ -96,6 +96,33 @@ public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void microbiologyBlockPrintsTheIndicationARunWasReadFor() throws Exception {
+        var micro = row(ORDER, "Microbiology", "Culture anchor", "", "");
+        var report = new org.openelisglobal.microbiology.form.MicroPatientReportForm();
+        report.classification = "NOT_APPLICABLE";
+        report.isolates.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Isolate("i", "ISO-1",
+                "Streptococcus pneumoniae",
+                List.of(susceptibility("Penicillin G", "MENINGITIS"), susceptibility("Ampicillin", "ENDOCARDITIS"),
+                        susceptibility("Ceftriaxone", "NON_MENINGITIS"), susceptibility("Vancomycin", null)),
+                4));
+        micro.setMicrobiologyRows(org.openelisglobal.microbiology.service.MicroPatientReportRows.of(report));
+
+        String text = PdfText.of(render(List.of(micro), Map.of(ORDER, order()))).replaceAll("\\s+", " ");
+
+        assertTrue(text, text.contains("Penicillin G 1 mg/L Resistant EUCAST 2026 - Meningitis"));
+        assertTrue(text, text.contains("Ampicillin 1 mg/L Resistant EUCAST 2026 - Endocarditis"));
+        assertTrue(text,
+                text.contains("Ceftriaxone 1 mg/L Resistant EUCAST 2026 - Neither meningitis nor endocarditis"));
+        assertTrue(text, text.matches(".*Vancomycin 1 mg/L Resistant EUCAST 2026(?! -).*"));
+    }
+
+    private static org.openelisglobal.microbiology.form.MicroPatientReportForm.Susceptibility susceptibility(
+            String agent, String indication) {
+        return new org.openelisglobal.microbiology.form.MicroPatientReportForm.Susceptibility(agent, agent, agent,
+                "run", "1", "mg/L", "RESISTANT", "EUCAST", "2026", "EXACT", indication);
+    }
+
+    @Test
     public void negativeCalculatedLogarithmAndOriginalMeasurementRemainReadable() throws Exception {
         var result = new org.openelisglobal.result.valueholder.Result();
         result.setResultType("N");

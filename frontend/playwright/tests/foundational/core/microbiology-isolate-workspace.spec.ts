@@ -18,6 +18,9 @@ const firstOption = async (field: Locator) => {
 };
 const choose = async (field: Locator, value: string) => {
   await field.fill(value);
+  await expect(
+    field.page().getByRole("option").filter({ hasText: value }).first(),
+  ).toBeVisible();
   await field.press("ArrowDown");
   await field.press("Enter");
 };

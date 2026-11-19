@@ -21,6 +21,9 @@ export async function startAstRun(
   await dialog
     .getByLabel("Breakpoint standard", { exact: true })
     .selectOption(breakpointStandardId);
+  await dialog
+    .getByLabel("Clinical indication", { exact: true })
+    .selectOption("NOT_STATED");
   await expect(dialog.getByLabel(/Reason/)).toHaveCount(0);
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
 }
