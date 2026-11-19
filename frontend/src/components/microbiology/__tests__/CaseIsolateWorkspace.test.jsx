@@ -7,7 +7,9 @@ import messages from "../../../languages/en.json";
 import CaseIsolateWorkspace from "../CaseIsolateWorkspace";
 
 vi.mock("../OrganismSearch", () => ({
-  searchOrganisms: vi.fn().mockResolvedValue([]),
+  searchOrganisms: vi
+    .fn()
+    .mockResolvedValue([{ id: "o1", label: "Escherichia coli" }]),
   getOrganism: vi.fn().mockResolvedValue(null),
   organismText: (organism) => organism?.label || "",
 }));

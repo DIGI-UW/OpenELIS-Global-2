@@ -91,8 +91,10 @@ const show = (service, extra = {}) =>
       />
     </IntlProvider>,
   );
-const change = (label, value) =>
-  fireEvent.change(screen.getByLabelText(label), { target: { value } });
+const change = (label, value, options) =>
+  fireEvent.change(screen.getByLabelText(label, options), {
+    target: { value },
+  });
 it("prefills medium links and requires a lot for tracked media", async () => {
   const service = api([]);
   show(service);
@@ -568,9 +570,9 @@ test("ticking lot not tracked clears the chosen lot", async () => {
     await screen.findByRole("button", { name: "Inoculate culture" }),
   );
   fireEvent.click(screen.getByLabelText("Lot not tracked"));
-  change("Medium lot", "20");
+  change("Medium lot", "20", { exact: false });
   fireEvent.click(screen.getByLabelText("Lot not tracked"));
-  change("Bottle or plate identifier", "P-UNTRACKED");
+  change("Bottle or plate identifier", "P-UNTRACKED", { exact: false });
   fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
   await waitFor(() =>
     expect(service.inoculateCulture).toHaveBeenCalledWith(
@@ -593,20 +595,18 @@ test("changing to a source without a medium link drops the previous source's def
   fireEvent.click(
     await screen.findByRole("button", { name: "Inoculate culture" }),
   );
-  expect(
-    screen.getByLabelText(messages["microbiology.culture.duration"]),
-  ).toHaveValue(48);
-  change(messages["microbiology.culture.sourceSampleItemId"], "s2");
+  const marked = (key) =>
+    screen.getByLabelText(messages[`microbiology.culture.${key}`], {
+      exact: false,
+    });
+  expect(marked("duration")).toHaveValue(48);
+  change(messages["microbiology.culture.sourceSampleItemId"], "s2", {
+    exact: false,
+  });
   for (const key of ["duration", "checkIntervalHours", "loopVolume"])
-    expect(
-      screen.getByLabelText(messages[`microbiology.culture.${key}`]),
-    ).toHaveValue(null);
-  expect(
-    screen.getByLabelText(messages["microbiology.culture.durationUnit"]),
-  ).toHaveValue("");
-  expect(
-    screen.getByLabelText(messages["microbiology.culture.atmosphereId"]),
-  ).toHaveValue("air");
+    expect(marked(key)).toHaveValue(null);
+  expect(marked("durationUnit")).toHaveValue("");
+  expect(marked("atmosphereId")).toHaveValue("air");
   expect(
     screen.getByLabelText(messages["microbiology.culture.temperature"]),
   ).toHaveValue(35);

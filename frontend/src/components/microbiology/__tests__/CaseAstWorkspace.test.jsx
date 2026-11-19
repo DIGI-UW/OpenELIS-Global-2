@@ -700,7 +700,8 @@ it.each([
 
 const startDialog = async (provenance = "ORGANISM_DEFAULT", runs) => {
   const data = workspace("IN_PROGRESS");
-  data.isolates[0].defaultPanelId = "panel";
+  if (provenance === "ORGANISM_DEFAULT")
+    data.isolates[0].defaultPanelId = "panel";
   data.isolates[0].panels = [{ id: "panel", label: "Routine panel" }];
   data.isolates[0].assignments = [{ panelId: "panel", provenance }];
   if (runs) data.isolates[0].runs = runs(data.isolates[0].runs[0]);
@@ -831,9 +832,10 @@ it("starts from the organism's current default panel, not an older default assig
   );
   const modal = screen.getByRole("dialog");
   const reason = messages["microbiology.ast.panelAdjustmentReason"];
-  expect(within(modal).getByLabelText(t("panel"))).toHaveValue("current");
+  const panel = within(modal).getByLabelText(new RegExp(`^${t("panel")}`));
+  expect(panel).toHaveValue("current");
   expect(within(modal).queryByLabelText(reason)).not.toBeInTheDocument();
-  fireEvent.change(within(modal).getByLabelText(t("panel")), {
+  fireEvent.change(panel, {
     target: { value: "older" },
   });
   expect(within(modal).getByLabelText(reason)).toBeInTheDocument();
@@ -855,6 +857,10 @@ it.each([
     await screen.findByRole("button", { name: t("action.start") }),
   );
   const modal = screen.getByRole("dialog");
+  fireEvent.change(
+    within(modal).getByLabelText(t("clinicalContext"), { exact: false }),
+    { target: { value: "NON_MENINGITIS" } },
+  );
   fireEvent.click(
     within(modal).getByRole("button", { name: t("save"), exact: true }),
   );
