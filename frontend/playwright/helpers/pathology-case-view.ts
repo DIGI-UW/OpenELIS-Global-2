@@ -98,7 +98,8 @@ export function sectionHeader(page: Page, sectionId: string) {
 /**
  * Expand one section, addressed by its item id. A section unlocks as soon as
  * the stage reaches it but keeps the open state it had when the screen
- * mounted, so it is opened here only when it is shut.
+ * mounted (only Begin review opens Findings itself), so it is opened here
+ * only when it is shut.
  */
 export async function expandSection(page: Page, sectionId: string) {
   const header = sectionHeader(page, sectionId);
@@ -364,8 +365,9 @@ export function overlaps(
 
 /**
  * The action bar's one primary button, whose label names where the case goes
- * next ("Begin grossing", "Send for processing"). There is none from Ready
- * for Pathologist on.
+ * next ("Begin grossing", "Send for processing"). From Ready for Pathologist
+ * it is "Begin review" where the laboratory uses the review stage and the
+ * case read offers it, and there is none after that.
  */
 export function primaryAction(page: Page) {
   return page.locator(".case-view__action-bar-actions .cds--btn--primary");
@@ -792,4 +794,81 @@ export async function pickerOptions(combobox: Locator): Promise<string[]> {
   await combobox.press("Escape");
   await expect(combobox).toHaveAttribute("aria-expanded", "false");
   return names;
+}
+
+/** The Findings & Conclusion section. */
+export const FINDINGS_SECTION = "pathology-section-findings";
+
+/** The coded conclusion's search box, a Carbon ComboBox. */
+export function diagnosisBox(page: Page) {
+  return page.locator("#conclusion");
+}
+
+/** The chips of the diagnoses chosen, in the order they were picked. */
+export function diagnosisChips(page: Page) {
+  return page.getByTestId("findings-conclusion-chips");
+}
+
+/** The chips of the techniques chosen. */
+export function techniqueChips(page: Page) {
+  return page.getByTestId("findings-technique-chips");
+}
+
+/** The add-diagnosis control; absent while the picker cannot be edited. */
+export function addDiagnosisControl(page: Page) {
+  return page.getByTestId("findings-add-diagnosis");
+}
+
+/** The read-only table of the slides the pathologist has received. */
+export function slidesReceivedTable(page: Page) {
+  return page.getByTestId("review-slides-received");
+}
+
+/** The list the diagnosis search box shows its answer in. */
+export async function diagnosisMenu(page: Page) {
+  const box = diagnosisBox(page);
+  const listboxId = await box.getAttribute("aria-controls");
+  if (!listboxId) {
+    throw new Error("The diagnosis search has no list it controls");
+  }
+  return page.locator(`[id="${listboxId}"]`);
+}
+
+/**
+ * Type `query` into the diagnosis search and wait for the server's answer to
+ * it, leaving the list open. The search asks again only once typing pauses,
+ * so the wait is registered before the text goes in.
+ */
+export async function searchDiagnoses(page: Page, query: string) {
+  const box = diagnosisBox(page);
+  await expect(box).toBeEnabled({ timeout: UI_TIMEOUT });
+  const answered = page.waitForResponse(
+    (r) => {
+      const url = new URL(r.url());
+      return (
+        url.pathname.endsWith("/rest/pathology/conclusionEntries") &&
+        url.searchParams.get("q") === query.trim()
+      );
+    },
+    { timeout: UI_TIMEOUT },
+  );
+  await box.fill(query);
+  await answered;
+  if ((await box.getAttribute("aria-expanded")) !== "true") {
+    await box.click();
+  }
+  await expect(box).toHaveAttribute("aria-expanded", "true");
+  return diagnosisMenu(page);
+}
+
+/**
+ * Find a diagnosis by `query` and pick the item reading `label` ("code
+ * name"). The pick adds a chip, empties the box and leaves focus in it.
+ */
+export async function pickDiagnosis(page: Page, query: string, label: string) {
+  const menu = await searchDiagnoses(page, query);
+  await menu.getByRole("option", { name: label, exact: true }).click();
+  await expect(diagnosisChips(page)).toContainText(label);
+  await expect(diagnosisBox(page)).toHaveValue("");
+  await expect(diagnosisBox(page)).toBeFocused();
 }

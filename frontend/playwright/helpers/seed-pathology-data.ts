@@ -44,6 +44,10 @@ const TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
  */
 const STAIN_CATEGORY = "Pathology Stains";
 
+/** The dictionary categories the findings pickers read, by category name. */
+export const DIAGNOSIS_CATEGORY = "pathologist_conclusions";
+export const TECHNIQUE_CATEGORY = "pathology_techniques";
+
 /** The column a dictionary entry's local abbreviation is stored in. */
 const LOCAL_ABBREVIATION_MAX_LENGTH = 10;
 
@@ -66,6 +70,9 @@ export type PathologyStageId = (typeof PATHOLOGY_STAGE_ORDER)[number];
 
 /** The description moveCaseToStage writes when it has to finish grossing. */
 const SETUP_DESCRIPTION = "Seeded by E2E";
+
+/** The microscopic description signOutCase writes when the case has none. */
+const SETUP_MICROSCOPY = "Seeded by E2E, microscopic";
 
 /** The level moveCaseToStage gives the slide it cuts at Microtomy. */
 const SETUP_SLIDE_LEVEL = "1";
@@ -553,18 +560,25 @@ async function findCaseId(
 }
 
 /**
- * A new entry of this run's own in one dictionary category, added through the
- * endpoint the Dictionary admin screen posts to and read back through the list
- * the case view loads, so what is returned is what its picker will offer
- * rather than what was posted. `missing` says why the category would be
- * absent on a deployment.
+ * A new entry with the given name and local abbreviation (at most ten
+ * characters, unique in the laboratory) in one dictionary category, added
+ * through the endpoint the Dictionary admin screen posts to and read back
+ * through the list the case view loads, so what is returned is what its
+ * picker will offer rather than what was posted. `missing` says why the
+ * category would be absent on a deployment.
  */
-async function addRunEntry(
+export async function createDictionaryEntry(
   page: Page,
   categoryName: string,
-  entryPrefix: string,
-  missing: string,
+  dictEntry: string,
+  localAbbreviation: string,
+  missing = "so nothing has created it here.",
 ): Promise<DictionaryEntry> {
+  if (localAbbreviation.length > LOCAL_ABBREVIATION_MAX_LENGTH) {
+    throw new Error(
+      `The abbreviation "${localAbbreviation}" is longer than ${LOCAL_ABBREVIATION_MAX_LENGTH} characters.`,
+    );
+  }
   if (!page.url().startsWith("http")) {
     await page.goto("/", { waitUntil: "domcontentloaded" });
   }
@@ -581,12 +595,6 @@ async function addRunEntry(
       `No dictionary category named ${categoryName} on this deployment, ${missing}`,
     );
   }
-
-  const runTag = `${Date.now().toString(36)}${Math.floor(Math.random() * 36 * 36).toString(36)}`;
-  const dictEntry = `${entryPrefix} ${runTag}`;
-  const localAbbreviation = `E${runTag}`
-    .slice(-LOCAL_ABBREVIATION_MAX_LENGTH)
-    .toUpperCase();
 
   await apiPost(page, `${API_PREFIX}/rest/Dictionary`, {
     id: "",
@@ -616,6 +624,29 @@ async function addRunEntry(
     .toBe(true);
 
   return added!;
+}
+
+/**
+ * A new entry of this run's own in one dictionary category: a name and an
+ * abbreviation no other run uses.
+ */
+async function addRunEntry(
+  page: Page,
+  categoryName: string,
+  entryPrefix: string,
+  missing: string,
+): Promise<DictionaryEntry> {
+  const runTag = `${Date.now().toString(36)}${Math.floor(Math.random() * 36 * 36).toString(36)}`;
+  const localAbbreviation = `E${runTag}`
+    .slice(-LOCAL_ABBREVIATION_MAX_LENGTH)
+    .toUpperCase();
+  return createDictionaryEntry(
+    page,
+    categoryName,
+    `${entryPrefix} ${runTag}`,
+    localAbbreviation,
+    missing,
+  );
 }
 
 /**
@@ -696,10 +727,19 @@ export interface StoredPathologyCase {
   status: PathologyStageId;
   nextStage?: PathologyStageId | null;
   previousStage?: PathologyStageId | null;
+  /**
+   * The stage the findings are written at: Under Pathologist Review where
+   * the laboratory uses it, else Ready for Pathologist. A server that does
+   * not send it has the findings written at Ready for Pathologist.
+   */
+  readingStage?: PathologyStageId | null;
+  /** Whether the findings can be changed now. */
+  findingsOpen?: boolean;
   grossExam?: string | null;
   decalcificationRequired?: boolean;
   microscopyExam?: string | null;
   conclusionText?: string | null;
+  reviewNotes?: string | null;
   assignedTechnicianId?: string | null;
   assignedPathologistId?: string | null;
   blocks?: CaseBlock[];
@@ -815,6 +855,13 @@ export async function moveCaseOnce(
 /** The changes saveCaseThroughApi applies on top of the stored case. */
 export interface CaseSaveChanges {
   grossExam?: string;
+  microscopyExam?: string;
+  conclusionText?: string;
+  reviewNotes?: string;
+  /** The pathologist the case is saved with, a user id. */
+  assignedPathologistId?: string;
+  /** Sign the case out with this save. */
+  release?: boolean;
   /** Cut one new cassette. */
   addCassette?: boolean;
   /** The tissue type the new cassette is given. */
@@ -862,15 +909,17 @@ export async function saveCaseThroughApi(
     casePath(caseId),
     {
       assignedTechnicianId: stored.assignedTechnicianId,
-      assignedPathologistId: stored.assignedPathologistId,
+      assignedPathologistId:
+        changes.assignedPathologistId ?? stored.assignedPathologistId,
       blocks,
       slides,
       reports: stored.reports ?? [],
       grossExam: changes.grossExam ?? stored.grossExam,
       decalcificationRequired: stored.decalcificationRequired ?? false,
-      microscopyExam: stored.microscopyExam,
-      conclusionText: stored.conclusionText,
-      release: false,
+      microscopyExam: changes.microscopyExam ?? stored.microscopyExam,
+      conclusionText: changes.conclusionText ?? stored.conclusionText,
+      reviewNotes: changes.reviewNotes ?? stored.reviewNotes,
+      release: changes.release ?? false,
       referToImmunoHistoChemistry: false,
       techniques: (stored.techniques ?? []).map((entry) => entry.id),
       conclusions: (stored.conclusions ?? []).map((entry) => entry.id),
@@ -1254,6 +1303,11 @@ export async function passCoverslipQc(
  * screen it shows is not read again here, so a caller showing the case opens
  * it afresh afterwards.
  *
+ * The review begins (Ready for Pathologist to Under Pathologist Review)
+ * only where the case read offers it as the next stage; a server without the
+ * review stage offers none, and the case stops at Ready for Pathologist.
+ * Completed is not reached by a move: see signOutCase.
+ *
  * The server sends a case with open bench requests to the pathologist only
  * when the move names every one of them. By default nothing is named, so
  * such a case is refused there, as the screen refuses it until Send anyway;
@@ -1298,9 +1352,13 @@ export async function moveCaseToStage(
     }
 
     if (!stored.nextStage) {
+      const signOut =
+        stageId === "COMPLETED"
+          ? " A case is signed out by a save that releases it: use signOutCase."
+          : "";
       throw new Error(
         `Case ${caseId} stands at ${stored.status}, and the server offers no stage after it, ` +
-          `so it cannot be brought to ${stageId}.`,
+          `so it cannot be brought to ${stageId}.${signOut}`,
       );
     }
 
@@ -1388,4 +1446,58 @@ export async function moveCaseToStage(
   throw new Error(
     `Case ${caseId} did not reach ${stageId} within the stage count.`,
   );
+}
+
+/** What signOutCase may be told about the sign-out. */
+export interface SignOutOptions {
+  /** The pathologist to sign out as, a user id; the case's own when left out. */
+  pathologistId?: string;
+  /** The microscopic description written when the case has none. */
+  microscopyExam?: string;
+}
+
+/**
+ * Sign a case out the way the case view does: bring it to the stage its
+ * findings are written at (the case's `readingStage`, Ready for Pathologist
+ * when the server sends none), write the gross and microscopic descriptions
+ * through a save when either is blank, then save with the release, which
+ * lands the case at Completed. No move reaches Completed. A case already
+ * signed out is left as it is. Throws with the server's body when a step is
+ * refused.
+ */
+export async function signOutCase(
+  page: Page,
+  seeded: Pick<SeededPathologyCase, "pathologySampleId">,
+  { pathologistId, microscopyExam }: SignOutOptions = {},
+): Promise<void> {
+  const caseId = seeded.pathologySampleId;
+  const first = await readCase(page, caseId);
+  if (first.status === "COMPLETED" && first.findingsOpen !== true) {
+    return;
+  }
+  if (first.status !== "COMPLETED") {
+    await moveCaseToStage(
+      page,
+      seeded,
+      first.readingStage ?? "READY_PATHOLOGIST",
+    );
+  }
+
+  const reading = await readCase(page, caseId);
+  const grossBlank = (reading.grossExam ?? "").trim() === "";
+  const microscopyBlank = (reading.microscopyExam ?? "").trim() === "";
+  if (grossBlank || microscopyBlank) {
+    await saveCaseThroughApi(page, caseId, reading, {
+      grossExam: grossBlank ? SETUP_DESCRIPTION : undefined,
+      microscopyExam: microscopyBlank
+        ? (microscopyExam ?? SETUP_MICROSCOPY)
+        : undefined,
+      assignedPathologistId: pathologistId,
+    });
+  }
+
+  await saveCaseThroughApi(page, caseId, await readCase(page, caseId), {
+    assignedPathologistId: pathologistId,
+    release: true,
+  });
 }
