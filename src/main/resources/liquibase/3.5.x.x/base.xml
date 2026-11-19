@@ -713,4 +713,6 @@
   <include file="154-amr-v3-critical-outcome.xml" relativeToChangelogFile="true"/>
   <include file="155-amr-v3-panel-report-cleanup.xml" relativeToChangelogFile="true"/>
   <include file="156-amr-v3-organism-groups.xml" relativeToChangelogFile="true"/>
+  <!-- WHONET's organism table, held as published (OGC-1629). -->
+  <include relativeToChangelogFile="true" file="157-whonet-organisms.xml"/>
 </databaseChangeLog>

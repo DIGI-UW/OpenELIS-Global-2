@@ -4,6 +4,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 import LaporanHasilReport from "../LaporanHasilReport";
+import { ConfigurationContext } from "../../../layout/contexts";
 
 const MOCK_REPORT = {
   ineligibleCount: 3,
@@ -735,5 +736,39 @@ describe("LaporanHasilReport", () => {
       expect(screen.getByText(/Deri Rahmawati/i)).toBeInTheDocument();
       expect(screen.getByText(/Bambang Sutrisno/i)).toBeInTheDocument();
     }
+  });
+});
+
+// OGC-1657 walk: on a day-first site the report listed "2026-11-05 10:00" for
+// the collection, the detail and the signatures, and Last Generated in the
+// browser's locale.
+describe("LaporanHasilReport dates follow the site date format", () => {
+  it("shows collection, generation and signature times day first", async () => {
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <LaporanHasilReport />
+        </IntlProvider>
+      </ConfigurationContext.Provider>,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+    });
+
+    expect(screen.getAllByText("06/04/2026 07:30").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("04/03/2026").length).toBeGreaterThan(0);
+    expect(screen.getByText("05/04/2026 10:30")).toBeInTheDocument();
+    expect(screen.queryByText("2026-04-06 07:30")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getAllByRole("button", { name: /expand/i })[1],
+      );
+    });
+    expect(screen.getAllByText("06/04/2026 07:30").length).toBeGreaterThan(1);
+    expect(screen.getByText("06/04/2026 14:31")).toBeInTheDocument();
+    expect(screen.getByText("06/04/2026 15:22")).toBeInTheDocument();
   });
 });

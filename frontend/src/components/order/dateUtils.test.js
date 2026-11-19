@@ -8,6 +8,7 @@ import {
   shortestHoldingMinutes,
   daysBetweenIsoDates,
   formatIsoDateForBackend,
+  isClockTime,
   normalizeDateForState,
   todayLocalIso,
 } from "./dateUtils";
@@ -135,4 +136,20 @@ describe("test holding limits", () => {
     expect(formatHoldingMinutes(120, intl)).toBe("2 heures");
     expect(formatHoldingMinutes(150, intl)).toBe("2 h 30");
   });
+});
+
+describe("sample times (OGC-1657)", () => {
+  it.each(["00:00", "9:05", "09:05", "23:59", "", "  ", null, undefined])(
+    "takes %j",
+    (text) => {
+      expect(isClockTime(text)).toBe(true);
+    },
+  );
+
+  it.each(["1430", "24:00", "25:99", "12:60", "12:5", "noon", "12:30:00"])(
+    "refuses %j",
+    (text) => {
+      expect(isClockTime(text)).toBe(false);
+    },
+  );
 });

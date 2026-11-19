@@ -118,21 +118,20 @@ export const identifyMicrobiologyIsolate = async (
     .getByRole("button", { name: "Identify organism", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
-  const caseId = new URL(page.url()).pathname.split("/").pop();
-  const options = await (
+  const [organism] = await (
     await page.request.get(
-      `/api/OpenELIS-Global/rest/microbiology/cases/${caseId}/isolates/options`,
+      `/api/OpenELIS-Global/rest/microbiology/reference/organisms?id=${organismId}`,
     )
   ).json();
-  const organism = options.organisms.find(
-    (o: { id: string }) => o.id === organismId,
-  );
   if (!organism)
     throw new Error("Fixture organism not offered for identification");
   const combo = dialog.getByRole("combobox", { name: "Organism", exact: true });
-  await combo.fill(organism.value);
-  await combo.press("ArrowDown");
-  await combo.press("Enter");
+  await combo.fill(organism.label);
+  await dialog
+    .getByRole("option")
+    .filter({ hasText: organism.label })
+    .first()
+    .click();
   await dialog
     .getByLabel("ID method", { exact: true })
     .selectOption({ label: "UAT micro culture" });

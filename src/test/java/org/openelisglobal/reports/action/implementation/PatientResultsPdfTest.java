@@ -122,8 +122,8 @@ public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
         result.setReportingDecimalPlaces(2);
         String annotated = org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay
                 .format(result, true, french);
-        assertEquals("0.01\nCalculated log10: −2.19\n(Valeur utilisée pour les décisions cliniques : 0.0064)",
-                annotated);
+        assertEquals("0.01\n" + french.get("label.results.calculatedLog10").replace("{value}", "−2.19")
+                + "\n(Valeur utilisée pour les décisions cliniques : 0.0064)", annotated);
         var data = rows(ORDER);
         data.get(0).setResult(annotated);
         String text = PdfText.of(PatientResultsPdf.render(settings(), french, data, Map.of(ORDER, order())))
