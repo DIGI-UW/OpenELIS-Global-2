@@ -126,6 +126,7 @@ const CustomDatePicker = (props) => {
           placeholder={siteDate.placeholder}
           type="text"
           labelText={props.labelText}
+          hideLabel={props.hideLabel}
           helperText={props.helperText}
           invalid={invalid}
           invalidText={invalidText}

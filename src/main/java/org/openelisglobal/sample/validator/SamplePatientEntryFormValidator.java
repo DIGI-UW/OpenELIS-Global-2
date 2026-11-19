@@ -64,13 +64,20 @@ public class SamplePatientEntryFormValidator implements Validator {
         return DateRelation.PAST;
     }
 
+    /**
+     * Stops at the first sample error this check finds. It counts only its own
+     * errors: an environmental, vector or patientless order arrives with patient
+     * field errors from the bean validation that the controller later ignores, and
+     * stopping on those skipped every sample date and time check (OGC-1657).
+     */
     private void validateSampleXML(String sampleXML, DateRelation collectionDateRelation, Errors errors) {
+        int known = errors.getErrorCount();
         try {
             Document sampleDom = DocumentHelper.parseText(sampleXML);
             for (Iterator<Element> iter = sampleDom.getRootElement().elementIterator("sample"); iter.hasNext();) {
                 Element sampleItem = iter.next();
                 validateSampleItem(sampleItem, collectionDateRelation, errors);
-                if (errors.hasErrors()) {
+                if (errors.getErrorCount() > known) {
                     return;
                 }
             }
@@ -80,38 +87,65 @@ public class SamplePatientEntryFormValidator implements Validator {
     }
 
     private void validateSampleItem(Element sampleItem, DateRelation collectionDateRelation, Errors errors) {
+        int known = errors.getErrorCount();
         // validate test ids
-        String[] testIDs = sampleItem.attributeValue("tests").split(",");
+        String[] testIDs = trimmed(sampleItem.attributeValue("tests")).split(",");
         for (int j = 0; j < testIDs.length; ++j) {
             ValidationHelper.validateIdField(testIDs[j], "sampleXML", "sampleXML tests", errors, false);
-            if (errors.hasErrors()) {
+            if (errors.getErrorCount() > known) {
                 return;
             }
         } // validate panel ids
-        String[] panelIDs = sampleItem.attributeValue("panels").split(",");
+        String[] panelIDs = trimmed(sampleItem.attributeValue("panels")).split(",");
         for (int j = 0; j < panelIDs.length; ++j) {
             ValidationHelper.validateIdField(panelIDs[j], "sampleXML", "sampleXML panels", errors, false);
-            if (errors.hasErrors()) {
+            if (errors.getErrorCount() > known) {
                 return;
             }
         }
         // validate date not required
-        String collectionDate = sampleItem.attributeValue("date").trim();
+        String collectionDate = trimmed(sampleItem.attributeValue("date"));
         ValidationHelper.validateDateField(collectionDate, "sampleXML", "sampleXML date", errors,
                 collectionDateRelation, false);
-        if (errors.hasErrors()) {
+        if (errors.getErrorCount() > known) {
             return;
         }
 
         // validate time
-        String collectionTime = sampleItem.attributeValue("time").trim();
+        String collectionTime = trimmed(sampleItem.attributeValue("time"));
         ValidationHelper.validateTimeField(collectionTime, "sampleXML", "sampleXML time", errors, false);
-        if (errors.hasErrors()) {
+        if (errors.getErrorCount() > known) {
+            return;
+        }
+
+        validateReceipt(sampleItem, errors);
+        if (errors.getErrorCount() > known) {
             return;
         }
 
         // validate sample id
         String sampleId = sampleItem.attributeValue("sampleID");
         ValidationHelper.validateIdField(sampleId, "sampleXML", "sampleXML sampleID", errors, true);
+    }
+
+    /**
+     * A sample's receipt date and time, when given, must read as a date and a
+     * 24-hour time. They were not checked, so a time such as "1430" made the save
+     * drop the receipt date and "25:99" stored the next day (OGC-1657).
+     */
+    private void validateReceipt(Element sampleItem, Errors errors) {
+        int known = errors.getErrorCount();
+        String receivedDate = trimmed(sampleItem.attributeValue("receivedDate"));
+        ValidationHelper.validateDateField(receivedDate, "sampleXML", "sampleXML receivedDate", errors,
+                DateRelation.ANY, false);
+        if (errors.getErrorCount() > known) {
+            return;
+        }
+        String receivedTime = trimmed(sampleItem.attributeValue("receivedTime"));
+        ValidationHelper.validateTimeField(receivedTime, "sampleXML", "sampleXML receivedTime", errors, false);
+    }
+
+    private static String trimmed(String value) {
+        return value == null ? "" : value.trim();
     }
 }

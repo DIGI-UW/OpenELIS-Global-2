@@ -217,6 +217,11 @@ public class MicroPatientReportService {
         return links.getIssuedAnalysesForSample(sampleId);
     }
 
+    public boolean hasUnreleasedCase(String sampleId) {
+        return cases.getByOrder(sampleId).stream().anyMatch(c -> c.getStatus() == MicroCaseStatus.ACTIVE
+                && List.of("NOT_READY", "PRELIMINARY_RELEASED").contains(c.getFinalReleaseState()));
+    }
+
     public Boolean mayReportAnalysis(String analysisId, String actor) {
         var link = links.getActiveByAnalysisId(analysisId);
         if (link == null)
