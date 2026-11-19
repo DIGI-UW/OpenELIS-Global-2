@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.io.File;
@@ -64,7 +65,8 @@ public class LogoUploadRestControllerTest {
                 eq(""), same(logoInformation));
 
         mockMvc.perform(multipart("/rest/logoUpload").file(logoFile()).param("logoName", "headerLogo"))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error").value("saveFailed"));
     }
 
     @Test
@@ -73,7 +75,8 @@ public class LogoUploadRestControllerTest {
         doThrow(new LIMSRuntimeException("Remove failed")).when(logoUploadService).removeImage(image, logoInformation);
 
         mockMvc.perform(post("/rest/logoUpload").param("logoName", "headerLogo").param("removeImage", "true"))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error").value("saveFailed"));
     }
 
     @Test

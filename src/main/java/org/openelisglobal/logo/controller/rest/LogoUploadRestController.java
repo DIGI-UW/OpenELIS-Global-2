@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -58,14 +59,14 @@ public class LogoUploadRestController {
     }
 
     @PostMapping
-    protected ResponseEntity<Void> doPost(HttpServletRequest request,
+    protected ResponseEntity<?> doPost(HttpServletRequest request,
             @ModelAttribute("logoUploadform") LogoUploadForm form) throws ServletException, IOException {
         String whichLogo = form.getLogoName();
         boolean removeImage = "true".equals(request.getParameter("removeImage"));
 
         boolean success = removeImage ? removeImage(whichLogo) : updateImage(form.getLogoFile(), whichLogo);
         if (!success) {
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.internalServerError().body(Map.of("error", "saveFailed"));
         }
         return ResponseEntity.ok().build();
     }
