@@ -93,6 +93,22 @@ describe("displayResult / unitsOnly / isEditableHere", () => {
     expect(displayResult(row({ result: null }))).toBe("");
   });
 
+  it("names every selection of a multi-select result", () => {
+    expect(
+      displayResult(
+        row({
+          resultType: "M",
+          result: null,
+          multiSelectResultValues: '{"1":"9301,9303"}',
+          dictionaryResults: [
+            { id: 9301, value: "Red" },
+            { id: 9303, value: "Blue" },
+          ],
+        }),
+      ),
+    ).toBe("Red, Blue");
+  });
+
   it("strips the parenthesised suffix from units", () => {
     expect(unitsOnly("mg/dL (mass)")).toBe("mg/dL");
     expect(unitsOnly(undefined)).toBe("");
