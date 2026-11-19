@@ -67,6 +67,8 @@ describe("MacroEditorModal", () => {
       "Culture reading notes",
       "Override reasons",
       "Amendment reasons",
+      "Pathology: macroscopic description",
+      "Pathology: microscopic description",
     ]);
     expect(screen.queryByLabelText("Antibiotic exposure")).toBeNull();
   });

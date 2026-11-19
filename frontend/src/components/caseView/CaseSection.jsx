@@ -33,6 +33,10 @@ import "./caseView.scss";
  * there is no separate "complete" presentation beyond whatever badge the
  * caller supplies.
  *
+ * The optional `openRequest` lets the screen open the section when the case
+ * moves to the stage it belongs to: each new truthy value opens it once, and
+ * the user can still close it afterwards.
+ *
  * The optional `id` is what a progress rail scrolls to: a screen rendering a
  * rail alongside its sections should give each section the same id it gives
  * the matching rail item.
@@ -51,6 +55,7 @@ const CaseSection = ({
   lockedHintKey,
   lockedHintValues,
   defaultOpen,
+  openRequest,
   id,
   children,
 }) => {
@@ -63,7 +68,16 @@ const CaseSection = ({
   // changes, so recomputing it from `state` on every render would snap a
   // section shut (or open) the moment the case advances past its stage,
   // discarding whatever the user had deliberately expanded or collapsed.
-  const [isOpen] = useState(() => defaultOpen ?? state === SECTION_STATE.OPEN);
+  const [isOpen, setIsOpen] = useState(
+    () => defaultOpen ?? state === SECTION_STATE.OPEN,
+  );
+  const [seenOpenRequest, setSeenOpenRequest] = useState(openRequest);
+  if (openRequest !== seenOpenRequest) {
+    setSeenOpenRequest(openRequest);
+    if (openRequest) {
+      setIsOpen(true);
+    }
+  }
 
   const hintText = isDisabled
     ? intl.formatMessage(

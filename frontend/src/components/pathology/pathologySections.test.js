@@ -1,6 +1,6 @@
 import { createIntl } from "react-intl";
 import messages from "../../languages/en.json";
-import { PATHOLOGY_STAGES } from "./pathologyStages";
+import { PATHOLOGY_STAGES, stageDisplayKey } from "./pathologyStages";
 import { SECTION_STATE } from "../caseView/sectionState";
 import {
   coverslipSummary,
@@ -48,6 +48,9 @@ import {
   slideWorkSummaries,
   COVERSLIPPING_SECTION_ID,
   STAINING_SECTION_ID,
+  grossExamPlace,
+  slidesReceived,
+  neverCheckedSlides,
 } from "./pathologySections";
 
 const intl = createIntl({ locale: "en", messages });
@@ -219,19 +222,88 @@ describe("deriveCaseSections at GROSSING for a technician", () => {
 });
 
 describe("deriveCaseSections and pathologist-only sections", () => {
-  it("opens review and findings for a pathologist once the case reaches ready for pathologist", () => {
+  const REVIEW = "pathology-section-review";
+  const FINDINGS = "pathology-section-findings";
+  const stateOf = (status, isPathologist, caseFields = {}) => {
     const sections = deriveCaseSections({
       intl,
-      status: "READY_PATHOLOGIST",
+      status,
+      isPathologist,
+      ...caseFields,
+    });
+    return {
+      review: byId(sections, REVIEW),
+      findings: byId(sections, FINDINGS),
+    };
+  };
+  const awaiting = (stageId) =>
+    intl.formatMessage({ id: stageDisplayKey(stageId) });
+
+  it("the rail stays on Under Pathologist Review while the case is read", () => {
+    const sections = deriveCaseSections({
+      intl,
+      status: "UNDER_REVIEW",
       isPathologist: true,
+      readingStage: "UNDER_REVIEW",
+      findingsOpen: true,
     });
 
-    expect(byId(sections, "pathology-section-review").state).toBe(
-      SECTION_STATE.OPEN,
+    expect(sections[railCurrentIndex(sections, "UNDER_REVIEW")].id).toBe(
+      REVIEW,
     );
-    expect(byId(sections, "pathology-section-findings").state).toBe(
-      SECTION_STATE.OPEN,
+    expect(sectionIdOfStage("UNDER_REVIEW")).toBe(REVIEW);
+  });
+
+  it("a case on the bench names the stage that opens Findings: the reading stage the case sends (S1, S2)", () => {
+    // S1: Under Pathologist Review on.
+    const on = stateOf("STAINING", true, { readingStage: "UNDER_REVIEW" });
+    expect(on.findings.state).toBe(SECTION_STATE.DISABLED);
+    expect(on.findings.lockedHintKey).toBe("caseView.locked.awaitingStage");
+    expect(on.findings.lockedHintValues.stage).toBe(awaiting("UNDER_REVIEW"));
+    // The review keeps its own gate.
+    expect(on.review.lockedHintValues.stage).toBe(
+      awaiting("READY_PATHOLOGIST"),
     );
+
+    // S2: switched off, and a case that sends no reading stage at all.
+    [{ readingStage: "READY_PATHOLOGIST" }, {}].forEach((caseFields) => {
+      const off = stateOf("STAINING", true, caseFields);
+      expect(off.findings.state).toBe(SECTION_STATE.DISABLED);
+      expect(off.findings.lockedHintValues.stage).toBe(
+        awaiting("READY_PATHOLOGIST"),
+      );
+    });
+  });
+
+  it('in the queue Findings stays locked: a pathologist reads "Press Begin review to write the findings.", anyone else the stage hint; Review is open for a pathologist and read-only for anyone else (S3, S4)', () => {
+    const queue = { readingStage: "UNDER_REVIEW", findingsOpen: false };
+
+    const pathologist = stateOf("READY_PATHOLOGIST", true, queue);
+    expect(pathologist.findings.state).toBe(SECTION_STATE.DISABLED);
+    expect(pathologist.findings.lockedHintKey).toBe(
+      "pathology.locked.beginReviewFirst",
+    );
+    expect(pathologist.review.state).toBe(SECTION_STATE.OPEN);
+
+    const technician = stateOf("READY_PATHOLOGIST", false, queue);
+    expect(technician.findings.state).toBe(SECTION_STATE.DISABLED);
+    expect(technician.findings.lockedHintKey).toBe(
+      "caseView.locked.awaitingStage",
+    );
+    expect(technician.findings.lockedHintValues.stage).toBe(
+      awaiting("UNDER_REVIEW"),
+    );
+    expect(technician.review.state).toBe(SECTION_STATE.READ_ONLY);
+  });
+
+  it("where review is switched off, Findings opens in the queue (S5)", () => {
+    const { review, findings } = stateOf("READY_PATHOLOGIST", true, {
+      readingStage: "READY_PATHOLOGIST",
+      findingsOpen: true,
+    });
+
+    expect(review.state).toBe(SECTION_STATE.OPEN);
+    expect(findings.state).toBe(SECTION_STATE.OPEN);
   });
 
   it("leaves the same two sections read-only, not disabled, for anyone who is not the pathologist", () => {
@@ -239,65 +311,136 @@ describe("deriveCaseSections and pathologist-only sections", () => {
       intl,
       status: "READY_PATHOLOGIST",
       isPathologist: false,
+      readingStage: "READY_PATHOLOGIST",
+      findingsOpen: true,
     });
 
-    expect(byId(sections, "pathology-section-review").state).toBe(
-      SECTION_STATE.READ_ONLY,
-    );
-    expect(byId(sections, "pathology-section-findings").state).toBe(
-      SECTION_STATE.READ_ONLY,
-    );
+    expect(byId(sections, REVIEW).state).toBe(SECTION_STATE.READ_ONLY);
+    expect(byId(sections, FINDINGS).state).toBe(SECTION_STATE.READ_ONLY);
   });
 
-  it("keeps review and findings open, not complete, while a case past ready for pathologist is still under review", () => {
-    const sections = deriveCaseSections({
-      intl,
-      status: "UNDER_REVIEW",
-      isPathologist: true,
-    });
+  it("under review both are open for a pathologist and read-only for anyone else (S6, S7)", () => {
+    ["UNDER_REVIEW", "READY_PATHOLOGIST"].forEach((readingStage) => {
+      const reading = { readingStage, findingsOpen: true };
+      const pathologist = stateOf("UNDER_REVIEW", true, reading);
+      expect(pathologist.review.state).toBe(SECTION_STATE.OPEN);
+      expect(pathologist.findings.state).toBe(SECTION_STATE.OPEN);
 
-    expect(byId(sections, "pathology-section-review").state).toBe(
-      SECTION_STATE.OPEN,
-    );
-    expect(byId(sections, "pathology-section-findings").state).toBe(
-      SECTION_STATE.OPEN,
-    );
-    expect(byId(sections, "pathology-section-grossing").state).toBe(
-      SECTION_STATE.COMPLETE,
-    );
+      const technician = stateOf("UNDER_REVIEW", false, reading);
+      expect(technician.review.state).toBe(SECTION_STATE.READ_ONLY);
+      expect(technician.findings.state).toBe(SECTION_STATE.READ_ONLY);
+    });
+    expect(
+      byId(
+        deriveCaseSections({
+          intl,
+          status: "UNDER_REVIEW",
+          isPathologist: true,
+          readingStage: "UNDER_REVIEW",
+          findingsOpen: true,
+        }),
+        "pathology-section-grossing",
+      ).state,
+    ).toBe(SECTION_STATE.COMPLETE);
   });
 
-  it("marks review, findings and grossing complete for a pathologist once the case is complete", () => {
-    const sections = deriveCaseSections({
-      intl,
-      status: "COMPLETED",
-      isPathologist: true,
+  it("once signed out both are read-only for everyone (S8)", () => {
+    [true, false].forEach((isPathologist) => {
+      const { review, findings } = stateOf("COMPLETED", isPathologist, {
+        readingStage: "UNDER_REVIEW",
+        findingsOpen: false,
+      });
+      expect(review.state).toBe(SECTION_STATE.READ_ONLY);
+      expect(findings.state).toBe(SECTION_STATE.READ_ONLY);
     });
-
-    expect(byId(sections, "pathology-section-review").state).toBe(
-      SECTION_STATE.COMPLETE,
-    );
-    expect(byId(sections, "pathology-section-findings").state).toBe(
-      SECTION_STATE.COMPLETE,
-    );
-    expect(byId(sections, "pathology-section-grossing").state).toBe(
-      SECTION_STATE.COMPLETE,
-    );
   });
 
-  it("leaves review and findings read-only, not complete, for a technician once the case is complete", () => {
-    const sections = deriveCaseSections({
-      intl,
-      status: "COMPLETED",
-      isPathologist: false,
-    });
+  it("a completed case that was never released keeps both editable for a pathologist (S9)", () => {
+    const legacy = { readingStage: "UNDER_REVIEW", findingsOpen: true };
 
-    expect(byId(sections, "pathology-section-review").state).toBe(
-      SECTION_STATE.READ_ONLY,
+    const pathologist = stateOf("COMPLETED", true, legacy);
+    expect(pathologist.review.state).toBe(SECTION_STATE.COMPLETE);
+    expect(pathologist.findings.state).toBe(SECTION_STATE.COMPLETE);
+
+    const technician = stateOf("COMPLETED", false, legacy);
+    expect(technician.review.state).toBe(SECTION_STATE.READ_ONLY);
+    expect(technician.findings.state).toBe(SECTION_STATE.READ_ONLY);
+  });
+});
+
+describe("Begin review and the reading's helpers", () => {
+  it("the move to Under Pathologist Review is labelled Begin review; `grossExamPlace`, `slidesReceived` and `neverCheckedSlides` answer by the rows", () => {
+    expect(advanceLabelKey("UNDER_REVIEW")).toBe(
+      "pathology.action.beginReview",
     );
-    expect(byId(sections, "pathology-section-findings").state).toBe(
-      SECTION_STATE.READ_ONLY,
+
+    ["ACCESSIONED", "GROSSING", "COVERSLIPPING"].forEach((status) =>
+      expect(grossExamPlace(status)).toBe("grossing"),
     );
+    ["READY_PATHOLOGIST", "UNDER_REVIEW", "COMPLETED"].forEach((status) =>
+      expect(grossExamPlace(status)).toBe("findings"),
+    );
+
+    const caseInfo = {
+      blocks: [
+        { id: 1, designation: "A1", active: true },
+        { id: 2, designation: "A2", active: true },
+      ],
+      slides: [
+        {
+          id: 5,
+          designation: "1",
+          blockId: 1,
+          active: true,
+          stainId: "31",
+          stainStatus: "STAINED",
+          coverslipQc: "PASS",
+        },
+        // Retired: left out.
+        { id: 6, designation: "2", blockId: 1, active: false, stainId: "31" },
+        // In use, never checked, nothing recorded.
+        { id: 7, designation: "1", blockId: 2, active: true, stainId: "32" },
+        // Cut before slides named their block: no label to check.
+        { id: 8, designation: "9", blockId: null, active: true },
+      ],
+      stainNames: { 31: "H&E", 32: "PAS" },
+      labelVerifications: { 5: { verifiedAt: "x", verifiedBy: "y" } },
+    };
+
+    expect(slidesReceived(caseInfo, intl)).toEqual([
+      {
+        id: 5,
+        name: "A1.1",
+        stain: "H&E",
+        blockId: 1,
+        stained: true,
+        coverslipQc: "PASS",
+      },
+      {
+        id: 7,
+        name: "A2.1",
+        stain: "PAS",
+        blockId: 2,
+        stained: false,
+        coverslipQc: null,
+      },
+      {
+        id: 8,
+        name: "9",
+        stain: messages["common.notRecorded"],
+        blockId: null,
+        stained: false,
+        coverslipQc: null,
+      },
+    ]);
+    expect(neverCheckedSlides(caseInfo)).toEqual(["A2.1"]);
+    expect(
+      neverCheckedSlides({
+        ...caseInfo,
+        labelVerifications: { 5: {}, 7: {} },
+      }),
+    ).toEqual([]);
+    expect(slidesReceived({}, intl)).toEqual([]);
   });
 });
 
@@ -725,6 +868,8 @@ describe("sectionBadge", () => {
 
   // A signed-out case with a recut still outstanding is not finished, so the
   // header has to say the outstanding thing rather than the reassuring one.
+  // The case was never released, the one signed-out case whose review the
+  // pathologist still holds (S9).
   it("says a signed-out review is still outstanding when a request is open on it", () => {
     const review = byId(
       deriveCaseSections({
@@ -732,6 +877,7 @@ describe("sectionBadge", () => {
         status: "COMPLETED",
         isPathologist: true,
         requestCount: 1,
+        findingsOpen: true,
       }),
       "pathology-section-review",
     );
@@ -1352,8 +1498,8 @@ describe("advanceLabelKey", () => {
   });
 
   it("labels nothing an advance never reaches", () => {
-    ["ACCESSIONED", "UNDER_REVIEW", "COMPLETED", "SOMETHING_NEW"].forEach(
-      (stageId) => expect(advanceLabelKey(stageId)).toBeNull(),
+    ["ACCESSIONED", "COMPLETED", "SOMETHING_NEW"].forEach((stageId) =>
+      expect(advanceLabelKey(stageId)).toBeNull(),
     );
   });
 });
@@ -2558,16 +2704,17 @@ describe("the review section's state, by stage, requests on the case and viewer"
     },
   );
 
-  // The review rule does not fire on a signed-out case: it is what it was
-  // before requests had a table, and the case view offers no request action
-  // there (requestActionLock and the signed-out case view test).
+  // The bench-mode rule does not fire on a signed-out case: a released case's
+  // review is read-only for everyone (S8), and the case view offers no
+  // request action there (requestActionLock and the signed-out case view
+  // test).
   it.each([
-    [0, true, SECTION_STATE.COMPLETE],
-    [2, true, SECTION_STATE.COMPLETE],
+    [0, true, SECTION_STATE.READ_ONLY],
+    [2, true, SECTION_STATE.READ_ONLY],
     [0, false, SECTION_STATE.READ_ONLY],
     [2, false, SECTION_STATE.READ_ONLY],
   ])(
-    "is as it was before once signed out, with %s requests (pathologist: %s), and never in bench mode",
+    "is read-only once signed out, with %s requests (pathologist: %s), and never in bench mode",
     (count, isPathologist, state) => {
       const section = review("COMPLETED", count, isPathologist);
 
@@ -2602,6 +2749,8 @@ describe("the review section's state, by stage, requests on the case and viewer"
         intl,
         status: "READY_PATHOLOGIST",
         isPathologist: true,
+        readingStage: "READY_PATHOLOGIST",
+        findingsOpen: true,
       }),
       "pathology-section-findings",
     );

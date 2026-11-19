@@ -33,8 +33,25 @@ vi.mock("../utils/Utils", async (importOriginal) => {
     postToOpenElisServerJsonResponse: vi.fn(),
     postToOpenElisServerForPDF: vi.fn(),
     hasRole: vi.fn(() => false),
+    // The diagnosis search's one request, answered with one entry so the
+    // picker is live (an empty dictionary disables it).
+    fetchFromOpenElisServer: vi.fn((url) =>
+      Promise.resolve(
+        url.startsWith("/rest/pathology/conclusionEntries")
+          ? {
+              items: [{ id: "3", value: "Adenocarcinoma", code: "8140/3" }],
+              total: 1,
+            }
+          : [],
+      ),
+    ),
   };
 });
+
+vi.mock("../common/textMacro/TextMacroService", async (importOriginal) => ({
+  ...(await importOriginal()),
+  getTextMacros: vi.fn(() => Promise.resolve([])),
+}));
 
 import {
   getFromOpenElisServer,
@@ -42,6 +59,8 @@ import {
   postToOpenElisServerJsonResponse,
   hasRole,
 } from "../utils/Utils";
+import { getTextMacros } from "../common/textMacro/TextMacroService";
+import { TEXT_MACRO_CONTEXTS } from "../admin/textMacro/textMacroConfig";
 
 const CASE_ID = "9";
 const CASE_URL = "/rest/pathology/caseView/" + CASE_ID;
@@ -89,11 +108,15 @@ const caseAtStage = (status, overrides = {}) => ({
   decalcificationRequired: true,
   microscopyExam: "",
   conclusionText: "",
-  // Set here on purpose so the posted key set below is deterministic. The
-  // case DTO carries no such field, so on a real case it is undefined until
-  // the checkbox is used and JSON.stringify drops the key, exactly as it did
-  // before this screen was rebuilt.
+  reviewNotes: "",
   referToImmunoHistoChemistry: false,
+  referredToIhc: false,
+  ihcCaseId: null,
+  // As the server answers where Under Pathologist Review is switched off: the
+  // case is read at Ready for Pathologist, and the reading is open from there
+  // until a release; the tests of Begin review and the queue set their own.
+  readingStage: "READY_PATHOLOGIST",
+  findingsOpen: status === "READY_PATHOLOGIST" || status === "UNDER_REVIEW",
   blocks: [],
   slides: [],
   reports: [],
@@ -751,7 +774,14 @@ describe("PathologyCaseView sections", () => {
     ).toHaveValue("");
   });
 
-  it("posts the fields the backend has always been sent, then reads the saved case back", async () => {
+  it("the save sends exactly the keys of section 8.2", async () => {
+    // The three conditional keys absent, and the two id lists not on the
+    // case read: they are still sent, as empty lists.
+    servedCase = caseAtStage("UNDER_REVIEW", {
+      immunoHistoChemistryTestIds: undefined,
+      techniques: undefined,
+      conclusions: undefined,
+    });
     renderCaseView();
 
     await waitFor(() => expect(stageReadout()).not.toBeNull());
@@ -769,7 +799,8 @@ describe("PathologyCaseView sections", () => {
     const [url, body, callback] =
       postToOpenElisServerFullResponse.mock.calls.at(-1);
     expect(url).toBe(CASE_URL);
-    expect(Object.keys(JSON.parse(body)).sort()).toEqual([
+    const posted = JSON.parse(body);
+    expect(Object.keys(posted).sort()).toEqual([
       "assignedPathologistId",
       "assignedTechnicianId",
       "blocks",
@@ -777,14 +808,17 @@ describe("PathologyCaseView sections", () => {
       "conclusions",
       "decalcificationRequired",
       "grossExam",
-      "immunoHistoChemistryTestIds",
       "microscopyExam",
       "referToImmunoHistoChemistry",
       "release",
       "reports",
+      "reviewNotes",
       "slides",
       "techniques",
     ]);
+    expect(posted.techniques).toEqual([]);
+    expect(posted.conclusions).toEqual([]);
+    expect(posted.referToImmunoHistoChemistry).toBe(false);
 
     await act(async () => {
       await callback({ status: 200, json: async () => ({}) });
@@ -1609,13 +1643,23 @@ describe("PathologyCaseView sections", () => {
     );
   });
 
+  // Both descriptions written, so FR-12.5's reason on the release box, said
+  // before the assignments, is not the reason these tests are about.
+  const BOTH_DESCRIPTIONS = Object.freeze({
+    grossExam: "Skin ellipse, 2 cm",
+    microscopyExam: "Benign naevus",
+  });
+
   // S-7.4: a control the case is not ready for is the pathologist's answer to
   // "why can I not release this", so it is shown and disabled rather than
   // removed. The flat form rendered it only once both assignments existed,
   // which left the screen saying nothing at all.
   it("shows the release a case is not ready for, disabled and saying why", async () => {
     hasRole.mockReturnValue(true);
-    servedCase = caseAtStage("UNDER_REVIEW", { assignedPathologistId: "" });
+    servedCase = caseAtStage("UNDER_REVIEW", {
+      assignedPathologistId: "",
+      ...BOTH_DESCRIPTIONS,
+    });
     renderCaseView();
 
     await waitFor(() => expect(stageReadout()).not.toBeNull());
@@ -1634,7 +1678,7 @@ describe("PathologyCaseView sections", () => {
 
   it("lets the pathologist release a case that carries both assignments", async () => {
     hasRole.mockReturnValue(true);
-    servedCase = caseAtStage("UNDER_REVIEW");
+    servedCase = caseAtStage("UNDER_REVIEW", BOTH_DESCRIPTIONS);
     renderCaseView();
 
     await waitFor(() => expect(stageReadout()).not.toBeNull());
@@ -1649,7 +1693,7 @@ describe("PathologyCaseView sections", () => {
   // release, so the box says so rather than offering a tick that fails.
   it("holds the release back on a released case and says why", async () => {
     hasRole.mockReturnValue(true);
-    servedCase = caseAtStage("COMPLETED");
+    servedCase = caseAtStage("COMPLETED", BOTH_DESCRIPTIONS);
     renderCaseView();
 
     await waitFor(() => expect(stageReadout()).not.toBeNull());
@@ -1673,7 +1717,11 @@ describe("PathologyCaseView sections", () => {
   // offered rather than held back as if the case were already released.
   it("offers the release on a case left at Completed without one", async () => {
     hasRole.mockReturnValue(true);
-    servedCase = caseAtStage("COMPLETED", { releasable: true });
+    servedCase = caseAtStage("COMPLETED", {
+      releasable: true,
+      findingsOpen: true,
+      ...BOTH_DESCRIPTIONS,
+    });
     renderCaseView();
 
     await waitFor(() => expect(stageReadout()).not.toBeNull());
@@ -1747,7 +1795,10 @@ describe("PathologyCaseView sections", () => {
 
   it("puts the release reason in the control's own helper slot", async () => {
     hasRole.mockReturnValue(true);
-    servedCase = caseAtStage("UNDER_REVIEW", { assignedPathologistId: "" });
+    servedCase = caseAtStage("UNDER_REVIEW", {
+      assignedPathologistId: "",
+      ...BOTH_DESCRIPTIONS,
+    });
     renderCaseView();
 
     await waitFor(() => expect(stageReadout()).not.toBeNull());
@@ -4631,16 +4682,20 @@ describe("Review section, bench requests", () => {
   });
 
   // A signed-out case takes no request action, but the review's own field
-  // behaves as it did before requests had a table: the section is complete,
-  // and still revisable, for the pathologist, and read-only for anyone else.
+  // follows the reading (S8, S9): read-only for everyone once released, and
+  // complete, still revisable, for the pathologist on a case never released.
   it.each([
-    ["the pathologist", true, "toBeEnabled"],
-    ["anyone else", false, "toBeDisabled"],
+    ["the pathologist on a released case", true, false, "toBeDisabled"],
+    ["anyone else", false, false, "toBeDisabled"],
+    ["the pathologist on a case never released", true, true, "toBeEnabled"],
   ])(
-    "shows a signed-out case's requests with no action on them, and leaves the pathologist field as it was for %s",
-    async (_label, pathologist, fieldState) => {
+    "shows a signed-out case's requests with no action on them, and leaves the pathologist field editable only on a case never released, for %s",
+    async (_label, pathologist, findingsOpen, fieldState) => {
       hasRole.mockReturnValue(pathologist);
-      servedCase = withRequests("COMPLETED", [openSlideRequest]);
+      servedCase = {
+        ...withRequests("COMPLETED", [openSlideRequest]),
+        findingsOpen,
+      };
       renderCaseView();
       await loaded();
 
@@ -4961,6 +5016,328 @@ describe("Review section, bench requests", () => {
         expect(requestStain("A1.1")).toBeNull();
         expect(requestSlide("A1")).toBeNull();
       },
+    );
+  });
+});
+
+describe("the reading: Review, Findings and the save", () => {
+  const REVIEW = "pathology-section-review";
+  const FINDINGS = "pathology-section-findings";
+  const GROSSING = "pathology-section-grossing";
+  const REVIEW_ON = Object.freeze({ readingStage: "UNDER_REVIEW" });
+  const EXPECTED_SECTION_IDS = [
+    "pathology-section-case-info",
+    GROSSING,
+    REVIEW,
+    FINDINGS,
+  ];
+
+  const slideRow = (id, designation, overrides = {}) => ({
+    id,
+    designation,
+    barcode: "ACC9.A1." + designation,
+    blockId: 1,
+    active: true,
+    stainId: "31",
+    stainStatus: null,
+    coverslipQc: null,
+    ...overrides,
+  });
+  const readCase = (status, overrides = {}) =>
+    caseAtStage(status, {
+      blocks: [{ id: 1, designation: "A1", barcode: "ACC9.A1", active: true }],
+      stainNames: { 31: "H&E", 32: "PAS" },
+      ...overrides,
+    });
+
+  it("exactly one macroscopic field exists in every row S1 to S9: Grossing's on the bench, none in the queue (text only), Findings' from the reading on", async () => {
+    const rows = [
+      ["S1", "GROSSING", true, REVIEW_ON, GROSSING],
+      ["S2", "GROSSING", true, {}, GROSSING],
+      ["S3", "READY_PATHOLOGIST", true, { ...REVIEW_ON, findingsOpen: false }],
+      ["S4", "READY_PATHOLOGIST", false, { ...REVIEW_ON, findingsOpen: false }],
+      ["S5", "READY_PATHOLOGIST", true, {}, FINDINGS],
+      ["S6", "UNDER_REVIEW", true, REVIEW_ON, FINDINGS],
+      ["S7", "UNDER_REVIEW", false, REVIEW_ON, FINDINGS],
+      [
+        "S8",
+        "COMPLETED",
+        true,
+        { ...REVIEW_ON, findingsOpen: false },
+        FINDINGS,
+      ],
+      ["S9", "COMPLETED", true, { ...REVIEW_ON, findingsOpen: true }, FINDINGS],
+    ];
+    for (const [row, status, pathologist, fields, holder] of rows) {
+      hasRole.mockReturnValue(pathologist);
+      servedCase = caseAtStage(status, {
+        grossExam: "Skin ellipse",
+        ...fields,
+      });
+      const { unmount } = renderCaseView();
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+      // Each field by the section that holds it, so a second one says where.
+      const holders = Array.from(
+        document.querySelectorAll("textarea#grossExam"),
+      ).map((field) =>
+        EXPECTED_SECTION_IDS.find((id) => section(id).contains(field)),
+      );
+      expect([row, holders]).toEqual([row, holder ? [holder] : []]);
+      if (!holder) {
+        expect(
+          within(section(GROSSING)).getByTestId("grossing-gross-exam-text"),
+        ).toHaveTextContent("Skin ellipse");
+      }
+      unmount();
+    }
+  });
+
+  it("the pathologist is found by typing part of a name, and the header shows the new name at once", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = caseAtStage("UNDER_REVIEW");
+    const base = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, callback) =>
+      url === "/rest/users/Pathologist"
+        ? callback([
+            { id: "8", value: "Paula Path" },
+            { id: "12", value: "Robert Read" },
+          ])
+        : base(url, callback),
+    );
+    renderCaseView();
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+    const input = document.getElementById("assignedPathologist");
+    expect(input.tagName).toBe("INPUT");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "ober" } });
+    fireEvent.click(await screen.findByText("Robert Read"));
+
+    const band = document.querySelector(".patient-header2");
+    expect(
+      within(band).getByText(
+        intl.formatMessage(
+          { id: "caseView.label.assignedStaff" },
+          { role: messages["assigned.pathologist.label"], name: "Robert Read" },
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect((await postedCase()).assignedPathologistId).toBe("12");
+  });
+
+  it("Slides received lists each slide in use with its stain and checks, tags the label check as Microtomy does with no tag for a slide without a block, leaves out a retired slide, and says so when there is none", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = readCase("UNDER_REVIEW", {
+      slides: [
+        slideRow(5, "1", { stainStatus: "STAINED", coverslipQc: "PASS" }),
+        slideRow(6, "2", { active: false }),
+        slideRow(7, "3", { stainId: "32" }),
+        slideRow(8, "9", { blockId: null }),
+      ],
+      labelVerifications: { 5: { verifiedAt: "x", verifiedBy: "y" } },
+    });
+    const { unmount } = renderCaseView();
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+    const review = within(section(REVIEW));
+    expect(
+      review.getByText(
+        intl.formatMessage(
+          { id: "pathology.label.slidesReceived" },
+          { count: 3 },
+        ),
+      ),
+    ).toHaveClass("pathology-case-view__heading");
+    const rows = within(review.getByTestId("review-slides-received"))
+      .getAllByRole("row")
+      .slice(1);
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toHaveTextContent("A1.1");
+    expect(rows[0]).toHaveTextContent("H&E");
+    expect(rows[0]).toHaveTextContent(messages["pathology.badge.verified"]);
+    expect(rows[0]).toHaveTextContent(
+      intl.formatMessage(
+        { id: "pathology.badge.verifiedBy" },
+        { name: "y", date: "x" },
+      ),
+    );
+    expect(rows[0]).toHaveTextContent(messages["pathology.badge.stained"]);
+    expect(rows[0]).toHaveTextContent(
+      intl.formatMessage(
+        { id: "pathology.badge.coverslipQcResult" },
+        { result: messages["pathology.badge.qcPassed"] },
+      ),
+    );
+    expect(rows[1]).toHaveTextContent("A1.3");
+    expect(rows[1]).toHaveTextContent("PAS");
+    expect(rows[1]).toHaveTextContent(messages["pathology.badge.unverified"]);
+    expect(rows[1]).not.toHaveTextContent(messages["pathology.badge.stained"]);
+    expect(rows[2]).toHaveTextContent("9");
+    expect(rows[2]).not.toHaveTextContent(
+      messages["pathology.badge.unverified"],
+    );
+    expect(rows[2]).not.toHaveTextContent(messages["pathology.badge.verified"]);
+    expect(section(REVIEW)).not.toHaveTextContent("A1.2");
+    unmount();
+
+    servedCase = readCase("UNDER_REVIEW", {
+      slides: [slideRow(6, "2", { active: false })],
+    });
+    renderCaseView();
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+    expect(
+      within(section(REVIEW)).getByText(
+        messages["pathology.empty.noSlidesReceived"],
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("review-slides-received")).toBeNull();
+  });
+
+  it("the never-checked note names the slides and says where to check them, in the queue and under review, and is absent on the bench and when every label was checked", async () => {
+    const note = intl.formatMessage(
+      { id: "pathology.banner.labelsNeverChecked" },
+      { designations: "A1.1, A1.3" },
+    );
+    const legacy = {
+      slides: [slideRow(5, "1"), slideRow(7, "3"), slideRow(8, "4")],
+      labelVerifications: { 8: { verifiedAt: "x", verifiedBy: "y" } },
+    };
+    const cases = [
+      ["READY_PATHOLOGIST", { ...REVIEW_ON, ...legacy }, true],
+      ["UNDER_REVIEW", { ...REVIEW_ON, ...legacy }, true],
+      [
+        "COVERSLIPPING",
+        {
+          ...REVIEW_ON,
+          ...legacy,
+          requests: [{ id: "1", instruction: "Deeper", status: "OPENED" }],
+        },
+      ],
+      [
+        "UNDER_REVIEW",
+        {
+          ...legacy,
+          labelVerifications: { 5: {}, 7: {}, 8: {} },
+        },
+      ],
+    ];
+    hasRole.mockReturnValue(true);
+    for (const [status, fields, shown] of cases) {
+      servedCase = readCase(status, fields);
+      const { unmount } = renderCaseView();
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
+      const banner = screen.queryByTestId("review-labels-never-checked");
+      if (shown) {
+        expect(banner).toHaveTextContent(note);
+      } else {
+        expect([status, banner]).toEqual([status, null]);
+      }
+      unmount();
+    }
+  });
+
+  it("the two descriptions ask for their own phrase contexts; the text macro config lists the two pathology contexts", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = caseAtStage("UNDER_REVIEW", REVIEW_ON);
+    renderCaseView();
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+    const findings = section(FINDINGS);
+    // The phrase list is asked for when a description takes focus.
+    act(() => findings.querySelector("textarea#grossExam").focus());
+    act(() => findings.querySelector("textarea#microscopyExam").focus());
+
+    await waitFor(() =>
+      expect(getTextMacros).toHaveBeenCalledWith(
+        "PATHOLOGY_GROSS_DESCRIPTION",
+        expect.anything(),
+      ),
+    );
+    expect(getTextMacros).toHaveBeenCalledWith(
+      "PATHOLOGY_MICROSCOPIC_DESCRIPTION",
+      expect.anything(),
+    );
+    expect(TEXT_MACRO_CONTEXTS).toEqual(
+      expect.arrayContaining([
+        "PATHOLOGY_GROSS_DESCRIPTION",
+        "PATHOLOGY_MICROSCOPIC_DESCRIPTION",
+      ]),
+    );
+  });
+
+  it("review notes typed are sent with the save", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = caseAtStage("UNDER_REVIEW", REVIEW_ON);
+    renderCaseView();
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+    const notes = screen.getByLabelText(
+      messages["pathology.label.reviewNotes"],
+    );
+    expect(notes).toHaveAttribute("id", "reviewNotes");
+    expect(
+      screen.getByText(messages["pathology.label.reviewNotesHelp"]),
+    ).toBeInTheDocument();
+    fireEvent.change(notes, { target: { value: "Ask about the margin" } });
+
+    expect((await postedCase()).reviewNotes).toBe("Ask about the margin");
+  });
+
+  it("a refused save keeps what was typed and the form dirty, and shows each new refusal's sentence", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = caseAtStage("UNDER_REVIEW", REVIEW_ON);
+    renderCaseView();
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+    const notes = () =>
+      screen.getByLabelText(messages["pathology.label.reviewNotes"]);
+    fireEvent.change(notes(), { target: { value: "Typed before the save" } });
+    const fetchesBefore = caseFetchCount();
+
+    const refusals = [
+      ["pathology.error.findingsLocked", {}],
+      ["pathology.error.conclusionTooLong", {}],
+      ["pathology.error.conclusionNotInUse", { name: "Old diagnosis" }],
+      ["pathology.error.techniqueNotInUse", { name: "Old technique" }],
+      ["pathology.error.releaseWithoutDescriptions", {}],
+    ];
+    for (const [messageKey, messageArgs] of refusals) {
+      await postedCase();
+      const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
+      await act(async () => {
+        await callback({
+          status: 400,
+          json: async () => ({ messageKey, messageArgs }),
+        });
+      });
+
+      expect(addNotification).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: intl.formatMessage({ id: messageKey }, messageArgs),
+        }),
+      );
+      expect(notes()).toHaveValue("Typed before the save");
+      expect(
+        screen.getByText(messages["caseView.label.unsavedChanges"]),
+      ).toBeInTheDocument();
+    }
+    expect(caseFetchCount()).toBe(fetchesBefore);
+  });
+
+  it("the summary's Conclusion row shows the first coded conclusion's name", async () => {
+    servedCase = caseAtStage("UNDER_REVIEW", {
+      conclusions: [
+        { id: "3", value: "Adenocarcinoma", code: "8140/3" },
+        { id: "4", value: "Inflammation", code: "" },
+      ],
+      conclusionText: "Narrative",
+    });
+    renderCaseView();
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+    expect(summaryValue(messages["pathology.label.conclusion"])).toBe(
+      "Adenocarcinoma",
     );
   });
 });

@@ -344,15 +344,33 @@ $stain-picker-min-size: 9.5rem;
 // above it and the toolbar ran out of the column and under the summary.
 .pathology-case-view__slide-work,
 .pathology-case-view__slide-work-body,
-.pathology-case-view__requests {
+.pathology-case-view__requests,
+.pathology-case-view__slides-received,
+.pathology-case-view__review-notes {
   min-inline-size: 0;
 }
 
 // A table needs the width a paragraph does not, so the sections holding one
 // give up the empty quarter Carbon keeps at the end of an accordion's content.
 .cds--accordion__content:has(.pathology-case-view__slide-work),
-.cds--accordion__content:has(.pathology-case-view__requests) {
+.cds--accordion__content:has(.pathology-case-view__requests),
+.cds--accordion__content:has(.pathology-case-view__slides-received) {
   padding-inline-end: spacing.$spacing-03;
+}
+
+// A phrase list or the diagnosis menu opens over what follows its field, and
+// in the last section that is past the section's own end. A section holding
+// one shows what spills out of it rather than cutting the list short.
+.cds--accordion__item--active:has(
+    .text-macro-field,
+    .pathology-case-view__conclusion-picker
+  )
+  > .cds--accordion__wrapper,
+.cds--accordion__content:has(
+  .text-macro-field,
+  .pathology-case-view__conclusion-picker
+) {
+  overflow: visible;
 }
 
 // Where the section is still narrower than the columns, the table scrolls
@@ -496,4 +514,52 @@ $stain-picker-min-size: 9.5rem;
   flex-basis: 100%;
   flex-wrap: wrap;
   gap: spacing.$spacing-03;
+}
+
+// Findings & Conclusion and Grossing.
+
+// The chosen techniques, diagnoses and markers sit under their picker as one
+// wrapping row of chips, so a long list grows downwards, never sideways.
+.pathology-case-view__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+  min-inline-size: 0;
+}
+
+// Lifts Carbon's tag width cap: a chip may run as wide as its row, its label
+// cut at the row's end rather than at a fixed width.
+.pathology-case-view__chips .cds--tag,
+.pathology-case-view__chips .cds--tag > span,
+.pathology-case-view__chips .cds--interactive--tag-children {
+  max-inline-size: 100%;
+}
+
+// Each wrapper down to the label may shrink below its text, or the text
+// runs out of both ends of the chip instead of ending in an ellipsis.
+.pathology-case-view__chips .cds--tag > span,
+.pathology-case-view__chips .cds--tag__label {
+  min-inline-size: 0;
+}
+
+.pathology-case-view__conclusion-picker {
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-03;
+  min-inline-size: 0;
+}
+
+// The picker's answer line keeps its height while empty, so the chips under
+// it do not jump as a message comes and goes.
+.pathology-case-view__picker-status {
+  min-block-size: 1rem;
+}
+
+// The macroscopic description printed under Grossing once it is completed
+// under Findings & Conclusion: the text as written, line breaks kept.
+.pathology-case-view__printed-text {
+  @include type.type-style("body-01");
+
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }

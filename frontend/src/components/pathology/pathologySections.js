@@ -48,6 +48,9 @@ export const COVERSLIPPING_SECTION_ID = "pathology-section-coverslipping";
 // The review section, which holds the case's bench requests.
 export const REVIEW_SECTION_ID = "pathology-section-review";
 
+// The findings section, where the reading is written.
+export const FINDINGS_SECTION_ID = "pathology-section-findings";
+
 // A section's own header, where focus lands once nothing left to do in the
 // section can take it.
 export const sectionHeader = (sectionId) =>
@@ -148,7 +151,7 @@ export const PATHOLOGY_SECTIONS = Object.freeze([
     pathologistOnly: true,
   }),
   Object.freeze({
-    id: "pathology-section-findings",
+    id: FINDINGS_SECTION_ID,
     number: 10,
     titleKey: "pathology.section.findings",
     stages: Object.freeze(["READY_PATHOLOGIST", "UNDER_REVIEW"]),
@@ -245,6 +248,7 @@ const ADVANCE_LABEL_KEYS = Object.freeze({
   STAINING: "pathology.action.sendForStaining",
   COVERSLIPPING: "pathology.action.sendForCoverslip",
   READY_PATHOLOGIST: "pathology.action.sendToPathologist",
+  UNDER_REVIEW: "pathology.action.beginReview",
 });
 
 /**
@@ -1234,6 +1238,64 @@ export function reviewTakesRequests(section) {
 }
 
 /**
+ * The findings section's state (design table S1 to S9). It gates on the
+ * stage the server names as the one the case is read at, Under Pathologist
+ * Review where the laboratory tracks it, else Ready for Pathologist; a case
+ * that names none is read at Ready for Pathologist. A pathologist with the
+ * case in the queue is told to press Begin review instead of being told to
+ * wait. At or past the gate it is the pathologist's only while the server
+ * says the reading is open (`findingsOpen`), which on a completed case means
+ * one never released; it is read-only for everyone else and once signed out.
+ * A status this build cannot place is locked by the gate.
+ */
+function findingsSectionState(
+  intl,
+  status,
+  { isPathologist, readingStage, findingsOpen },
+) {
+  const gate = readingStage || "READY_PATHOLOGIST";
+  const derived = deriveSectionState({
+    status,
+    stageOrder: PATHOLOGY_STAGES,
+    sectionStage: gate,
+    stageLabel: stageLabel(intl, gate),
+  });
+  if (derived.state === SECTION_STATE.DISABLED) {
+    return isPathologist &&
+      status === "READY_PATHOLOGIST" &&
+      gate === "UNDER_REVIEW"
+      ? {
+          state: SECTION_STATE.DISABLED,
+          lockedHintKey: "pathology.locked.beginReviewFirst",
+          lockedHintValues: undefined,
+        }
+      : derived;
+  }
+  let state = SECTION_STATE.READ_ONLY;
+  if (isPathologist && findingsOpen) {
+    state =
+      status === "COMPLETED" ? SECTION_STATE.COMPLETE : SECTION_STATE.OPEN;
+  }
+  return { state, lockedHintKey: undefined, lockedHintValues: undefined };
+}
+
+/**
+ * A signed-out case's review is complete, and still editable, for the
+ * pathologist only while the server says the reading is open, which is a
+ * case never released (S9); a released one is read-only for everyone (S8).
+ */
+function signedOutReviewState(section, state, findingsOpen) {
+  if (
+    section.id === REVIEW_SECTION_ID &&
+    state === SECTION_STATE.COMPLETE &&
+    !findingsOpen
+  ) {
+    return SECTION_STATE.READ_ONLY;
+  }
+  return state;
+}
+
+/**
  * One case view section, derived fresh from the case's status, the caller's
  * role, the laboratory's stage configuration, the grossing bench's
  * decalcification flag, whether the section holds rows of its own and, for
@@ -1255,6 +1317,8 @@ function deriveOneSection(
     decalcificationRequired,
     sectionHasRows,
     requestCount,
+    readingStage,
+    findingsOpen,
   },
 ) {
   const isCurrent = section.stages.includes(status);
@@ -1294,6 +1358,19 @@ function deriveOneSection(
     return { ...section, ...review, isCurrent, notApplicable: false };
   }
 
+  if (section.id === FINDINGS_SECTION_ID) {
+    return {
+      ...section,
+      ...findingsSectionState(intl, status, {
+        isPathologist,
+        readingStage,
+        findingsOpen,
+      }),
+      isCurrent,
+      notApplicable: false,
+    };
+  }
+
   if (section.gate === null) {
     const derived = section.displayOnly
       ? deriveSectionState({ sectionStage: null, readOnly: true })
@@ -1316,7 +1393,7 @@ function deriveOneSection(
   const state =
     derived.state === SECTION_STATE.COMPLETE && isCurrent
       ? SECTION_STATE.OPEN
-      : derived.state;
+      : signedOutReviewState(section, derived.state, findingsOpen);
 
   return {
     ...section,
@@ -1334,7 +1411,8 @@ function deriveOneSection(
  * marked not applicable. `sectionHasRows` says whether a section holds rows
  * on record; a section it is not asked about holds none. `requestCount` is
  * how many requests the case holds, whatever their status, which the review
- * section reads.
+ * section reads. `readingStage` and `findingsOpen` are the case read's own:
+ * the stage the case is read at and whether the reading can be written now.
  */
 export function deriveCaseSections({
   intl,
@@ -1344,6 +1422,8 @@ export function deriveCaseSections({
   decalcificationRequired,
   sectionHasRows = () => false,
   requestCount = 0,
+  readingStage,
+  findingsOpen = false,
 } = {}) {
   return PATHOLOGY_SECTIONS.map((section) => ({
     ...deriveOneSection(section, {
@@ -1354,6 +1434,8 @@ export function deriveCaseSections({
       decalcificationRequired,
       sectionHasRows,
       requestCount,
+      readingStage,
+      findingsOpen: Boolean(findingsOpen),
     }),
     openByDefault: sectionOpensByDefault(section, status),
   }));
@@ -1490,4 +1572,49 @@ export function deriveRailItems(
       pendingTitle: pending?.full,
     };
   });
+}
+
+/**
+ * Where the macroscopic description is written (AC-23): Grossing's field on
+ * the bench, Findings' from Ready for Pathologist on. A status this build
+ * cannot place is read as the bench's.
+ */
+export function grossExamPlace(status) {
+  return PATHOLOGY_STAGES.indexOf(status) >=
+    PATHOLOGY_STAGES.indexOf("READY_PATHOLOGIST")
+    ? "findings"
+    : "grossing";
+}
+
+/**
+ * The slides in use on the case, one row each in list order, for the review's
+ * Slides received: the name it goes by under its block, its stain, whether
+ * its label was checked against its block, whether it is stained and its
+ * coverslip QC result, null when none was recorded. A slide added since the
+ * last save is not received yet.
+ */
+export function slidesReceived(caseInfo, intl) {
+  return countedRows(caseInfo?.slides).map((slide) => ({
+    id: slide.id,
+    name: slideOnBlockName(slide, caseInfo.blocks),
+    stain:
+      caseInfo.stainNames?.[slide.stainId] ||
+      intl.formatMessage({ id: "common.notRecorded" }),
+    blockId: slide.blockId ?? null,
+    stained: isStainedRow(slide),
+    coverslipQc: slide.coverslipQc ?? null,
+  }));
+}
+
+/**
+ * The names of the slides in use that name their block and whose label was
+ * never checked against it: a legacy case that passed Microtomy before the
+ * check existed. Saying so is a note, never a gate.
+ */
+export function neverCheckedSlides(caseInfo) {
+  return unverifiedSlides(
+    caseInfo?.blocks,
+    caseInfo?.slides,
+    caseInfo?.labelVerifications,
+  ).map(({ name }) => name);
 }

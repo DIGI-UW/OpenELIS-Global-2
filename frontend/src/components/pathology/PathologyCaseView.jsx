@@ -19,6 +19,7 @@ import {
   postToOpenElisServerJsonResponse,
   postToOpenElisServerForPDF,
   hasRole,
+  Roles,
 } from "../utils/Utils";
 import { requestFailed } from "../utils/requestOutcome";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
@@ -48,6 +49,8 @@ import {
   advanceLabelKey,
   COVERSLIPPING_SECTION_ID,
   decalcificationFlagFrozen,
+  FINDINGS_SECTION_ID,
+  grossExamPlace,
   deriveCaseSections,
   deriveRailItems,
   EMBEDDING_SECTION_ID,
@@ -226,7 +229,6 @@ function PathologyCaseView() {
   const [formVersion, setFormVersion] = useState(0);
 
   const [techniques, setTechniques] = useState([]);
-  const [conclusions, setConclusions] = useState([]);
   const [immunoHistoChemistryTests, setImmunoHistoChemistryTests] = useState(
     [],
   );
@@ -236,13 +238,7 @@ function PathologyCaseView() {
   // laboratory has configured none.
   const [tissueTypes, setTissueTypes] = useState(null);
   const [stains, setStains] = useState(null);
-  const [loadingConclusions, setLoadingConclusions] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
-  const [nextPage, setNextPage] = useState(null);
-  const [previousPage, setPreviousPage] = useState(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postSavePrintModel, setPostSavePrintModel] = useState(null);
   const [pendingDeactivation, setPendingDeactivation] = useState(null);
@@ -267,6 +263,9 @@ function PathologyCaseView() {
   // A request started from a Microtomy row: its kind and target, and a nonce
   // so each press opens the new request again (see RequestsTable).
   const [requestPrefill, setRequestPrefill] = useState(null);
+  // Counts the moves to Under Pathologist Review, each of which opens
+  // Findings & Conclusion (see CaseSection's openRequest).
+  const [findingsOpenRequest, setFindingsOpenRequest] = useState(0);
   // The selectors, in order of preference, for the control that takes focus
   // once the case is read back, and, when set, the only controls focus may be
   // taken from (see focusFirstOf).
@@ -376,44 +375,6 @@ function PathologyCaseView() {
       }
     });
     getFromOpenElisServer(caseUrl, loadCase);
-  };
-
-  const loadConclusionData = (res) => {
-    if (res && res.displayItems && res.displayItems.length > 0) {
-      setConclusions(res.displayItems);
-    } else {
-      setConclusions([]);
-    }
-
-    if (res && res.paging) {
-      const { totalPages, currentPage } = res.paging;
-      if (totalPages > 1) {
-        setPagination(true);
-        setCurrentApiPage(currentPage);
-        setTotalApiPages(totalPages);
-        if (parseInt(currentPage) < parseInt(totalPages)) {
-          setNextPage(parseInt(currentPage) + 1);
-        } else {
-          setNextPage(null);
-        }
-
-        if (parseInt(currentPage) > 1) {
-          setPreviousPage(parseInt(currentPage) - 1);
-        } else {
-          setPreviousPage(null);
-        }
-      }
-    }
-
-    setLoadingConclusions(false);
-  };
-
-  const loadConclusionsPage = (page) => {
-    setLoadingConclusions(true);
-    getFromOpenElisServer(
-      "/rest/paginatedDisplayList/PATHOLOGIST_CONCLUSIONS" + "?page=" + page,
-      loadConclusionData,
-    );
   };
 
   // The sentence for a refusal the server names by a message id, in the
@@ -720,6 +681,21 @@ function PathologyCaseView() {
           setReturnOpen(false);
           setReturnReason("");
           setSendConfirmOpen(false);
+          // Begin review opens Findings & Conclusion and lands in the reading
+          // itself, not on its header: the pathologist pressed it to write the
+          // microscopic description, the macroscopic one being already
+          // written.
+          if (response.status === "UNDER_REVIEW") {
+            if (direction === "advance") {
+              setFindingsOpenRequest((count) => count + 1);
+            }
+            return [
+              "#microscopyExam",
+              "#grossExam",
+              sectionHeader(FINDINGS_SECTION_ID),
+              RETURN_STAGE_BUTTON,
+            ];
+          }
           const sectionId = sectionIdOfStage(response.status);
           return sectionId
             ? [sectionHeader(sectionId), RETURN_STAGE_BUTTON]
@@ -911,7 +887,7 @@ function PathologyCaseView() {
   };
 
   // Opens a section whose header is collapsed. CaseSection seeds its open
-  // state once and has no setter, so its own header is pressed.
+  // state once, so its own header is pressed.
   const openSection = (sectionId) => {
     const header = document.querySelector(sectionHeader(sectionId));
     if (header?.getAttribute("aria-expanded") === "false") {
@@ -1003,6 +979,9 @@ function PathologyCaseView() {
     }
     setIsSubmitting(true);
     setPostSavePrintModel(null);
+    // The ids lists are sent even when empty, so clearing the last
+    // technique or diagnosis is saved as cleared. A case already referred
+    // stays referred: the box is shown ticked and cannot be unticked.
     let submitValues = {
       assignedTechnicianId: caseInfo.assignedTechnicianId,
       assignedPathologistId: caseInfo.assignedPathologistId,
@@ -1013,8 +992,13 @@ function PathologyCaseView() {
       decalcificationRequired,
       microscopyExam: caseInfo.microscopyExam,
       conclusionText: caseInfo.conclusionText,
+      reviewNotes: caseInfo.reviewNotes ?? null,
+      techniques: (caseInfo.techniques ?? []).map((e) => e.id),
+      conclusions: (caseInfo.conclusions ?? []).map((e) => e.id),
       release: caseInfo.release != undefined ? caseInfo.release : false,
-      referToImmunoHistoChemistry: caseInfo.referToImmunoHistoChemistry,
+      referToImmunoHistoChemistry: Boolean(
+        caseInfo.referredToIhc || caseInfo.referToImmunoHistoChemistry,
+      ),
     };
     // The run reference is written once per processing entry, so it is sent
     // only while the server says it can still be recorded.
@@ -1035,18 +1019,6 @@ function PathologyCaseView() {
         ),
       };
     }
-    if (caseInfo.techniques) {
-      submitValues = {
-        ...submitValues,
-        techniques: caseInfo.techniques.map((e) => e.id),
-      };
-    }
-    if (caseInfo.conclusions) {
-      submitValues = {
-        ...submitValues,
-        conclusions: caseInfo.conclusions.map((e) => e.id),
-      };
-    }
 
     postToOpenElisServerFullResponse(
       caseUrl,
@@ -1057,9 +1029,6 @@ function PathologyCaseView() {
 
   useEffect(() => {
     componentMounted.current = true;
-    setNextPage(null);
-    setPreviousPage(null);
-    setPagination(false);
     getFromOpenElisServer(
       "/rest/displayList/PATHOLOGY_TECHNIQUES",
       setTechniques,
@@ -1068,10 +1037,6 @@ function PathologyCaseView() {
       "/rest/displayList/IMMUNOHISTOCHEMISTRY_MARKERS_TESTS",
       setImmunoHistoChemistryTests,
     );
-    getFromOpenElisServer(
-      "/rest/paginatedDisplayList/PATHOLOGIST_CONCLUSIONS",
-      loadConclusionData,
-    );
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
     getFromOpenElisServer("/rest/users/Pathologist", setPathologistUsers);
     reloadCase();
@@ -1079,7 +1044,7 @@ function PathologyCaseView() {
     return () => {
       componentMounted.current = false;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const breadcrumbs = [
     { label: "home.label", link: "/" },
@@ -1099,6 +1064,8 @@ function PathologyCaseView() {
     decalcificationRequired,
     sectionHasRows: (candidate) => sectionHoldsRecords(candidate.id, caseInfo),
     requestCount: (caseInfo.requests ?? []).length,
+    readingStage: caseInfo.readingStage,
+    findingsOpen: caseInfo.findingsOpen,
   });
   const reviewOpenForRequests = reviewTakesRequests(
     sections.find((section) => section.id === REVIEW_SECTION_ID),
@@ -1111,6 +1078,7 @@ function PathologyCaseView() {
       case "pathology-section-grossing":
         return (
           <GrossingSection
+            grossExamHere={grossExamPlace(stage) === "grossing"}
             caseInfo={caseInfo}
             updateCase={updateCase}
             readOnly={readOnly}
@@ -1218,22 +1186,22 @@ function PathologyCaseView() {
             onChangeRequestStatus={changeRequestStatus}
           />
         );
-      case "pathology-section-findings":
+      // A locked Findings renders no body: the accordion still mounts a
+      // disabled item's children, and the macroscopic field must exist in
+      // one place at a time (AC-23), Grossing's on the bench, none in the
+      // queue. Nothing in a locked section can be read or changed anyway.
+      case FINDINGS_SECTION_ID:
+        if (section.state === SECTION_STATE.DISABLED) {
+          return null;
+        }
         return (
           <FindingsSection
             caseInfo={caseInfo}
             updateCase={updateCase}
             readOnly={readOnly}
             techniques={techniques}
-            conclusions={conclusions}
             immunoHistoChemistryTests={immunoHistoChemistryTests}
-            pagination={pagination}
-            currentApiPage={currentApiPage}
-            totalApiPages={totalApiPages}
-            previousPage={previousPage}
-            nextPage={nextPage}
-            onPreviousPage={() => loadConclusionsPage(previousPage)}
-            onNextPage={() => loadConclusionsPage(nextPage)}
+            canAddDiagnosis={hasRole(userSessionDetails, Roles.GLOBAL_ADMIN)}
             formVersion={formVersion}
           />
         );
@@ -1289,10 +1257,14 @@ function PathologyCaseView() {
     blocked ? intl.formatMessage({ id: blocked.key }, blocked.values) : null;
 
   // One primary whose label names where the case goes next (S-7.2). From
-  // Ready for Pathologist on there is none: the pathologist's own actions
-  // move the case from there. A next stage this build has no label for gets
-  // no primary either, rather than a button with no words.
-  const advanceKey = advanceLabelKey(nextStage);
+  // Ready for Pathologist it is Begin review, the pathologist's own, where
+  // the laboratory tracks Under Pathologist Review (D1); from there on the
+  // pathologist's own actions move the case. A next stage this build has no
+  // label for gets no primary either, rather than a button with no words.
+  const advanceKey =
+    nextStage === "UNDER_REVIEW" && !isPathologist
+      ? null
+      : advanceLabelKey(nextStage);
   const primary = advanceKey
     ? {
         labelKey: advanceKey,
@@ -1631,11 +1603,6 @@ function PathologyCaseView() {
             />
           ) : (
             <>
-              {loadingConclusions && (
-                <Loading
-                  description={intl.formatMessage({ id: "common.loading" })}
-                />
-              )}
               <CaseViewLayout
                 rail={
                   <ProgressRail
@@ -1683,6 +1650,11 @@ function PathologyCaseView() {
                         configurationProperties,
                       })}
                       defaultOpen={section.openByDefault}
+                      openRequest={
+                        section.id === FINDINGS_SECTION_ID
+                          ? findingsOpenRequest
+                          : undefined
+                      }
                     >
                       {/* Read-only while a move or a slide mark is out, so
                           nothing typed can be lost to the read-back that

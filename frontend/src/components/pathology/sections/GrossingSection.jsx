@@ -6,12 +6,12 @@ import {
   Select,
   SelectItem,
   Stack,
-  TextArea,
   TextInput,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../config.json";
 import SearchableSelect from "../../common/SearchableSelect";
+import MacroTextArea from "../../common/textMacro/MacroTextArea";
 import IdentifiedRow, { ListToolbar } from "../IdentifiedRow";
 import {
   cassetteStateBadge,
@@ -30,7 +30,9 @@ import "../pathologyCaseView.scss";
  * FR-3: what the bench did with the specimen at grossing: the macroscopic
  * description, whether it needs decalcifying, the cassettes cut from it and
  * the tissue each holds, and who worked it. The decalcification flag stops
- * being editable once the stored case is past that stage.
+ * being editable once the stored case is past that stage. From Ready for
+ * Pathologist on, the description is completed under Findings & Conclusion,
+ * so here it is printed and says where it is edited (FR-12.3).
  * A saved cassette is named by the server and only ever deactivated (S-10.4).
  */
 const GrossingSection = ({
@@ -44,6 +46,7 @@ const GrossingSection = ({
   saving,
   moving,
   onDeactivate,
+  grossExamHere,
 }) => {
   const intl = useIntl();
   const deactivateLock = rowActionLock({
@@ -67,14 +70,34 @@ const GrossingSection = ({
 
   return (
     <Stack gap={6}>
-      <TextArea
-        id="grossExam"
-        disabled={readOnly}
-        rows={6}
-        labelText={intl.formatMessage({ id: "pathology.label.grossExam" })}
-        value={caseInfo.grossExam ?? ""}
-        onChange={(e) => updateCase({ grossExam: e.target.value })}
-      />
+      {grossExamHere ? (
+        <MacroTextArea
+          id="grossExam"
+          context="PATHOLOGY_GROSS_DESCRIPTION"
+          disabled={readOnly}
+          rows={6}
+          labelText={intl.formatMessage({ id: "pathology.label.grossExam" })}
+          value={caseInfo.grossExam ?? ""}
+          onChange={(e) => updateCase({ grossExam: e.target.value })}
+        />
+      ) : (
+        <div className="pathology-case-view__gross-exam-text">
+          <p className="cds--label">
+            {intl.formatMessage({ id: "pathology.label.grossExam" })}
+          </p>
+          <p
+            className="pathology-case-view__printed-text"
+            data-testid="grossing-gross-exam-text"
+          >
+            {caseInfo.grossExam?.trim()
+              ? caseInfo.grossExam
+              : intl.formatMessage({ id: "common.notRecorded" })}
+          </p>
+          <p className="cds--form__helper-text">
+            {intl.formatMessage({ id: "pathology.locked.grossInFindings" })}
+          </p>
+        </div>
+      )}
       <Checkbox
         id="decalcificationRequired"
         disabled={readOnly || decalcificationFlagFrozen}

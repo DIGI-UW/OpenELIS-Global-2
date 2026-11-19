@@ -27,6 +27,18 @@ vi.mock("../utils/Utils", async (importOriginal) => {
     postToOpenElisServerJsonResponse: vi.fn(),
     postToOpenElisServerForPDF: vi.fn(),
     hasRole: vi.fn(() => false),
+    // The diagnosis search's one request, answered with one entry so the
+    // picker is live (an empty dictionary disables it).
+    fetchFromOpenElisServer: vi.fn((url) =>
+      Promise.resolve(
+        url.startsWith("/rest/pathology/conclusionEntries")
+          ? {
+              items: [{ id: "3", value: "Adenocarcinoma", code: "8140/3" }],
+              total: 1,
+            }
+          : [],
+      ),
+    ),
   };
 });
 
@@ -34,6 +46,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
+  hasRole,
 } from "../utils/Utils";
 
 const CASE_ID = "9";
@@ -775,6 +788,99 @@ describe("while a move is out, and where focus goes after it", () => {
     await answerMove({ status: "A_STAGE_THIS_BUILD_DOES_NOT_KNOW" });
 
     await waitFor(() => expect(returnButton()).toHaveFocus());
+  });
+});
+
+describe("Begin review", () => {
+  afterEach(() => hasRole.mockReturnValue(false));
+
+  // In the queue where the laboratory tracks Under Pathologist Review.
+  const inQueue = (overrides = {}) =>
+    caseAtStage("READY_PATHOLOGIST", {
+      nextStage: "UNDER_REVIEW",
+      readingStage: "UNDER_REVIEW",
+      findingsOpen: false,
+      assignedPathologistId: "8",
+      assignedPathologist: "Paula Path",
+      ...overrides,
+    });
+
+  it("Begin review posts the advance from Ready for Pathologist, asks nothing about open requests, reads the case back and puts focus in the microscopic description", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = inQueue({
+      requests: [{ id: "1", instruction: "Deeper", status: "OPENED" }],
+    });
+    renderCaseView();
+    await loaded();
+    const fetchesBefore = caseFetchCount();
+
+    const primary = primaryButton("pathology.action.beginReview");
+    primary.focus();
+    fireEvent.click(primary);
+
+    const [url, body] = lastJsonPost();
+    expect(url).toBe(CASE_URL + "/advance");
+    expect(JSON.parse(body)).toEqual({ from: "READY_PATHOLOGIST" });
+    expect(
+      screen.queryByText(
+        intl.formatMessage(
+          { id: "pathology.banner.openRequests" },
+          { count: 1 },
+        ),
+      ),
+    ).not.toBeInTheDocument();
+
+    servedCase = caseAtStage("UNDER_REVIEW", {
+      readingStage: "UNDER_REVIEW",
+      findingsOpen: true,
+      assignedPathologistId: "8",
+      assignedPathologist: "Paula Path",
+    });
+    await answerMove({ status: "UNDER_REVIEW" });
+
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        document.getElementById("microscopyExam"),
+      ),
+    );
+    expect(
+      document
+        .getElementById("pathology-section-findings")
+        .contains(document.activeElement),
+    ).toBe(true);
+    expect(sectionHeader("pathology-section-findings")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
+  it("there is no primary in the queue for someone who is not a pathologist, nor where review is switched off", async () => {
+    servedCase = inQueue();
+    const { unmount } = renderCaseView();
+    await loaded();
+    expect(
+      within(actionGroup()).queryByText(
+        messages["pathology.action.beginReview"],
+      ),
+    ).toBeNull();
+    expect(actionGroup().querySelector(".cds--btn--primary")).toBeNull();
+    unmount();
+
+    hasRole.mockReturnValue(true);
+    servedCase = caseAtStage("READY_PATHOLOGIST", {
+      readingStage: "READY_PATHOLOGIST",
+      findingsOpen: true,
+      assignedPathologistId: "8",
+    });
+    renderCaseView({ PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED: "false" });
+    await loaded();
+    expect(
+      within(actionGroup()).queryByText(
+        messages["pathology.action.beginReview"],
+      ),
+    ).toBeNull();
+    expect(actionGroup().querySelector(".cds--btn--primary")).toBeNull();
   });
 });
 
