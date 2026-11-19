@@ -43,9 +43,13 @@ import ServerPageArrows from "../common/ServerPageArrows";
 
 import useInAppNavigation from "../common/useInAppNavigation";
 
-/** A workplan row is one analysis; its id stays the same on every page. */
-const rowKey = (row) =>
-  row.analysisId || `${row.accessionNumber}|${row.testName}`;
+/**
+ * A workplan row is one analysis, and its id is the same on every page. A row
+ * sent without one, such as a group heading, is known by its place on its
+ * server page, which holds while the workplan is loaded: a lab number and test
+ * name repeat when an order has the same test on two samples.
+ */
+const rowKey = (row, page, index) => row.analysisId || `${page}:${index}`;
 
 export default function Workplan(props) {
   const navigate = useInAppNavigation();
@@ -156,30 +160,43 @@ export default function Workplan(props) {
     setSelectedLabel(val);
   };
 
-  const fetchPage = (pageNumber) =>
+  const fetchFrom = (address) =>
     new Promise((resolve) => {
-      getFromOpenElisServer(
-        `${pageSource.current}&page=${pageNumber}`,
-        (response) => resolve(response),
-      );
+      getFromOpenElisServer(address, (response) => resolve(response));
     });
 
   /**
    * Every test in the workplan, not only the page on screen: the printed bench
-   * sheet listed one page of many with no notice (OGC-1647).
+   * sheet listed one page of many with no notice (OGC-1647). A page without
+   * paging means the session no longer holds this workplan, so the search runs
+   * once more and the pages are read again.
    */
-  const wholeWorkplan = async () => {
-    const totalPages = Number(paging?.totalPages) || 1;
-    if (totalPages <= 1 || !pageSource.current) {
-      return testsList;
+  const wholeWorkplan = async (reloaded = false) => {
+    const keyed = (rows, page) =>
+      rows.map((row, index) => ({ row, key: rowKey(row, page, index) }));
+    let totalPages = Number(paging?.totalPages) || 1;
+    if (!pageSource.current || (totalPages <= 1 && !reloaded)) {
+      return keyed(testsList, currentPage);
+    }
+    if (reloaded) {
+      const search = await fetchFrom(pageSource.current);
+      if (!search?.paging) {
+        return null;
+      }
+      totalPages = Number(search.paging.totalPages) || 1;
     }
     const rows = [];
     for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
-      const response = await fetchPage(pageNumber);
-      if (!Array.isArray(response?.workplanTests)) {
+      const response = await fetchFrom(
+        `${pageSource.current}&page=${pageNumber}`,
+      );
+      if (!response?.paging) {
+        return reloaded ? null : wholeWorkplan(true);
+      }
+      if (!Array.isArray(response.workplanTests)) {
         return null;
       }
-      rows.push(...response.workplanTests);
+      rows.push(...keyed(response.workplanTests, pageNumber));
     }
     return rows;
   };
@@ -203,9 +220,9 @@ export default function Workplan(props) {
         testSectionId: selectedValue,
         testName: selectedLabel,
         workplanTests: buildWorlplanTestFromTestList(
-          rows.map((row) => ({
+          rows.map(({ row, key }) => ({
             ...row,
-            notIncludedInWorkplan: excluded.has(rowKey(row)),
+            notIncludedInWorkplan: excluded.has(key),
           })),
         ),
       };
@@ -246,8 +263,7 @@ export default function Workplan(props) {
     return output;
   };
 
-  const setIncluded = (row, removed) => {
-    const key = rowKey(row);
+  const setIncluded = (key, removed) => {
     setExcluded((previous) => {
       const next = new Set(previous);
       if (removed) {
@@ -259,6 +275,7 @@ export default function Workplan(props) {
     });
   };
 
+  const currentPage = Number(paging?.currentPage) || 1;
   const totalTests =
     paging?.totalResults !== undefined && paging?.totalResults !== null
       ? Number(paging.totalResults)
@@ -383,15 +400,16 @@ export default function Workplan(props) {
                         } else {
                           showAccessionNumber = false;
                         }
+                        const key = rowKey(row, currentPage, index);
                         return (
                           <TableRow
-                            key={rowKey(row) || index}
+                            key={key}
                             id={"row_" + index}
                             className={
                               rowColorIndex % 2 === 0 ? "evenRow" : "oddRow"
                             }
                             style={
-                              excluded.has(rowKey(row))
+                              excluded.has(key)
                                 ? { backgroundColor: "#cccccc" }
                                 : undefined
                             }
@@ -400,11 +418,11 @@ export default function Workplan(props) {
                               <TableCell>
                                 <input
                                   type="checkbox"
-                                  checked={excluded.has(rowKey(row))}
+                                  checked={excluded.has(key)}
                                   id={"includedCheck_" + index}
                                   className="includedCheck"
                                   onChange={(e) =>
-                                    setIncluded(row, e.target.checked)
+                                    setIncluded(key, e.target.checked)
                                   }
                                 />
                               </TableCell>

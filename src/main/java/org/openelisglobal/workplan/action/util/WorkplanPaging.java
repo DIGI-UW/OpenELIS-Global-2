@@ -14,6 +14,7 @@
 package org.openelisglobal.workplan.action.util;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,13 +31,32 @@ import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.workplan.form.WorkplanForm;
 
 public class WorkplanPaging {
-    private PagingUtility<List<TestResultItem>> paging = new PagingUtility<>();
+    static final String SESSION_CACHE = "WorkplanSessionCache:";
+    static final String PAGE_MAPPING_SESSION_CACHE = "WorkplanPageMappingSessionCache:";
+    static final String RECENT_SEARCHES = "WorkplanRecentSearches";
+    static final int SEARCHES_KEPT = 3;
+
+    private final String search;
+    private final PagingUtility<List<TestResultItem>> paging;
 
     private static TestItemPageHelper pagingHelper = new TestItemPageHelper();
+
+    /**
+     * @param search the workplan's search, such as {@code test:5}. Each search
+     *               keeps its pages in the session under its own name: in the cache
+     *               the results screens share, a page read after another screen
+     *               loaded printed that screen's tests as this bench sheet
+     *               (OGC-1647).
+     */
+    public WorkplanPaging(String search) {
+        this.search = search;
+        paging = new PagingUtility<>(SESSION_CACHE + search, PAGE_MAPPING_SESSION_CACHE + search);
+    }
 
     public void setDatabaseResults(HttpServletRequest request, WorkplanForm form, List<TestResultItem> tests)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
+        keepAmongRecentSearches(request.getSession());
         paging.setDatabaseResults(request.getSession(), tests, pagingHelper);
 
         List<TestResultItem> resultPage = paging.getPage(1, request.getSession());
@@ -59,7 +79,28 @@ public class WorkplanPaging {
             form.setWorkplanTests(resultPage);
             form.setTestSectionId("0");
             form.setPaging(withTotal(paging.getPagingBeanWithSearchMapping(newPage, request.getSession()), request));
+        } else {
+            form.setWorkplanTests(new ArrayList<>());
         }
+    }
+
+    /**
+     * A session keeps the pages of its last few workplans, so one open in another
+     * tab still pages and prints. An older one's pages are dropped, and a page
+     * asked of it comes back empty rather than from another workplan.
+     */
+    @SuppressWarnings("unchecked")
+    private void keepAmongRecentSearches(HttpSession session) {
+        Object kept = session.getAttribute(RECENT_SEARCHES);
+        List<String> recent = kept instanceof List ? new ArrayList<>((List<String>) kept) : new ArrayList<>();
+        recent.remove(search);
+        recent.add(search);
+        while (recent.size() > SEARCHES_KEPT) {
+            String dropped = recent.remove(0);
+            session.removeAttribute(SESSION_CACHE + dropped);
+            session.removeAttribute(PAGE_MAPPING_SESSION_CACHE + dropped);
+        }
+        session.setAttribute(RECENT_SEARCHES, recent);
     }
 
     /**

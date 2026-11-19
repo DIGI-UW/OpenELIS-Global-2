@@ -55,10 +55,23 @@ export default function WorkplanSearchForm(props) {
     }
   };
 
-  /** One server page, the same request for the arrows and for Carbon. */
+  /**
+   * One server page, the same request for the arrows and for Carbon. A page
+   * without paging means the session no longer holds this workplan, having kept
+   * the ones opened since, so the search runs again before the page is read.
+   */
   const loadResultsPage = (pageNumber) => {
     setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + pageNumber, getTestsList);
+    const pageAddress = url + "&page=" + pageNumber;
+    getFromOpenElisServer(pageAddress, (page) => {
+      if (page?.paging) {
+        getTestsList(page);
+        return;
+      }
+      getFromOpenElisServer(url, () =>
+        getFromOpenElisServer(pageAddress, getTestsList),
+      );
+    });
   };
 
   useEffect(() => {

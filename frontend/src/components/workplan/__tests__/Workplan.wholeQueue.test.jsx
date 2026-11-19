@@ -31,7 +31,7 @@ const { pages, printed, show } = vi.hoisted(() => {
       },
     },
     printed: vi.fn(),
-    show: { page: null, failPage: null },
+    show: { page: null, failPage: null, pages: null, dropped: false },
   };
 });
 
@@ -43,9 +43,10 @@ vi.mock("../WorkplanSearchForm", () => ({
   }) {
     useEffect(() => {
       registerPageSource("/rest/WorkPlanByTest?test_id=5");
-      registerPageLoader((n) => createTestsList(pages[n]));
-      show.page = (n) => createTestsList(pages[n]);
-      createTestsList(pages[1]);
+      const served = show.pages || pages;
+      registerPageLoader((n) => createTestsList(served[n]));
+      show.page = (n) => createTestsList(served[n]);
+      createTestsList(served[1]);
     }, []);
     return null;
   },
@@ -55,7 +56,11 @@ vi.mock("../../utils/Utils", async (importOriginal) => ({
   ...(await importOriginal()),
   getFromOpenElisServer: (url, callback) => {
     const page = Number(new URL(url, "http://x").searchParams.get("page"));
-    callback(page === show.failPage ? undefined : pages[page]);
+    if (!page) show.dropped = false;
+    if (show.dropped) return callback({ workplanTests: [] });
+    callback(
+      page === show.failPage ? undefined : (show.pages || pages)[page || 1],
+    );
   },
   postToOpenElisServerForPDF: (url, body) => printed(url, JSON.parse(body)),
 }));
@@ -89,6 +94,8 @@ describe("Workplan across pages", () => {
     printed.mockClear();
     addNotification.mockClear();
     show.failPage = null;
+    show.pages = null;
+    show.dropped = false;
   });
 
   it("counts every test in the workplan", async () => {
@@ -136,6 +143,71 @@ describe("Workplan across pages", () => {
       ["Haemoglobin", false],
       ["Glucose", true],
       ["Creatinine", false],
+    ]);
+  });
+
+  // The same test on two samples of one order shares its lab number and test
+  // name; ticking one ticked both, and both left the print.
+  it("removes only the row ticked when an order has the same test twice", async () => {
+    const paging = { currentPage: "1", totalPages: "2", totalResults: "3" };
+    const row = (accessionNumber, testName) => ({
+      accessionNumber,
+      testName,
+      receivedDate: "01/09/2026",
+    });
+    show.pages = {
+      1: {
+        workplanTests: [
+          row("DEV0100000000000001", "Glucose"),
+          row("DEV0100000000000001", "Glucose"),
+        ],
+        paging,
+      },
+      2: {
+        workplanTests: [row("DEV0100000000000002", "Glucose")],
+        paging: { ...paging, currentPage: "2" },
+      },
+    };
+    const { container } = renderWorkplan();
+    const second = await waitFor(() => {
+      const box = container.querySelector("#includedCheck_1");
+      expect(box).not.toBeNull();
+      return box;
+    });
+
+    fireEvent.click(second);
+
+    expect(container.querySelector("#includedCheck_0")).not.toBeChecked();
+    expect(second).toBeChecked();
+    act(() => show.page(2));
+    expect(container.querySelector("#includedCheck_0")).not.toBeChecked();
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Print Workplan" })[0],
+    );
+    await waitFor(() => expect(printed).toHaveBeenCalled());
+    expect(printedRows().map((r) => r.notIncludedInWorkplan)).toEqual([
+      false,
+      true,
+      false,
+    ]);
+  });
+
+  // The session keeps a few workplans; one opened before them is dropped, and
+  // its pages come back empty with no paging.
+  it("runs the search again when the session dropped the workplan, then prints every page", async () => {
+    renderWorkplan();
+    await screen.findByText(/Total Tests\s*=\s*3/);
+    show.dropped = true;
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Print Workplan" })[0],
+    );
+
+    await waitFor(() => expect(printed).toHaveBeenCalled());
+    expect(printedRows().map((row) => row.testName)).toEqual([
+      "Haemoglobin",
+      "Glucose",
+      "Creatinine",
     ]);
   });
 
