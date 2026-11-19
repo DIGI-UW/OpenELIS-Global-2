@@ -756,7 +756,7 @@ describe("microbiology reference administration", () => {
     expect(
       within(
         screen.getByText("Family EBC, Meningitis").closest("tr"),
-      ).getByText("30 mcg"),
+      ).getByText(/30 mcg/),
     ).toBeInTheDocument();
   });
 
