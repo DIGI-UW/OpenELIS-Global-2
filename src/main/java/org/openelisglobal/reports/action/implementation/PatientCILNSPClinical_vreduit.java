@@ -223,6 +223,7 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
             }
         }
         setCollectionTime(sampleSet, currentSampleReportItems, true);
+        work.pending |= microbiologyReports().hasUnreleasedCase(currentSample.getId());
         sampleCompleteMap.put(orderKey, !work.pending);
         reportOrders.put(orderKey, describeOrder(work));
     }

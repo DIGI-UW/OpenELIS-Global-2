@@ -197,6 +197,12 @@ it("outside readers see readings and history without mutation controls", async (
       screen.queryByRole("button", { name: t(`action.${action}`) }),
     ).not.toBeInTheDocument();
 });
+it("names the breakpoint standard's authority beside its version on each reading", async () => {
+  const data = workspace();
+  data.isolates[0].runs[0].breakpointAuthority = "EUCAST";
+  show(data);
+  expect((await screen.findAllByText(/EUCAST 2026/)).length).toBeGreaterThan(0);
+});
 it("keeps raw input after rejection and rejects negative values before submission", async () => {
   const service = show(workspace("IN_PROGRESS"));
   service.astAction.mockRejectedValue(new Error("Conflict"));
@@ -685,56 +691,117 @@ it.each([
       await screen.findByRole("button", { name: t("action.start") }),
     );
     expect(
-      within(screen.getByRole("dialog")).getByLabelText(t("breakpoint")),
+      within(screen.getByRole("dialog")).getByLabelText(t("breakpoint"), {
+        exact: false,
+      }),
     ).toHaveValue(expected);
   },
 );
 
-it("sends an explicitly chosen clinical indication on new runs", async () => {
+const startDialog = async (provenance = "ORGANISM_DEFAULT", runs) => {
   const data = workspace("IN_PROGRESS");
-  data.isolates[0].defaultPanelId = "panel";
+  if (provenance === "ORGANISM_DEFAULT")
+    data.isolates[0].defaultPanelId = "panel";
   data.isolates[0].panels = [{ id: "panel", label: "Routine panel" }];
-  data.isolates[0].assignments = [
-    { panelId: "panel", provenance: "ORGANISM_DEFAULT" },
-  ];
+  data.isolates[0].assignments = [{ panelId: "panel", provenance }];
+  if (runs) data.isolates[0].runs = runs(data.isolates[0].runs[0]);
   const service = show(data);
   fireEvent.click(
     await screen.findByRole("button", { name: t("action.start") }),
   );
   const modal = screen.getByRole("dialog");
-  expect(within(modal).getByLabelText(t("clinicalContext"))).toHaveValue("");
-  fireEvent.change(within(modal).getByLabelText(t("clinicalContext")), {
-    target: { value: "NON_MENINGITIS" },
-  });
+  return {
+    service,
+    modal,
+    indication: within(modal).getByLabelText(t("clinicalContext"), {
+      exact: false,
+    }),
+    save: within(modal).getByRole("button", { name: t("save"), exact: true }),
+  };
+};
+
+it("marks the panel, breakpoint standard and indication as required to start a run", async () => {
+  const { modal } = await startDialog();
+  const required = ["ast-clinical-context", "ast-panel", "ast-standard"];
+  expect(
+    Array.from(modal.querySelectorAll(".requiredlabel"), (marker) =>
+      marker.closest("label").getAttribute("for"),
+    ),
+  ).toEqual(required);
+  expect(
+    Array.from(
+      modal.querySelectorAll('[aria-required="true"]'),
+      (field) => field.id,
+    ),
+  ).toEqual(required);
+});
+
+it("starts a run only after the technician picks a clinical indication", async () => {
+  const { service, modal, indication, save } = await startDialog();
+  expect(indication).toHaveValue("");
+  expect(
+    within(indication)
+      .getAllByRole("option")
+      .map((option) => option.textContent),
+  ).toEqual([
+    t("choose"),
+    "Meningitis",
+    "Endocarditis",
+    "Neither (other than meningitis or endocarditis)",
+    "Not stated",
+  ]);
+  expect(save).toBeDisabled();
+  fireEvent.change(indication, { target: { value: "MENINGITIS" } });
   expect(within(modal).queryByLabelText(t("reason"))).toBeNull();
-  fireEvent.click(
-    within(modal).getByRole("button", { name: t("save"), exact: true }),
-  );
+  expect(save).toBeEnabled();
+  fireEvent.click(save);
   await waitFor(() =>
     expect(service.astAction).toHaveBeenCalledWith(
       "c1",
       expect.objectContaining({
         action: "start",
-        clinicalContext: "NON_MENINGITIS",
+        clinicalContext: "MENINGITIS",
       }),
       false,
     ),
   );
 });
 
-it("asks for a panel adjustment reason only when the run does not use the organism default panel", async () => {
-  const data = workspace("IN_PROGRESS");
-  data.isolates[0].panels = [{ id: "panel", label: "Routine panel" }];
-  data.isolates[0].assignments = [{ panelId: "panel", provenance: "MANUAL" }];
-  show(data);
-  fireEvent.click(
-    await screen.findByRole("button", { name: t("action.start") }),
+it("sends no indication when the technician picks Not stated", async () => {
+  const { service, indication, save } = await startDialog();
+  fireEvent.change(indication, { target: { value: "NOT_STATED" } });
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ action: "start", clinicalContext: "" }),
+      false,
+    ),
   );
-  const modal = screen.getByRole("dialog");
-  const save = within(modal).getByRole("button", {
-    name: t("save"),
-    exact: true,
-  });
+});
+
+it("shows each run's clinical indication", async () => {
+  await startDialog("ORGANISM_DEFAULT", (run) => [
+    { ...run, id: "r1", clinicalContext: "MENINGITIS" },
+    { ...run, id: "r2", clinicalContext: "ENDOCARDITIS" },
+    { ...run, id: "r3", clinicalContext: "NON_MENINGITIS" },
+    { ...run, id: "r4" },
+  ]);
+  const indication = (run) =>
+    within(screen.getByTestId(`ast-run-${run}`)).getByText(
+      new RegExp(`^${t("clinicalContext")}:`),
+    );
+  expect(indication("r1")).toHaveTextContent(/: Meningitis$/);
+  expect(indication("r2")).toHaveTextContent(/: Endocarditis$/);
+  expect(indication("r3")).toHaveTextContent(
+    /: Neither meningitis nor endocarditis$/,
+  );
+  expect(indication("r4")).toHaveTextContent(/: Not stated$/);
+});
+
+it("asks for a panel adjustment reason only when the run does not use the organism default panel", async () => {
+  const { modal, indication, save } = await startDialog("MANUAL");
+  fireEvent.change(indication, { target: { value: "NON_MENINGITIS" } });
   expect(save).toBeDisabled();
   fireEvent.change(
     within(modal).getByLabelText(
@@ -765,9 +832,10 @@ it("starts from the organism's current default panel, not an older default assig
   );
   const modal = screen.getByRole("dialog");
   const reason = messages["microbiology.ast.panelAdjustmentReason"];
-  expect(within(modal).getByLabelText(t("panel"))).toHaveValue("current");
+  const panel = within(modal).getByLabelText(new RegExp(`^${t("panel")}`));
+  expect(panel).toHaveValue("current");
   expect(within(modal).queryByLabelText(reason)).not.toBeInTheDocument();
-  fireEvent.change(within(modal).getByLabelText(t("panel")), {
+  fireEvent.change(panel, {
     target: { value: "older" },
   });
   expect(within(modal).getByLabelText(reason)).toBeInTheDocument();
@@ -789,6 +857,10 @@ it.each([
     await screen.findByRole("button", { name: t("action.start") }),
   );
   const modal = screen.getByRole("dialog");
+  fireEvent.change(
+    within(modal).getByLabelText(t("clinicalContext"), { exact: false }),
+    { target: { value: "NON_MENINGITIS" } },
+  );
   fireEvent.click(
     within(modal).getByRole("button", { name: t("save"), exact: true }),
   );

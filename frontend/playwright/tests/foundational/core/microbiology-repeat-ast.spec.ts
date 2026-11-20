@@ -57,8 +57,8 @@ test("preserves the original AST reading and reports the explicitly selected ret
     page.getByLabel("Report version", { exact: true }).locator("option"),
   ).toHaveCount(2);
   const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
-  expect(text).toContain("Ciprofloxacin (UAT) 32 ug/mL Resistant");
-  expect(text).not.toContain("Ciprofloxacin (UAT) 4 ug/mL Susceptible");
+  expect(text).toContain("Ciprofloxacin (UAT) 32 mg/L Resistant");
+  expect(text).not.toContain("Ciprofloxacin (UAT) 4 mg/L Susceptible");
   await info.attach("selected-retest-patient-report.pdf", {
     body: pdf,
     contentType: "application/pdf",

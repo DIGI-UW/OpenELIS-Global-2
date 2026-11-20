@@ -6,6 +6,7 @@ import ContainerLabelButton from "./ContainerLabelButton";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import MacroTextArea from "../common/textMacro/MacroTextArea";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { hasRole, Roles } from "../utils/Utils";
 import {
@@ -238,6 +239,10 @@ export default function CaseAstWorkspace({
             detail.id,
             {
               ...request,
+              clinicalContext:
+                draft.clinicalContext === "NOT_STATED"
+                  ? ""
+                  : draft.clinicalContext,
               ...(["start", "assign"].includes(draft.action)
                 ? { panelId }
                 : {}),
@@ -302,7 +307,9 @@ export default function CaseAstWorkspace({
           !Number.isFinite(Number(draft.rawValue)) ||
           Number(draft.rawValue) < 0)) ||
       (draft.action === "start" &&
-        (!draft.panelId || !draft.breakpointStandardId)) ||
+        (!draft.panelId ||
+          !draft.breakpointStandardId ||
+          !draft.clinicalContext)) ||
       (draft.action === "assign" && !draft.panelId) ||
       (draft.action === "invalidate" &&
         draft.analyzerInstrumentId &&
@@ -372,9 +379,7 @@ export default function CaseAstWorkspace({
                     <p>
                       {t("clinicalContext")}:{" "}
                       {t(
-                        run.clinicalContext === "NON_MENINGITIS"
-                          ? "clinicalContext.nonMeningitis"
-                          : "clinicalContext.unspecified",
+                        `clinicalContext.${run.clinicalContext || "notStated"}`,
                       )}
                     </p>
                     <ContainerLabelButton
@@ -545,7 +550,9 @@ export default function CaseAstWorkspace({
                                         )
                                       )}
                                       <br />
-                                      {t("breakpoint")}: {run.breakpointVersion}{" "}
+                                      {t("breakpoint")}:{" "}
+                                      {run.breakpointAuthority}{" "}
+                                      {run.breakpointVersion}{" "}
                                       {reading.matchedBy &&
                                         t(`match.${reading.matchedBy}`)}
                                     </>
@@ -877,20 +884,35 @@ export default function CaseAstWorkspace({
                 )}
                 <Select
                   id="ast-clinical-context"
-                  labelText={t("clinicalContext")}
-                  helperText={t("clinicalContext.help")}
+                  {...requiredProps()}
+                  labelText={
+                    <>
+                      {t("clinicalContext")}
+                      <RequiredMarker />
+                    </>
+                  }
+                  helperText={t("clinicalContext.choiceHelp")}
                   value={draft.clinicalContext}
                   onChange={(event) =>
                     setDraft({ ...draft, clinicalContext: event.target.value })
                   }
                 >
+                  <SelectItem value="" text={t("choose")} />
                   <SelectItem
-                    value=""
-                    text={t("clinicalContext.unspecified")}
+                    value="MENINGITIS"
+                    text={t("clinicalContext.MENINGITIS")}
+                  />
+                  <SelectItem
+                    value="ENDOCARDITIS"
+                    text={t("clinicalContext.ENDOCARDITIS")}
                   />
                   <SelectItem
                     value="NON_MENINGITIS"
-                    text={t("clinicalContext.nonMeningitis")}
+                    text={t("clinicalContext.neither")}
+                  />
+                  <SelectItem
+                    value="NOT_STATED"
+                    text={t("clinicalContext.notStated")}
                   />
                 </Select>
                 <ReagentLotPicker
@@ -910,7 +932,13 @@ export default function CaseAstWorkspace({
             {["start", "assign"].includes(draft.action) && (
               <Select
                 id="ast-panel"
-                labelText={t("panel")}
+                {...requiredProps()}
+                labelText={
+                  <>
+                    {t("panel")}
+                    <RequiredMarker />
+                  </>
+                }
                 value={draft.panelId}
                 onChange={(e) =>
                   setDraft({ ...draft, panelId: e.target.value })
@@ -1040,7 +1068,13 @@ export default function CaseAstWorkspace({
             {draft.action === "start" && (
               <Select
                 id="ast-standard"
-                labelText={t("breakpoint")}
+                {...requiredProps()}
+                labelText={
+                  <>
+                    {t("breakpoint")}
+                    <RequiredMarker />
+                  </>
+                }
                 value={draft.breakpointStandardId}
                 onChange={(e) =>
                   setDraft({ ...draft, breakpointStandardId: e.target.value })

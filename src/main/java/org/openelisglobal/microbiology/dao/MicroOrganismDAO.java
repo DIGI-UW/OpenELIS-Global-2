@@ -20,11 +20,12 @@ public interface MicroOrganismDAO extends BaseDAO<MicroOrganism, String> {
      */
     List<MicroOrganismMatch> searchActive(String text, int limit);
 
-    List<String> getActiveOrganismGroups();
-
     Optional<MicroOrganism> findByDisplayNameIgnoreCase(String displayName);
 
     Optional<MicroOrganism> findByWhonetCodeIgnoreCase(String whonetCode);
+
+    // Empty when WHONET gives the name, current or older, to several organisms.
+    Optional<MicroOrganism> findByWhonetName(String name);
 
     Optional<MicroOrganism> findByReference(String source, String code);
 

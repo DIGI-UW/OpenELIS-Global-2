@@ -45,6 +45,7 @@ import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.eqa.service.EQACycleSubmissionService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.microbiology.service.MicroCaseLockedException;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultUtil;
@@ -483,6 +484,9 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
         } catch (OptimisticLockingFailureException | OptimisticLockException e) {
             return rejectStale(analysis, body);
+        } catch (MicroCaseLockedException e) {
+            body.put("error", MessageUtil.getMessage("result.refusal." + e.getMessage()));
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
         }
 
         for (IResultUpdate updater : updaters) {

@@ -130,7 +130,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
     if (!standardId) return undefined;
     const controller = new AbortController();
     Promise.all([
-      getReferenceOptions("organism-groups", controller.signal),
+      getReferenceOptions("lab-organism-groups", controller.signal),
       getReferenceOptions("antibiotics", controller.signal),
       getReferenceOptions("specimen-types", controller.signal),
     ])
@@ -392,10 +392,23 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   );
   const ruleRows = rules.rows.map((rule) => ({
     id: rule.id,
-    organism:
+    organism: [
       rule.organismName ||
-      rule.organismGroup ||
-      intl.formatMessage({ id: "microbiology.admin.astRules.anyOrganism" }),
+        rule.organismGroup ||
+        (rule.organismCodeType
+          ? intl.formatMessage(
+              {
+                id: `microbiology.admin.breakpoints.whonetLevel.${rule.organismCodeType.replace("+", "_")}`,
+              },
+              { code: rule.organismCode },
+            )
+          : intl.formatMessage({
+              id: "microbiology.admin.astRules.anyOrganism",
+            })),
+      rule.siteOfInfection,
+    ]
+      .filter(Boolean)
+      .join(", "),
     antibiotic: `${rule.antibioticName || ""} (${rule.antibioticCode || ""})`,
     method: rule.method,
     diskContent: rule.diskContent || "—",

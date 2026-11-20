@@ -20,6 +20,23 @@ const OrganismPicker = ({ id, titleText, value, onChange, ...rest }) => {
   const latest = useRef(0);
   const pause = useRef();
   const mounted = useRef(true);
+  const downshift = useRef();
+  const told = useRef();
+  told.current = selected?.id || "";
+
+  // Carbon restores the text on blur from Downshift's own selection, which it never gives selectedItem.
+  useEffect(() => {
+    downshift.current?.selectItem(selected);
+  }, [selected]);
+
+  // Carbon and Downshift both report a choice, and the one they were just given; only a new one is a change.
+  const choose = (organism) => {
+    const chosen = organism?.id || "";
+    if (chosen === told.current) return;
+    told.current = chosen;
+    setKnown(organism || null);
+    onChange(chosen);
+  };
 
   const search = (text) => {
     const asked = ++latest.current;
@@ -73,9 +90,16 @@ const OrganismPicker = ({ id, titleText, value, onChange, ...rest }) => {
         </span>
       )}
       selectedItem={selected}
+      downshiftActions={downshift}
+      // Carbon does not pass on the row Downshift selects when Tab leaves the field, nor Escape clearing it.
+      downshiftProps={{
+        onStateChange: ({ selectedItem }) =>
+          selectedItem !== undefined && choose(selectedItem),
+      }}
       shouldFilterItem={() => true}
       onInputChange={(text) => {
         clearTimeout(pause.current);
+        if (!text) choose(null);
         // Choosing a row writes its text here; that is not a new search.
         if (
           (selected && text === organismText(selected)) ||
@@ -87,13 +111,7 @@ const OrganismPicker = ({ id, titleText, value, onChange, ...rest }) => {
         setMatches([]);
         pause.current = setTimeout(() => search(text), TYPING_PAUSE_MS);
       }}
-      onChange={({ selectedItem }) => {
-        const chosen = selectedItem?.id || "";
-        // Carbon also reports the selection it was just given; only a new choice is a change.
-        if (chosen === (selected?.id || "")) return;
-        setKnown(selectedItem || null);
-        onChange(chosen);
-      }}
+      onChange={({ selectedItem }) => choose(selectedItem)}
       {...rest}
     />
   );

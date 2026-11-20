@@ -9,6 +9,13 @@ vi.mock("./api", () => ({
   saveInterpretationRule: vi.fn(),
   previewReportingRules: vi.fn(),
 }));
+vi.mock("../../microbiology/OrganismSearch", async (original) => ({
+  ...(await original()),
+  searchOrganisms: () =>
+    Promise.resolve([{ id: "ab", label: "Acinetobacter baumannii" }]),
+  getOrganism: () =>
+    Promise.resolve({ id: "ab", label: "Acinetobacter baumannii" }),
+}));
 
 import React from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
@@ -50,7 +57,6 @@ const options = {
     { id: "cro", label: "Ceftriaxone" },
     { id: "amk", label: "Amikacin" },
   ],
-  organisms: [{ id: "ab", label: "Acinetobacter baumannii" }],
   "organism-groups": [{ id: "Package group", label: "Package group" }],
   "lab-organism-groups": [
     { id: "Enterobacterales", label: "Enterobacterales" },
@@ -63,6 +69,16 @@ const show = () =>
       <AstRulesPage />
     </IntlProvider>,
   );
+
+const pickPreviewOrganism = async () => {
+  fireEvent.change(
+    await screen.findByRole("combobox", { name: "Preview organism" }),
+    { target: { value: "acin" } },
+  );
+  fireEvent.click(
+    await screen.findByRole("option", { name: /Acinetobacter baumannii/ }),
+  );
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -91,6 +107,15 @@ beforeEach(() => {
 
 it("is a section of microbiology reference data", () => {
   expect(isKnownSection("ast-rules")).toBe(true);
+});
+
+it("searches organisms on the server instead of loading them all", async () => {
+  show();
+  await screen.findByRole("combobox", { name: "Preview organism" });
+  expect(getReferenceOptions).not.toHaveBeenCalledWith(
+    "organisms",
+    expect.anything(),
+  );
 });
 
 it("lists rules grouped by organism with their report default", async () => {
@@ -142,6 +167,80 @@ it("adds a rule and reloads the table", async () => {
     ),
   );
   await waitFor(() => expect(getReportingRules).toHaveBeenCalledTimes(2));
+});
+
+const indications = [
+  "Any",
+  "Meningitis",
+  "Endocarditis",
+  "Neither (other than meningitis or endocarditis)",
+];
+const optionNames = (select) =>
+  within(select)
+    .getAllByRole("option")
+    .map((option) => option.textContent);
+
+it("offers every indication in the rule editor and saves the chosen one", async () => {
+  saveReportingRule.mockResolvedValue({});
+  show();
+  fireEvent.click(await screen.findByRole("button", { name: "Add rule" }));
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.change(await within(dialog).findByLabelText("Antibiotic"), {
+    target: { value: "amk" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Organism group"), {
+    target: { value: "Enterobacterales" },
+  });
+  const indication = within(dialog).getByLabelText("Indication");
+  expect(optionNames(indication)).toEqual(indications);
+  fireEvent.change(indication, { target: { value: "ENDOCARDITIS" } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+  await waitFor(() =>
+    expect(saveReportingRule).toHaveBeenCalledWith(
+      expect.objectContaining({ clinicalContext: "ENDOCARDITIS" }),
+    ),
+  );
+});
+
+it("names each rule's indication in the list", async () => {
+  getReportingRules.mockResolvedValue([
+    { ...rule, id: "r1", antibioticName: "Ceftriaxone", clinicalContext: null },
+    {
+      ...rule,
+      id: "r2",
+      antibioticName: "Amikacin",
+      clinicalContext: "MENINGITIS",
+    },
+    {
+      ...rule,
+      id: "r3",
+      antibioticName: "Gentamicin",
+      clinicalContext: "ENDOCARDITIS",
+    },
+    {
+      ...rule,
+      id: "r4",
+      antibioticName: "Ampicillin",
+      clinicalContext: "NON_MENINGITIS",
+    },
+  ]);
+  show();
+  const table = await screen.findByRole("table", { name: "Reporting rules" });
+  const indicationOf = (antibiotic) =>
+    within(within(table).getByText(antibiotic).closest("tr")).getAllByRole(
+      "cell",
+    )[2].textContent;
+  expect({
+    Ceftriaxone: indicationOf("Ceftriaxone"),
+    Amikacin: indicationOf("Amikacin"),
+    Gentamicin: indicationOf("Gentamicin"),
+    Ampicillin: indicationOf("Ampicillin"),
+  }).toEqual({
+    Ceftriaxone: "Any",
+    Amikacin: "Meningitis",
+    Gentamicin: "Endocarditis",
+    Ampicillin: "Neither meningitis nor endocarditis",
+  });
 });
 
 it("shows the cascade fields only for a Cascade rule", async () => {
@@ -245,7 +344,7 @@ it("names the drug, organism and sample types in a rule's history", async () => 
   await screen.findByText("Kila Lavu");
   expect(screen.getByText("antibioticId: → Amikacin")).toBeInTheDocument();
   expect(
-    screen.getByText("organismId: → Acinetobacter baumannii"),
+    await screen.findByText("organismId: → Acinetobacter baumannii"),
   ).toBeInTheDocument();
   expect(screen.getByText("sampleTypeIds: → Blood")).toBeInTheDocument();
 });
@@ -391,7 +490,7 @@ it("asks for an organism or a group and names the interpretation rule in its err
   );
   const dialog = await screen.findByRole("dialog");
   expect(
-    await within(dialog).findByRole("option", { name: "Choose an organism" }),
+    await within(dialog).findByPlaceholderText("Choose an organism"),
   ).toBeInTheDocument();
   expect(
     within(dialog).getByRole("option", { name: "Choose a group" }),
@@ -442,9 +541,7 @@ it("previews what an isolate would report and why", async () => {
     ],
   });
   show();
-  fireEvent.change(await screen.findByLabelText("Preview organism"), {
-    target: { value: "ab" },
-  });
+  await pickPreviewOrganism();
   fireEvent.click(screen.getByRole("button", { name: "Add antibiotic" }));
   fireEvent.change(screen.getByLabelText("Antibiotic 1"), {
     target: { value: "cro" },
@@ -474,6 +571,21 @@ it("previews what an isolate would report and why", async () => {
   expect(screen.getByText("Default panel: Gram neg stamp")).toBeInTheDocument();
 });
 
+it("previews for every indication", async () => {
+  previewReportingRules.mockResolvedValue({ defaultPanelName: null, rows: [] });
+  show();
+  await pickPreviewOrganism();
+  const indication = screen.getByLabelText("Preview indication");
+  expect(optionNames(indication)).toEqual(indications);
+  fireEvent.change(indication, { target: { value: "MENINGITIS" } });
+  fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+  await waitFor(() =>
+    expect(previewReportingRules).toHaveBeenCalledWith(
+      expect.objectContaining({ clinicalContext: "MENINGITIS" }),
+    ),
+  );
+});
+
 it("previews only once an organism is picked and shows results as S, I or R", async () => {
   previewReportingRules.mockResolvedValue({
     defaultPanelName: null,
@@ -499,9 +611,7 @@ it("previews only once an organism is picked and shows results as S, I or R", as
   show();
   const button = await screen.findByRole("button", { name: "Preview" });
   expect(button).toBeDisabled();
-  fireEvent.change(screen.getByLabelText("Preview organism"), {
-    target: { value: "ab" },
-  });
+  await pickPreviewOrganism();
   expect(button).toBeEnabled();
   fireEvent.click(button);
   const result = await screen.findByRole("table", { name: "Preview result" });
@@ -512,9 +622,7 @@ it("previews only once an organism is picked and shows results as S, I or R", as
 it("says when a preview could not be run", async () => {
   previewReportingRules.mockRejectedValue(new Error("Bad Request"));
   show();
-  fireEvent.change(await screen.findByLabelText("Preview organism"), {
-    target: { value: "ab" },
-  });
+  await pickPreviewOrganism();
   fireEvent.click(screen.getByRole("button", { name: "Preview" }));
   expect(
     await screen.findByText("The preview could not be run."),
@@ -539,9 +647,7 @@ it("drops an old preview when a new one fails or an input changes", async () => 
     .mockRejectedValueOnce(new Error("Bad Request"))
     .mockResolvedValueOnce({ defaultPanelName: null, rows: [] });
   show();
-  fireEvent.change(await screen.findByLabelText("Preview organism"), {
-    target: { value: "ab" },
-  });
+  await pickPreviewOrganism();
   const button = screen.getByRole("button", { name: "Preview" });
   fireEvent.click(button);
   await screen.findByRole("table", { name: "Preview result" });

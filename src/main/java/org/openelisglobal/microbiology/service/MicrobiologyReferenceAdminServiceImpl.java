@@ -26,6 +26,7 @@ import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
+import org.openelisglobal.microbiology.dao.MicroWhonetOrganismDAO;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
@@ -42,6 +43,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanelAssignment;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
+import org.openelisglobal.microbiology.valueholder.MicroWhonetOrganism;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,9 +51,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyReferenceAdminService {
 
-    private static final Pattern ORGANISM_WHONET = Pattern.compile("[a-z0-9]{3,10}");
+    private static final Pattern ORGANISM_WHONET = Pattern.compile("[a-z0-9+-]{3,10}");
     private static final Pattern ANTIBIOTIC_WHONET = Pattern.compile("[A-Z0-9]{2,10}");
     private static final Set<String> ROUTES = Set.of("ORAL", "IV", "BOTH", "TOPICAL");
+    private static final Set<String> SIGNIFICANCE = Set.of("USUALLY", "POSSIBLE", "RARE");
 
     private final MicroOrganismDAO organismDAO;
     private final MicroAntibioticDAO antibioticDAO;
@@ -60,6 +63,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     private final MicroAstPanelAssignmentDAO assignmentDAO;
     private final MicroBreakpointRuleDAO breakpointRuleDAO;
     private final MicroPatientOriginDAO patientOriginDAO;
+    private final MicroWhonetOrganismDAO whonetOrganismDAO;
     private final MethodService methodService;
     private final TypeOfSampleService typeOfSampleService;
 
@@ -67,8 +71,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             MicroAstPanelDAO panelDAO, MicroAstPanelAntibioticDAO panelAntibioticDAO,
             MicroPatientOriginDAO patientOriginDAO, MethodService methodService,
             TypeOfSampleService typeOfSampleService, MicroAstPanelAssignmentDAO assignmentDAO,
-            MicroBreakpointRuleDAO breakpointRuleDAO) {
+            MicroBreakpointRuleDAO breakpointRuleDAO, MicroWhonetOrganismDAO whonetOrganismDAO) {
         this.organismDAO = organismDAO;
+        this.whonetOrganismDAO = whonetOrganismDAO;
         this.antibioticDAO = antibioticDAO;
         this.panelDAO = panelDAO;
         this.panelAntibioticDAO = panelAntibioticDAO;
@@ -103,24 +108,27 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         if (request == null) {
             throw new IllegalArgumentException("Organism is required");
         }
-        String name = requireText(request.displayName, "displayName");
+        String name = maxLength(requireText(request.displayName, "Name"), 255, "Name");
         String code = normalizeOrganismCode(request.whonetCode);
-        requireText(request.organismGroup, "organismGroup");
-        requireText(request.initialSignificance, "initialSignificance");
         assertAvailable(organismDAO.findByDisplayNameIgnoreCase(name), id, "Organism name is already in use");
         assertAvailable(organismDAO.findByWhonetCodeIgnoreCase(code), id, "WHONET code is already in use");
 
         MicroOrganism organism = id == null ? new MicroOrganism()
                 : organismDAO.get(id).orElseThrow(() -> new IllegalArgumentException("Organism not found: " + id));
         organism.setDisplayName(name);
-        organism.setShortName(trimToNull(request.shortName));
+        organism.setShortName(maxLength(trimToNull(request.shortName), 100, "Short name"));
         organism.setWhonetCode(code);
-        organism.setOclCode(trimToNull(request.oclCode));
-        organism.setOrganismGroup(request.organismGroup.trim());
+        organism.setOclCode(maxLength(trimToNull(request.oclCode), 100, "OCL code"));
+        organism.setOrganismGroup(maxLength(trimToNull(request.organismGroup), 100, "Organism group"));
         organism.setSusceptibilityProtocol(
                 MicroTbResistanceClassifier.Protocol.valueOf(request.susceptibilityProtocol).name());
-        organism.setGramStain(trimToNull(request.gramStain));
-        organism.setInitialSignificance(request.initialSignificance.trim().toUpperCase(Locale.ROOT));
+        organism.setGramStain(maxLength(trimToNull(request.gramStain), 20, "Gram stain"));
+        String significance = trimToNull(request.initialSignificance);
+        significance = significance == null ? null : significance.toUpperCase(Locale.ROOT);
+        if (significance != null && !SIGNIFICANCE.contains(significance)) {
+            throw new IllegalArgumentException("Initial significance must be USUALLY, POSSIBLE or RARE");
+        }
+        organism.setInitialSignificance(significance);
         organism.setDefaultAstPanelId(trimToNull(request.defaultAstPanelId));
         organism.setNotes(trimToNull(request.notes));
         organism.setIsActive(request.active ? "Y" : "N");
@@ -171,12 +179,13 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         if (request == null) {
             throw new IllegalArgumentException("Antibiotic is required");
         }
-        String name = requireText(request.displayName, "displayName");
+        String name = maxLength(requireText(request.displayName, "Name"), 255, "Name");
         String code = normalizeAntibioticCode(request.whonetCode);
-        String antibioticClass = requireText(request.antibioticClass, "antibioticClass");
-        String route = requireText(request.route, "route").toUpperCase(Locale.ROOT);
-        if (!ROUTES.contains(route)) {
-            throw new IllegalArgumentException("route must be ORAL, IV, BOTH, or TOPICAL");
+        String antibioticClass = maxLength(trimToNull(request.antibioticClass), 255, "Class");
+        String route = trimToNull(request.route);
+        route = route == null ? null : route.toUpperCase(Locale.ROOT);
+        if (route != null && !ROUTES.contains(route)) {
+            throw new IllegalArgumentException("Route must be ORAL, IV, BOTH or TOPICAL");
         }
         assertAvailable(antibioticDAO.findByDisplayNameIgnoreCase(name), id, "Antibiotic name is already in use");
         assertAvailable(antibioticDAO.findByWhonetCodeIgnoreCase(code), id, "WHONET code is already in use");
@@ -307,7 +316,13 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         Map<String, Set<String>> byOrganism = new HashMap<>();
         Map<String, Set<String>> byGroup = new HashMap<>();
         Set<String> forEveryOrganism = new HashSet<>();
+        Map<List<String>, List<MicroBreakpointRule>> whonetRules = new HashMap<>();
         for (MicroBreakpointRule rule : breakpointRuleDAO.getActiveByAntibioticIds(drugs)) {
+            if (rule.getOrganismCodeType() != null) {
+                whonetRules.computeIfAbsent(List.of(rule.getAntibioticId(), rule.getStandardId()),
+                        key -> new ArrayList<>()).add(rule);
+                continue;
+            }
             Set<String> covered = rule.getOrganismId() != null
                     ? byOrganism.computeIfAbsent(rule.getOrganismId(), key -> new HashSet<>())
                     : rule.getOrganismGroup() != null
@@ -317,13 +332,22 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         }
         List<MicroPanelCoverageForm> rows = new ArrayList<>();
         Map<String, Set<String>> labGroups = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        Map<String, MicroWhonetOrganism> whonet = currentWhonetOrganisms();
         for (MicroOrganism organism : organismDAO.getActiveOrganisms()) {
             if (!Objects.equals(protocol, organism.getSusceptibilityProtocol())) {
                 continue;
             }
             Set<String> covered = new HashSet<>(forEveryOrganism);
             covered.addAll(byOrganism.getOrDefault(organism.getId(), Set.of()));
-            covered.addAll(byGroup.getOrDefault(organism.getOrganismGroup(), Set.of()));
+            organism.getLabGroups().forEach(group -> covered.addAll(byGroup.getOrDefault(group, Set.of())));
+            MicroWhonetOrganism whonetOrganism = whonetOrganism(whonet, organism);
+            if (whonetOrganism != null) {
+                whonetRules.forEach((drugAndEdition, edition) -> {
+                    if (MicroBreakpointServiceImpl.hasBreakpoint(edition, whonetOrganism)) {
+                        covered.add(drugAndEdition.get(0));
+                    }
+                });
+            }
             rows.add(coverage(organism.getDisplayName(), false, covered.size(), drugs.size()));
             for (String group : organism.getLabGroups()) {
                 labGroups.computeIfAbsent(group, key -> new HashSet<>()).addAll(covered);
@@ -355,15 +379,33 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                 .filter(p -> "Y".equals(p.getIsCurrent()) && "Y".equals(p.getIsActive())
                         && !defaultForEntries(p.getDefaultFor()).isEmpty())
                 .sorted(Comparator.comparing(MicroAstPanel::getName, String.CASE_INSENSITIVE_ORDER)).toList();
+        Map<String, MicroWhonetOrganism> whonet = currentWhonetOrganisms();
+        Map<String, String> whonetSpecies = new HashMap<>();
+        Map<String, Set<String>> whonetGenus = new HashMap<>();
+        claimants.stream().flatMap(panel -> defaultForEntries(panel.getDefaultFor()).stream()).distinct()
+                .forEach(entry -> {
+                    organismDAO.findByWhonetName(entry).ifPresent(named -> whonetSpecies.put(entry, named.getId()));
+                    whonetGenus.put(entry,
+                            whonet.values().stream().filter(row -> entry.equalsIgnoreCase(row.getGenus()))
+                                    .map(MicroWhonetOrganism::getGenusCode).filter(Objects::nonNull)
+                                    .collect(Collectors.toSet()));
+                });
         Map<MicroOrganism, MicroAstPanel> winners = new LinkedHashMap<>();
         Set<String> matched = new HashSet<>();
         List<String> errors = new ArrayList<>();
         for (var organism : organismDAO.getActiveOrganisms()) {
+            MicroWhonetOrganism whonetOrganism = whonetOrganism(whonet, organism);
             Map<MicroAstPanel, String> bestEntries = new LinkedHashMap<>();
             int bestRank = 0;
             for (var panel : claimants) {
                 for (String entry : defaultForEntries(panel.getDefaultFor())) {
                     int rank = specificity(entry, organism.getDisplayName(), organism.getLabGroups());
+                    if (organism.getId().equals(whonetSpecies.get(entry))) {
+                        rank = 3;
+                    } else if (rank < 2 && whonetOrganism != null
+                            && whonetGenus.get(entry).contains(whonetOrganism.getGenusCode())) {
+                        rank = 2;
+                    }
                     if (rank > 0) {
                         matched.add(panel.getId() + "\n" + entry);
                     }
@@ -424,6 +466,16 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         });
     }
 
+    private Map<String, MicroWhonetOrganism> currentWhonetOrganisms() {
+        return whonetOrganismDAO.getAll().stream()
+                .filter(row -> MicroWhonetOrganism.CURRENT.equals(row.getTaxonomicStatus())).collect(Collectors.toMap(
+                        row -> row.getWhonetOrgCode().toLowerCase(Locale.ROOT), row -> row, (first, second) -> first));
+    }
+
+    private static MicroWhonetOrganism whonetOrganism(Map<String, MicroWhonetOrganism> whonet, MicroOrganism organism) {
+        return organism.getWhonetCode() == null ? null : whonet.get(organism.getWhonetCode().toLowerCase(Locale.ROOT));
+    }
+
     static List<String> defaultForEntries(String defaultFor) {
         return defaultFor == null ? List.of()
                 : Stream.of(defaultFor.split(";")).map(String::trim).filter(entry -> !entry.isEmpty()).toList();
@@ -478,10 +530,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             return methodService.getAllActiveMethods().stream()
                     .sorted(Comparator.comparing(Method::getMethodName, String.CASE_INSENSITIVE_ORDER))
                     .map(method -> option(method.getId(), method.getMethodName(), method.getCode())).toList();
-        }
-        if ("organism-groups".equals(resource)) {
-            return organismDAO.getActiveOrganismGroups().stream().filter(group -> !group.isBlank())
-                    .sorted(String.CASE_INSENSITIVE_ORDER).map(group -> option(group, group, null)).toList();
         }
         if ("lab-organism-groups".equals(resource)) {
             return organismDAO.getLabGroupNames().stream().map(group -> option(group, group, null)).toList();
@@ -669,17 +717,17 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     }
 
     private String normalizeOrganismCode(String code) {
-        String normalized = requireText(code, "whonetCode").toLowerCase(Locale.ROOT);
+        String normalized = requireText(code, "WHONET code").toLowerCase(Locale.ROOT);
         if (!ORGANISM_WHONET.matcher(normalized).matches()) {
-            throw new IllegalArgumentException("Organism WHONET code must be 3-10 lowercase letters or digits");
+            throw new IllegalArgumentException("Organism WHONET code must be 3-10 letters, digits, + or -");
         }
         return normalized;
     }
 
     private String normalizeAntibioticCode(String code) {
-        String normalized = requireText(code, "whonetCode").toUpperCase(Locale.ROOT);
+        String normalized = requireText(code, "WHONET code").toUpperCase(Locale.ROOT);
         if (!ANTIBIOTIC_WHONET.matcher(normalized).matches()) {
-            throw new IllegalArgumentException("Antibiotic WHONET code must be 2-10 uppercase letters or digits");
+            throw new IllegalArgumentException("Antibiotic WHONET code must be 2-10 letters or digits");
         }
         return normalized;
     }
@@ -690,6 +738,13 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             throw new IllegalArgumentException(field + " is required");
         }
         return normalized;
+    }
+
+    private String maxLength(String value, int max, String field) {
+        if (value != null && value.length() > max) {
+            throw new IllegalArgumentException(field + " is longer than " + max + " characters");
+        }
+        return value;
     }
 
     private void requireActor(String actorId) {

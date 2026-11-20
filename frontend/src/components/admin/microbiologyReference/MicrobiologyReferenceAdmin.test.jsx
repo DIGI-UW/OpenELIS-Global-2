@@ -197,14 +197,67 @@ describe("microbiology reference administration", () => {
       />,
     );
 
-    for (const name of ["WHONET code", "Initial significance"]) {
-      const label = (await screen.findAllByText(name)).find((node) =>
-        node.closest("label"),
-      );
-      expect(
-        label.closest("label").querySelector(".requiredlabel"),
-      ).not.toBeNull();
-    }
+    const marker = async (name) =>
+      (await screen.findAllByText(name))
+        .find((node) => node.closest("label"))
+        .closest("label")
+        .querySelector(".requiredlabel");
+
+    expect(await marker("WHONET code")).not.toBeNull();
+    expect(await marker("Organism group")).toBeNull();
+    expect(await marker("Initial significance")).toBeNull();
+  });
+
+  it("marks the antibiotic fields the server requires", async () => {
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+
+    renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS.antibiotics}
+        query={{ ...query, edit: "new" }}
+        setQuery={vi.fn()}
+      />,
+    );
+
+    const marker = async (name) =>
+      (await screen.findAllByText(name))
+        .find((node) => node.closest("label"))
+        .closest("label")
+        .querySelector(".requiredlabel");
+
+    expect(await marker("Name")).not.toBeNull();
+    expect(await marker("WHONET code")).not.toBeNull();
+    expect(await marker("Class")).toBeNull();
+    expect(await marker("Route")).toBeNull();
+  });
+
+  it("drops the saved notice when a later save is refused", async () => {
+    const user = userEvent.setup();
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+    saveReference
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error("Name is required"));
+
+    renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS.organisms}
+        query={{ ...query, edit: "new" }}
+        setQuery={vi.fn()}
+      />,
+    );
+    const save = within(await screen.findByRole("dialog")).getByRole("button", {
+      name: messages["button.save"],
+    });
+
+    await user.click(save);
+    expect(
+      await screen.findByText(messages["microbiology.admin.saved"]),
+    ).toBeInTheDocument();
+    await user.click(save);
+    expect(await screen.findByText("Name is required")).toBeInTheDocument();
+    expect(
+      screen.queryByText(messages["microbiology.admin.saved"]),
+    ).not.toBeInTheDocument();
   });
 
   it("returns focus to the exact reference command when the editor closes", async () => {
@@ -999,6 +1052,57 @@ describe("microbiology reference administration", () => {
     },
   );
 
+  it("names a WHONET rule by its organism level and site of infection", async () => {
+    getBreakpointStandard.mockResolvedValue({
+      id: "std-1",
+      authority: "CLSI",
+      version: "2026-2026.4",
+      lifecycleStatus: "LOADED",
+      configurationManaged: true,
+    });
+    getBreakpointRules.mockResolvedValue({
+      rows: [
+        {
+          id: "rule-1",
+          method: "ZONE",
+          organismCodeType: "FAMILY_CODE",
+          organismCode: "EBC",
+          siteOfInfection: "Meningitis",
+          diskContent: "30 mcg",
+          antibioticName: "Amikacin",
+          antibioticCode: "AMK",
+        },
+        {
+          id: "rule-2",
+          method: "MIC",
+          organismName: "Klebsiella pneumoniae",
+          organismCodeType: "WHONET_ORG_CODE",
+          organismCode: "kpn",
+          antibioticName: "Amikacin",
+          antibioticCode: "AMK",
+        },
+      ],
+      total: 2,
+    });
+    renderPage(
+      <BreakpointPage
+        standardId="std-1"
+        basePath="/MasterListsPage"
+        query={query}
+        setQuery={vi.fn()}
+      />,
+    );
+    expect(
+      await screen.findByText("Family EBC, Meningitis"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Klebsiella pneumoniae")).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByText("Family EBC, Meningitis").closest("tr"),
+      ).getByText("30 mcg"),
+    ).toBeInTheDocument();
+  });
+
   it("loads a directly linked breakpoint correction and saves it as local", async () => {
     const user = userEvent.setup();
     const setQuery = vi.fn();
@@ -1022,7 +1126,7 @@ describe("microbiology reference administration", () => {
       locallyCustomized: true,
     });
     getReferenceOptions.mockImplementation((resource) => {
-      if (resource === "organism-groups")
+      if (resource === "lab-organism-groups")
         return Promise.resolve([
           { id: "Enterobacterales", label: "Enterobacterales" },
         ]);
@@ -1044,6 +1148,9 @@ describe("microbiology reference administration", () => {
     const notes = await screen.findByLabelText(
       messages["microbiology.admin.field.notes"],
     );
+    expect(
+      await screen.findByRole("option", { name: "Enterobacterales" }),
+    ).toBeInTheDocument();
     await user.type(notes, "Local verification");
     await user.click(
       screen.getByRole("button", { name: messages["button.save"] }),

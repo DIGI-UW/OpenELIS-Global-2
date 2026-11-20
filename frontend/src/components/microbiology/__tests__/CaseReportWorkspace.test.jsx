@@ -49,9 +49,10 @@ const report = () => ({
 const show = (
   rights = { canWrite: true, canValidate: true },
   readiness = {},
+  data = report(),
 ) => {
   const service = {
-    getReport: vi.fn().mockResolvedValue(report()),
+    getReport: vi.fn().mockResolvedValue(data),
     getReportVersions: vi.fn().mockResolvedValue([]),
     getReadiness: vi.fn().mockResolvedValue({
       blockers: ["CULTURE_OUTCOME_REQUIRED"],
@@ -88,6 +89,26 @@ it("shows four ordered sections and the chosen raw drug reading with its standar
   expect(
     screen.getByRole("button", { name: t("partialRelease") }),
   ).toBeEnabled();
+});
+it("shows the indication a drug was read for, and nothing when none was stated", async () => {
+  const data = report();
+  const [ampicillin] = data.isolates[0].susceptibilities;
+  data.isolates[0].susceptibilities = [
+    { ...ampicillin, clinicalContext: "MENINGITIS" },
+    { ...ampicillin, antibioticId: "b", clinicalContext: "ENDOCARDITIS" },
+    { ...ampicillin, antibioticId: "c", clinicalContext: "NON_MENINGITIS" },
+    { ...ampicillin, antibioticId: "d" },
+  ];
+  show(undefined, undefined, data);
+  const rows = within(
+    await screen.findByRole("table", { name: "ISO-1: E. coli" }),
+  ).getAllByRole("row");
+  expect(rows[1]).toHaveTextContent("CLSI 2026Meningitis");
+  expect(rows[2]).toHaveTextContent("CLSI 2026Endocarditis");
+  expect(rows[3]).toHaveTextContent(
+    "CLSI 2026Neither meningitis nor endocarditis",
+  );
+  expect(rows[4]).toHaveTextContent(/CLSI 2026$/);
 });
 it("allows partial release by a results technician without final-release rights", async () => {
   const service = show({ canWrite: true, canValidate: false });

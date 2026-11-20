@@ -19,8 +19,11 @@ export async function startAstRun(
     .click();
   const dialog = page.getByRole("dialog");
   await dialog
-    .getByLabel("Breakpoint standard", { exact: true })
+    .getByRole("combobox", { name: "Breakpoint standard", exact: true })
     .selectOption(breakpointStandardId);
+  await dialog
+    .getByRole("combobox", { name: "Clinical indication", exact: true })
+    .selectOption("NOT_STATED");
   await expect(dialog.getByLabel(/Reason/)).toHaveCount(0);
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
 }
@@ -168,8 +171,8 @@ export async function runMicrobiologyAstReportingWorkflow(
   const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
   expect(text).toContain(seeded.accessionNumber);
   expect(text).toContain("ISO-1");
-  expect(text).toContain("64 ug/mL Resistant");
-  expect(text).toContain("4 ug/mL Susceptible");
+  expect(text).toContain("64 mg/L Resistant");
+  expect(text).toContain("4 mg/L Susceptible");
   expect(text).toContain("M6 external clinical note");
   expect(text).not.toContain("M6 internal bench observation");
   const sections = [

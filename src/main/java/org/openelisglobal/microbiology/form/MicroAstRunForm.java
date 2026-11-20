@@ -15,6 +15,7 @@ public class MicroAstRunForm {
     public String panelProvenance;
     public String panelAdjustmentReason;
     public String breakpointStandardId;
+    public String breakpointAuthority;
     public String breakpointVersion;
     public String attemptType;
     public String sourceRunId;

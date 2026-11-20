@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -499,14 +500,14 @@ public class MicroAstServiceTest {
         rule.setId("rule-eucast");
         rule.setOrganismId("org-1");
         rule.setUnits("ug/mL");
-        when(breakpointService.findBreakpointRule("eucast-std", "org-1", null, "abx-1", "MIC", null, "MIC"))
+        when(breakpointService.findBreakpointRule("eucast-std", "org-1", Set.of(), "abx-1", "MIC", null, "MIC"))
                 .thenReturn(rule);
         when(interpretationService.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4")))
                 .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
 
         MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "1");
 
-        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", null, "abx-1", "MIC", null, "MIC");
+        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", Set.of(), "abx-1", "MIC", null, "MIC");
         verify(breakpointService, org.mockito.Mockito.never()).getActiveStandard(any(String.class), any(String.class));
         assertEquals("MANUAL_ENTRY", reading.getSource());
         assertEquals("ORGANISM", reading.getMatchedBy());
@@ -530,15 +531,15 @@ public class MicroAstServiceTest {
         rule.setId("rule-eucast");
         rule.setOrganismId("org-1");
         rule.setUnits("ug/mL");
-        when(breakpointService.findContextualBreakpointRule("eucast-std", "org-1", null, "abx-1", "MIC", null, "MIC",
-                "NON_MENINGITIS", null)).thenReturn(rule);
+        when(breakpointService.findContextualBreakpointRule("eucast-std", "org-1", Set.of(), "abx-1", "MIC", null,
+                "MIC", "NON_MENINGITIS", null)).thenReturn(rule);
         when(interpretationService.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4")))
                 .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
 
         MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "1");
 
-        verify(breakpointService).findContextualBreakpointRule("eucast-std", "org-1", null, "abx-1", "MIC", null, "MIC",
-                "NON_MENINGITIS", null);
+        verify(breakpointService).findContextualBreakpointRule("eucast-std", "org-1", Set.of(), "abx-1", "MIC", null,
+                "MIC", "NON_MENINGITIS", null);
         verify(breakpointService, org.mockito.Mockito.never()).getActiveStandard(any(String.class), any(String.class));
         assertEquals("MANUAL_ENTRY", reading.getSource());
         assertEquals("ORGANISM", reading.getMatchedBy());
@@ -566,8 +567,8 @@ public class MicroAstServiceTest {
         rule.setId("rule-zone");
         rule.setOrganismId("org-1");
         rule.setUnits("mm");
-        when(breakpointService.findContextualBreakpointRule("eucast-std", "org-1", null, "abx-1", "ZONE", null, "ZONE",
-                null, "30ug")).thenReturn(rule);
+        when(breakpointService.findContextualBreakpointRule("eucast-std", "org-1", Set.of(), "abx-1", "ZONE", null,
+                "ZONE", null, "30ug")).thenReturn(rule);
         when(interpretationService.interpret(rule, MicroAstMethod.ZONE, new BigDecimal("22")))
                 .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
 
@@ -637,7 +638,7 @@ public class MicroAstServiceTest {
             rule.setId("fallback-rule");
             rule.setSusceptibleValue(new BigDecimal("0.06"));
             rule.setResistantValue(new BigDecimal("0.25"));
-            when(breakpointService.findBreakpointRule("fallback-std", "org-1", null, "abx-1", "MIC", null, "MIC"))
+            when(breakpointService.findBreakpointRule("fallback-std", "org-1", Set.of(), "abx-1", "MIC", null, "MIC"))
                     .thenReturn(rule);
         }
     }
@@ -652,7 +653,7 @@ public class MicroAstServiceTest {
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
         MicroBreakpointRule rule = new MicroBreakpointRule();
         rule.setId("generic-rule");
-        when(breakpointService.findBreakpointRule("clsi-std", "org-1", null, "abx-1", "MIC", null, "MIC"))
+        when(breakpointService.findBreakpointRule("clsi-std", "org-1", Set.of(), "abx-1", "MIC", null, "MIC"))
                 .thenReturn(rule);
         MicroBreakpointStandard clsi = new MicroBreakpointStandard();
         clsi.setAuthority("CLSI");
@@ -679,18 +680,18 @@ public class MicroAstServiceTest {
         MicroBreakpointRule legacyRule = new MicroBreakpointRule();
         legacyRule.setId("legacy-zone-rule");
         legacyRule.setUnits("mm");
-        when(breakpointService.findBreakpointRule("eucast-std", "org-1", null, "abx-1", "DISK_DIFFUSION", null, "ZONE"))
-                .thenReturn(null);
-        when(breakpointService.findBreakpointRule("eucast-std", "org-1", null, "abx-1", "ZONE", null, "ZONE"))
+        when(breakpointService.findBreakpointRule("eucast-std", "org-1", Set.of(), "abx-1", "DISK_DIFFUSION", null,
+                "ZONE")).thenReturn(null);
+        when(breakpointService.findBreakpointRule("eucast-std", "org-1", Set.of(), "abx-1", "ZONE", null, "ZONE"))
                 .thenReturn(legacyRule);
         when(interpretationService.interpret(legacyRule, MicroAstMethod.ZONE, new BigDecimal("18")))
                 .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
 
         MicroAstReading reading = service.recordReading("run-1", "abx-1", new BigDecimal("18"), "1");
 
-        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", null, "abx-1", "DISK_DIFFUSION", null,
+        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", Set.of(), "abx-1", "DISK_DIFFUSION", null,
                 "ZONE");
-        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", null, "abx-1", "ZONE", null, "ZONE");
+        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", Set.of(), "abx-1", "ZONE", null, "ZONE");
         assertEquals(MicroAstMethod.ZONE.name(), reading.getMethod());
         assertEquals("mm", reading.getUnits());
     }
@@ -805,7 +806,7 @@ public class MicroAstServiceTest {
         defaultStandard.setId("clsi-std");
         when(breakpointService.getActiveStandard("CLSI", "2026")).thenReturn(defaultStandard);
         MicroBreakpointRule rule = new MicroBreakpointRule();
-        when(breakpointService.findBreakpointRule("clsi-std", "org-1", null, "abx-1", "MIC", null, "MIC"))
+        when(breakpointService.findBreakpointRule("clsi-std", "org-1", Set.of(), "abx-1", "MIC", null, "MIC"))
                 .thenReturn(rule);
         ArgumentCaptor<BigDecimal> valueCaptor = ArgumentCaptor.forClass(BigDecimal.class);
         when(interpretationService.interpret(any(MicroBreakpointRule.class), any(MicroAstMethod.class),
@@ -813,7 +814,7 @@ public class MicroAstServiceTest {
 
         service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "1");
 
-        verify(breakpointService).findBreakpointRule("clsi-std", "org-1", null, "abx-1", "MIC", null, "MIC");
+        verify(breakpointService).findBreakpointRule("clsi-std", "org-1", Set.of(), "abx-1", "MIC", null, "MIC");
     }
 
     @Test
@@ -828,7 +829,7 @@ public class MicroAstServiceTest {
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
         MicroOrganism organism = new MicroOrganism();
         organism.setId("org-1");
-        organism.setOrganismGroup("Enterobacterales");
+        organism.getLabGroups().add("Enterobacterales");
         when(organismDAO.get("org-1")).thenReturn(Optional.of(organism));
         MicroCase microCase = mutableCase();
         microCase.setSampleItemId("item-1");
@@ -840,15 +841,15 @@ public class MicroAstServiceTest {
         when(sampleItemService.getData("item-1")).thenReturn(sampleItem);
         when(sampleItemService.getTypeOfSampleId(sampleItem)).thenReturn("7");
         MicroBreakpointRule rule = new MicroBreakpointRule();
-        when(breakpointService.findBreakpointRule("eucast-std", "org-1", "Enterobacterales", "abx-1", "MIC", "7",
-                "MIC")).thenReturn(rule);
+        when(breakpointService.findBreakpointRule("eucast-std", "org-1", Set.of("Enterobacterales"), "abx-1", "MIC",
+                "7", "MIC")).thenReturn(rule);
         when(interpretationService.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4")))
                 .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
 
         service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "1");
 
-        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", "Enterobacterales", "abx-1", "MIC", "7",
-                "MIC");
+        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", Set.of("Enterobacterales"), "abx-1", "MIC",
+                "7", "MIC");
     }
 
     @Test(expected = IllegalStateException.class)
@@ -1061,7 +1062,7 @@ public class MicroAstServiceTest {
         when(runDAO.update(run)).thenReturn(run);
         MicroOrganism organism = new MicroOrganism();
         organism.setId("org-1");
-        organism.setOrganismGroup("Enterobacterales");
+        organism.getLabGroups().add("Enterobacterales");
         when(organismDAO.get("org-1")).thenReturn(Optional.of(organism));
         MicroCase microCase = mutableCase();
         microCase.setSampleItemId("item-1");
@@ -1073,8 +1074,8 @@ public class MicroAstServiceTest {
         when(sampleItemService.getData("item-1")).thenReturn(sampleItem);
         when(sampleItemService.getTypeOfSampleId(sampleItem)).thenReturn("7");
         MicroBreakpointRule rule = new MicroBreakpointRule();
-        when(breakpointService.findBreakpointRule("eucast-std", "org-1", "Enterobacterales", "abx-1", "VITEK_2", "7",
-                "MIC")).thenReturn(rule);
+        when(breakpointService.findBreakpointRule("eucast-std", "org-1", Set.of("Enterobacterales"), "abx-1", "VITEK_2",
+                "7", "MIC")).thenReturn(rule);
         when(interpretationService.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4")))
                 .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
 
@@ -1083,8 +1084,8 @@ public class MicroAstServiceTest {
                 new Timestamp(2000), List.of(),
                 List.of(new MicroAstAnalyzerReading("abx-1", new BigDecimal("4"), "ug/mL", null, "r-1"))), "1");
 
-        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", "Enterobacterales", "abx-1", "VITEK_2", "7",
-                "MIC");
+        verify(breakpointService).findBreakpointRule("eucast-std", "org-1", Set.of("Enterobacterales"), "abx-1",
+                "VITEK_2", "7", "MIC");
     }
 
     @Test

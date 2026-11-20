@@ -198,7 +198,7 @@ const BreakpointRuleForm = ({
                 id: "microbiology.admin.astPanels.diskContent",
               })}
               helperText={intl.formatMessage({
-                id: "microbiology.admin.astPanels.diskContent.help",
+                id: "microbiology.admin.astPanels.diskContent.strengthHelp",
               })}
               maxLength={40}
               required

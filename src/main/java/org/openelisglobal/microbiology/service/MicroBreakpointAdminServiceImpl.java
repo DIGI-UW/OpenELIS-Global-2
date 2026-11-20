@@ -142,6 +142,10 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         if (ruleId != null && !standardId.equals(rule.getStandardId())) {
             throw new IllegalArgumentException("Breakpoint rule does not belong to this standard");
         }
+        if (organismGroup != null && !organismGroup.equals(rule.getOrganismGroup())
+                && !organismDAO.getLabGroupNames().contains(organismGroup)) {
+            throw new IllegalArgumentException("Unknown organism group: " + organismGroup);
+        }
         String diskContent = trimToNull(request.diskContent);
         if ("ZONE".equals(breakpointType) && diskContent == null) {
             throw new IllegalArgumentException("Disk content is required for zone breakpoints");
@@ -310,6 +314,14 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         form.organismGroup = rule.getOrganismGroup();
         if (rule.getOrganismId() != null) {
             organismDAO.get(rule.getOrganismId()).ifPresent(organism -> form.organismName = organism.getDisplayName());
+        }
+        form.organismCodeType = rule.getOrganismCodeType();
+        form.organismCode = rule.getOrganismCode();
+        form.siteOfInfection = rule.getSiteOfInfection();
+        form.diskContent = rule.getDiskContent();
+        if ("WHONET_ORG_CODE".equals(rule.getOrganismCodeType())) {
+            organismDAO.findByWhonetCodeIgnoreCase(rule.getOrganismCode())
+                    .ifPresent(organism -> form.organismName = organism.getDisplayName());
         }
         form.antibioticId = rule.getAntibioticId();
         antibioticDAO.get(rule.getAntibioticId()).ifPresent(antibiotic -> {

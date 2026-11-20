@@ -26,7 +26,7 @@ test("records no growth without publishing, then releases one final negative rep
     .fill("UAT-NO-GROWTH-01");
   await selectCultureMedium(page, seeded.mediumItemId!);
   for (const label of ["Medium lot", "Atmosphere"]) {
-    const field = dialog.getByLabel(label, { exact: true });
+    const field = dialog.getByRole("combobox", { name: label, exact: true });
     const value = await field
       .locator("option")
       .evaluateAll((options) =>

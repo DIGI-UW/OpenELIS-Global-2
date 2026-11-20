@@ -178,6 +178,7 @@ const ReferenceDataPage = ({ definition, query, setQuery }) => {
   };
 
   const save = async (value) => {
+    setNotice("");
     await saveReference(definition.resource, value);
     setNotice(intl.formatMessage({ id: "microbiology.admin.saved" }));
     closeEditor();

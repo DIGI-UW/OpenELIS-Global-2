@@ -40,6 +40,7 @@ import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.eqa.service.EQACycleSubmissionService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.microbiology.service.MicroCaseLockedException;
 import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.patient.service.PatientService;
@@ -663,6 +664,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             failure.put("error", MessageUtil.getMessage(errorMsg));
             return ResponseEntity.status(e.getCause() instanceof StaleObjectStateException ? HttpStatus.CONFLICT
                     : HttpStatus.INTERNAL_SERVER_ERROR).body(failure);
+        } catch (MicroCaseLockedException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Map.of("error", MessageUtil.getMessage("result.refusal." + e.getMessage())));
         }
 
         for (IResultUpdate updater : updaters) {

@@ -49,11 +49,7 @@ export const REFERENCE_DEFINITIONS = {
         required: true,
       },
       { key: "oclCode", label: "microbiology.admin.field.oclCode" },
-      {
-        key: "organismGroup",
-        label: "microbiology.admin.field.group",
-        required: true,
-      },
+      { key: "organismGroup", label: "microbiology.admin.field.group" },
       {
         key: "susceptibilityProtocol",
         label: "microbiology.m6.protocol",
@@ -68,7 +64,6 @@ export const REFERENCE_DEFINITIONS = {
         key: "initialSignificance",
         label: "microbiology.admin.field.significance",
         type: "select",
-        required: true,
         options: [
           option("USUALLY", "microbiology.admin.significance.usually"),
           option("POSSIBLE", "microbiology.admin.significance.possible"),
@@ -119,7 +114,6 @@ export const REFERENCE_DEFINITIONS = {
       {
         key: "antibioticClass",
         label: "microbiology.admin.field.class",
-        required: true,
       },
       {
         key: "resistanceRole",

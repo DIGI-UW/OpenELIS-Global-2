@@ -39,8 +39,12 @@ test("picks a growth isolate, retains identification history and refers its dema
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Bottle or plate identifier").fill("M5-GROWTH");
   await selectCultureMedium(page, seeded.mediumItemId!);
-  await firstOption(dialog.getByLabel("Medium lot", { exact: true }));
-  await firstOption(dialog.getByLabel("Atmosphere", { exact: true }));
+  await firstOption(
+    dialog.getByRole("combobox", { name: "Medium lot", exact: true }),
+  );
+  await firstOption(
+    dialog.getByRole("combobox", { name: "Atmosphere", exact: true }),
+  );
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   const culture = page
     .locator('[data-testid^="culture-row-"]')

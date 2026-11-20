@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -15,16 +16,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.service.AnalysisServiceImpl;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.history.service.HistoryService;
+import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
 import org.openelisglobal.microbiology.service.MicroAstPanelAssignmentService;
@@ -44,7 +52,9 @@ import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstReportChoice;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
+import org.openelisglobal.microbiology.valueholder.MicroCaseRole;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
@@ -53,6 +63,7 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersionType;
+import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -80,9 +91,6 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private org.openelisglobal.microbiology.dao.MicroAstPanelDAO panelDAO;
-
-    @Autowired
-    private org.openelisglobal.microbiology.dao.MicroOrganismDAO organismDAO;
 
     @Autowired
     private AnalyteService analyteService;
@@ -136,6 +144,9 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
     private MicroCaseDAO caseDAO;
 
     @Autowired
+    private MicroOrganismDAO organismDAO;
+
+    @Autowired
     private MicrobiologyCaseAccessService caseAccessService;
 
     @Autowired
@@ -146,6 +157,18 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private UserRoleService userRoleService;
+
+    @Autowired
+    private MicroCaseAnalysisDAO caseAnalysisDAO;
+
+    @Autowired
+    private IStatusService statusService;
+
+    @Autowired
+    private ResultService resultService;
+
+    @Autowired
+    private HistoryService historyService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -172,6 +195,8 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
 
         MicroOrganism correctedOrganism = fixtures.createOrganism("Klebsiella pneumoniae", "Enterobacterales",
                 fixture.panelId());
+        correctedOrganism.getLabGroups().add("Enterobacterales");
+        organismDAO.update(correctedOrganism);
         isolateService.updateIdentification(fixture.isolateId(), correctedOrganism.getId(), "Klebsiella pneumoniae",
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
                 new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
@@ -335,11 +360,54 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(MicroCaseFinalReleaseState.FINAL_RELEASED.name(), unchanged.getFinalReleaseState());
     }
 
+    @Test
+    public void finalReleaseReleasesACultureOrdersOwnTestWithoutAResult() {
+        Analysis[] orders = new Analysis[2];
+        FinalCase fixture = createFinalCase((microCase, sampleItem) -> {
+            orders[0] = cultureOrder(microCase, sampleItem);
+            orders[1] = cultureOrder(microCase, sampleItem);
+            orders[1].setStatusId(statusService.getStatusID(AnalysisStatus.Canceled));
+            analysisService.update(orders[1]);
+        });
+
+        Analysis released = analysisService.get(orders[0].getId());
+        assertEquals(AnalysisStatus.Finalized, statusService.getAnalysisStatusForID(released.getStatusId()));
+        assertNotNull(released.getReleasedDate());
+        assertTrue(resultService.getResultsByAnalysis(released).isEmpty());
+        assertTrue("the release is in the analysis history under the releasing user",
+                historyService
+                        .getHistoryByRefIdAndRefTableId(released.getId(), AnalysisServiceImpl.getTableReferenceId())
+                        .stream().anyMatch(entry -> fixture.userId().equals(entry.getSysUserId())));
+        Analysis cancelled = analysisService.get(orders[1].getId());
+        assertEquals(AnalysisStatus.Canceled, statusService.getAnalysisStatusForID(cancelled.getStatusId()));
+        assertNull(cancelled.getReleasedDate());
+    }
+
+    private Analysis cultureOrder(MicroCase microCase, SampleItem sampleItem) {
+        Analysis analysis = fixtures.createAnalysis(sampleItem, fixtures.createCatalogTest());
+        MicroCaseAnalysis link = new MicroCaseAnalysis();
+        link.setCaseId(microCase.getId());
+        link.setAnalysisId(analysis.getId());
+        link.setCaseRole(MicroCaseRole.CULTURE);
+        link.setPlacement("INITIAL");
+        caseAnalysisDAO.insert(link);
+        return analysis;
+    }
+
     private FinalCase createFinalCase() {
         return createFinalCase(1);
     }
 
     private FinalCase createFinalCase(int reviewedRuns) {
+        return createFinalCase(reviewedRuns, (microCase, sampleItem) -> {
+        });
+    }
+
+    private FinalCase createFinalCase(BiConsumer<MicroCase, SampleItem> beforeRelease) {
+        return createFinalCase(1, beforeRelease);
+    }
+
+    private FinalCase createFinalCase(int reviewedRuns, BiConsumer<MicroCase, SampleItem> beforeRelease) {
         fixtures.ensureRequiredWorkflowStatuses();
         String labUnitId = fixtures.createLabUnit().getId();
         String userId = createValidator(labUnitId);
@@ -380,6 +448,7 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
                     MicroAstMethod.MIC, userId);
         }
         fixtures.prepareFinalCase(microCase, userId);
+        beforeRelease.accept(microCase, sampleItem);
         reportReleaseService.releaseFinal(microCase.getId(), userId);
         return new FinalCase(microCase.getId(), isolate.getId(), referenceData.organism().getId(),
                 referenceData.panel().getId(), referenceData.organism().getDisplayName(), userId);

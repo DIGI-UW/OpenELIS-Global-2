@@ -63,7 +63,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MicroAstServiceImpl implements MicroAstService {
-
     @org.springframework.beans.factory.annotation.Autowired
     private MicroCaseAuthorizationService authorization;
     @org.springframework.beans.factory.annotation.Autowired
@@ -975,7 +974,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroBreakpointStandard standard = standardId == null || standardId.isBlank()
                 ? breakpointService.getActiveStandard(defaultBreakpointAuthority, defaultBreakpointVersion)
                 : breakpointService.getStandard(standardId);
-        if (standard != null && "CLSI".equals(standard.getAuthority())) {
+        boolean whonetRule = rule != null && rule.getOrganismCodeType() != null;
+        if (standard != null && ("CLSI".equals(standard.getAuthority()) || whonetRule)) {
             return interpretationService.interpret(rule, method, rawValue, standard.getAuthority());
         }
         return interpretationService.interpret(rule, method, rawValue);
@@ -1158,38 +1158,51 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         var organism = isolate.getOrganismId() == null ? null : organismDAO.get(isolate.getOrganismId()).orElse(null);
         boolean ntm = organism != null && "NTM".equals(organism.getSusceptibilityProtocol());
-        String organismGroup = organism == null || ntm ? null : organism.getOrganismGroup();
+        Set<String> organismGroups = organism == null || ntm ? Set.of() : labGroups(organism);
         String specimenTypeId = null;
+        String specimenCode = null;
         if (microCase.getSampleItemId() != null) {
             SampleItem sampleItem = sampleItemService.getData(microCase.getSampleItemId());
             specimenTypeId = sampleItem == null ? null : sampleItemService.getTypeOfSampleId(sampleItem);
+            specimenCode = sampleItem == null || sampleItem.getTypeOfSample() == null ? null
+                    : sampleItem.getTypeOfSample().getWhonetCode();
         }
         String technique = run.getTechnique();
         if (technique != null && !technique.isBlank() && !MicroAstTechnique.valueOf(technique).isLegacyUnspecified()) {
-            MicroBreakpointRule techniqueRule = findContextRule(run, standardId, isolate.getOrganismId(), organismGroup,
-                    antibioticId, technique, specimenTypeId, method.name());
+            MicroBreakpointRule techniqueRule = findContextRule(run, standardId, isolate.getOrganismId(),
+                    organismGroups, antibioticId, technique, specimenTypeId, method.name());
             if (techniqueRule != null && (!ntm || isolate.getOrganismId().equals(techniqueRule.getOrganismId()))) {
                 return techniqueRule;
             }
         }
-        var rule = findContextRule(run, standardId, isolate.getOrganismId(), organismGroup, antibioticId, method.name(),
-                specimenTypeId, method.name());
+        var rule = findContextRule(run, standardId, isolate.getOrganismId(), organismGroups, antibioticId,
+                method.name(), specimenTypeId, method.name());
+        if (rule == null && !ntm) {
+            return breakpointService.findWhonetBreakpointRule(standardId, isolate.getOrganismId(), antibioticId,
+                    method.name(), diskContent(run, antibioticId, method.name()), specimenCode,
+                    run.getClinicalContext());
+        }
         return rule != null && ntm && !isolate.getOrganismId().equals(rule.getOrganismId()) ? null : rule;
     }
 
     private MicroBreakpointRule findContextRule(MicroAstRun run, String standardId, String organismId,
-            String organismGroup, String antibioticId, String method, String specimenTypeId, String breakpointType) {
-        // A zone breakpoint applies only to the disk content recorded for this drug on
-        // the run.
-        String diskContent = "ZONE".equals(breakpointType)
+            Set<String> organismGroups, String antibioticId, String method, String specimenTypeId,
+            String breakpointType) {
+        String diskContent = diskContent(run, antibioticId, breakpointType);
+        if (run.getClinicalContext() == null && diskContent == null)
+            return breakpointService.findBreakpointRule(standardId, organismId, organismGroups, antibioticId, method,
+                    specimenTypeId, breakpointType);
+        return breakpointService.findContextualBreakpointRule(standardId, organismId, organismGroups, antibioticId,
+                method, specimenTypeId, breakpointType, run.getClinicalContext(), diskContent);
+    }
+
+    // A zone breakpoint applies only to the disk content recorded for this drug on
+    // the run.
+    private String diskContent(MicroAstRun run, String antibioticId, String breakpointType) {
+        return "ZONE".equals(breakpointType)
                 ? runAntibioticDAO.getByRunIdAndAntibioticId(run.getId(), antibioticId)
                         .map(MicroAstRunAntibiotic::getDiskContent).orElse(null)
                 : null;
-        if (run.getClinicalContext() == null && diskContent == null)
-            return breakpointService.findBreakpointRule(standardId, organismId, organismGroup, antibioticId, method,
-                    specimenTypeId, breakpointType);
-        return breakpointService.findContextualBreakpointRule(standardId, organismId, organismGroup, antibioticId,
-                method, specimenTypeId, breakpointType, run.getClinicalContext(), diskContent);
     }
 
     private String matchedBy(MicroBreakpointRule rule) {
@@ -1205,11 +1218,17 @@ public class MicroAstServiceImpl implements MicroAstService {
         if (rule.getOrganismGroup() != null && !rule.getOrganismGroup().isBlank()) {
             return "GROUP";
         }
+        if ("WHONET_ORG_CODE".equals(rule.getOrganismCodeType())) {
+            return "ORGANISM";
+        }
+        if (rule.getOrganismCodeType() != null && !"ALL".equals(rule.getOrganismCodeType())) {
+            return "GROUP";
+        }
         return "STANDARD";
     }
 
     private String defaultUnits(MicroAstMethod method) {
-        return MicroAstMethod.ZONE.equals(method) ? "mm" : "ug/mL";
+        return MicroAstMethod.ZONE.equals(method) ? "mm" : "mg/L";
     }
 
     private void applyReportDefault(MicroAstRun run, String antibioticId, String interpretation) {

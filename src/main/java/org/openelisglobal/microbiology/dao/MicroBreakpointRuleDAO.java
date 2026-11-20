@@ -3,20 +3,23 @@ package org.openelisglobal.microbiology.dao;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 
 public interface MicroBreakpointRuleDAO extends BaseDAO<MicroBreakpointRule, String> {
-    MicroBreakpointRule findBestRule(String standardId, String organismId, String organismGroup, String antibioticId,
-            String method, String specimenTypeId, String breakpointType);
+    MicroBreakpointRule findBestRule(String standardId, String organismId, Set<String> organismGroups,
+            String antibioticId, String method, String specimenTypeId, String breakpointType);
 
-    MicroBreakpointRule findContextualRule(String standardId, String organismId, String organismGroup,
+    MicroBreakpointRule findContextualRule(String standardId, String organismId, Set<String> organismGroups,
             String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext,
             String diskContent);
 
     Optional<MicroBreakpointRule> findByContextualNaturalKey(String standardId, String organismId, String organismGroup,
             String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext,
             String diskContent);
+
+    List<MicroBreakpointRule> findWhonetRules(String standardId, String antibioticId, String breakpointType);
 
     Optional<MicroBreakpointRule> findBySourceRowHash(String sourceRowHash);
 

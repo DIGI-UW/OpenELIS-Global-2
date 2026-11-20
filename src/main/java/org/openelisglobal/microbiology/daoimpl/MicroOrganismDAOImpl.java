@@ -81,13 +81,6 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
 
     @Override
     @Transactional(readOnly = true)
-    public List<String> getActiveOrganismGroups() {
-        return entityManager.unwrap(Session.class).createQuery("select distinct o.organismGroup from MicroOrganism o"
-                + " where o.isActive = 'Y' and o.organismGroup is not null", String.class).list();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public Optional<MicroOrganism> findByDisplayNameIgnoreCase(String displayName) {
         Query<MicroOrganism> query = entityManager.unwrap(Session.class).createQuery(
                 "from MicroOrganism o where lower(o.displayName) = lower(:displayName)", MicroOrganism.class);
@@ -102,6 +95,19 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
                 "from MicroOrganism o where lower(o.whonetCode) = lower(:whonetCode)", MicroOrganism.class);
         query.setParameter("whonetCode", whonetCode);
         return query.uniqueResultOptional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<MicroOrganism> findByWhonetName(String name) {
+        List<MicroOrganism> named = entityManager.unwrap(Session.class)
+                .createQuery(
+                        "select distinct o from MicroOrganism o, MicroWhonetOrganism w"
+                                + " where lower(w.organism) = lower(:name)"
+                                + " and lower(o.whonetCode) = lower(coalesce(w.replacedBy, w.whonetOrgCode))",
+                        MicroOrganism.class)
+                .setParameter("name", name).setMaxResults(2).list();
+        return named.size() == 1 ? Optional.of(named.get(0)) : Optional.empty();
     }
 
     @Override
