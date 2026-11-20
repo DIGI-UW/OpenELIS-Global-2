@@ -73,4 +73,6 @@
 
   <!-- Referral transport details: mode of transport, vehicle, driver -->
   <include relativeToChangelogFile="true" file="referral-transport-001-subcontract-transport-details.xml"/>
+    <!-- HIV viral load programme + questionnaire (seeded so it exists on every install) -->
+  <include relativeToChangelogFile="true" file="lesotho-004-hiv-vl-program.xml"/>
 </databaseChangeLog>
