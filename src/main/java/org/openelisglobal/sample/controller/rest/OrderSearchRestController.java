@@ -45,6 +45,7 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IsoDateNormalizer;
 import org.openelisglobal.containertype.form.ContainerTypeView;
 import org.openelisglobal.containertype.service.ContainerTypeService;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
@@ -1563,14 +1564,14 @@ public class OrderSearchRestController extends BaseRestController {
         // Request date
         String requestDate = observationHistoryService.getRawValueForSample(ObservationType.REQUEST_DATE, sampleId);
         if (requestDate != null) {
-            sampleOrderItems.put("requestDate", requestDate);
+            sampleOrderItems.put("requestDate", IsoDateNormalizer.toDisplayFormat(requestDate));
         }
 
         // Next visit date
         String nextVisitDate = observationHistoryService.getRawValueForSample(ObservationType.NEXT_VISIT_DATE,
                 sampleId);
         if (nextVisitDate != null) {
-            sampleOrderItems.put("nextVisitDate", nextVisitDate);
+            sampleOrderItems.put("nextVisitDate", IsoDateNormalizer.toDisplayFormat(nextVisitDate));
         }
 
         // Provisional clinical diagnosis
