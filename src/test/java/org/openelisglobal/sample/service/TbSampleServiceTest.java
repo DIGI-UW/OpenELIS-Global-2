@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
@@ -341,7 +340,6 @@ public class TbSampleServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    @Ignore("Quarantined: pre-existing quirk in TbSampleServiceImpl.persistSampleData creates a new Sample() without copying form.sampleId, causing sampleService.update() to fail (#4850)")
     public void persistTbData_existingSample_updatesSample() {
         Sample existingSample = sampleService.getSampleByAccessionNumber(EXISTING_SAMPLE_ACCESSION_NUMBER);
         assertNotNull(existingSample);
