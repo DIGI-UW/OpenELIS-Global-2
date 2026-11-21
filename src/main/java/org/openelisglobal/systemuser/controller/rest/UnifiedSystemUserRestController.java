@@ -54,6 +54,7 @@ import org.openelisglobal.validation.constraintvalidator.NameValidator;
 import org.openelisglobal.validation.constraintvalidator.NameValidator.NameType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.validation.ObjectError;
@@ -136,6 +137,7 @@ public class UnifiedSystemUserRestController extends BaseController {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping(value = "/users/{roleName}")
     @ResponseBody
     public List<IdValuePair> getUsersWithRole(@PathVariable String roleName) {
@@ -144,6 +146,7 @@ public class UnifiedSystemUserRestController extends BaseController {
                 .map(e -> new IdValuePair(e.getId(), e.getDisplayName())).collect(Collectors.toList());
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping(value = "/users")
     @ResponseBody
     public List<IdValuePair> getUsersWithRole() {
@@ -153,6 +156,7 @@ public class UnifiedSystemUserRestController extends BaseController {
         return idValues;
     }
 
+    @PreAuthorize("hasAnyRole('GLOBAL_ADMIN', 'ADMIN')")
     @GetMapping(value = "/UnifiedSystemUser")
     public ResponseEntity<UnifiedSystemUserForm> showUnifiedSystemUser(HttpServletRequest request,
             @RequestParam(name = "ID", defaultValue = "") String id)
@@ -451,6 +455,7 @@ public class UnifiedSystemUserRestController extends BaseController {
         return roleService.getAllActiveRoles();
     }
 
+    @PreAuthorize("hasAnyRole('GLOBAL_ADMIN', 'ADMIN')")
     @PostMapping(value = "/UnifiedSystemUser")
     public ResponseEntity<Map<String, String>> showUpdateUnifiedSystemUser(HttpServletRequest request,
             @RequestBody @Valid UnifiedSystemUserForm form, BindingResult result) {
