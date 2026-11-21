@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.systemusermodule.service.PermissionModuleService;
 import org.openelisglobal.systemusermodule.valueholder.PermissionModule;
 import org.openelisglobal.userrole.dao.UserLabUnitRolesDAO;
@@ -93,5 +94,11 @@ public class UserRoleServiceImpl extends AuditableBaseObjectServiceImpl<UserRole
     @Override
     public List<String> getUserIdsForRole(String roleName) {
         return baseObjectDAO.getUserIdsForRole(roleName);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<IdValuePair> getActiveUsersWithRoleOnLabUnit(String roleId, String labUnitId) {
+        return userLabUnitRolesDAO.getActiveUsersWithRoleOnLabUnit(roleId, labUnitId);
     }
 }

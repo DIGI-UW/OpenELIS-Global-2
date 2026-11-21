@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.openelisglobal.userrole.valueholder.UserRole;
@@ -29,4 +30,10 @@ public interface UserRoleService extends BaseObjectService<UserRole, UserRolePK>
     List<UserLabUnitRoles> getAllUserLabUnitRoles();
 
     List<String> getUserIdsForRole(String roleName);
+
+    /**
+     * Active users holding the role on the lab unit or on AllLabUnits, in one query
+     * — not every user's lab-unit roles loaded and checked one at a time.
+     */
+    List<IdValuePair> getActiveUsersWithRoleOnLabUnit(String roleId, String labUnitId);
 }
