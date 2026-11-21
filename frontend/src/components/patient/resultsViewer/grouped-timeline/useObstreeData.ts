@@ -38,7 +38,7 @@ const augmentObstreeData = (node, prefix) => {
 const useGetManyObstreeData = (patientUuid) => {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error] = useState(null);
 
   const fetchResultsTree = (resultsTree) => {
     setData(resultsTree);

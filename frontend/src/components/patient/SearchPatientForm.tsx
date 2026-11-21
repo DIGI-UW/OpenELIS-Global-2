@@ -41,7 +41,6 @@ import { ConfigurationContext } from "../layout/contexts";
 import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFormValues";
 import AsyncAvatar from "./photoManagement/photoAvatar/AyncAvatar";
 import type {
-  Nullable,
   PatientRecord,
   PatientSearchCriteria,
   PatientSearchResponse,

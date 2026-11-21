@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
@@ -53,21 +47,6 @@ vi.mock("./photoManagement/photoAvatar/AyncAvatar", () => ({
 }));
 
 import SearchPatientForm from "./SearchPatientForm";
-
-const RESULTS = {
-  paging: { currentPage: "1", totalPages: "1" },
-  patientSearchResults: [
-    {
-      patientID: "35",
-      lastName: "PAGEPATIENT",
-      firstName: "Number035",
-      gender: "F",
-      dob: "01/02/1980",
-      nationalId: "PAGEPAT0035",
-      dataSourceName: "OpenElis",
-    },
-  ],
-};
 
 const requests = (prefix: string) =>
   utilsMock.getFromOpenElisServer.mock.calls.filter((c: any[]) =>
