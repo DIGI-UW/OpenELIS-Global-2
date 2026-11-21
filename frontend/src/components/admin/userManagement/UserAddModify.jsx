@@ -1510,12 +1510,11 @@ function UserAddModify() {
                                 id={`${section.elementID}-${key}`}
                                 value={section.roleId}
                                 labelText={section.roleName}
-                                checked={
-                                  selectedTestSectionLabUnits[key] &&
-                                  selectedTestSectionLabUnits[key].includes(
+                                checked={Boolean(
+                                  selectedTestSectionLabUnits[key]?.includes(
                                     section.roleId,
-                                  )
-                                }
+                                  ),
+                                )}
                                 onChange={() => {
                                   if (
                                     selectedTestSectionLabUnits[key]?.includes(
