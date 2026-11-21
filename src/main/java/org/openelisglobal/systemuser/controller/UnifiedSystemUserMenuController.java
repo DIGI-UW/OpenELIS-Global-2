@@ -7,11 +7,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseMenuController;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.AdminOptionMenuForm;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
@@ -23,21 +21,16 @@ import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.systemuser.form.UnifiedSystemUserMenuForm;
 import org.openelisglobal.systemuser.service.SystemUserService;
-import org.openelisglobal.systemuser.service.UnifiedSystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.systemuser.valueholder.UnifiedSystemUser;
-import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
-import org.openelisglobal.userrole.valueholder.UserRole;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.InitBinder;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
@@ -52,10 +45,6 @@ public class UnifiedSystemUserMenuController extends BaseMenuController<UnifiedS
     SystemUserService systemUserService;
     @Autowired
     LoginUserService loginService;
-    @Autowired
-    UserRoleService userRoleService;
-    @Autowired
-    UnifiedSystemUserService unifiedSystemUserService;
     @Autowired
     private UserService userService;
 
@@ -244,83 +233,12 @@ public class UnifiedSystemUserMenuController extends BaseMenuController<UnifiedS
         return Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
     }
 
-    @RequestMapping(value = "/DeleteUnifiedSystemUser", method = RequestMethod.POST)
-    public ModelAndView showDeleteUnifiedSystemUser(HttpServletRequest request,
-            @ModelAttribute("form") UnifiedSystemUserMenuForm form, BindingResult result,
-            RedirectAttributes redirectAttributes) {
-        if (result.hasErrors()) {
-            saveErrors(result);
-            return findForward(FWD_FAIL_DELETE, form);
-        }
-        List<String> selectedIDs = form.getSelectedIDs();
-        List<LoginUser> loginUsers = new ArrayList<>();
-        List<SystemUser> systemUsers = new ArrayList<>();
-        List<UserRole> userRoles = new ArrayList<>();
-
-        String sysUserId = getSysUserId(request);
-
-        for (int i = 0; i < selectedIDs.size(); i++) {
-            String systemUserId = UnifiedSystemUser.getSystemUserIDFromCombinedID(selectedIDs.get(i));
-            Integer loginUserId = UnifiedSystemUser.getLoginUserIDFromCombinedID(selectedIDs.get(i));
-
-            LoginUser user = loginService.get(loginUserId);
-            if (loginService.isUserAdmin(user)) {
-                continue;
-            }
-
-            if (!GenericValidator.isBlankOrNull(systemUserId)) {
-                SystemUser systemUser = new SystemUser();
-                systemUser.setId(systemUserId);
-                systemUser.setSysUserId(sysUserId);
-                systemUsers.add(systemUser);
-            }
-
-            if (null != loginUserId) {
-                LoginUser loginUser = new LoginUser();
-                loginUser.setId(loginUserId);
-                loginUser.setSysUserId(sysUserId);
-                loginUsers.add(loginUser);
-            }
-        }
-
-        for (SystemUser systemUser : systemUsers) {
-            List<String> roleIds = userRoleService.getRoleIdsForUser(systemUser.getId());
-
-            for (String roleId : roleIds) {
-                UserRole userRole = new UserRole();
-                userRole.setSystemUserId(systemUser.getId());
-                userRole.setRoleId(roleId);
-                userRole.setSysUserId(sysUserId);
-                userRoles.add(userRole);
-            }
-        }
-
-        try {
-            unifiedSystemUserService.deleteData(userRoles, systemUsers, loginUsers, getSysUserId(request));
-        } catch (LIMSRuntimeException e) {
-
-            if (e.getCause() instanceof org.hibernate.StaleObjectStateException) {
-                result.reject("errors.OptimisticLockException", "errors.OptimisticLockException");
-            } else {
-                result.reject("errors.DeleteException", "errors.DeleteException");
-            }
-            saveErrors(result);
-            return findForward(FWD_FAIL_DELETE, form);
-        }
-
-        return findForward(FWD_SUCCESS_DELETE, form);
-    }
-
     @Override
     protected String findLocalForward(String forward) {
         if (FWD_SUCCESS.equals(forward)) {
             return "userMasterListsPageDefinition";
         } else if (FWD_FAIL.equals(forward)) {
             return "redirect:/MasterListsPage";
-        } else if (FWD_SUCCESS_DELETE.equals(forward)) {
-            return "redirect:/UnifiedSystemUserMenu";
-        } else if (FWD_FAIL_DELETE.equals(forward)) {
-            return "redirect:/UnifiedSystemUserMenu";
         } else {
             return "PageNotFound";
         }

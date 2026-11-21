@@ -31,6 +31,7 @@ import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.openelisglobal.userrole.valueholder.UserRole;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
@@ -261,11 +262,11 @@ public class UnifiedSystemUserMenuRestController extends BaseMenuController<Unif
     }
 
     @PostMapping(value = "/DeleteUnifiedSystemUser")
-    public String showDeleteUnifiedSystemUser(HttpServletRequest request, @RequestBody UnifiedSystemUserMenuForm form,
-            BindingResult result) {
+    public ResponseEntity<String> showDeleteUnifiedSystemUser(HttpServletRequest request,
+            @RequestBody UnifiedSystemUserMenuForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
-            return findForward(FWD_FAIL_DELETE);
+            return ResponseEntity.badRequest().body(findForward(FWD_FAIL_DELETE));
         }
         List<String> selectedIDs = form.getSelectedIDs();
         List<LoginUser> loginUsers = new ArrayList<>();
@@ -277,6 +278,10 @@ public class UnifiedSystemUserMenuRestController extends BaseMenuController<Unif
         for (int i = 0; i < selectedIDs.size(); i++) {
             String systemUserId = UnifiedSystemUser.getSystemUserIDFromCombinedID(selectedIDs.get(i));
             Integer loginUserId = UnifiedSystemUser.getLoginUserIDFromCombinedID(selectedIDs.get(i));
+
+            if (!unifiedSystemUserService.canManageAccount(sysUserId, systemUserId, loginUserId)) {
+                return ResponseEntity.status(403).body(findLocalForward(FWD_FAIL_DELETE));
+            }
 
             LoginUser user = loginService.get(loginUserId);
             if (loginService.isUserAdmin(user)) {
@@ -320,12 +325,12 @@ public class UnifiedSystemUserMenuRestController extends BaseMenuController<Unif
                 result.reject("errors.DeleteException", "errors.DeleteException");
             }
             // saveErrors(result);
-            return findLocalForward(FWD_FAIL_DELETE);
+            return ResponseEntity.badRequest().body(findLocalForward(FWD_FAIL_DELETE));
 
         }
 
         // return findForward(FWD_SUCCESS_DELETE, form);
-        return findLocalForward(FWD_SUCCESS_DELETE);
+        return ResponseEntity.ok(findLocalForward(FWD_SUCCESS_DELETE));
     }
 
     @Override
