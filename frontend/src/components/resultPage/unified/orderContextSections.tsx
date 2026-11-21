@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Button, FileUploaderButton, Tag } from "@carbon/react";
+import { Button, FileUploaderButton, Modal, Tag } from "@carbon/react";
+import { TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import ReferenceSection from "./ReferenceSection";
 import SampleStatusBlock, { QuantitySnapshot } from "./SampleStatusBlock";
@@ -9,6 +10,7 @@ import {
   scopedAttachmentUploadUrl,
 } from "../attachmentScope";
 import {
+  deleteFromOpenElisServer,
   getFromOpenElisServer,
   postToOpenElisServerFormData,
   postToOpenElisServerJsonResponse,
@@ -436,6 +438,8 @@ export const AttachmentsSection: React.FC<
   const intl = useIntl();
   const [files, setFiles] = useState<AttachmentDto[] | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AttachmentDto | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const loadFiles = React.useCallback(() => {
     if (!accessionNumber) {
@@ -483,6 +487,30 @@ export const AttachmentsSection: React.FC<
           setError(
             intl.formatMessage({
               id: "label.results.attachments.uploadFailed",
+            }),
+          );
+        }
+      },
+    );
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget || deleting) {
+      return;
+    }
+    setDeleting(true);
+    setError("");
+    deleteFromOpenElisServer(
+      `/rest/order/attachments/${encodeURIComponent(deleteTarget.id)}`,
+      (status: number) => {
+        setDeleting(false);
+        setDeleteTarget(null);
+        if (status >= 200 && status < 300) {
+          loadFiles();
+        } else {
+          setError(
+            intl.formatMessage({
+              id: "order.attachment.delete.failed",
             }),
           );
         }
@@ -548,6 +576,23 @@ export const AttachmentsSection: React.FC<
           >
             <FormattedMessage id="label.results.attachments.download" />
           </Button>
+          {editable !== false && (
+            <Button
+              kind="ghost"
+              size="sm"
+              hasIconOnly
+              renderIcon={TrashCan}
+              iconDescription={intl.formatMessage({
+                id: "order.attachment.action.delete",
+                defaultMessage: "Delete attachment",
+              })}
+              data-testid={`attachment-delete-${file.id}`}
+              onClick={() => {
+                setError("");
+                setDeleteTarget(file);
+              }}
+            />
+          )}
         </div>
       ))}
       {count === 0 && (
@@ -575,6 +620,40 @@ export const AttachmentsSection: React.FC<
         </div>
       )}
       {error && <div className="unifiedSampleStatusError">{error}</div>}
+      {deleteTarget && (
+        <Modal
+          open={Boolean(deleteTarget)}
+          modalHeading={intl.formatMessage({
+            id: "order.attachment.delete.confirm.title",
+            defaultMessage: "Delete attachment",
+          })}
+          primaryButtonText={intl.formatMessage({
+            id: "label.delete",
+            defaultMessage: "Delete",
+          })}
+          secondaryButtonText={intl.formatMessage({
+            id: "label.cancel",
+            defaultMessage: "Cancel",
+          })}
+          danger
+          size="sm"
+          primaryButtonDisabled={deleting}
+          onRequestClose={() => {
+            if (!deleting) {
+              setDeleteTarget(null);
+            }
+          }}
+          onRequestSubmit={handleConfirmDelete}
+        >
+          <p>
+            <FormattedMessage
+              id="order.attachment.delete.confirm.body"
+              defaultMessage='Are you sure you want to delete "{fileName}"? This cannot be undone.'
+              values={{ fileName: deleteTarget.fileName || "" }}
+            />
+          </p>
+        </Modal>
+      )}
     </ReferenceSection>
   );
 };

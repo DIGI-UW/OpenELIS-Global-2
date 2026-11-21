@@ -1,26 +1,23 @@
 import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
-import { vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../languages/en.json";
 
 vi.mock("../../utils/Utils", () => ({
+  deleteFromOpenElisServer: vi.fn(),
   getFromOpenElisServer: vi.fn(),
   postToOpenElisServerFormData: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
 }));
 // eslint-disable-next-line import/first
 import {
+  deleteFromOpenElisServer,
   getFromOpenElisServer,
   postToOpenElisServerFormData,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
-const getMock = getFromOpenElisServer as ReturnType<typeof vi.fn>;
-const postFormMock = postToOpenElisServerFormData as ReturnType<typeof vi.fn>;
-const postJsonMock = postToOpenElisServerJsonResponse as ReturnType<
-  typeof vi.fn
->;
-
+// eslint-disable-next-line import/first
 import {
   AttachmentsSection,
   OrderInfoSection,
@@ -30,6 +27,13 @@ import {
   storageAssignmentRequest,
   useOrderContext,
 } from "./orderContextSections";
+
+const deleteMock = deleteFromOpenElisServer as ReturnType<typeof vi.fn>;
+const getMock = getFromOpenElisServer as ReturnType<typeof vi.fn>;
+const postFormMock = postToOpenElisServerFormData as ReturnType<typeof vi.fn>;
+const postJsonMock = postToOpenElisServerJsonResponse as ReturnType<
+  typeof vi.fn
+>;
 
 /**
  * OGC-811 gallery parity — order-fed reference sections: content comes from
@@ -45,6 +49,7 @@ const wrap = (node: React.ReactElement) =>
 
 describe("orderContextSections (FR-C3/C5)", () => {
   beforeEach(() => {
+    deleteMock.mockReset();
     getMock.mockReset();
     postFormMock.mockReset();
     postJsonMock.mockReset();
@@ -512,6 +517,278 @@ describe("orderContextSections (FR-C3/C5)", () => {
       expect.any(FormData),
       expect.any(Function),
     );
+  });
+
+  describe("attachment deletion", () => {
+    const sampleAttachment = {
+      id: 42,
+      fileName: "wrong-file.pdf",
+      fileSizeBytes: 2048,
+      analysisId: "28",
+      testResultComponentId: "comp-A",
+    };
+
+    it("1. delete action is displayed for eligible attachments", () => {
+      getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+        if (
+          typeof url === "string" &&
+          url.includes("/attachments") &&
+          typeof cb === "function"
+        ) {
+          cb([sampleAttachment]);
+        }
+      });
+      wrap(
+        <AttachmentsSection
+          open={true}
+          onToggle={() => {}}
+          accessionNumber="DEV1"
+          analysisId="28"
+          componentId="comp-A"
+        />,
+      );
+      expect(screen.getByTestId("attachment-delete-42")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Delete attachment" }),
+      ).toBeInTheDocument();
+    });
+
+    it("2. delete action is unavailable when the user cannot edit (editable=false)", () => {
+      getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+        if (
+          typeof url === "string" &&
+          url.includes("/attachments") &&
+          typeof cb === "function"
+        ) {
+          cb([sampleAttachment]);
+        }
+      });
+      wrap(
+        <AttachmentsSection
+          open={true}
+          onToggle={() => {}}
+          accessionNumber="DEV1"
+          analysisId="28"
+          componentId="comp-A"
+          editable={false}
+        />,
+      );
+      expect(screen.getByText("wrong-file.pdf")).toBeInTheDocument();
+      expect(screen.queryByTestId("attachment-delete-42")).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: "Delete attachment" }),
+      ).toBeNull();
+    });
+
+    it("3. confirmation dialog opens correctly with file details", () => {
+      getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+        if (
+          typeof url === "string" &&
+          url.includes("/attachments") &&
+          typeof cb === "function"
+        ) {
+          cb([sampleAttachment]);
+        }
+      });
+      wrap(
+        <AttachmentsSection
+          open={true}
+          onToggle={() => {}}
+          accessionNumber="DEV1"
+          analysisId="28"
+          componentId="comp-A"
+        />,
+      );
+      fireEvent.click(screen.getByTestId("attachment-delete-42"));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Are you sure you want to delete "wrong-file.pdf"? This cannot be undone.',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /delete$/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Cancel" }),
+      ).toBeInTheDocument();
+    });
+
+    it("4. cancelling confirmation does not trigger the DELETE request", () => {
+      getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+        if (
+          typeof url === "string" &&
+          url.includes("/attachments") &&
+          typeof cb === "function"
+        ) {
+          cb([sampleAttachment]);
+        }
+      });
+      wrap(
+        <AttachmentsSection
+          open={true}
+          onToggle={() => {}}
+          accessionNumber="DEV1"
+          analysisId="28"
+          componentId="comp-A"
+        />,
+      );
+      fireEvent.click(screen.getByTestId("attachment-delete-42"));
+      const cancelButton = screen.getByRole("button", { name: "Cancel" });
+      fireEvent.click(cancelButton);
+      expect(deleteMock).not.toHaveBeenCalled();
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("5. confirming deletion calls the correct endpoint with the correct attachment ID", () => {
+      getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+        if (
+          typeof url === "string" &&
+          url.includes("/attachments") &&
+          typeof cb === "function"
+        ) {
+          cb([sampleAttachment]);
+        }
+      });
+      wrap(
+        <AttachmentsSection
+          open={true}
+          onToggle={() => {}}
+          accessionNumber="DEV1"
+          analysisId="28"
+          componentId="comp-A"
+        />,
+      );
+      fireEvent.click(screen.getByTestId("attachment-delete-42"));
+      const confirmButton = screen.getByRole("button", { name: /delete$/i });
+      fireEvent.click(confirmButton);
+      expect(deleteMock).toHaveBeenCalledWith(
+        "/rest/order/attachments/42",
+        expect.any(Function),
+      );
+    });
+
+    it("6. successful deletion updates the UI", () => {
+      let files = [sampleAttachment];
+      getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+        if (
+          typeof url === "string" &&
+          url.includes("/attachments") &&
+          typeof cb === "function"
+        ) {
+          cb(files);
+        }
+      });
+      deleteMock.mockImplementation(
+        (_url: string, cb: (status: number) => void) => {
+          files = [];
+          if (typeof cb === "function") {
+            cb(200);
+          }
+        },
+      );
+      wrap(
+        <AttachmentsSection
+          open={true}
+          onToggle={() => {}}
+          accessionNumber="DEV1"
+          analysisId="28"
+          componentId="comp-A"
+        />,
+      );
+      expect(screen.getByText("wrong-file.pdf")).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("attachment-delete-42"));
+      const confirmButton = screen.getByRole("button", { name: /delete$/i });
+      fireEvent.click(confirmButton);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.queryByText("wrong-file.pdf")).toBeNull();
+      expect(
+        screen.getByText("No attachments on this order yet."),
+      ).toBeInTheDocument();
+    });
+
+    it("7. failed deletion preserves the attachment and displays an error", () => {
+      getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+        if (
+          typeof url === "string" &&
+          url.includes("/attachments") &&
+          typeof cb === "function"
+        ) {
+          cb([sampleAttachment]);
+        }
+      });
+      deleteMock.mockImplementation(
+        (_url: string, cb: (status: number) => void) => {
+          if (typeof cb === "function") {
+            cb(500);
+          }
+        },
+      );
+      wrap(
+        <AttachmentsSection
+          open={true}
+          onToggle={() => {}}
+          accessionNumber="DEV1"
+          analysisId="28"
+          componentId="comp-A"
+        />,
+      );
+      expect(screen.getByText("wrong-file.pdf")).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("attachment-delete-42"));
+      const confirmButton = screen.getByRole("button", { name: /delete$/i });
+      fireEvent.click(confirmButton);
+      // Attachment is preserved
+      expect(screen.getByText("wrong-file.pdf")).toBeInTheDocument();
+      // Error message is displayed
+      expect(
+        screen.getByText("Could not delete the attachment. Please try again."),
+      ).toBeInTheDocument();
+      // Action is restored to usable state
+      expect(screen.getByTestId("attachment-delete-42")).toBeInTheDocument();
+    });
+
+    it("8. duplicate deletion requests are prevented while in flight", () => {
+      let pendingCb: ((status: number) => void) | null = null;
+      getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+        if (
+          typeof url === "string" &&
+          url.includes("/attachments") &&
+          typeof cb === "function"
+        ) {
+          cb([sampleAttachment]);
+        }
+      });
+      deleteMock.mockImplementation(
+        (_url: string, cb: (status: number) => void) => {
+          pendingCb = cb;
+        },
+      );
+      wrap(
+        <AttachmentsSection
+          open={true}
+          onToggle={() => {}}
+          accessionNumber="DEV1"
+          analysisId="28"
+          componentId="comp-A"
+        />,
+      );
+      fireEvent.click(screen.getByTestId("attachment-delete-42"));
+      const confirmButton = screen.getByRole("button", { name: /delete$/i });
+      fireEvent.click(confirmButton);
+      expect(deleteMock).toHaveBeenCalledTimes(1);
+      // Primary button is disabled while deleting
+      expect(confirmButton).toBeDisabled();
+      // Repeated clicks do not trigger another request
+      fireEvent.click(confirmButton);
+      expect(deleteMock).toHaveBeenCalledTimes(1);
+      // Resolve the deletion
+      act(() => {
+        if (pendingCb) {
+          pendingCb(200);
+        }
+      });
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
   });
 });
 
