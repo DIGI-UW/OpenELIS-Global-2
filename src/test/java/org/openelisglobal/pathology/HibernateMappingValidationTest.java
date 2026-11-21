@@ -25,6 +25,7 @@ import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.localization.valueholder.LocalizationValue;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.program.valueholder.pathology.CassetteState;
+import org.openelisglobal.program.valueholder.pathology.CoverslipQc;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyReport;
@@ -35,6 +36,7 @@ import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique;
 import org.openelisglobal.program.valueholder.pathology.StageDirection;
+import org.openelisglobal.program.valueholder.pathology.StainStatus;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 /**
@@ -156,6 +158,30 @@ public class HibernateMappingValidationTest {
                 slide.getAttribute("labelVerifiedBy").getPersistentAttributeType());
         assertColumn(PathologySlide.class, "labelVerifiedAt", "label_verified_at");
         assertColumn(PathologySlide.class, "labelVerifiedBy", "label_verified_by");
+    }
+
+    /**
+     * What staining and the coverslip check found are stored by name, so a row
+     * reads the same whatever order the values are declared in, and who recorded
+     * each is a plain column, so the row the case view posts back carries no user.
+     */
+    @Test
+    public void pathologySlide_mapsItsStainingAndCoverslipCheck() {
+        EntityType<PathologySlide> slide = sessionFactory.getMetamodel().entity(PathologySlide.class);
+
+        assertEquals("the stain status is the enum", StainStatus.class,
+                slide.getAttribute("stainStatus").getJavaType());
+        assertEquals("the coverslip check is the enum", CoverslipQc.class,
+                slide.getAttribute("coverslipQc").getJavaType());
+        assertEquals("who stained it is a plain column", Attribute.PersistentAttributeType.BASIC,
+                slide.getAttribute("stainStatusBy").getPersistentAttributeType());
+        assertEquals("who checked it is a plain column", Attribute.PersistentAttributeType.BASIC,
+                slide.getAttribute("coverslipQcBy").getPersistentAttributeType());
+        assertColumn(PathologySlide.class, "stainStatusAt", "stain_status_at");
+        assertColumn(PathologySlide.class, "stainStatusBy", "stain_status_by");
+        assertColumn(PathologySlide.class, "coverslipQc", "coverslip_qc");
+        assertColumn(PathologySlide.class, "coverslipQcAt", "coverslip_qc_at");
+        assertColumn(PathologySlide.class, "coverslipQcBy", "coverslip_qc_by");
     }
 
     /**

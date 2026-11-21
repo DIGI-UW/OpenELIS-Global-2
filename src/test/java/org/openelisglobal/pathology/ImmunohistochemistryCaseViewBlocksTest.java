@@ -13,8 +13,10 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.program.service.ImmunohistochemistryDisplayService;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistryCaseViewDisplayItem;
+import org.openelisglobal.program.valueholder.pathology.CoverslipQc;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
+import org.openelisglobal.program.valueholder.pathology.StainStatus;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +40,7 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
     private static final int STAIN = 9711;
     private static final String STAIN_NAME = "Masson trichrome";
 
-    private boolean insertedTheStainCategory;
+    private DictionaryRows.StainEntries stains;
 
     @Autowired
     private ImmunohistochemistryDisplayService immunohistochemistryDisplayService;
@@ -77,11 +79,9 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
     private void clearOwnRows() {
         jdbcTemplate.update("DELETE FROM clinlims.immunohistochemistry_sample WHERE id = ?", IHC_SAMPLE_ID);
         PathologyCaseRows.clearLabelStamp(jdbcTemplate, LEGACY_SLIDE_ID);
-        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = NULL WHERE stain_id = ?", STAIN);
-        DictionaryRows.removeEntries(jdbcTemplate, STAIN);
-        if (insertedTheStainCategory) {
-            DictionaryRows.removeCategory(jdbcTemplate, STAIN_CATEGORY_ID);
-            insertedTheStainCategory = false;
+        if (stains != null) {
+            stains.close();
+            stains = null;
         }
         jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table = ?",
                 Integer.parseInt(referenceTablesService.getReferenceTableByName("PATHOLOGY_BLOCK").getId()));
@@ -120,10 +120,7 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
      */
     @Test
     public void caseView_namesTheStainsOfTheReferredSlides() {
-        insertedTheStainCategory = DictionaryRows.insertCategory(jdbcTemplate, STAIN_CATEGORY_ID,
-                PathologySampleService.STAIN_CATEGORY, PathologySampleService.STAIN_CATEGORY, "PathStain");
-        int categoryId = DictionaryRows.idOfCategory(jdbcTemplate, PathologySampleService.STAIN_CATEGORY);
-        DictionaryRows.insertEntry(jdbcTemplate, STAIN, categoryId, STAIN_NAME, "PSMas", true);
+        stains = DictionaryRows.stainEntries(jdbcTemplate, STAIN_CATEGORY_ID).with(STAIN, STAIN_NAME, true);
         jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = ? WHERE id = ?", STAIN, LEGACY_SLIDE_ID);
 
         ImmunohistochemistryCaseViewDisplayItem displayItem = immunohistochemistryDisplayService
@@ -149,5 +146,23 @@ public class ImmunohistochemistryCaseViewBlocksTest extends BaseWebContextSensit
 
         assertEquals("the verified slide is named by its verifier", systemUserService.get("1001").getDisplayName(),
                 verified.getLabelVerifications().get(LEGACY_SLIDE_ID).verifiedBy());
+    }
+
+    /**
+     * The referred view shows what staining and the coverslip check found on each
+     * slide, read from the slide rows themselves, which carry the values by name.
+     */
+    @Test
+    public void caseView_carriesTheReferredSlidesStainStatusAndCoverslipCheck() {
+        jdbcTemplate.update(
+                "UPDATE clinlims.pathology_slide SET stain_status = 'STAINED', coverslip_qc = 'PASS'" + " WHERE id = ?",
+                LEGACY_SLIDE_ID);
+
+        ImmunohistochemistryCaseViewDisplayItem displayItem = immunohistochemistryDisplayService
+                .convertToCaseDisplayItem(IHC_SAMPLE_ID);
+
+        PathologySlide slide = displayItem.getSlides().get(0);
+        assertEquals("the stain status rides along on the slide", StainStatus.STAINED, slide.getStainStatus());
+        assertEquals("and so does the coverslip check", CoverslipQc.PASS, slide.getCoverslipQc());
     }
 }

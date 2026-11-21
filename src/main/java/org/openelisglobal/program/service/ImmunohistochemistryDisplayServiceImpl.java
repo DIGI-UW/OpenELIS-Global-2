@@ -11,6 +11,7 @@ import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.program.util.PathologyRowOrder;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistryCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistryDisplayItem;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
@@ -113,8 +114,8 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
         if (pathologySample != null && immunohistochemistrySample.getReffered()) {
             pathologySample.getBlocks().size();
             pathologySample.getSlides().size();
-            displayItem.setBlocks(pathologySample.getBlocks());
-            displayItem.setSlides(pathologySample.getSlides());
+            displayItem.setBlocks(PathologyRowOrder.blocks(pathologySample.getBlocks()));
+            displayItem.setSlides(PathologyRowOrder.slides(pathologySample.getSlides()));
             displayItem.setStainNames(PathologyDisplayServiceImpl.dictionaryNames(
                     pathologySample.getSlides().stream().map(PathologySlide::getStainId), dictionaryService));
             displayItem.setLabelVerifications(

@@ -18,12 +18,18 @@ import {
   stageLabel,
 } from "./pathologyStages";
 import {
+  benchStillOwes,
   countedRows,
+  coverslipSummary,
   embeddingSummary,
   hasVerifiableLabel,
   isDeactivatedRow,
   isEmbeddedRow,
   isLabelVerified,
+  isStainedRow,
+  slideOnBlockName,
+  slideRowsToRedo,
+  stainingSummary,
   unverifiedSlides,
 } from "./pathologyRows";
 
@@ -34,6 +40,10 @@ export const EMBEDDING_SECTION_ID = "pathology-section-embedding";
 export const PROCESSING_SECTION_ID = "pathology-section-processing";
 
 export const MICROTOMY_SECTION_ID = "pathology-section-microtomy";
+
+export const STAINING_SECTION_ID = "pathology-section-staining";
+
+export const COVERSLIPPING_SECTION_ID = "pathology-section-coverslipping";
 
 // A section's own header, where focus lands once nothing left to do in the
 // section can take it.
@@ -105,23 +115,23 @@ export const PATHOLOGY_SECTIONS = Object.freeze([
     pathologistOnly: false,
   }),
   Object.freeze({
-    id: "pathology-section-staining",
+    id: STAINING_SECTION_ID,
     number: 7,
     titleKey: stageDisplayKey("STAINING"),
     stages: Object.freeze(["STAINING"]),
     gate: "STAINING",
     displayOnly: false,
-    placeholder: true,
+    placeholder: false,
     pathologistOnly: false,
   }),
   Object.freeze({
-    id: "pathology-section-coverslipping",
+    id: COVERSLIPPING_SECTION_ID,
     number: 8,
     titleKey: stageDisplayKey("COVERSLIPPING"),
     stages: Object.freeze(["COVERSLIPPING"]),
     gate: "COVERSLIPPING",
     displayOnly: false,
-    placeholder: true,
+    placeholder: false,
     pathologistOnly: false,
   }),
   Object.freeze({
@@ -249,14 +259,15 @@ export function advanceLabelKey(stageId) {
  * may be what completes the stage; then the stage's own rule, judged on the
  * stored stage as the server judges it: grossing done under FR-3.4, every
  * cassette embedded, at least one slide cut at microtomy and every slide's
- * label checked against its block (FR-7.5). The outstanding
- * cassettes and the unchecked slides are named the way the rail names
- * cassettes, the first two and a count of the rest.
+ * label checked against its block (FR-7.5), every slide stained at staining
+ * and every slide's coverslip passed at coverslipping (FR-8). The outstanding
+ * cassettes and slides are named the way the rail names cassettes, the first
+ * two and a count of the rest.
  */
 export function advanceBlockedReason(
   intl,
   caseInfo,
-  { storedStatus, dirty, saving, moving } = {},
+  { storedStatus, dirty, saving, moving, configurationProperties } = {},
 ) {
   if (saving || moving) {
     return { key: "pathology.locked.requestInFlight" };
@@ -305,7 +316,37 @@ export function advanceBlockedReason(
       };
     }
   }
+  if (storedStatus === "STAINING" || storedStatus === "COVERSLIPPING") {
+    return outstandingSlidesReason(
+      intl,
+      slideWorkSummaries(caseInfo, configurationProperties)[storedStatus],
+      SLIDE_WORK_GATE_KEYS[storedStatus],
+    );
+  }
   return null;
+}
+
+// i18n-keys: pathology.locked.*
+const SLIDE_WORK_GATE_KEYS = Object.freeze({
+  STAINING: "pathology.locked.stainingIncomplete",
+  COVERSLIPPING: "pathology.locked.coverslipQcIncomplete",
+});
+
+// A case with no slide in use has nothing to stain or check, so it is held
+// as microtomy holds it: retiring every slide does not open the gate.
+function outstandingSlidesReason(intl, summary, key) {
+  if (summary.total === 0) {
+    return { key: "pathology.locked.microtomyIncomplete" };
+  }
+  if (summary.outstanding.length === 0) {
+    return null;
+  }
+  return {
+    key,
+    values: {
+      outstanding: outstandingLabel(intl, summary.names).visible,
+    },
+  };
 }
 
 /**
@@ -360,6 +401,212 @@ export function rowActionLock({
     return { disabled: true, reasonKey: saveFirstKey };
   }
   return { disabled: false, reasonKey: null };
+}
+
+/**
+ * Whether a slide action at staining or coverslipping (FR-8) can be pressed,
+ * and if not, the hint that says why. A mark is taken only while the bench
+ * still owes it, so a case with the pathologist holds it until it is
+ * returned, and a signed-out case until it is reopened. Then it is held as
+ * Embed is: while a save, a move or a mark is unanswered (`moving` covers
+ * both), and while the form holds unsaved work, since the mark records the
+ * stored stain and the case is read again after it. These reasons hold the
+ * whole section. Past them, the row's own reason, marked `own`: a slide is
+ * marked stained only with a stain saved on it, and its coverslip checked
+ * only once it is stained where the laboratory tracks staining. `action` is
+ * "stained", "unsatisfactory", "pass" or "fail"; with no slide only the
+ * section's reasons apply, as for the batch button.
+ */
+export function slideWorkLock({
+  status,
+  dirty = false,
+  saving = false,
+  moving = false,
+  action,
+  slide,
+  stainingTracked = true,
+} = {}) {
+  if (status !== "COMPLETED" && !benchStillOwes(status)) {
+    return {
+      disabled: true,
+      reasonKey: "pathology.locked.slideWorkAfterBench",
+      own: false,
+    };
+  }
+  const shared = rowActionLock({
+    status,
+    dirty,
+    saving,
+    moving,
+    saveFirstKey: "pathology.locked.saveBeforeMarking",
+  });
+  if (shared.disabled || !slide) {
+    return { ...shared, own: false };
+  }
+  const rowReason = slideActionReason(slide, action, stainingTracked);
+  return rowReason
+    ? { disabled: true, reasonKey: rowReason, own: true }
+    : { disabled: false, reasonKey: null, own: false };
+}
+
+// The one rule a row's own action is held by, which a batch reads too.
+function slideActionReason(slide, action, stainingTracked) {
+  const noStain =
+    slide.stainId === null ||
+    slide.stainId === undefined ||
+    slide.stainId === "";
+  if (action === "stained" && noStain) {
+    return "pathology.locked.stainMissing";
+  }
+  if (
+    (action === "pass" || action === "fail") &&
+    stainingTracked &&
+    !isStainedRow(slide)
+  ) {
+    return "pathology.locked.qcBeforeStain";
+  }
+  return null;
+}
+
+// i18n-keys: pathology.locked.*
+const BATCH_HOLD_KEYS = Object.freeze({
+  "pathology.locked.stainMissing": "pathology.locked.stainMissingFor",
+  "pathology.locked.qcBeforeStain": "pathology.locked.qcBeforeStainFor",
+});
+
+/**
+ * Why a batch cannot be applied to the selected slides, naming the ones a
+ * row's own rule holds, or null when none is. The confirmation says it before
+ * anything is posted.
+ */
+export function batchHold(blocks, slides, action, stainingTracked = true) {
+  const held = (slides ?? []).filter((slide) =>
+    Boolean(slideActionReason(slide, action, stainingTracked)),
+  );
+  if (held.length === 0) {
+    return null;
+  }
+  return {
+    key: BATCH_HOLD_KEYS[slideActionReason(held[0], action, stainingTracked)],
+    values: {
+      designations: held
+        .map((slide) => slideOnBlockName(slide, blocks))
+        .join(", "),
+    },
+  };
+}
+
+/**
+ * The case's entries into one stage, oldest first as the case lists them.
+ */
+export function stageEntries(caseInfo, stage) {
+  return (caseInfo?.stageEvents ?? []).filter((event) => event.stage === stage);
+}
+
+/**
+ * The notice a section shows for the slides its own rule finds broken: those
+ * marked unsatisfactory at staining, those whose coverslip failed at
+ * coverslipping. It names them in list order and gives the way back only
+ * while the bench still owes the work. It says they hold the case here only
+ * when they do: when every one of them is still owed by the gate of the stage
+ * the case stands at now. An unsatisfactory slide therefore holds a case at
+ * coverslipping too, where the laboratory tracks staining, since the
+ * coverslip gate asks for a stained slide; a failed coverslip does not hold a
+ * case returned to staining.
+ */
+export function redoNotice(
+  stage,
+  blocks,
+  slides,
+  status,
+  stainingTracked = true,
+) {
+  const broken = slideRowsToRedo(slides, stage);
+  if (broken.length === 0) {
+    return null;
+  }
+  const owed = new Set(
+    (
+      gateSummary(blocks, slides, status, stainingTracked)?.outstanding ?? []
+    ).map((entry) => String(entry.slide.id)),
+  );
+  const holdsHere = broken.every((slide) => owed.has(String(slide.id)));
+  const keys = REDO_NOTICE_KEYS[stage];
+  return {
+    titleKey: holdsHere ? keys.here : keys.plain,
+    values: {
+      designations: broken
+        .map((slide) => slideOnBlockName(slide, blocks))
+        .join(", "),
+    },
+    recipeKey: benchStillOwes(status) ? keys.recipe : null,
+  };
+}
+
+// The summary the gate of the stage the case stands at is judged by, the one
+// the advance is held by, or none where that stage asks nothing of slides.
+function gateSummary(blocks, slides, status, stainingTracked) {
+  if (status === "STAINING") {
+    return stainingSummary(blocks, slides);
+  }
+  if (status === "COVERSLIPPING") {
+    return coverslipSummary(blocks, slides, { stainingTracked });
+  }
+  return null;
+}
+
+// i18n-keys: pathology.banner.*
+const REDO_NOTICE_KEYS = Object.freeze({
+  STAINING: {
+    here: "pathology.banner.unsatisfactorySlidesHere",
+    plain: "pathology.banner.unsatisfactorySlides",
+    recipe: "pathology.banner.restainOrRecut",
+  },
+  COVERSLIPPING: {
+    here: "pathology.banner.failedQcSlidesHere",
+    plain: "pathology.banner.failedQcSlides",
+    recipe: "pathology.banner.recoverslipOrRecut",
+  },
+});
+
+/**
+ * Staining and coverslipping for the case, each counted from its slides
+ * once, with whether the laboratory tracks staining read in one place: the
+ * coverslip rule asks a slide to read Stained only where it does.
+ */
+export function slideWorkSummaries(caseInfo, configurationProperties) {
+  const stainingTracked = isStageEnabled("STAINING", configurationProperties);
+  return {
+    stainingTracked,
+    STAINING: gateSummary(
+      caseInfo?.blocks,
+      caseInfo?.slides,
+      "STAINING",
+      stainingTracked,
+    ),
+    COVERSLIPPING: gateSummary(
+      caseInfo?.blocks,
+      caseInfo?.slides,
+      "COVERSLIPPING",
+      stainingTracked,
+    ),
+  };
+}
+
+/**
+ * What a stage's slide work reads as on the header badge, the summary and
+ * the rail: "none" with no slide in use, "notRecorded" once the case has
+ * left the bench with no slide carrying a value (every case worked before
+ * statuses were kept), and otherwise "count".
+ */
+export function slideWorkReading(summary, status) {
+  if (summary.total === 0) {
+    return "none";
+  }
+  if (!benchStillOwes(status) && summary.recorded === 0) {
+    return "notRecorded";
+  }
+  return "count";
 }
 
 /**
@@ -497,12 +744,16 @@ export function grossingComplete(caseInfo) {
  * The badge a section header carries, derived from the rows the case holds
  * and never from where the case stands: grossing is Complete under FR-3.4,
  * embedding is Complete once every saved cassette is a block and otherwise
- * says how many are, the other sections that record rows name how many, and
+ * says how many are, staining and coverslipping likewise for the slides
+ * stained and passed, the other sections that record rows name how many, and
  * an outstanding request outranks all of it. A read-only section leaves the
  * slot to the shell's own marker, except a stage the laboratory does not
  * track, which says so.
  */
-export function sectionBadge(section, { openRequestCount, caseInfo } = {}) {
+export function sectionBadge(
+  section,
+  { openRequestCount, caseInfo, configurationProperties } = {},
+) {
   if (section.readOnlyBecauseUntracked) {
     return { kind: "none", textKey: "pathology.locked.stageDisabled" };
   }
@@ -533,7 +784,45 @@ export function sectionBadge(section, { openRequestCount, caseInfo } = {}) {
     return countBadge("pathology.badge.slideCount", caseInfo?.slides);
   }
 
+  const stage = SLIDE_WORK_STAGE_OF[section.id];
+  if (stage) {
+    const summary = slideWorkSummaries(caseInfo, configurationProperties)[
+      stage
+    ];
+    return slideWorkBadge(stage, summary, caseInfo?.status);
+  }
+
   return null;
+}
+
+// The sections that count slide work, by the stage they count.
+const SLIDE_WORK_STAGE_OF = Object.freeze({
+  [STAINING_SECTION_ID]: "STAINING",
+  [COVERSLIPPING_SECTION_ID]: "COVERSLIPPING",
+});
+
+// A case that left the bench with nothing recorded shows no count at all: a
+// count of none would claim the slides were never stained.
+function slideWorkBadge(stage, summary, status) {
+  if (slideWorkReading(summary, status) !== "count") {
+    return null;
+  }
+  if (summary.complete) {
+    return { kind: "complete", textKey: "common.complete" };
+  }
+  return {
+    kind: "partial",
+    ...slideWorkCount(stage, summary),
+  };
+}
+
+// The "{n} of {total}" sentence for a stage, as a key and its values.
+function slideWorkCount(stage, summary) {
+  const { key, placeholder } = SLIDE_WORK_BADGES[stage];
+  return {
+    textKey: key,
+    values: { [placeholder]: summary.done, total: summary.total },
+  };
 }
 
 function embeddingBadge({ embedded, total, complete }) {
@@ -592,6 +881,45 @@ export function embeddingStatement(
       : undefined,
   };
 }
+
+/**
+ * The summary's line about staining or coverslipping (FR-8), under the
+ * rail's rule: not applicable where the laboratory does not track the stage,
+ * nothing before a slide is saved, Not recorded on a case that left the
+ * bench with nothing recorded, otherwise how many are done, with the
+ * outstanding slides named in the hover title while they hold the case.
+ * `stage` is "STAINING" or "COVERSLIPPING".
+ */
+export function slideWorkStatement(
+  intl,
+  { stage, summary, status, configurationProperties } = {},
+) {
+  if (!isStageEnabled(stage, configurationProperties)) {
+    return {
+      value: intl.formatMessage({ id: "caseView.badge.notApplicable" }),
+    };
+  }
+  const reading = slideWorkReading(summary, status);
+  if (reading === "none") {
+    return { value: null };
+  }
+  if (reading === "notRecorded") {
+    return { value: intl.formatMessage({ id: "common.notRecorded" }) };
+  }
+  const { textKey, values } = slideWorkCount(stage, summary);
+  return {
+    value: intl.formatMessage({ id: textKey }, values),
+    title: slideWorkAwaitsBench(summary, status, stage, false)
+      ? outstandingLabel(intl, summary.names).full
+      : undefined,
+  };
+}
+
+// i18n-keys: pathology.badge.*
+const SLIDE_WORK_BADGES = Object.freeze({
+  STAINING: { key: "pathology.badge.stainedOf", placeholder: "stained" },
+  COVERSLIPPING: { key: "pathology.badge.qcPassedOf", placeholder: "passed" },
+});
 
 // i18n-keys: pathology.badge.*
 function countBadge(textKey, rows) {
@@ -854,21 +1182,60 @@ function embeddingAwaitsBench(embedding, status, notApplicable) {
   );
 }
 
+// Slides are named as outstanding at staining or coverslipping once the case
+// has reached the stage and while the bench still owes them.
+function slideWorkAwaitsBench(summary, status, stage, notApplicable) {
+  return (
+    summary.outstanding.length > 0 &&
+    !notApplicable &&
+    PATHOLOGY_STAGES.indexOf(status) >= PATHOLOGY_STAGES.indexOf(stage) &&
+    benchStillOwes(status)
+  );
+}
+
+/**
+ * Whether a section holds rows on record of its own, which a stage the
+ * laboratory stopped tracking still shows read-only: microtomy any slide,
+ * staining a slide with a stain status, coverslipping a slide with a QC
+ * result. Retired slides count: they are on record too.
+ */
+export function sectionHoldsRecords(sectionId, caseInfo) {
+  const slides = caseInfo?.slides ?? [];
+  switch (sectionId) {
+    case MICROTOMY_SECTION_ID:
+      return slides.length > 0;
+    case STAINING_SECTION_ID:
+      return slides.some((slide) => Boolean(slide.stainStatus));
+    case COVERSLIPPING_SECTION_ID:
+      return slides.some((slide) => Boolean(slide.coverslipQc));
+    default:
+      return false;
+  }
+}
+
 /**
  * The progress rail's item for each derived section. A step is complete on
  * the record where a rule exists (grossing under FR-3.4, microtomy holding a
- * slide, a report existing) and on the case having passed the stage where
+ * slide, every slide stained or passed, a report existing) and on the case having passed the stage where
  * none does. A step the laboratory does not track, or one this specimen does
  * not need, is marked not applicable and never complete. The review step
- * names the outstanding requests and the embedding step the outstanding
- * cassettes.
+ * names the outstanding requests, the embedding step the outstanding
+ * cassettes, and staining and coverslipping the outstanding slides.
  */
 export function deriveRailItems(
   sections,
-  { intl, status, reportCount, openRequestNames: names, caseInfo } = {},
+  {
+    intl,
+    status,
+    reportCount,
+    openRequestNames: names,
+    caseInfo,
+    configurationProperties,
+  } = {},
 ) {
   const caseIndex = PATHOLOGY_STAGES.indexOf(status);
   const embedding = embeddingSummary(caseInfo?.blocks);
+  const summaries = slideWorkSummaries(caseInfo, configurationProperties);
 
   return sections.map((section) => {
     const isReportsSection = section.id === "pathology-section-reports";
@@ -886,6 +1253,12 @@ export function deriveRailItems(
       complete = passed && embedding.complete;
     } else if (section.id === MICROTOMY_SECTION_ID) {
       complete = passed && countedRows(caseInfo?.slides).length > 0;
+    } else if (SLIDE_WORK_STAGE_OF[section.id]) {
+      // Once the case has left the bench a passed step is complete by
+      // passage: the gates held it until the work was done, or it was done
+      // before statuses were kept.
+      const summary = summaries[SLIDE_WORK_STAGE_OF[section.id]];
+      complete = passed && (summary.complete || !benchStillOwes(status));
     }
 
     let pending;
@@ -896,6 +1269,19 @@ export function deriveRailItems(
       embeddingAwaitsBench(embedding, status, notApplicable)
     ) {
       pending = outstandingLabel(intl, embedding.outstanding);
+    } else if (
+      SLIDE_WORK_STAGE_OF[section.id] &&
+      slideWorkAwaitsBench(
+        summaries[SLIDE_WORK_STAGE_OF[section.id]],
+        status,
+        SLIDE_WORK_STAGE_OF[section.id],
+        notApplicable,
+      )
+    ) {
+      pending = outstandingLabel(
+        intl,
+        summaries[SLIDE_WORK_STAGE_OF[section.id]].names,
+      );
     }
 
     return {

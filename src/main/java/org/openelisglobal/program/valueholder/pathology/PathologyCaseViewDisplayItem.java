@@ -94,6 +94,24 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
     private boolean runReferenceEditable;
 
     /**
+     * Who last recorded each slide's stain status, and when, by slide id; a slide
+     * with no status recorded is absent.
+     */
+    private Map<Integer, SlideStampView> stainStamps;
+
+    /**
+     * Who recorded each slide's coverslip check, and when, by slide id; a slide not
+     * checked is absent.
+     */
+    private Map<Integer, SlideStampView> coverslipQcStamps;
+
+    /** The coverslipping batch written on the case's latest Coverslipping entry. */
+    private String coverslipRunReference;
+
+    /** Whether a case save would write a coverslipping batch now. */
+    private boolean coverslipRunReferenceEditable;
+
+    /**
      * The stage the case would be sent on to, or null; worked out by the server so
      * the screen and the move read the same rule.
      */
@@ -324,6 +342,38 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
         this.runReferenceEditable = runReferenceEditable;
     }
 
+    public Map<Integer, SlideStampView> getStainStamps() {
+        return stainStamps;
+    }
+
+    public void setStainStamps(Map<Integer, SlideStampView> stainStamps) {
+        this.stainStamps = stainStamps;
+    }
+
+    public Map<Integer, SlideStampView> getCoverslipQcStamps() {
+        return coverslipQcStamps;
+    }
+
+    public void setCoverslipQcStamps(Map<Integer, SlideStampView> coverslipQcStamps) {
+        this.coverslipQcStamps = coverslipQcStamps;
+    }
+
+    public String getCoverslipRunReference() {
+        return coverslipRunReference;
+    }
+
+    public void setCoverslipRunReference(String coverslipRunReference) {
+        this.coverslipRunReference = coverslipRunReference;
+    }
+
+    public boolean isCoverslipRunReferenceEditable() {
+        return coverslipRunReferenceEditable;
+    }
+
+    public void setCoverslipRunReferenceEditable(boolean coverslipRunReferenceEditable) {
+        this.coverslipRunReferenceEditable = coverslipRunReferenceEditable;
+    }
+
     public String getNextStage() {
         return nextStage;
     }
@@ -388,6 +438,27 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
             return new LabelVerificationView(
                     DateUtil.convertTimestampToStringDateAndConfiguredHourTime(slide.getLabelVerifiedAt()),
                     verifier == null ? null : verifier.getDisplayName());
+        }
+    }
+
+    /**
+     * Who recorded something on a slide and when, formatted as the stage entries
+     * are; the slide row itself carries only the user's id.
+     *
+     * <p>
+     * The label check keeps its own {@link LabelVerificationView} with the same two
+     * values under other names, because existing screens, specs and an outside QA
+     * harness already read those names.
+     */
+    public record SlideStampView(String at, String by) {
+
+        /** The stamp, or null when nothing was recorded. */
+        public static SlideStampView of(Timestamp at, SystemUser by) {
+            if (at == null) {
+                return null;
+            }
+            return new SlideStampView(DateUtil.convertTimestampToStringDateAndConfiguredHourTime(at),
+                    by == null ? null : by.getDisplayName());
         }
     }
 

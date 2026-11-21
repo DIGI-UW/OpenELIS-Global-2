@@ -41,6 +41,7 @@ import "./../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 import LabelVerificationTag from "../pathology/LabelVerificationTag";
+import SlideStatusTag from "../pathology/SlideStatusTag";
 import {
   activeRows,
   blockIdentifier,
@@ -1491,6 +1492,10 @@ function ImmunohistochemistryCaseView() {
                                 immunohistochemistrySampleInfo.labelVerifications
                               }
                             />
+                            {/* How far the slide got at staining and
+                                coverslipping, where either was recorded. */}
+                            <SlideStatusTag kind="stain" slide={slide} />
+                            <SlideStatusTag kind="qc" slide={slide} named />
                           </Column>
                           <Column lg={2} md={2} sm={1}>
                             <TextInput

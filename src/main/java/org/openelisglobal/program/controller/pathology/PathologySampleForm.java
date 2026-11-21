@@ -50,6 +50,13 @@ public class PathologySampleForm {
      */
     private String runReference;
 
+    /**
+     * The coverslipping batch, written once on the case's Coverslipping entry
+     * (FR-8.4). Null when the client did not post it; ignored whenever no entry
+     * would take it.
+     */
+    private String coverslipRunReference;
+
     private List<String> conclusions;
 
     private String conclusionText;
@@ -169,6 +176,14 @@ public class PathologySampleForm {
 
     public void setRunReference(String runReference) {
         this.runReference = runReference;
+    }
+
+    public String getCoverslipRunReference() {
+        return coverslipRunReference;
+    }
+
+    public void setCoverslipRunReference(String coverslipRunReference) {
+        this.coverslipRunReference = coverslipRunReference;
     }
 
     public String getConclusionText() {
