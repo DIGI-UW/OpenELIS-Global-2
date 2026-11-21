@@ -115,6 +115,18 @@ path. Risk is reduced, not eliminated.
     and its run posts its result on every lower pull request whose head it
     contains. A lower pull request pushed after the stack was built stays
     pending until the stack is rebuilt.
+- PR images and test sources both use the exact PR head commit, including
+  fork handoffs. Builds explicitly select `pull_request.head.sha`; test jobs
+  select the recorded `head_sha`, never a moving `refs/pull/.../merge` ref.
+  For push, release and manual runs, both use the triggering commit.
+  This validates the PR branch, not GitHub's synthetic merge with its target.
+  Stack heads already contain their lower branches; stack status propagation
+  continues to require those lower commits to be ancestors of the tested head.
+- The follow-up workflow definition still comes from the default branch. A
+  change to its checkout selection takes effect after merge; a passing PR run
+  alone does not prove that new wrapper logic executed. After rollout, check
+  the build and executor checkout logs for the same commit on branch and fork
+  PRs, as well as the existing stack checkpoint propagation.
 - In `workflow_run`, two identities exist:
   - run identity: what GitHub shows in Actions UI for the triggered run
   - validation identity: the code ref and commit actually validated downstream
