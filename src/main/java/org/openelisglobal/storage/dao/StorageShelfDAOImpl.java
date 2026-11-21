@@ -125,4 +125,24 @@ public class StorageShelfDAOImpl extends BaseDAOImpl<StorageShelf, Integer> impl
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public StorageShelf findByCodeAndParentDevice(String code,
+            org.openelisglobal.storage.valueholder.StorageDevice parentDevice) {
+        try {
+            if (parentDevice == null || code == null || code.trim().isEmpty()) {
+                return null;
+            }
+            String hql = "FROM StorageShelf s WHERE s.code = :code AND s.parentDevice.id = :deviceId";
+            Query<StorageShelf> query = entityManager.unwrap(Session.class).createQuery(hql, StorageShelf.class);
+            query.setParameter("code", code.trim());
+            query.setParameter("deviceId", parentDevice.getId());
+            query.setMaxResults(1);
+            List<StorageShelf> results = query.list();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error finding StorageShelf by code and parent device", e);
+        }
+    }
+
 }
