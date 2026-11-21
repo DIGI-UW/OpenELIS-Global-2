@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Who stained a slide, and how its coverslip check went, are recorded on the
+    slide with the user and the server time.
+
+    Nothing ever wrote stain_status before, so any value outside the two the
+    case view uses is cleared before the column is constrained.
+
+    Slides on file get no backfill. Nobody recorded who stained them, so none
+    may be shown as stained or checked by someone.
+    -->
+
+    <changeSet id="OGC-264-pathology-slide-stain-status-vocabulary" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="pathology_slide"/>
+                <sqlCheck expectedResult="0">
+                    SELECT COUNT(*) FROM pg_constraint
+                    WHERE conname = 'pathology_slide_stain_status_ck'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Limit the slide stain status to the two values the case view records</comment>
+        <sql>
+            UPDATE clinlims.pathology_slide SET stain_status = NULL
+            WHERE stain_status IS NOT NULL
+            AND stain_status NOT IN ('STAINED', 'UNSATISFACTORY');
+        </sql>
+        <!-- The open-source XML has no check-constraint change, so the rule is written in SQL. -->
+        <sql>
+            ALTER TABLE clinlims.pathology_slide ADD CONSTRAINT pathology_slide_stain_status_ck
+            CHECK (stain_status IS NULL OR stain_status IN ('STAINED', 'UNSATISFACTORY'));
+        </sql>
+        <!-- The cleared values were never written by OpenELIS and meant nothing, so they are not restored. -->
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.pathology_slide DROP CONSTRAINT pathology_slide_stain_status_ck;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-slide-staining-qc" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="pathology_slide"/>
+                <not>
+                    <columnExists schemaName="clinlims" tableName="pathology_slide" columnName="stain_status_at"/>
+                </not>
+            </and>
+        </preConditions>
+        <comment>Record who stained a slide and its coverslip check, each with a time</comment>
+        <addColumn schemaName="clinlims" tableName="pathology_slide">
+            <column name="stain_status_at" type="TIMESTAMP"/>
+            <column name="stain_status_by" type="NUMERIC(10)"/>
+            <column name="coverslip_qc" type="VARCHAR(8)"/>
+            <column name="coverslip_qc_at" type="TIMESTAMP"/>
+            <column name="coverslip_qc_by" type="NUMERIC(10)"/>
+        </addColumn>
+        <!-- No cascade: the slide is retained even if the user row were ever removed. -->
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_slide" baseColumnNames="stain_status_by"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"
+            constraintName="pathology_slide_stain_status_by_fk"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_slide" baseColumnNames="coverslip_qc_by"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"
+            constraintName="pathology_slide_coverslip_qc_by_fk"/>
+        <sql>
+            ALTER TABLE clinlims.pathology_slide ADD CONSTRAINT pathology_slide_coverslip_qc_ck
+            CHECK (coverslip_qc IS NULL OR coverslip_qc IN ('PASS', 'FAIL'));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.pathology_slide DROP CONSTRAINT pathology_slide_coverslip_qc_ck;
+            </sql>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="pathology_slide"
+                constraintName="pathology_slide_coverslip_qc_by_fk"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="pathology_slide"
+                constraintName="pathology_slide_stain_status_by_fk"/>
+            <dropColumn schemaName="clinlims" tableName="pathology_slide">
+                <column name="stain_status_at"/>
+                <column name="stain_status_by"/>
+                <column name="coverslip_qc"/>
+                <column name="coverslip_qc_at"/>
+                <column name="coverslip_qc_by"/>
+            </dropColumn>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

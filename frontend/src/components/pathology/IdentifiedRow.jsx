@@ -23,6 +23,7 @@ export const RowIdentity = ({
   stateBadge,
   identityTag,
   deactivated,
+  barcodeHidden = false,
 }) => {
   const intl = useIntl();
 
@@ -33,7 +34,15 @@ export const RowIdentity = ({
           intl.formatMessage({ id: "pathology.label.designationPending" })}
       </span>
       {barcode && (
-        <span className="pathology-case-view__row-barcode">
+        // Where the row has no room for it, the barcode is still read out
+        // with the row's name; the caller shows it on hover.
+        <span
+          className={
+            barcodeHidden
+              ? "cds--visually-hidden"
+              : "pathology-case-view__row-barcode"
+          }
+        >
           <span className="cds--visually-hidden">
             {intl.formatMessage({ id: "label.barcode" }) + ": "}
           </span>

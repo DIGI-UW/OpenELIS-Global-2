@@ -1,5 +1,6 @@
 package org.openelisglobal.program.dao;
 
+import jakarta.persistence.LockModeType;
 import java.sql.Timestamp;
 import java.util.List;
 import org.hibernate.Session;
@@ -89,5 +90,10 @@ public class PathologySampleDAOImpl extends BaseDAOImpl<PathologySample, Integer
                 "select ps from PathologySample ps join ps.slides s where s.id = :id", PathologySample.class);
         query.setParameter("id", slideId);
         return query.list().stream().findFirst().orElse(null);
+    }
+
+    @Override
+    public void forceVersionIncrement(PathologySample pathologySample) {
+        entityManager.lock(pathologySample, LockModeType.PESSIMISTIC_FORCE_INCREMENT);
     }
 }
