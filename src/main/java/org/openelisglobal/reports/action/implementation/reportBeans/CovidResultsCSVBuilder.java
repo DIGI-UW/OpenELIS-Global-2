@@ -223,19 +223,13 @@ public class CovidResultsCSVBuilder extends CovidResultsBuilderImpl {
         // }
         //
         // JSONObject json = new JSONObject(srString);
-        // System.out.println("description:" + json.getString("description"));
-        //
+
         // JSONObject jDescription = new JSONObject(json.getString("description"));
-        // System.out.println("description:" + jDescription.toString());
-        //
+
         // JSONArray jFamilyTravelCompanions = new
         // JSONArray(jDescription.get("familyTravelCompanions").toString());
-        // System.out.println("familyTravelCompanions:" +
-        // jFamilyTravelCompanions.toString());
         // JSONArray jNonFamilyTravelCompanions = new
         // JSONArray(jDescription.get("nonFamilyTravelCompanions").toString());
-        // System.out.println("jNonFamilyTravelCompanions:" +
-        // jNonFamilyTravelCompanions.toString());
 
         try {
             Optional<Task> task = getReferringTaskForAnalysis(analysis);
