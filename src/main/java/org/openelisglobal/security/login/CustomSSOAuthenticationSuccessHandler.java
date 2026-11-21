@@ -20,6 +20,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.common.validator.BaseErrors;
+import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.role.service.RoleService;
@@ -32,6 +33,8 @@ import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -53,6 +56,8 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
     @Autowired
     private SystemUserService systemUserService;
     @Autowired
+    private LoginUserService loginUserService;
+    @Autowired
     private RoleService roleService;
 
     @Autowired
@@ -61,6 +66,9 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
 
     @Value("${org.openelisglobal.timezone:}")
     private String timezone;
+
+    @Value("${org.itech.login.sso.provisionUnknownUsers:false}")
+    private boolean provisionUnknownUsers;
 
     public static final int DEFAULT_SESSION_TIMEOUT_IN_MINUTES = 20;
 
@@ -71,6 +79,39 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
             Authentication authentication) throws IOException, ServletException {
+        // String homePath = "/Dashboard";
+        // LoginUser loginInfo = null;
+        boolean apiLogin = "true".equals(request.getParameter("apiCall"));
+        boolean samlLogin = false;
+        boolean oauthLogin = false;
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        try {
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof DefaultSaml2AuthenticatedPrincipal) {
+                setupUserSession(request, (DefaultSaml2AuthenticatedPrincipal) principal);
+                request.getSession().setAttribute("samlSession", true);
+                samlLogin = true;
+            } else if (principal instanceof DefaultOAuth2User) {
+                setupUserSession(request, (DefaultOAuth2User) principal);
+                request.getSession().setAttribute("oauthSession", true);
+                oauthLogin = true;
+            }
+        } catch (DisabledException e) {
+            refuseLogin(request, response, "login.error.account.disable");
+            return;
+        } catch (LockedException e) {
+            refuseLogin(request, response, "login.error.account.lock");
+            return;
+        } catch (IllegalStateException e) {
+            refuseLogin(request, response, "login.error.noOeUser");
+            return;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            refuseLogin(request, response, "login.error.sessionsetup");
+            return;
+        }
+
         // get the X-Forwarded-For header so that we know if the request is from a proxy
         final String xfHeader = request.getHeader("X-Forwarded-For");
         if (xfHeader == null) {
@@ -81,80 +122,6 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
             // from proxy
             LogEvent.logInfo(this.getClass().getSimpleName(), "onSuccess",
                     "Successful login attempt for " + authentication.getName() + " from " + xfHeader.split(",")[0]);
-        }
-
-        // String homePath = "/Dashboard";
-        // LoginUser loginInfo = null;
-        boolean apiLogin = "true".equals(request.getParameter("apiCall"));
-        boolean samlLogin = false;
-        boolean oauthLogin = false;
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        if (authentication != null) {
-            Object principal = authentication.getPrincipal();
-
-            if (principal instanceof DefaultSaml2AuthenticatedPrincipal) {
-                DefaultSaml2AuthenticatedPrincipal samlUser = (DefaultSaml2AuthenticatedPrincipal) principal;
-                // loginInfo = loginService.getUserProfile(samlUser.getName());
-                request.getSession().setAttribute("samlSession", true);
-                samlLogin = true;
-                try {
-
-                    setupUserSession(request, samlUser);
-                } catch (IllegalStateException e) {
-                    LogEvent.logError(this.getClass().getSimpleName(), "onAuthenticationSuccess",
-                            "the login user doesn't exist in OE this is usually caused by login being handled by an"
-                                    + " external application that contains a user that OE is missing");
-                    SecurityContextHolder.getContext().setAuthentication(null);
-                    BaseErrors errors = new BaseErrors();
-                    errors.reject("login.error.noOeUser");
-
-                    request.getSession().setAttribute(Constants.LOGIN_ERRORS, errors);
-                    getRedirectStrategy().sendRedirect(request, response, "/LoginPage");
-                    return;
-                } catch (RuntimeException e) {
-                    LogEvent.logError(e);
-
-                    SecurityContextHolder.getContext().setAuthentication(null);
-                    BaseErrors errors = new BaseErrors();
-                    errors.reject("login.error.sessionsetup");
-
-                    request.getSession().setAttribute(Constants.LOGIN_ERRORS, errors);
-                    getRedirectStrategy().sendRedirect(request, response, "/LoginPage");
-                    return;
-                }
-            } else if (principal instanceof DefaultOAuth2User) {
-                DefaultOAuth2User oauthUser = (DefaultOAuth2User) principal;
-                // loginInfo =
-                // loginService.getUserProfile(oauthUser.getAttribute("preferred_username"));
-                request.getSession().setAttribute("oauthSession", true);
-                oauthLogin = true;
-                try {
-                    setupUserSession(request, oauthUser);
-                } catch (IllegalStateException e) {
-                    LogEvent.logError(this.getClass().getSimpleName(), "onAuthenticationSuccess",
-                            "the login user doesn't exist in OE this is usually caused by login being handled by an"
-                                    + " external application that contains a user that OE is missing");
-                    SecurityContextHolder.getContext().setAuthentication(null);
-                    BaseErrors errors = new BaseErrors();
-                    errors.reject("login.error.noOeUser");
-
-                    request.getSession().setAttribute(Constants.LOGIN_ERRORS, errors);
-                    getRedirectStrategy().sendRedirect(request, response, "/LoginPage");
-                    return;
-                } catch (RuntimeException e) {
-                    LogEvent.logError(e);
-
-                    SecurityContextHolder.getContext().setAuthentication(null);
-                    BaseErrors errors = new BaseErrors();
-                    errors.reject("login.error.sessionsetup");
-
-                    request.getSession().setAttribute(Constants.LOGIN_ERRORS, errors);
-                    getRedirectStrategy().sendRedirect(request, response, "/LoginPage");
-                    return;
-                }
-
-            }
         }
 
         // if (passwordExpiringSoon(loginInfo)) {
@@ -175,6 +142,19 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
             super.onAuthenticationSuccess(request, response, authentication);
             clearCustomAuthenticationAttributes(request);
         }
+    }
+
+    private void refuseLogin(HttpServletRequest request, HttpServletResponse response, String errorCode)
+            throws IOException {
+        SecurityContextHolder.clearContext();
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        BaseErrors errors = new BaseErrors();
+        errors.reject(errorCode);
+        request.getSession().setAttribute(Constants.LOGIN_ERRORS, errors);
+        getRedirectStrategy().sendRedirect(request, response, "/LoginPage");
     }
 
     private void handleApiLogin(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -213,27 +193,7 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
         // create usersessiondata and store in session
         UserSessionData usd = new UserSessionData();
 
-        Optional<SystemUser> user = systemUserService.getMatch("loginName", principal.getName());
-
-        SystemUser systemUser = new SystemUser();
-        if (user.isEmpty()) {
-            systemUser.setFirstName(principal.getName());
-            systemUser.setLastName("");
-            systemUser.setLoginName(principal.getName());
-            systemUser.setIsActive("Y");
-            systemUser.setIsEmployee("Y");
-            systemUser.setExternalId("1");
-            String initial = (GenericValidator.isBlankOrNull(systemUser.getFirstName()) ? ""
-                    : systemUser.getFirstName().substring(0, 1))
-                    + (GenericValidator.isBlankOrNull(systemUser.getLastName()) ? ""
-                            : systemUser.getLastName().substring(0, 1));
-            systemUser.setInitials(initial);
-            systemUser.setSysUserId(daemonSysUserId);
-
-            systemUser = systemUserService.save(systemUser);
-        } else {
-            systemUser = user.get();
-        }
+        SystemUser systemUser = accountFor(principal.getName());
         usd.setSytemUserId(Integer.parseInt(systemUser.getId()));
         usd.setLoginName(principal.getName());
         // usd.setElisUserName(su.getNameForDisplay());
@@ -265,21 +225,7 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
         request.getSession().setMaxInactiveInterval(DEFAULT_SESSION_TIMEOUT_IN_MINUTES * 60);
 
         UserSessionData usd = new UserSessionData();
-        Optional<SystemUser> user = systemUserService.getMatch("loginName", principal.getName());
-        SystemUser systemUser = new SystemUser();
-        if (user.isEmpty()) {
-            systemUser.setFirstName(principal.getName());
-            systemUser.setLastName("");
-            systemUser.setLoginName(principal.getName());
-            systemUser.setIsActive("Y");
-            systemUser.setIsEmployee("Y");
-            systemUser.setExternalId("1");
-            String initial = systemUser.getFirstName().substring(0, 1) + systemUser.getLastName().substring(0, 1);
-            systemUser.setInitials(initial);
-            systemUser.setSysUserId(daemonSysUserId);
-
-            systemUser = systemUserService.save(systemUser);
-        }
+        SystemUser systemUser = accountFor(principal.getName());
         usd.setSytemUserId(Integer.parseInt(systemUser.getId()));
         usd.setLoginName(principal.getName());
         // usd.setElisUserName(su.getNameForDisplay());
@@ -296,6 +242,48 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
             request.getSession().setAttribute(IActionConstants.PERMITTED_ACTIONS_MAP, permittedPages);
             // showAdminMenu |= permittedPages.contains("MasterList");
         }
+    }
+
+    /**
+     * The identity provider asserts who signed in, not who may use this laboratory.
+     * The account has to exist here already; an installation that wants sign-ins to
+     * create accounts opts in with
+     * {@code org.itech.login.sso.provisionUnknownUsers}. A missing account refuses
+     * the login as "no OpenELIS user" and creates nothing. Existing inactive,
+     * disabled or locked accounts are refused even when provisioning is enabled.
+     */
+    private SystemUser accountFor(String loginName) {
+        Optional<SystemUser> user = systemUserService.getMatch("loginName", loginName);
+        // Local account controls still apply after the identity provider authenticates.
+        // A password expiry belongs to form login, not to the external credential.
+        Optional<LoginUser> login = loginUserService.getMatch("loginName", loginName);
+        if (login.isPresent()) {
+            if (YES.equalsIgnoreCase(login.get().getAccountDisabled())) {
+                throw new DisabledException("OpenELIS account is disabled");
+            }
+            if (YES.equalsIgnoreCase(login.get().getAccountLocked())) {
+                throw new LockedException("OpenELIS account is locked");
+            }
+        }
+        if (user.isPresent()) {
+            if (!YES.equalsIgnoreCase(user.get().getIsActive())) {
+                throw new DisabledException("OpenELIS account is inactive");
+            }
+            return user.get();
+        }
+        if (!provisionUnknownUsers) {
+            throw new IllegalStateException("no OpenELIS account for the identity provider user " + loginName);
+        }
+        SystemUser systemUser = new SystemUser();
+        systemUser.setFirstName(loginName);
+        systemUser.setLastName("");
+        systemUser.setLoginName(loginName);
+        systemUser.setIsActive("Y");
+        systemUser.setIsEmployee("Y");
+        systemUser.setExternalId("1");
+        systemUser.setInitials(GenericValidator.isBlankOrNull(loginName) ? "" : loginName.substring(0, 1));
+        systemUser.setSysUserId(daemonSysUserId);
+        return systemUserService.save(systemUser);
     }
 
     private Set<String> getPermittedForms(Collection<? extends GrantedAuthority> authorities) {
