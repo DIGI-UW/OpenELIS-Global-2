@@ -4,6 +4,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 
@@ -13,14 +14,15 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
  * exhaust the pool and hang the application (OGC-1360).
  *
  * <p>
- * Hibernate pools its connections in this test context, so a returned
- * connection stays open and is reused. Each test warms the pool with one run
- * before counting backends: after that, a released connection leaves the count
- * unchanged, and a leaked one forces a new backend on every run.
+ * The test datasource does not pool: every session opens a connection of its
+ * own and a released one is disconnected. Postgres retires the backend of a
+ * disconnected client a moment after the close, so the count can lag a release
+ * briefly. A leaked connection never closes, so it keeps the count up for good.
  */
 public class CSVColumnBuilderConnectionReleaseTest extends BaseWebContextSensitiveTest {
 
     private static final int RUNS = 5;
+    private static final Duration BACKEND_SETTLE = Duration.ofSeconds(5);
 
     private int openBackends() {
         // The test runs in a transaction, and Postgres caches this view per
@@ -31,13 +33,18 @@ public class CSVColumnBuilderConnectionReleaseTest extends BaseWebContextSensiti
     }
 
     // Idle connections from earlier test classes can close during a test, so
-    // the count may fall below the baseline. Only a leak makes it rise.
-    private void assertNoBackendLeaked(int before) {
+    // the count may fall below the baseline. Only a leak keeps it above.
+    private void assertNoBackendLeaked(int before) throws InterruptedException {
+        long deadline = System.nanoTime() + BACKEND_SETTLE.toNanos();
         int after = openBackends();
+        while (after > before && System.nanoTime() < deadline) {
+            Thread.sleep(50);
+            after = openBackends();
+        }
         assertTrue("open backends rose from " + before + " to " + after, after <= before);
     }
 
-    private int warmedBaseline() throws Exception {
+    private int baseline() throws Exception {
         CSVColumnBuilder warmUp = sampleBuilder("SELECT 1 AS one");
         warmUp.buildDataSource();
         warmUp.closeResultSet();
@@ -46,7 +53,7 @@ public class CSVColumnBuilderConnectionReleaseTest extends BaseWebContextSensiti
 
     @Test
     public void sampleBuilder_releasesItsConnectionAfterEachRun() throws Exception {
-        int before = warmedBaseline();
+        int before = baseline();
 
         for (int i = 0; i < RUNS; i++) {
             CSVColumnBuilder builder = sampleBuilder("SELECT id FROM sample");
@@ -62,7 +69,7 @@ public class CSVColumnBuilderConnectionReleaseTest extends BaseWebContextSensiti
 
     @Test
     public void routineBuilder_releasesItsConnectionAfterEachRun() throws Exception {
-        int before = warmedBaseline();
+        int before = baseline();
 
         for (int i = 0; i < RUNS; i++) {
             CSVRoutineColumnBuilder builder = routineBuilder("SELECT 1 AS one");
@@ -77,7 +84,7 @@ public class CSVColumnBuilderConnectionReleaseTest extends BaseWebContextSensiti
 
     @Test
     public void failingQuery_releasesItsConnection() throws Exception {
-        int before = warmedBaseline();
+        int before = baseline();
 
         for (int i = 0; i < RUNS; i++) {
             CSVRoutineColumnBuilder routine = routineBuilder("SELECT no_such_column FROM sample");
@@ -91,7 +98,7 @@ public class CSVColumnBuilderConnectionReleaseTest extends BaseWebContextSensiti
 
     @Test
     public void closeResultSet_isSafeToRepeat() throws Exception {
-        int before = warmedBaseline();
+        int before = baseline();
         CSVColumnBuilder builder = sampleBuilder("SELECT 1 AS one");
         builder.buildDataSource();
         builder.closeResultSet();
