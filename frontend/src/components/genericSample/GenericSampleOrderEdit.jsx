@@ -16,7 +16,7 @@ import CustomSelect from "../common/CustomSelect";
 import SearchableSelect from "../common/SearchableSelect";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import Questionnaire from "../common/Questionnaire";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { getFromOpenElisServer, labNumberForSearch } from "../utils/Utils";
 import config from "../../config.json";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
@@ -190,7 +190,7 @@ export default function GenericSampleOrderEdit({
     setOrderFound(false);
 
     // Extract base accession number (remove any suffix like "-1")
-    const baseAccessionNumber = accessionNumber.split("-")[0];
+    const baseAccessionNumber = labNumberForSearch(accessionNumber);
 
     getFromOpenElisServer(
       `${searchEndpoint}?accessionNumber=${encodeURIComponent(baseAccessionNumber)}`,
