@@ -42,26 +42,27 @@ jobs:
   e2e-cypress:
     name: ${{ matrix.shard_name }}
     runs-on: ubuntu-latest
+    env:
+      # The specs the Core shard runs. The Independent shard runs every other
+      # spec in the checkout, excluding exactly this list, so both shards read
+      # the one list in the workflow revision that is executing and never the
+      # checkout's copy. Balance measured test time, not file count.
+      CORE_SPECS: >-
+        cypress/e2e/login.cy.js,
+        cypress/e2e/home.cy.js,
+        cypress/e2e/siteBranding.cy.js,
+        cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js,
+        cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js,
+        cypress/e2e/AdminE2E/notifyUser.cy.js,
+        cypress/e2e/AdminE2E/resultReportingConfig.cy.js
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Balance measured test time, not file count. The five files restored
-          # by PR #4479 have no recent timings and are spread across both groups.
           - shard: core
             shard_name: Core
-            specs: >-
-              cypress/e2e/login.cy.js,
-              cypress/e2e/home.cy.js,
-              cypress/e2e/siteBranding.cy.js,
-              cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js,
-              cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js,
-              cypress/e2e/AdminE2E/notifyUser.cy.js,
-              cypress/e2e/AdminE2E/resultReportingConfig.cy.js,
-              cypress/e2e/barcode-workflow.cy.js
           - shard: independent
             shard_name: Independent
-            specs: ""
     steps:
       - name: Checkout OpenELIS-Global2
         uses: actions/checkout@v7
@@ -158,8 +159,7 @@ jobs:
         id: catchall
         working-directory: frontend
         run: |
-          ASSIGNED=$(grep -E '^\s+cypress/e2e/' ../.github/workflows/e2e-cypress-deprecated.yml \
-            | sed 's/^[[:space:]]*//' | sed 's/,$//' | sort -u)
+          ASSIGNED=$(printf '%s' "$CORE_SPECS" | tr -d '[:space:]' | tr ',' '\n' | grep . | sort -u)
           ALL=$(find cypress/e2e -name '*.cy.js' -type f | sort)
           REMAINING=""
           while IFS= read -r spec; do
@@ -177,16 +177,24 @@ jobs:
           if [ "${{ matrix.shard }}" = "independent" ]; then
             SPECS="${{ steps.catchall.outputs.specs }}"
           else
-            SPECS="${{ matrix.specs }}"
+            SPECS="$CORE_SPECS"
           fi
-          # The folded matrix lists join with ", "; Cypress does not trim spec
+          # The folded list joins with ", "; Cypress does not trim spec
           # paths, so an untrimmed entry matches no file and is skipped silently.
           SPECS=$(printf '%s' "$SPECS" | tr -d '[:space:]')
-          missing=0
+          # This list is the default branch's; the checkout is the pull
+          # request's. A spec the pull request has retired is skipped with a
+          # notice rather than failing the shard.
+          PRESENT=""
           for spec in $(printf '%s' "$SPECS" | tr ',' ' '); do
-            [ -f "$spec" ] || { echo "::error::Listed spec not found: $spec"; missing=1; }
+            if [ -f "$spec" ]; then
+              PRESENT="${PRESENT:+$PRESENT,}$spec"
+            else
+              echo "::warning::Listed spec not in this checkout, skipped: $spec"
+            fi
           done
-          [ "$missing" -eq 0 ] || exit 1
+          SPECS="$PRESENT"
+          [ -n "$SPECS" ] || { echo "::error::No listed spec exists in this checkout"; exit 1; }
           echo "Running $(printf '%s' "$SPECS" | tr ',' '\n' | grep -c .) specs: $SPECS"
           npx cypress run --browser chrome --headless --spec "$SPECS"
         working-directory: frontend
