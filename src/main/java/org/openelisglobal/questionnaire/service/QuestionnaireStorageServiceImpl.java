@@ -18,6 +18,7 @@ import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
 import org.hl7.fhir.r4.model.Enumerations.PublicationStatus;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
+import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
@@ -169,6 +170,78 @@ public class QuestionnaireStorageServiceImpl implements QuestionnaireStorageServ
         return uuid == null ? Optional.empty() : getQuestionnaireResponse(uuid.toString());
     }
 
+    @Override
+    public Optional<QuestionnaireResponse> getQuestionnaireResponseForServiceRequest(String serviceRequestId,
+            String patientFhirUuid) {
+        if (StringUtils.isBlank(serviceRequestId)) {
+            return Optional.empty();
+        }
+        if (isFhirStoreConfigured()) {
+            try {
+                Bundle bundle = fhirUtil.getLocalFhirClient().search().forResource(QuestionnaireResponse.class)
+                        .where(QuestionnaireResponse.BASED_ON.hasId("ServiceRequest/" + serviceRequestId))
+                        .returnBundle(Bundle.class).execute();
+                if (bundle != null && bundle.hasEntry()) {
+                    for (BundleEntryComponent entry : bundle.getEntry()) {
+                        if (entry.getResource() instanceof QuestionnaireResponse) {
+                            QuestionnaireResponse qr = (QuestionnaireResponse) entry.getResource();
+                            backfillLocally(qr.getIdElement().getIdPart(),
+                                    findLocalResponse(qr.getIdElement().getIdPart()).isEmpty(),
+                                    () -> storeQuestionnaireResponseLocally(qr));
+                            return Optional.of(qr);
+                        }
+                    }
+                }
+            } catch (RuntimeException e) {
+                LogEvent.logWarn(getClass().getSimpleName(), "getQuestionnaireResponseForServiceRequest",
+                        "FHIR store search failed, falling back to local database: " + e.getMessage());
+            }
+        }
+        if (StringUtils.isNotBlank(patientFhirUuid)) {
+            List<org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse> localList = questionnaireResponseService
+                    .getAllMatching("subjectReference", "Patient/" + patientFhirUuid);
+            if (localList != null) {
+                for (org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse entity : localList) {
+                    QuestionnaireResponse qr = toFhir(entity);
+                    if (matchesServiceRequest(qr, serviceRequestId)) {
+                        return Optional.of(qr);
+                    }
+                }
+            }
+        }
+        List<org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse> patientlessList = questionnaireResponseService
+                .getAllMatching("subjectReference", null);
+        if (patientlessList != null) {
+            for (org.openelisglobal.questionnaire.valueholder.QuestionnaireResponse entity : patientlessList) {
+                QuestionnaireResponse qr = toFhir(entity);
+                if (matchesServiceRequest(qr, serviceRequestId)) {
+                    return Optional.of(qr);
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private boolean matchesServiceRequest(QuestionnaireResponse qr, String serviceRequestId) {
+        if (qr == null || StringUtils.isBlank(serviceRequestId)) {
+            return false;
+        }
+        for (Reference ref : qr.getBasedOn()) {
+            if (ref.hasReferenceElement()) {
+                if (serviceRequestId.equals(ref.getReferenceElement().getIdPart())) {
+                    return true;
+                }
+            } else if (ref.hasReference()) {
+                String refVal = ref.getReference();
+                String idPart = refVal.substring(refVal.lastIndexOf('/') + 1);
+                if (serviceRequestId.equals(idPart)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private void storeQuestionnaireLocally(Questionnaire questionnaire) {
         String id = requireId(questionnaire);
         org.openelisglobal.questionnaire.valueholder.Questionnaire entity = findLocalQuestionnaire(id)
@@ -306,7 +379,10 @@ public class QuestionnaireStorageServiceImpl implements QuestionnaireStorageServ
     /**
      * FHIR ids are normally UUIDs; anything else maps to a stable name-based UUID.
      */
-    static UUID toStorageUuid(String id) {
+    public static UUID toStorageUuid(String id) {
+        if (StringUtils.isBlank(id)) {
+            return null;
+        }
         try {
             return UUID.fromString(id);
         } catch (IllegalArgumentException e) {
@@ -314,8 +390,8 @@ public class QuestionnaireStorageServiceImpl implements QuestionnaireStorageServ
         }
     }
 
-    private static UUID questionnaireUuidOf(QuestionnaireResponse response) {
-        if (!response.hasQuestionnaire()) {
+    public static UUID questionnaireUuidOf(QuestionnaireResponse response) {
+        if (response == null || !response.hasQuestionnaire()) {
             return null;
         }
         String reference = response.getQuestionnaire();

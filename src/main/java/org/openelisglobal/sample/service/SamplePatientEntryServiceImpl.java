@@ -13,12 +13,17 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
+import org.hl7.fhir.r4.model.QuestionnaireResponse;
+import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.Task;
 import org.openelisglobal.address.service.OrganizationAddressService;
 import org.openelisglobal.address.valueholder.OrganizationAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.barcode.service.BarcodeInfoService;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
@@ -34,6 +39,8 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.compliance.service.ComplianceStandardService;
 import org.openelisglobal.compliance.valueholder.ComplianceStandard;
 import org.openelisglobal.containertype.service.ContainerProposalService;
+import org.openelisglobal.dataexchange.fhir.FhirUtil;
+import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.eqa.service.EQAPanelReceiptService;
 import org.openelisglobal.eqa.service.SampleEQAService;
@@ -70,9 +77,12 @@ import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.service.ProgramSampleService;
+import org.openelisglobal.program.service.ProgramService;
+import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.provider.service.ProviderService;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageServiceImpl;
 import org.openelisglobal.requester.service.SampleRequesterService;
 import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
@@ -171,6 +181,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     @Autowired
     private ProgramSampleService programSampleService;
     @Autowired
+    private ProgramService programService;
+    @Autowired
     private SampleEQAService sampleEQAService;
     @Autowired
     private EQAPanelReceiptService eqaPanelReceiptService;
@@ -192,6 +204,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private OrderLabelRequestService orderLabelRequestService;
     @Autowired
     private org.openelisglobal.questionnaire.service.QuestionnaireStorageService questionnaireStorageService;
+    @Autowired(required = false)
+    private FhirUtil fhirUtil;
     @Lazy
     @Autowired
     private ResultLimitService resultLimitService;
@@ -536,7 +550,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             // Only set new UUID if this is a new ProgramSample (no existing UUID)
             if (updateData.getProgramQuestionnaireResponse() != null
                     && updateData.getProgramSample().getQuestionnaireResponseUuid() == null) {
-                updateData.getProgramSample().setQuestionnaireResponseUuid(UUID.randomUUID());
+                updateData.getProgramSample()
+                        .setQuestionnaireResponseUuid(resolveProgramQuestionnaireResponseUuid(updateData));
             }
             updateData.getProgramSample().setSample(updateData.getSample());
 
@@ -1658,5 +1673,132 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
 
         return orderLabelRequestService.persistRequest(orderId, sampleIdMap, payload, sysUserId, testIdsBySampleLocal);
+    }
+
+    @Override
+    public void resolveAndPrefillQuestionnaireResponse(SampleOrderItem sampleOrder, Task task, ElectronicOrder eOrder) {
+        if (sampleOrder == null || task == null) {
+            return;
+        }
+        List<String> candidatePatientIds = extractCandidatePatientFhirIds(task, eOrder);
+
+        QuestionnaireResponse qrForProgram = sampleOrder.getAdditionalQuestions();
+        if (!hasMeaningfulId(qrForProgram)) {
+            QuestionnaireResponse importedQr = null;
+            for (Reference basedOn : task.getBasedOn()) {
+                if (basedOn.hasReferenceElement()) {
+                    String serviceRequestId = basedOn.getReferenceElement().getIdPart();
+                    Optional<QuestionnaireResponse> found = findQuestionnaireResponseForServiceRequest(
+                            serviceRequestId, candidatePatientIds);
+                    if (found.isPresent()) {
+                        importedQr = found.get();
+                        break;
+                    }
+                }
+            }
+
+            if (importedQr != null) {
+                sampleOrder.setAdditionalQuestions(importedQr);
+                qrForProgram = importedQr;
+            }
+        }
+
+        if (StringUtils.isBlank(sampleOrder.getProgramId()) && qrForProgram != null) {
+            UUID qUuid = QuestionnaireStorageServiceImpl.questionnaireUuidOf(qrForProgram);
+            if (qUuid == null && qrForProgram.hasId()) {
+                Optional<QuestionnaireResponse> stored = questionnaireStorageService
+                        .getQuestionnaireResponse(qrForProgram.getIdElement().getIdPart());
+                if (stored.isPresent()) {
+                    qUuid = QuestionnaireStorageServiceImpl.questionnaireUuidOf(stored.get());
+                }
+            }
+            if (qUuid != null) {
+                List<Program> programs = programService.getAllMatching("questionnaireUUID", qUuid);
+                if (programs != null && !programs.isEmpty()) {
+                    sampleOrder.setProgramId(programs.get(0).getId());
+                }
+            }
+        }
+    }
+
+    public UUID resolveAdoptedQuestionnaireResponseUuid(SamplePatientUpdateData updateData) {
+        if (updateData == null || updateData.getElectronicOrder() == null || questionnaireStorageService == null
+                || fhirUtil == null) {
+            return null;
+        }
+        ElectronicOrder eOrder = updateData.getElectronicOrder();
+        if (StringUtils.isBlank(eOrder.getData())) {
+            return null;
+        }
+        try {
+            Task task = fhirUtil.getFhirParser().parseResource(Task.class, eOrder.getData());
+            if (task == null || !task.hasBasedOn()) {
+                return null;
+            }
+            List<String> candidatePatientIds = extractCandidatePatientFhirIds(task, eOrder);
+            for (Reference basedOn : task.getBasedOn()) {
+                if (basedOn.hasReferenceElement()) {
+                    String serviceRequestId = basedOn.getReferenceElement().getIdPart();
+                    Optional<QuestionnaireResponse> found = findQuestionnaireResponseForServiceRequest(
+                            serviceRequestId, candidatePatientIds);
+                    if (found.isPresent() && hasMeaningfulId(found.get())) {
+                        return QuestionnaireStorageServiceImpl
+                                .toStorageUuid(found.get().getIdElement().getIdPart());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "resolveAdoptedQuestionnaireResponseUuid",
+                    "Failed to resolve adopted questionnaire response for electronic order: " + eOrder.getId()
+                            + " - " + e.getMessage());
+            throw new LIMSRuntimeException("Failed to resolve adopted questionnaire response for electronic order: "
+                    + eOrder.getId(), e);
+        }
+        return null;
+    }
+
+    static List<String> extractCandidatePatientFhirIds(Task task, ElectronicOrder eOrder) {
+        List<String> candidateIds = new ArrayList<>();
+        if (eOrder != null && eOrder.getPatient() != null && eOrder.getPatient().getFhirUuid() != null) {
+            candidateIds.add(eOrder.getPatient().getFhirUuid().toString());
+        }
+        if (task != null && task.hasFor() && task.getFor().hasReference()) {
+            String taskPatientId = task.getFor().getReferenceElement().getIdPart();
+            if (StringUtils.isNotBlank(taskPatientId) && !candidateIds.contains(taskPatientId)) {
+                candidateIds.add(taskPatientId);
+            }
+        }
+        return candidateIds;
+    }
+
+    private Optional<QuestionnaireResponse> findQuestionnaireResponseForServiceRequest(
+            String serviceRequestId, List<String> candidatePatientIds) {
+        if (candidatePatientIds.isEmpty()) {
+            return questionnaireStorageService.getQuestionnaireResponseForServiceRequest(serviceRequestId, null);
+        }
+        for (String patientFhirId : candidatePatientIds) {
+            Optional<QuestionnaireResponse> found = questionnaireStorageService
+                    .getQuestionnaireResponseForServiceRequest(serviceRequestId, patientFhirId);
+            if (found.isPresent()) {
+                return found;
+            }
+        }
+        return questionnaireStorageService.getQuestionnaireResponseForServiceRequest(serviceRequestId, null);
+    }
+
+    public UUID resolveProgramQuestionnaireResponseUuid(SamplePatientUpdateData updateData) {
+        if (updateData == null || updateData.getProgramQuestionnaireResponse() == null) {
+            return null;
+        }
+        if (hasMeaningfulId(updateData.getProgramQuestionnaireResponse())) {
+            return QuestionnaireStorageServiceImpl
+                    .toStorageUuid(updateData.getProgramQuestionnaireResponse().getIdElement().getIdPart());
+        }
+        UUID adopted = resolveAdoptedQuestionnaireResponseUuid(updateData);
+        return adopted != null ? adopted : UUID.randomUUID();
+    }
+
+    public static boolean hasMeaningfulId(QuestionnaireResponse qr) {
+        return qr != null && qr.hasId() && StringUtils.isNotBlank(qr.getIdElement().getIdPart());
     }
 }
