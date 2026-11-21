@@ -54,9 +54,10 @@ public class InventoryLotRestController extends BaseRestController {
     private InventoryLotLabelService inventoryLotLabelService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryLot>> getAll() {
+    public ResponseEntity<List<InventoryLot>> getAll(@RequestParam(required = false) LotStatus status) {
         try {
-            List<InventoryLot> lots = inventoryLotService.getAll();
+            List<InventoryLot> lots = status == null ? inventoryLotService.getAll()
+                    : inventoryLotService.getByStatus(status);
             attachLocations(lots);
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
