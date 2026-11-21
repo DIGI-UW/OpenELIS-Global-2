@@ -1,4 +1,5 @@
 import { Page, expect } from "@playwright/test";
+import { existingPatientProperties } from "./program-order";
 
 /**
  * Creates an anatomic-pathology case on whatever stack the run is pointed at.
@@ -357,11 +358,15 @@ function orderDates(configProps: Record<string, string>) {
  * accession number and the id of the pathology case it created.
  *
  * Pass a target to reuse a discovery already made; leave it out and one is
- * made here.
+ * made here. Pass `existingPatientCaseId`, the id of a pathology case, to place
+ * the order for that case's patient instead of a new one. The case that comes
+ * back is looked up on the pathology dashboard, so this places pathology
+ * orders only; the other benches' orders go through createProgramOrder.
  */
 export async function createPathologyCase(
   page: Page,
   target?: PathologyOrderTarget,
+  options: { existingPatientCaseId?: string } = {},
 ): Promise<SeededPathologyCase> {
   // The calls below run inside the browser so they carry the application's
   // own session, which means the page has to be on the application. One that
@@ -391,6 +396,18 @@ export async function createPathologyCase(
   }
 
   const uniqueId = String(Date.now());
+  const patientProperties = options.existingPatientCaseId
+    ? await existingPatientProperties(page, options.existingPatientCaseId)
+    : {
+        patientPK: "",
+        patientUpdateStatus: "ADD",
+        firstName: "Pathology",
+        lastName: "Casetest",
+        gender: "M",
+        birthDateForDisplay: "01/01/1990",
+        nationalId: uniqueId,
+        subjectNumber: uniqueId,
+      };
   const form = {
     rememberSiteAndRequester: false,
     currentDate: null,
@@ -413,16 +430,7 @@ export async function createPathologyCase(
       `storageLocationId='' storageLocationType='' storagePositionCoordinate='' ` +
       `gpsLatitude='' gpsLongitude='' gpsAccuracy='' gpsCaptureMethod='' ` +
       `numOrderLabels='1' numSpecimenLabels='1'/></samples>`,
-    patientProperties: {
-      patientPK: "",
-      patientUpdateStatus: "ADD",
-      firstName: "Pathology",
-      lastName: "Casetest",
-      gender: "M",
-      birthDateForDisplay: "01/01/1990",
-      nationalId: uniqueId,
-      subjectNumber: uniqueId,
-    },
+    patientProperties,
     patientSearch: null,
     patientEnhancedSearch: null,
     patientClinicalProperties: null,
@@ -751,6 +759,14 @@ export interface CaseSaveChanges {
   cassetteTissueTypeId?: string;
   /** Cut one new slide (level 1, no stain) under the block with this id. */
   addSlideUnder?: number | string;
+  /** The free-text conclusion the pathologist writes before signing out. */
+  conclusionText?: string;
+  /**
+   * Sign the case out with this save, as Ready For release does: the server
+   * offers no stage after Ready for Pathologist, so this is the way to
+   * Completed.
+   */
+  release?: boolean;
 }
 
 /**
@@ -792,8 +808,8 @@ export async function saveCaseThroughApi(
       grossExam: changes.grossExam ?? stored.grossExam,
       decalcificationRequired: stored.decalcificationRequired ?? false,
       microscopyExam: stored.microscopyExam,
-      conclusionText: stored.conclusionText,
-      release: false,
+      conclusionText: changes.conclusionText ?? stored.conclusionText,
+      release: changes.release ?? false,
       referToImmunoHistoChemistry: false,
       techniques: (stored.techniques ?? []).map((entry) => entry.id),
       requests: (stored.requests ?? []).map((entry) => ({

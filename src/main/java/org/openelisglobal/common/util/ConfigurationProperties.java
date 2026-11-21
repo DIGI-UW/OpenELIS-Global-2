@@ -354,6 +354,10 @@ public abstract class ConfigurationProperties {
         // Whether a slide label must be scanned against its block before sectioning.
         PATHOLOGY_SCAN_VERIFICATION_REQUIRED("pathology.microtomy.scanVerificationRequired", "boolean"),
 
+        // How many earlier anatomic-pathology cases the case view lists before Show
+        // all.
+        PATHOLOGY_PRIOR_RESULTS_ROWS("pathology.caseView.priorResultsRows", "text"),
+
         // FR-9.3: how a deployment names and barcodes the cassettes, blocks and
         // slides cut from a case. A missing row means the scheme below.
         PATHOLOGY_IDENTIFIER_PART_SCHEME("pathology.identifier.partScheme", "text"),
