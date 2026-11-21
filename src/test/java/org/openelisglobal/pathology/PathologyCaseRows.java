@@ -2,6 +2,7 @@ package org.openelisglobal.pathology;
 
 import java.sql.Timestamp;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.program.valueholder.pathology.StainStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -57,5 +58,23 @@ final class PathologyCaseRows {
     static void clearLabelStamp(JdbcTemplate jdbcTemplate, int slideId) {
         jdbcTemplate.update("UPDATE clinlims.pathology_slide SET label_verified_at = NULL, label_verified_by = NULL"
                 + " WHERE id = ?", slideId);
+    }
+
+    /**
+     * Sets a slide's stain status directly, null clearing it, for a test whose
+     * subject is a later rule rather than how the slide was marked; it leaves no
+     * audit entry.
+     */
+    static void storeStainStatus(JdbcTemplate jdbcTemplate, int slideId, StainStatus status) {
+        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_status = ? WHERE id = ?",
+                status == null ? null : status.name(), slideId);
+    }
+
+    /**
+     * Records a slide's coverslip check directly, for a test whose subject is the
+     * stage gate rather than how the check was recorded.
+     */
+    static void storeCoverslipQc(JdbcTemplate jdbcTemplate, int slideId, String result) {
+        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET coverslip_qc = ? WHERE id = ?", result, slideId);
     }
 }

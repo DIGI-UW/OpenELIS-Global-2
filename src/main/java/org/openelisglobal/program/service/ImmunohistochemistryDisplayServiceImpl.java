@@ -1,6 +1,7 @@
 package org.openelisglobal.program.service;
 
 import jakarta.transaction.Transactional;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -11,14 +12,17 @@ import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.program.util.DictionaryEntryNames;
+import org.openelisglobal.program.util.PathologyRowOrder;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistryCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistryDisplayItem;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
-import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
+import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
+import org.openelisglobal.program.valueholder.pathology.PathologyTechnique;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.bean.SampleOrderItem;
@@ -113,8 +117,8 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
         if (pathologySample != null && immunohistochemistrySample.getReffered()) {
             pathologySample.getBlocks().size();
             pathologySample.getSlides().size();
-            displayItem.setBlocks(pathologySample.getBlocks());
-            displayItem.setSlides(pathologySample.getSlides());
+            displayItem.setBlocks(PathologyRowOrder.blocks(pathologySample.getBlocks()));
+            displayItem.setSlides(PathologyRowOrder.slides(pathologySample.getSlides()));
             displayItem.setStainNames(PathologyDisplayServiceImpl.dictionaryNames(
                     pathologySample.getSlides().stream().map(PathologySlide::getStainId), dictionaryService));
             displayItem.setLabelVerifications(
@@ -122,27 +126,26 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
             displayItem.setGrossExam(pathologySample.getGrossExam());
             displayItem.setMicroscopyExam(pathologySample.getMicroscopyExam());
 
-            displayItem.setConclusions(pathologySample.getConclusions().stream()
-                    .filter(e -> e.getType() == ConclusionType.DICTIONARY)
-                    .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
-                    .collect(Collectors.toList()));
+            displayItem.setConclusions(
+                    DictionaryEntryNames.namedPairs(dictionaryService, pathologySample.getConclusions().stream()
+                            .filter(e -> e.getType() == ConclusionType.DICTIONARY).map(PathologyConclusion::getValue)));
             Optional<PathologyConclusion> conclusion = pathologySample.getConclusions().stream()
                     .filter(e -> e.getType() == ConclusionType.TEXT).findFirst();
             if (conclusion.isPresent())
                 displayItem.setConclusionText(conclusion.get().getValue());
 
-            displayItem.setConclusions(pathologySample.getConclusions().stream()
-                    .filter(e -> e.getType() == ConclusionType.DICTIONARY)
-                    .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
-                    .collect(Collectors.toList()));
-            displayItem.setTechniques(pathologySample.getTechniques().stream()
-                    .filter(e -> e.getType() == TechniqueType.DICTIONARY)
-                    .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
-                    .collect(Collectors.toList()));
-            displayItem.setRequests(pathologySample.getRequests().stream()
-                    .filter(e -> e.getType() == RequestType.DICTIONARY)
-                    .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
-                    .collect(Collectors.toList()));
+            displayItem.setTechniques(DictionaryEntryNames.namedPairs(dictionaryService, pathologySample.getTechniques()
+                    .stream().filter(e -> e.getType() == TechniqueType.DICTIONARY).map(PathologyTechnique::getValue)));
+            // Every request still asked or done, text ones included, by its own id so
+            // two that say the same thing are two; a cancelled one asks nothing.
+            displayItem
+                    .setRequests(
+                            pathologySample.getRequests() == null ? List.of()
+                                    : PathologyRowOrder.requests(pathologySample.getRequests()).stream()
+                                            .filter(request -> request.getStatus() != RequestStatus.CANCELLED)
+                                            .map(request -> new IdValuePair(String.valueOf(request.getId()),
+                                                    request.instruction(dictionaryService)))
+                                            .collect(Collectors.toList()));
             displayItem.setSex(patient.getGender());
         }
         return displayItem;

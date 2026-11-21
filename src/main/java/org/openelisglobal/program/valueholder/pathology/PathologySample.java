@@ -8,20 +8,24 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.LazyCollection;
 import org.hibernate.annotations.LazyCollectionOption;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.program.util.DesignationScheme;
 import org.openelisglobal.program.util.DictionaryEntryNames;
+import org.openelisglobal.program.util.PathologyDesignations;
+import org.openelisglobal.program.util.PathologyRowOrder;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
-import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -83,18 +87,21 @@ public class PathologySample extends ProgramSample {
     @JoinColumn(name = "pathology_sample_id")
     private List<PathologySlide> slides;
 
-    // Rebuilt on every save; keeps orphan removal until these rows carry a
-    // lifecycle of their own.
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    // A request is raised once and changes status in place, so it keeps its id,
+    // its author and its history; no writer takes one out of the collection, and a
+    // request is never deleted with it.
+    @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "pathology_sample_id")
     private List<PathologyRequest> requests;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "pathology_sample_id")
+    @OrderBy("id")
     private List<PathologyTechnique> techniques;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "pathology_sample_id")
+    @OrderBy("id")
     private List<PathologyConclusion> conclusions;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
@@ -107,6 +114,10 @@ public class PathologySample extends ProgramSample {
     @Column(name = "microscopy_exam")
     private String microscopyExam;
 
+    /** The pathologist's own notes on the case, kept with it and not printed. */
+    @Column(name = "review_notes")
+    private String reviewNotes;
+
     /**
      * Whether the specimen needs decalcifying before processing, which is what
      * makes the DECALCIFICATION stage apply to this case.
@@ -118,17 +129,68 @@ public class PathologySample extends ProgramSample {
         return requests;
     }
 
+    /**
+     * Names each request by its instruction, with what it asks for, the block or
+     * slide it names, the stain, the priority, the status, why it was cancelled and
+     * what fulfilled it. Who raised it and when are left out: a change of status is
+     * the history row's own user and time.
+     */
     public String getRequests_Audit() {
         if (requests == null) {
             return null;
-        } else {
-            return StringUtils.join(requests.stream()
-                    .map(e -> "Status: " + (e.getStatus() == null ? "" : e.getStatus().getDisplay()) + ", Value "
-                            + (e.getType() == RequestType.DICTIONARY
-                                    ? SpringContext.getBean(DictionaryService.class).get(e.getValue()).getDisplayValue()
-                                    : e.getValue()))
-                    .collect(Collectors.toList()), "; ");
         }
+        DictionaryService dictionaryService = SpringContext.getBean(DictionaryService.class);
+        return StringUtils
+                .join(PathologyRowOrder
+                        .requests(requests).stream().map(
+                                e -> "Request: " + StringUtils.defaultString(e.instruction(dictionaryService))
+                                        + ", Kind: " + (e.getKind() == null ? "" : e.getKind().name()) + ", Target: "
+                                        + nameOfBlock(e.getTargetBlockId()).or(() -> nameOfSlide(e.getTargetSlideId()))
+                                                .orElse("")
+                                        + ", Stain: " + dictionaryName(e.getStainId()) + ", Priority: "
+                                        + (e.getPriority() == null ? "" : e.getPriority().name()) + ", Status: "
+                                        + (e.getStatus() == null ? "" : e.getStatus().getDisplay())
+                                        + ", Cancel reason: " + StringUtils.defaultString(e.getCancelReason())
+                                        + ", Fulfilled by: " + nameOfBlock(e.getResultBlockId())
+                                                .or(() -> nameOfSlide(e.getResultSlideId())).orElse(""))
+                        .collect(Collectors.toList()), "; ");
+    }
+
+    /**
+     * The block of this case under that id, retired or not; empty for no id or an
+     * id the case holds no block under.
+     */
+    public Optional<PathologyBlock> blockById(Integer blockId) {
+        if (blockId == null || blocks == null) {
+            return Optional.empty();
+        }
+        return blocks.stream().filter(block -> blockId.equals(block.getId())).findFirst();
+    }
+
+    /**
+     * The slide of this case under that id, retired or not; empty for no id or an
+     * id the case holds no slide under.
+     */
+    public Optional<PathologySlide> slideById(Integer slideId) {
+        if (slideId == null || slides == null) {
+            return Optional.empty();
+        }
+        return slides.stream().filter(slide -> slideId.equals(slide.getId())).findFirst();
+    }
+
+    /** A block of this case as the bench names it ("A1"), retired or not. */
+    public Optional<String> nameOfBlock(Integer blockId) {
+        return blockById(blockId).map(PathologyBlock::displayIdentifier);
+    }
+
+    /**
+     * A slide of this case as its label and the bench name it, block first
+     * ("A1.1"), retired or not.
+     */
+    public Optional<String> nameOfSlide(Integer slideId) {
+        return slideById(slideId)
+                .map(slide -> PathologyDesignations.slideOnBlockName(blockById(slide.getBlockId()).orElse(null), slide,
+                        DesignationScheme.fromConfiguration()));
     }
 
     public void setRequests(List<PathologyRequest> requests) {
@@ -143,11 +205,14 @@ public class PathologySample extends ProgramSample {
         if (techniques == null) {
             return null;
         } else {
-            return StringUtils.join(techniques.stream()
-                    .map(e -> "Value: " + (e.getType() == TechniqueType.DICTIONARY
-                            ? SpringContext.getBean(DictionaryService.class).get(e.getValue()).getDisplayValue()
-                            : "" + e.getValue()))
-                    .collect(Collectors.toList()), "; ");
+            DictionaryService dictionaryService = SpringContext.getBean(DictionaryService.class);
+            return StringUtils
+                    .join(techniques.stream()
+                            .map(e -> "Value: " + (e.getType() == TechniqueType.DICTIONARY
+                                    ? DictionaryEntryNames.localizedNameOf(dictionaryService, e.getValue())
+                                            .orElse("" + e.getValue())
+                                    : "" + e.getValue()))
+                            .collect(Collectors.toList()), "; ");
         }
     }
 
@@ -163,11 +228,14 @@ public class PathologySample extends ProgramSample {
         if (conclusions == null) {
             return null;
         } else {
-            return StringUtils.join(conclusions.stream()
-                    .map(e -> "Value: " + (e.getType() == ConclusionType.DICTIONARY
-                            ? SpringContext.getBean(DictionaryService.class).get(e.getValue()).getDisplayValue()
-                            : "" + e.getValue()))
-                    .collect(Collectors.toList()), "; ");
+            DictionaryService dictionaryService = SpringContext.getBean(DictionaryService.class);
+            return StringUtils
+                    .join(conclusions.stream()
+                            .map(e -> "Value: " + (e.getType() == ConclusionType.DICTIONARY
+                                    ? DictionaryEntryNames.localizedNameOf(dictionaryService, e.getValue())
+                                            .orElse("" + e.getValue())
+                                    : "" + e.getValue()))
+                            .collect(Collectors.toList()), "; ");
         }
     }
 
@@ -253,7 +321,9 @@ public class PathologySample extends ProgramSample {
 
     /**
      * Names each slide by the identifier written on it and by its parent block,
-     * with the level it was cut at and the stain it carries.
+     * with the level it was cut at, the stain it carries and what staining and the
+     * coverslip check found. Who recorded those and when is left out: those are the
+     * history row's own user and time.
      */
     public String getSlides_Audit() {
         if (slides == null) {
@@ -265,7 +335,9 @@ public class PathologySample extends ProgramSample {
                     + ", Stain: " + dictionaryName(e.getStainId()) + ", Active: " + e.isActive() + ", File Type: "
                     + StringUtils.defaultString(e.getFileType()) + ", Label verified: "
                     + (e.getLabelVerifiedAt() == null ? ""
-                            : DateUtil.convertTimestampToStringDateAndConfiguredHourTime(e.getLabelVerifiedAt())))
+                            : DateUtil.convertTimestampToStringDateAndConfiguredHourTime(e.getLabelVerifiedAt()))
+                    + ", Stain status: " + (e.getStainStatus() == null ? "" : e.getStainStatus().name())
+                    + ", Coverslip QC: " + (e.getCoverslipQc() == null ? "" : e.getCoverslipQc().name()))
                     .collect(Collectors.toList()), "; ");
         }
     }
@@ -288,6 +360,14 @@ public class PathologySample extends ProgramSample {
 
     public void setMicroscopyExam(String microscopyExam) {
         this.microscopyExam = microscopyExam;
+    }
+
+    public String getReviewNotes() {
+        return reviewNotes;
+    }
+
+    public void setReviewNotes(String reviewNotes) {
+        this.reviewNotes = reviewNotes;
     }
 
     public boolean isDecalcificationRequired() {

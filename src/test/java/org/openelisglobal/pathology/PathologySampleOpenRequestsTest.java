@@ -2,14 +2,14 @@ package org.openelisglobal.pathology;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.service.RequestDraft;
+import org.openelisglobal.program.service.RequestStatusChange;
+import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -37,11 +37,11 @@ public class PathologySampleOpenRequestsTest extends BaseWebContextSensitiveTest
      */
     private static final int CASE_WITH_NO_OPEN_REQUESTS = 2;
 
-    @Autowired
-    private PathologySampleService pathologySampleService;
+    /** technician1, the fixture's own user. */
+    private static final String TECHNICIAN = "1001";
 
     @Autowired
-    private org.openelisglobal.dictionary.service.DictionaryService dictionaryService;
+    private PathologySampleService pathologySampleService;
 
     @Before
     public void init() throws Exception {
@@ -103,22 +103,43 @@ public class PathologySampleOpenRequestsTest extends BaseWebContextSensitiveTest
     }
 
     /**
-     * The case view shows a status control as soon as a request is picked, but it
-     * only displays OPENED as a fallback and never writes it into the posted form,
-     * so a request the operator does not touch is posted with no status. Before
-     * this, that null was written straight to the row and the request was stored as
-     * neither open nor closed: a case with a plainly outstanding request was
-     * counted on no tile.
+     * A request is raised on its own now, never by a save of the case, and one just
+     * raised is open. Before, the case view posted a picked request with no status
+     * and the save wrote that null straight to the row, so a plainly outstanding
+     * request was counted on no tile.
      */
     @Test
-    public void aRequestRaisedFromTheCaseView_isOpen() {
+    public void aRequestRaisedThroughTheService_isOpenAndCounted() {
         long before = pathologySampleService.getCountWithOpenRequests();
 
-        raiseRequestThroughTheCaseView(CASE_WITH_NO_OPEN_REQUESTS);
+        PathologyRequest raised = raiseOn(CASE_WITH_NO_OPEN_REQUESTS, "a second opinion on the margins");
 
-        assertEquals("a request carries no status until it is answered, so one just raised is open", "OPENED",
-                statusOfTheOnlyRequestOn(CASE_WITH_NO_OPEN_REQUESTS));
+        assertEquals("a request just raised is open", "OPENED", statusOf(raised.getId()));
         assertEquals("the case now holds an outstanding request, so the tile counts it", Long.valueOf(before + 1),
+                pathologySampleService.getCountWithOpenRequests());
+    }
+
+    /**
+     * The tile counts a case with a raised request once, however many are raised,
+     * and stops counting it once each is completed or cancelled.
+     */
+    @Test
+    public void aCaseWithRaisedRequests_isCountedOnceUntilEachIsClosed() {
+        long before = pathologySampleService.getCountWithOpenRequests();
+        PathologyRequest first = raiseOn(CASE_WITH_NO_OPEN_REQUESTS, "another block from the margin");
+        PathologyRequest second = raiseOn(CASE_WITH_NO_OPEN_REQUESTS, "a further block from the base");
+
+        assertEquals("two raised requests count their case once", Long.valueOf(before + 1),
+                pathologySampleService.getCountWithOpenRequests());
+
+        pathologySampleService.changeRequestStatus(CASE_WITH_NO_OPEN_REQUESTS, first.getId(),
+                new RequestStatusChange("OPENED", "COMPLETED", null, null, null), TECHNICIAN);
+        assertEquals("one still open keeps the case on the tile", Long.valueOf(before + 1),
+                pathologySampleService.getCountWithOpenRequests());
+
+        pathologySampleService.changeRequestStatus(CASE_WITH_NO_OPEN_REQUESTS, second.getId(),
+                new RequestStatusChange("OPENED", "CANCELLED", "not needed", null, null), TECHNICIAN);
+        assertEquals("with both closed the case leaves the tile", Long.valueOf(before),
                 pathologySampleService.getCountWithOpenRequests());
     }
 
@@ -154,34 +175,14 @@ public class PathologySampleOpenRequestsTest extends BaseWebContextSensitiveTest
                 + " WHERE pathology_sample_id = ? AND status = 'OPENED'", Integer.class, pathologySampleId);
     }
 
-    /**
-     * Saves the case the way the case view does when an operator picks a request
-     * and saves: every other collection is posted empty, and the request carries a
-     * value but no status.
-     */
-    private void raiseRequestThroughTheCaseView(int pathologySampleId) {
-        PathologySampleForm form = new PathologySampleForm();
-        form.setStatus(pathologySampleService.get(pathologySampleId).getStatus());
-        form.setSystemUserId("1");
-        form.setBlocks(new ArrayList<>());
-        form.setSlides(new ArrayList<>());
-        form.setReports(new ArrayList<>());
-        PathologySampleForm.PathologyRequestForm request = new PathologySampleForm.PathologyRequestForm();
-        org.openelisglobal.dictionary.valueholder.Dictionary option = new org.openelisglobal.dictionary.valueholder.Dictionary();
-        option.setDictEntry("a second opinion on the margins");
-        option.setIsActive("Y");
-        option.setSysUserId(TEST_SYS_USER_ID);
-        String optionId = dictionaryService.insert(option);
-        request.setValue(optionId);
-        form.setRequests(List.of(request));
-
-        pathologySampleService.updateWithFormValues(pathologySampleId, form);
+    private PathologyRequest raiseOn(int pathologySampleId, String instruction) {
+        return pathologySampleService.raiseRequest(pathologySampleId,
+                new RequestDraft("BLOCK", null, null, null, null, instruction), TECHNICIAN);
     }
 
-    private String statusOfTheOnlyRequestOn(int pathologySampleId) {
-        return jdbcTemplate.queryForObject(
-                "SELECT status FROM clinlims.pathology_request WHERE pathology_sample_id = ?", String.class,
-                pathologySampleId);
+    private String statusOf(int requestId) {
+        return jdbcTemplate.queryForObject("SELECT status FROM clinlims.pathology_request WHERE id = ?", String.class,
+                requestId);
     }
 
     /**

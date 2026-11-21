@@ -31,6 +31,12 @@ public class PathologySampleForm {
 
     private List<String> techniques;
 
+    /**
+     * Not read: a case save no longer writes requests. Each is raised and changes
+     * status through its own endpoint, so it keeps its id, who raised it and when.
+     * The field stays so a page or helper that still posts it binds, and what it
+     * posts is ignored.
+     */
     private List<PathologyRequestForm> requests;
 
     private List<String> resolvedRequests;
@@ -41,6 +47,9 @@ public class PathologySampleForm {
 
     private String microscopyExam;
 
+    /** Null when the client did not post it, so the stored notes stand. */
+    private String reviewNotes;
+
     /** Null when the client did not post it, so the stored flag stands. */
     private Boolean decalcificationRequired;
 
@@ -49,6 +58,13 @@ public class PathologySampleForm {
      * client did not post it; ignored whenever no entry would take it.
      */
     private String runReference;
+
+    /**
+     * The coverslipping batch, written once on the case's Coverslipping entry
+     * (FR-8.4). Null when the client did not post it; ignored whenever no entry
+     * would take it.
+     */
+    private String coverslipRunReference;
 
     private List<String> conclusions;
 
@@ -155,6 +171,14 @@ public class PathologySampleForm {
         this.microscopyExam = microscopyExam;
     }
 
+    public String getReviewNotes() {
+        return reviewNotes;
+    }
+
+    public void setReviewNotes(String reviewNotes) {
+        this.reviewNotes = reviewNotes;
+    }
+
     public Boolean getDecalcificationRequired() {
         return decalcificationRequired;
     }
@@ -169,6 +193,14 @@ public class PathologySampleForm {
 
     public void setRunReference(String runReference) {
         this.runReference = runReference;
+    }
+
+    public String getCoverslipRunReference() {
+        return coverslipRunReference;
+    }
+
+    public void setCoverslipRunReference(String coverslipRunReference) {
+        this.coverslipRunReference = coverslipRunReference;
     }
 
     public String getConclusionText() {

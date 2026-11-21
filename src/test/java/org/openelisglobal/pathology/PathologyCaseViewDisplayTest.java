@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,13 +22,19 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologyDisplayService;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.valueholder.pathology.ConclusionEntry;
+import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.LabelVerificationView;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.SlideStampView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.StageEventView;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.program.valueholder.pathology.PathologySlide;
+import org.openelisglobal.program.valueholder.pathology.StainStatus;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -70,9 +77,27 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
     private static final int LEGACY_SLIDE_ID = 201;
     private static final int SECOND_SLIDE = 9407;
 
+    /**
+     * Blocks and slides of this class's own, cut in an order that is not the one
+     * shown.
+     */
+    private static final int FIRST_OWN_BLOCK = 9408;
+    private static final int SECOND_OWN_BLOCK = 9409;
+    private static final int A2_1 = 9410;
+    private static final int A1_1 = 9411;
+    private static final int A1_2 = 9412;
+
+    /** An immunohistochemistry case of this class's own. */
+    private static final int REFERRAL_CASE = 9413;
+
+    /** A marker the order holds in the immunohistochemistry section. */
+    private static final int REFERRAL_SECTION = 9414;
+    private static final int REFERRED_MARKER = 9415;
+    private static final int REFERRED_MARKER_ANALYSIS = 9416;
+
     private boolean insertedTheCategory;
 
-    private boolean insertedTheStainCategory;
+    private DictionaryRows.StainEntries stains;
 
     @Autowired
     private PathologyDisplayService pathologyDisplayService;
@@ -232,6 +257,104 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
     }
 
     /**
+     * The case view reads who stained each slide and who checked its coverslip, and
+     * when, from two maps; the raw row carries the values and the user ids only,
+     * and a slide with nothing recorded is absent from each map.
+     */
+    @Test
+    public void caseDisplayItem_namesWhoStainedAndCheckedEachSlide() {
+        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_status = 'STAINED', stain_status_at = now(),"
+                + " stain_status_by = 1001, coverslip_qc = 'FAIL', coverslip_qc_at = now(), coverslip_qc_by = 1001"
+                + " WHERE id = ?", LEGACY_SLIDE_ID);
+        jdbcTemplate.update("INSERT INTO clinlims.pathology_slide (id, pathology_sample_id, last_updated, slide_number,"
+                + " active) VALUES (?, ?, now(), 2, true)", SECOND_SLIDE, CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+        PathologyCaseViewDisplayItem displayItem = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+        String technician = systemUserService.get("1001").getDisplayName();
+        SlideStampView stained = displayItem.getStainStamps().get(LEGACY_SLIDE_ID);
+        assertNotNull("a stained slide is in the stain map", stained);
+        assertEquals("named by who stained it, not an id", technician, stained.by());
+        assertNotNull("with the time as text", stained.at());
+        SlideStampView checked = displayItem.getCoverslipQcStamps().get(LEGACY_SLIDE_ID);
+        assertEquals("and by who checked its coverslip in the other", technician, checked.by());
+        assertFalse("a slide with nothing recorded is in neither",
+                displayItem.getStainStamps().containsKey(SECOND_SLIDE)
+                        || displayItem.getCoverslipQcStamps().containsKey(SECOND_SLIDE));
+        assertEquals("the raw row carries the values", StainStatus.STAINED, displayItem.getSlides().stream()
+                .filter(slide -> slide.getId() == LEGACY_SLIDE_ID).findFirst().orElseThrow().getStainStatus());
+    }
+
+    /**
+     * The coverslipping batch is offered where a save would write it and read back
+     * once written, beside the processor run and apart from it (FR-8.4).
+     */
+    @Test
+    public void caseDisplayItem_carriesTheCoverslippingBatch() {
+        try (StageSwitches switches = StageSwitches.allOn()) {
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.STAINING);
+            PathologyCaseRows.storeStainStatus(jdbcTemplate, LEGACY_SLIDE_ID, StainStatus.STAINED);
+            pathologySampleService.advance(CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.STAINING, "1001");
+
+            PathologyCaseViewDisplayItem open = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertTrue("an open coverslipping entry with no batch takes one", open.isCoverslipRunReferenceEditable());
+            assertFalse("the processor run is not offered there", open.isRunReferenceEditable());
+
+            PathologySampleForm form = formWithRunReference(null);
+            form.setCoverslipRunReference("CS-3");
+            pathologySampleService.updateWithFormValues(CASE_WITH_TWO_SPECIMEN_ITEMS, form);
+
+            PathologyCaseViewDisplayItem written = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertEquals("the batch is read from the coverslipping entry", "CS-3", written.getCoverslipRunReference());
+            assertFalse("and, written once, it is no longer editable", written.isCoverslipRunReferenceEditable());
+            assertNull("the processor run is a different field", written.getRunReference());
+        } finally {
+            PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        }
+    }
+
+    /**
+     * The case's collections carry no order, so the case view could list slides
+     * differently on each load and every sentence naming them would change. Blocks
+     * come by the order they were cut, slides under their block in the order they
+     * were cut, and a slide with no block on record last.
+     */
+    @Test
+    public void caseDisplayItem_listsSlidesByBlockThenInTheOrderTheyWereCut() {
+        try {
+            jdbcTemplate.update(
+                    "INSERT INTO clinlims.pathology_block (id, pathology_sample_id, last_updated,"
+                            + " designation, active) VALUES (?, ?, now(), 'A1', true), (?, ?, now(), 'A2', true)",
+                    FIRST_OWN_BLOCK, CASE_WITH_TWO_SPECIMEN_ITEMS, SECOND_OWN_BLOCK, CASE_WITH_TWO_SPECIMEN_ITEMS);
+            // A2.1 is cut first, so the rows are stored in an order that is not the
+            // one wanted.
+            jdbcTemplate.update(
+                    "INSERT INTO clinlims.pathology_slide (id, pathology_sample_id, block_id,"
+                            + " designation, last_updated, active) VALUES (?, ?, ?, '1', now(), true),"
+                            + " (?, ?, ?, '1', now(), true), (?, ?, ?, '2', now(), true)",
+                    A2_1, CASE_WITH_TWO_SPECIMEN_ITEMS, SECOND_OWN_BLOCK, A1_1, CASE_WITH_TWO_SPECIMEN_ITEMS,
+                    FIRST_OWN_BLOCK, A1_2, CASE_WITH_TWO_SPECIMEN_ITEMS, FIRST_OWN_BLOCK);
+
+            PathologyCaseViewDisplayItem displayItem = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+            assertEquals("A1.1, A1.2, A2.1, then the fixture's slide with no block",
+                    List.of(A1_1, A1_2, A2_1, LEGACY_SLIDE_ID),
+                    displayItem.getSlides().stream().map(PathologySlide::getId).toList());
+            assertEquals("blocks in the order they were cut",
+                    List.of(LEGACY_BLOCK_ID, FIRST_OWN_BLOCK, SECOND_OWN_BLOCK),
+                    displayItem.getBlocks().stream().map(PathologyBlock::getId).toList());
+        } finally {
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id IN (?, ?, ?)", A2_1, A1_1, A1_2);
+            jdbcTemplate.update("DELETE FROM clinlims.pathology_block WHERE id IN (?, ?)", FIRST_OWN_BLOCK,
+                    SECOND_OWN_BLOCK);
+        }
+    }
+
+    /**
      * The case view lists every stage the case entered, with the operator as a name
      * and the time as text, and keeps the processor run readable once the case has
      * left Processing (FR-5.1, AC-8).
@@ -365,6 +488,138 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
         assertNull("nor a run", displayItem.getRunReference());
     }
 
+    /**
+     * The case says at which stage its findings are written and whether a save
+     * takes them now, one row of the reading window at a time (W1 to W7).
+     */
+    @Test
+    public void theCaseSaysItsReadingStage_andWhetherFindingsAreOpen() {
+        try (StageSwitches switches = StageSwitches.allOn()) {
+            for (PathologyStatus stage : List.of(PathologyStatus.ACCESSIONED, PathologyStatus.GROSSING,
+                    PathologyStatus.DECALCIFICATION, PathologyStatus.PROCESSING, PathologyStatus.EMBEDDING,
+                    PathologyStatus.MICROTOMY, PathologyStatus.STAINING, PathologyStatus.COVERSLIPPING)) {
+                assertReadingWindow("W1 at " + stage, stage, "UNDER_REVIEW", false);
+            }
+            assertReadingWindow("W2", PathologyStatus.READY_PATHOLOGIST, "UNDER_REVIEW", false);
+            assertReadingWindow("W4", PathologyStatus.UNDER_REVIEW, "UNDER_REVIEW", true);
+            assertReadingWindow("W6", PathologyStatus.COMPLETED, "UNDER_REVIEW", true);
+
+            PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, PathologyStatus.UNDER_REVIEW);
+            PathologySampleForm release = formWithRunReference(null);
+            release.setRelease(true);
+            pathologySampleService.updateWithFormValues(CASE_WITH_TWO_SPECIMEN_ITEMS, release);
+            PathologyCaseViewDisplayItem released = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertFalse("W7: a signed-out case takes no findings", released.isFindingsOpen());
+
+            ConfigurationProperties.getInstance().setPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED,
+                    "false");
+            assertReadingWindow("W3", PathologyStatus.READY_PATHOLOGIST, "READY_PATHOLOGIST", true);
+            assertReadingWindow("W5", PathologyStatus.UNDER_REVIEW, "READY_PATHOLOGIST", true);
+        } finally {
+            PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS);
+        }
+    }
+
+    /** Each coded conclusion carries its code, the entry's abbreviation. */
+    @Test
+    public void codedConclusionsCarryTheirCode() {
+        try (PathologyFindingsDictionary dictionary = PathologyFindingsDictionary.seed(jdbcTemplate)) {
+            insertCaseRow("pathology_conclusion", 9421, PathologyFindingsDictionary.CHRONIC_GASTRITIS);
+            insertCaseRow("pathology_conclusion", 9422, PathologyFindingsDictionary.ADENOCARCINOMA);
+            insertCaseRow("pathology_conclusion", 9423, PathologyFindingsDictionary.OLD_TERM);
+
+            assertEquals("id, name and code, in the stored order; no abbreviation is an empty code",
+                    List.of(new ConclusionEntry("9102", "Chronic gastritis", "K29.5"),
+                            new ConclusionEntry("9101", "Adenocarcinoma", "C80.1"),
+                            new ConclusionEntry("9103", "Old term", "")),
+                    pathologyDisplayService.convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS).getConclusions());
+        }
+    }
+
+    /** The case says it was referred, and to which immunohistochemistry case. */
+    @Test
+    public void theCaseSaysItWasReferred_andNamesTheIhcCase() {
+        PathologyCaseViewDisplayItem notReferred = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+        assertFalse("a case nobody referred says so", notReferred.isReferredToIhc());
+        assertNull("and names no case", notReferred.getIhcCaseId());
+        assertEquals("and lists no referred marker, as a list rather than nothing", List.of(),
+                notReferred.getIhcReferredTestIds());
+
+        try {
+            jdbcTemplate.update("INSERT INTO clinlims.immunohistochemistry_sample (id, last_updated, program_id,"
+                    + " sample_id, status, pathology_sample_id, reffered) VALUES (?, now(), 1, 1, 'IN_PROGRESS', ?,"
+                    + " true)", REFERRAL_CASE, CASE_WITH_TWO_SPECIMEN_ITEMS);
+            jdbcTemplate.update(
+                    "INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, 'Ki-67', now())",
+                    REFERRAL_SECTION);
+            jdbcTemplate.update("INSERT INTO clinlims.test_section (id, name, description, is_external, lastupdated,"
+                    + " sort_order, domain, name_localization_id) VALUES (?, 'Immunohistochemistry',"
+                    + " 'Referral section', 'N', now(), 1, 'CLINICAL', ?)", REFERRAL_SECTION, REFERRAL_SECTION);
+            jdbcTemplate.update("INSERT INTO clinlims.test (id, description, name, local_code, lastupdated,"
+                    + " test_section_id, is_active, orderable, sort_order, guid, name_localization_id) VALUES (?,"
+                    + " 'Ki-67 marker', 'Ki-67', 'Ki67', now(), ?, 'Y', true, 1, gen_random_uuid(), ?)",
+                    REFERRED_MARKER, REFERRAL_SECTION, REFERRAL_SECTION);
+            jdbcTemplate.update("INSERT INTO clinlims.analysis (id, sampitem_id, test_sect_id, test_id, revision,"
+                    + " analysis_type, lastupdated, fhir_uuid, referred_out, corrected, result_calculated,"
+                    + " reflex_trigger) VALUES (?, ?, ?, ?, 0, 'MANUAL', now(), gen_random_uuid(), false, false,"
+                    + " false, false)", REFERRED_MARKER_ANALYSIS, FIRST_SPECIMEN_ITEM, REFERRAL_SECTION,
+                    REFERRED_MARKER);
+
+            PathologyCaseViewDisplayItem referred = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+            assertTrue("a referred case says so", referred.isReferredToIhc());
+            assertEquals("and names the case", Integer.valueOf(REFERRAL_CASE), referred.getIhcCaseId());
+            assertEquals("and lists the marker the order holds in the immunohistochemistry section",
+                    List.of(String.valueOf(REFERRED_MARKER)), referred.getIhcReferredTestIds());
+        } finally {
+            jdbcTemplate.update("DELETE FROM clinlims.analysis WHERE id = ?", REFERRED_MARKER_ANALYSIS);
+            jdbcTemplate.update("DELETE FROM clinlims.test WHERE id = ?", REFERRED_MARKER);
+            jdbcTemplate.update("DELETE FROM clinlims.test_section WHERE id = ?", REFERRAL_SECTION);
+            jdbcTemplate.update("DELETE FROM clinlims.localization WHERE id = ?", REFERRAL_SECTION);
+            jdbcTemplate.update("DELETE FROM clinlims.immunohistochemistry_sample WHERE id = ?", REFERRAL_CASE);
+        }
+    }
+
+    /**
+     * A conclusion or technique stored before codes were checked may name no entry;
+     * the case is still read, without it.
+     */
+    @Test
+    public void aStoredCodeThatNamesNoEntry_isLeftOut_notThrownOn() {
+        try (PathologyFindingsDictionary dictionary = PathologyFindingsDictionary.seed(jdbcTemplate)) {
+            insertCaseRow("pathology_conclusion", 9421, PathologyFindingsDictionary.ADENOCARCINOMA);
+            insertCaseRow("pathology_conclusion", 9422, PathologyFindingsDictionary.NO_ENTRY);
+            insertCaseRow("pathology_technique", 9424, PathologyFindingsDictionary.NO_ENTRY);
+            insertCaseRow("pathology_technique", 9425, PathologyFindingsDictionary.FROZEN_SECTION);
+
+            PathologyCaseViewDisplayItem read = pathologyDisplayService
+                    .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+            assertEquals("the conclusion that names no entry is left out", List.of("9101"),
+                    read.getConclusions().stream().map(ConclusionEntry::id).collect(Collectors.toList()));
+            assertEquals("and so is the technique", List.of("9201"),
+                    read.getTechniques().stream().map(IdValuePair::getId).collect(Collectors.toList()));
+        }
+    }
+
+    private void assertReadingWindow(String row, PathologyStatus stage, String readingStage, boolean open) {
+        PathologyCaseRows.storeAt(jdbcTemplate, CASE_WITH_TWO_SPECIMEN_ITEMS, stage);
+        PathologyCaseViewDisplayItem read = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+        assertEquals(row + ": the reading stage", readingStage, read.getReadingStage());
+        assertEquals(row + ": whether the findings are open", open, read.isFindingsOpen());
+    }
+
+    /**
+     * A coded row of the case, as a save writes it; the fixture reload clears it.
+     */
+    private void insertCaseRow(String table, int id, String code) {
+        jdbcTemplate.update("INSERT INTO clinlims." + table + " (id, pathology_sample_id, type, value, last_updated)"
+                + " VALUES (?, ?, 'DICTIONARY', ?, now())", id, CASE_WITH_TWO_SPECIMEN_ITEMS, code);
+    }
+
     /** What the screen posts at Processing: the case as it stands, plus the run. */
     private PathologySampleForm formWithRunReference(String runReference) {
         PathologySampleForm form = new PathologySampleForm();
@@ -421,27 +676,17 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
         }
     }
 
-    /**
-     * The configuration loader ships the stain category and tests do not run it, so
-     * it is added only when absent.
-     */
     private void seedStains() {
-        insertedTheStainCategory = DictionaryRows.insertCategory(jdbcTemplate, STAIN_CATEGORY_ID,
-                PathologySampleService.STAIN_CATEGORY, PathologySampleService.STAIN_CATEGORY, "PathStain");
-        int categoryId = DictionaryRows.idOfCategory(jdbcTemplate, PathologySampleService.STAIN_CATEGORY);
-        DictionaryRows.insertEntry(jdbcTemplate, STAIN, categoryId, STAIN_NAME, "PSPas", true);
-        DictionaryRows.insertEntry(jdbcTemplate, RETIRED_STAIN, categoryId, RETIRED_STAIN_NAME, "PSRet", false);
+        stains = DictionaryRows.stainEntries(jdbcTemplate, STAIN_CATEGORY_ID).with(STAIN, STAIN_NAME, true)
+                .with(RETIRED_STAIN, RETIRED_STAIN_NAME, false);
     }
 
     private void removeSeededStainRows() {
         jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id = ?", SECOND_SLIDE);
         PathologyCaseRows.clearLabelStamp(jdbcTemplate, LEGACY_SLIDE_ID);
-        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = NULL WHERE stain_id IN (?, ?)", STAIN,
-                RETIRED_STAIN);
-        DictionaryRows.removeEntries(jdbcTemplate, STAIN, RETIRED_STAIN);
-        if (insertedTheStainCategory) {
-            DictionaryRows.removeCategory(jdbcTemplate, STAIN_CATEGORY_ID);
-            insertedTheStainCategory = false;
+        if (stains != null) {
+            stains.close();
+            stains = null;
         }
     }
 

@@ -25,6 +25,7 @@ import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.localization.valueholder.LocalizationValue;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.program.valueholder.pathology.CassetteState;
+import org.openelisglobal.program.valueholder.pathology.CoverslipQc;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyReport;
@@ -34,7 +35,10 @@ import org.openelisglobal.program.valueholder.pathology.PathologySample.Patholog
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique;
+import org.openelisglobal.program.valueholder.pathology.RequestKind;
+import org.openelisglobal.program.valueholder.pathology.RequestPriority;
 import org.openelisglobal.program.valueholder.pathology.StageDirection;
+import org.openelisglobal.program.valueholder.pathology.StainStatus;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 /**
@@ -159,6 +163,30 @@ public class HibernateMappingValidationTest {
     }
 
     /**
+     * What staining and the coverslip check found are stored by name, so a row
+     * reads the same whatever order the values are declared in, and who recorded
+     * each is a plain column, so the row the case view posts back carries no user.
+     */
+    @Test
+    public void pathologySlide_mapsItsStainingAndCoverslipCheck() {
+        EntityType<PathologySlide> slide = sessionFactory.getMetamodel().entity(PathologySlide.class);
+
+        assertEquals("the stain status is the enum", StainStatus.class,
+                slide.getAttribute("stainStatus").getJavaType());
+        assertEquals("the coverslip check is the enum", CoverslipQc.class,
+                slide.getAttribute("coverslipQc").getJavaType());
+        assertEquals("who stained it is a plain column", Attribute.PersistentAttributeType.BASIC,
+                slide.getAttribute("stainStatusBy").getPersistentAttributeType());
+        assertEquals("who checked it is a plain column", Attribute.PersistentAttributeType.BASIC,
+                slide.getAttribute("coverslipQcBy").getPersistentAttributeType());
+        assertColumn(PathologySlide.class, "stainStatusAt", "stain_status_at");
+        assertColumn(PathologySlide.class, "stainStatusBy", "stain_status_by");
+        assertColumn(PathologySlide.class, "coverslipQc", "coverslip_qc");
+        assertColumn(PathologySlide.class, "coverslipQcAt", "coverslip_qc_at");
+        assertColumn(PathologySlide.class, "coverslipQcBy", "coverslip_qc_by");
+    }
+
+    /**
      * Dropping a block or slide from its collection must not delete the row, which
      * 42 CFR 493.1105 requires the laboratory to retain.
      */
@@ -177,6 +205,58 @@ public class HibernateMappingValidationTest {
             assertTrue("PathologySample." + collection + " still cascades all, so a child saves with its case",
                     property.getCascade().contains("all"));
         }
+    }
+
+    /**
+     * A bench request is raised once and changes status in place, so dropping one
+     * from the case's collection must not delete it: it keeps its id, its author
+     * and its history.
+     */
+    @Test
+    public void pathologySample_requestsDoNotRemoveOrphans() {
+        Property property = metadata.getEntityBinding(PathologySample.class.getName()).getProperty("requests");
+        org.hibernate.mapping.Collection binding = (org.hibernate.mapping.Collection) property.getValue();
+
+        assertFalse("PathologySample.requests must not delete orphans: a request dropped from the collection would"
+                + " lose its id and its history", binding.hasOrphanDelete());
+        assertTrue("PathologySample.requests still cascades all, so a request raised on the case saves with it",
+                property.getCascade().contains("all"));
+    }
+
+    /**
+     * A request records what it asks for, the block or slide it names, the stain,
+     * the priority, what fulfilled it, why it was cancelled, and who raised it and
+     * when, as plain columns, so the case's own save carries no user.
+     */
+    @Test
+    public void pathologyRequest_mapsItsBenchWorkColumns() {
+        EntityType<PathologyRequest> request = sessionFactory.getMetamodel().entity(PathologyRequest.class);
+
+        assertEquals("kind is the RequestKind enum", RequestKind.class, request.getAttribute("kind").getJavaType());
+        assertEquals("priority is the RequestPriority enum", RequestPriority.class,
+                request.getAttribute("priority").getJavaType());
+        assertEquals("the stain is a String, as dictionary ids are throughout", String.class,
+                request.getAttribute("stainId").getJavaType());
+        for (String rowId : Arrays.asList("targetBlockId", "targetSlideId", "resultBlockId", "resultSlideId")) {
+            assertEquals(rowId + " is an Integer, matching the row id type", Integer.class,
+                    request.getAttribute(rowId).getJavaType());
+            assertEquals(rowId + " is a plain column, not an association", Attribute.PersistentAttributeType.BASIC,
+                    request.getAttribute(rowId).getPersistentAttributeType());
+        }
+        assertEquals("who raised it is a plain column", Attribute.PersistentAttributeType.BASIC,
+                request.getAttribute("raisedBy").getPersistentAttributeType());
+
+        assertColumn(PathologyRequest.class, "kind", "request_kind");
+        assertColumn(PathologyRequest.class, "targetBlockId", "target_block_id");
+        assertColumn(PathologyRequest.class, "targetSlideId", "target_slide_id");
+        assertColumn(PathologyRequest.class, "stainId", "stain_id");
+        assertColumn(PathologyRequest.class, "priority", "priority");
+        assertColumn(PathologyRequest.class, "resultBlockId", "result_block_id");
+        assertColumn(PathologyRequest.class, "resultSlideId", "result_slide_id");
+        assertColumn(PathologyRequest.class, "cancelReason", "cancel_reason");
+        assertColumn(PathologyRequest.class, "raisedAt", "raised_at");
+        assertColumn(PathologyRequest.class, "raisedBy", "raised_by");
+        assertColumn(PathologyRequest.class, "lastupdated", "last_updated");
     }
 
     /**

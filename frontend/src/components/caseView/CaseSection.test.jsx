@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider, createIntl } from "react-intl";
@@ -92,6 +93,43 @@ describe("CaseSection", () => {
     rerender(buildTree({ state: SECTION_STATE.COMPLETE }));
 
     expect(header).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("opens a collapsed section when the screen sends a new open request, and lets the user close it again", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderSection({
+      state: SECTION_STATE.DISABLED,
+      openRequest: 0,
+    });
+    const header = screen.getByRole("button", {
+      name: /macroscopic description/i,
+    });
+
+    rerender(buildTree({ state: SECTION_STATE.OPEN, openRequest: 0 }));
+    expect(header).toHaveAttribute("aria-expanded", "false");
+
+    rerender(buildTree({ state: SECTION_STATE.OPEN, openRequest: 1 }));
+    await waitFor(() =>
+      expect(header).toHaveAttribute("aria-expanded", "true"),
+    );
+    expect(screen.getByText(CHILD_TEXT)).toBeVisible();
+
+    await user.click(header);
+    expect(header).toHaveAttribute("aria-expanded", "false");
+    rerender(buildTree({ state: SECTION_STATE.OPEN, openRequest: 1 }));
+    expect(header).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("stays collapsed while no open request is sent", () => {
+    const { rerender } = renderSection({
+      state: SECTION_STATE.OPEN,
+      defaultOpen: false,
+    });
+    rerender(buildTree({ state: SECTION_STATE.COMPLETE, defaultOpen: false }));
+
+    expect(
+      screen.getByRole("button", { name: /macroscopic description/i }),
+    ).toHaveAttribute("aria-expanded", "false");
   });
 
   // The stage selector can move a case backwards, which disables a section

@@ -19,10 +19,11 @@ import { stageLabel } from "../pathologyStages";
  * A list of one stage's entries leaves the stage column out, since every row
  * would repeat it, and the Returned tag then sits with the entry time, the
  * return's reason under it, so the list keeps one column fewer where the
- * section is narrow. The processor run is shown where the list is of
- * processing entries, so a run corrected by a return stays visible beside
- * the one it replaced; there it comes first, since the run is what tells one
- * processing entry from another.
+ * section is narrow. A stage that records a reference on its entry (the
+ * processor run at processing, the batch at coverslipping) shows it under the
+ * header `runReferenceKey` names, so a reference corrected by a return stays
+ * visible beside the one it replaced; there it comes first, since the
+ * reference is what tells one entry from another.
  *
  * The case's whole history leaves the completion columns out: an entry is
  * completed by the move that opens the next one, in the same moment and by
@@ -40,8 +41,9 @@ const StageEventList = ({
   ariaLabelKey,
   showStage = true,
   showCompletion = true,
-  showRunReference = false,
+  runReferenceKey = null,
 }) => {
+  const showRunReference = Boolean(runReferenceKey);
   const intl = useIntl();
 
   const returned = (event) =>
@@ -55,7 +57,7 @@ const StageEventList = ({
 
   // The run, where shown, leads the row.
   const headers = [
-    showRunReference && "pathology.label.runReference",
+    runReferenceKey,
     showStage && "pathology.label.stage",
     "pathology.label.enteredAt",
     "pathology.label.enteredBy",

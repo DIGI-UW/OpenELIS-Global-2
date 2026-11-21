@@ -9,7 +9,6 @@ import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
-import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
@@ -52,15 +51,17 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
     private List<IdValuePair> techniques;
 
-    private List<RequestDisplayBean> requests;
+    private List<RequestView> requests;
 
-    private List<IdValuePair> conclusions;
+    private List<ConclusionEntry> conclusions;
 
     private String conclusionText;
 
     private String grossExam;
 
     private String microscopyExam;
+
+    private String reviewNotes;
 
     private boolean decalcificationRequired;
 
@@ -94,6 +95,24 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
     private boolean runReferenceEditable;
 
     /**
+     * Who last recorded each slide's stain status, and when, by slide id; a slide
+     * with no status recorded is absent.
+     */
+    private Map<Integer, SlideStampView> stainStamps;
+
+    /**
+     * Who recorded each slide's coverslip check, and when, by slide id; a slide not
+     * checked is absent.
+     */
+    private Map<Integer, SlideStampView> coverslipQcStamps;
+
+    /** The coverslipping batch written on the case's latest Coverslipping entry. */
+    private String coverslipRunReference;
+
+    /** Whether a case save would write a coverslipping batch now. */
+    private boolean coverslipRunReferenceEditable;
+
+    /**
      * The stage the case would be sent on to, or null; worked out by the server so
      * the screen and the move read the same rule.
      */
@@ -107,6 +126,24 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
      * refused on.
      */
     private boolean releasable;
+
+    /**
+     * The stage at which the findings are written on this deployment (FR-12.1).
+     */
+    private String readingStage;
+
+    /** Whether a save would take a change to the findings now. */
+    private boolean findingsOpen;
+
+    private boolean referredToIhc;
+
+    /** The immunohistochemistry case this case was referred to; null if none. */
+    private Integer ihcCaseId;
+
+    /**
+     * The tests already referred to immunohistochemistry on the order; never null.
+     */
+    private List<String> ihcReferredTestIds = List.of();
 
     public LocalDate getReceivedDate() {
         return receivedDate;
@@ -180,11 +217,11 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
         this.slides = slides;
     }
 
-    public List<IdValuePair> getConclusions() {
+    public List<ConclusionEntry> getConclusions() {
         return conclusions;
     }
 
-    public void setConclusions(List<IdValuePair> conclusions) {
+    public void setConclusions(List<ConclusionEntry> conclusions) {
         this.conclusions = conclusions;
     }
 
@@ -244,11 +281,11 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
         this.conclusionText = conclusionText;
     }
 
-    public List<RequestDisplayBean> getRequests() {
+    public List<RequestView> getRequests() {
         return requests;
     }
 
-    public void setRequests(List<RequestDisplayBean> requests) {
+    public void setRequests(List<RequestView> requests) {
         this.requests = requests;
     }
 
@@ -324,6 +361,38 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
         this.runReferenceEditable = runReferenceEditable;
     }
 
+    public Map<Integer, SlideStampView> getStainStamps() {
+        return stainStamps;
+    }
+
+    public void setStainStamps(Map<Integer, SlideStampView> stainStamps) {
+        this.stainStamps = stainStamps;
+    }
+
+    public Map<Integer, SlideStampView> getCoverslipQcStamps() {
+        return coverslipQcStamps;
+    }
+
+    public void setCoverslipQcStamps(Map<Integer, SlideStampView> coverslipQcStamps) {
+        this.coverslipQcStamps = coverslipQcStamps;
+    }
+
+    public String getCoverslipRunReference() {
+        return coverslipRunReference;
+    }
+
+    public void setCoverslipRunReference(String coverslipRunReference) {
+        this.coverslipRunReference = coverslipRunReference;
+    }
+
+    public boolean isCoverslipRunReferenceEditable() {
+        return coverslipRunReferenceEditable;
+    }
+
+    public void setCoverslipRunReferenceEditable(boolean coverslipRunReferenceEditable) {
+        this.coverslipRunReferenceEditable = coverslipRunReferenceEditable;
+    }
+
     public String getNextStage() {
         return nextStage;
     }
@@ -346,6 +415,54 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
     public void setReleasable(boolean releasable) {
         this.releasable = releasable;
+    }
+
+    public String getReviewNotes() {
+        return reviewNotes;
+    }
+
+    public void setReviewNotes(String reviewNotes) {
+        this.reviewNotes = reviewNotes;
+    }
+
+    public String getReadingStage() {
+        return readingStage;
+    }
+
+    public void setReadingStage(String readingStage) {
+        this.readingStage = readingStage;
+    }
+
+    public boolean isFindingsOpen() {
+        return findingsOpen;
+    }
+
+    public void setFindingsOpen(boolean findingsOpen) {
+        this.findingsOpen = findingsOpen;
+    }
+
+    public boolean isReferredToIhc() {
+        return referredToIhc;
+    }
+
+    public void setReferredToIhc(boolean referredToIhc) {
+        this.referredToIhc = referredToIhc;
+    }
+
+    public Integer getIhcCaseId() {
+        return ihcCaseId;
+    }
+
+    public void setIhcCaseId(Integer ihcCaseId) {
+        this.ihcCaseId = ihcCaseId;
+    }
+
+    public List<String> getIhcReferredTestIds() {
+        return ihcReferredTestIds;
+    }
+
+    public void setIhcReferredTestIds(List<String> ihcReferredTestIds) {
+        this.ihcReferredTestIds = ihcReferredTestIds == null ? List.of() : ihcReferredTestIds;
     }
 
     /**
@@ -391,25 +508,41 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
         }
     }
 
-    public static class RequestDisplayBean extends IdValuePair {
+    /**
+     * Who recorded something on a slide and when, formatted as the stage entries
+     * are; the slide row itself carries only the user's id.
+     *
+     * <p>
+     * The label check keeps its own {@link LabelVerificationView} with the same two
+     * values under other names, because existing screens, specs and an outside QA
+     * harness already read those names.
+     */
+    public record SlideStampView(String at, String by) {
 
-        public RequestDisplayBean(String id, String value) {
-            super(id, value);
+        /** The stamp, or null when nothing was recorded. */
+        public static SlideStampView of(Timestamp at, SystemUser by) {
+            if (at == null) {
+                return null;
+            }
+            return new SlideStampView(DateUtil.convertTimestampToStringDateAndConfiguredHourTime(at),
+                    by == null ? null : by.getDisplayName());
         }
+    }
 
-        public RequestDisplayBean(String id, String value, RequestStatus status) {
-            super(id, value);
-            this.status = status;
-        }
-
-        private RequestStatus status;
-
-        public RequestStatus getStatus() {
-            return status;
-        }
-
-        public void setStatus(RequestStatus status) {
-            this.status = status;
-        }
+    /**
+     * One bench request as the requests table shows it (FR-10.1), every name
+     * already rendered so the screen never composes one: the block or slide it
+     * names and the one that fulfilled it as the bench prints them, retired or not,
+     * the stain by name, and who raised it and when, formatted as the slide stamps
+     * are. Kind, priority and status are the names of their values. A request on
+     * file from before carries only its id, instruction and status.
+     *
+     * @param instruction what the bench is asked to do: the text as written, or for
+     *                    a request on file the name of the entry it was picked by
+     *                    (the stored value when no entry carries it)
+     */
+    public record RequestView(Integer id, String kind, Integer targetBlockId, Integer targetSlideId, String targetName,
+            String stainId, String stainName, String priority, String instruction, String status, String cancelReason,
+            Integer resultBlockId, Integer resultSlideId, String resultName, String raisedAt, String raisedBy) {
     }
 }
