@@ -19,7 +19,6 @@ import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.util.CI.ProjectForm;
 import org.openelisglobal.search.service.SearchResultsService;
-import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -35,7 +34,8 @@ public class CommonValidationsRestController {
     @Autowired
     protected ProjectService projectService;
 
-    protected SearchResultsService searchResultsService = SpringContext.getBean(SearchResultsService.class);
+    @Autowired
+    protected SearchResultsService searchResultsService;
 
     @GetMapping(value = "SampleEntryAccessionNumberValidation", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -155,9 +155,7 @@ public class CommonValidationsRestController {
         }
 
         boolean success = !GenericValidator.isBlankOrNull(nextNumber);
-        if (success) {
-            responseObject.setStatus(true);
-        }
+        responseObject.setStatus(success);
         String result = GenericValidator.isBlankOrNull(error) ? nextNumber : error;
         responseObject.setBody(result);
         return responseObject;
@@ -194,9 +192,9 @@ public class CommonValidationsRestController {
         String fieldId = request.getParameter("fieldId");
         String number = request.getParameter("subjectNumber");
         String numberType = request.getParameter("numberType");
-        String STNumber = numberType.equals("STnumber") ? number : null;
-        String subjectNumber = numberType.equals("subjectNumber") ? number : null;
-        String nationalId = numberType.equals("nationalId") ? number : null;
+        String STNumber = "STnumber".equals(numberType) ? number : null;
+        String subjectNumber = "subjectNumber".equals(numberType) ? number : null;
+        String nationalId = "nationalId".equals(numberType) ? number : null;
 
         responseObject.setStatus(false);
         String queryResponse = "";
