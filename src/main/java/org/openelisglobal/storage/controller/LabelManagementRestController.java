@@ -1,5 +1,6 @@
 package org.openelisglobal.storage.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -48,8 +49,8 @@ public class LabelManagementRestController extends BaseRestController {
      * Validates code exists before printing, returns error if missing
      */
     @PostMapping(value = "/{type}/{id}/print-label", produces = MediaType.APPLICATION_PDF_VALUE)
-    public void printLabel(@PathVariable String type, @PathVariable String id, HttpServletResponse response)
-            throws IOException {
+    public void printLabel(@PathVariable String type, @PathVariable String id, HttpServletRequest request,
+            HttpServletResponse response) throws IOException {
         try {
             // Validate type
             if (!"device".equals(type) && !"shelf".equals(type) && !"rack".equals(type)) {
@@ -81,7 +82,7 @@ public class LabelManagementRestController extends BaseRestController {
 
             // Generate label (uses code from entity)
             ByteArrayOutputStream pdfStream;
-            String userId = getCurrentUserId(); // Get from security context
+            String userId = getCurrentUserId(request);
 
             if (location instanceof StorageDevice) {
                 pdfStream = labelManagementService.generateLabel((StorageDevice) location);
@@ -198,12 +199,14 @@ public class LabelManagementRestController extends BaseRestController {
     }
 
     /**
-     * Get current user ID from security context TODO: Implement proper security
-     * context retrieval
+     * Get current user ID from request session or security context. Falls back to
+     * default system user if unauthenticated.
      */
-    private String getCurrentUserId() {
-        // Placeholder: should get from Spring Security context
-        // For now, return default system user
+    private String getCurrentUserId(HttpServletRequest request) {
+        String userId = request != null ? getSysUserId(request) : getSysUserId();
+        if (userId != null && !userId.isBlank()) {
+            return userId;
+        }
         return "1";
     }
 }
