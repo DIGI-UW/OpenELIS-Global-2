@@ -82,23 +82,16 @@ have admin privileges
 1. save the values and try to search for a patient by National ID. If this
    fails, proceed to the next point
 
-## Check that extra_hosts has an entry for infohighway
+## Check the configured hostname
 
-The following instructions will use files on the machine running ubuntu and will
-require the user be able to ssh into the server and has sudo privileges
+If the endpoint requires a private DNS override, use the distribution's Compose
+override for the web application service. Add the administrator-provided
+hostname and address to that service's `extra_hosts`, inspect the result with
+`docker compose config`, and apply it with `docker compose up -d --no-build`.
+Keep the HTTPS endpoint hostname: replacing it with an IP address can break
+certificate hostname verification. Do not rerun a historical installer or
+disable certificate verification to work around a DNS problem.
 
-1. ssh into the server having issues
-1. check that the file `/var/lib/config/openelis-global/EXTERNAL_HOSTS` exists
-1. check the contents of the file
-   `/var/lib/openelis-global/config/EXTERNAL_HOSTS` has an entry that matches
-   the ip address of the infohighway (`infohighway.govmu.org:xxx.xxx.xxx.xxx`)
-1. rerun the latest installer by running setup_OpenELIS.py in the installer
-   directory (usually located in `~/OpenELIS-Global_2.x.x.x_Installer/`)
-1. check that the `docker-compose.yml` in the installer directory has an entry
-   `oe.openelis.org`, and that under that property there is an `extra_hosts`
-   property which contains the entry in
-   `/var/lib/openelis-global/config/EXTERNAL_HOSTS`
-1. if none exists, add the entry manually, making sure to keep the right
-   indentation on the file. and run `sudo docker compose up -d`
-1. search for a patient by National ID. If this fails, contact a higher level of
-   support
+Search for the patient again after applying the change. If the connection still
+fails, check the application logs and ask the integration administrator to
+verify the endpoint, credentials and certificate trust.

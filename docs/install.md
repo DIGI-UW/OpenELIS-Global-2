@@ -55,10 +55,11 @@ definition; they are not a second lab installation guide. OE2's image publisher
 is the sole owner of deployment to the shared testing server.
 
 Historical offline packages remain governed by their original release
-instructions. The old Python installer and manual certificate recipes are not
-the default path. Manifest-based offline packages contain the same configuration
-and images as the online release. Older releases without a deployment manifest
-must not be presented as implementing this new path.
+instructions. The old Python installer, its packaging workflow and manual
+certificate recipes have been retired from this branch. Manifest-based offline
+packages contain the same configuration and images as the online release. Older
+releases without a deployment manifest must not be presented as implementing
+this new path.
 
 The initial manifest-enabled release must finish publication before operators
 can use these instructions. Until then, this is the candidate delivery contract.

@@ -1,152 +1,24 @@
-# OE Developers’ Notes
+# Developer reference
 
-#
+Use [Development setup](dev_setup.md) for the supported source workflow.
+`scripts/dev-stack` owns interactive startup; the root Compose files are build
+and test inputs, not a second installation path.
 
-**Project Organization:**
+## Repository layout
 
-##
+- `src/` contains the Java application and its tests.
+- `frontend/` contains the React application and its tests.
+- `dev/` contains development configuration consumed by the launcher.
+- `install/` contains runtime entrypoint, health-check and Tomcat resources used
+  by the Dockerfile. It does not contain an installer.
+- `docs/` contains engineering and operator documentation.
+- `.github/workflows/publish-images.yml` publishes the tested image set and its
+  deployment manifest through the existing release pipeline.
 
-**Root Files:**
-
-Folder: `/`
-
-These files are placed here for ease of use, visibility, or proper project
-structure
-
-- `build.sh` - used to kick of the build process to make an installer that can
-  be used remotely
-- `docker-compose.yml` – used for local development options. In production, the
-  docker-compose.yml file is generated from a file under
-  `/install/installerTemplate/linux/templates/docker-compose.yml`
-- `Dockerfile` – used to create the docker image through docker build, or
-  `mvn dockerfile:build`
-- `pom.xml` – used to control the maven build process, and update versions
-
-##
-
-**Source Code:**
-
-Folder: `/src`
-
-Code here is compiled and placed into the resulting .war that is deployed to
-Tomcat
-
-##
-
-**Java code:**
-
-Folder: `/src/main/java`
-
-Follows a package pattern of `prefix.(s).module.layer`
-(`org.openelisglobal.patient.controller`)
-
-##
-
-**Application resources:**
-
-Folder: `/src/main/resources`
-
-Resources used by the server to generate content, and control behaviour of the
-application Files placed here will exist in the classpath of the project and can
-be retrieved from the classloader
-
-- hibernate
-- persistence
-- languages
-- liquibase
-- reports
-- tiles
-- properties
-
-##
-
-**Web Resources:**
-
-Folder: `/src/main/webapp`
-
-Tomcat files such as `web.xml`, `server.xml`, and client resources such as jsps
-(css, and js can be moved here, but are under `/src/main/resources` as that is
-how I was able to get it to work)
-
-##
-
-**Dev Resources:**
-
-Folder: `/dev`
-
-Custom files to be used in development should be placed here All other files
-used in the project (except for `/docker-compose.yml`), should be agnostic of
-where it is being run. This means:
-
-- Don’t commit modifications to context.xml to connect to the database
-- Don’t hardcode property file locations to your machine
-
-If you are running in docker, instead mount your file to where it needs to be in
-the docker image in the docker-compose.yml ie. if OE reads in a properties file
-at `/var/lib/openelis-global/somefile.properties` in docker, add the following
-line under volumes under the openelis service
-`./dev/properties/somefile.properties://var/lib/openelis-global/somefile.properties`
-
-If you are running in eclipse, create a symlink that points to a file in your
-dev folder. The sym link should be in the same location on your machine that it
-would be in the docker container. ie. if OE reads in a properties file at
-`/run/secrets/common.properties` in docker, make a symlink on your device at
-`/run/secrets/common.properties -> /path/to/project/dev/properties/mycommon.properties`
-Using this strategy will keep all your files in your workspace which will enable
-you to edit them more easily. When the installer is run, it will actually create
-files in the specified locations.
-
-##
-
-**Documentation:**
-
-Folder: `/docs`
-
-##
-
-**Installation:**
-
-Folder: `/install`
-
-Only exception is `/build.sh` which is at the root of the project for
-convenience and visibility when running... `sudo build.sh -ib develop` ...the
-files under `/install/installerTemplate/{os_name}` are used as a template to
-build the installer package for the target operating system (currently only
-linux with no current plans to branch out)
-
-###
-
-**Installer Template:**
-
-Folder: `/install/installerTemplate/linux`
-
-Files here are used as is except `/install/installerTemplate/linux/templates/`
-which are read into memory by `setup_OpenELIS.py` with variables replaced when
-the setup script is ran. Variables in these files are written in the format
-`[% variable_name %]` General structure:
-
-- `setup.ini` - contains options that control the behaviour of
-  `setup_OpenELIS.py`. This gets copied to `/etc/openelis-global/setup.ini` on
-  install so it is preserved between upgrades
-- `/scripts` – folder that contains scripts that are run on installation
-- `/initDB` – folder that is ran to create the original database. Some files
-  from /templates are placed here when setup is run.
-- `/crosstab` – folder that installs crosstab into the db
-- `/dockerImage` – folder that contains docker images to save on local bandwidth
-  when installing For more information about how installation works, please read
-  the code/comments in `setup.py`
-
-##
-
-**Tools:**
-
-Folder: `/tools`
-
-Various tools used in conjunction with OpenELIS Some of these are archives of
-old process used (Liquibase-Outdated), while others are single use tools
-(Password-Migrator) `OpenELIS_java_formatter.xml` is an eclipse code format
-export file that can be imported back into eclipse so devs can use the same
-format rules across devices
+Lab installations use the [default distribution](install.md). Online and offline
+packages consume the same published image set; neither builds the application on
+the lab server. See [release delivery](../RELEASES.md) for publishing and
+supported maintenance branches.
 
 #
 
