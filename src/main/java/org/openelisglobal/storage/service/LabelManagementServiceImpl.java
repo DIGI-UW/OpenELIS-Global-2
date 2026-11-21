@@ -1,16 +1,16 @@
 package org.openelisglobal.storage.service;
 
 import java.io.ByteArrayOutputStream;
-import javax.sql.DataSource;
 import org.openelisglobal.barcode.BarcodeLabelMaker;
 import org.openelisglobal.barcode.labeltype.StorageLocationLabel;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.storage.dao.StorageLocationPrintHistoryDAO;
 import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StorageLocationPrintHistory;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,11 +26,7 @@ public class LabelManagementServiceImpl implements LabelManagementService {
     private StorageLocationService storageLocationService;
 
     @Autowired
-    private DataSource dataSource;
-
-    private JdbcTemplate getJdbcTemplate() {
-        return new JdbcTemplate(dataSource);
-    }
+    private StorageLocationPrintHistoryDAO printHistoryDAO;
 
     @Override
     @Transactional(readOnly = true)
@@ -220,11 +216,37 @@ public class LabelManagementServiceImpl implements LabelManagementService {
     @Override
     @Transactional
     public void trackPrintHistory(String locationId, String locationType, String code, String userId) {
-        // Insert print history record into database
-        getJdbcTemplate().update(
-                "INSERT INTO storage_location_print_history (id, location_type, location_id, location_code, printed_by, printed_date, print_count) "
-                        + "VALUES (gen_random_uuid(), ?, ?, ?, ?, CURRENT_TIMESTAMP, 1) "
-                        + "ON CONFLICT (id) DO UPDATE SET print_count = storage_location_print_history.print_count + 1",
-                locationType, locationId, code, userId);
+        StorageLocationPrintHistory history = new StorageLocationPrintHistory();
+        history.setLocationType(locationType);
+        history.setLocationId(locationId);
+        history.setLocationCode(code);
+        history.setPrintedBy(userId);
+        history.setPrintedDate(new java.util.Date());
+        history.setPrintCount(1);
+        printHistoryDAO.insert(history);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Object getLocationById(String type, String id) {
+        if (type == null || id == null) {
+            return null;
+        }
+        try {
+            Integer locationId = Integer.parseInt(id);
+            switch (type) {
+            case "device":
+                return storageLocationService.get(locationId, StorageDevice.class);
+            case "shelf":
+                return storageLocationService.get(locationId, StorageShelf.class);
+            case "rack":
+                return storageLocationService.get(locationId, StorageRack.class);
+            default:
+                return null;
+            }
+        } catch (NumberFormatException e) {
+            LogEvent.logError("LabelManagementServiceImpl", "getLocationById", "Invalid location ID format: " + id);
+            return null;
+        }
     }
 }

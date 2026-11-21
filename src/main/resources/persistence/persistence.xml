@@ -42,6 +42,7 @@
         <class>org.openelisglobal.storage.valueholder.StorageBox</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageAssignment</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageMovement</class>
+        <class>org.openelisglobal.storage.valueholder.StorageLocationPrintHistory</class>
 
         <!-- Alert System entities (003-freezer-monitoring) -->
         <class>org.openelisglobal.alert.valueholder.Alert</class>
