@@ -1,13 +1,17 @@
 package org.openelisglobal.program.valueholder.immunohistochemistry;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import java.util.Date;
+import java.time.LocalDate;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample.ImmunohistochemistryStatus;
 
 public class ImmunohistochemistryDisplayItem {
 
+    /**
+     * The day the examination was asked for, held without a zone so that rendering
+     * it cannot move it onto a neighbouring day.
+     */
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    private Date requestDate;
+    private LocalDate requestDate;
 
     private ImmunohistochemistryStatus status;
     private String lastName;
@@ -20,11 +24,11 @@ public class ImmunohistochemistryDisplayItem {
 
     private String patientPK;
 
-    public Date getRequestDate() {
+    public LocalDate getRequestDate() {
         return requestDate;
     }
 
-    public void setRequestDate(Date requestDate) {
+    public void setRequestDate(LocalDate requestDate) {
         this.requestDate = requestDate;
     }
 
