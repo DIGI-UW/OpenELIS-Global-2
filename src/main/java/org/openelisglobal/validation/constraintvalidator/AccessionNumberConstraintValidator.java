@@ -4,6 +4,7 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
+import org.openelisglobal.common.provider.validation.IAccessionNumberValidator;
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator.ValidationResults;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
@@ -39,9 +40,10 @@ public class AccessionNumberConstraintValidator implements ConstraintValidator<V
             return value.matches("^[a-zA-Z0-9-]*$");
         }
         try {
-            return ValidationResults.SUCCESS
-                    .equals(AccessionNumberUtil.getAccessionNumberValidator(validateAccessionNumberConstraint.format())
-                            .validFormat(value, validateAccessionNumberConstraint.dateValidate()));
+            IAccessionNumberValidator validator = AccessionNumberUtil
+                    .getAccessionNumberValidator(validateAccessionNumberConstraint.format());
+            return validator != null && ValidationResults.SUCCESS
+                    .equals(validator.validFormat(value, validateAccessionNumberConstraint.dateValidate()));
         } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
             return false;
