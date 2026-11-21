@@ -59,6 +59,12 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     @Test
+    public void testGetRoomById_WithNonNumericId_Returns400() throws Exception {
+        this.mockMvc.perform(get("/rest/storage/rooms/abc").sessionAttr("userSessionData", usd))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     public void testDeleteRoom_WithValidId_Returns204() throws Exception {
         // Act & Assert
         this.mockMvc.perform(delete("/rest/storage/rooms/20000").contentType(MediaType.APPLICATION_JSON)
