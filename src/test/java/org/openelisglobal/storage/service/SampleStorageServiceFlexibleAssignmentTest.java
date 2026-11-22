@@ -344,6 +344,36 @@ public class SampleStorageServiceFlexibleAssignmentTest {
     }
 
     @Test
+    public void getSampleItemLocation_reportsTheTemperatureOfTheDeviceHoldingTheRack() {
+        testDevice.setTemperatureSetting(new java.math.BigDecimal("-20.0"));
+        SampleStorageAssignment assignment = new SampleStorageAssignment();
+        assignment.setId(101);
+        assignment.setSampleItem(testSampleItem);
+        assignment.setLocationId(30);
+        assignment.setLocationType("rack");
+        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(assignment);
+        when(storageLocationService.get(30, StorageRack.class)).thenReturn(testRack);
+
+        Map<String, Object> result = sampleStorageService.getSampleItemLocation(TEST_SAMPLE_ITEM_ID);
+
+        assertEquals("OGC-1424: order entry compares this with the test catalog's storage condition", "-20.0",
+                result.get("temperatureSetting"));
+    }
+
+    @Test
+    public void getSampleItemLocation_reportsNoTemperatureForADeviceThatRecordsNone() {
+        SampleStorageAssignment assignment = new SampleStorageAssignment();
+        assignment.setId(102);
+        assignment.setSampleItem(testSampleItem);
+        assignment.setLocationId(10);
+        assignment.setLocationType("device");
+        when(sampleStorageAssignmentDAO.findBySampleItemId(TEST_SAMPLE_ITEM_ID)).thenReturn(assignment);
+        when(storageLocationService.get(10, StorageDevice.class)).thenReturn(testDevice);
+
+        assertEquals("", sampleStorageService.getSampleItemLocation(TEST_SAMPLE_ITEM_ID).get("temperatureSetting"));
+    }
+
+    @Test
     public void testGetSampleItemLocation_WithNoAssignment_ReturnsEmptyMap() {
         // Setup - no assignment found
         when(sampleStorageAssignmentDAO.findBySampleItemId("999")).thenReturn(null);

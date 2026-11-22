@@ -25,9 +25,12 @@ RUN apk update && apk upgrade && apk add --no-cache bash
 WORKDIR /app
 ENV PATH=/app/node_modules/.bin:$PATH
 COPY package.json package-lock.json ./
+# The module SDK is a workspace package: npm ci needs its manifest to be present.
+COPY packages ./packages
 # legacy-peer-deps: React 17 + @carbon/react v1.15 genuinely requires it.
 # Durable fix lands in #3452 (pnpm migration, epic #3449 M1.f).
-RUN npm ci --legacy-peer-deps
+# Cypress runs in dedicated E2E jobs; app images do not need its binary.
+RUN CYPRESS_INSTALL_BINARY=0 npm ci --legacy-peer-deps
 COPY . ./
 
 # ---- dev: Vite dev server (HMR via volume mounts from harness compose) ----

@@ -2,14 +2,14 @@ package org.openelisglobal.qaevent.service;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
+import org.openelisglobal.localization.ShippedLabels;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.qaevent.valueholder.NceCategory;
@@ -62,7 +62,7 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
     @Override
     @Transactional
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
 
         String headerLine = reader.readLine();
         if (headerLine == null) {
@@ -197,7 +197,6 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
             type.setActive(active.isEmpty() || "Y".equalsIgnoreCase(active));
             type.setCategoryId(categoryId);
             type.setNameLocalization(localization);
-            type.setSysUserId("1");
 
             nceTypeService.insert(type);
 
@@ -226,24 +225,23 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
             localization = createLocalization(type.getName(), values, localeColumnIndexes);
             type.setNameLocalization(localization);
         } else {
-            updateLocalization(localization, values, localeColumnIndexes);
+            updateLocalization(localization, values, localeColumnIndexes,
+                    ShippedLabels.isShipped(type.getDisplayKey()));
             localizationService.update(localization);
         }
 
-        type.setSysUserId("1");
     }
 
     private Localization createLocalization(String description, String[] values,
             Map<String, Integer> localeColumnIndexes) {
         Localization localization = new Localization();
         localization.setDescription("NCE Type: " + description);
-        localization.setSysUserId("1");
 
         for (Map.Entry<String, Integer> entry : localeColumnIndexes.entrySet()) {
             String locale = entry.getKey();
             String value = getValueOrEmpty(values, entry.getValue());
             if (!value.isEmpty()) {
-                localization.setLocalizedValue(locale, value);
+                localization.setSystemValue(locale, value, false);
             }
         }
 
@@ -252,15 +250,14 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
     }
 
     private void updateLocalization(Localization localization, String[] values,
-            Map<String, Integer> localeColumnIndexes) {
+            Map<String, Integer> localeColumnIndexes, boolean keepSiteLabels) {
         for (Map.Entry<String, Integer> entry : localeColumnIndexes.entrySet()) {
             String locale = entry.getKey();
             String value = getValueOrEmpty(values, entry.getValue());
             if (!value.isEmpty()) {
-                localization.setLocalizedValue(locale, value);
+                localization.setSystemValue(locale, value, keepSiteLabels);
             }
         }
-        localization.setSysUserId("1");
     }
 
     private String getValueOrEmpty(String[] values, int index) {

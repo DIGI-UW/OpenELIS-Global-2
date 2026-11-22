@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    OGC-799: manually_entered flag for Referral. Set true when a Result is saved
+    against an Outstanding referral via Result Entry (Manual Entry path) — the
+    server-side hook in LogbookPersistServiceImpl uses this to route the row
+    from Outstanding straight to History, skipping Returned (the validator
+    just entered it themselves, so it's already reconciled).
+  -->
+
+  <changeSet id="3.5.0.0-053-referral-add-manually-entered" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="referral" columnName="manually_entered" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="referral" schemaName="clinlims">
+      <column name="manually_entered" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

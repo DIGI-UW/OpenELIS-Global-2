@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="126-amr-organism-default-current-panel" author="openelis">
+  <comment>An organism's default AST panel is the current version of its panel.</comment>
+  <sql>UPDATE clinlims.micro_organism o SET default_ast_panel_id = cur.id FROM clinlims.micro_ast_panel old JOIN clinlims.micro_ast_panel cur ON cur.logical_key = old.logical_key AND cur.is_current = 'Y' WHERE o.default_ast_panel_id = old.id AND old.is_current = 'N'</sql>
+  <rollback/>
+ </changeSet>
+</databaseChangeLog>

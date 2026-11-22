@@ -33,6 +33,13 @@ public interface TaskInterpreter {
 
     OrderPriority getOrderPriority();
 
+    /**
+     * OGC-1145 FR-8: true when the interpreted order's code is specimen-ambiguous
+     * (several tests, or one test on several sample types) and the message carried
+     * no specimen — the order should queue AwaitingSpecimen, never first-match.
+     */
+    boolean isSpecimenClarificationNeeded();
+
     List<InterpreterResults> interpret(Task incomingTask, ServiceRequest incomingServiceRequest,
             Patient incomingPatient);
 }

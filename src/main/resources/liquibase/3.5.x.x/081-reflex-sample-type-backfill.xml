@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 follow-up - a reflex rule fires on the specimen it was authored for.
+
+    The condition has always carried the specimen the user picked, but it was
+    validated at save and then dropped, so the executed row carried none and
+    the rule fired on every specimen the trigger test runs on. 076 added the
+    column and new rules write it; rules authored before that still have it
+    empty, which reads as unscoped.
+
+    Their specimen is not lost - it is on the condition - so it is copied onto
+    the executed row rather than left to mean "any". The rule then fires where
+    the lab said it should, which is what the configuration has claimed all
+    along.
+    -->
+
+    <changeSet id="reflex-sample-type-001-backfill" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <columnExists schemaName="clinlims" tableName="test_reflex" columnName="sample_type_id"/>
+                <columnExists schemaName="clinlims" tableName="reflex_rule_condition" columnName="sample_id"/>
+            </and>
+        </preConditions>
+        <comment>Carry each reflex condition's specimen onto the row the executor reads</comment>
+        <sql>
+            UPDATE clinlims.test_reflex tr
+            SET sample_type_id = CAST(cond.sample_id AS NUMERIC)
+            FROM clinlims.reflex_rule_condition cond
+            WHERE tr.sample_type_id IS NULL
+              AND cond.test_analyte_id IS NOT NULL
+              AND tr.test_analyte_id = cond.test_analyte_id
+              AND cond.sample_id ~ '^[0-9]+$'
+              AND EXISTS (
+                  SELECT 1 FROM clinlims.type_of_sample t
+                  WHERE t.id = CAST(cond.sample_id AS NUMERIC)
+              );
+        </sql>
+        <rollback>
+            <sql>UPDATE clinlims.test_reflex SET sample_type_id = NULL;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

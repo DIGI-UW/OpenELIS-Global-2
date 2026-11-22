@@ -1,3 +1,4 @@
+import NotebookAttachmentPreview from "./NotebookAttachmentPreview";
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -7,12 +8,9 @@ import {
   TextArea,
   Select,
   SelectItem,
-  MultiSelect,
-  FileUploader,
   FilterableMultiSelect,
   Grid,
   Column,
-  InlineLoading,
   Section,
   Heading,
   Tile,
@@ -22,9 +20,6 @@ import {
   FileUploaderItem,
   Loading,
   Tag,
-  Tabs,
-  TabList,
-  Tab,
   Accordion,
   AccordionItem,
   ContentSwitcher,
@@ -43,13 +38,6 @@ import {
   Search,
   Layer,
 } from "@carbon/react";
-import {
-  Launch,
-  Subtract,
-  ArrowLeft,
-  ArrowRight,
-  Checkmark,
-} from "@carbon/react/icons";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -61,16 +49,17 @@ import {
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
-  hasRole,
   toBase64,
 } from "../utils/Utils";
-import { Add, Json } from "@carbon/icons-react";
+import { Add } from "@carbon/icons-react";
 import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 
 const NoteBookEntryForm = () => {
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "notebook.label.dashboard", link: "/NoteBookDashboard" },
+    { label: "notebook.label.entry", link: "" },
   ];
 
   const MODES = Object.freeze({
@@ -226,10 +215,8 @@ const NoteBookEntryForm = () => {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.success" }),
       });
-      // Reload data to get comments with proper id and author from backend
-      getFromOpenElisServer("/rest/notebook/view/" + body.id, loadInitialData);
-      // Reload audit trail after save
-      loadAuditTrail(body.id);
+      // The saved notebook, its comments and audit trail load on the new page.
+      window.location.href = "/NoteBookEntryForm/" + body.id;
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -237,7 +224,6 @@ const NoteBookEntryForm = () => {
         message: intl.formatMessage({ id: "error.save.msg" }),
       });
     }
-    window.location.href = "/NoteBookEntryForm/" + body.id;
   };
 
   const [showPageModal, setShowPageModal] = useState(false);
@@ -654,16 +640,12 @@ const NoteBookEntryForm = () => {
                 hour12: false,
               });
             }
-            return { ...item, id: index + 1, time: formattedTime };
+            return { ...item, id: String(index + 1), time: formattedTime };
           });
           setAuditTrailItems(updatedAuditTrailItems);
         } else {
           setAuditTrailItems([]);
         }
-        setAuditTrailLoading(false);
-      },
-      () => {
-        setAuditTrailItems([]);
         setAuditTrailLoading(false);
       },
     );
@@ -752,13 +734,14 @@ const NoteBookEntryForm = () => {
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
                 <TextInput
+                  {...requiredProps()}
                   id="entryTitle"
                   labelText={
                     <>
                       {intl.formatMessage({
                         id: "notebook.label.title",
                       })}
-                      <span className="requiredlabel">*</span>
+                      <RequiredMarker />
                     </>
                   }
                   placeholder={intl.formatMessage({
@@ -805,6 +788,7 @@ const NoteBookEntryForm = () => {
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={8} md={8} sm={4}>
                 <Select
+                  {...requiredProps()}
                   id="experimenttype"
                   name="experimenttype"
                   labelText={
@@ -812,7 +796,7 @@ const NoteBookEntryForm = () => {
                       {intl.formatMessage({
                         id: "notebook.label.experimentType",
                       })}
-                      <span className="requiredlabel">*</span>
+                      <RequiredMarker />
                     </>
                   }
                   value={noteBookData.type || ""}
@@ -823,7 +807,7 @@ const NoteBookEntryForm = () => {
                     });
                   }}
                 >
-                  <SelectItem />
+                  <SelectItem value="" text="" />
                   {types.map((type, index) => {
                     return (
                       <SelectItem
@@ -892,13 +876,14 @@ const NoteBookEntryForm = () => {
               </Column>
               <Column lg={16} md={8} sm={4}>
                 <TextArea
+                  {...requiredProps()}
                   id="objective"
                   labelText={
                     <>
                       {intl.formatMessage({
                         id: "notebook.label.objective",
                       })}
-                      <span className="requiredlabel">*</span>
+                      <RequiredMarker />
                     </>
                   }
                   placeholder={intl.formatMessage({
@@ -1013,25 +998,12 @@ const NoteBookEntryForm = () => {
                   <Grid style={{ marginTop: "1rem" }}>
                     {noteBookData.files.map((file, index) => (
                       <Column key={index} lg={8} md={8} sm={12}>
-                        <Tile style={{ marginBottom: "1rem" }}>
+                        <Tile
+                          style={{ marginBottom: "1rem" }}
+                          data-testid="notebook-attachment"
+                        >
                           <p>{file.fileName}</p>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              var win = window.open();
-                              win.document.write(
-                                '<iframe src="' +
-                                  "data:" +
-                                  file.fileType +
-                                  ";base64," +
-                                  file.fileData +
-                                  '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-                              );
-                            }}
-                          >
-                            <Launch />{" "}
-                            <FormattedMessage id="pathology.label.view" />
-                          </Button>
+                          <NotebookAttachmentPreview size="sm" file={file} />
                           <Button
                             kind="danger--tertiary"
                             size="sm"
@@ -1786,7 +1758,7 @@ const NoteBookEntryForm = () => {
                 }}
                 disabled={noteBookData.status === "ARCHIVED"}
               >
-                <SelectItem />
+                <SelectItem value="" text="" />
                 {statuses.map((status, index) => {
                   return (
                     <SelectItem
@@ -1817,7 +1789,7 @@ const NoteBookEntryForm = () => {
                   });
                 }}
               >
-                <SelectItem />
+                <SelectItem value="" text="" />
                 {technicianUsers.map((user, index) => {
                   return (
                     <SelectItem key={index} text={user.value} value={user.id} />

@@ -12,6 +12,9 @@
 # limits via -XX:+UseContainerSupport (on by default) and auto-sizes the heap.
 services:
   oe.openelis.org:
+    # This checkout-owned override is applied by the reusable Playwright workflow.
+    environment:
+      - ORG_OPENELISGLOBAL_UAT_SCENARIOS_ENABLED=true
     deploy:
       resources:
         limits:
@@ -46,4 +49,3 @@ services:
       resources:
         limits:
           memory: 128M
-

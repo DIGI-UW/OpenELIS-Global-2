@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.4.0.0-add-allow-free-text-to-organization-type" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="organization_type" columnName="allow_free_text" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Add allow_free_text column to organization_type for address hierarchy free text levels</comment>
+    <addColumn tableName="organization_type" schemaName="clinlims">
+      <column name="allow_free_text" type="BOOLEAN" defaultValueBoolean="false">
+        <constraints nullable="true"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

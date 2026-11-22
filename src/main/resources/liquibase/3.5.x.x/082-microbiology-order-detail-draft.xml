@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="OGC-782-microbiology-order-detail-draft" author="OpenELIS">
+    <addColumn schemaName="clinlims" tableName="micro_case_order_detail">
+      <column name="sample_id" type="numeric(10)"/>
+      <column name="culture_method_id" type="varchar(20)"/>
+    </addColumn>
+
+    <dropNotNullConstraint
+      schemaName="clinlims"
+      tableName="micro_case_order_detail"
+      columnName="case_id"
+      columnDataType="varchar(36)"/>
+
+    <addUniqueConstraint
+      schemaName="clinlims"
+      tableName="micro_case_order_detail"
+      columnNames="sample_id"
+      constraintName="uq_micro_case_order_detail_sample"/>
+
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims"
+      baseTableName="micro_case_order_detail"
+      baseColumnNames="sample_id"
+      constraintName="fk_micro_case_order_detail_sample"
+      referencedTableSchemaName="clinlims"
+      referencedTableName="sample"
+      referencedColumnNames="id"/>
+
+    <sql>
+      ALTER TABLE clinlims.micro_case_order_detail
+      ADD CONSTRAINT ck_micro_case_order_detail_owner
+      CHECK ((case_id IS NULL) &lt;&gt; (sample_id IS NULL))
+    </sql>
+
+    <rollback>
+      <delete schemaName="clinlims" tableName="micro_case_order_detail">
+        <where>case_id IS NULL</where>
+      </delete>
+      <sql>
+        ALTER TABLE clinlims.micro_case_order_detail
+        DROP CONSTRAINT ck_micro_case_order_detail_owner
+      </sql>
+      <dropForeignKeyConstraint
+        baseTableSchemaName="clinlims"
+        baseTableName="micro_case_order_detail"
+        constraintName="fk_micro_case_order_detail_sample"/>
+      <dropUniqueConstraint
+        schemaName="clinlims"
+        tableName="micro_case_order_detail"
+        constraintName="uq_micro_case_order_detail_sample"/>
+      <addNotNullConstraint
+        schemaName="clinlims"
+        tableName="micro_case_order_detail"
+        columnName="case_id"
+        columnDataType="varchar(36)"/>
+      <dropColumn schemaName="clinlims" tableName="micro_case_order_detail" columnName="culture_method_id"/>
+      <dropColumn schemaName="clinlims" tableName="micro_case_order_detail" columnName="sample_id"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,569 @@
+testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,localization:en,localization:fr,localization:es,localization:id
+# ============================================================================
+# ENVIRONMENTAL & VECTOR SURVEILLANCE - Test Catalog
+# Generated from environmental_test_catalog.csv
+# ============================================================================
+# --- Pemeriksaan kualitas air ---
+Kekeruhan,Kualitas Air,Air higiene sanitasi|Air Minum|Air Kolam renang|Air permukaan|Limbah Cair|Air laut|Air hemodialisa|Air Spa|Air pemandian umum,87442-0,Y,Y,1000,{NTU},Kekeruhan,,,Kekeruhan
+Warna,Kualitas Air,Air|Air higiene sanitasi|Air Minum|Air Kolam renang|Air permukaan|Limbah Cair|Air laut|Air hemodialisa|Air Spa|Air pemandian umum,,Y,Y,1001,,Warna,,,Warna
+Kesadahan,Kualitas Air,Air,87443-8,Y,N,1002,mg/L,Kesadahan,,,Kesadahan
+Total zat terlarut (TDS)-Gravimetri,Kualitas Air,Air,43165-0,Y,Y,1003,mg/L,Total zat terlarut (TDS)-Gravimetri,,,Total zat terlarut (TDS)-Gravimetri
+Total zat terlarut-TDS-Elektrometri,Kualitas Air,Air,43165-0,Y,Y,1004,mg/L,Total zat terlarut-TDS-Elektrometri,,,Total zat terlarut-TDS-Elektrometri
+Kejernihan,Kualitas Air,Air,,Y,Y,1005,,Kejernihan,,,Kejernihan
+E.coli-Viability count with membran filter,Kualitas Air,Air,87317-4,Y,Y,1006,cfu/mL,E.coli-Viability count with membran filter,,,E.coli-Viability count with membran filter
+E.coli-MPN tabung ganda,Kualitas Air,Air,87317-4,Y,Y,1007,cfu/mL,E.coli-MPN tabung ganda,,,E.coli-MPN tabung ganda
+E.coli-MPN enzim substrat,Kualitas Air,Air,87317-4,Y,Y,1008,cfu/mL,E.coli-MPN enzim substrat,,,E.coli-MPN enzim substrat
+Presence/Absence colliform,Kualitas Air,Air,14081-4,Y,Y,1009,,Presence/Absence colliform,,,Presence/Absence colliform
+Coliform-MPN tabung ganda,Kualitas Air,Air,20769-6,Y,Y,1010,cfu/mL,Coliform-MPN tabung ganda,,,Coliform-MPN tabung ganda
+Coliform-MPN enzim substrat,Kualitas Air,Air,20769-6,Y,Y,1011,cfu/mL,Coliform-MPN enzim substrat,,,Coliform-MPN enzim substrat
+Coliform-Membran filter,Kualitas Air,Air,34890-4,Y,Y,1012,cfu/mL,Coliform-Membran filter,,,Coliform-Membran filter
+Angka Enterobacteriaceae,Kualitas Air,Air,101509-8,Y,Y,1013,cfu/mL,Angka Enterobacteriaceae,,,Angka Enterobacteriaceae
+Angka kuman,Kualitas Air,Air,101509-8,Y,Y,1014,cfu/mL,Angka kuman,,,Angka kuman
+Identifikasi Endotoksin,Kualitas Air,Air,20797-7,Y,Y,1015,,Identifikasi Endotoksin,,,Identifikasi Endotoksin
+Uji endotoksin-Semi kuantitatif,Kualitas Air,Air,20797-7,Y,Y,1016,,Uji endotoksin-Semi kuantitatif,,,Uji endotoksin-Semi kuantitatif
+Legionella spp-Identifikasi-Kultur,Kualitas Air,Air,87957-7,Y,N,1017,,Legionella spp-Identifikasi-Kultur,,,Legionella spp-Identifikasi-Kultur
+Legionella spp-Deteksi-PCR,Kualitas Air,Air,100748-3,Y,Y,1018,,Legionella spp-Deteksi-PCR,,,Legionella spp-Deteksi-PCR
+Leptopspira-Deteksi-PCR,Kualitas Air,Air,35491-0,Y,Y,1019,,Leptopspira-Deteksi-PCR,,,Leptopspira-Deteksi-PCR
+Salmonella sp.,Kualitas Air,Air,17563-8,Y,Y,1020,,Salmonella sp.,,,Salmonella sp.
+Shigella sp,Kualitas Air,Air,17576-0,Y,Y,1021,,Shigella sp,,,Shigella sp
+Staphylococcus aureus,Kualitas Air,Air,100897-8,Y,Y,1022,,Staphylococcus aureus,,,Staphylococcus aureus
+Staphylococcus sp,Kualitas Air,Air,20966-8,Y,Y,1023,,Staphylococcus sp,,,Staphylococcus sp
+Streptococcus sp,Kualitas Air,Air,38353-9,Y,Y,1024,,Streptococcus sp,,,Streptococcus sp
+Vibrio cholera,Kualitas Air,Air,6580-5,Y,Y,1025,,Vibrio cholera,,,Vibrio cholera
+pH,Kualitas Air,Air,9481-3,Y,Y,1026,{pH},pH,,,pH
+Klorida,Kualitas Air,Air,54494-0,Y,Y,1027,mg/L,Klorida,,,Klorida
+Nitrat,Kualitas Air,Air,,Y,Y,1028,mg/L,Nitrat,,,Nitrat
+Mangan,Kualitas Air,Air,,Y,Y,1029,mg/L,Mangan,,,Mangan
+Besi,Kualitas Air,Air,,Y,Y,1030,mg/L,Besi,,,Besi
+Nitrit,Kualitas Air,Air,,Y,Y,1031,mg/L,Nitrit,,,Nitrit
+Arsen,Kualitas Air,Air,9463-1,Y,Y,1032,mg/L,Arsen,,,Arsen
+Klor bebas,Kualitas Air,Air,43158-5,Y,Y,1033,mg/L,Klor bebas,,,Klor bebas
+Cadmium,Kualitas Air,Air,9466-4,Y,Y,1034,µg/L,Cadmium,,,Cadmium
+Timbal,Kualitas Air,Air,9477-1,Y,Y,1035,µg/L,Timbal,,,Timbal
+Fluorida,Kualitas Air,Air,9471-4,Y,Y,1036,mg/L,Fluorida,,,Fluorida
+Sianida,Kualitas Air,Air,38338-0,Y,N,1037,mg/L,Sianida,,,Sianida
+Merkuri (Hg),Kualitas Air,Air,9479-7,Y,Y,1038,{ppm},Merkuri (Hg),,,Merkuri (Hg)
+Barium (Ba),Kualitas Air,Air,9464-9,Y,N,1039,mg/L,Barium (Ba),,,Barium (Ba)
+Benzena,Kualitas Air,Air,38339-8,Y,N,1040,mg/L,Benzena,,,Benzena
+Toluene,Kualitas Air,Air,38313-3,Y,N,1041,mg/L,Toluene,,,Toluene
+Dikuat dibromida,Kualitas Air,Air,38300-0,Y,N,1042,mg/L,Dikuat dibromida,,,Dikuat dibromida
+Lindan,Kualitas Air,Air,38323-2,Y,N,1043,mg/L,Lindan,,,Lindan
+Heptaklor,Kualitas Air,Air,38306-7,Y,N,1044,mg/L,Heptaklor,,,Heptaklor
+Endrin,Kualitas Air,Air,38302-6,Y,N,1045,mg/L,Endrin,,,Endrin
+Klordan,Kualitas Air,Air,38341-4,Y,N,1046,mg/L,Klordan,,,Klordan
+Toxaphen,Kualitas Air,Air,38330-7,Y,N,1047,mg/L,Toxaphen,,,Toxaphen
+Hexachlorobenzene (HCB),Kualitas Air,Air,38342-2,Y,N,1048,mg/L,Hexachlorobenzene (HCB),,,Hexachlorobenzene (HCB)
+Aldrin,Kualitas Air,Air,87668-0,Y,Y,1049,mg/kg,Aldrin,,,Aldrin
+Dieldrin,Kualitas Air,Air,87665-6,Y,Y,1050,mg/kg,Dieldrin,,,Dieldrin
+Seng fosfida,Kualitas Air,Air,20989-0,Y,Y,1051,mg/kg,Seng fosfida,,,Seng fosfida
+α-BHC,Kualitas Air,Air,87667-2,Y,Y,1052,mg/kg,α-BHC,,,α-BHC
+Phospat,Kualitas Air,Air,,Y,Y,1053,mg/L,Phospat,,,Phospat
+Sulfat,Kualitas Air,Air,,Y,Y,1054,mg/L,Sulfat,,,Sulfat
+Fenol,Kualitas Air,Air,49106-8,Y,Y,1055,mg/L,Fenol,,,Fenol
+Kalium,Kualitas Air,Air,9482-1,Y,Y,1056,{ppm},Kalium,,,Kalium
+Zink (Zn),Kualitas Air,Air,9487-0,Y,Y,1057,mg/L,Zink (Zn),,,Zink (Zn)
+Tembaga (Cu),Kualitas Air,Air,9470-6,Y,Y,1058,mg/L,Tembaga (Cu),,,Tembaga (Cu)
+Natrium,Kualitas Air,Air,9485-4,Y,Y,1059,mg/L,Natrium,,,Natrium
+Nikel,Kualitas Air,Air,13649-9,Y,Y,1060,mg/L,Nikel,,,Nikel
+Selenium,Kualitas Air,Air,9483-9,Y,Y,1061,µg/L,Selenium,,,Selenium
+Aluminium,Kualitas Air,Air,9462-3,Y,Y,1062,mg/L,Aluminium,,,Aluminium
+Chromium,Kualitas Air,Air,9469-8,Y,Y,1063,mg/L,Chromium,,,Chromium
+Argentum (Ag),Kualitas Air,Air,,Y,Y,1064,mg/L,Argentum (Ag),,,Argentum (Ag)
+Magnesium (Mg),Kualitas Air,Air,9478-9,Y,Y,1065,mg/L,Magnesium (Mg),,,Magnesium (Mg)
+Kalsium (Ca),Kualitas Air,Air,9467-2,Y,Y,1066,mg/L,Kalsium (Ca),,,Kalsium (Ca)
+Kobalt (Co),Kualitas Air,Air,9691-7,Y,Y,1067,mg/L,Kobalt (Co),,,Kobalt (Co)
+Silika (SiO2),Kualitas Air,Air,43164-3,Y,Y,1068,mg/L,Silika (SiO2),,,Silika (SiO2)
+# --- Pemeriksaan kualitas udara ---
+Gas karbon monoksida,Kualitas Udara,Udara,,Y,Y,1069,{ppm},Gas karbon monoksida,,,Gas karbon monoksida
+Gas karbon monoksida-Gravimetri,Kualitas Udara,Udara,93045-3,Y,N,1070,{ppm},Gas karbon monoksida-Gravimetri,,,Gas karbon monoksida-Gravimetri
+Gas hidrogen sulfida,Kualitas Udara,Udara,38603-7,Y,Y,1071,{ppm},Gas hidrogen sulfida,,,Gas hidrogen sulfida
+Gas hidrogen sulfida-Gravimetri,Kualitas Udara,Udara,38603-7,Y,Y,1072,{ppm},Gas hidrogen sulfida-Gravimetri,,,Gas hidrogen sulfida-Gravimetri
+Gas nitrogen,Kualitas Udara,Udara,53554-2,Y,Y,1073,{ppm},Gas nitrogen,,,Gas nitrogen
+Gas nitrogen-Gravimetri,Kualitas Udara,Udara,53554-2,Y,Y,1074,{ppm},Gas nitrogen-Gravimetri,,,Gas nitrogen-Gravimetri
+Amoniak (NH3),Kualitas Udara,Udara,38589-8,Y,Y,1075,{ppm},Amoniak (NH3),,,Amoniak (NH3)
+Asbes,Kualitas Udara,Udara,38568-2,Y,Y,1076,serat/m,Asbes,,,Asbes
+Formaldehyde,Kualitas Udara,Udara,38700-1,Y,Y,1077,{ppm},Formaldehyde,,,Formaldehyde
+Hidrogen fluorida (HF),Kualitas Udara,Udara,38744-9,Y,Y,1078,{ppm},Hidrogen fluorida (HF),,,Hidrogen fluorida (HF)
+Hidrogen klorida (HCL),Kualitas Udara,Udara,38743-1,Y,Y,1079,{ppm},Hidrogen klorida (HCL),,,Hidrogen klorida (HCL)
+Hidrogen klorida-HCL-Gravimetri,Kualitas Udara,Udara,38743-1,Y,Y,1080,{ppm},Hidrogen klorida-HCL-Gravimetri,,,Hidrogen klorida-HCL-Gravimetri
+Hidrogen sulfida (H2S),Kualitas Udara,Udara,38603-7,Y,Y,1081,{ppm},Hidrogen sulfida (H2S),,,Hidrogen sulfida (H2S)
+Mycobacterium TB (Direct),Kualitas Udara,Udara,656-9,Y,Y,1082,,Mycobacterium TB (Direct),,,Mycobacterium TB (Direct)
+Staphylococcus sp,Kualitas Udara,Udara,20966-8,Y,Y,1083,,Staphylococcus sp,,,Staphylococcus sp
+# --- Keamanan pangan ---
+Listeria sp,Keamanan pangan,Pangan,6609-2,Y,Y,1084,,Listeria sp,,,Listeria sp
+E.coli-Viability count with membran filter,Keamanan pangan,Pangan,86324-1,Y,Y,1085,cfu/g,E.coli-Viability count with membran filter,,,E.coli-Viability count with membran filter
+Salmonella sp.-Kultur,Keamanan pangan,Pangan,17563-8,Y,Y,1086,,Salmonella sp.-Kultur,,,Salmonella sp.-Kultur
+Salmonella sp.-PCR,Keamanan pangan,Pangan,49612-5,Y,Y,1087,,Salmonella sp.-PCR,,,Salmonella sp.-PCR
+Salmonella sp.-Sekuensing gen 16S rRNA,Keamanan pangan,Pangan,66885-5,Y,Y,1088,,Salmonella sp.-Sekuensing gen 16S rRNA,,,Salmonella sp.-Sekuensing gen 16S rRNA
+Shigella sp,Keamanan pangan,Pangan,46454-5,Y,Y,1089,,Shigella sp,,,Shigella sp
+Staphylococcus aureus,Keamanan pangan,Pangan,86319-1,Y,Y,1090,,Staphylococcus aureus,,,Staphylococcus aureus
+Total coliform-MPN,Keamanan pangan,Pangan,86324-1,Y,Y,1091,/g,Total coliform-MPN,,,Total coliform-MPN
+Khamir-Kualitatif-Kultur,Keamanan pangan,Pangan,18482-0,Y,Y,1092,,Khamir-Kualitatif-Kultur,,,Khamir-Kualitatif-Kultur
+Arsen,Keamanan pangan,Pangan,9366-6,Y,Y,1093,mg/kg,Arsen,,,Arsen
+Arsen-Rapid test,Keamanan pangan,Pangan,43815-0,Y,Y,1094,,Arsen-Rapid test,,,Arsen-Rapid test
+Timbal (Pb),Keamanan pangan,Pangan,23890-7,Y,Y,1095,mg/kg,Timbal (Pb),,,Timbal (Pb)
+Kadmium (Cd),Keamanan pangan,Pangan,,Y,Y,1096,mg/kg,Kadmium (Cd),,,Kadmium (Cd)
+Tembaga,Keamanan pangan,Pangan,,Y,Y,1097,mg/kg,Tembaga,,,Tembaga
+Kobalt,Keamanan pangan,Pangan,,Y,Y,1098,mg/kg,Kobalt,,,Kobalt
+Kromium,Keamanan pangan,Pangan,,Y,N,1099,mg/kg,Kromium,,,Kromium
+Total merkuri,Keamanan pangan,Pangan,23896-4,Y,Y,1100,mg/kg,Total merkuri,,,Total merkuri
+Nitrat (NO3),Keamanan pangan,Pangan,,Y,Y,1101,mg/kg,Nitrat (NO3),,,Nitrat (NO3)
+Nitrit (NO2),Keamanan pangan,Pangan,,Y,Y,1102,mg/kg,Nitrit (NO2),,,Nitrit (NO2)
+Sianida (Cn),Keamanan pangan,Pangan,87618-5,Y,Y,1103,mg/kg,Sianida (Cn),,,Sianida (Cn)
+Selenium (Se),Keamanan pangan,Pangan,,Y,Y,1104,mg/kg,Selenium (Se),,,Selenium (Se)
+Seng (Zn),Keamanan pangan,Pangan,,Y,Y,1105,mg/kg,Seng (Zn),,,Seng (Zn)
+Aflatoxin B1,Keamanan pangan,Pangan,87584-9,Y,Y,1106,mg/kg,Aflatoxin B1,,,Aflatoxin B1
+Aflatoxin B2,Keamanan pangan,Pangan,87583-1,Y,Y,1107,mg/kg,Aflatoxin B2,,,Aflatoxin B2
+Aflatoxin G1,Keamanan pangan,Pangan,87582-3,Y,Y,1108,mg/kg,Aflatoxin G1,,,Aflatoxin G1
+Aflatoxin G2,Keamanan pangan,Pangan,87581-5,Y,Y,1109,mg/kg,Aflatoxin G2,,,Aflatoxin G2
+Aflatoxin M1,Keamanan pangan,Pangan,87580-7,Y,Y,1110,mg/kg,Aflatoxin M1,,,Aflatoxin M1
+Pemeriksaan retinol (betakaroten) pada pangan,Keamanan pangan,Pangan,87673-0,Y,Y,1111,mg/kg,Pemeriksaan retinol (betakaroten) pada pangan,,,Pemeriksaan retinol (betakaroten) pada pangan
+Pestisida-Gol.organoklorin-DDT-Air,Keamanan pangan,Air,87639-1,Y,Y,1112,µg/kg,Pestisida-Gol.organoklorin-DDT-Air,,,Pestisida-Gol.organoklorin-DDT-Air
+Pestisida-Gol.organoklorin-DDT-Buah,Keamanan pangan,Buah,87639-1,Y,Y,1113,µg/kg,Pestisida-Gol.organoklorin-DDT-Buah,,,Pestisida-Gol.organoklorin-DDT-Buah
+Pestisida-Gol.organoklorin-DDT-Sayur,Keamanan pangan,Sayur,87639-1,Y,Y,1114,µg/kg,Pestisida-Gol.organoklorin-DDT-Sayur,,,Pestisida-Gol.organoklorin-DDT-Sayur
+Pestisida-Gol.organoklorin-Aldrin-Air,Keamanan pangan,Air,87668-0,Y,Y,1115,mg/kg,Pestisida-Gol.organoklorin-Aldrin-Air,,,Pestisida-Gol.organoklorin-Aldrin-Air
+Pestisida-Gol.organoklorin-Aldrin-Buah,Keamanan pangan,Buah,87668-0,Y,Y,1116,mg/kg,Pestisida-Gol.organoklorin-Aldrin-Buah,,,Pestisida-Gol.organoklorin-Aldrin-Buah
+Pestisida-Gol.organoklorin-Aldrin-Sayur,Keamanan pangan,Sayur,87668-0,Y,Y,1117,mg/kg,Pestisida-Gol.organoklorin-Aldrin-Sayur,,,Pestisida-Gol.organoklorin-Aldrin-Sayur
+Pestisida-Gol.organoklorin-Dieldrin-Air,Keamanan pangan,Air,87665-6,Y,Y,1118,mg/kg,Pestisida-Gol.organoklorin-Dieldrin-Air,,,Pestisida-Gol.organoklorin-Dieldrin-Air
+Pestisida-Gol.organoklorin-Dieldrin-Buah,Keamanan pangan,Buah,87665-6,Y,Y,1119,mg/kg,Pestisida-Gol.organoklorin-Dieldrin-Buah,,,Pestisida-Gol.organoklorin-Dieldrin-Buah
+Pestisida-Gol.organoklorin-Dieldrin-Sayur,Keamanan pangan,Sayur,87665-6,Y,Y,1120,mg/kg,Pestisida-Gol.organoklorin-Dieldrin-Sayur,,,Pestisida-Gol.organoklorin-Dieldrin-Sayur
+Pestisida-Gol.organoklorin-Endrin-Air,Keamanan pangan,Air,87660-7,Y,Y,1121,mg/kg,Pestisida-Gol.organoklorin-Endrin-Air,,,Pestisida-Gol.organoklorin-Endrin-Air
+Pestisida-Gol.organoklorin-Endrin-Buah,Keamanan pangan,Buah,87660-7,Y,Y,1122,mg/kg,Pestisida-Gol.organoklorin-Endrin-Buah,,,Pestisida-Gol.organoklorin-Endrin-Buah
+Pestisida-Gol.organoklorin-Endrin-Sayur,Keamanan pangan,Sayur,87660-7,Y,Y,1123,mg/kg,Pestisida-Gol.organoklorin-Endrin-Sayur,,,Pestisida-Gol.organoklorin-Endrin-Sayur
+Pestisida-Gol.organoklorin-Heptaklor-Air,Keamanan pangan,Air,87654-0,Y,Y,1124,mg/kg,Pestisida-Gol.organoklorin-Heptaklor-Air,,,Pestisida-Gol.organoklorin-Heptaklor-Air
+Pestisida-Gol.organoklorin-Heptaklor-Buah,Keamanan pangan,Buah,87654-0,Y,Y,1125,mg/kg,Pestisida-Gol.organoklorin-Heptaklor-Buah,,,Pestisida-Gol.organoklorin-Heptaklor-Buah
+Pestisida-Gol.organoklorin-Heptaklor-Sayur,Keamanan pangan,Sayur,87654-0,Y,Y,1126,mg/kg,Pestisida-Gol.organoklorin-Heptaklor-Sayur,,,Pestisida-Gol.organoklorin-Heptaklor-Sayur
+Pestisida-Gol.organoklorin-Endosulfan-Air,Keamanan pangan,Air,87661-5,Y,Y,1127,mg/kg,Pestisida-Gol.organoklorin-Endosulfan-Air,,,Pestisida-Gol.organoklorin-Endosulfan-Air
+Pestisida-Gol.organoklorin-Endosulfan-Buah,Keamanan pangan,Buah,87661-5,Y,Y,1128,mg/kg,Pestisida-Gol.organoklorin-Endosulfan-Buah,,,Pestisida-Gol.organoklorin-Endosulfan-Buah
+Pestisida-Gol.organoklorin-Endosulfan-Sayur,Keamanan pangan,Sayur,87661-5,Y,Y,1129,mg/kg,Pestisida-Gol.organoklorin-Endosulfan-Sayur,,,Pestisida-Gol.organoklorin-Endosulfan-Sayur
+Pestisida-Gol.organoklorin-Lindan-Air,Keamanan pangan,Air,87649-0,Y,Y,1130,mg/kg,Pestisida-Gol.organoklorin-Lindan-Air,,,Pestisida-Gol.organoklorin-Lindan-Air
+Pestisida-Gol.organoklorin-Lindan-Buah,Keamanan pangan,Buah,87649-0,Y,Y,1131,mg/kg,Pestisida-Gol.organoklorin-Lindan-Buah,,,Pestisida-Gol.organoklorin-Lindan-Buah
+Pestisida-Gol.organoklorin-Lindan-Sayur,Keamanan pangan,Sayur,87649-0,Y,Y,1132,mg/kg,Pestisida-Gol.organoklorin-Lindan-Sayur,,,Pestisida-Gol.organoklorin-Lindan-Sayur
+Pestisida-Gol.organoklorin-Klordan-Air,Keamanan pangan,Air,87746-4,Y,Y,1133,mg/kg,Pestisida-Gol.organoklorin-Klordan-Air,,,Pestisida-Gol.organoklorin-Klordan-Air
+Pestisida-Gol.organoklorin-Klordan-Buah,Keamanan pangan,Buah,87746-4,Y,Y,1134,mg/kg,Pestisida-Gol.organoklorin-Klordan-Buah,,,Pestisida-Gol.organoklorin-Klordan-Buah
+Pestisida-Gol.organoklorin-Klordan-Sayur,Keamanan pangan,Sayur,87746-4,Y,Y,1135,mg/kg,Pestisida-Gol.organoklorin-Klordan-Sayur,,,Pestisida-Gol.organoklorin-Klordan-Sayur
+Pestisida-Gol.organoklorin-Toksafen-Air,Keamanan pangan,Air,87632-6,Y,Y,1136,mg/kg,Pestisida-Gol.organoklorin-Toksafen-Air,,,Pestisida-Gol.organoklorin-Toksafen-Air
+Pestisida-Gol.organoklorin-Toksafen-Buah,Keamanan pangan,Buah,87632-6,Y,Y,1137,mg/kg,Pestisida-Gol.organoklorin-Toksafen-Buah,,,Pestisida-Gol.organoklorin-Toksafen-Buah
+Pestisida-Gol.organoklorin-Toksafen-Sayur,Keamanan pangan,Sayur,87632-6,Y,Y,1138,mg/kg,Pestisida-Gol.organoklorin-Toksafen-Sayur,,,Pestisida-Gol.organoklorin-Toksafen-Sayur
+Pestisida-Gol.organoklorin-Heksaklorobenzen-Air,Keamanan pangan,Air,87653-2,Y,Y,1139,mg/kg,Pestisida-Gol.organoklorin-Heksaklorobenzen-Air,,,Pestisida-Gol.organoklorin-Heksaklorobenzen-Air
+Pestisida-Gol.organoklorin-Heksaklorobenzen-Buah,Keamanan pangan,Buah,87653-2,Y,Y,1140,mg/kg,Pestisida-Gol.organoklorin-Heksaklorobenzen-Buah,,,Pestisida-Gol.organoklorin-Heksaklorobenzen-Buah
+Pestisida-Gol.organoklorin-Heksaklorobenzen-Sayur,Keamanan pangan,Sayur,87653-2,Y,Y,1141,mg/kg,Pestisida-Gol.organoklorin-Heksaklorobenzen-Sayur,,,Pestisida-Gol.organoklorin-Heksaklorobenzen-Sayur
+Pestisida-Gol.organoklorin-Metoksiklor-Air,Keamanan pangan,Air,87647-4,Y,Y,1142,mg/kg,Pestisida-Gol.organoklorin-Metoksiklor-Air,,,Pestisida-Gol.organoklorin-Metoksiklor-Air
+Pestisida-Gol.organoklorin-Metoksiklor-Buah,Keamanan pangan,Buah,87647-4,Y,Y,1143,mg/kg,Pestisida-Gol.organoklorin-Metoksiklor-Buah,,,Pestisida-Gol.organoklorin-Metoksiklor-Buah
+Pestisida-Gol.organoklorin-Metoksiklor-Sayur,Keamanan pangan,Sayur,87647-4,Y,Y,1144,mg/kg,Pestisida-Gol.organoklorin-Metoksiklor-Sayur,,,Pestisida-Gol.organoklorin-Metoksiklor-Sayur
+Pestisida-Gol.organofosfat-Chlorpyrifos-Buah,Keamanan pangan,Buah,87747-2,Y,Y,1145,mg/kg,Pestisida-Gol.organofosfat-Chlorpyrifos-Buah,,,Pestisida-Gol.organofosfat-Chlorpyrifos-Buah
+Pestisida-Gol.organofosfat-Chlorpyrifos-Air,Keamanan pangan,Air,87747-2,Y,Y,1146,mg/kg,Pestisida-Gol.organofosfat-Chlorpyrifos-Air,,,Pestisida-Gol.organofosfat-Chlorpyrifos-Air
+Pestisida-Gol.organofosfat-Chlorpyrifos-Sayur,Keamanan pangan,Sayur,87747-2,Y,Y,1147,mg/kg,Pestisida-Gol.organofosfat-Chlorpyrifos-Sayur,,,Pestisida-Gol.organofosfat-Chlorpyrifos-Sayur
+Pestisida-Gol.organofosfat-Diazinon-Buah,Keamanan pangan,Buah,87666-4,Y,Y,1148,mg/kg,Pestisida-Gol.organofosfat-Diazinon-Buah,,,Pestisida-Gol.organofosfat-Diazinon-Buah
+Pestisida-Gol.organofosfat-Diazinon-Air,Keamanan pangan,Air,87666-4,Y,Y,1149,mg/kg,Pestisida-Gol.organofosfat-Diazinon-Air,,,Pestisida-Gol.organofosfat-Diazinon-Air
+Pestisida-Gol.organofosfat-Diazinon-Sayur,Keamanan pangan,Sayur,87666-4,Y,Y,1150,mg/kg,Pestisida-Gol.organofosfat-Diazinon-Sayur,,,Pestisida-Gol.organofosfat-Diazinon-Sayur
+Pestisida-Gol.organofosfat-Malathion-Buah,Keamanan pangan,Buah,87648-2,Y,Y,1151,mg/kg,Pestisida-Gol.organofosfat-Malathion-Buah,,,Pestisida-Gol.organofosfat-Malathion-Buah
+Pestisida-Gol.organofosfat-Malathion-Air,Keamanan pangan,Air,87648-2,Y,Y,1152,mg/kg,Pestisida-Gol.organofosfat-Malathion-Air,,,Pestisida-Gol.organofosfat-Malathion-Air
+Pestisida-Gol.organofosfat-Malathion-Sayur,Keamanan pangan,Sayur,87648-2,Y,Y,1153,mg/kg,Pestisida-Gol.organofosfat-Malathion-Sayur,,,Pestisida-Gol.organofosfat-Malathion-Sayur
+Pestisida-Gol.organofosfat-Parathion-Buah,Keamanan pangan,Buah,87659-9,Y,Y,1154,mg/kg,Pestisida-Gol.organofosfat-Parathion-Buah,,,Pestisida-Gol.organofosfat-Parathion-Buah
+Pestisida-Gol.organofosfat-Parathion-Air,Keamanan pangan,Air,87659-9,Y,Y,1155,mg/kg,Pestisida-Gol.organofosfat-Parathion-Air,,,Pestisida-Gol.organofosfat-Parathion-Air
+Pestisida-Gol.organofosfat-Parathion-Sayur,Keamanan pangan,Sayur,87659-9,Y,Y,1156,mg/kg,Pestisida-Gol.organofosfat-Parathion-Sayur,,,Pestisida-Gol.organofosfat-Parathion-Sayur
+Pestisida-Gol.organofosfat-Methyl parathion-Buah,Keamanan pangan,Buah,87646-6,Y,Y,1157,mg/kg,Pestisida-Gol.organofosfat-Methyl parathion-Buah,,,Pestisida-Gol.organofosfat-Methyl parathion-Buah
+Pestisida-Gol.organofosfat-Methyl parathion-Air,Keamanan pangan,Air,87646-6,Y,Y,1158,mg/kg,Pestisida-Gol.organofosfat-Methyl parathion-Air,,,Pestisida-Gol.organofosfat-Methyl parathion-Air
+Pestisida-Gol.organofosfat-Methyl parathion-Sayur,Keamanan pangan,Sayur,87646-6,Y,Y,1159,mg/kg,Pestisida-Gol.organofosfat-Methyl parathion-Sayur,,,Pestisida-Gol.organofosfat-Methyl parathion-Sayur
+Pestisida-Gol.organofosfat-Dimethoate-Buah,Keamanan pangan,Buah,87664-9,Y,Y,1160,mg/kg,Pestisida-Gol.organofosfat-Dimethoate-Buah,,,Pestisida-Gol.organofosfat-Dimethoate-Buah
+Pestisida-Gol.organofosfat-Dimethoate-Air,Keamanan pangan,Air,87664-9,Y,Y,1161,mg/kg,Pestisida-Gol.organofosfat-Dimethoate-Air,,,Pestisida-Gol.organofosfat-Dimethoate-Air
+Pestisida-Gol.organofosfat-Dimatohoate-Sayur,Keamanan pangan,Sayur,87664-9,Y,Y,1162,mg/kg,Pestisida-Gol.organofosfat-Dimatohoate-Sayur,,,Pestisida-Gol.organofosfat-Dimatohoate-Sayur
+Pestisida-Gol.organofosfat-Dichlorvos-Buah,Keamanan pangan,Buah,87750-6,Y,Y,1163,mg/kg,Pestisida-Gol.organofosfat-Dichlorvos-Buah,,,Pestisida-Gol.organofosfat-Dichlorvos-Buah
+Pestisida-Gol.organofosfat-Dichlorvos-Air,Keamanan pangan,Air,87750-6,Y,Y,1164,mg/kg,Pestisida-Gol.organofosfat-Dichlorvos-Air,,,Pestisida-Gol.organofosfat-Dichlorvos-Air
+Pestisida-Gol.organofosfat-Dichlorvos-Sayur,Keamanan pangan,Sayur,87750-6,Y,Y,1165,mg/kg,Pestisida-Gol.organofosfat-Dichlorvos-Sayur,,,Pestisida-Gol.organofosfat-Dichlorvos-Sayur
+Pestisida-Gol.organofosfat-Coumaphos-Buah,Keamanan pangan,Buah,87748-0,Y,Y,1166,mg/kg,Pestisida-Gol.organofosfat-Coumaphos-Buah,,,Pestisida-Gol.organofosfat-Coumaphos-Buah
+Pestisida-Gol.organofosfat-Coumaphos-Air,Keamanan pangan,Air,87748-0,Y,Y,1167,mg/kg,Pestisida-Gol.organofosfat-Coumaphos-Air,,,Pestisida-Gol.organofosfat-Coumaphos-Air
+Pestisida-Gol.organofosfat-Coumaphos-Sayur,Keamanan pangan,Sayur,87748-0,Y,Y,1168,mg/kg,Pestisida-Gol.organofosfat-Coumaphos-Sayur,,,Pestisida-Gol.organofosfat-Coumaphos-Sayur
+Pestisida-Gol.organofosfat-Fenthion-Buah,Keamanan pangan,Buah,87657-3,Y,Y,1169,mg/kg,Pestisida-Gol.organofosfat-Fenthion-Buah,,,Pestisida-Gol.organofosfat-Fenthion-Buah
+Pestisida-Gol.organofosfat-Fenthion-Air,Keamanan pangan,Air,87657-3,Y,Y,1170,mg/kg,Pestisida-Gol.organofosfat-Fenthion-Air,,,Pestisida-Gol.organofosfat-Fenthion-Air
+Pestisida-Gol.organofosfat-Fenthion-Sayur,Keamanan pangan,Sayur,87657-3,Y,Y,1171,mg/kg,Pestisida-Gol.organofosfat-Fenthion-Sayur,,,Pestisida-Gol.organofosfat-Fenthion-Sayur
+Pestisida-Gol.organofosfat-Isofenphos-Buah,Keamanan pangan,Buah,87652-4,Y,Y,1172,mg/kg,Pestisida-Gol.organofosfat-Isofenphos-Buah,,,Pestisida-Gol.organofosfat-Isofenphos-Buah
+Pestisida-Gol.organofosfat-Isofenphos-Air,Keamanan pangan,Air,87652-4,Y,Y,1173,mg/kg,Pestisida-Gol.organofosfat-Isofenphos-Air,,,Pestisida-Gol.organofosfat-Isofenphos-Air
+Pestisida-Gol.organofosfat-Isofenphos-Sayur,Keamanan pangan,Sayur,87652-4,Y,Y,1174,mg/kg,Pestisida-Gol.organofosfat-Isofenphos-Sayur,,,Pestisida-Gol.organofosfat-Isofenphos-Sayur
+Pestisida-Gol.organofosfat-EPN-Buah,Keamanan pangan,Buah,87752-2,Y,Y,1175,mg/kg,Pestisida-Gol.organofosfat-EPN-Buah,,,Pestisida-Gol.organofosfat-EPN-Buah
+Pestisida-Gol.organofosfat-EPN-Air,Keamanan pangan,Air,87752-2,Y,Y,1176,mg/kg,Pestisida-Gol.organofosfat-EPN-Air,,,Pestisida-Gol.organofosfat-EPN-Air
+Pestisida-Gol.organofosfat-EPN-Sayur,Keamanan pangan,Sayur,87752-2,Y,Y,1177,mg/kg,Pestisida-Gol.organofosfat-EPN-Sayur,,,Pestisida-Gol.organofosfat-EPN-Sayur
+# --- Bakteriologi-Lingkungan & Vektor ---
+Bacillus anthracis-PCR-Darah,Bakt-LingVektor,Darah,41623-0,Y,Y,1178,,Bacillus anthracis-PCR-Darah,,,Bacillus anthracis-PCR-Darah
+Bacillus anthracis-PCR-Serum,Bakt-LingVektor,Serum,41623-0,Y,Y,1179,,Bacillus anthracis-PCR-Serum,,,Bacillus anthracis-PCR-Serum
+Bacillus anthracis-PCR-Tanah,Bakt-LingVektor,Tanah,41623-0,Y,Y,1180,,Bacillus anthracis-PCR-Tanah,,,Bacillus anthracis-PCR-Tanah
+Bacillus anthracis-Sekuensing-Darah,Bakt-LingVektor,Darah,66885-5,Y,Y,1181,,Bacillus anthracis-Sekuensing-Darah,,,Bacillus anthracis-Sekuensing-Darah
+Bacillus anthracis-Sekuensing-Serum,Bakt-LingVektor,Serum,66885-5,Y,Y,1182,,Bacillus anthracis-Sekuensing-Serum,,,Bacillus anthracis-Sekuensing-Serum
+Bacillus anthracis-Sekuensing-Tanah,Bakt-LingVektor,Tanah,66885-5,Y,Y,1183,,Bacillus anthracis-Sekuensing-Tanah,,,Bacillus anthracis-Sekuensing-Tanah
+Bacillus anthracis-ELISA-kuantitatif,Bakt-LingVektor,Serum,22859-3,Y,Y,1184,{titer},Bacillus anthracis-ELISA-kuantitatif,,,Bacillus anthracis-ELISA-kuantitatif
+Brucella sp-PCR,Bakt-LingVektor,Jaringan hewan,41626-3,Y,Y,1185,,Brucella sp-PCR,,,Brucella sp-PCR
+Brucella sp-Kultur-Darah hewan,Bakt-LingVektor,Darah,44797-9,Y,Y,1186,,Brucella sp-Kultur-Darah hewan,,,Brucella sp-Kultur-Darah hewan
+Brucella sp-Kultur-Serum hewan,Bakt-LingVektor,Serum,44797-9,Y,Y,1187,,Brucella sp-Kultur-Serum hewan,,,Brucella sp-Kultur-Serum hewan
+Brucella sp-Sekuensing-Darah hewan,Bakt-LingVektor,Darah,66885-5,Y,Y,1188,,Brucella sp-Sekuensing-Darah hewan,,,Brucella sp-Sekuensing-Darah hewan
+Brucella sp-Sekuensing-Serum hewan,Bakt-LingVektor,Serum,66885-5,Y,Y,1189,,Brucella sp-Sekuensing-Serum hewan,,,Brucella sp-Sekuensing-Serum hewan
+Burkholderia pseudomallei-PCR-Air,Bakt-LingVektor,Air,70852-9,Y,Y,1190,,Burkholderia pseudomallei-PCR-Air,,,Burkholderia pseudomallei-PCR-Air
+Burkholderia pseudomallei-PCR-Tanah,Bakt-LingVektor,Tanah,70852-9,Y,Y,1191,,Burkholderia pseudomallei-PCR-Tanah,,,Burkholderia pseudomallei-PCR-Tanah
+Burkholderia pseudomallei-Sekuensing-Air,Bakt-LingVektor,Air,66885-5,Y,Y,1192,,Burkholderia pseudomallei-Sekuensing-Air,,,Burkholderia pseudomallei-Sekuensing-Air
+Burkholderia pseudomallei-Sekuensing-Tanah,Bakt-LingVektor,Tanah,66885-5,Y,Y,1193,,Burkholderia pseudomallei-Sekuensing-Tanah,,,Burkholderia pseudomallei-Sekuensing-Tanah
+Legionella-PCR-Air,Bakt-LingVektor,Air,100748-3,Y,Y,1194,,Legionella-PCR-Air,,,Legionella-PCR-Air
+Legionella-PCR-Usap debu,Bakt-LingVektor,Usap debu,100748-3,Y,Y,1195,,Legionella-PCR-Usap debu,,,Legionella-PCR-Usap debu
+Legionella-Sekuensing-Air,Bakt-LingVektor,Air,66885-5,Y,Y,1196,,Legionella-Sekuensing-Air,,,Legionella-Sekuensing-Air
+Legionella-Sekuensing-Usap debu,Bakt-LingVektor,Usap debu,66885-5,Y,Y,1197,,Legionella-Sekuensing-Usap debu,,,Legionella-Sekuensing-Usap debu
+Leptopspira patogenik-PCR,Bakt-LingVektor,Jaringan,35491-0,Y,Y,1198,,Leptopspira patogenik-PCR,,,Leptopspira patogenik-PCR
+Leptopspira patogenik-Sekuensing gen 16S rRNA,Bakt-LingVektor,Air,66885-5,Y,Y,1199,,Leptopspira patogenik-Sekuensing gen 16S rRNA,,,Leptopspira patogenik-Sekuensing gen 16S rRNA
+Mycobacterium leprae-PCR,Bakt-LingVektor,Jaringan lesi hewan,104433-8,Y,Y,1200,,Mycobacterium leprae-PCR,,,Mycobacterium leprae-PCR
+Mycobacterium leprae-Sekuensing,Bakt-LingVektor,Jaringan lesi hewan,66885-5,Y,Y,1201,,Mycobacterium leprae-Sekuensing,,,Mycobacterium leprae-Sekuensing
+Mycobacterium tuberculosis/bovis (zoonotic TB)-Kultur,Bakt-LingVektor,Susu/produk susu,543-9,Y,Y,1202,,Mycobacterium tuberculosis/bovis (zoonotic TB)-Kultur,,,Mycobacterium tuberculosis/bovis (zoonotic TB)-Kultur
+Mycobacterium tuberculosis/bovis-zoonotic TB-PCR,Bakt-LingVektor,Daging/Swab hewan,38379-4,Y,Y,1203,,Mycobacterium tuberculosis/bovis-zoonotic TB-PCR,,,Mycobacterium tuberculosis/bovis-zoonotic TB-PCR
+Mycobacterium tuberculosis/bovis-zoonotic TB-Sekuensing,Bakt-LingVektor,Daging/Swab hewan,92827-5,Y,Y,1204,,Mycobacterium tuberculosis/bovis-zoonotic TB-Sekuensing,,,Mycobacterium tuberculosis/bovis-zoonotic TB-Sekuensing
+Rickettsia sp.-Kultur,Bakt-LingVektor,Ektoparasit,6546-6,Y,Y,1205,,Rickettsia sp.-Kultur,,,Rickettsia sp.-Kultur
+Rickettsia sp.-PCR,Bakt-LingVektor,Ektoparasit,48869-2,Y,Y,1206,,Rickettsia sp.-PCR,,,Rickettsia sp.-PCR
+Rickettsia sp.-Sekuensing,Bakt-LingVektor,Ektoparasit,66885-5,Y,Y,1207,,Rickettsia sp.-Sekuensing,,,Rickettsia sp.-Sekuensing
+Bacterial unknown diseases lainnya-Sekuensing,Bakt-LingVektor,Binatang pembawa penyakit,66885-5,Y,Y,1208,,Bacterial unknown diseases lainnya-Sekuensing,,,Bacterial unknown diseases lainnya-Sekuensing
+Vibrio cholerae-PCR,Bakt-LingVektor,Feses binatang,61371-1,Y,Y,1209,,Vibrio cholerae-PCR,,,Vibrio cholerae-PCR
+Vibrio cholerae-Sekuensing,Bakt-LingVektor,Feses binatang,66885-5,Y,Y,1210,,Vibrio cholerae-Sekuensing,,,Vibrio cholerae-Sekuensing
+Wolbachia sp.-Sekuensing,Bakt-LingVektor,Binatang dan sampel lingkungan,66885-5,Y,Y,1211,,Wolbachia sp.-Sekuensing,,,Wolbachia sp.-Sekuensing
+Yersinia pestis-Kultur,Bakt-LingVektor,Serum tikus,33685-9,Y,Y,1212,,Yersinia pestis-Kultur,,,Yersinia pestis-Kultur
+Yersinia pestis-PCR,Bakt-LingVektor,Ektoparasit,33691-7,Y,Y,1213,,Yersinia pestis-PCR,,,Yersinia pestis-PCR
+Yersinia pestis-Sekuensing,Bakt-LingVektor,Ektoparasit,66885-5,Y,Y,1214,,Yersinia pestis-Sekuensing,,,Yersinia pestis-Sekuensing
+Ampicillin,Bakt-LingVektor,Isolate,28-1,Y,N,1215,,Ampicillin,,,Ampicillin
+Benzylpenicillin,Bakt-LingVektor,Isolate,392-1,Y,N,1216,,Benzylpenicillin,,,Benzylpenicillin
+Cefoxitin,Bakt-LingVektor,Isolate,116-4,Y,N,1217,,Cefoxitin,,,Cefoxitin
+Ciprofloxacin,Bakt-LingVektor,Isolate,185-9,Y,N,1218,,Ciprofloxacin,,,Ciprofloxacin
+Clindamycin,Bakt-LingVektor,Isolate,193-3,Y,N,1219,,Clindamycin,,,Clindamycin
+Erythromycin,Bakt-LingVektor,Isolate,233-7,Y,N,1220,,Erythromycin,,,Erythromycin
+Gentamicin,Bakt-LingVektor,Isolate,267-5,Y,N,1221,,Gentamicin,,,Gentamicin
+Levofloxacin,Bakt-LingVektor,Isolate,20396-8,Y,N,1222,,Levofloxacin,,,Levofloxacin
+Linezolid,Bakt-LingVektor,Isolate,29254-0,Y,N,1223,,Linezolid,,,Linezolid
+Moxifloxacin,Bakt-LingVektor,Isolate,31037-5,Y,N,1224,,Moxifloxacin,,,Moxifloxacin
+Oxacillin,Bakt-LingVektor,Isolate,383-0,Y,N,1225,,Oxacillin,,,Oxacillin
+Quinupristin/Dalfopristin,Bakt-LingVektor,Isolate,23641-4,Y,N,1226,,Quinupristin/Dalfopristin,,,Quinupristin/Dalfopristin
+Rifampicin,Bakt-LingVektor,Isolate,428-3,Y,N,1227,,Rifampicin,,,Rifampicin
+Streptomycin,Bakt-LingVektor,Isolate,460-6,Y,N,1228,,Streptomycin,,,Streptomycin
+Tetracylin,Bakt-LingVektor,Isolate,496-0,Y,N,1229,,Tetracylin,,,Tetracylin
+Tigecycline,Bakt-LingVektor,Isolate,42355-8,Y,N,1230,,Tigecycline,,,Tigecycline
+Trimethoprim/Sulfametoxazole,Bakt-LingVektor,Isolate,516-5,Y,N,1231,,Trimethoprim/Sulfametoxazole,,,Trimethoprim/Sulfametoxazole
+Vancomycin,Bakt-LingVektor,Isolate,524-9,Y,N,1232,,Vancomycin,,,Vancomycin
+Ampicillin/Sulbactam,Bakt-LingVektor,Isolate,32-3,Y,N,1233,,Ampicillin/Sulbactam,,,Ampicillin/Sulbactam
+Piperacillin/Tazobactam,Bakt-LingVektor,Isolate,412-7,Y,N,1234,,Piperacillin/Tazobactam,,,Piperacillin/Tazobactam
+Cefazolin,Bakt-LingVektor,Isolate,76-0,Y,N,1235,,Cefazolin,,,Cefazolin
+Ceftazidime,Bakt-LingVektor,Isolate,133-9,Y,N,1236,,Ceftazidime,,,Ceftazidime
+Ceftriaxone,Bakt-LingVektor,Isolate,141-2,Y,N,1237,,Ceftriaxone,,,Ceftriaxone
+Cefepime,Bakt-LingVektor,Isolate,6644-9,Y,N,1238,,Cefepime,,,Cefepime
+Aztreonam,Bakt-LingVektor,Isolate,44-8,Y,N,1239,,Aztreonam,,,Aztreonam
+Ertapenem,Bakt-LingVektor,Isolate,35801-0,Y,N,1240,,Ertapenem,,,Ertapenem
+Meropenem,Bakt-LingVektor,Isolate,6652-2,Y,N,1241,,Meropenem,,,Meropenem
+Amikacin,Bakt-LingVektor,Isolate,12-5,Y,N,1242,,Amikacin,,,Amikacin
+Tigecicline,Bakt-LingVektor,Isolate,42355-8,Y,N,1243,,Tigecicline,,,Tigecicline
+Colistin2,Bakt-LingVektor,Isolate,205-5,Y,N,1244,,Colistin2,,,Colistin2
+Cefotaxime,Bakt-LingVektor,Isolate,108-1,Y,N,1245,,Cefotaxime,,,Cefotaxime
+Chloramphenicol,Bakt-LingVektor,Isolate,173-5,Y,N,1246,,Chloramphenicol,,,Chloramphenicol
+Teicoplanin,Bakt-LingVektor,Isolate,484-6,Y,N,1247,,Teicoplanin,,,Teicoplanin
+Amphotericin B,Bakt-LingVektor,Isolate,24-0,Y,N,1248,,Amphotericin B,,,Amphotericin B
+Caspofungin,Bakt-LingVektor,Isolate,54176-3,Y,Y,1249,,Caspofungin,,,Caspofungin
+Fluconazole,Bakt-LingVektor,Isolate,249-3,Y,N,1250,,Fluconazole,,,Fluconazole
+Flucytosine,Bakt-LingVektor,Isolate,253-5,Y,N,1251,,Flucytosine,,,Flucytosine
+Micafungin,Bakt-LingVektor,Isolate,53812-4,Y,N,1252,,Micafungin,,,Micafungin
+Voriconazole,Bakt-LingVektor,Isolate,35863-0,Y,N,1253,,Voriconazole,,,Voriconazole
+Amikacin (Uji resistansi),Bakt-LingVektor,Isolate,12-5,Y,N,1254,,Amikacin (Uji resistansi),,,Amikacin (Uji resistansi)
+Amoxicilin-clavulanic acid (Uji resistansi),Bakt-LingVektor,Isolate,20-8,Y,N,1255,,Amoxicilin-clavulanic acid (Uji resistansi),,,Amoxicilin-clavulanic acid (Uji resistansi)
+Ampicilin (Uji resistansi),Bakt-LingVektor,Isolate,28-1,Y,N,1256,,Ampicilin (Uji resistansi),,,Ampicilin (Uji resistansi)
+Ampicilin-sulbactam (Uji resistansi),Bakt-LingVektor,Isolate,32-3,Y,N,1257,,Ampicilin-sulbactam (Uji resistansi),,,Ampicilin-sulbactam (Uji resistansi)
+Azitromycin (Uji resistansi),Bakt-LingVektor,Isolate,36-4,Y,N,1258,,Azitromycin (Uji resistansi),,,Azitromycin (Uji resistansi)
+Aztreonam (Uji resistansi),Bakt-LingVektor,Isolate,44-8,Y,N,1259,,Aztreonam (Uji resistansi),,,Aztreonam (Uji resistansi)
+Cefazolin (Uji resistansi),Bakt-LingVektor,Isolate,76-0,Y,N,1260,,Cefazolin (Uji resistansi),,,Cefazolin (Uji resistansi)
+Cefepime (Uji resistansi),Bakt-LingVektor,Isolate,6644-9,Y,N,1261,,Cefepime (Uji resistansi),,,Cefepime (Uji resistansi)
+Cefotaxime (Uji resistansi),Bakt-LingVektor,Isolate,108-1,Y,N,1262,,Cefotaxime (Uji resistansi),,,Cefotaxime (Uji resistansi)
+Cefoxitin (Uji resistansi),Bakt-LingVektor,Isolate,116-4,Y,N,1263,,Cefoxitin (Uji resistansi),,,Cefoxitin (Uji resistansi)
+Ceftazidime (Uji resistansi),Bakt-LingVektor,Isolate,133-9,Y,N,1264,,Ceftazidime (Uji resistansi),,,Ceftazidime (Uji resistansi)
+Ceftizoxime (Uji resistansi),Bakt-LingVektor,Isolate,137-0,Y,N,1265,,Ceftizoxime (Uji resistansi),,,Ceftizoxime (Uji resistansi)
+Ceftriaxone (Uji resistansi),Bakt-LingVektor,Isolate,31140-7,Y,N,1266,,Ceftriaxone (Uji resistansi),,,Ceftriaxone (Uji resistansi)
+Cefuroxime (Uji resistansi),Bakt-LingVektor,Isolate,51774-8,Y,Y,1267,,Cefuroxime (Uji resistansi),,,Cefuroxime (Uji resistansi)
+Chloramphenicol (Uji resistansi),Bakt-LingVektor,Isolate,173-5,Y,N,1268,,Chloramphenicol (Uji resistansi),,,Chloramphenicol (Uji resistansi)
+Ciprofloxacin (Uji resistansi),Bakt-LingVektor,Isolate,185-9,Y,N,1269,,Ciprofloxacin (Uji resistansi),,,Ciprofloxacin (Uji resistansi)
+Clindamycin (Uji resistansi),Bakt-LingVektor,Isolate,193-3,Y,N,1270,,Clindamycin (Uji resistansi),,,Clindamycin (Uji resistansi)
+Doripenem (Uji resistansi),Bakt-LingVektor,Isolate,56031-8,Y,Y,1271,,Doripenem (Uji resistansi),,,Doripenem (Uji resistansi)
+Ertapenem (Uji resistansi),Bakt-LingVektor,Isolate,35801-0,Y,N,1272,,Ertapenem (Uji resistansi),,,Ertapenem (Uji resistansi)
+Erythromycin (Uji resistansi),Bakt-LingVektor,Isolate,233-7,Y,N,1273,,Erythromycin (Uji resistansi),,,Erythromycin (Uji resistansi)
+Gentamicin (Uji resistansi),Bakt-LingVektor,Isolate,267-5,Y,N,1274,,Gentamicin (Uji resistansi),,,Gentamicin (Uji resistansi)
+Imipenem (Uji resistansi),Bakt-LingVektor,Isolate,279-0,Y,N,1275,,Imipenem (Uji resistansi),,,Imipenem (Uji resistansi)
+Levofloxacin (Uji resistansi),Bakt-LingVektor,Isolate,20396-8,Y,N,1276,,Levofloxacin (Uji resistansi),,,Levofloxacin (Uji resistansi)
+Linezolid (Uji resistansi),Bakt-LingVektor,Isolate,29254-0,Y,N,1277,,Linezolid (Uji resistansi),,,Linezolid (Uji resistansi)
+Meropenem (Uji resistansi),Bakt-LingVektor,Isolate,6652-2,Y,N,1278,,Meropenem (Uji resistansi),,,Meropenem (Uji resistansi)
+Minocycline (Uji resistansi),Bakt-LingVektor,Isolate,335-0,Y,N,1279,,Minocycline (Uji resistansi),,,Minocycline (Uji resistansi)
+Moxifloxacin (Uji resistansi),Bakt-LingVektor,Isolate,31037-5,Y,N,1280,,Moxifloxacin (Uji resistansi),,,Moxifloxacin (Uji resistansi)
+Nitrofurantoin (Uji resistansi),Bakt-LingVektor,Isolate,363-2,Y,N,1281,,Nitrofurantoin (Uji resistansi),,,Nitrofurantoin (Uji resistansi)
+Oxacilin (Uji resistansi),Bakt-LingVektor,Isolate,383-0,Y,N,1282,,Oxacilin (Uji resistansi),,,Oxacilin (Uji resistansi)
+Piperacilin-taxobactam (Uji resistansi),Bakt-LingVektor,Isolate,412-7,Y,N,1283,,Piperacilin-taxobactam (Uji resistansi),,,Piperacilin-taxobactam (Uji resistansi)
+Quinupristin-dalfopristin (Uji resistansi),Bakt-LingVektor,Isolate,23641-4,Y,N,1284,,Quinupristin-dalfopristin (Uji resistansi),,,Quinupristin-dalfopristin (Uji resistansi)
+Rifampicin (Uji resistansi),Bakt-LingVektor,Isolate,428-3,Y,N,1285,,Rifampicin (Uji resistansi),,,Rifampicin (Uji resistansi)
+Tetracycline (Uji resistansi),Bakt-LingVektor,Isolate,496-0,Y,N,1286,,Tetracycline (Uji resistansi),,,Tetracycline (Uji resistansi)
+Ticarcilin-clavulanic acid (Uji resistansi),Bakt-LingVektor,Isolate,500-9,Y,N,1287,,Ticarcilin-clavulanic acid (Uji resistansi),,,Ticarcilin-clavulanic acid (Uji resistansi)
+Tigecycline (Uji resistansi),Bakt-LingVektor,Isolate,42355-8,Y,N,1288,,Tigecycline (Uji resistansi),,,Tigecycline (Uji resistansi)
+Trimethoprim-sulphametoxazol (Uji resistansi),Bakt-LingVektor,Isolate,516-5,Y,N,1289,,Trimethoprim-sulphametoxazol (Uji resistansi),,,Trimethoprim-sulphametoxazol (Uji resistansi)
+Vancomycin (Uji resistansi),Bakt-LingVektor,Isolate,524-9,Y,N,1290,,Vancomycin (Uji resistansi),,,Vancomycin (Uji resistansi)
+Carbenicillin (Uji resistansi),Bakt-LingVektor,Isolate,60-4,Y,N,1291,,Carbenicillin (Uji resistansi),,,Carbenicillin (Uji resistansi)
+Cefaclor (Uji resistansi),Bakt-LingVektor,Isolate,84-4,Y,N,1292,,Cefaclor (Uji resistansi),,,Cefaclor (Uji resistansi)
+Cefdinir (Uji resistansi),Bakt-LingVektor,Isolate,23637-2,Y,N,1293,,Cefdinir (Uji resistansi),,,Cefdinir (Uji resistansi)
+Cefetamet (Uji resistansi),Bakt-LingVektor,Isolate,35765-7,Y,N,1294,,Cefetamet (Uji resistansi),,,Cefetamet (Uji resistansi)
+Cefixime (Uji resistansi),Bakt-LingVektor,Isolate,80-2,Y,N,1295,,Cefixime (Uji resistansi),,,Cefixime (Uji resistansi)
+Cefmetazole (Uji resistansi),Bakt-LingVektor,Isolate,88-5,Y,N,1296,,Cefmetazole (Uji resistansi),,,Cefmetazole (Uji resistansi)
+Cefonicid (Uji resistansi),Bakt-LingVektor,Isolate,96-8,Y,N,1297,,Cefonicid (Uji resistansi),,,Cefonicid (Uji resistansi)
+Cefoperazone (Uji resistansi),Bakt-LingVektor,Isolate,100-8,Y,N,1298,,Cefoperazone (Uji resistansi),,,Cefoperazone (Uji resistansi)
+Cefotetan (Uji resistansi),Bakt-LingVektor,Isolate,112-3,Y,N,1299,,Cefotetan (Uji resistansi),,,Cefotetan (Uji resistansi)
+Cefpodoxime (Uji resistansi),Bakt-LingVektor,Isolate,120-6,Y,N,1300,,Cefpodoxime (Uji resistansi),,,Cefpodoxime (Uji resistansi)
+Cefprozil (Uji resistansi),Bakt-LingVektor,Isolate,124-8,Y,N,1301,,Cefprozil (Uji resistansi),,,Cefprozil (Uji resistansi)
+Ceftibuten (Uji resistansi),Bakt-LingVektor,Isolate,35778-0,Y,N,1302,,Ceftibuten (Uji resistansi),,,Ceftibuten (Uji resistansi)
+Cephalothin (Uji resistansi),Bakt-LingVektor,Isolate,161-0,Y,N,1303,,Cephalothin (Uji resistansi),,,Cephalothin (Uji resistansi)
+Clarithromycin (Uji resistansi),Bakt-LingVektor,Isolate,189-1,Y,N,1304,,Clarithromycin (Uji resistansi),,,Clarithromycin (Uji resistansi)
+Daptomycin (Uji resistansi),Bakt-LingVektor,Isolate,35788-9,Y,N,1305,,Daptomycin (Uji resistansi),,,Daptomycin (Uji resistansi)
+Doxycycline (Uji resistansi),Bakt-LingVektor,Isolate,225-3,Y,N,1306,,Doxycycline (Uji resistansi),,,Doxycycline (Uji resistansi)
+Enoxacin (Uji resistansi),Bakt-LingVektor,Isolate,229-5,Y,N,1307,,Enoxacin (Uji resistansi),,,Enoxacin (Uji resistansi)
+Gemifloxacin (Uji resistansi),Bakt-LingVektor,Isolate,35815-0,Y,N,1308,,Gemifloxacin (Uji resistansi),,,Gemifloxacin (Uji resistansi)
+Kanamycin (Uji resistansi),Bakt-LingVektor,Isolate,291-5,Y,N,1309,,Kanamycin (Uji resistansi),,,Kanamycin (Uji resistansi)
+Lomefoxacin (Uji resistansi),Bakt-LingVektor,Isolate,303-8,Y,N,1310,,Lomefoxacin (Uji resistansi),,,Lomefoxacin (Uji resistansi)
+Loracarbef (Uji resistansi),Bakt-LingVektor,Isolate,307-9,Y,N,1311,,Loracarbef (Uji resistansi),,,Loracarbef (Uji resistansi)
+Mezlocillin (Uji resistansi),Bakt-LingVektor,Isolate,331-9,Y,N,1312,,Mezlocillin (Uji resistansi),,,Mezlocillin (Uji resistansi)
+Moxalactam (Uji resistansi),Bakt-LingVektor,Isolate,343-4,Y,N,1313,,Moxalactam (Uji resistansi),,,Moxalactam (Uji resistansi)
+Netilmycin (Uji resistansi),Bakt-LingVektor,Isolate,359-0,Y,N,1314,,Netilmycin (Uji resistansi),,,Netilmycin (Uji resistansi)
+Norfloxacin (Uji resistansi),Bakt-LingVektor,Isolate,367-3,Y,N,1315,,Norfloxacin (Uji resistansi),,,Norfloxacin (Uji resistansi)
+Ofloxacin (Uji resistansi),Bakt-LingVektor,Isolate,375-6,Y,N,1316,,Ofloxacin (Uji resistansi),,,Ofloxacin (Uji resistansi)
+Penicillin (Uji resistansi),Bakt-LingVektor,Isolate,392-1,Y,N,1317,,Penicillin (Uji resistansi),,,Penicillin (Uji resistansi)
+Piperacilin (Uji resistansi),Bakt-LingVektor,Isolate,408-5,Y,N,1318,,Piperacilin (Uji resistansi),,,Piperacilin (Uji resistansi)
+Streptomycin (Uji resistansi),Bakt-LingVektor,Isolate,460-6,Y,N,1319,,Streptomycin (Uji resistansi),,,Streptomycin (Uji resistansi)
+Sulfisoxazole (Uji resistansi),Bakt-LingVektor,Isolate,472-1,Y,N,1320,,Sulfisoxazole (Uji resistansi),,,Sulfisoxazole (Uji resistansi)
+Telithromycin (Uji resistansi),Bakt-LingVektor,Isolate,35844-0,Y,N,1321,,Telithromycin (Uji resistansi),,,Telithromycin (Uji resistansi)
+Ticarcillin (Uji resistansi),Bakt-LingVektor,Isolate,500-9,Y,N,1322,,Ticarcillin (Uji resistansi),,,Ticarcillin (Uji resistansi)
+Tobramycin (Uji resistansi),Bakt-LingVektor,Isolate,508-2,Y,N,1323,,Tobramycin (Uji resistansi),,,Tobramycin (Uji resistansi)
+Trimethoprim (Uji resistansi),Bakt-LingVektor,Isolate,512-4,Y,N,1324,,Trimethoprim (Uji resistansi),,,Trimethoprim (Uji resistansi)
+Cefadroxil (Uji resistansi),Bakt-LingVektor,Isolate,64-6,Y,N,1325,,Cefadroxil (Uji resistansi),,,Cefadroxil (Uji resistansi)
+# --- Parasitologi-Lingkungan & Vektor ---
+Acanthamoeba sp-PCR-Udara,Para-LingVektor,Udara,41429-2,Y,Y,1326,,Acanthamoeba sp-PCR-Udara,,,Acanthamoeba sp-PCR-Udara
+Acanthamoeba sp-PCR-Air,Para-LingVektor,Air,41429-2,Y,Y,1327,,Acanthamoeba sp-PCR-Air,,,Acanthamoeba sp-PCR-Air
+Acanthamoeba sp-PCR-Tanah,Para-LingVektor,Tanah,41429-2,Y,Y,1328,,Acanthamoeba sp-PCR-Tanah,,,Acanthamoeba sp-PCR-Tanah
+Ancylostoma sp-PCR-Tanah,Para-LingVektor,Tanah,108227-0,Y,Y,1329,,Ancylostoma sp-PCR-Tanah,,,Ancylostoma sp-PCR-Tanah
+Ancylostoma sp-PCR-Air,Para-LingVektor,Air,108227-0,Y,Y,1330,,Ancylostoma sp-PCR-Air,,,Ancylostoma sp-PCR-Air
+Ancylostoma sp-PCR-Makanan,Para-LingVektor,Makanan,108227-0,Y,Y,1331,,Ancylostoma sp-PCR-Makanan,,,Ancylostoma sp-PCR-Makanan
+Entamoeba hystolytica Amebiasis-PCR-Tanah,Para-LingVektor,Tanah,6396-6,Y,Y,1332,,Entamoeba hystolytica Amebiasis-PCR-Tanah,,,Entamoeba hystolytica Amebiasis-PCR-Tanah
+Entamoeba hystolytica Amebiasis-PCR-Air,Para-LingVektor,Air,6396-6,Y,Y,1333,,Entamoeba hystolytica Amebiasis-PCR-Air,,,Entamoeba hystolytica Amebiasis-PCR-Air
+Entamoeba hystolytica Amebiasis-PCR-Makanan,Para-LingVektor,Makanan,6396-6,Y,Y,1334,,Entamoeba hystolytica Amebiasis-PCR-Makanan,,,Entamoeba hystolytica Amebiasis-PCR-Makanan
+Enterobius vermicularis/cacing kremi Enterobiasis-PCR-Tanah,Para-LingVektor,Tanah,108218-9,Y,Y,1335,,Enterobius vermicularis/cacing kremi Enterobiasis-PCR-Tanah,,,Enterobius vermicularis/cacing kremi Enterobiasis-PCR-Tanah
+Enterobius vermicularis/cacing kremi Enterobiasis-PCR-Air,Para-LingVektor,Air,108218-9,Y,Y,1336,,Enterobius vermicularis/cacing kremi Enterobiasis-PCR-Air,,,Enterobius vermicularis/cacing kremi Enterobiasis-PCR-Air
+Enterobius vermicularis/cacing kremi Enterobiasis-PCR-Makanan,Para-LingVektor,Makanan,108218-9,Y,Y,1337,,Enterobius vermicularis/cacing kremi Enterobiasis-PCR-Makanan,,,Enterobius vermicularis/cacing kremi Enterobiasis-PCR-Makanan
+Giardia lamblia-PCR-Makanan,Para-LingVektor,Makanan,60544-4,Y,Y,1338,,Giardia lamblia-PCR-Makanan,,,Giardia lamblia-PCR-Makanan
+Giardia lamblia-PCR-Air,Para-LingVektor,Air,60544-4,Y,Y,1339,,Giardia lamblia-PCR-Air,,,Giardia lamblia-PCR-Air
+Hookworm-PCR-Tanah,Para-LingVektor,Tanah,108227-0,Y,Y,1340,,Hookworm-PCR-Tanah,,,Hookworm-PCR-Tanah
+Hookworm-PCR-Air,Para-LingVektor,Air,108227-0,Y,Y,1341,,Hookworm-PCR-Air,,,Hookworm-PCR-Air
+Hookworm-PCR-Makanan,Para-LingVektor,Makanan,108227-0,Y,Y,1342,,Hookworm-PCR-Makanan,,,Hookworm-PCR-Makanan
+Leishmania sp-PCR-Darah binatang,Para-LingVektor,Darah binatang pembawa penyakit,23159-7,Y,Y,1343,,Leishmania sp-PCR-Darah binatang,,,Leishmania sp-PCR-Darah binatang
+Leishmania sp-PCR-Jaringan binatang,Para-LingVektor,Jaringan bintang pembawa penyakit,23159-7,Y,Y,1344,,Leishmania sp-PCR-Jaringan binatang,,,Leishmania sp-PCR-Jaringan binatang
+Naegleria fowleri-PCR-Air,Para-LingVektor,Air,87758-9,Y,Y,1345,,Naegleria fowleri-PCR-Air,,,Naegleria fowleri-PCR-Air
+Taenia-PCR-Darah binatang,Para-LingVektor,Darah binatang pembawa penyakit,88910-5,Y,Y,1346,,Taenia-PCR-Darah binatang,,,Taenia-PCR-Darah binatang
+Taenia-PCR-Jaringan binatang,Para-LingVektor,Jaringan bintang pembawa penyakit,88910-5,Y,Y,1347,,Taenia-PCR-Jaringan binatang,,,Taenia-PCR-Jaringan binatang
+Taenia-PCR-Makanan (daging),Para-LingVektor,Makanan (daging),88910-5,Y,Y,1348,,Taenia-PCR-Makanan (daging),,,Taenia-PCR-Makanan (daging)
+Toxoplasma gondii-Mikroskopis-Darah binatang,Para-LingVektor,Darah binatang pembawa penyakit,42343-4,Y,Y,1349,,Toxoplasma gondii-Mikroskopis-Darah binatang,,,Toxoplasma gondii-Mikroskopis-Darah binatang
+Toxoplasma gondii-Serologis-IgG-Darah binatang,Para-LingVektor,Darah binatang pembawa penyakit,86738-2,Y,Y,1350,,Toxoplasma gondii-Serologis-IgG-Darah binatang,,,Toxoplasma gondii-Serologis-IgG-Darah binatang
+Toxoplasma gondii-PCR-Darah binatang,Para-LingVektor,Darah binatang pembawa penyakit,29904-0,Y,Y,1351,,Toxoplasma gondii-PCR-Darah binatang,,,Toxoplasma gondii-PCR-Darah binatang
+# --- Virologi & Imunologi-Lingkungan & Vektor ---
+Chikungunya virus-PCR-Nyamuk,Viro-Imun-LV,Nyamuk,51664-1,Y,Y,1352,,Chikungunya virus-PCR-Nyamuk,,,Chikungunya virus-PCR-Nyamuk
+Chikungunya virus-PCR-Serum hewan,Viro-Imun-LV,Serum hewan,51664-1,Y,Y,1353,,Chikungunya virus-PCR-Serum hewan,,,Chikungunya virus-PCR-Serum hewan
+Dengue virus-Kultur-Serum hewan,Viro-Imun-LV,Serum hewan,6406-3,Y,Y,1354,,Dengue virus-Kultur-Serum hewan,,,Dengue virus-Kultur-Serum hewan
+Dengue virus-Kultur-Nyamuk,Viro-Imun-LV,Nyamuk,6406-3,Y,Y,1355,,Dengue virus-Kultur-Nyamuk,,,Dengue virus-Kultur-Nyamuk
+Dengue virus-PCR-Serum hewan,Viro-Imun-LV,Serum hewan,108219-7,Y,Y,1356,,Dengue virus-PCR-Serum hewan,,,Dengue virus-PCR-Serum hewan
+Dengue virus-PCR-Nyamuk,Viro-Imun-LV,Nyamuk,108219-7,Y,Y,1357,,Dengue virus-PCR-Nyamuk,,,Dengue virus-PCR-Nyamuk
+Ebola virus-PCR-Darah binatang,Viro-Imun-LV,Darah binatang,41636-2,Y,Y,1358,,Ebola virus-PCR-Darah binatang,,,Ebola virus-PCR-Darah binatang
+Hendra virus-PCR-Serum binatang,Viro-Imun-LV,Serum binatang pembawa penyakit,81689-2,Y,Y,1359,,Hendra virus-PCR-Serum binatang,,,Hendra virus-PCR-Serum binatang
+Hendra virus-PCR-Swab tenggorok binatang,Viro-Imun-LV,Swab tenggorok binatang pembawa penyakit,81689-2,Y,Y,1360,,Hendra virus-PCR-Swab tenggorok binatang,,,Hendra virus-PCR-Swab tenggorok binatang
+Hendra virus-PCR-Cairan otak binatang,Viro-Imun-LV,CSF binatang pembawa penyakit,81689-2,Y,Y,1361,,Hendra virus-PCR-Cairan otak binatang,,,Hendra virus-PCR-Cairan otak binatang
+Influenza Tipe A-PCR-Nasofaring hewan,Viro-Imun-LV,Swab Nasofaring binatang penyakit,34487-9,Y,Y,1362,,Influenza Tipe A-PCR-Nasofaring hewan,,,Influenza Tipe A-PCR-Nasofaring hewan
+Influenza Tipe A-PCR-Swab tenggorok hewan,Viro-Imun-LV,Swab tenggorok hewan,34487-9,Y,Y,1363,,Influenza Tipe A-PCR-Swab tenggorok hewan,,,Influenza Tipe A-PCR-Swab tenggorok hewan
+Influenza Tipe A-PCR-Serum hewan,Viro-Imun-LV,Serum hewan,34487-9,Y,Y,1364,,Influenza Tipe A-PCR-Serum hewan,,,Influenza Tipe A-PCR-Serum hewan
+Influenza Tipe A-Kultur-Nasofaring hewan,Viro-Imun-LV,Swab Nasofaring binatang penyakit,48310-7,Y,Y,1365,,Influenza Tipe A-Kultur-Nasofaring hewan,,,Influenza Tipe A-Kultur-Nasofaring hewan
+Influenza Tipe A-Kultur-Swab tenggorok hewan,Viro-Imun-LV,Swab tenggorok hewan,48310-7,Y,Y,1366,,Influenza Tipe A-Kultur-Swab tenggorok hewan,,,Influenza Tipe A-Kultur-Swab tenggorok hewan
+Influenza Tipe A-Kultur-Serum hewan,Viro-Imun-LV,Serum hewan,48310-7,Y,Y,1367,,Influenza Tipe A-Kultur-Serum hewan,,,Influenza Tipe A-Kultur-Serum hewan
+Influenza Tipe A-Sekuensing-Nasofaring hewan,Viro-Imun-LV,Swab Nasofaring binatang penyakit,61101-2,Y,Y,1368,,Influenza Tipe A-Sekuensing-Nasofaring hewan,,,Influenza Tipe A-Sekuensing-Nasofaring hewan
+Influenza Tipe A-Sekuensing-Swab tenggorok hewan,Viro-Imun-LV,Swab tenggorok hewan,61101-2,Y,Y,1369,,Influenza Tipe A-Sekuensing-Swab tenggorok hewan,,,Influenza Tipe A-Sekuensing-Swab tenggorok hewan
+Influenza Tipe A-Sekuensing-Serum hewan,Viro-Imun-LV,Serum hewan,61101-2,Y,Y,1370,,Influenza Tipe A-Sekuensing-Serum hewan,,,Influenza Tipe A-Sekuensing-Serum hewan
+Influenza Tipe B-PCR-Nasofaring hewan,Viro-Imun-LV,Swab Nasofaring binatang penyakit,40982-1,Y,Y,1371,,Influenza Tipe B-PCR-Nasofaring hewan,,,Influenza Tipe B-PCR-Nasofaring hewan
+Influenza Tipe B-PCR-Swab tenggorok hewan,Viro-Imun-LV,Swab tenggorok hewan,40982-1,Y,Y,1372,,Influenza Tipe B-PCR-Swab tenggorok hewan,,,Influenza Tipe B-PCR-Swab tenggorok hewan
+Influenza Tipe B-PCR-Serum hewan,Viro-Imun-LV,Serum hewan,40982-1,Y,Y,1373,,Influenza Tipe B-PCR-Serum hewan,,,Influenza Tipe B-PCR-Serum hewan
+Influenza Tipe B-Kultur-Nasofaring hewan,Viro-Imun-LV,Swab Nasofaring binatang penyakit,38382-8,Y,Y,1374,,Influenza Tipe B-Kultur-Nasofaring hewan,,,Influenza Tipe B-Kultur-Nasofaring hewan
+Influenza Tipe B-Kultur-Swab tenggorok hewan,Viro-Imun-LV,Swab tenggorok hewan,38382-8,Y,Y,1375,,Influenza Tipe B-Kultur-Swab tenggorok hewan,,,Influenza Tipe B-Kultur-Swab tenggorok hewan
+Influenza Tipe B-Kultur-Serum hewan,Viro-Imun-LV,Serum hewan,38382-8,Y,Y,1376,,Influenza Tipe B-Kultur-Serum hewan,,,Influenza Tipe B-Kultur-Serum hewan
+Japanese Encephalitis Virus-Serologi-IgA,Viro-Imun-LV,Serum hewan,95662-3,Y,Y,1377,,Japanese Encephalitis Virus-Serologi-IgA,,,Japanese Encephalitis Virus-Serologi-IgA
+Japanese Encephalitis Virus-Serologi-IgG,Viro-Imun-LV,Serum hewan,95667-2,Y,Y,1378,,Japanese Encephalitis Virus-Serologi-IgG,,,Japanese Encephalitis Virus-Serologi-IgG
+Japanese Encephalitis Virus-Serologi-IgM,Viro-Imun-LV,Serum hewan,95682-1,Y,Y,1379,,Japanese Encephalitis Virus-Serologi-IgM,,,Japanese Encephalitis Virus-Serologi-IgM
+Japanese Encephalitis Virus-PCR-Nyamuk,Viro-Imun-LV,Nyamuk,51666-6,Y,Y,1380,,Japanese Encephalitis Virus-PCR-Nyamuk,,,Japanese Encephalitis Virus-PCR-Nyamuk
+Japanese Encephalitis Virus-PCR-Serum hewan,Viro-Imun-LV,Serum hewan,51666-6,Y,Y,1381,,Japanese Encephalitis Virus-PCR-Serum hewan,,,Japanese Encephalitis Virus-PCR-Serum hewan
+Lyssavirus (Rabies)-PCR-Swab nasofaring hewan,Viro-Imun-LV,Swab Nasofaring binatang penyakit,51646-8,Y,Y,1382,,Lyssavirus (Rabies)-PCR-Swab nasofaring hewan,,,Lyssavirus (Rabies)-PCR-Swab nasofaring hewan
+Lyssavirus-Rabies-PCR-Swab rectal hewan,Viro-Imun-LV,Swab rectal binatang pembawa penyakit,51646-8,Y,Y,1383,,Lyssavirus-Rabies-PCR-Swab rectal hewan,,,Lyssavirus-Rabies-PCR-Swab rectal hewan
+Lyssavirus-Rabies-PCR-Jaringan hewan,Viro-Imun-LV,Jaringan hewan,51646-8,Y,Y,1384,,Lyssavirus-Rabies-PCR-Jaringan hewan,,,Lyssavirus-Rabies-PCR-Jaringan hewan
+Lyssavirus-Rabies-PCR-Serum hewan,Viro-Imun-LV,Serum hewan,51646-8,Y,Y,1385,,Lyssavirus-Rabies-PCR-Serum hewan,,,Lyssavirus-Rabies-PCR-Serum hewan
+Lyssavirus-Rabies-PCR-Sampel lingkungan,Viro-Imun-LV,Sampel lingkungan,51646-8,Y,Y,1386,,Lyssavirus-Rabies-PCR-Sampel lingkungan,,,Lyssavirus-Rabies-PCR-Sampel lingkungan
+Lyssavirus-Rabies-Sekuensing-Swab nasofaring hewan,Viro-Imun-LV,Swab Nasofaring binatang penyakit,70867-7,Y,Y,1387,,Lyssavirus-Rabies-Sekuensing-Swab nasofaring hewan,,,Lyssavirus-Rabies-Sekuensing-Swab nasofaring hewan
+Lyssavirus-Rabies-Sekuensing-Swab rectal hewan,Viro-Imun-LV,Swab rectal binatang pembawa penyakit,70867-7,Y,Y,1388,,Lyssavirus-Rabies-Sekuensing-Swab rectal hewan,,,Lyssavirus-Rabies-Sekuensing-Swab rectal hewan
+Lyssavirus-Rabies-Sekuensing-Jaringan hewan,Viro-Imun-LV,Jaringan hewan,70867-7,Y,Y,1389,,Lyssavirus-Rabies-Sekuensing-Jaringan hewan,,,Lyssavirus-Rabies-Sekuensing-Jaringan hewan
+Lyssavirus-Rabies-Sekuensing-Serum hewan,Viro-Imun-LV,Serum hewan,70867-7,Y,Y,1390,,Lyssavirus-Rabies-Sekuensing-Serum hewan,,,Lyssavirus-Rabies-Sekuensing-Serum hewan
+Lyssavirus-Rabies-Sekuensing-Sampel lingkungan,Viro-Imun-LV,Sampel lingkungan,70867-7,Y,Y,1391,,Lyssavirus-Rabies-Sekuensing-Sampel lingkungan,,,Lyssavirus-Rabies-Sekuensing-Sampel lingkungan
+Lyssavirus-Rabies-Kultur-Swab nasofaring hewan,Viro-Imun-LV,Swab Nasofaring binatang penyakit,6539-1,Y,Y,1392,,Lyssavirus-Rabies-Kultur-Swab nasofaring hewan,,,Lyssavirus-Rabies-Kultur-Swab nasofaring hewan
+Lyssavirus-Rabies-Kultur-Swab rectal hewan,Viro-Imun-LV,Swab rectal binatang pembawa penyakit,6539-1,Y,Y,1393,,Lyssavirus-Rabies-Kultur-Swab rectal hewan,,,Lyssavirus-Rabies-Kultur-Swab rectal hewan
+Lyssavirus-Rabies-Kultur-Jaringan hewan,Viro-Imun-LV,Jaringan hewan,6539-1,Y,Y,1394,,Lyssavirus-Rabies-Kultur-Jaringan hewan,,,Lyssavirus-Rabies-Kultur-Jaringan hewan
+Lyssavirus-Rabies-Kultur-Serum hewan,Viro-Imun-LV,Serum hewan,6539-1,Y,Y,1395,,Lyssavirus-Rabies-Kultur-Serum hewan,,,Lyssavirus-Rabies-Kultur-Serum hewan
+Lyssavirus-Rabies-Kultur-Sampel lingkungan,Viro-Imun-LV,Sampel lingkungan,6539-1,Y,Y,1396,,Lyssavirus-Rabies-Kultur-Sampel lingkungan,,,Lyssavirus-Rabies-Kultur-Sampel lingkungan
+Marburg virus-PCR-Serum binatang,Viro-Imun-LV,Serum binatang pembawa penyakit,41638-8,Y,Y,1397,,Marburg virus-PCR-Serum binatang,,,Marburg virus-PCR-Serum binatang
+Marburg virus-PCR-Darah binatang,Viro-Imun-LV,Darah binatang pembawa penyakit,41638-8,Y,Y,1398,,Marburg virus-PCR-Darah binatang,,,Marburg virus-PCR-Darah binatang
+MERS-CoV-PCR-Gen N2-Swab orofaring binatang,Viro-Imun-LV,Swab orofaring binatang penyakit,74473-0,Y,Y,1399,,MERS-CoV-PCR-Gen N2-Swab orofaring binatang,,,MERS-CoV-PCR-Gen N2-Swab orofaring binatang
+MERS-CoV-PCR-Gen N3-Swab orofaring binatang,Viro-Imun-LV,Swab orofaring binatang penyakit,74472-2,Y,Y,1400,,MERS-CoV-PCR-Gen N3-Swab orofaring binatang,,,MERS-CoV-PCR-Gen N3-Swab orofaring binatang
+MERS-CoV-PCR-Gen upE-Swab orofaring binatang,Viro-Imun-LV,Swab orofaring binatang penyakit,74474-8,Y,Y,1401,,MERS-CoV-PCR-Gen upE-Swab orofaring binatang,,,MERS-CoV-PCR-Gen upE-Swab orofaring binatang
+MERS-CoV-PCR-Gen N2-Swab nasofaring binatang,Viro-Imun-LV,Swab orofaring binatang penyakit,74473-0,Y,Y,1402,,MERS-CoV-PCR-Gen N2-Swab nasofaring binatang,,,MERS-CoV-PCR-Gen N2-Swab nasofaring binatang
+MERS-CoV-PCR-Gen N3-Swab nasofaring binatang,Viro-Imun-LV,Swab orofaring binatang penyakit,74472-2,Y,Y,1403,,MERS-CoV-PCR-Gen N3-Swab nasofaring binatang,,,MERS-CoV-PCR-Gen N3-Swab nasofaring binatang
+MERS-CoV-PCR-Gen upE-Swab nasofaring binatang,Viro-Imun-LV,Swab orofaring binatang penyakit,74474-8,Y,Y,1404,,MERS-CoV-PCR-Gen upE-Swab nasofaring binatang,,,MERS-CoV-PCR-Gen upE-Swab nasofaring binatang
+Monkeypox-PCR-Serum binatang,Viro-Imun-LV,Serum binatang pembawa penyakit,100383-9,Y,Y,1405,,Monkeypox-PCR-Serum binatang,,,Monkeypox-PCR-Serum binatang
+Monkeypox-PCR-Cairan lesi,Viro-Imun-LV,Cairan lesi,100383-9,Y,Y,1406,,Monkeypox-PCR-Cairan lesi,,,Monkeypox-PCR-Cairan lesi
+Monkeypox-PCR-Keropeng kulit,Viro-Imun-LV,Keropeng kulit,100383-9,Y,Y,1407,,Monkeypox-PCR-Keropeng kulit,,,Monkeypox-PCR-Keropeng kulit
+Monkeypox-PCR-Swab tenggorok,Viro-Imun-LV,Swab tenggorok,100383-9,Y,Y,1408,,Monkeypox-PCR-Swab tenggorok,,,Monkeypox-PCR-Swab tenggorok
+Monkeypox-PCR-Kulit bagian atas,Viro-Imun-LV,Kulit bagian atas,100383-9,Y,Y,1409,,Monkeypox-PCR-Kulit bagian atas,,,Monkeypox-PCR-Kulit bagian atas
+Monkeypox-Sekuensing-Type-Serum binatang,Viro-Imun-LV,Serum binatang pembawa penyakit,101003-2,Y,Y,1410,,Monkeypox-Sekuensing-Type-Serum binatang,,,Monkeypox-Sekuensing-Type-Serum binatang
+Monkeypox-Sekuensing-Type-Cairan lesi,Viro-Imun-LV,Cairan lesi,101003-2,Y,Y,1411,,Monkeypox-Sekuensing-Type-Cairan lesi,,,Monkeypox-Sekuensing-Type-Cairan lesi
+Monkeypox-Sekuensing-Type-Keropeng kulit,Viro-Imun-LV,Keropeng kulit,101003-2,Y,Y,1412,,Monkeypox-Sekuensing-Type-Keropeng kulit,,,Monkeypox-Sekuensing-Type-Keropeng kulit
+Monkeypox-Sekuensing-Type-Swab tenggorok,Viro-Imun-LV,Swab tenggorok,101003-2,Y,Y,1413,,Monkeypox-Sekuensing-Type-Swab tenggorok,,,Monkeypox-Sekuensing-Type-Swab tenggorok
+Monkeypox-Sekuensing-Type-Kulit bagian atas,Viro-Imun-LV,Kulit bagian atas,101003-2,Y,Y,1414,,Monkeypox-Sekuensing-Type-Kulit bagian atas,,,Monkeypox-Sekuensing-Type-Kulit bagian atas
+SARS CoV-2-PCR gen N-Sampel lingkungan,Viro-Imun-LV,Sampel lingkungan,94316-7,Y,Y,1415,,SARS CoV-2-PCR gen N-Sampel lingkungan,,,SARS CoV-2-PCR gen N-Sampel lingkungan
+SARS CoV-2-PCR gen ORF1-Sampel lingkungan,Viro-Imun-LV,Sampel lingkungan,94639-2,Y,Y,1416,,SARS CoV-2-PCR gen ORF1-Sampel lingkungan,,,SARS CoV-2-PCR gen ORF1-Sampel lingkungan
+SARS CoV-2-PCR gen RdRp-Sampel lingkungan,Viro-Imun-LV,Sampel lingkungan,94314-2,Y,Y,1417,,SARS CoV-2-PCR gen RdRp-Sampel lingkungan,,,SARS CoV-2-PCR gen RdRp-Sampel lingkungan
+SARS CoV-2-PCR gen S-Sampel lingkungan,Viro-Imun-LV,Sampel lingkungan,94641-8,Y,Y,1418,,SARS CoV-2-PCR gen S-Sampel lingkungan,,,SARS CoV-2-PCR gen S-Sampel lingkungan
+SARS CoV-2-PCR-deteksi RNA (kualitatif)-Sampel lingkungan,Viro-Imun-LV,Sampel lingkungan,94309-2,Y,Y,1419,,SARS CoV-2-PCR-deteksi RNA (kualitatif)-Sampel lingkungan,,,SARS CoV-2-PCR-deteksi RNA (kualitatif)-Sampel lingkungan
+SARS CoV-2-PCR gen N-Swab naso/orofaring hewan,Viro-Imun-LV,Swab naso/orofaring hewan,94316-7,Y,Y,1420,,SARS CoV-2-PCR gen N-Swab naso/orofaring hewan,,,SARS CoV-2-PCR gen N-Swab naso/orofaring hewan
+SARS CoV-2-PCR gen ORF1-Swab naso/orofaring hewan,Viro-Imun-LV,Swab naso/orofaring hewan,94639-2,Y,Y,1421,,SARS CoV-2-PCR gen ORF1-Swab naso/orofaring hewan,,,SARS CoV-2-PCR gen ORF1-Swab naso/orofaring hewan
+SARS CoV-2-PCR gen RdRp-Swab naso/orofaring hewan,Viro-Imun-LV,Swab naso/orofaring hewan,94314-2,Y,Y,1422,,SARS CoV-2-PCR gen RdRp-Swab naso/orofaring hewan,,,SARS CoV-2-PCR gen RdRp-Swab naso/orofaring hewan
+SARS CoV-2-PCR gen S-Swab naso/orofaring hewan,Viro-Imun-LV,Swab naso/orofaring hewan,94641-8,Y,Y,1423,,SARS CoV-2-PCR gen S-Swab naso/orofaring hewan,,,SARS CoV-2-PCR gen S-Swab naso/orofaring hewan
+SARS CoV-2-PCR-deteksi RNA-kualitatif-Swab naso/orofaring hewan,Viro-Imun-LV,Swab naso/orofaring hewan,94309-2,Y,Y,1424,,SARS CoV-2-PCR-deteksi RNA-kualitatif-Swab naso/orofaring hewan,,,SARS CoV-2-PCR-deteksi RNA-kualitatif-Swab naso/orofaring hewan
+SARS CoV-2-Sekuensing-Tipe-Sampel lingkungan,Viro-Imun-LV,Sampel lingkungan,96741-4,Y,Y,1425,,SARS CoV-2-Sekuensing-Tipe-Sampel lingkungan,,,SARS CoV-2-Sekuensing-Tipe-Sampel lingkungan
+SARS CoV-2-Sekuensing-Tipe-Swab naso/orofaring hewan,Viro-Imun-LV,Swab naso/orofaring hewan,96741-4,Y,Y,1426,,SARS CoV-2-Sekuensing-Tipe-Swab naso/orofaring hewan,,,SARS CoV-2-Sekuensing-Tipe-Swab naso/orofaring hewan
+SARS CoV-2-Sekuensing-Lineage-Sampel lingkungan,Viro-Imun-LV,Sampel lingkungan,100157-7,Y,Y,1427,,SARS CoV-2-Sekuensing-Lineage-Sampel lingkungan,,,SARS CoV-2-Sekuensing-Lineage-Sampel lingkungan
+SARS CoV-2-Sekuensing-Lineage-Swab naso/orofaring hewan,Viro-Imun-LV,Swab naso/orofaring hewan,100157-7,Y,Y,1428,,SARS CoV-2-Sekuensing-Lineage-Swab naso/orofaring hewan,,,SARS CoV-2-Sekuensing-Lineage-Swab naso/orofaring hewan
+SARS CoV-2-Kultur-Sampel lingkungan,Viro-Imun-LV,Sampel lingkungan,94763-0,Y,Y,1429,,SARS CoV-2-Kultur-Sampel lingkungan,,,SARS CoV-2-Kultur-Sampel lingkungan
+SARS CoV-2-Kultur-Swab naso/orofaring hewan,Viro-Imun-LV,Swab naso/orofaring hewan,94763-0,Y,Y,1430,,SARS CoV-2-Kultur-Swab naso/orofaring hewan,,,SARS CoV-2-Kultur-Swab naso/orofaring hewan
+West Nile Virus-PCR-Serum binatang,Viro-Imun-LV,Serum binatang pembawa penyakit,34892-0,Y,Y,1431,,West Nile Virus-PCR-Serum binatang,,,West Nile Virus-PCR-Serum binatang
+West Nile Virus-PCR-Nyamuk,Viro-Imun-LV,Nyamuk,34892-0,Y,Y,1432,,West Nile Virus-PCR-Nyamuk,,,West Nile Virus-PCR-Nyamuk
+Yellow Fever Virus-Serologi-IgA,Viro-Imun-LV,Serum binatang pembawa penyakit,95708-4,Y,Y,1433,,Yellow Fever Virus-Serologi-IgA,,,Yellow Fever Virus-Serologi-IgA
+Yellow Fever Virus-Serologi-IgG,Viro-Imun-LV,Serum binatang pembawa penyakit,95675-5,Y,Y,1434,,Yellow Fever Virus-Serologi-IgG,,,Yellow Fever Virus-Serologi-IgG
+Yellow Fever Virus-Serologi-IgM,Viro-Imun-LV,Serum binatang pembawa penyakit,95690-4,Y,Y,1435,,Yellow Fever Virus-Serologi-IgM,,,Yellow Fever Virus-Serologi-IgM
+Yellow Fever Virus-PCR-Serum,Viro-Imun-LV,Serum binatang pembawa penyakit,94184-9,Y,Y,1436,,Yellow Fever Virus-PCR-Serum,,,Yellow Fever Virus-PCR-Serum
+Yellow Fever Virus-PCR-Nyamuk,Viro-Imun-LV,Nyamuk,94184-9,Y,Y,1437,,Yellow Fever Virus-PCR-Nyamuk,,,Yellow Fever Virus-PCR-Nyamuk
+Yellow Fever Virus-PCR-Ektoparasit,Viro-Imun-LV,Ektoparasit,94184-9,Y,Y,1438,,Yellow Fever Virus-PCR-Ektoparasit,,,Yellow Fever Virus-PCR-Ektoparasit
+Zika virus-PCR-Nyamuk,Viro-Imun-LV,Nyamuk,79190-5,Y,Y,1439,,Zika virus-PCR-Nyamuk,,,Zika virus-PCR-Nyamuk
+Zika virus-PCR-Serum binatang pembawa penyakit,Viro-Imun-LV,Serum binatang pembawa penyakit,79190-5,Y,Y,1440,,Zika virus-PCR-Serum binatang pembawa penyakit,,,Zika virus-PCR-Serum binatang pembawa penyakit
+# --- Toksikologi-Lingkungan & Vektor ---
+Pestisida-Gol.organoklorin-DDT-Tanah,Toks-LingVektor,Tanah,87639-1,Y,Y,1441,µg/kg,Pestisida-Gol.organoklorin-DDT-Tanah,,,Pestisida-Gol.organoklorin-DDT-Tanah
+Pestisida-Gol.organoklorin-DDT-Air,Toks-LingVektor,Air,87639-1,Y,Y,1442,µg/kg,Pestisida-Gol.organoklorin-DDT-Air,,,Pestisida-Gol.organoklorin-DDT-Air
+Pestisida-Gol.organoklorin-DDT-Pangan,Toks-LingVektor,Pangan,87639-1,Y,Y,1443,µg/kg,Pestisida-Gol.organoklorin-DDT-Pangan,,,Pestisida-Gol.organoklorin-DDT-Pangan
+Pestisida-Gol.organoklorin-Aldrin-Tanah,Toks-LingVektor,Tanah,87668-0,Y,Y,1444,mg/kg,Pestisida-Gol.organoklorin-Aldrin-Tanah,,,Pestisida-Gol.organoklorin-Aldrin-Tanah
+Pestisida-Gol.organoklorin-Aldrin-Air,Toks-LingVektor,Air,87668-0,Y,Y,1445,mg/kg,Pestisida-Gol.organoklorin-Aldrin-Air,,,Pestisida-Gol.organoklorin-Aldrin-Air
+Pestisida-Gol.organoklorin-Aldrin-Pangan,Toks-LingVektor,Pangan,87668-0,Y,Y,1446,mg/kg,Pestisida-Gol.organoklorin-Aldrin-Pangan,,,Pestisida-Gol.organoklorin-Aldrin-Pangan
+Pestisida-Gol.organoklorin-Dieldrin-Tanah,Toks-LingVektor,Tanah,87665-6,Y,Y,1447,mg/kg,Pestisida-Gol.organoklorin-Dieldrin-Tanah,,,Pestisida-Gol.organoklorin-Dieldrin-Tanah
+Pestisida-Gol.organoklorin-Dieldrin-Air,Toks-LingVektor,Air,87665-6,Y,Y,1448,mg/kg,Pestisida-Gol.organoklorin-Dieldrin-Air,,,Pestisida-Gol.organoklorin-Dieldrin-Air
+Pestisida-Gol.organoklorin-Dieldrin-Pangan,Toks-LingVektor,Pangan,87665-6,Y,Y,1449,mg/kg,Pestisida-Gol.organoklorin-Dieldrin-Pangan,,,Pestisida-Gol.organoklorin-Dieldrin-Pangan
+Pestisida-Gol.organoklorin-Endrin-Tanah,Toks-LingVektor,Tanah,87660-7,Y,Y,1450,mg/kg,Pestisida-Gol.organoklorin-Endrin-Tanah,,,Pestisida-Gol.organoklorin-Endrin-Tanah
+Pestisida-Gol.organoklorin-Endrin-Air,Toks-LingVektor,Air,87660-7,Y,Y,1451,mg/kg,Pestisida-Gol.organoklorin-Endrin-Air,,,Pestisida-Gol.organoklorin-Endrin-Air
+Pestisida-Gol.organoklorin-Endrin-Pangan,Toks-LingVektor,Pangan,87660-7,Y,Y,1452,mg/kg,Pestisida-Gol.organoklorin-Endrin-Pangan,,,Pestisida-Gol.organoklorin-Endrin-Pangan
+Pestisida-Gol.organoklorin-Heptaklor-Tanah,Toks-LingVektor,Tanah,87654-0,Y,Y,1453,mg/kg,Pestisida-Gol.organoklorin-Heptaklor-Tanah,,,Pestisida-Gol.organoklorin-Heptaklor-Tanah
+Pestisida-Gol.organoklorin-Heptaklor-Air,Toks-LingVektor,Air,87654-0,Y,Y,1454,mg/kg,Pestisida-Gol.organoklorin-Heptaklor-Air,,,Pestisida-Gol.organoklorin-Heptaklor-Air
+Pestisida-Gol.organoklorin-Heptaklor-Pangan,Toks-LingVektor,Pangan,87654-0,Y,Y,1455,mg/kg,Pestisida-Gol.organoklorin-Heptaklor-Pangan,,,Pestisida-Gol.organoklorin-Heptaklor-Pangan
+Pestisida-Gol.organoklorin-Endosulfan-Tanah,Toks-LingVektor,Tanah,87661-5,Y,Y,1456,mg/kg,Pestisida-Gol.organoklorin-Endosulfan-Tanah,,,Pestisida-Gol.organoklorin-Endosulfan-Tanah
+Pestisida-Gol.organoklorin-Endosulfan-Air,Toks-LingVektor,Air,87661-5,Y,Y,1457,mg/kg,Pestisida-Gol.organoklorin-Endosulfan-Air,,,Pestisida-Gol.organoklorin-Endosulfan-Air
+Pestisida-Gol.organoklorin-Endosulfan-Pangan,Toks-LingVektor,Pangan,87661-5,Y,Y,1458,mg/kg,Pestisida-Gol.organoklorin-Endosulfan-Pangan,,,Pestisida-Gol.organoklorin-Endosulfan-Pangan
+Pestisida-Gol.organoklorin-Lindan-Tanah,Toks-LingVektor,Tanah,87649-0,Y,Y,1459,mg/kg,Pestisida-Gol.organoklorin-Lindan-Tanah,,,Pestisida-Gol.organoklorin-Lindan-Tanah
+Pestisida-Gol.organoklorin-Lindan-Air,Toks-LingVektor,Air,87649-0,Y,Y,1460,mg/kg,Pestisida-Gol.organoklorin-Lindan-Air,,,Pestisida-Gol.organoklorin-Lindan-Air
+Pestisida-Gol.organoklorin-Lindan-Pangan,Toks-LingVektor,Pangan,87649-0,Y,Y,1461,mg/kg,Pestisida-Gol.organoklorin-Lindan-Pangan,,,Pestisida-Gol.organoklorin-Lindan-Pangan
+Pestisida-Gol.organoklorin-Klordan-Tanah,Toks-LingVektor,Tanah,87746-4,Y,Y,1462,mg/kg,Pestisida-Gol.organoklorin-Klordan-Tanah,,,Pestisida-Gol.organoklorin-Klordan-Tanah
+Pestisida-Gol.organoklorin-Klordan-Air,Toks-LingVektor,Air,87746-4,Y,Y,1463,mg/kg,Pestisida-Gol.organoklorin-Klordan-Air,,,Pestisida-Gol.organoklorin-Klordan-Air
+Pestisida-Gol.organoklorin-Klordan-Pangan,Toks-LingVektor,Pangan,87746-4,Y,Y,1464,mg/kg,Pestisida-Gol.organoklorin-Klordan-Pangan,,,Pestisida-Gol.organoklorin-Klordan-Pangan
+Pestisida-Gol.organoklorin-Toksafen-Tanah,Toks-LingVektor,Tanah,87632-6,Y,Y,1465,mg/kg,Pestisida-Gol.organoklorin-Toksafen-Tanah,,,Pestisida-Gol.organoklorin-Toksafen-Tanah
+Pestisida-Gol.organoklorin-Toksafen-Air,Toks-LingVektor,Air,87632-6,Y,Y,1466,mg/kg,Pestisida-Gol.organoklorin-Toksafen-Air,,,Pestisida-Gol.organoklorin-Toksafen-Air
+Pestisida-Gol.organoklorin-Toksafen-Pangan,Toks-LingVektor,Pangan,87632-6,Y,Y,1467,mg/kg,Pestisida-Gol.organoklorin-Toksafen-Pangan,,,Pestisida-Gol.organoklorin-Toksafen-Pangan
+Pestisida-Gol.organoklorin-Heksaklorobenzen-Tanah,Toks-LingVektor,Tanah,87653-2,Y,Y,1468,mg/kg,Pestisida-Gol.organoklorin-Heksaklorobenzen-Tanah,,,Pestisida-Gol.organoklorin-Heksaklorobenzen-Tanah
+Pestisida-Gol.organoklorin-Heksaklorobenzen-Air,Toks-LingVektor,Air,87653-2,Y,Y,1469,mg/kg,Pestisida-Gol.organoklorin-Heksaklorobenzen-Air,,,Pestisida-Gol.organoklorin-Heksaklorobenzen-Air
+Pestisida-Gol.organoklorin-Heksaklorobenzen-Pangan,Toks-LingVektor,Pangan,87653-2,Y,Y,1470,mg/kg,Pestisida-Gol.organoklorin-Heksaklorobenzen-Pangan,,,Pestisida-Gol.organoklorin-Heksaklorobenzen-Pangan
+Pestisida-Gol.organoklorin-Metoksiklor-Tanah,Toks-LingVektor,Tanah,87647-4,Y,Y,1471,mg/kg,Pestisida-Gol.organoklorin-Metoksiklor-Tanah,,,Pestisida-Gol.organoklorin-Metoksiklor-Tanah
+Pestisida-Gol.organoklorin-Metoksiklor-Air,Toks-LingVektor,Air,87647-4,Y,Y,1472,mg/kg,Pestisida-Gol.organoklorin-Metoksiklor-Air,,,Pestisida-Gol.organoklorin-Metoksiklor-Air
+Pestisida-Gol.organoklorin-Metoksiklor-Pangan,Toks-LingVektor,Pangan,87647-4,Y,Y,1473,mg/kg,Pestisida-Gol.organoklorin-Metoksiklor-Pangan,,,Pestisida-Gol.organoklorin-Metoksiklor-Pangan
+Pestisida-Gol.organofosfat-Chlorpyrifos-Tanah,Toks-LingVektor,Tanah,87747-2,Y,Y,1474,mg/kg,Pestisida-Gol.organofosfat-Chlorpyrifos-Tanah,,,Pestisida-Gol.organofosfat-Chlorpyrifos-Tanah
+Pestisida-Gol.organofosfat-Chlorpyrifos-Air,Toks-LingVektor,Air,87747-2,Y,Y,1475,mg/kg,Pestisida-Gol.organofosfat-Chlorpyrifos-Air,,,Pestisida-Gol.organofosfat-Chlorpyrifos-Air
+Pestisida-Gol.organofosfat-Chlorpyrifos-Pangan,Toks-LingVektor,Pangan,87747-2,Y,Y,1476,mg/kg,Pestisida-Gol.organofosfat-Chlorpyrifos-Pangan,,,Pestisida-Gol.organofosfat-Chlorpyrifos-Pangan
+Pestisida-Gol.organofosfat-Diazinon-Tanah,Toks-LingVektor,Tanah,87666-4,Y,Y,1477,mg/kg,Pestisida-Gol.organofosfat-Diazinon-Tanah,,,Pestisida-Gol.organofosfat-Diazinon-Tanah
+Pestisida-Gol.organofosfat-Diazinon-Air,Toks-LingVektor,Air,87666-4,Y,Y,1478,mg/kg,Pestisida-Gol.organofosfat-Diazinon-Air,,,Pestisida-Gol.organofosfat-Diazinon-Air
+Pestisida-Gol.organofosfat-Diazinon-Pangan,Toks-LingVektor,Pangan,87666-4,Y,Y,1479,mg/kg,Pestisida-Gol.organofosfat-Diazinon-Pangan,,,Pestisida-Gol.organofosfat-Diazinon-Pangan
+Pestisida-Gol.organofosfat-Malathion-Tanah,Toks-LingVektor,Tanah,87648-2,Y,Y,1480,mg/kg,Pestisida-Gol.organofosfat-Malathion-Tanah,,,Pestisida-Gol.organofosfat-Malathion-Tanah
+Pestisida-Gol.organofosfat-Malathion-Air,Toks-LingVektor,Air,87648-2,Y,Y,1481,mg/kg,Pestisida-Gol.organofosfat-Malathion-Air,,,Pestisida-Gol.organofosfat-Malathion-Air
+Pestisida-Gol.organofosfat-Malathion-Pangan,Toks-LingVektor,Pangan,87648-2,Y,Y,1482,mg/kg,Pestisida-Gol.organofosfat-Malathion-Pangan,,,Pestisida-Gol.organofosfat-Malathion-Pangan
+Pestisida-Gol.organofosfat-Parathion-Tanah,Toks-LingVektor,Tanah,87659-9,Y,Y,1483,mg/kg,Pestisida-Gol.organofosfat-Parathion-Tanah,,,Pestisida-Gol.organofosfat-Parathion-Tanah
+Pestisida-Gol.organofosfat-Parathion-Air,Toks-LingVektor,Air,87659-9,Y,Y,1484,mg/kg,Pestisida-Gol.organofosfat-Parathion-Air,,,Pestisida-Gol.organofosfat-Parathion-Air
+Pestisida-Gol.organofosfat-Parathion-Pangan,Toks-LingVektor,Pangan,87659-9,Y,Y,1485,mg/kg,Pestisida-Gol.organofosfat-Parathion-Pangan,,,Pestisida-Gol.organofosfat-Parathion-Pangan
+Pestisida-Gol.organofosfat-Methyl parathion-Tanah,Toks-LingVektor,Tanah,87646-6,Y,Y,1486,mg/kg,Pestisida-Gol.organofosfat-Methyl parathion-Tanah,,,Pestisida-Gol.organofosfat-Methyl parathion-Tanah
+Pestisida-Gol.organofosfat-Methyl parathion-Air,Toks-LingVektor,Air,87646-6,Y,Y,1487,mg/kg,Pestisida-Gol.organofosfat-Methyl parathion-Air,,,Pestisida-Gol.organofosfat-Methyl parathion-Air
+Pestisida-Gol.organofosfat-Methyl parathion-Pangan,Toks-LingVektor,Pangan,87646-6,Y,Y,1488,mg/kg,Pestisida-Gol.organofosfat-Methyl parathion-Pangan,,,Pestisida-Gol.organofosfat-Methyl parathion-Pangan
+Pestisida-Gol.organofosfat-Dimethoate-Tanah,Toks-LingVektor,Tanah,87664-9,Y,Y,1489,mg/kg,Pestisida-Gol.organofosfat-Dimethoate-Tanah,,,Pestisida-Gol.organofosfat-Dimethoate-Tanah
+Pestisida-Gol.organofosfat-Dimethoate-Air,Toks-LingVektor,Air,87664-9,Y,Y,1490,mg/kg,Pestisida-Gol.organofosfat-Dimethoate-Air,,,Pestisida-Gol.organofosfat-Dimethoate-Air
+Pestisida-Gol.organofosfat-Dimatohoate-Pangan,Toks-LingVektor,Pangan,87664-9,Y,Y,1491,mg/kg,Pestisida-Gol.organofosfat-Dimatohoate-Pangan,,,Pestisida-Gol.organofosfat-Dimatohoate-Pangan
+Pestisida-Gol.organofosfat-Dichlorvos-Tanah,Toks-LingVektor,Tanah,87750-6,Y,Y,1492,mg/kg,Pestisida-Gol.organofosfat-Dichlorvos-Tanah,,,Pestisida-Gol.organofosfat-Dichlorvos-Tanah
+Pestisida-Gol.organofosfat-Dichlorvos-Air,Toks-LingVektor,Air,87750-6,Y,Y,1493,mg/kg,Pestisida-Gol.organofosfat-Dichlorvos-Air,,,Pestisida-Gol.organofosfat-Dichlorvos-Air
+Pestisida-Gol.organofosfat-Dichlorvos-Pangan,Toks-LingVektor,Pangan,87750-6,Y,Y,1494,mg/kg,Pestisida-Gol.organofosfat-Dichlorvos-Pangan,,,Pestisida-Gol.organofosfat-Dichlorvos-Pangan
+Pestisida-Gol.organofosfat-Coumaphos-Tanah,Toks-LingVektor,Tanah,87748-0,Y,Y,1495,mg/kg,Pestisida-Gol.organofosfat-Coumaphos-Tanah,,,Pestisida-Gol.organofosfat-Coumaphos-Tanah
+Pestisida-Gol.organofosfat-Coumaphos-Air,Toks-LingVektor,Air,87748-0,Y,Y,1496,mg/kg,Pestisida-Gol.organofosfat-Coumaphos-Air,,,Pestisida-Gol.organofosfat-Coumaphos-Air
+Pestisida-Gol.organofosfat-Coumaphos-Pangan,Toks-LingVektor,Pangan,87748-0,Y,Y,1497,mg/kg,Pestisida-Gol.organofosfat-Coumaphos-Pangan,,,Pestisida-Gol.organofosfat-Coumaphos-Pangan
+Pestisida-Gol.organofosfat-Fenthion-Tanah,Toks-LingVektor,Tanah,87657-3,Y,Y,1498,mg/kg,Pestisida-Gol.organofosfat-Fenthion-Tanah,,,Pestisida-Gol.organofosfat-Fenthion-Tanah
+Pestisida-Gol.organofosfat-Fenthion-Air,Toks-LingVektor,Air,87657-3,Y,Y,1499,mg/kg,Pestisida-Gol.organofosfat-Fenthion-Air,,,Pestisida-Gol.organofosfat-Fenthion-Air
+Pestisida-Gol.organofosfat-Fenthion-Pangan,Toks-LingVektor,Pangan,87657-3,Y,Y,1500,mg/kg,Pestisida-Gol.organofosfat-Fenthion-Pangan,,,Pestisida-Gol.organofosfat-Fenthion-Pangan
+Pestisida-Gol.organofosfat-Isofenphos-Tanah,Toks-LingVektor,Tanah,87652-4,Y,Y,1501,mg/kg,Pestisida-Gol.organofosfat-Isofenphos-Tanah,,,Pestisida-Gol.organofosfat-Isofenphos-Tanah
+Pestisida-Gol.organofosfat-Isofenphos-Air,Toks-LingVektor,Air,87652-4,Y,Y,1502,mg/kg,Pestisida-Gol.organofosfat-Isofenphos-Air,,,Pestisida-Gol.organofosfat-Isofenphos-Air
+Pestisida-Gol.organofosfat-Isofenphos-Pangan,Toks-LingVektor,Pangan,87652-4,Y,Y,1503,mg/kg,Pestisida-Gol.organofosfat-Isofenphos-Pangan,,,Pestisida-Gol.organofosfat-Isofenphos-Pangan
+Pestisida-Gol.organofosfat-EPN-Tanah,Toks-LingVektor,Tanah,87752-2,Y,Y,1504,mg/kg,Pestisida-Gol.organofosfat-EPN-Tanah,,,Pestisida-Gol.organofosfat-EPN-Tanah
+Pestisida-Gol.organofosfat-EPN-Air,Toks-LingVektor,Air,87752-2,Y,Y,1505,mg/kg,Pestisida-Gol.organofosfat-EPN-Air,,,Pestisida-Gol.organofosfat-EPN-Air
+Pestisida-Gol.organofosfat-EPN-Pangan,Toks-LingVektor,Pangan,87752-2,Y,Y,1506,mg/kg,Pestisida-Gol.organofosfat-EPN-Pangan,,,Pestisida-Gol.organofosfat-EPN-Pangan
+Pestisida-Gol.carbamate-Carbaryl-Tanah,Toks-LingVektor,Tanah,87744-9,Y,Y,1507,mg/kg,,,,Pestisida-Gol.carbamate-Carbaryl-Tanah
+Pestisida-Gol.carbamate-Carbaryl-Air,Toks-LingVektor,Air,87744-9,Y,Y,1508,mg/kg,,,,Pestisida-Gol.carbamate-Carbaryl-Air
+Pestisida-Gol.carbamate-Carbaryl-Pangan,Toks-LingVektor,Pangan,87744-9,Y,Y,1509,mg/kg,,,,Pestisida-Gol.carbamate-Carbaryl-Pangan
+Pestisida-Gol.carbamate-Carbofuran-Tanah,Toks-LingVektor,Tanah,87656-5,Y,Y,1510,mg/kg,,,,Pestisida-Gol.carbamate-Carbofuran-Tanah
+Pestisida-Gol.carbamate-Carbofuran-Air,Toks-LingVektor,Air,87656-5,Y,Y,1511,mg/kg,,,,Pestisida-Gol.carbamate-Carbofuran-Air
+Pestisida-Gol.carbamate-Carbofuran-Pangan,Toks-LingVektor,Pangan,87656-5,Y,Y,1512,mg/kg,,,,Pestisida-Gol.carbamate-Carbofuran-Pangan
+Pestisida-Gol.carbamate-Aldicarb-Tanah,Toks-LingVektor,Tanah,87634-2,Y,Y,1513,mg/kg,,,,Pestisida-Gol.carbamate-Aldicarb-Tanah
+Pestisida-Gol.carbamate-Aldicarb-Air,Toks-LingVektor,Air,87634-2,Y,Y,1514,mg/kg,,,,Pestisida-Gol.carbamate-Aldicarb-Air
+Pestisida-Gol.carbamate-Aldicarb-Pangan,Toks-LingVektor,Pangan,87634-2,Y,Y,1515,mg/kg,,,,Pestisida-Gol.carbamate-Aldicarb-Pangan
+Pestisida-Gol.carbamate-Methomyl-Tanah,Toks-LingVektor,Tanah,87650-8,Y,Y,1516,mg/kg,,,,Pestisida-Gol.carbamate-Methomyl-Tanah
+Pestisida-Gol.carbamate-Methomyl-Air,Toks-LingVektor,Air,87650-8,Y,Y,1517,mg/kg,,,,Pestisida-Gol.carbamate-Methomyl-Air
+Pestisida-Gol.carbamate-Methomyl-Pangan,Toks-LingVektor,Pangan,87650-8,Y,Y,1518,mg/kg,,,,Pestisida-Gol.carbamate-Methomyl-Pangan
+Pestisida-Gol.carbamate-Propoxur-Tanah,Toks-LingVektor,Tanah,87753-0,Y,Y,1519,mg/kg,,,,Pestisida-Gol.carbamate-Propoxur-Tanah
+Pestisida-Gol.carbamate-Propoxur-Air,Toks-LingVektor,Air,87753-0,Y,Y,1520,mg/kg,,,,Pestisida-Gol.carbamate-Propoxur-Air
+Pestisida-Gol.carbamate-Propoxur-Pangan,Toks-LingVektor,Pangan,87753-0,Y,Y,1521,mg/kg,,,,Pestisida-Gol.carbamate-Propoxur-Pangan
+Pestisida-Gol.carbamate-Mexacarbate-Tanah,Toks-LingVektor,Tanah,87631-8,Y,Y,1522,mg/kg,,,,Pestisida-Gol.carbamate-Mexacarbate-Tanah
+Pestisida-Gol.carbamate-Mexacarbate-Air,Toks-LingVektor,Air,87631-8,Y,Y,1523,mg/kg,,,,Pestisida-Gol.carbamate-Mexacarbate-Air
+Pestisida-Gol.carbamate-Mexacarbate-Pangan,Toks-LingVektor,Pangan,87631-8,Y,Y,1524,mg/kg,,,,Pestisida-Gol.carbamate-Mexacarbate-Pangan
+# --- Vektor dan binatang pembawa penyakit ---
+Identifikasi lalat dan kecoa,Vektor-Binatang,Lalat dan kecoa,22765-2,Y,Y,1525,,Identifikasi lalat dan kecoa,,,Identifikasi lalat dan kecoa
+Identifikasi pinjal,Vektor-Binatang,Kulit,23752-9,Y,Y,1526,,Identifikasi pinjal,,,Identifikasi pinjal
+Identifikasi Spesies Nyamuk,Vektor-Binatang,Nyamuk dewasa,82465-6,Y,Y,1527,,Identifikasi Spesies Nyamuk,,,Identifikasi Spesies Nyamuk
+Deteksi Nyamuk Infektif-kuantitatif,Vektor-Binatang,Nyamuk,91898-7,Y,Y,1528,{Ct value},Deteksi Nyamuk Infektif-kuantitatif,,,Deteksi Nyamuk Infektif-kuantitatif
+Identifikasi Larva Nyamuk (genus),Vektor-Binatang,Larva nyamuk,82465-6,Y,Y,1529,,Identifikasi Larva Nyamuk (genus),,,Identifikasi Larva Nyamuk (genus)
+Deteksi Larva Aedes Infektif,Vektor-Binatang,Jentik nyamuk,91898-7,Y,Y,1530,{Ct value},Deteksi Larva Aedes Infektif,,,Deteksi Larva Aedes Infektif
+Konfirmasi Kerentanan Nyamuk,Vektor-Binatang,Nyamuk,,Y,Y,1531,,Konfirmasi Kerentanan Nyamuk,,,Konfirmasi Kerentanan Nyamuk
+# --- Alkes dan PKRT ---
+ALT ( Angka lempeng Total )-Mikrobiologi usap alat-Alat makan,Alkes-PKRT,Alat makan,564-5,Y,Y,1532,cfu/cm2,ALT ( Angka lempeng Total )-Mikrobiologi usap alat-Alat makan,,,ALT ( Angka lempeng Total )-Mikrobiologi usap alat-Alat makan
+ALT-Angka lempeng Total-Mikrobiologi usap alat-Alat masak,Alkes-PKRT,Alat masak,564-5,Y,Y,1533,cfu/cm2,ALT-Angka lempeng Total-Mikrobiologi usap alat-Alat masak,,,ALT-Angka lempeng Total-Mikrobiologi usap alat-Alat masak
+ALT-Angka lempeng Total-Mikrobiologi usap alat-Alat lain,Alkes-PKRT,Alat lain,564-5,Y,Y,1534,cfu/cm2,ALT-Angka lempeng Total-Mikrobiologi usap alat-Alat lain,,,ALT-Angka lempeng Total-Mikrobiologi usap alat-Alat lain
+ALT-Angka lempeng Total-Mikrobiologi usap alat-Tangan,Alkes-PKRT,Tangan,564-5,Y,Y,1535,cfu/cm2,ALT-Angka lempeng Total-Mikrobiologi usap alat-Tangan,,,ALT-Angka lempeng Total-Mikrobiologi usap alat-Tangan
+ALT Kapang/Khamir-Mikrobiologi usap alat-Alat makan,Alkes-PKRT,Alat makan,564-5,Y,Y,1536,cfu/cm2,ALT Kapang/Khamir-Mikrobiologi usap alat-Alat makan,,,ALT Kapang/Khamir-Mikrobiologi usap alat-Alat makan
+ALT Kapang/Khamir -Mikrobiologi usap alat-Alat masak,Alkes-PKRT,Alat masak,564-5,Y,Y,1537,cfu/cm2,ALT Kapang/Khamir -Mikrobiologi usap alat-Alat masak,,,ALT Kapang/Khamir -Mikrobiologi usap alat-Alat masak
+ALT Kapang/Khamir-Mikrobiologi usap alat-Alat lain,Alkes-PKRT,Alat lain,564-5,Y,Y,1538,cfu/cm2,ALT Kapang/Khamir-Mikrobiologi usap alat-Alat lain,,,ALT Kapang/Khamir-Mikrobiologi usap alat-Alat lain
+E. coli (kualitatif)-Mikrobiologi usap alat-Alat makan,Alkes-PKRT,Alat makan,20811-6,Y,Y,1539,,E. coli (kualitatif)-Mikrobiologi usap alat-Alat makan,,,E. coli (kualitatif)-Mikrobiologi usap alat-Alat makan
+E. coli-kualitatif-Mikrobiologi usap alat-Alat masak,Alkes-PKRT,Alat masak,20811-6,Y,Y,1540,,E. coli-kualitatif-Mikrobiologi usap alat-Alat masak,,,E. coli-kualitatif-Mikrobiologi usap alat-Alat masak
+E. coli-kualitatif-Mikrobiologi usap alat-Alat lain,Alkes-PKRT,Alat lain,20811-6,Y,Y,1541,,E. coli-kualitatif-Mikrobiologi usap alat-Alat lain,,,E. coli-kualitatif-Mikrobiologi usap alat-Alat lain
+Jamur (kualitatif)-Mikrobiologi usap alat-Alat makan,Alkes-PKRT,Alat makan,580-1,Y,Y,1542,,Jamur (kualitatif)-Mikrobiologi usap alat-Alat makan,,,Jamur (kualitatif)-Mikrobiologi usap alat-Alat makan
+Jamur-kualitatif-Mikrobiologi usap alat-Alat masak,Alkes-PKRT,Alat masak,580-1,Y,Y,1543,,Jamur-kualitatif-Mikrobiologi usap alat-Alat masak,,,Jamur-kualitatif-Mikrobiologi usap alat-Alat masak
+Jamur-kualitatif-Mikrobiologi usap alat-Alat lain,Alkes-PKRT,Alat lain,580-1,Y,Y,1544,,Jamur-kualitatif-Mikrobiologi usap alat-Alat lain,,,Jamur-kualitatif-Mikrobiologi usap alat-Alat lain
+Coliform-Mikrobiologi usap alat-Alat makan,Alkes-PKRT,Alat makan,39018-7,Y,Y,1545,cfu/cm2,Coliform-Mikrobiologi usap alat-Alat makan,,,Coliform-Mikrobiologi usap alat-Alat makan
+Coliform-Mikrobiologi usap alat-Alat masak,Alkes-PKRT,Alat masak,39018-7,Y,Y,1546,cfu/cm2,Coliform-Mikrobiologi usap alat-Alat masak,,,Coliform-Mikrobiologi usap alat-Alat masak
+Coliform-Mikrobiologi usap alat-Alat lain,Alkes-PKRT,Alat lain,39018-7,Y,Y,1547,cfu/cm2,Coliform-Mikrobiologi usap alat-Alat lain,,,Coliform-Mikrobiologi usap alat-Alat lain
+Salmonella sp-Mikrobiologi usap alat-Alat makan,Alkes-PKRT,Alat makan,17563-8,Y,Y,1548,,Salmonella sp-Mikrobiologi usap alat-Alat makan,,,Salmonella sp-Mikrobiologi usap alat-Alat makan
+Salmonella sp-Mikrobiologi usap alat-Alat masak,Alkes-PKRT,Alat masak,17563-8,Y,Y,1549,,Salmonella sp-Mikrobiologi usap alat-Alat masak,,,Salmonella sp-Mikrobiologi usap alat-Alat masak
+Salmonella sp-Mikrobiologi usap alat-Alat lain,Alkes-PKRT,Alat lain,17563-8,Y,Y,1550,,Salmonella sp-Mikrobiologi usap alat-Alat lain,,,Salmonella sp-Mikrobiologi usap alat-Alat lain
+Staphylococcus aureus-Mikrobiologi usap alat-Alat makan,Alkes-PKRT,Alat makan,100897-8,Y,Y,1551,,Staphylococcus aureus-Mikrobiologi usap alat-Alat makan,,,Staphylococcus aureus-Mikrobiologi usap alat-Alat makan
+Staphylococcus aureus-Mikrobiologi usap alat-Alat masak,Alkes-PKRT,Alat masak,100897-8,Y,Y,1552,,Staphylococcus aureus-Mikrobiologi usap alat-Alat masak,,,Staphylococcus aureus-Mikrobiologi usap alat-Alat masak
+Staphylococcus aureus-Mikrobiologi usap alat-Alat lain,Alkes-PKRT,Alat lain,100897-8,Y,Y,1553,,Staphylococcus aureus-Mikrobiologi usap alat-Alat lain,,,Staphylococcus aureus-Mikrobiologi usap alat-Alat lain
+Uji sensitivitas,Alkes-PKRT,IVD,101129-5,Y,N,1554,%,Uji sensitivitas,,,Uji sensitivitas

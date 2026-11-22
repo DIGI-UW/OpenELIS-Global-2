@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.5.xsd">
+  <changeSet id="479-004-reporting-output-cleanup" author="pmanko">
+    <addColumn tableName="reporting_export_job">
+      <column name="output_cleaned_at" type="timestamp with time zone"/>
+    </addColumn>
+    <createIndex tableName="reporting_export_job" indexName="reporting_job_cleanup">
+      <column name="state"/><column name="output_cleaned_at"/>
+    </createIndex>
+    <rollback>
+      <dropIndex tableName="reporting_export_job" indexName="reporting_job_cleanup"/>
+      <dropColumn tableName="reporting_export_job" columnName="output_cleaned_at"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

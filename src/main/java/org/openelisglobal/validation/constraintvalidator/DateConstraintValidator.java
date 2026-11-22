@@ -5,6 +5,7 @@ import jakarta.validation.ConstraintValidatorContext;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.validator.CustomDateValidator;
+import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.validation.annotations.ValidDate;
 
 public class DateConstraintValidator implements ConstraintValidator<ValidDate, String> {
@@ -41,9 +42,24 @@ public class DateConstraintValidator implements ConstraintValidator<ValidDate, S
         datePortion = datePortion.replaceAll(DateUtil.AMBIGUOUS_DATE_SEGMENT, "01");
         String result = CustomDateValidator.getInstance().validateDate(
                 CustomDateValidator.getInstance().getDate(datePortion), validateDateConstraint.relative());
-        if (!IActionConstants.VALID.equals(result)) {
-            return false;
+        if (IActionConstants.VALID.equals(result)) {
+            return true;
         }
-        return true;
+        if (validateDateConstraint.relative() != DateRelation.TODAY) {
+            if (IActionConstants.INVALID_TO_LARGE.equals(result)) {
+                replaceMessage(context, "Date may not be in the future");
+            } else if (IActionConstants.INVALID_TO_SMALL.equals(result)) {
+                replaceMessage(context, "Date may not be in the past");
+            }
+        }
+        return false;
+    }
+
+    private void replaceMessage(ConstraintValidatorContext context, String message) {
+        if (context == null) {
+            return;
+        }
+        context.disableDefaultConstraintViolation();
+        context.buildConstraintViolationWithTemplate(message).addConstraintViolation();
     }
 }

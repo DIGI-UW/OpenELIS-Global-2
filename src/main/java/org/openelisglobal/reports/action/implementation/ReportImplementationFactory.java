@@ -15,7 +15,9 @@ package org.openelisglobal.reports.action.implementation;
 
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.module.runtime.ModuleRegistry;
 import org.openelisglobal.reports.action.implementation.ReportSpecificationParameters.Parameter;
+import org.openelisglobal.spring.util.SpringContext;
 
 public class ReportImplementationFactory {
     private static final boolean isLNSP = true;
@@ -162,7 +164,47 @@ public class ReportImplementationFactory {
                 || report.equals("haitiClinicalNonConformityBySectionReason");
     }
 
+    /**
+     * A report answered by an installed module's {@code ReportProvider} (the
+     * {@code report} extension point), or {@code null} when no module claims the
+     * id, including in contexts without the module runtime.
+     */
+    static IReportCreator moduleReportCreator(String report) {
+        if (GenericValidator.isBlankOrNull(report)) {
+            return null;
+        }
+        ModuleRegistry registry;
+        try {
+            registry = SpringContext.getBean(ModuleRegistry.class);
+        } catch (RuntimeException e) {
+            return null;
+        }
+        return registry.extensions().reportProvider(report).map(ModuleReportCreator::new).orElse(null);
+    }
+
+    /**
+     * A built-in report first, then a module's report provider; never a module
+     * taking over a core report id.
+     */
     public static IReportCreator getReportCreator(String report) {
+        IReportCreator builtIn = builtInReportCreator(report);
+        return builtIn != null ? builtIn : moduleReportCreator(report);
+    }
+
+    /**
+     * Whether the core itself ships a report with this id. Only a matching id
+     * instantiates a creator, and a creator that fails to construct (no Spring
+     * context, as in a unit test) still proves the id is taken.
+     */
+    public static boolean isBuiltInReport(String report) {
+        try {
+            return builtInReportCreator(report) != null;
+        } catch (RuntimeException | LinkageError e) {
+            return true;
+        }
+    }
+
+    static IReportCreator builtInReportCreator(String report) {
         if (!GenericValidator.isBlankOrNull(report)) {
             if (report.equals("patientARV1")) {
                 return new PatientARVVersion1Report();
@@ -273,8 +315,6 @@ public class ReportImplementationFactory {
                 return new ExportTrendsByDate();
             } else if (report.equals("TBOrderExport")) {
                 return new ExportTBOrdersByDate();
-            } else if (report.equals("MauritiusProtocolSheet")) {
-                return new MauritiusProtocolSheet();
             } else if (report.equals("ExportWHONETReportByDate")) {
                 return new WHONETExportRoutineByDate();
             } else if (report.equals("covidResultsReport")) {

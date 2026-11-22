@@ -1,10 +1,9 @@
 package org.openelisglobal.organization.service;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -18,8 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OrganizationServiceImpl extends AuditableBaseObjectServiceImpl<Organization, String>
         implements OrganizationService {
-    @PersistenceContext
-    private EntityManager entityManager;
     @Autowired
     protected OrganizationDAO baseObjectDAO;
     @Autowired
@@ -108,6 +105,9 @@ public class OrganizationServiceImpl extends AuditableBaseObjectServiceImpl<Orga
         if (organization.getIsActive().equals(IActionConstants.YES)
                 && getBaseObjectDAO().duplicateOrganizationExists(organization)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + organization.getOrganizationName());
+        }
+        if (organization.getFhirUuid() == null) {
+            organization.setFhirUuid(UUID.randomUUID());
         }
         return super.insert(organization);
     }
@@ -247,10 +247,56 @@ public class OrganizationServiceImpl extends AuditableBaseObjectServiceImpl<Orga
 
     @Override
     @Transactional
-    public String generateSiteCode() {
-        Number seqVal = (Number) entityManager.createNativeQuery("SELECT nextval('clinlims.site_code_seq')")
-                .getSingleResult();
-        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyMMdd"));
-        return String.format("S%s-%05d", date, seqVal.longValue());
+    public String insertUnchecked(Organization organization) {
+        if (organization.getFhirUuid() == null) {
+            organization.setFhirUuid(UUID.randomUUID());
+        }
+        return super.insert(organization);
+    }
+
+    @Override
+    @Transactional
+    public Organization updateUnchecked(Organization organization) {
+        return super.update(organization);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Organization> getAllWithTypes() {
+        return baseObjectDAO.getAllWithTypes();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Organization> getChildrenWithTypes(String parentId) {
+        return baseObjectDAO.getChildrenWithTypes(parentId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Organization> getByTypeIdWithTypes(String typeId) {
+        return baseObjectDAO.getByTypeIdWithTypes(typeId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> countActiveChildren(Collection<String> parentIds) {
+        return baseObjectDAO.countActiveChildren(parentIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Organization> searchAreas(String text, int limit) {
+        return baseObjectDAO.searchAreas(text, limit);
+    }
+
+    @Override
+    @Transactional
+    public void deactivateOrganizationsFromSource(String source) {
+        for (Organization organization : getBaseObjectDAO().getAll()) {
+            if (source != null && source.equals(organization.getSource())) {
+                organization.setIsActive("N");
+            }
+        }
     }
 }

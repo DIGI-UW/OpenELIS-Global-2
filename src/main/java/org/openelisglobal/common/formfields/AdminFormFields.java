@@ -20,7 +20,7 @@ import java.util.Map;
 public class AdminFormFields {
 
     public static enum Field {
-        ActionMenu, AnalyteMenu, AnalyzerTestNameMenu, CodeElementXref, CodeElementTypeMenu, CountyMenu, DictionaryMenu,
+        ActionMenu, AnalyteMenu, CodeElementXref, CodeElementTypeMenu, CountyMenu, DictionaryMenu,
         DictionaryCategoryMenu, ExternalConnections, LabelMenu, MethodMenu, OrganizationMenu, PanelMenu, PanelItemMenu,
         PatientTypeMenu, ProgramMenu, ProjectMenu, ProviderMenu, QaEventMenu, ReceiverCodeElementMenu, RegionMenu,
         ResultLimitsMenu, RoleMenu, SiteInformationMenu, SampleEntryMenu, ResultInformationMenu, SampleDomainMenu,

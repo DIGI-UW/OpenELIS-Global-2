@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- One record for every deliberate decision to proceed past a control on an
+       order (OGC-1201 AL and AB). Ordering without a patient and continuing
+       with testing after a failed acceptance check are the same shape of act:
+       a user (or a caller, for EQA) chooses to go on, and the system must be
+       able to say afterwards that the choice was made, by whom, when and why.
+       Downstream consumers — results entry, validation, the report — read this
+       to tell a deliberate patient-less order from a missing patient. -->
+  <changeSet author="oe" id="100-order-override-record-1">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="sample_order_override" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+
+    <createSequence schemaName="clinlims" sequenceName="sample_order_override_seq" startValue="1" incrementBy="1"/>
+
+    <createTable tableName="sample_order_override" schemaName="clinlims">
+      <column name="id" type="BIGINT">
+        <constraints primaryKey="true" primaryKeyName="sample_order_override_pkey" nullable="false"/>
+      </column>
+      <column name="sample_id" type="NUMERIC(10)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="override_type" type="VARCHAR(40)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="reason_code" type="VARCHAR(40)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="reason" type="TEXT"/>
+      <column name="sys_user_id" type="NUMERIC(10)"/>
+      <column name="recorded_date" type="TIMESTAMP" defaultValueComputed="now()">
+        <constraints nullable="false"/>
+      </column>
+      <!-- BaseObject maps its lastupdated property to a last_updated column. -->
+      <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+    </createTable>
+
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims" baseTableName="sample_order_override" baseColumnNames="sample_id"
+      referencedTableSchemaName="clinlims" referencedTableName="sample" referencedColumnNames="id"
+      constraintName="sample_order_override_sample_fk" onDelete="CASCADE"/>
+
+    <!-- One live decision per kind, per order: re-deciding replaces the record
+         rather than appending a second, so "was this order overridden?" has a
+         single answer. -->
+    <addUniqueConstraint
+      schemaName="clinlims" tableName="sample_order_override"
+      columnNames="sample_id, override_type"
+      constraintName="sample_order_override_unique"/>
+
+    <createIndex schemaName="clinlims" tableName="sample_order_override" indexName="idx_sample_order_override_sample">
+      <column name="sample_id"/>
+    </createIndex>
+
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="sample_order_override"/>
+      <dropSequence schemaName="clinlims" sequenceName="sample_order_override_seq"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

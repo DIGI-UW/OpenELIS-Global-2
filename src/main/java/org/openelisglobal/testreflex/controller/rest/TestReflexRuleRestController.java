@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
@@ -64,10 +65,17 @@ public class TestReflexRuleRestController {
         }
     }
 
+    /**
+     * All reflex rules, or just one when {@code id} is supplied — the Test Editor's
+     * Reflex &amp; Calc section links straight to a single rule, and opening it
+     * should show that rule rather than the whole collection.
+     */
     @GetMapping(value = "reflexrules", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public List<ReflexRule> getReflexRules(HttpServletRequest request) {
-        return reflexService.getAllReflexRules().stream().collect(Collectors.toList());
+    public List<ReflexRule> getReflexRules(HttpServletRequest request, @RequestParam(required = false) String id) {
+        return reflexService.getAllReflexRules().stream()
+                .filter(rule -> id == null || id.isBlank() || id.equals(String.valueOf(rule.getId())))
+                .collect(Collectors.toList());
     }
 
     @GetMapping(value = "reflexrule-options", produces = MediaType.APPLICATION_JSON_VALUE)

@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.service;
 
 import java.util.List;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
+import org.openelisglobal.inventory.valueholder.InventoryUsage;
 
 public interface InventoryManagementService {
 
@@ -20,6 +21,12 @@ public interface InventoryManagementService {
             String sysUserId);
 
     /**
+     * Revalidates and consumes exactly the selected lot in one transaction.
+     */
+    InventoryUsage consumeSelectedLot(Long lotId, Double quantityNeeded, Long testResultId, Long analysisId,
+            String sysUserId);
+
+    /**
      * Receive new inventory (creates new lot and records transaction)
      *
      * @param lotData   The lot data to create
@@ -27,6 +34,9 @@ public interface InventoryManagementService {
      * @return The created lot
      */
     InventoryLot receiveInventory(InventoryLot lotData, String sysUserId);
+
+    /** One transaction: a failing line rolls back the whole delivery. */
+    List<InventoryLot> receiveInventoryBatch(List<InventoryLot> lots, String sysUserId);
 
     /**
      * Check if sufficient inventory is available for a given item and quantity

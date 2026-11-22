@@ -1,21 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <!-- ObservationHistoryType data -->
-    <observation_history_type id="1"
-        type_name="initialSampleCondition"
-        description="Patient's education level"
-        lastupdated="2023-11-01 12:00:00" />
-    <observation_history_type id="2"
-        type_name="paymentStatus" description="Patient's marital status"
-        lastupdated="2023-11-01 12:00:00" />
-    <observation_history_type id="3"
-        type_name="requestDate" description="Patient's occupation"
-        lastupdated="2023-11-01 12:00:00" />
-    <!-- New ObservationHistoryType entry -->
-    <observation_history_type id="4"
-        type_name="nextVisitDate" description="Patient's smoking habits"
-        lastupdated="2023-11-01 12:00:00" />
-
     <!-- Sample data -->
     <sample id="1" accession_number="12345"
         received_date="2024-06-03 00:00:00.0"

@@ -53,7 +53,6 @@ public class PatientUtil {
         UNKNOWN_PERSON = personService.getPersonByLastName("UNKNOWN_");
         if (UNKNOWN_PERSON == null) {
             UNKNOWN_PERSON = new Person();
-            UNKNOWN_PERSON.setSysUserId("1");
             UNKNOWN_PERSON.setLastName("UNKNOWN_");
             personService.insert(UNKNOWN_PERSON);
         }
@@ -63,7 +62,6 @@ public class PatientUtil {
 
         if (UNKNOWN_PROVIDER == null) {
             UNKNOWN_PROVIDER = new Provider();
-            UNKNOWN_PROVIDER.setSysUserId("1");
             UNKNOWN_PROVIDER.setPerson(UNKNOWN_PERSON);
             providerService.insert(UNKNOWN_PROVIDER);
         }
@@ -73,7 +71,6 @@ public class PatientUtil {
 
         if (UNKNOWN_PATIENT == null) {
             UNKNOWN_PATIENT = new Patient();
-            UNKNOWN_PATIENT.setSysUserId("1");
             UNKNOWN_PATIENT.setPerson(UNKNOWN_PERSON);
             patientService.insert(UNKNOWN_PATIENT);
         }

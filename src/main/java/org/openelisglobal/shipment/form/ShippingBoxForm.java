@@ -38,6 +38,9 @@ public class ShippingBoxForm extends BaseForm {
     @Size(max = 2000)
     private String notes;
 
+    /** JSON [{label, type}] manifest of an imported box; null otherwise. */
+    private String importedContents;
+
     private Timestamp createdDate;
 
     private Integer createdBy;
@@ -57,8 +60,19 @@ public class ShippingBoxForm extends BaseForm {
 
     private Integer sampleCount;
 
+    private Boolean inbound;
+
+    @Size(max = 255)
+    private String originFacilityName;
+
     @Size(max = 2000)
     private String contents;
+
+    /**
+     * Set when this box carries EQA panel material for a provider cycle. Without it
+     * nothing outside the EQA workbench can tell an EQA box from a referral box.
+     */
+    private Long eqaCycleId;
 
     private List<BoxSampleInfo> samples;
 
@@ -197,6 +211,14 @@ public class ShippingBoxForm extends BaseForm {
         this.notes = notes;
     }
 
+    public String getImportedContents() {
+        return importedContents;
+    }
+
+    public void setImportedContents(String importedContents) {
+        this.importedContents = importedContents;
+    }
+
     public Timestamp getCreatedDate() {
         return createdDate;
     }
@@ -269,12 +291,36 @@ public class ShippingBoxForm extends BaseForm {
         this.sampleCount = sampleCount;
     }
 
+    public Boolean getInbound() {
+        return inbound;
+    }
+
+    public void setInbound(Boolean inbound) {
+        this.inbound = inbound;
+    }
+
+    public String getOriginFacilityName() {
+        return originFacilityName;
+    }
+
+    public void setOriginFacilityName(String originFacilityName) {
+        this.originFacilityName = originFacilityName;
+    }
+
     public String getContents() {
         return contents;
     }
 
     public void setContents(String contents) {
         this.contents = contents;
+    }
+
+    public Long getEqaCycleId() {
+        return eqaCycleId;
+    }
+
+    public void setEqaCycleId(Long eqaCycleId) {
+        this.eqaCycleId = eqaCycleId;
     }
 
     public List<BoxSampleInfo> getSamples() {

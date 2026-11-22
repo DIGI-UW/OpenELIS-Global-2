@@ -179,3 +179,7 @@ export const test = base.extend<{
 });
 
 export { expect };
+
+// Specs import the base test plus the types they annotate helpers with from
+// this one module, so the types come through here too.
+export type { Locator, Page } from "@playwright/test";

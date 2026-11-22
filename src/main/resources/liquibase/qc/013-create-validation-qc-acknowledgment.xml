@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Validation QC acknowledgment audit trail (OGC-554 FR-04) -->
+    <changeSet id="qc-013-create-validation-qc-acknowledgment" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="validation_qc_acknowledgment"/>
+            </not>
+        </preConditions>
+        <comment>Create QC acknowledgment audit trail table for validation (OGC-554)</comment>
+        <createTable tableName="validation_qc_acknowledgment">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analysis_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="acknowledged_by" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="acknowledged_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="justification" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+            baseTableName="validation_qc_acknowledgment"
+            baseColumnNames="analysis_id"
+            constraintName="fk_val_qc_ack_analysis"
+            referencedTableName="analysis"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="validation_qc_acknowledgment"
+            baseColumnNames="acknowledged_by"
+            constraintName="fk_val_qc_ack_user"
+            referencedTableName="system_user"
+            referencedColumnNames="id"/>
+        <createIndex tableName="validation_qc_acknowledgment" indexName="idx_val_qc_ack_analysis">
+            <column name="analysis_id"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="validation_qc_acknowledgment"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -3,7 +3,7 @@ set -euo pipefail
 
 echo "=== OpenELIS Workspace Setup ==="
 
-# 1. Initialize ALL git submodules (plugins, dataexport, tools/*)
+# 1. Initialize all git submodules (dataexport and tools/*)
 echo "Initializing git submodules..."
 git submodule update --init --recursive
 echo "  Submodules initialized."
@@ -17,7 +17,7 @@ fi
 # 3. Create .env from template if needed
 if [ ! -f .env ] && [ -f .env.example ]; then
   cp .env.example .env
-  echo "  Created .env from .env.example — review and customize as needed."
+  echo "  Created .env from .env.example — defaults support localhost development."
 fi
 
 # 4. Verify prerequisites
@@ -51,7 +51,9 @@ echo ""
 echo "=== Setup complete ==="
 echo ""
 echo "Next steps:"
-echo "  1. Review/edit .env if created"
-echo "  2. mvn clean install -DskipTests -Dmaven.test.skip=true  (build backend)"
-echo "  3. cd frontend && npm install  (install frontend deps)"
-echo "  4. docker compose up -d  (start database)"
+echo "  scripts/dev-stack up  (check prerequisites, set up local HTTPS, build and start)"
+echo "  Open the URL printed by up; localhost needs no .env edits."
+echo "  First use may request administrator authentication for local HTTPS trust."
+echo ""
+echo "Optional diagnostics: scripts/dev-stack doctor"
+echo "Separate CI verification: scripts/run-ci-checks.sh (committed changes)"

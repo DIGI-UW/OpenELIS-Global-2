@@ -1,0 +1,14 @@
+package org.openelisglobal.microbiology.dao;
+
+import java.util.List;
+import org.openelisglobal.common.dao.BaseDAO;
+import org.openelisglobal.microbiology.valueholder.MicroAstReading;
+
+public interface MicroAstReadingDAO extends BaseDAO<MicroAstReading, String> {
+
+    List<MicroAstReading> getByRunId(String runId);
+
+    List<MicroAstReading> getSelectedByRunIds(List<String> runIds);
+
+    List<MicroAstReading> getByRunIds(List<String> runIds);
+}

@@ -19,8 +19,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
@@ -129,8 +127,6 @@ public class RetroCINonConformityNotification extends RetroCIReport implements I
         errorFound = false;
         requestedAccessionNumber = form.getAccessionDirectNoSuffix();
         ReportSpecificationList specificationList = form.getSelectList();
-
-        createReportParameters();
 
         errorFound = !validateSubmitParameters(specificationList.getSelection());
         if (errorFound) {
@@ -277,18 +273,9 @@ public class RetroCINonConformityNotification extends RetroCIReport implements I
     }
 
     @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        if (errorFound) {
-            return new JRBeanCollectionDataSource(errorMsgs);
-        } else {
-            ReportUtil.markDocumentsAsPrinted(ReportUtil.DocumentTypes.NON_CONFORMITY_NOTIFCATION, sampleQaEventIds,
-                    "1", checkIdsForPriorPrintRecord);
-            return new JRBeanCollectionDataSource(reportItems);
-        }
-    }
-
-    @Override
-    protected String reportFileName() {
-        return "NonConformityNotification";
+    protected byte[] renderReport() {
+        ReportUtil.markDocumentsAsPrinted(ReportUtil.DocumentTypes.NON_CONFORMITY_NOTIFCATION, sampleQaEventIds, "1",
+                checkIdsForPriorPrintRecord);
+        return StudyNonConformityPdf.notification(reportItems);
     }
 }

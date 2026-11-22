@@ -11,8 +11,10 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.propertyeditor.CaseInsensitiveEnumPropertyEditor;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.AuthType;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.ProgrammedConnection;
+import org.openelisglobal.program.service.InvalidClinicalAttachmentException;
 import org.springframework.beans.propertyeditors.StringTrimmerEditor;
 import org.springframework.beans.propertyeditors.URIEditor;
+import org.springframework.context.MessageSource;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -31,9 +34,20 @@ import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-@Order(Ordered.HIGHEST_PRECEDENCE)
+// Leaves HIGHEST_PRECEDENCE free for a package-scoped @ControllerAdvice.
+@Order(Ordered.HIGHEST_PRECEDENCE + 1)
 @ControllerAdvice
 public class ControllerSetup extends ResponseEntityExceptionHandler {
+
+    /**
+     * Keeps the reason a ResponseStatusException or other ErrorResponse carries in
+     * its problem detail. The site's message source answers an unknown code with
+     * the code itself, so resolving the "problemDetail.*" codes through it replaced
+     * every reason with a message code, and no such keys exist to translate.
+     */
+    @Override
+    public void setMessageSource(MessageSource messageSource) {
+    }
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -44,6 +58,25 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
         binder.registerCustomEditor(AuthType.class, new CaseInsensitiveEnumPropertyEditor<>(AuthType.class));
         binder.registerCustomEditor(ProgrammedConnection.class,
                 new CaseInsensitiveEnumPropertyEditor<>(ProgrammedConnection.class));
+    }
+
+    /**
+     * Keeps @PreAuthorize denials on 403: handleRuntimeException would otherwise
+     * claim them, since AccessDeniedException is a RuntimeException. Debug-level,
+     * because a refusal is the authorization layer working.
+     */
+    @ExceptionHandler(value = { AccessDeniedException.class })
+    protected ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex, WebRequest request) {
+        LogEvent.logDebug(this.getClass().getName(), "handleAccessDenied", ex.getMessage());
+        return new ResponseEntity<>(buildGenericErrorBody(HttpStatus.FORBIDDEN), new HttpHeaders(),
+                HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(InvalidClinicalAttachmentException.class)
+    protected ResponseEntity<Object> handleInvalidClinicalAttachment(InvalidClinicalAttachmentException ex) {
+        Map<String, Object> body = buildGenericErrorBody(HttpStatus.BAD_REQUEST);
+        body.put("messageKey", "clinicalAttachment.uploadHint");
+        return ResponseEntity.badRequest().body(body);
     }
 
     @ExceptionHandler(value = { RuntimeException.class })
@@ -68,11 +101,18 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
         return body;
     }
 
+    /**
+     * A body Jackson cannot map (a value outside an enum, a malformed date) is the
+     * caller's error, so it stays a 400, with a messageKey the UI can translate
+     * instead of a bare "Failed to read request".
+     */
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         LogEvent.logError(ex);
-        return super.handleHttpMessageNotReadable(ex, headers, status, request);
+        Map<String, Object> body = buildGenericErrorBody(HttpStatus.BAD_REQUEST);
+        body.put("messageKey", "error.request.unreadable");
+        return new ResponseEntity<>(body, headers, HttpStatus.BAD_REQUEST);
     }
 
     @Override

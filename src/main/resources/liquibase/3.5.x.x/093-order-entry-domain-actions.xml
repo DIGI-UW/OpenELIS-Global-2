@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!--
+    Order entry is one direct action per domain under the Order menu: Add
+    Clinical Order, Add Environmental Order and Add Vector Order each keep their
+    own submenus, and the generic parent they used to sit under is retired.
+    Deployment configuration chooses which of the three a site shows.
+    -->
+    <changeSet id="OGC-782-order-entry-domain-actions" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="3">
+                SELECT COUNT(*) FROM clinlims.menu
+                WHERE element_id IN ('menu_clinical_workflow', 'menu_environmental_workflow', 'menu_vector_workflow')
+                  AND parent_id = (SELECT id FROM clinlims.menu WHERE element_id = 'menu_add_order')
+            </sqlCheck>
+        </preConditions>
+
+        <update schemaName="clinlims" tableName="menu">
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_sample')"/>
+            <column name="presentation_order" valueNumeric="1"/>
+            <where>element_id = 'menu_clinical_workflow'</where>
+        </update>
+        <update schemaName="clinlims" tableName="menu">
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_sample')"/>
+            <column name="presentation_order" valueNumeric="2"/>
+            <where>element_id = 'menu_environmental_workflow'</where>
+        </update>
+        <update schemaName="clinlims" tableName="menu">
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_sample')"/>
+            <column name="presentation_order" valueNumeric="3"/>
+            <where>element_id = 'menu_vector_workflow'</where>
+        </update>
+
+        <!-- The siblings keep their relative order behind the three actions. -->
+        <update schemaName="clinlims" tableName="menu">
+            <column name="presentation_order" valueNumeric="4"/>
+            <where>element_id = 'menu_sample_add'</where>
+        </update>
+        <update schemaName="clinlims" tableName="menu">
+            <column name="presentation_order" valueNumeric="5"/>
+            <where>element_id = 'menu_sample_create'</where>
+        </update>
+        <update schemaName="clinlims" tableName="menu">
+            <column name="presentation_order" valueNumeric="6"/>
+            <where>element_id = 'menu_sample_edit'</where>
+        </update>
+        <update schemaName="clinlims" tableName="menu">
+            <column name="presentation_order" valueNumeric="7"/>
+            <where>element_id = 'menu_sample_eorder'</where>
+        </update>
+
+        <update schemaName="clinlims" tableName="menu">
+            <column name="is_active" valueBoolean="false"/>
+            <where>element_id = 'menu_add_order'</where>
+        </update>
+
+        <rollback>
+            <update schemaName="clinlims" tableName="menu">
+                <column name="is_active" valueBoolean="true"/>
+                <where>element_id = 'menu_add_order'</where>
+            </update>
+            <update schemaName="clinlims" tableName="menu">
+                <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_add_order')"/>
+                <column name="presentation_order" valueNumeric="1"/>
+                <where>element_id = 'menu_clinical_workflow'</where>
+            </update>
+            <update schemaName="clinlims" tableName="menu">
+                <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_add_order')"/>
+                <column name="presentation_order" valueNumeric="2"/>
+                <where>element_id = 'menu_environmental_workflow'</where>
+            </update>
+            <update schemaName="clinlims" tableName="menu">
+                <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_add_order')"/>
+                <column name="presentation_order" valueNumeric="3"/>
+                <where>element_id = 'menu_vector_workflow'</where>
+            </update>
+            <update schemaName="clinlims" tableName="menu">
+                <column name="presentation_order" valueNumeric="1"/>
+                <where>element_id = 'menu_sample_add'</where>
+            </update>
+            <update schemaName="clinlims" tableName="menu">
+                <column name="presentation_order" valueNumeric="2"/>
+                <where>element_id = 'menu_sample_create'</where>
+            </update>
+            <update schemaName="clinlims" tableName="menu">
+                <column name="presentation_order" valueNumeric="4"/>
+                <where>element_id = 'menu_sample_edit'</where>
+            </update>
+            <update schemaName="clinlims" tableName="menu">
+                <column name="presentation_order" valueNumeric="5"/>
+                <where>element_id = 'menu_sample_eorder'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

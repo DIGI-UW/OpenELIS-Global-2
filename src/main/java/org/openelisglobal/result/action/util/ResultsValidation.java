@@ -41,6 +41,7 @@ public class ResultsValidation {
         Errors errors = new BaseErrors();
 
         validateTestDate(item, errors);
+        validateReferralReportDate(item, errors);
 
         if (!item.isRejected()) {
             validateResult(item, errors);
@@ -72,13 +73,8 @@ public class ResultsValidation {
             Errors itemErrors = validateItem(item);
 
             if (itemErrors.hasErrors()) {
-                StringBuilder augmentedAccession = new StringBuilder(item.getSequenceAccessionNumber());
-                augmentedAccession.append(" : ");
-                augmentedAccession.append(item.getTestName());
-                // ActionError accessionError = new ActionError("errors.followingAccession",
-                // augmentedAccession);
-
-                errors.reject("errors.followingAccession");
+                errors.reject("errors.followingAccession", new String[] { accessionLabel(item) },
+                        "errors.followingAccession");
                 errors.addAllErrors(itemErrors);
             }
         }
@@ -86,9 +82,35 @@ public class ResultsValidation {
         return errors;
     }
 
+    /**
+     * The item as the bench names it, for the header that introduces its errors:
+     * the accession with its sample sequence, then the test, each when the item
+     * carries it. The header's message has a placeholder for it that was left
+     * unfilled, so the bench read "Errors for accession number {0} :" (OGC-1408).
+     */
+    private static String accessionLabel(TestResultItem item) {
+        String accession = GenericValidator.isBlankOrNull(item.getAccessionNumber()) ? "" : item.getAccessionNumber();
+        if (!GenericValidator.isBlankOrNull(item.getSequenceNumber())) {
+            accession = item.getSequenceAccessionNumber();
+        }
+        if (GenericValidator.isBlankOrNull(item.getTestName())) {
+            return accession;
+        }
+        return accession + " : " + item.getTestName();
+    }
+
     private void validateTestDate(TestResultItem item, Errors errors) {
 
-        Date date = CustomDateValidator.getInstance().getDate(item.getTestDate());
+        // The results loader emits testDate as "date time" ("dd/MM/yyyy HH:mm")
+        // and the save path persists that combined value (lenient parse for
+        // completedDate). Validate the DATE portion; the bare validator rejects
+        // the combined format outright, which the legacy whole-page save only
+        // survived because its controller collected-and-ignored these errors.
+        // The unified per-analysis save (OGC-1020) treats validation as
+        // blocking, which surfaced the mismatch.
+        String testDate = item.getTestDate() == null ? null : item.getTestDate().trim();
+        String datePortion = testDate == null ? null : testDate.split("\\s+")[0];
+        Date date = CustomDateValidator.getInstance().getDate(datePortion);
 
         if (date == null) {
             // errors.add(new ActionError("errors.date", new
@@ -116,12 +138,8 @@ public class ResultsValidation {
             if (resultValue.equals(SPECIAL_CASE)) {
                 return;
             }
-            try {
-                Double.parseDouble(StringUtil.getActualNumericValue(resultValue));
-            } catch (NumberFormatException e) {
-                // errors.add(new ActionError("errors.number.format", new
-                // StringBuilder("Result")));
-                errors.reject("errors.number.format");
+            if (!StringUtil.isNumeric(StringUtil.getActualNumericValue(resultValue))) {
+                errors.reject("errors.number.format", new String[] { resultValue }, "errors.number.format");
             }
         }
 
@@ -130,6 +148,25 @@ public class ResultsValidation {
             // errors.add(new ActionError("errors.missing.result.details", new
             // StringBuilder("Result")));
             errors.reject("errors.missing.result.details");
+        }
+    }
+
+    /**
+     * The date the reference laboratory put on its own report, typed alongside a
+     * result coming back from it. The save records it against the referral, where
+     * an unparseable value was logged and dropped on an otherwise successful save,
+     * leaving the External Referrals report's report-date column blank with no sign
+     * anything had gone wrong. The shared validator parses strictly against the
+     * configured date locale, so a day/month swap is an error the user can correct
+     * rather than a date a year out.
+     */
+    private void validateReferralReportDate(TestResultItem item, Errors errors) {
+        if (item.getReferralItem() == null
+                || GenericValidator.isBlankOrNull(item.getReferralItem().getReferredReportDate())) {
+            return;
+        }
+        if (CustomDateValidator.getInstance().getDate(item.getReferralItem().getReferredReportDate().trim()) == null) {
+            errors.reject("errors.referral.reportDate");
         }
     }
 
@@ -184,8 +221,10 @@ public class ResultsValidation {
 
         } else {
             Result dbResult = resultService.getResultById(item.getResultId());
-            return !item.getShadowResultValue().equals(dbResult.getValue())
-                    && !GenericValidator.isBlankOrNull(dbResult.getValue());
+            // Compared against the value as entered: what the screen submits is
+            // what the technologist typed, not the parseable form.
+            return !item.getShadowResultValue().equals(dbResult.getEnteredValue())
+                    && !GenericValidator.isBlankOrNull(dbResult.getEnteredValue());
         }
 
         return false;
@@ -203,7 +242,7 @@ public class ResultsValidation {
 
         if (result != null && result.getAnalyte() != null
                 && "Conclusion".equals(result.getAnalyte().getAnalyteName())) {
-            if (result.getValue().equals(item.getShadowResultValue())) {
+            if (result.getEnteredValue().equals(item.getShadowResultValue())) {
                 return;
             }
         }

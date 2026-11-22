@@ -35,6 +35,18 @@ public class TestAlertRule extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String testId;
 
+    /**
+     * The result component this rule is about; null means every component of the
+     * test, which is what a rule authored before components existed meant.
+     */
+    @Column(name = "component_id", length = 36)
+    private String componentId;
+
+    /** The specimen this rule is about; null means every specimen. */
+    @Column(name = "sample_type_id", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String sampleTypeId;
+
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
@@ -96,6 +108,22 @@ public class TestAlertRule extends BaseObject<String> {
 
     public void setTestId(String testId) {
         this.testId = testId;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public String getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(String sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
     }
 
     public String getName() {

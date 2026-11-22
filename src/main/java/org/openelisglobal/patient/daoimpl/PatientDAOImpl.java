@@ -15,6 +15,7 @@ package org.openelisglobal.patient.daoimpl;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.apache.commons.beanutils.PropertyUtils;
@@ -221,6 +222,24 @@ public class PatientDAOImpl extends BaseDAOImpl<Patient, String> implements Pati
     @Transactional(readOnly = true)
     public Patient getPatientByNationalId(String nationalId) {
         return getPatientByStringProperty("nationalId", nationalId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Patient> getMergedPatientsIn(Collection<String> patientIds) throws LIMSRuntimeException {
+        if (patientIds == null || patientIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        try {
+            String sql = "From Patient p where p.id in (:patientIds) and p.isMerged = true";
+            Query<Patient> query = entityManager.unwrap(Session.class).createQuery(sql, Patient.class);
+            query.setParameterList("patientIds", patientIds);
+            return query.list();
+        } catch (RuntimeException e) {
+            handleException(e, "getMergedPatientsIn");
+        }
+
+        return new ArrayList<>();
     }
 
     @Override

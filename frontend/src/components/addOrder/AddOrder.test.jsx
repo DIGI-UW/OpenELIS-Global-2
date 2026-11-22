@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
+import { ConfigurationContext } from "../layout/Layout";
 
 // ---------------------------------------------------------------------------
 // OGC-285 M5b — AddOrder mounts ONE order-level LabelsSection (API mode), fed by
@@ -108,7 +109,6 @@ const samplesFixture = () => [
   {
     index: 1,
     sampleTypeId: "3",
-    name: "Blood",
     tests: [{ id: "1", name: "CBC" }],
     panels: [],
     referralItems: [],
@@ -117,7 +117,6 @@ const samplesFixture = () => [
   {
     index: 2,
     sampleTypeId: "5",
-    name: "Urine",
     tests: [{ id: "2", name: "ESR" }],
     panels: [],
     referralItems: [],
@@ -172,7 +171,14 @@ describe("AddOrder — order-level label aggregation (OGC-285 M5b)", () => {
   beforeEach(() => {
     utilsMock.getFromOpenElisServer.mockReset();
     utilsMock.postToOpenElisServerJsonResponse.mockReset();
-    utilsMock.getFromOpenElisServer.mockImplementation(() => {});
+    utilsMock.getFromOpenElisServer.mockImplementation((endPoint, callback) => {
+      if (endPoint === "/rest/user-sample-types") {
+        callback([
+          { id: "3", value: "Blood" },
+          { id: "5", value: "Urine" },
+        ]);
+      }
+    });
   });
 
   test("POSTs the aggregation with positional sample_id_local + deduped numeric test ids", () => {
@@ -210,12 +216,32 @@ describe("AddOrder — order-level label aggregation (OGC-285 M5b)", () => {
       within(tables[1]).getByRole("columnheader", { name: "Specimen Label" }),
     ).toBeInTheDocument();
 
-    // Sample rows are labelled by the sample type name (our formatter).
+    // Sample rows are named as the Result Reporting headings name them: the
+    // sample's place on the form and the sample type chosen on it.
     expect(
-      within(tables[1]).getByRole("rowheader", { name: "Blood" }),
+      within(tables[1]).getByRole("rowheader", { name: "Sample 1: Blood" }),
     ).toBeInTheDocument();
     expect(
-      within(tables[1]).getByRole("rowheader", { name: "Urine" }),
+      within(tables[1]).getByRole("rowheader", { name: "Sample 2: Urine" }),
+    ).toBeInTheDocument();
+  });
+
+  test("numbers a sample label row by the sample's place on the form", () => {
+    wireAggregationResponse({
+      ...labelRequestFixture(),
+      sample_rows: [labelRequestFixture().sample_rows[0]],
+    });
+    const [blood, urine] = samplesFixture();
+    renderAddOrder({ samples: [{ ...blood, tests: [] }, urine] });
+
+    const tables = screen.getAllByRole("table");
+    expect(
+      within(tables[1]).getByRole("rowheader", { name: "Sample 2: Urine" }),
+    ).toBeInTheDocument();
+    expect(
+      within(tables[1]).getByRole("spinbutton", {
+        name: /^Sample 2: Urine Specimen Label quantity$/,
+      }),
     ).toBeInTheDocument();
   });
 
@@ -250,7 +276,7 @@ describe("AddOrder — order-level label aggregation (OGC-285 M5b)", () => {
     // Edit a sample-label quantity (Sample 1 / Specimen Label) to 4.
     const tables = screen.getAllByRole("table");
     const sampleInput = within(tables[1]).getByRole("spinbutton", {
-      name: /Sample 1 Specimen Label quantity/i,
+      name: /Sample 1: Blood Specimen Label quantity/i,
     });
     fireEvent.change(sampleInput, { target: { value: "4" } });
 
@@ -272,5 +298,435 @@ describe("AddOrder — order-level label aggregation (OGC-285 M5b)", () => {
       { sample_id_local: "0", cells: [{ preset_id: 17, qty: 4 }] },
       { sample_id_local: "1", cells: [{ preset_id: 17, qty: 1 }] },
     ]);
+  });
+
+  test("carries the proposed quantities as labelPersistRequest when the section is left untouched", async () => {
+    wireAggregationResponse(labelRequestFixture());
+    const { setOrderFormValues } = renderAddOrder();
+    expect(await screen.findByTestId("labels-section-root")).toBeVisible();
+
+    // A save made without touching the section used to carry no label request
+    // at all, so the presets' defaults never reached the order (OGC-1219).
+    const updater = setOrderFormValues.mock.calls
+      .map((c) => c[0])
+      .reverse()
+      .find((arg) => typeof arg === "function");
+    expect(updater).toBeTruthy();
+
+    const next = updater(baseOrderFormValues());
+    expect(next.labelPersistRequest.order_cells).toEqual([
+      { preset_id: 1, qty: 2 },
+    ]);
+    expect(next.labelPersistRequest.sample_rows).toEqual([
+      { sample_id_local: "0", cells: [{ preset_id: 17, qty: 1 }] },
+      { sample_id_local: "1", cells: [{ preset_id: 17, qty: 1 }] },
+    ]);
+  });
+
+  test("offers no labels section and lifts no label request on Modify Order", () => {
+    wireAggregationResponse(labelRequestFixture());
+    const { setOrderFormValues } = renderAddOrder({ isModifyOrder: true });
+
+    // Modify Order saves through /rest/SampleEdit, which rejects an unknown
+    // labelPersistRequest with a 400, so nothing label-related may reach it.
+    expect(
+      utilsMock.postToOpenElisServerJsonResponse.mock.calls.some(
+        (c) => c[0] === "/api/orderEntry/labelRequest",
+      ),
+    ).toBe(false);
+    expect(screen.queryByTestId("labels-section-root")).toBeNull();
+    const lifted = setOrderFormValues.mock.calls
+      .map((c) => c[0])
+      .filter((arg) => typeof arg === "function")
+      .map((updater) => updater(baseOrderFormValues()))
+      .some((next) => "labelPersistRequest" in next);
+    expect(lifted).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Result Reporting sample headings — a sample is named by the specimen the user
+// chose on it, not only by the position of the box it sits in. "Sample 2" says
+// nothing about what is in it; on an order carrying three specimens the reader
+// has to scroll back up and count to find out.
+// ---------------------------------------------------------------------------
+describe("AddOrder — Result Reporting sample headings", () => {
+  const SAMPLE_TYPES = [
+    { id: "3", value: "Sputum" },
+    { id: "5", value: "Serum" },
+    { id: "7", value: "Plasma" },
+  ];
+
+  const wireSampleTypes = (types = SAMPLE_TYPES) => {
+    utilsMock.getFromOpenElisServer.mockImplementation((endPoint, callback) => {
+      if (endPoint === "/rest/user-sample-types") {
+        callback(types);
+      }
+    });
+  };
+
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+    wireSampleTypes();
+    wireAggregationResponse(labelRequestFixture());
+  });
+
+  const heading = (text) =>
+    screen
+      .getAllByRole("heading", { level: 4 })
+      .find((node) => node.textContent.replace(/\s+/g, " ").trim() === text);
+
+  test("names each sample by the specimen type selected on it", () => {
+    renderAddOrder();
+
+    expect(heading("Sample 1: Sputum")).toBeInTheDocument();
+    expect(heading("Sample 2: Serum")).toBeInTheDocument();
+  });
+
+  test("supports any number of samples", () => {
+    renderAddOrder({
+      samples: [
+        ...samplesFixture(),
+        {
+          index: 3,
+          sampleTypeId: "7",
+          tests: [{ id: "3", name: "LFT" }],
+          panels: [],
+          referralItems: [],
+          sampleXML: {},
+        },
+      ],
+    });
+
+    expect(heading("Sample 1: Sputum")).toBeInTheDocument();
+    expect(heading("Sample 2: Serum")).toBeInTheDocument();
+    expect(heading("Sample 3: Plasma")).toBeInTheDocument();
+  });
+
+  test("follows the picker when the selected specimen changes", () => {
+    const { rerender } = renderAddOrder();
+    expect(heading("Sample 1: Sputum")).toBeInTheDocument();
+
+    const reselected = samplesFixture();
+    reselected[0].sampleTypeId = "7";
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <AddOrder
+          orderFormValues={baseOrderFormValues()}
+          setOrderFormValues={vi.fn()}
+          samples={reselected}
+          error={() => null}
+          isModifyOrder={false}
+          changed={{}}
+          setChanged={vi.fn()}
+          stagedAttachments={[]}
+          setStagedAttachments={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    expect(heading("Sample 1: Plasma")).toBeInTheDocument();
+    expect(heading("Sample 1: Sputum")).toBeUndefined();
+  });
+
+  test("keeps the plain numbering when no specimen is selected yet", () => {
+    renderAddOrder({
+      samples: [
+        {
+          index: 1,
+          sampleTypeId: "",
+          tests: [{ id: "1", name: "CBC" }],
+          panels: [],
+          referralItems: [],
+          sampleXML: {},
+        },
+      ],
+    });
+
+    expect(heading("Sample 1")).toBeInTheDocument();
+  });
+
+  test("does not invent a name for a specimen the list does not carry", () => {
+    renderAddOrder({
+      samples: [
+        {
+          index: 1,
+          sampleTypeId: "999",
+          tests: [{ id: "1", name: "CBC" }],
+          panels: [],
+          referralItems: [],
+          sampleXML: {},
+        },
+      ],
+    });
+
+    expect(heading("Sample 1")).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OGC-1191 — Editing an existing order must never SILENTLY reassign the
+// specimen's accession number. On the modify path the inline editable Lab
+// Number input (bound to newAccessionNumber, the SampleEdit reassignment field)
+// and its inline "Generate" link are not rendered; the number is shown as
+// static text. Reassignment is still possible, but only as a deliberate action:
+// a "Reassign Lab Number" button opens a confirmation dialog, and only an
+// explicit Confirm writes the candidate to newAccessionNumber. On the add path
+// the inline input + Generate link are unchanged and no Reassign button shows.
+// ---------------------------------------------------------------------------
+describe("AddOrder — Lab Number reassignment is deliberate on modify (OGC-1191)", () => {
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+    utilsMock.getFromOpenElisServer.mockImplementation(() => {});
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(() => {});
+  });
+
+  const modifyValues = (extra = {}) => ({
+    ...baseOrderFormValues(),
+    accessionNumber: "DEV01260000000000519",
+    newAccessionNumber: "",
+    ...extra,
+  });
+
+  test("add order offers the inline Generate accession link and no Reassign button", () => {
+    renderAddOrder({ isModifyOrder: false });
+    expect(
+      document.querySelector('[data-cy="generate-labNumber"]'),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-cy="reassign-labNumber-open"]'),
+    ).not.toBeInTheDocument();
+  });
+
+  test("modify order does NOT offer the inline Generate link", () => {
+    renderAddOrder({ isModifyOrder: true, orderFormValues: modifyValues() });
+    expect(
+      document.querySelector('[data-cy="generate-labNumber"]'),
+    ).not.toBeInTheDocument();
+  });
+
+  test("modify order shows the existing accession number as static text", () => {
+    renderAddOrder({ isModifyOrder: true, orderFormValues: modifyValues() });
+    const headings = screen.getAllByRole("heading", { level: 5 });
+    expect(
+      headings.some((h) => h.textContent.includes("DEV01260000000000519")),
+    ).toBe(true);
+  });
+
+  test("modify order offers a deliberate Reassign Lab Number button", () => {
+    renderAddOrder({ isModifyOrder: true, orderFormValues: modifyValues() });
+    expect(
+      document.querySelector('[data-cy="reassign-labNumber-open"]'),
+    ).toBeInTheDocument();
+  });
+
+  test("confirming the dialog stages the generated number onto newAccessionNumber", () => {
+    utilsMock.getFromOpenElisServer.mockImplementation((endPoint, cb) => {
+      if (endPoint === "/rest/SampleEntryGenerateScanProvider") {
+        cb({ status: true, body: "DEV01260000000000777" });
+      }
+    });
+    const { setOrderFormValues } = renderAddOrder({
+      isModifyOrder: true,
+      orderFormValues: modifyValues(),
+    });
+
+    fireEvent.click(
+      document.querySelector('[data-cy="reassign-labNumber-open"]'),
+    );
+    // Generate a candidate inside the confirmation dialog...
+    fireEvent.click(
+      document.querySelector('[data-cy="reassign-generate-labNumber"]'),
+    );
+    // ...then explicitly confirm (the danger modal's primary button).
+    fireEvent.click(screen.getByRole("button", { name: /Reassign$/ }));
+
+    const staged = setOrderFormValues.mock.calls
+      .map((c) => c[0])
+      .reverse()
+      .find((arg) => arg && "newAccessionNumber" in arg);
+    expect(staged.newAccessionNumber).toBe("DEV01260000000000777");
+  });
+
+  test("Undo and Reassign render as buttons on one actions row", () => {
+    renderAddOrder({
+      isModifyOrder: true,
+      orderFormValues: modifyValues({
+        newAccessionNumber: "DEV01260000000000777",
+      }),
+    });
+    const row = document.querySelector(".reassignLabNumberActions");
+    expect(row).toBeInTheDocument();
+    const undo = row.querySelector('[data-cy="reassign-labNumber-undo"]');
+    const reassign = row.querySelector('[data-cy="reassign-labNumber-open"]');
+    expect(undo).toBeInTheDocument();
+    expect(reassign).toBeInTheDocument();
+    expect(undo.tagName).toBe("BUTTON");
+    expect(reassign.tagName).toBe("BUTTON");
+  });
+
+  test("a staged reassignment shows a pending warning with an Undo that clears it", () => {
+    const { setOrderFormValues } = renderAddOrder({
+      isModifyOrder: true,
+      orderFormValues: modifyValues({
+        newAccessionNumber: "DEV01260000000000777",
+      }),
+    });
+
+    expect(
+      screen.getByText("Pending Lab Number reassignment"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/DEV01260000000000777/)).toBeInTheDocument();
+
+    fireEvent.click(
+      document.querySelector('[data-cy="reassign-labNumber-undo"]'),
+    );
+    const cleared = setOrderFormValues.mock.calls
+      .map((c) => c[0])
+      .reverse()
+      .find((arg) => arg && "newAccessionNumber" in arg);
+    expect(cleared.newAccessionNumber).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OGC-1366 — the priority select sent the label "Routine" instead of the enum
+// code ROUTINE, so SampleEdit answered 400 and the order kept its old priority.
+// ---------------------------------------------------------------------------
+describe("AddOrder — priority select (OGC-1366)", () => {
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+  });
+
+  test("offers every OrderPriority code with its translated label", () => {
+    const { container } = renderAddOrder();
+
+    const options = within(container.querySelector("#priorityId")).getAllByRole(
+      "option",
+    );
+    expect(options.map((o) => [o.value, o.textContent])).toEqual([
+      ["ROUTINE", messages["sample.priority.ROUTINE"]],
+      ["ASAP", messages["sample.priority.ASAP"]],
+      ["STAT", messages["sample.priority.STAT"]],
+      ["TIMED", messages["sample.priority.TIMED"]],
+      ["FUTURE_STAT", messages["sample.priority.FUTURE_STAT"]],
+    ]);
+  });
+
+  test("choosing Routine on a STAT order stores the code ROUTINE", () => {
+    const stat = baseOrderFormValues();
+    stat.sampleOrderItems.priority = "STAT";
+    const { setOrderFormValues, container } = renderAddOrder({
+      orderFormValues: stat,
+    });
+
+    fireEvent.change(container.querySelector("#priorityId"), {
+      target: { value: "ROUTINE" },
+    });
+
+    const updated = setOrderFormValues.mock.calls
+      .map(([arg]) => arg)
+      .reverse()
+      .find((arg) => arg?.sampleOrderItems?.priority);
+    expect(updated.sampleOrderItems.priority).toBe("ROUTINE");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OGC-1375 — requester names are marked for assistive technology when the site
+// requires them, and a blank "Date of next visit" is not filled in with today.
+// ---------------------------------------------------------------------------
+describe("AddOrder — requester marking and next visit default (OGC-1375)", () => {
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+  });
+
+  const renderWithRequesterRequired = (requesterRequired) =>
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ConfigurationContext.Provider
+          value={{
+            configurationProperties: {
+              restrictFreeTextProviderEntry: "false",
+              REQUESTER_REQUIRED: requesterRequired,
+              currentDateAsText: "29/09/2026",
+            },
+          }}
+        >
+          <AddOrder
+            orderFormValues={baseOrderFormValues()}
+            setOrderFormValues={vi.fn()}
+            samples={samplesFixture()}
+            error={() => null}
+            isModifyOrder={false}
+            changed={{}}
+            setChanged={vi.fn()}
+            stagedAttachments={[]}
+            setStagedAttachments={vi.fn()}
+          />
+        </ConfigurationContext.Provider>
+      </IntlProvider>,
+    );
+
+  test("requester names carry aria-required when REQUESTER_REQUIRED is on", () => {
+    const { container } = renderWithRequesterRequired("true");
+
+    expect(container.querySelector("#requesterFirstName")).toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+    expect(container.querySelector("#requesterLastName")).toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+  });
+
+  test("requester names are not marked when REQUESTER_REQUIRED is off", () => {
+    const { container } = renderWithRequesterRequired("false");
+
+    expect(container.querySelector("#requesterFirstName")).not.toHaveAttribute(
+      "aria-required",
+    );
+  });
+
+  test("the first render fills request and received dates but leaves next visit blank", () => {
+    const setOrderFormValues = vi.fn();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ConfigurationContext.Provider
+          value={{
+            configurationProperties: {
+              restrictFreeTextProviderEntry: "false",
+              currentDateAsText: "29/09/2026",
+            },
+          }}
+        >
+          <AddOrder
+            orderFormValues={baseOrderFormValues()}
+            setOrderFormValues={setOrderFormValues}
+            samples={samplesFixture()}
+            error={() => null}
+            isModifyOrder={false}
+            changed={{}}
+            setChanged={vi.fn()}
+            stagedAttachments={[]}
+            setStagedAttachments={vi.fn()}
+          />
+        </ConfigurationContext.Provider>
+      </IntlProvider>,
+    );
+
+    const initialised = setOrderFormValues.mock.calls
+      .map(([arg]) => arg)
+      .find((arg) => arg?.sampleOrderItems?.requestDate === "29/09/2026");
+    expect(initialised).toBeDefined();
+    expect(initialised.sampleOrderItems.receivedDateForDisplay).toBe(
+      "29/09/2026",
+    );
+    expect(initialised.sampleOrderItems.nextVisitDate || "").toBe("");
   });
 });

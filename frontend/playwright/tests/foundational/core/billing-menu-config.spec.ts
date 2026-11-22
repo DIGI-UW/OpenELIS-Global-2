@@ -22,9 +22,16 @@ async function openBillingMenuConfiguration(page: Page) {
     await menuConfig.click();
   }
 
+  const settingsLoaded = page.waitForResponse(
+    (response) =>
+      response.url().includes("/rest/admin/menu/menu_billing") &&
+      response.request().method() === "GET",
+  );
   await adminNav
     .getByRole("link", { name: /Billing Menu Configuration/i })
     .click();
+  await settingsLoaded;
+  await expect(page.locator(".cds--loading-overlay")).toHaveCount(0);
   await expect(page).toHaveURL(/billingMenuManagement/, {
     timeout: LONG_TIMEOUT,
   });

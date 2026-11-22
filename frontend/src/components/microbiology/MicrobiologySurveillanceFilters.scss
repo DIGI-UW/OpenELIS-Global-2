@@ -1,0 +1,27 @@
+@use "@carbon/react/scss/spacing" as *;
+
+.microbiology-surveillance-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: $spacing-05;
+  min-inline-size: 0;
+
+  .cds--date-picker,
+  .cds--date-picker-container,
+  .cds--date-picker-input__wrapper,
+  .cds--date-picker__input {
+    inline-size: 100%;
+  }
+}
+
+@media (max-width: 66rem) {
+  .microbiology-surveillance-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 42rem) {
+  .microbiology-surveillance-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

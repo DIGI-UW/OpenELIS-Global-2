@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.2 (OGC-935): a laboratory's own enrolment carried only an is_active
+    flag, so it could be switched off but never suspended, and nothing recorded
+    why or from when. The provider side already models this on
+    eqa_program_enrollment; these columns give the participant side the same
+    vocabulary (Active, Suspended, Withdrawn) with the reason and the effective
+    date the transition was asked for.
+
+    is_active stays and follows the status: it is what the cycle gate, the
+    submission bridge and the order screens read, and none of them need to learn
+    a new spelling for "not taking part".
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-081-eqa-lab-enrollment-status">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="eqa_lab_program_enrollment" columnName="status" />
+            </not>
+        </preConditions>
+        <comment>Lifecycle status, reason and effective date on a laboratory's EQA enrolment</comment>
+        <addColumn schemaName="clinlims" tableName="eqa_lab_program_enrollment">
+            <column name="status" type="VARCHAR(20)" defaultValue="Active">
+                <constraints nullable="false" />
+            </column>
+            <column name="status_reason" type="TEXT" />
+            <column name="status_effective_date" type="DATE" />
+            <column name="status_changed_date" type="TIMESTAMP" />
+            <column name="status_changed_by" type="numeric(10,0)" />
+        </addColumn>
+        <!-- An enrolment switched off before this changeset was deactivated, which is
+             reversible. Withdrawn is terminal, so reading those rows as withdrawn would
+             strand every one of them. -->
+        <update schemaName="clinlims" tableName="eqa_lab_program_enrollment">
+            <column name="status" value="Suspended" />
+            <where>is_active = false</where>
+        </update>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="eqa_lab_program_enrollment" columnName="status_changed_by" />
+            <dropColumn schemaName="clinlims" tableName="eqa_lab_program_enrollment" columnName="status_changed_date" />
+            <dropColumn schemaName="clinlims" tableName="eqa_lab_program_enrollment" columnName="status_effective_date" />
+            <dropColumn schemaName="clinlims" tableName="eqa_lab_program_enrollment" columnName="status_reason" />
+            <dropColumn schemaName="clinlims" tableName="eqa_lab_program_enrollment" columnName="status" />
+        </rollback>
+    </changeSet>
+
+    <!-- The transition writes a history row so the audit carries the prior status, the
+         user and the timestamp. AuditTrailServiceImpl.saveHistory THROWS (rolling back
+         the write) when a table has no reference_tables row, so this lands with the
+         columns, not later. -->
+    <changeSet author="openelisglobal" id="qa-081-register-lab-enrollment-audit-ref-table">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.reference_tables WHERE LOWER(name) = 'eqa_lab_program_enrollment'</sqlCheck>
+        </preConditions>
+        <comment>Register eqa_lab_program_enrollment for audit history</comment>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq" />
+            <column name="name" value="eqa_lab_program_enrollment" />
+            <column name="keep_history" value="Y" />
+            <column name="lastupdated" valueDate="now()" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>LOWER(name) = 'eqa_lab_program_enrollment'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

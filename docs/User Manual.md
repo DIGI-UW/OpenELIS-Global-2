@@ -1769,9 +1769,9 @@ opened by default.
 
 _Request Status_
 
-6. Change the status for the slides to slicing by clicking on the status
-   drop-down menu and selecting **slicing for slides** then click on the
-   **Save** button.
+6. Change the stage for the slides to microtomy by clicking on the status
+   drop-down menu and selecting **Microtomy** then click on the **Save**
+   button.
 
 <p id="gdcalert127" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image127.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert128">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
 

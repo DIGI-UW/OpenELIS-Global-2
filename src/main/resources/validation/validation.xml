@@ -2288,8 +2288,8 @@
                     <var-value>80</var-value>
                 </var>
             </field>
-            <field property="significantDigits" depends="mask,maxlength">
-                <arg0 key="testresult.significantDigits" />
+            <field property="reportingDecimalPlaces" depends="mask,maxlength">
+                <arg0 key="testresult.reportingDecimalPlaces" />
                 <var>
                     <var-name>mask</var-name>
                     <var-value>^[0-9]*$</var-value>

@@ -1,0 +1,40 @@
+package org.openelisglobal.microbiology.dao;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import org.openelisglobal.common.dao.BaseDAO;
+import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
+
+public interface MicroBreakpointRuleDAO extends BaseDAO<MicroBreakpointRule, String> {
+    MicroBreakpointRule findBestRule(String standardId, String organismId, Set<String> organismGroups,
+            String antibioticId, String method, String specimenTypeId, String breakpointType);
+
+    MicroBreakpointRule findContextualRule(String standardId, String organismId, Set<String> organismGroups,
+            String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext,
+            String diskContent);
+
+    Optional<MicroBreakpointRule> findByContextualNaturalKey(String standardId, String organismId, String organismGroup,
+            String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext,
+            String diskContent);
+
+    List<MicroBreakpointRule> findWhonetRules(String standardId, String antibioticId, String breakpointType);
+
+    Optional<MicroBreakpointRule> findBySourceRowHash(String sourceRowHash);
+
+    Optional<MicroBreakpointRule> findByNaturalKey(String standardId, String organismId, String organismGroup,
+            String antibioticId, String method, String specimenTypeId, String breakpointType);
+
+    List<MicroBreakpointRule> getByStandardId(String standardId);
+
+    List<MicroBreakpointRule> getActiveByAntibioticIds(Collection<String> antibioticIds);
+
+    List<MicroBreakpointRule> search(String standardId, String q, String organism, String antibiotic, String method,
+            String specimenTypeId, int offset, int limit);
+
+    long countSearch(String standardId, String q, String organism, String antibiotic, String method,
+            String specimenTypeId);
+
+    long countByStandardId(String standardId);
+}

@@ -1,0 +1,1242 @@
+import React from "react";
+import { vi } from "vitest";
+vi.mock("../../common/textMacro/TextMacroService", () => ({
+  getTextMacros: vi.fn(() => Promise.resolve([])),
+}));
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import { IntlProvider } from "react-intl";
+import messages from "../../../languages/en.json";
+import CaseAstWorkspace from "../CaseAstWorkspace";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import { getTextMacros } from "../../common/textMacro/TextMacroService";
+import {
+  expandedPhrase,
+  offerOnePhrasePerContext,
+  typePhraseCode,
+} from "./phraseFields";
+const t = (key) => messages[`microbiology.m6.${key}`];
+const astActionFormFields = [
+  "isolateId",
+  "action",
+  "runId",
+  "readingId",
+  "panelId",
+  "technique",
+  "breakpointStandardId",
+  "antibioticId",
+  "interpretation",
+  "reason",
+  "analyzerCardId",
+  "analyzerInstrumentId",
+  "clinicalContext",
+  "awaitAnalyzerResults",
+  "reported",
+  "lotSelections",
+  "orderedAntibioticIds",
+  "rawValue",
+];
+const reading = (id, antibioticId, value) => ({
+  id,
+  antibioticId,
+  rawText: String(value),
+  units: "ug/mL",
+  interpretation: "SUSCEPTIBLE",
+  createdAt: "2026-10-01T10:00:00Z",
+  matchedBy: "ORGANISM",
+  overrideHistory: [],
+});
+const workspace = (status = "REVIEWED") => ({
+  canEnter: true,
+  canValidate: true,
+  standards: [{ id: "std", label: "CLSI 2026" }],
+  dst: { classification: "NOT_APPLICABLE", drugs: [] },
+  isolates: [
+    {
+      id: "i1",
+      label: "ISO-1",
+      organism: "Escherichia coli",
+      protocol: "GENERAL",
+      assignments: [],
+      panels: [],
+      choices: [{ readingId: "r-b" }],
+      runs: [
+        {
+          id: "run",
+          status,
+          technique: "BROTH_MICRODILUTION",
+          startedAt: "2026-10-01T10:00:00Z",
+          breakpointVersion: "2026",
+          orderedAntibiotics: [
+            { antibioticId: "a", antibioticName: "Ampicillin" },
+            { antibioticId: "b", antibioticName: "Ceftriaxone" },
+          ],
+          readings: [reading("r-a", "a", 4), reading("r-b", "b", 2)],
+        },
+      ],
+    },
+  ],
+});
+const show = (data, rights = { canWrite: true, canValidate: true }) => {
+  const service = {
+    getAstWorkspace: vi.fn().mockResolvedValue(data),
+    astAction: vi.fn().mockResolvedValue(data),
+  };
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseAstWorkspace detail={{ id: "c1", ...rights }} service={service} />
+    </IntlProvider>,
+  );
+  return service;
+};
+it("expands an override-reason phrase and records the expanded reason", async () => {
+  offerOnePhrasePerContext();
+  const service = show(workspace());
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.select") }),
+  );
+  const modal = screen.getByRole("dialog");
+  const field = within(modal).getByLabelText(t("reason"));
+  await typePhraseCode(field);
+
+  expect(field).toHaveValue("Seen Phrase for MICROBIOLOGY_OVERRIDE_REASON ");
+  expect(getTextMacros).toHaveBeenCalledWith(
+    "MICROBIOLOGY_OVERRIDE_REASON",
+    expect.any(AbortSignal),
+  );
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        action: "select",
+        reason: expect.stringMatching(
+          expandedPhrase("MICROBIOLOGY_OVERRIDE_REASON"),
+        ),
+      }),
+      true,
+    ),
+  );
+});
+it("each AST run shows its Run QC", async () => {
+  const service = {
+    getAstWorkspace: vi.fn().mockResolvedValue(workspace()),
+    astAction: vi.fn(),
+    getAstQc: vi.fn().mockResolvedValue({
+      configured: true,
+      canRecord: false,
+      antibiotics: [],
+      controlLots: [],
+      lots: [],
+      candidateLots: [],
+      controls: [],
+    }),
+  };
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseAstWorkspace
+        detail={{ id: "c1", canWrite: true, canValidate: true }}
+        service={service}
+      />
+    </IntlProvider>,
+  );
+  expect(
+    await screen.findByRole("region", { name: "Run QC" }),
+  ).toBeInTheDocument();
+  expect(service.getAstQc).toHaveBeenCalledWith("c1", "run");
+});
+it("selects only the requested validated drug with a recorded reason", async () => {
+  const service = show(workspace());
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.select") }),
+  );
+  const modal = screen.getByRole("dialog");
+  const save = within(modal).getByRole("button", {
+    name: t("save"),
+    exact: true,
+  });
+  expect(save).toBeDisabled();
+  fireEvent.change(within(modal).getByLabelText(t("reason")), {
+    target: { value: "Confirmed on repeat" },
+  });
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        action: "select",
+        isolateId: "i1",
+        runId: "run",
+        readingId: "r-a",
+        antibioticId: "a",
+        reason: "Confirmed on repeat",
+      }),
+      true,
+    ),
+  );
+  expect(
+    Object.keys(service.astAction.mock.calls[0][1]).filter(
+      (field) => !astActionFormFields.includes(field),
+    ),
+  ).toEqual([]);
+});
+it("outside readers see readings and history without mutation controls", async () => {
+  show(workspace(), { canWrite: false, canValidate: false });
+  expect(await screen.findByText("Ampicillin")).toBeInTheDocument();
+  for (const action of [
+    "assign",
+    "start",
+    "select",
+    "repeat",
+    "reading",
+    "review",
+  ])
+    expect(
+      screen.queryByRole("button", { name: t(`action.${action}`) }),
+    ).not.toBeInTheDocument();
+});
+it("names the breakpoint standard's authority beside its version on each reading", async () => {
+  const data = workspace();
+  data.isolates[0].runs[0].breakpointAuthority = "EUCAST";
+  show(data);
+  expect((await screen.findAllByText(/EUCAST 2026/)).length).toBeGreaterThan(0);
+});
+it("keeps raw input after rejection and rejects negative values before submission", async () => {
+  const service = show(workspace("IN_PROGRESS"));
+  service.astAction.mockRejectedValue(new Error("Conflict"));
+  fireEvent.click(
+    (await screen.findAllByRole("button", { name: t("action.reading") }))[0],
+  );
+  const modal = screen.getByRole("dialog");
+  const field = within(modal).getByLabelText(t("raw"));
+  const save = within(modal).getByRole("button", {
+    name: t("save"),
+    exact: true,
+  });
+  fireEvent.change(field, { target: { value: "-1" } });
+  expect(save).toBeDisabled();
+  expect(service.astAction).not.toHaveBeenCalled();
+  fireEvent.change(field, { target: { value: "4" } });
+  fireEvent.click(save);
+  await within(modal).findByText(t("saveError"));
+  expect(service.astAction).toHaveBeenCalledTimes(1);
+  expect(field).toHaveValue(4);
+});
+it("requires and submits a replacement card when invalidating an instrument run", async () => {
+  const data = workspace("QC_FAILED");
+  data.isolates[0].runs[0].analyzerInstrumentId = "instrument";
+  const service = show(data);
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.invalidate") }),
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.change(within(modal).getByLabelText(t("reason")), {
+    target: { value: "Failed QC" },
+  });
+  const save = within(modal).getByRole("button", {
+    name: t("save"),
+    exact: true,
+  });
+  expect(save).toBeDisabled();
+  fireEvent.change(within(modal).getByLabelText(t("replacementCard")), {
+    target: { value: "CARD-REPEAT" },
+  });
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        action: "invalidate",
+        analyzerCardId: "CARD-REPEAT",
+      }),
+      false,
+    ),
+  );
+});
+
+it("reloads the reagent lots after a control is recorded so a released lot can be picked", async () => {
+  const qcView = {
+    configured: true,
+    canRecord: true,
+    antibiotics: [{ id: "a", name: "Ampicillin" }],
+    controlLots: [
+      {
+        id: "ecoli",
+        label: "E. coli ATCC 25922",
+        ranges: { a: { low: 1, high: 4 } },
+      },
+    ],
+    lots: [],
+    candidateLots: [],
+    controls: [],
+  };
+  const service = {
+    getAstWorkspace: vi.fn(() => Promise.resolve(workspace())),
+    astAction: vi.fn(),
+    getReagentLotOverview: vi
+      .fn()
+      .mockResolvedValue({ requirements: [], usages: [] }),
+    getAstQc: vi.fn().mockResolvedValue(qcView),
+    recordAstQc: vi.fn().mockResolvedValue(qcView),
+  };
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseAstWorkspace
+        detail={{ id: "c1", canWrite: true, canValidate: true }}
+        service={service}
+      />
+    </IntlProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Record control result" }),
+  );
+  const dialog = await screen.findByRole("dialog", {
+    name: "Record control result",
+  });
+  fireEvent.change(within(dialog).getByLabelText("Control lot"), {
+    target: { value: "ecoli" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Measured value Ampicillin"), {
+    target: { value: "2" },
+  });
+  const lotLoads = service.getReagentLotOverview.mock.calls.length;
+  fireEvent.click(within(dialog).getByRole("button", { name: "Record" }));
+  await waitFor(() => expect(service.recordAstQc).toHaveBeenCalled());
+  await waitFor(() =>
+    expect(service.getReagentLotOverview.mock.calls.length).toBeGreaterThan(
+      lotLoads,
+    ),
+  );
+});
+
+it("reloads every run's QC after a control is recorded so a shared lot shows its new status", async () => {
+  const twoRuns = () => {
+    const data = workspace();
+    data.isolates[0].runs.push({ ...data.isolates[0].runs[0], id: "run2" });
+    return data;
+  };
+  let released = false;
+  const qcView = (runId) => ({
+    configured: true,
+    canRecord: runId === "run",
+    antibiotics: [{ id: "a", name: "Ampicillin" }],
+    controlLots: [
+      {
+        id: "ecoli",
+        label: "E. coli ATCC 25922",
+        ranges: { a: { low: 1, high: 4 } },
+      },
+    ],
+    lots: [
+      {
+        id: 7,
+        lotNumber: "LOT-7",
+        itemName: "AST cards",
+        qcStatus: released ? "PASSED" : "PENDING",
+      },
+    ],
+    candidateLots: [],
+    controls: [],
+  });
+  const service = {
+    getAstWorkspace: vi.fn(() => Promise.resolve(twoRuns())),
+    astAction: vi.fn(),
+    getReagentLotOverview: vi
+      .fn()
+      .mockResolvedValue({ requirements: [], usages: [] }),
+    getAstQc: vi.fn((caseId, runId) => Promise.resolve(qcView(runId))),
+    recordAstQc: vi.fn(() => {
+      released = true;
+      return Promise.resolve(qcView("run"));
+    }),
+  };
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseAstWorkspace
+        detail={{ id: "c1", canWrite: true, canValidate: true }}
+        service={service}
+      />
+    </IntlProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Record control result" }),
+  );
+  const dialog = await screen.findByRole("dialog", {
+    name: "Record control result",
+  });
+  fireEvent.change(within(dialog).getByLabelText("Control lot"), {
+    target: { value: "ecoli" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Measured value Ampicillin"), {
+    target: { value: "2" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Record" }));
+  const otherRun = screen.getAllByRole("region", { name: "Run QC" })[1];
+  expect(await within(otherRun).findByText("QC passed")).toBeInTheDocument();
+});
+
+it("says a failing QC control holds validation until its NCE is closed", async () => {
+  const service = show(workspace("IN_PROGRESS"));
+  service.astAction.mockRejectedValue({ response: { message: "AST_QC_HOLD" } });
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.review") }),
+  );
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: t("save"),
+      exact: true,
+    }),
+  );
+  expect(
+    await within(screen.getByRole("dialog")).findByText(
+      "A failing AST control covers this run. Close its nonconformity before validating.",
+    ),
+  ).toBeInTheDocument();
+});
+it("explains a validation blocker and clears it when another action opens", async () => {
+  const service = show(workspace("IN_PROGRESS"));
+  service.astAction.mockRejectedValue({
+    response: { message: "AST_NO_BREAKPOINT_UNRESOLVED" },
+  });
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.review") }),
+  );
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: t("save"),
+      exact: true,
+    }),
+  );
+  const message =
+    messages["microbiology.m6.error.AST_NO_BREAKPOINT_UNRESOLVED"];
+  expect(
+    await within(screen.getByRole("dialog")).findByText(message),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: t("cancel"),
+      exact: true,
+    }),
+  );
+  const run = screen.getByTestId("ast-run-run");
+  const drug = within(run).getByRole("row", { name: /Ampicillin/ });
+  fireEvent.click(
+    within(drug).getByRole("button", { name: t("action.reading") }),
+  );
+  expect(screen.queryByText(message)).not.toBeInTheDocument();
+});
+
+it("repeats a chosen antibiotic without silently ordering the whole panel", async () => {
+  const service = show(workspace());
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.retest") }),
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.change(
+    within(modal).getByLabelText(messages["microbiology.ast.attemptScope"]),
+    { target: { value: "b" } },
+  );
+  fireEvent.change(within(modal).getByLabelText(t("reason")), {
+    target: { value: "Confirm the discordant agent" },
+  });
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        action: "retest",
+        orderedAntibioticIds: ["b"],
+        reason: "Confirm the discordant agent",
+      }),
+      false,
+    ),
+  );
+});
+
+it("lets Results users save a manual reading without requesting the analyzer list", async () => {
+  const data = workspace("IN_PROGRESS");
+  const service = {
+    getAstWorkspace: vi.fn().mockResolvedValue(data),
+    astAction: vi.fn().mockResolvedValue(data),
+    getReagentLotOverview: vi
+      .fn()
+      .mockResolvedValue({ requirements: [], usages: [] }),
+    getAnalyzers: vi.fn().mockRejectedValue(new Error("Forbidden")),
+  };
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <UserSessionDetailsContext.Provider
+        value={{ userSessionDetails: { roles: ["Results"] } }}
+      >
+        <CaseAstWorkspace
+          detail={{ id: "c1", canWrite: true, canValidate: false }}
+          service={service}
+        />
+      </UserSessionDetailsContext.Provider>
+    </IntlProvider>,
+  );
+  fireEvent.click(
+    (await screen.findAllByRole("button", { name: t("action.reading") }))[0],
+  );
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText(t("raw")), {
+    target: { value: "4" },
+  });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: t("save"), exact: true }),
+  );
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ action: "reading" }),
+      false,
+    ),
+  );
+  expect(service.getAnalyzers).not.toHaveBeenCalled();
+  expect(screen.queryByText(t("saveError"))).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: t("action.start"), exact: true }),
+  );
+  expect(
+    within(screen.getByRole("dialog")).queryByRole("option", {
+      name: messages["microbiology.ast.entryMode.analyzer"],
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(screen.getByRole("dialog")).getByRole("option", {
+      name: messages["microbiology.ast.entryMode.manual"],
+    }),
+  ).toBeInTheDocument();
+});
+
+it("loads analyzer choices when the session has analyzer import rights", async () => {
+  const service = {
+    getAstWorkspace: vi.fn().mockResolvedValue(workspace()),
+    getAnalyzers: vi
+      .fn()
+      .mockResolvedValue([{ id: "instrument", name: "Instrument" }]),
+  };
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <UserSessionDetailsContext.Provider
+        value={{ userSessionDetails: { roles: ["Analyser Import"] } }}
+      >
+        <CaseAstWorkspace
+          detail={{ id: "c1", canWrite: true }}
+          service={service}
+        />
+      </UserSessionDetailsContext.Provider>
+    </IntlProvider>,
+  );
+  await waitFor(() => expect(service.getAnalyzers).toHaveBeenCalled());
+  fireEvent.click(
+    screen.getByRole("button", { name: t("action.start"), exact: true }),
+  );
+  expect(
+    within(screen.getByRole("dialog")).getByRole("option", {
+      name: messages["microbiology.ast.entryMode.analyzer"],
+    }),
+  ).toBeInTheDocument();
+});
+
+it("closes an editor and disables mutations when entering reviewed mode", async () => {
+  const data = workspace();
+  const service = {
+    getAstWorkspace: vi.fn().mockResolvedValue(data),
+    astAction: vi.fn(),
+  };
+  const view = (readOnly) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseAstWorkspace
+        detail={{ id: "c1", canWrite: true, canValidate: true }}
+        service={service}
+        readOnly={readOnly}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(view(false));
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.select") }),
+  );
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  rerender(view(true));
+  expect(await screen.findByText("Ampicillin")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  for (const action of [
+    "assign",
+    "start",
+    "select",
+    "repeat",
+    "retest",
+    "reading",
+    "review",
+  ])
+    expect(
+      screen.queryByRole("button", { name: t(`action.${action}`) }),
+    ).not.toBeInTheDocument();
+  expect(service.astAction).not.toHaveBeenCalled();
+  rerender(view(false));
+  expect(
+    await screen.findByRole("button", { name: t("action.select") }),
+  ).toBeEnabled();
+});
+
+it.each([
+  [true, false, "REVIEWED", true],
+  [false, false, "REVIEWED", false],
+  [true, true, "REVIEWED", false],
+  [true, false, "IN_PROGRESS", false],
+])(
+  "consumes a routed new attempt with write=%s readOnly=%s status=%s",
+  async (canWrite, readOnly, status, opens) => {
+    const consumed = vi.fn();
+    const service = {
+      getAstWorkspace: vi.fn().mockResolvedValue(workspace(status)),
+      astAction: vi.fn().mockResolvedValue(workspace()),
+    };
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseAstWorkspace
+          detail={{ id: "c1", canWrite, canValidate: true }}
+          service={service}
+          readOnly={readOnly}
+          entryAction="new-ast-attempt"
+          selectedRunId="run"
+          onEntryActionConsumed={consumed}
+        />
+      </IntlProvider>,
+    );
+    await waitFor(() => expect(consumed).toHaveBeenCalledTimes(1));
+    if (!opens) {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      return;
+    }
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(
+      within(dialog).getByLabelText(messages["microbiology.ast.attemptType"]),
+      { target: { value: "retest" } },
+    );
+    fireEvent.change(within(dialog).getByLabelText(t("reason")), {
+      target: { value: "Confirm susceptibility" },
+    });
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: t("save"), exact: true }),
+    );
+    await waitFor(() =>
+      expect(service.astAction).toHaveBeenCalledWith(
+        "c1",
+        expect.objectContaining({
+          action: "retest",
+          runId: "run",
+          isolateId: "i1",
+        }),
+        false,
+      ),
+    );
+    expect(consumed).toHaveBeenCalledTimes(1);
+  },
+);
+it("shows analyzer evidence and blocks validation until a QC hold is resolved", async () => {
+  const data = workspace("QC_FAILED");
+  const run = data.isolates[0].runs[0];
+  Object.assign(run, {
+    analyzerInstrumentId: "instrument-42",
+    analyzerCardId: "card-42",
+    analyzerSoftwareVersion: "2.1",
+    instrumentQcReference: "qc-42",
+  });
+  run.readings[0].instrumentInterpretation = "RESISTANT";
+  show(data);
+  expect(await screen.findByText("Analyzer QC failed")).toBeInTheDocument();
+  expect(screen.getByText("instrument-42")).toBeInTheDocument();
+  expect(screen.getByText(/Card or panel card-42/)).toBeInTheDocument();
+  expect(screen.getByText(/QC reference qc-42/)).toBeInTheDocument();
+  expect(screen.getByText("Analyzer: Resistant")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: t("action.review") }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: t("action.qc-override") }),
+  );
+  expect(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: t("save"),
+      exact: true,
+    }),
+  ).toBeDisabled();
+});
+
+it.each([
+  [{ configured: true, available: true, standardId: "eucast" }, "eucast"],
+  [{ configured: false, available: false }, ""],
+  [{ configured: true, available: false, standardId: "old" }, ""],
+])(
+  "uses the configured default and never guesses from a multi-standard list (%j)",
+  async (defaultStandard, expected) => {
+    const data = workspace();
+    data.standards = [
+      { id: "clsi", label: "CLSI 2026" },
+      { id: "eucast", label: "EUCAST 2026-2026.1" },
+    ];
+    data.defaultStandard = defaultStandard;
+    show(data);
+    fireEvent.click(
+      await screen.findByRole("button", { name: t("action.start") }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByLabelText(t("breakpoint"), {
+        exact: false,
+      }),
+    ).toHaveValue(expected);
+  },
+);
+
+const startDialog = async (provenance = "ORGANISM_DEFAULT", runs) => {
+  const data = workspace("IN_PROGRESS");
+  if (provenance === "ORGANISM_DEFAULT")
+    data.isolates[0].defaultPanelId = "panel";
+  data.isolates[0].panels = [{ id: "panel", label: "Routine panel" }];
+  data.isolates[0].assignments = [{ panelId: "panel", provenance }];
+  if (runs) data.isolates[0].runs = runs(data.isolates[0].runs[0]);
+  const service = show(data);
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.start") }),
+  );
+  const modal = screen.getByRole("dialog");
+  return {
+    service,
+    modal,
+    indication: within(modal).getByLabelText(t("clinicalContext"), {
+      exact: false,
+    }),
+    save: within(modal).getByRole("button", { name: t("save"), exact: true }),
+  };
+};
+
+it("marks the panel, breakpoint standard and indication as required to start a run", async () => {
+  const { modal } = await startDialog();
+  const required = ["ast-clinical-context", "ast-panel", "ast-standard"];
+  expect(
+    Array.from(modal.querySelectorAll(".requiredlabel"), (marker) =>
+      marker.closest("label").getAttribute("for"),
+    ),
+  ).toEqual(required);
+  expect(
+    Array.from(
+      modal.querySelectorAll('[aria-required="true"]'),
+      (field) => field.id,
+    ),
+  ).toEqual(required);
+});
+
+it("starts a run only after the technician picks a clinical indication", async () => {
+  const { service, modal, indication, save } = await startDialog();
+  expect(indication).toHaveValue("");
+  expect(
+    within(indication)
+      .getAllByRole("option")
+      .map((option) => option.textContent),
+  ).toEqual([
+    t("choose"),
+    "Meningitis",
+    "Endocarditis",
+    "Neither (other than meningitis or endocarditis)",
+    "Not stated",
+  ]);
+  expect(save).toBeDisabled();
+  fireEvent.change(indication, { target: { value: "MENINGITIS" } });
+  expect(within(modal).queryByLabelText(t("reason"))).toBeNull();
+  expect(save).toBeEnabled();
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        action: "start",
+        clinicalContext: "MENINGITIS",
+      }),
+      false,
+    ),
+  );
+});
+
+it("sends no indication when the technician picks Not stated", async () => {
+  const { service, indication, save } = await startDialog();
+  fireEvent.change(indication, { target: { value: "NOT_STATED" } });
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ action: "start", clinicalContext: "" }),
+      false,
+    ),
+  );
+});
+
+it("shows each run's clinical indication", async () => {
+  await startDialog("ORGANISM_DEFAULT", (run) => [
+    { ...run, id: "r1", clinicalContext: "MENINGITIS" },
+    { ...run, id: "r2", clinicalContext: "ENDOCARDITIS" },
+    { ...run, id: "r3", clinicalContext: "NON_MENINGITIS" },
+    { ...run, id: "r4" },
+  ]);
+  const indication = (run) =>
+    within(screen.getByTestId(`ast-run-${run}`)).getByText(
+      new RegExp(`^${t("clinicalContext")}:`),
+    );
+  expect(indication("r1")).toHaveTextContent(/: Meningitis$/);
+  expect(indication("r2")).toHaveTextContent(/: Endocarditis$/);
+  expect(indication("r3")).toHaveTextContent(
+    /: Neither meningitis nor endocarditis$/,
+  );
+  expect(indication("r4")).toHaveTextContent(/: Not stated$/);
+});
+
+it("asks for a panel adjustment reason only when the run does not use the organism default panel", async () => {
+  const { modal, indication, save } = await startDialog("MANUAL");
+  fireEvent.change(indication, { target: { value: "NON_MENINGITIS" } });
+  expect(save).toBeDisabled();
+  fireEvent.change(
+    within(modal).getByLabelText(
+      messages["microbiology.ast.panelAdjustmentReason"],
+    ),
+    { target: { value: "No default panel configured for this organism" } },
+  );
+  expect(save).toBeEnabled();
+});
+
+const defaultChanged = () => {
+  const data = workspace("IN_PROGRESS");
+  data.isolates[0].defaultPanelId = "current";
+  data.isolates[0].panels = [
+    { id: "older", label: "Older default v1" },
+    { id: "current", label: "Current default v2" },
+  ];
+  data.isolates[0].assignments = [
+    { panelId: "older", provenance: "ORGANISM_DEFAULT" },
+  ];
+  return data;
+};
+
+it("starts from the organism's current default panel, not an older default assignment", async () => {
+  show(defaultChanged());
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.start") }),
+  );
+  const modal = screen.getByRole("dialog");
+  const reason = messages["microbiology.ast.panelAdjustmentReason"];
+  const panel = within(modal).getByLabelText(new RegExp(`^${t("panel")}`));
+  expect(panel).toHaveValue("current");
+  expect(within(modal).queryByLabelText(reason)).not.toBeInTheDocument();
+  fireEvent.change(panel, {
+    target: { value: "older" },
+  });
+  expect(within(modal).getByLabelText(reason)).toBeInTheDocument();
+});
+
+it.each([
+  [
+    "AST_PANEL_ADJUSTMENT_REASON_REQUIRED",
+    "Give a reason for using a panel other than the organism's default panel.",
+  ],
+  [
+    "AST_PANEL_ALREADY_ACTIVE",
+    "This isolate already has a run on this panel. Repeat or cancel that run instead of starting another.",
+  ],
+])("explains a run refused with %s", async (code, text) => {
+  const service = show(defaultChanged());
+  service.astAction.mockRejectedValue({ response: { message: code } });
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.start") }),
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.change(
+    within(modal).getByLabelText(t("clinicalContext"), { exact: false }),
+    { target: { value: "NON_MENINGITIS" } },
+  );
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  expect(await within(modal).findByText(text)).toBeInTheDocument();
+});
+
+const discordantRifampicin = () => {
+  const data = workspace();
+  data.dst = {
+    classification: "DISCORDANT",
+    drugs: [
+      {
+        antibioticId: "rif",
+        label: "Rifampicin",
+        interpretation: "DISCORDANT",
+        discordant: true,
+        evidenceFingerprint: "fp",
+        evidence: [
+          {
+            source: "MOLECULAR",
+            sourceId: "m1",
+            interpretation: "RESISTANT",
+          },
+          {
+            source: "PHENOTYPIC",
+            sourceId: "p1",
+            interpretation: "SUSCEPTIBLE",
+          },
+        ],
+      },
+    ],
+  };
+  return data;
+};
+const resolveDiscordance = async (service) => {
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.resolve") }),
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.change(within(modal).getByLabelText(t("reason")), {
+    target: { value: "Reference laboratory confirmed resistance" },
+  });
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  await waitFor(() => expect(service.resolveDst).toHaveBeenCalledTimes(1));
+  return modal;
+};
+
+it("resolves a discordant drug with only the resolution fields", async () => {
+  const service = show(discordantRifampicin());
+  service.resolveDst = vi.fn().mockResolvedValue({});
+  await resolveDiscordance(service);
+  expect(service.resolveDst).toHaveBeenCalledWith("c1", {
+    antibioticId: "rif",
+    evidenceFingerprint: "fp",
+    interpretation: "RESISTANT",
+    reason: "Reference laboratory confirmed resistance",
+  });
+});
+
+it("explains a resolution rejected because the DST evidence changed", async () => {
+  const service = show(discordantRifampicin());
+  service.resolveDst = vi.fn().mockRejectedValue({
+    response: {
+      error: "MICROBIOLOGY_AST_CONFLICT",
+      message: "DST_EVIDENCE_CHANGED",
+    },
+  });
+  const modal = await resolveDiscordance(service);
+  const message = messages["microbiology.m6.error.DST_EVIDENCE_CHANGED"];
+  expect(message).toBeDefined();
+  expect(await within(modal).findByText(message)).toBeInTheDocument();
+});
+
+it("cancels a run started by mistake with a recorded reason", async () => {
+  const data = workspace("AWAITING_RESULTS");
+  data.isolates[0].runs[0].readings = [];
+  const service = show(data);
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.cancel") }),
+  );
+  const modal = screen.getByRole("dialog");
+  const cancelRun = within(modal).getByRole("button", {
+    name: t("action.cancel"),
+  });
+  expect(cancelRun).toBeDisabled();
+  fireEvent.change(within(modal).getByLabelText(t("reason")), {
+    target: { value: "Started on the wrong isolate" },
+  });
+  fireEvent.click(cancelRun);
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        action: "cancel",
+        isolateId: "i1",
+        runId: "run",
+        reason: "Started on the wrong isolate",
+      }),
+      false,
+    ),
+  );
+});
+
+it("explains a run that can no longer be cancelled", async () => {
+  const data = workspace("AWAITING_RESULTS");
+  data.isolates[0].runs[0].readings = [];
+  const service = show(data);
+  service.astAction.mockRejectedValue({
+    response: { message: "AST_RUN_CANNOT_BE_CANCELLED" },
+  });
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.cancel") }),
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.change(within(modal).getByLabelText(t("reason")), {
+    target: { value: "Started on the wrong isolate" },
+  });
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("action.cancel") }),
+  );
+  const message = messages["microbiology.m6.error.AST_RUN_CANNOT_BE_CANCELLED"];
+  expect(message).toBeDefined();
+  expect(await within(modal).findByText(message)).toBeInTheDocument();
+  expect(screen.getAllByText(message)).toHaveLength(1);
+});
+
+it("the cancel-run dialog keeps the run unless Cancel run is chosen", async () => {
+  const data = workspace("AWAITING_RESULTS");
+  data.isolates[0].runs[0].readings = [];
+  const service = show(data);
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.cancel") }),
+  );
+  const modal = screen.getByRole("dialog");
+  expect(
+    within(modal).queryByRole("button", { name: t("save"), exact: true }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(within(modal).getByRole("button", { name: t("keepRun") }));
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(service.astAction).not.toHaveBeenCalled();
+});
+
+it("a reading request does not carry the isolate's panel", async () => {
+  const data = workspace("IN_PROGRESS");
+  data.isolates[0].assignments = [
+    { id: "as", panelId: "p1", label: "Panel v2", provenance: "MANUAL" },
+  ];
+  const service = show(data);
+  fireEvent.click(
+    (await screen.findAllByRole("button", { name: t("action.reading") }))[0],
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.change(within(modal).getByLabelText(t("raw")), {
+    target: { value: "4" },
+  });
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  await waitFor(() => expect(service.astAction).toHaveBeenCalledTimes(1));
+  expect(service.astAction.mock.calls[0][1]).toEqual(
+    expect.objectContaining({ action: "reading", runId: "run" }),
+  );
+  expect(service.astAction.mock.calls[0][1]).not.toHaveProperty("panelId");
+});
+
+it("names the panel version each run used", async () => {
+  const data = workspace();
+  data.isolates[0].runs[0].panelLabel = "Enterobacterales v3";
+  show(data);
+  expect(
+    await screen.findByText(`${t("panel")}: Enterobacterales v3`),
+  ).toBeInTheDocument();
+});
+
+it("a cancelled run's report ticks cannot be changed", async () => {
+  const data = ticks();
+  data.isolates[0].runs[0].status = "CANCELLED";
+  show(data);
+  expect(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  ).toBeDisabled();
+});
+
+it("explains a report tick refused because the run closed meanwhile", async () => {
+  const service = show(ticks());
+  service.astAction.mockRejectedValue({
+    response: { message: "AST_RUN_NOT_EDITABLE" },
+  });
+  fireEvent.click(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  );
+  expect(
+    await screen.findByText(
+      "This run is cancelled, invalidated, or needs repeating, so it can no longer be changed. Reload the case to see its current state.",
+    ),
+  ).toBeInTheDocument();
+});
+
+it("explains a resolution the server rejects as invalid", async () => {
+  const service = show(discordantRifampicin());
+  service.resolveDst = vi.fn().mockRejectedValue({
+    response: { message: "DST_RESOLUTION_INVALID" },
+  });
+  const modal = await resolveDiscordance(service);
+  const message = messages["microbiology.m6.error.DST_RESOLUTION_INVALID"];
+  expect(message).toBeDefined();
+  expect(await within(modal).findByText(message)).toBeInTheDocument();
+});
+
+it("does not offer cancel once a run has readings", async () => {
+  show(workspace("IN_PROGRESS"));
+  expect(await screen.findByText("Ampicillin")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: t("action.cancel") }),
+  ).not.toBeInTheDocument();
+});
+const ticks = () => {
+  const data = workspace("IN_PROGRESS");
+  data.isolates[0].runs[0].orderedAntibiotics = [
+    {
+      antibioticId: "a",
+      antibioticName: "Ampicillin",
+      reportBehavior: "ALWAYS",
+      reported: true,
+      reportManual: false,
+    },
+    {
+      antibioticId: "b",
+      antibioticName: "Ceftriaxone",
+      reportBehavior: "SUPPRESS_UNLESS_RESISTANT",
+      reported: false,
+      reportManual: false,
+    },
+  ];
+  return data;
+};
+it("shows each drug's report tick with its reason only when the reason is not routine", async () => {
+  show(ticks());
+  expect(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  ).toBeChecked();
+  expect(
+    screen.getByRole("checkbox", { name: "Report Ceftriaxone" }),
+  ).not.toBeChecked();
+  expect(screen.getByText("Reported only if resistant")).toBeInTheDocument();
+  expect(screen.queryByText("Changed by staff")).not.toBeInTheDocument();
+});
+it("unticking a drug saves the report choice for that run", async () => {
+  const service = show(ticks());
+  fireEvent.click(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  );
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        action: "report",
+        isolateId: "i1",
+        runId: "run",
+        antibioticId: "a",
+        reported: false,
+      }),
+      false,
+    ),
+  );
+});
+it("a tick changed by hand says so and can be reset to the defaults", async () => {
+  const data = ticks();
+  const drugs = data.isolates[0].runs[0].orderedAntibiotics;
+  drugs[1] = { ...drugs[1], reported: true, reportManual: true };
+  const service = show(data);
+  expect(await screen.findByText("Changed by staff")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Reset report choices" }));
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ action: "report-reset", isolateId: "i1" }),
+      false,
+    ),
+  );
+});
+it("readers see report ticks they cannot change", async () => {
+  const data = ticks();
+  const drugs = data.isolates[0].runs[0].orderedAntibiotics;
+  drugs[0] = { ...drugs[0], reportManual: true };
+  show(data, { canWrite: false, canValidate: false });
+  expect(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  ).toBeDisabled();
+  expect(
+    screen.queryByRole("button", { name: "Reset report choices" }),
+  ).not.toBeInTheDocument();
+});
+it("shows a drug's report tick only on the run whose reading is chosen for the report", async () => {
+  const data = ticks();
+  const first = data.isolates[0].runs[0];
+  data.isolates[0].choices = [{ antibioticId: "b", readingId: "r-b" }];
+  data.isolates[0].runs.push({
+    ...first,
+    id: "retest",
+    orderedAntibiotics: first.orderedAntibiotics.map((agent) => ({
+      ...agent,
+    })),
+    readings: [reading("r-a2", "a", 4), reading("r-b2", "b", 4)],
+  });
+  show(data);
+  const name = (agent) => ({ name: `Report ${agent}`, hidden: true });
+  await screen.findAllByRole("checkbox", name("Ampicillin"));
+  expect(screen.getAllByRole("checkbox", name("Ceftriaxone"))).toHaveLength(1);
+  expect(screen.getAllByRole("checkbox", name("Ampicillin"))).toHaveLength(2);
+});
+it("says when a reporting rule leaves a drug off the report", async () => {
+  const data = ticks();
+  const drugs = data.isolates[0].runs[0].orderedAntibiotics;
+  drugs[0] = { ...drugs[0], reportBehavior: "DONT_REPORT", reported: false };
+  show(data);
+  expect(
+    await screen.findByText("Not reported by a reporting rule"),
+  ).toBeInTheDocument();
+});
+it("shows a reporting rule's note under its drug, tagged as coming from the rule", async () => {
+  const data = ticks();
+  const drugs = data.isolates[0].runs[0].orderedAntibiotics;
+  drugs[0] = { ...drugs[0], ruleNote: "Consider meropenem" };
+  show(data);
+  expect(await screen.findByText("Consider meropenem")).toBeInTheDocument();
+  expect(screen.getByText("From rule")).toBeInTheDocument();
+});
+
+it("marks an expert rule override and asks for the identification to be checked", async () => {
+  const data = ticks();
+  const run = data.isolates[0].runs[0];
+  run.intrinsicContradiction = true;
+  run.readings[0] = {
+    ...run.readings[0],
+    interpretation: "SUSCEPTIBLE",
+    overrideInterpretation: "RESISTANT",
+    overrideRuleId: "rule-1",
+    overrideReason: "Expert rule: Klebsiella, Ampicillin always R",
+  };
+  show(data);
+  expect(await screen.findByText("Expert rule")).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      "A measured result contradicts an expected resistance. Check the identification, then confirm it before review.",
+    ),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirm identification" }),
+  );
+  expect(
+    await screen.findByRole("dialog", { name: "Confirm identification" }),
+  ).toBeInTheDocument();
+});
+
+it("words an expert rule override from the rule, not from the stored audit reason", async () => {
+  const data = ticks();
+  const run = data.isolates[0].runs[0];
+  run.readings[0] = {
+    ...run.readings[0],
+    interpretation: "SUSCEPTIBLE",
+    overrideInterpretation: "RESISTANT",
+    overrideRuleId: "rule-1",
+    overrideReason: "Expert rule: Klebsiella, Ampicillin always R",
+  };
+  show(data);
+  expect(
+    await screen.findByText(
+      "Escherichia coli is always resistant to Ampicillin",
+    ),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByText("Expert rule: Klebsiella, Ampicillin always R"),
+  ).not.toBeInTheDocument();
+});

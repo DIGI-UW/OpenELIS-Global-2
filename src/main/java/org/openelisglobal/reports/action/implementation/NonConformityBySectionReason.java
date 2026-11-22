@@ -21,8 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
-import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -36,25 +34,11 @@ public abstract class NonConformityBySectionReason extends NonConformityBy {
     protected SampleQaEventService sampleQaEventService = SpringContext.getBean(SampleQaEventService.class);
 
     @Override
-    protected String reportFileName() {
-        return "NonConformityByGroupCategory";
+    protected byte[] renderReport() {
+        return NonConformityReportPdf.bySectionAndReason(
+                MessageUtil.getMessage("reports.nonConformity.bySectionReason.title"), dateRange.toString(),
+                reportItems);
     }
-
-    @Override
-    protected void createReportParameters() {
-        super.createReportParameters();
-        reportParameters.put("reportTitle", MessageUtil.getMessage("reports.nonConformity.bySectionReason.title"));
-        reportParameters.put("reportPeriod", dateRange.toString());
-        reportParameters.put("supervisorSignature", ConfigurationProperties.getInstance()
-                .isPropertyValueEqual(Property.SIGNATURES_ON_NONCONFORMITY_REPORTS, "true"));
-        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.configurationName, "CI LNSP")) {
-            reportParameters.put("headerName", "CILNSPHeader.jasper");
-        } else {
-            reportParameters.put("headerName", getHeaderName());
-        }
-    }
-
-    protected abstract String getHeaderName();
 
     @Override
     void createReportItems() {

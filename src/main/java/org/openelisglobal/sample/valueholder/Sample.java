@@ -39,6 +39,23 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     private String accessionNumber;
     private String packageId;
     private String domain;
+    private Integer microbiologyReplicateCount;
+
+    public Integer getMicrobiologyReplicateCount() {
+        return microbiologyReplicateCount;
+    }
+
+    public void setMicrobiologyReplicateCount(Integer count) {
+        microbiologyReplicateCount = count;
+    }
+
+    // S-09 (OGC-580) Resample linkage: original <-> replacement order
+    private String resampledFromSampleId;
+    private String resampledToSampleId;
+    // OGC-776 (S-15e) LHU report-level amendment
+    private String amendsLhuNumber;
+    private Integer amendmentNumber;
+    private String amendmentReason;
     private String nextItemSequence;
     private String revision;
     private Date enteredDate;
@@ -50,6 +67,7 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     private Timestamp collectionDate;
     private String collectionDateForDisplay;
     private String collectionTimeForDisplay;
+    private Timestamp requiredBy;
     private String clientReference;
     private String status;
     private Date releasedDate;
@@ -70,6 +88,14 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     private String gpsCaptureMethod;
     private Timestamp gpsCaptureTimestamp;
     private Boolean storageSkipped = false;
+    private String orderProgressStatus;
+    private Timestamp orderEnteredAt;
+    private Timestamp orderPreparedAt;
+    private Timestamp orderReadyAt;
+    private String orderReleaseNote;
+    private Timestamp orderCancelledAt;
+    private String orderCancelledBy;
+    private String orderCancelReason;
     private Boolean consentGiven = false;
     private String consentFormReference;
     private Timestamp consentRecordedAt;
@@ -131,12 +157,60 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
         collectionTimeForDisplay = DateUtil.convertTimestampToStringTime(collectionDate);
     }
 
+    public Timestamp getRequiredBy() {
+        return requiredBy;
+    }
+
+    public void setRequiredBy(Timestamp requiredBy) {
+        this.requiredBy = requiredBy;
+    }
+
     public String getDomain() {
         return domain;
     }
 
     public void setDomain(String domain) {
         this.domain = domain;
+    }
+
+    public String getResampledFromSampleId() {
+        return resampledFromSampleId;
+    }
+
+    public void setResampledFromSampleId(String resampledFromSampleId) {
+        this.resampledFromSampleId = resampledFromSampleId;
+    }
+
+    public String getResampledToSampleId() {
+        return resampledToSampleId;
+    }
+
+    public void setResampledToSampleId(String resampledToSampleId) {
+        this.resampledToSampleId = resampledToSampleId;
+    }
+
+    public String getAmendsLhuNumber() {
+        return amendsLhuNumber;
+    }
+
+    public void setAmendsLhuNumber(String amendsLhuNumber) {
+        this.amendsLhuNumber = amendsLhuNumber;
+    }
+
+    public Integer getAmendmentNumber() {
+        return amendmentNumber;
+    }
+
+    public void setAmendmentNumber(Integer amendmentNumber) {
+        this.amendmentNumber = amendmentNumber;
+    }
+
+    public String getAmendmentReason() {
+        return amendmentReason;
+    }
+
+    public void setAmendmentReason(String amendmentReason) {
+        this.amendmentReason = amendmentReason;
     }
 
     public Date getEnteredDate() {
@@ -170,7 +244,7 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
 
     public void setReceivedDate(Date receivedDate) {
         receivedDateForDisplay = DateUtil.convertSqlDateToStringDate(receivedDate);
-        receivedTimestamp = DateUtil.convertSqlDateToTimestamp(receivedDate);
+        receivedTimestamp = receivedDate == null ? null : DateUtil.convertSqlDateToTimestamp(receivedDate);
     }
 
     public String getReceivedTimeForDisplay() {
@@ -469,6 +543,70 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
 
     public void setStorageSkipped(Boolean storageSkipped) {
         this.storageSkipped = storageSkipped;
+    }
+
+    public String getOrderProgressStatus() {
+        return orderProgressStatus;
+    }
+
+    public void setOrderProgressStatus(String orderProgressStatus) {
+        this.orderProgressStatus = orderProgressStatus;
+    }
+
+    public Timestamp getOrderEnteredAt() {
+        return orderEnteredAt;
+    }
+
+    public void setOrderEnteredAt(Timestamp orderEnteredAt) {
+        this.orderEnteredAt = orderEnteredAt;
+    }
+
+    public Timestamp getOrderPreparedAt() {
+        return orderPreparedAt;
+    }
+
+    public void setOrderPreparedAt(Timestamp orderPreparedAt) {
+        this.orderPreparedAt = orderPreparedAt;
+    }
+
+    public Timestamp getOrderReadyAt() {
+        return orderReadyAt;
+    }
+
+    public void setOrderReadyAt(Timestamp orderReadyAt) {
+        this.orderReadyAt = orderReadyAt;
+    }
+
+    public String getOrderReleaseNote() {
+        return orderReleaseNote;
+    }
+
+    public void setOrderReleaseNote(String orderReleaseNote) {
+        this.orderReleaseNote = orderReleaseNote;
+    }
+
+    public Timestamp getOrderCancelledAt() {
+        return orderCancelledAt;
+    }
+
+    public void setOrderCancelledAt(Timestamp orderCancelledAt) {
+        this.orderCancelledAt = orderCancelledAt;
+    }
+
+    public String getOrderCancelledBy() {
+        return orderCancelledBy;
+    }
+
+    public void setOrderCancelledBy(String orderCancelledBy) {
+        this.orderCancelledBy = orderCancelledBy;
+    }
+
+    public String getOrderCancelReason() {
+        return orderCancelReason;
+    }
+
+    public void setOrderCancelReason(String orderCancelReason) {
+        this.orderCancelReason = orderCancelReason;
     }
 
     public Boolean getConsentGiven() {

@@ -10,13 +10,31 @@ on:
   pull_request_target:
     branches: [develop]
 
+# Keep each PR's conflict check independent of activity on other PRs. Let
+# running checks finish, and queue subsequent checks for the same PR instead
+# of replacing pending runs (GitHub's default queue behavior). Develop pushes
+# retain their own groups so every push gets a completed check.
+concurrency:
+  group: merge-conflicts-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: false
+  queue: max
+
 jobs:
   auto-label:
     name: Run
     if: github.repository == 'DIGI-UW/OpenELIS-Global-2'
     runs-on: ubuntu-latest
     steps:
-      - uses: prince-chrismc/label-merge-conflicts-action@v2
+      # Advisory only: this labels and comments on conflicting PRs, it gates
+      # nothing. A push to develop makes GitHub recompute mergeability for every
+      # open PR against it, and with enough of them open some are still
+      # unresolved when the retries run out — the action then errors with
+      # "Could not determine mergeable status for: #x, #y". That turned develop
+      # red on every merge while saying nothing about the merge itself, so the
+      # step is allowed to fail: the next push or PR update labels whatever it
+      # could not reach this time.
+      - uses: prince-chrismc/label-merge-conflicts-action@v3
+        continue-on-error: true
         with:
           conflict_label_name: "merge conflict"
           github_token: ${{ secrets.GITHUB_TOKEN }}

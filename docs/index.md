@@ -25,6 +25,8 @@ how to deploy, installation of software, setup of a bulid server, etc)
 - [Development Setup](dev_setup.md)
 - [Development Guide](dev.md)
 - [Messages and Internationalization](messages.md)
+- [Architecture Decision Records](adr/0001-module-system.md) - the module system
+  decision (ADR 0001)
 
 ## For Deployers
 
@@ -32,6 +34,7 @@ how to deploy, installation of software, setup of a bulid server, etc)
 - [Implementation Guide](implementation.md)
 - [Troubleshooting](troubleshooting.md)
 - [Password Management](password.md)
+- [Security Documentation](security/index.md)
 
 ## Upgrades
 

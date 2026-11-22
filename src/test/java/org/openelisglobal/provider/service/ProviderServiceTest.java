@@ -35,6 +35,21 @@ public class ProviderServiceTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/provider.xml");
     }
 
+    // OGC-1266: the placeholder provider orders fall back to was inserted with no
+    // fhir_uuid, so every order naming it failed its FHIR sync.
+    @Test
+    public void insert_givesAProviderWithoutOneAFhirUuid() {
+        Person person = new Person();
+        person.setLastName("UUIDLESS");
+        personServive.insert(person);
+        Provider provider = new Provider();
+        provider.setPerson(person);
+
+        String id = providerService.insert(provider);
+
+        assertNotNull("a provider is published by its uuid", providerService.get(id).getFhirUuid());
+    }
+
     @Test
     public void providerInThDataBase() {
         List<Provider> providers = providerService.getAll();

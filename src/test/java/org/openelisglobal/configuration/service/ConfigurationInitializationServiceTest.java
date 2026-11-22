@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -33,6 +34,7 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -46,6 +48,9 @@ public class ConfigurationInitializationServiceTest {
 
     @Mock
     private PathMatchingResourcePatternResolver resolver;
+
+    @Mock
+    private DaemonContextExecutor daemonContextExecutor;
 
     /** Real resolver used to handle file: patterns against the temp folder. */
     private final PathMatchingResourcePatternResolver realResolver = new PathMatchingResourcePatternResolver();
@@ -64,6 +69,13 @@ public class ConfigurationInitializationServiceTest {
         when(mockHandler.getFileMatcher()).thenReturn("*.csv");
 
         mockEvent = mock(ContextRefreshedEvent.class);
+
+        // Make the mock actually execute the Runnable so doInitialize() runs
+        doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(0).run();
+            return null;
+        }).when(daemonContextExecutor).executeAsDaemon(any(Runnable.class));
+        ReflectionTestUtils.setField(service, "daemonContextExecutor", daemonContextExecutor);
 
         ReflectionTestUtils.setField(service, "configurationBaseDir", tempFolder.getRoot().getAbsolutePath());
         ReflectionTestUtils.setField(service, "autocreateOn", true);
@@ -317,6 +329,34 @@ public class ConfigurationInitializationServiceTest {
         assertTrue("Forced reload should report a processed file",
                 result.files().stream().anyMatch(file -> file.status() == ConfigurationReloadFileResult.Status.PROCESSED
                         && "force.csv".equals(file.fileName())));
+    }
+
+    @Test
+    public void reload_shouldForceOnlyTheNamedFiles() throws Exception {
+        createTestFile("tests/uploaded.csv", "uploaded content");
+        createTestFile("tests/shipped.csv", "shipped content");
+
+        service.reload(ConfigurationReloadOptions.all());
+        service.reload(ConfigurationReloadOptions.forFiles(Set.of("tests"), Set.of("uploaded.csv")));
+
+        verify(mockHandler, times(2)).processConfiguration(any(InputStream.class), eq("uploaded.csv"));
+        verify(mockHandler, times(1)).processConfiguration(any(InputStream.class), eq("shipped.csv"));
+    }
+
+    @Test
+    public void reload_shouldReadOnlyTheNamedFiles() throws Exception {
+        createTestFile("tests/uploaded.csv", "uploaded content");
+        File shipped = createTestFile("tests/shipped.csv", "shipped content");
+
+        service.reload(ConfigurationReloadOptions.all());
+        Files.write(shipped.toPath(), "edited on disk since".getBytes());
+        ConfigurationReloadResult result = service
+                .reload(ConfigurationReloadOptions.forFiles(Set.of("tests"), Set.of("uploaded.csv")));
+
+        verify(mockHandler, times(2)).processConfiguration(any(InputStream.class), eq("uploaded.csv"));
+        verify(mockHandler, times(1)).processConfiguration(any(InputStream.class), eq("shipped.csv"));
+        assertEquals("The reload reports the file it was asked for and nothing else", 1, result.files().size());
+        assertEquals("uploaded.csv", result.files().get(0).fileName());
     }
 
     @Test

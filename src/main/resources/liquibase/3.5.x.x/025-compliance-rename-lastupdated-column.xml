@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.10.xsd">
+
+    <!--
+        BaseObject (MappedSuperclass) maps the @Version field to
+        @Column(name = "last_updated"), but changeset 018 created the audit
+        column as "lastupdated" (single word) on the compliance tables.
+        Hibernate then queries last_updated and Postgres errors:
+            column "last_updated" of relation "compliance_standard" does not exist
+        Rename the columns to match the JPA mapping. Each rename is guarded
+        so it is a no-op when the column is already migrated.
+    -->
+
+    <changeSet id="025-1-rename-compliance-standard-lastupdated" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="compliance_standard" columnName="lastupdated"/>
+        </preConditions>
+        <renameColumn tableName="compliance_standard"
+                      oldColumnName="lastupdated"
+                      newColumnName="last_updated"
+                      columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+    <changeSet id="025-2-rename-parameter-group-lastupdated" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="parameter_group" columnName="lastupdated"/>
+        </preConditions>
+        <renameColumn tableName="parameter_group"
+                      oldColumnName="lastupdated"
+                      newColumnName="last_updated"
+                      columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+    <changeSet id="025-3-rename-compliance-threshold-lastupdated" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="compliance_threshold" columnName="lastupdated"/>
+        </preConditions>
+        <renameColumn tableName="compliance_threshold"
+                      oldColumnName="lastupdated"
+                      newColumnName="last_updated"
+                      columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+</databaseChangeLog>

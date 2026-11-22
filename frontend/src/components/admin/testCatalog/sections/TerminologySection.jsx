@@ -19,9 +19,15 @@ import { Add, Checkmark, Edit, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
+import TerminologySourceInput, {
+  sourceTooLong,
+} from "./TerminologySourceInput";
 import { NotificationContext } from "../../../layout/Layout";
+import StaleSaveNotice, {
+  isStaleConflict,
+} from "../../../common/StaleSaveNotice";
 
 /**
  * OGC-949 M10 / OGC-957..958 — Terminology Mappings section.
@@ -30,10 +36,10 @@ import { NotificationContext } from "../../../layout/Layout";
  * read-only until the admin clicks Edit; a row's fields are then editable in
  * place. New rows are added via the bottom form (either "Add mapping" or just
  * filling it and hitting Save). The whole set persists with PUT
- * /rest/test-catalog/tests/{id}/terminology. Source ∈ LOINC / SNOMED / CIEL /
- * OCL; relationship ∈ SAME_AS / BROADER_THAN / NARROWER_THAN.
+ * /rest/test-catalog/tests/{id}/terminology. Source is a standard system or
+ * the catalog's own identifier; relationship ∈ SAME_AS / BROADER_THAN /
+ * NARROWER_THAN.
  */
-const SOURCES = ["LOINC", "SNOMED", "CIEL", "OCL"];
 const RELATIONSHIPS = ["SAME_AS", "BROADER_THAN", "NARROWER_THAN"];
 const SOURCE_TAG = {
   LOINC: "blue",
@@ -54,6 +60,9 @@ const TerminologySection = ({ testId }) => {
   // The test's result components (id, code, label), so a mapping can be scoped
   // to a single component ("Applies to") instead of the whole test.
   const [components, setComponents] = useState([]);
+  // OGC-1145 FR-13: the test's associated sample types — a mapping may
+  // override for one specimen (null = shared across all of them).
+  const [sampleTypes, setSampleTypes] = useState([]);
   const [loincIntegrity, setLoincIntegrity] = useState(null);
   const [draft, setDraft] = useState({
     source: "",
@@ -62,6 +71,7 @@ const TerminologySection = ({ testId }) => {
     relationship: "SAME_AS",
     displayName: "",
     componentId: "",
+    sampleTypeId: "",
   });
 
   const componentLabel = (id) => {
@@ -71,6 +81,13 @@ const TerminologySection = ({ testId }) => {
     }
     return c.label || c.code || "";
   };
+
+  const sampleTypeLabel = (id) => {
+    const t = sampleTypes.find((x) => x.id === id);
+    return t ? t.name : "";
+  };
+  // The override picker only matters once the test runs on several specimens.
+  const showSampleTypeColumn = sampleTypes.length > 1;
   // Row indices currently in edit mode; a row's fields are editable only after
   // its Edit button is clicked.
   const [editingRows, setEditingRows] = useState(() => new Set());
@@ -85,6 +102,9 @@ const TerminologySection = ({ testId }) => {
       }
       return next;
     });
+
+  const [version, setVersion] = useState(null);
+  const [stale, setStale] = useState(false);
 
   const loadLoincIntegrity = () => {
     getFromOpenElisServer(
@@ -104,8 +124,18 @@ const TerminologySection = ({ testId }) => {
         }
         setMappings(res.mappings || []);
         setComponents(res.components || []);
+        setSampleTypes(res.sampleTypes || []);
+        setVersion(res.version || null);
       },
     );
+  };
+
+  const reloadAfterStale = () => {
+    setStale(false);
+    setLoading(true);
+    setEditingRows(new Set());
+    loadMappings();
+    loadLoincIntegrity();
   };
 
   useEffect(() => {
@@ -129,7 +159,9 @@ const TerminologySection = ({ testId }) => {
   // duplicate — the backend rejects it with a bodyless 422, which used to
   // surface as nothing more than a generic failure.
   const mappingKey = (m) =>
-    `${m.source}|${(m.code || "").trim()}|${m.componentId || ""}`;
+    `${m.source}|${(m.code || "").trim()}|${m.componentId || ""}|${
+      m.sampleTypeId || ""
+    }`;
 
   const notifyDuplicate = (m) => {
     setNotificationVisible(true);
@@ -162,6 +194,7 @@ const TerminologySection = ({ testId }) => {
         relationship: draft.relationship || "SAME_AS",
         displayName: draft.displayName || null,
         componentId: draft.componentId || null,
+        sampleTypeId: draft.sampleTypeId || null,
       },
     ]);
     setDraft({
@@ -170,6 +203,7 @@ const TerminologySection = ({ testId }) => {
       relationship: "SAME_AS",
       displayName: "",
       componentId: "",
+      sampleTypeId: "",
     });
   };
 
@@ -192,6 +226,7 @@ const TerminologySection = ({ testId }) => {
         relationship: draft.relationship || "SAME_AS",
         displayName: draft.displayName || null,
         componentId: draft.componentId || null,
+        sampleTypeId: draft.sampleTypeId || null,
       });
     }
     // Persist only complete rows (source + code); drop blank/partial ones.
@@ -212,6 +247,7 @@ const TerminologySection = ({ testId }) => {
     setSaving(true);
     const payload = {
       testId,
+      version,
       mappings: complete.map((m) => ({
         id: m.id || null,
         source: m.source,
@@ -219,13 +255,22 @@ const TerminologySection = ({ testId }) => {
         relationship: m.relationship || "SAME_AS",
         displayName: m.displayName || null,
         componentId: m.componentId || null,
+        sampleTypeId: m.sampleTypeId || null,
       })),
     };
-    putToOpenElisServer(
+    putToOpenElisServerFullResponse(
       `/rest/test-catalog/tests/${testId}/terminology`,
       JSON.stringify(payload),
-      (status) => {
+      async (response) => {
         setSaving(false);
+        const status = response ? response.status : 0;
+        if (status === 409) {
+          const body = await response.json().catch(() => null);
+          if (isStaleConflict(status, body)) {
+            setStale(true);
+            return;
+          }
+        }
         setNotificationVisible(true);
         if (status === 200) {
           addNotification({
@@ -251,14 +296,19 @@ const TerminologySection = ({ testId }) => {
           loadLoincIntegrity();
         } else if (status === 422) {
           // Server-side validation (duplicate mapping, unknown source/relationship,
-          // stale component scope) — name the cause instead of a generic failure.
+          // stale component scope, over-long code or name) — name the cause instead
+          // of a generic failure.
+          const refused = await response.json().catch(() => null);
           addNotification({
             kind: "error",
             title: intl.formatMessage({
               id: "label.testCatalog.section.terminology",
             }),
             message: intl.formatMessage({
-              id: "error.testCatalog.terminology.invalid",
+              id:
+                refused?.messageKey && intl.messages[refused.messageKey]
+                  ? refused.messageKey
+                  : "error.testCatalog.terminology.invalid",
             }),
           });
         } else {
@@ -357,6 +407,11 @@ const TerminologySection = ({ testId }) => {
               <TableHeader>
                 <FormattedMessage id="label.testCatalog.terminology.col.appliesTo" />
               </TableHeader>
+              {showSampleTypeColumn && (
+                <TableHeader>
+                  <FormattedMessage id="label.testCatalog.override.col.sampleType" />
+                </TableHeader>
+              )}
               <TableHeader>
                 <FormattedMessage id="label.testCatalog.terminology.col.actions" />
               </TableHeader>
@@ -372,19 +427,11 @@ const TerminologySection = ({ testId }) => {
                 >
                   <TableCell>
                     {editing ? (
-                      <Select
+                      <TerminologySourceInput
                         id={`mapping-source-${i}`}
-                        labelText=""
                         value={m.source || ""}
-                        onChange={(e) =>
-                          updateMapping(i, { source: e.target.value })
-                        }
-                      >
-                        <SelectItem value="" text="" />
-                        {SOURCES.map((s) => (
-                          <SelectItem key={s} value={s} text={s} />
-                        ))}
-                      </Select>
+                        onChange={(source) => updateMapping(i, { source })}
+                      />
                     ) : (
                       <Tag type={SOURCE_TAG[m.source] || "gray"}>
                         {m.source}
@@ -397,6 +444,7 @@ const TerminologySection = ({ testId }) => {
                         id={`mapping-code-${i}`}
                         labelText=""
                         value={m.code || ""}
+                        maxLength={80}
                         onChange={(e) =>
                           updateMapping(i, { code: e.target.value })
                         }
@@ -411,6 +459,7 @@ const TerminologySection = ({ testId }) => {
                         id={`mapping-display-${i}`}
                         labelText=""
                         value={m.displayName || ""}
+                        maxLength={255}
                         placeholder={intl.formatMessage({
                           id: "label.testCatalog.terminology.displayName.placeholder",
                         })}
@@ -484,6 +533,36 @@ const TerminologySection = ({ testId }) => {
                       <FormattedMessage id="label.testCatalog.terminology.appliesTo.test" />
                     )}
                   </TableCell>
+                  {showSampleTypeColumn && (
+                    <TableCell>
+                      {editing ? (
+                        <Select
+                          id={`mapping-sample-type-${i}`}
+                          labelText=""
+                          value={m.sampleTypeId || ""}
+                          onChange={(e) =>
+                            updateMapping(i, {
+                              sampleTypeId: e.target.value || null,
+                            })
+                          }
+                        >
+                          <SelectItem
+                            value=""
+                            text={intl.formatMessage({
+                              id: "label.testCatalog.override.shared",
+                            })}
+                          />
+                          {sampleTypes.map((t) => (
+                            <SelectItem key={t.id} value={t.id} text={t.name} />
+                          ))}
+                        </Select>
+                      ) : m.sampleTypeId ? (
+                        <Tag type="blue">{sampleTypeLabel(m.sampleTypeId)}</Tag>
+                      ) : (
+                        <FormattedMessage id="label.testCatalog.override.shared" />
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Button
                       kind="ghost"
@@ -517,25 +596,21 @@ const TerminologySection = ({ testId }) => {
       )}
 
       <Stack gap={4} orientation="horizontal">
-        <Select
+        <TerminologySourceInput
           id="terminology-source"
-          labelText={intl.formatMessage({
+          titleText={intl.formatMessage({
             id: "label.testCatalog.terminology.source",
           })}
           value={draft.source}
-          onChange={(e) => setDraft({ ...draft, source: e.target.value })}
-        >
-          <SelectItem value="" text="" />
-          {SOURCES.map((s) => (
-            <SelectItem key={s} value={s} text={s} />
-          ))}
-        </Select>
+          onChange={(source) => setDraft({ ...draft, source })}
+        />
         <TextInput
           id="terminology-code"
           labelText={intl.formatMessage({
             id: "label.testCatalog.terminology.code",
           })}
           value={draft.code}
+          maxLength={80}
           onChange={(e) => setDraft({ ...draft, code: e.target.value })}
         />
         <TextInput
@@ -544,6 +619,7 @@ const TerminologySection = ({ testId }) => {
             id: "label.testCatalog.terminology.col.displayName",
           })}
           value={draft.displayName}
+          maxLength={255}
           onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
         />
         <Select
@@ -582,12 +658,49 @@ const TerminologySection = ({ testId }) => {
             <SelectItem key={c.id} value={c.id} text={c.label || c.code} />
           ))}
         </Select>
+        {showSampleTypeColumn && (
+          <Select
+            id="terminology-sample-type"
+            labelText={intl.formatMessage({
+              id: "label.testCatalog.override.col.sampleType",
+            })}
+            value={draft.sampleTypeId}
+            onChange={(e) =>
+              setDraft({ ...draft, sampleTypeId: e.target.value })
+            }
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "label.testCatalog.override.shared",
+              })}
+            />
+            {sampleTypes.map((t) => (
+              <SelectItem key={t.id} value={t.id} text={t.name} />
+            ))}
+          </Select>
+        )}
         <Button kind="tertiary" renderIcon={Add} onClick={addMapping}>
           <FormattedMessage id="label.testCatalog.terminology.addMapping" />
         </Button>
       </Stack>
 
-      <Button kind="primary" disabled={saving} onClick={handleSave}>
+      {stale && (
+        <StaleSaveNotice
+          testId="terminology-stale-save"
+          onRefresh={reloadAfterStale}
+        />
+      )}
+      <Button
+        kind="primary"
+        disabled={
+          saving ||
+          stale ||
+          sourceTooLong(draft.source) ||
+          mappings.some((m) => sourceTooLong(m.source))
+        }
+        onClick={handleSave}
+      >
         <FormattedMessage id="label.button.save" />
       </Button>
     </Stack>

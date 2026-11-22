@@ -1,0 +1,159 @@
+import React from "react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import "@testing-library/jest-dom";
+import { IntlProvider } from "react-intl";
+import { vi } from "vitest";
+import messages from "../../../../languages/en.json";
+
+const { getFromOpenElisServer } = vi.hoisted(() => ({
+  getFromOpenElisServer: vi.fn(),
+}));
+vi.mock("../../../utils/Utils", () => ({ getFromOpenElisServer }));
+
+import CollectTestPickerSection from "./CollectTestPickerSection";
+
+const renderPicker = (samples, setSamples = vi.fn()) =>
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CollectTestPickerSection
+        samples={samples}
+        setSamples={setSamples}
+        isReadOnly={false}
+      />
+    </IntlProvider>,
+  );
+
+describe("CollectTestPickerSection", () => {
+  beforeEach(() => {
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, callback) =>
+      callback({
+        tests: [{ id: "9", name: "Malaria RDT" }],
+        panels: [{ id: "4", name: "Renal Panel" }],
+      }),
+    );
+  });
+
+  it("uses the case catalog and excludes an existing assay only on its specimen", () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <CollectTestPickerSection
+          samples={[
+            { sampleItemId: "A", sampleTypeId: "5", sampleTypeName: "First" },
+            { sampleItemId: "B", sampleTypeId: "5", sampleTypeName: "Second" },
+          ]}
+          setSamples={vi.fn()}
+          cataloguePath="/rest/microbiology/cases/C/analyses/catalog"
+          excludedTestIdsBySample={{ A: ["9"] }}
+        />
+      </IntlProvider>,
+    );
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/microbiology/cases/C/analyses/catalog?sampleType=5",
+      expect.any(Function),
+    );
+    expect(screen.getAllByText("Malaria RDT")).toHaveLength(1);
+    expect(
+      within(screen.getByText(/Second/).closest("li")).getByText("Malaria RDT"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByText(/First/).closest("li")).queryByText(
+        "Malaria RDT",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  // OGC-1201 A: Collect showed the ordered tests but offered no way to add
+  // one, so a test asked for at the bedside meant walking back to step 1.
+  it("offers the catalogue for each collectable sample's own type", () => {
+    renderPicker([
+      { sampleTypeId: "5", sampleTypeName: "Blood", tests: [], panels: [] },
+    ]);
+
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/sample-type-tests?sampleType=5",
+      expect.any(Function),
+    );
+    expect(screen.getByText("Malaria RDT")).toBeInTheDocument();
+    expect(screen.getByText("Renal Panel")).toBeInTheDocument();
+  });
+
+  it("adds a chosen test to that sample only", async () => {
+    const setSamples = vi.fn();
+    renderPicker(
+      [
+        { sampleTypeId: "5", sampleTypeName: "Blood", tests: [], panels: [] },
+        { sampleTypeId: "5", sampleTypeName: "Blood", tests: [], panels: [] },
+      ],
+      setSamples,
+    );
+
+    await userEvent.setup().click(screen.getAllByText("Malaria RDT")[0]);
+
+    expect(setSamples).toHaveBeenCalledTimes(1);
+    const updated = setSamples.mock.calls[0][0];
+    expect(updated[0].tests).toEqual([{ id: "9", name: "Malaria RDT" }]);
+    expect(updated[1].tests).toEqual([]);
+  });
+
+  // OGC-1449: a failed catalogue request offered nothing to add, with no
+  // message and no way to load it again.
+  it("says the catalogue could not be loaded and loads it on Retry", async () => {
+    getFromOpenElisServer.mockImplementationOnce((url, callback) =>
+      callback(undefined),
+    );
+    renderPicker([
+      { sampleTypeId: "5", sampleTypeName: "Blood", tests: [], panels: [] },
+    ]);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "The tests for this sample type could not be loaded.",
+    );
+    expect(screen.queryByText("Malaria RDT")).not.toBeInTheDocument();
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(getFromOpenElisServer).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Malaria RDT")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("stays out of the way when nothing is collectable yet", () => {
+    const { container } = renderPicker([{ sampleTypeId: "" }]);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("ignores a rejected specimen", () => {
+    const { container } = renderPicker([
+      { sampleTypeId: "5", sampleRejected: true },
+    ]);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  // The tags used to pass dismissTooltipLabel alone, so every close button was
+  // named Carbon's English "Dismiss"; see removeLabel in the component for why
+  // both props are needed.
+  it("names each selected test and panel's close button after what it removes", () => {
+    renderPicker([
+      {
+        sampleTypeId: "5",
+        sampleTypeName: "Blood",
+        tests: [{ id: "9", name: "Malaria RDT" }],
+        panels: [{ id: "4", name: "Renal Panel" }],
+      },
+    ]);
+
+    expect(
+      screen.getByRole("button", { name: "Remove Malaria RDT" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove Renal Panel" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Dismiss" }),
+    ).not.toBeInTheDocument();
+  });
+});

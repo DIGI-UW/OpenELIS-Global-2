@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      S-09 (OGC-580) Resample linkage. Two nullable self-referencing FK columns on
+      sample tie a rejected original to its replacement draft. Per the FRS, the
+      resample case is distinguished from a plain rejection solely by the presence of
+      resampled_to (no new status enum, no nc_event change).
+    -->
+    <changeSet id="OGC-580-add-resample-links-to-sample" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="sample" schemaName="clinlims" columnName="resampled_from_sample_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="sample" schemaName="clinlims">
+            <column name="resampled_from_sample_id" type="numeric(10,0)">
+                <constraints nullable="true" foreignKeyName="fk_sample_resampled_from"
+                    references="clinlims.sample(id)"/>
+            </column>
+            <column name="resampled_to_sample_id" type="numeric(10,0)">
+                <constraints nullable="true" foreignKeyName="fk_sample_resampled_to"
+                    references="clinlims.sample(id)"/>
+            </column>
+        </addColumn>
+        <createIndex tableName="sample" indexName="idx_sample_resampled_from" schemaName="clinlims">
+            <column name="resampled_from_sample_id"/>
+        </createIndex>
+        <rollback>
+            <dropIndex tableName="sample" indexName="idx_sample_resampled_from" schemaName="clinlims"/>
+            <dropColumn tableName="sample" schemaName="clinlims" columnName="resampled_from_sample_id"/>
+            <dropColumn tableName="sample" schemaName="clinlims" columnName="resampled_to_sample_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

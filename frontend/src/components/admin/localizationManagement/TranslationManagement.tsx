@@ -25,6 +25,7 @@ import { Edit, Download, WarningAlt } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
+  postToOpenElisServerFullResponse,
   putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
@@ -36,13 +37,63 @@ interface SupportedLocale {
   fallback: boolean;
 }
 
+type LabelOrigin = "SHIPPED" | "SITE_OVERRIDE" | "SITE_VALUE";
+
 interface LocalizationItem {
   id: string;
   description?: string;
   fallbackValue?: string;
   translatedValue?: string;
   translations?: Record<string, string>;
+  // Set on a value OpenELIS ships with a display key (OGC-1507).
+  displayKey?: string;
+  origins?: Record<string, LabelOrigin>;
+  shippedLabels?: Record<string, string>;
+  labels?: Record<string, string>;
 }
+
+const ORIGIN_TAG: Record<LabelOrigin, { type: string; id: string }> = {
+  SHIPPED: { type: "blue", id: "translation.origin.shipped" },
+  SITE_OVERRIDE: { type: "purple", id: "translation.origin.siteOverride" },
+  SITE_VALUE: { type: "gray", id: "translation.origin.siteValue" },
+};
+
+/**
+ * The label a language shows: for a shipped value what the server resolves (the
+ * lab's override, the shipped translation, else the lab's English), or the
+ * stored label of the site's own value.
+ */
+const effectiveLabel = (item: LocalizationItem, locale: string): string => {
+  if (item.displayKey) {
+    if (item.labels?.[locale] !== undefined) {
+      return item.labels[locale];
+    }
+    if (item.origins?.[locale] !== "SITE_OVERRIDE") {
+      return item.shippedLabels?.[locale] || "";
+    }
+  }
+  return item.translations?.[locale] || "";
+};
+
+const effectiveLabels = (
+  item: LocalizationItem,
+  localeCodes: string[],
+): Record<string, string> =>
+  Object.fromEntries(
+    localeCodes.map((code) => [code, effectiveLabel(item, code)]),
+  );
+
+/** A shipped value with no translation in this language shows its English. */
+const isUntranslated = (item: LocalizationItem, locale: string): boolean => {
+  if (!item.displayKey) {
+    return !item.translations?.[locale];
+  }
+  return (
+    locale !== "en" &&
+    item.origins?.[locale] !== "SITE_OVERRIDE" &&
+    (item.shippedLabels?.[locale] || "") === (item.shippedLabels?.en || "")
+  );
+};
 
 interface LocaleTranslationStats {
   displayName: string;
@@ -55,6 +106,12 @@ interface TranslationStats {
   totalEntries: number;
   localeStats?: Record<string, LocaleTranslationStats>;
 }
+
+const OriginTag = ({ origin }: { origin: LabelOrigin }) => (
+  <Tag type={ORIGIN_TAG[origin].type as "blue"} size="sm">
+    <FormattedMessage id={ORIGIN_TAG[origin].id} />
+  </Tag>
+);
 
 const TranslationManagement = () => {
   const intl = useIntl();
@@ -72,6 +129,7 @@ const TranslationManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [filterMissing, setFilterMissing] = useState(false);
+  const [confirmingReset, setConfirmingReset] = useState("");
 
   useEffect(() => {
     fetchLocales();
@@ -126,18 +184,67 @@ const TranslationManagement = () => {
     });
   };
 
+  const localeCodes = locales.map((locale) => locale.localeCode);
+
+  const startingValues = (item: LocalizationItem) =>
+    item.displayKey
+      ? effectiveLabels(item, localeCodes)
+      : item.translations || {};
+
   const handleEdit = (item: LocalizationItem) => {
     setEditingItem(item);
-    setEditValues(item.translations || {});
+    setEditValues(startingValues(item));
+    setConfirmingReset("");
     setIsEditModalOpen(true);
+  };
+
+  const blankOverride = (locale: string) =>
+    Boolean(editingItem?.displayKey) &&
+    (editValues[locale] || "").trim() === "";
+
+  const handleReset = (locale: string) => {
+    if (!editingItem) return;
+    postToOpenElisServerFullResponse(
+      `/rest/localizations/${editingItem.id}/translations/${locale}/reset`,
+      "{}",
+      async (response?: Response) => {
+        setConfirmingReset("");
+        if (response?.ok) {
+          const updated: LocalizationItem = await response.json();
+          setEditingItem(updated);
+          setEditValues(startingValues(updated));
+          setLocalizations((items) =>
+            items.map((item) => (item.id === updated.id ? updated : item)),
+          );
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({ id: "notification.success" }),
+            message: intl.formatMessage({ id: "translation.reset.success" }),
+          });
+        } else {
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: intl.formatMessage({ id: "translation.reset.error" }),
+          });
+        }
+      },
+    );
   };
 
   const handleSave = () => {
     if (!editingItem) return;
+    if (localeCodes.some(blankOverride)) return;
 
+    const stored = startingValues(editingItem);
+    const changed = Object.fromEntries(
+      Object.entries(editValues).filter(
+        ([locale, value]) => value !== (stored[locale] || ""),
+      ),
+    );
     putToOpenElisServerFullResponse(
       `/rest/localizations/${editingItem.id}/translations`,
-      JSON.stringify(editValues),
+      JSON.stringify(changed),
       (response: Response) => {
         if (response.ok) {
           addNotification({
@@ -267,6 +374,10 @@ const TranslationManagement = () => {
       }),
     },
     {
+      key: "origin",
+      header: intl.formatMessage({ id: "translation.origin" }),
+    },
+    {
       key: "actions",
       header: intl.formatMessage({
         id: "label.actions",
@@ -339,6 +450,8 @@ const TranslationManagement = () => {
                       {stat.displayName} ({code})
                     </strong>
                     <ProgressBar
+                      label={`${stat.displayName} (${code})`}
+                      hideLabel
                       value={stat.percentage}
                       max={100}
                       helperText={`${stat.translated}/${stats.totalEntries} (${stat.percentage.toFixed(1)}%)`}
@@ -450,12 +563,14 @@ const TranslationManagement = () => {
                             <TableCell>{item.id}</TableCell>
                             <TableCell>{item.description}</TableCell>
                             <TableCell>
-                              {item.translations?.en || "-"}
+                              {effectiveLabel(item, "en") || "-"}
                             </TableCell>
                             <TableCell>
-                              {item.translations?.[selectedLocale] ? (
-                                item.translations[selectedLocale]
-                              ) : (
+                              {item.displayKey &&
+                                effectiveLabel(item, selectedLocale)}
+                              {!item.displayKey &&
+                                item.translations?.[selectedLocale]}
+                              {isUntranslated(item, selectedLocale) && (
                                 <Tag type="red">
                                   <FormattedMessage
                                     id="translation.missing"
@@ -463,6 +578,13 @@ const TranslationManagement = () => {
                                   />
                                 </Tag>
                               )}
+                            </TableCell>
+                            <TableCell>
+                              <OriginTag
+                                origin={
+                                  item.origins?.[selectedLocale] || "SITE_VALUE"
+                                }
+                              />
                             </TableCell>
                             <TableCell>
                               <Button
@@ -517,6 +639,7 @@ const TranslationManagement = () => {
         })}
         onRequestClose={() => setIsEditModalOpen(false)}
         onRequestSubmit={handleSave}
+        primaryButtonDisabled={localeCodes.some(blankOverride)}
         size="lg"
       >
         {editingItem && (
@@ -535,22 +658,84 @@ const TranslationManagement = () => {
               {editingItem.description}
             </p>
 
-            {locales.map((locale) => (
-              <TextArea
-                key={locale.localeCode}
-                id={`translation-${locale.localeCode}`}
-                labelText={`${locale.displayName} (${locale.localeCode})`}
-                value={editValues[locale.localeCode] || ""}
-                onChange={(e) =>
-                  setEditValues({
-                    ...editValues,
-                    [locale.localeCode]: e.target.value,
-                  })
-                }
-                rows={2}
-                style={{ marginBottom: "1rem" }}
-              />
-            ))}
+            {locales.map((locale) => {
+              const code = locale.localeCode;
+              const origin = editingItem.origins?.[code] || "SITE_VALUE";
+              return (
+                <div
+                  key={code}
+                  data-testid={`translation-row-${code}`}
+                  style={{ marginBottom: "1rem" }}
+                >
+                  <TextArea
+                    id={`translation-${code}`}
+                    labelText={`${locale.displayName} (${code})`}
+                    value={editValues[code] || ""}
+                    onChange={(e) =>
+                      setEditValues({ ...editValues, [code]: e.target.value })
+                    }
+                    invalid={blankOverride(code)}
+                    invalidText={intl.formatMessage({
+                      id: "localization.error.overrideBlank",
+                    })}
+                    helperText={
+                      editingItem.displayKey
+                        ? intl.formatMessage(
+                            { id: "translation.shippedLabel" },
+                            { label: editingItem.shippedLabels?.[code] || "" },
+                          )
+                        : undefined
+                    }
+                    rows={2}
+                  />
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "0.5rem",
+                      alignItems: "center",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    <OriginTag origin={origin} />
+                    {origin === "SITE_OVERRIDE" && confirmingReset !== code && (
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        onClick={() => setConfirmingReset(code)}
+                      >
+                        <FormattedMessage id="translation.reset" />
+                      </Button>
+                    )}
+                    {confirmingReset === code && (
+                      <>
+                        <span>
+                          <FormattedMessage
+                            id="translation.reset.confirm"
+                            values={{
+                              label: editingItem.shippedLabels?.[code] || "",
+                            }}
+                          />
+                        </span>
+                        <Button
+                          kind="tertiary"
+                          size="sm"
+                          onClick={() => handleReset(code)}
+                        >
+                          <FormattedMessage id="translation.reset.confirmButton" />
+                        </Button>
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          onClick={() => setConfirmingReset("")}
+                        >
+                          <FormattedMessage id="label.cancel" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </>
         )}
       </Modal>

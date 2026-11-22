@@ -19,14 +19,18 @@ import {
   RadioButtonGroup,
   Section,
   TextInput,
-  Toggle,
 } from "@carbon/react";
 import {
-  getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
-import { normalizeName } from "./helpers";
+import {
+  describeSaveFailure,
+  toFieldEntries,
+  translateServerMessage,
+} from "./helpers";
+import LabelPresetFieldsEditor from "./LabelPresetFieldsEditor";
+import { normalizeFields } from "./labelFieldCatalog";
 
 const BARCODE_TYPES = ["CODE_128", "QR", "DATAMATRIX"];
 
@@ -35,6 +39,9 @@ const EMPTY_FORM = {
   heightMm: 20,
   widthMm: 40,
   barcodeType: "CODE_128",
+  printsPerContainer: false,
+  defaultPerContainer: 0,
+  maxPerContainer: 10,
   printsPerOrder: false,
   printsPerSample: true,
   defaultPerOrder: 0,
@@ -42,7 +49,7 @@ const EMPTY_FORM = {
   defaultPerSample: 1,
   maxPerSample: 10,
   isActive: true,
-  fields: [],
+  fields: normalizeFields([]),
 };
 
 function LabelPresetEditor({ preset, onClose }) {
@@ -61,6 +68,9 @@ function LabelPresetEditor({ preset, onClose }) {
         heightMm: preset.heightMm ?? 20,
         widthMm: preset.widthMm ?? 40,
         barcodeType: preset.barcodeType ?? "CODE_128",
+        printsPerContainer: preset.printsPerContainer ?? false,
+        defaultPerContainer: preset.defaultPerContainer ?? 0,
+        maxPerContainer: preset.maxPerContainer ?? 10,
         printsPerOrder: preset.printsPerOrder ?? false,
         printsPerSample: preset.printsPerSample ?? true,
         defaultPerOrder: preset.defaultPerOrder ?? 0,
@@ -68,7 +78,7 @@ function LabelPresetEditor({ preset, onClose }) {
         defaultPerSample: preset.defaultPerSample ?? 1,
         maxPerSample: preset.maxPerSample ?? 10,
         isActive: preset.isActive ?? true,
-        fields: preset.fields ?? [],
+        fields: normalizeFields(preset.fields ?? []),
       });
     } else {
       setForm(EMPTY_FORM);
@@ -108,7 +118,11 @@ function LabelPresetEditor({ preset, onClose }) {
         id: "admin.labelPresets.validation.barcodeType.required",
       });
     }
-    if (!form.printsPerOrder && !form.printsPerSample) {
+    if (
+      !form.printsPerOrder &&
+      !form.printsPerSample &&
+      !form.printsPerContainer
+    ) {
       errs.scope = intl.formatMessage({
         id: "admin.labelPresets.validation.scope.required",
       });
@@ -118,12 +132,34 @@ function LabelPresetEditor({ preset, onClose }) {
         id: "admin.labelPresets.validation.max.lte",
       });
     }
+    if (
+      form.defaultPerContainer < 0 ||
+      form.maxPerContainer < form.defaultPerContainer
+    ) {
+      errs.maxPerContainer = intl.formatMessage({
+        id: "admin.labelPresets.validation.maxPerContainer",
+      });
+    }
     if (form.printsPerSample && form.maxPerSample < form.defaultPerSample) {
       errs.maxPerSample = intl.formatMessage({
         id: "admin.labelPresets.validation.max.lte",
       });
     }
     return errs;
+  };
+
+  const applyServerFieldErrors = (body) => {
+    if (!body || !Array.isArray(body.fieldErrors)) {
+      return;
+    }
+    const serverErrs = {};
+    body.fieldErrors.forEach((fe) => {
+      serverErrs[fe.field] = translateServerMessage(
+        intl,
+        fe.defaultMessage || "",
+      );
+    });
+    setErrors(serverErrs);
   };
 
   const handleSubmit = () => {
@@ -137,31 +173,36 @@ function LabelPresetEditor({ preset, onClose }) {
 
     const payload = {
       ...form,
-      name: normalizeName(form.name),
+      name: form.name.trim(),
+      fields: toFieldEntries(form.fields),
     };
 
     const handleResponse = (response) => {
       setSubmitting(false);
       if (response && (response.status === 200 || response.status === 201)) {
         onClose(true);
-      } else if (response && response.status === 422) {
-        response.json().then((body) => {
-          if (body && body.fieldErrors) {
-            const serverErrs = {};
-            body.fieldErrors.forEach((fe) => {
-              serverErrs[fe.field] = fe.defaultMessage;
-            });
-            setErrors(serverErrs);
-          }
-          if (body && body.globalErrors && body.globalErrors.length > 0) {
-            setApiError(body.globalErrors.join("; "));
-          }
-        });
-      } else {
-        setApiError(
-          intl.formatMessage({ id: "admin.labelPresets.saveFailed" }),
-        );
+        return;
       }
+      if (!response) {
+        setApiError(
+          intl.formatMessage({
+            id: "admin.labelPresets.saveFailed.noResponse",
+          }),
+        );
+        return;
+      }
+      response.text().then((text) => {
+        if (response.status === 422) {
+          let body = null;
+          try {
+            body = JSON.parse(text);
+          } catch (e) {
+            body = null;
+          }
+          applyServerFieldErrors(body);
+        }
+        setApiError(describeSaveFailure(intl, response.status, text));
+      });
     };
 
     if (isEdit) {
@@ -196,14 +237,6 @@ function LabelPresetEditor({ preset, onClose }) {
         </Heading>
       </ModalHeader>
       <ModalBody>
-        {apiError && (
-          <InlineNotification
-            kind="error"
-            title={apiError}
-            lowContrast
-            style={{ marginBottom: "1rem" }}
-          />
-        )}
         {submitting && <Loading small withOverlay={false} />}
         <Form>
           {/* Section 1: Basic Info */}
@@ -408,11 +441,84 @@ function LabelPresetEditor({ preset, onClose }) {
                     </Grid>
                   )}
                 </FormGroup>
+                <FormGroup legendText="" style={{ marginTop: "1rem" }}>
+                  <Checkbox
+                    id="scope-container"
+                    labelText={intl.formatMessage({
+                      id: "admin.labelPresets.scope.container",
+                    })}
+                    checked={form.printsPerContainer}
+                    onChange={(_, { checked }) =>
+                      setField("printsPerContainer", checked)
+                    }
+                  />
+                  {form.printsPerContainer && (
+                    <Grid style={{ marginTop: "0.5rem" }}>
+                      <Column lg={4}>
+                        <NumberInput
+                          id="defaultPerContainer"
+                          label={intl.formatMessage({
+                            id: "admin.labelPresets.field.defaultPerContainer",
+                          })}
+                          value={form.defaultPerContainer}
+                          min={0}
+                          onChange={(e, { value }) =>
+                            setField("defaultPerContainer", value)
+                          }
+                        />
+                      </Column>
+                      <Column lg={4}>
+                        <NumberInput
+                          id="maxPerContainer"
+                          label={intl.formatMessage({
+                            id: "admin.labelPresets.field.maxPerContainer",
+                          })}
+                          value={form.maxPerContainer}
+                          min={0}
+                          onChange={(e, { value }) =>
+                            setField("maxPerContainer", value)
+                          }
+                          invalid={!!errors.maxPerContainer}
+                          invalidText={errors.maxPerContainer}
+                        />
+                      </Column>
+                    </Grid>
+                  )}
+                </FormGroup>
               </Column>
             </Grid>
           </Section>
+
+          {/* Section 5: Content fields (OGC-1218): Lab Number locked first, the
+              selectable fields in display order, each optionally required. */}
+          <Section style={{ marginTop: "1.5rem" }}>
+            <Heading>
+              <FormattedMessage id="admin.labelPresets.editor.section.fields" />
+            </Heading>
+            <LabelPresetFieldsEditor
+              fields={form.fields}
+              heightMm={form.heightMm}
+              onChange={(fields) => setField("fields", fields)}
+              disabled={submitting}
+            />
+          </Section>
         </Form>
       </ModalBody>
+      {apiError && (
+        <div
+          style={{ padding: "0 1rem" }}
+          data-testid="label-preset-editor-error"
+        >
+          <InlineNotification
+            kind="error"
+            role="alert"
+            lowContrast
+            title={intl.formatMessage({ id: "admin.labelPresets.saveFailed" })}
+            subtitle={apiError}
+            onCloseButtonClick={() => setApiError(null)}
+          />
+        </div>
+      )}
       <ModalFooter>
         <Button kind="secondary" onClick={() => onClose(false)}>
           <FormattedMessage id="label.button.cancel" />

@@ -27,7 +27,6 @@ import org.openelisglobal.common.services.LabIdentificationService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
-import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
 import org.openelisglobal.dataexchange.resultreporting.beans.CodedValueXmit;
 import org.openelisglobal.dataexchange.resultreporting.beans.ResultReportXmit;
@@ -196,19 +195,19 @@ public class ResultReportingCollator {
 
         if (result.getMinNormal().doubleValue() != result.getMaxNormal().doubleValue()) {
             TestRangeXmit normalRange = new TestRangeXmit();
-            normalRange.setLow(
-                    StringUtil.doubleWithSignificantDigits(result.getMinNormal(), result.getSignificantDigits()));
-            normalRange.setHigh(
-                    StringUtil.doubleWithSignificantDigits(result.getMaxNormal(), result.getSignificantDigits()));
+            normalRange.setLow(String.valueOf(result.getMinNormal()));
+            normalRange.setHigh(String.valueOf(result.getMaxNormal()));
             normalRange.setUnits(getUnitOfMeasure(result));
 
             testResult.setNormalRange(normalRange);
         }
 
-        // For valid range min/max
+        // For valid range min/max — the analysis's specimen selects a scoped
+        // limit over the shared set (OGC-1145 Phase 2).
         ResultLimit validLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForTestAndPatient(
-                result.getAnalysis().getTest(),
-                sampleHumanService.getPatientForSample(result.getAnalysis().getSampleItem().getSample()));
+                result.getAnalysis().getTest().getId(),
+                sampleHumanService.getPatientForSample(result.getAnalysis().getSampleItem().getSample()),
+                result.getAnalysis().getSampleItem().getTypeOfSampleId());
         if (validLimit != null && (validLimit.getLowValid() != validLimit.getHighValid())) {
             TestRangeXmit validRange = new TestRangeXmit();
             validRange.setLow(String.valueOf(validLimit.getLowValid()));

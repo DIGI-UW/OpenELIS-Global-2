@@ -1,0 +1,149 @@
+package org.openelisglobal.config;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.openelisglobal.coldstorage.controller.FreezerMonitoringExceptionHandler;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.program.service.InvalidClinicalAttachmentException;
+import org.openelisglobal.sample.valueholder.OrderPriority;
+import org.springframework.context.support.StaticMessageSource;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+
+/**
+ * The status contract of the app-wide advice.
+ *
+ * <p>
+ * AccessDeniedException is a RuntimeException, so before it had a handler of
+ * its own the fallback answered every @PreAuthorize denial with 500 - the
+ * DispatcherServlet resolves a @ControllerAdvice handler before Spring
+ * Security's ExceptionTranslationFilter ever sees the exception. Callers could
+ * not tell "you may not do this" from "the server broke".
+ */
+public class ControllerSetupExceptionHandlingTest {
+
+    static class PriorityForm {
+        public OrderPriority priority;
+    }
+
+    @RestController
+    static class ThrowingController {
+
+        @PostMapping("/priority")
+        public String priority(@RequestBody PriorityForm form) {
+            return form.priority.name();
+        }
+
+        @GetMapping("/denied")
+        public String denied() {
+            throw new AccessDeniedException("Access is denied");
+        }
+
+        @GetMapping("/attachment-invalid")
+        public String invalidAttachment() {
+            throw new InvalidClinicalAttachmentException();
+        }
+
+        @GetMapping("/broken")
+        public String broken() {
+            throw new RuntimeException("db down");
+        }
+
+        @GetMapping("/invalid")
+        public String invalid() {
+            throw new LIMSRuntimeException("that name is already taken");
+        }
+
+        @GetMapping("/refused")
+        public String refused() {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "paging.currentPage must name a loaded page");
+        }
+    }
+
+    private MockMvc mockMvc;
+
+    @Before
+    public void setUp() {
+        mockMvc = MockMvcBuilders.standaloneSetup(new ThrowingController()).setControllerAdvice(new ControllerSetup())
+                .build();
+    }
+
+    @Test
+    public void accessDenied_answers403() throws Exception {
+        mockMvc.perform(get("/denied")).andExpect(status().isForbidden()).andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.error").value("Forbidden"));
+    }
+
+    @Test
+    public void invalidAttachment_answers400WithATranslatableMessageKey() throws Exception {
+        mockMvc.perform(get("/attachment-invalid")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.messageKey").value("clinicalAttachment.uploadHint"));
+    }
+
+    @Test
+    public void unexpectedRuntimeException_still500() throws Exception {
+        mockMvc.perform(get("/broken")).andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500));
+    }
+
+    @Test
+    public void limsRuntimeException_still500() throws Exception {
+        mockMvc.perform(get("/invalid")).andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500));
+    }
+
+    @Test
+    public void unreadableBody_answers400WithATranslatableMessageKey() throws Exception {
+        mockMvc.perform(post("/priority").contentType(MediaType.APPLICATION_JSON).content("{\"priority\":\"Routine\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.messageKey").value("error.request.unreadable"));
+    }
+
+    @Test
+    public void readableBody_isNotRefused() throws Exception {
+        mockMvc.perform(post("/priority").contentType(MediaType.APPLICATION_JSON).content("{\"priority\":\"ROUTINE\"}"))
+                .andExpect(status().isOk());
+    }
+
+    /**
+     * The site's message source answers an unknown code with the code itself, so a
+     * problem detail resolved through it carried "problemDetail.*" codes instead of
+     * the reason the server gave.
+     */
+    @Test
+    public void responseStatusException_keepsItsReasonUnderTheSitesMessageSource() throws Exception {
+        StaticMessageSource siteMessages = new StaticMessageSource();
+        siteMessages.setUseCodeAsDefaultMessage(true);
+        ControllerSetup advice = new ControllerSetup();
+        advice.setMessageSource(siteMessages);
+        MockMvc withSiteMessages = MockMvcBuilders.standaloneSetup(new ThrowingController()).setControllerAdvice(advice)
+                .build();
+
+        withSiteMessages.perform(get("/refused")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("paging.currentPage must name a loaded page"))
+                .andExpect(jsonPath("$.title").value("Bad Request"));
+    }
+
+    @Test
+    public void limsRuntimeException_outsideColdStorage_stillAnswers500WithNoDetail() throws Exception {
+        MockMvc withColdStorageAdvice = MockMvcBuilders.standaloneSetup(new ThrowingController())
+                .setControllerAdvice(new FreezerMonitoringExceptionHandler(), new ControllerSetup()).build();
+
+        withColdStorageAdvice.perform(get("/invalid")).andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500)).andExpect(jsonPath("$.message").doesNotExist());
+    }
+}

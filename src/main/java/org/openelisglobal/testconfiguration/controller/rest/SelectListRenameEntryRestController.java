@@ -9,6 +9,7 @@ import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.testconfiguration.form.ResultSelectListRenameForm;
 import org.openelisglobal.testconfiguration.service.ResultSelectListService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
@@ -58,7 +59,7 @@ public class SelectListRenameEntryRestController extends BaseController {
     }
 
     @PostMapping(value = "/SelectListRenameEntry")
-    public ResultSelectListRenameForm updateUomRenameEntry(HttpServletRequest request,
+    public ResponseEntity<?> updateUomRenameEntry(HttpServletRequest request,
             @RequestBody ResultSelectListRenameForm form, RedirectAttributes redirectAttributes) {
 
         boolean renamed = resultSelectListService.renameOption(form, getSysUserId(request));
@@ -68,15 +69,12 @@ public class SelectListRenameEntryRestController extends BaseController {
             redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
             form.setResultSelectOptionList(resultSelectListService.getAllSelectListOptions());
             // return findForward(FWD_SUCCESS_INSERT, form);
-            return form;
+            return ResponseEntity.ok(form);
         } else {
             Errors errors = new BaseErrors();
             errors.reject(MessageUtil.getMessage("alert.error"));
             saveErrors(errors);
-            form.setResultSelectOptionList(resultSelectListService.getAllSelectListOptions());
-
-            // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(errors);
         }
     }
 

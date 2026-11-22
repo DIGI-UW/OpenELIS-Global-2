@@ -9,9 +9,8 @@ import { useReducer } from "react";
  *   Position   = { mode: 'text', value }
  *              | { mode: 'grid', row, column }
  *              | null
- *   PickerMode = 'search' | 'create'
  *
- *   State { mode, selection, position, searchQuery, searchResults,
+ *   State { selection, position, searchQuery, searchResults,
  *           initialAssignment, reason, notes, capacityWarning }
  *
  * Position is a property of the assignment, not a hierarchy level;
@@ -26,7 +25,6 @@ import { useReducer } from "react";
 export const LEVEL_ORDER = ["room", "device", "shelf", "rack", "box"];
 
 export const initialState = {
-  mode: "search",
   selection: {},
   position: null,
   searchQuery: "",
@@ -82,9 +80,6 @@ export function reducer(state, action) {
 
     case "SET_POSITION":
       return { ...state, position: action.position };
-
-    case "SET_MODE":
-      return { ...state, mode: action.mode };
 
     case "SET_SEARCH_QUERY":
       // Clearing the query also clears results so a stale list doesn't

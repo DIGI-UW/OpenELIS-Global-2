@@ -46,6 +46,22 @@ public class ReportDefinitionRestController extends BaseRestController {
     private ReportDefinitionService reportDefinitionService;
 
     /**
+     * Report types owned by the configurable reporting module
+     * ({@code org.openelisglobal.reports.dataexport}). Those rows share this table
+     * but are governed by {@code ReportingAccess}, which requires the Reports role.
+     * These legacy endpoints carry no role annotation and the default security
+     * chain only requires authentication, so returning them here would let any
+     * signed-in user enumerate shared report configurations and read their
+     * {@code definitionJson}. Filter them out; the reporting module serves them
+     * through its own authorized endpoints.
+     */
+    private static final java.util.Set<String> REPORTING_MODULE_TYPES = java.util.Set.of("CSV_SAVED", "CSV_SOURCE");
+
+    private static boolean isReportingModuleOwned(ReportDefinition definition) {
+        return definition != null && REPORTING_MODULE_TYPES.contains(definition.getReportType());
+    }
+
+    /**
      * Get all report definitions.
      *
      * @return list of all report definitions or empty list
@@ -57,6 +73,9 @@ public class ReportDefinitionRestController extends BaseRestController {
             List<ReportDefinitionForm> forms = new ArrayList<>();
 
             for (ReportDefinition definition : definitions) {
+                if (isReportingModuleOwned(definition)) {
+                    continue;
+                }
                 forms.add(toForm(definition));
             }
 
@@ -79,6 +98,9 @@ public class ReportDefinitionRestController extends BaseRestController {
             List<ReportDefinitionForm> forms = new ArrayList<>();
 
             for (ReportDefinition definition : definitions) {
+                if (isReportingModuleOwned(definition)) {
+                    continue;
+                }
                 forms.add(toForm(definition));
             }
 
@@ -103,6 +125,9 @@ public class ReportDefinitionRestController extends BaseRestController {
             List<ReportDefinitionForm> forms = new ArrayList<>();
 
             for (ReportDefinition definition : definitions) {
+                if (isReportingModuleOwned(definition)) {
+                    continue;
+                }
                 forms.add(toForm(definition));
             }
 
@@ -123,7 +148,7 @@ public class ReportDefinitionRestController extends BaseRestController {
     public ResponseEntity<?> getDefinition(@PathVariable String id) {
         try {
             ReportDefinition definition = reportDefinitionService.get(id);
-            if (definition == null) {
+            if (definition == null || isReportingModuleOwned(definition)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Report definition not found");
             }
             return ResponseEntity.ok(toForm(definition));

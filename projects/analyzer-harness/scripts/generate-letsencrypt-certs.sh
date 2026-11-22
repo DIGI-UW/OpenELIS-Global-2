@@ -73,10 +73,15 @@ echo "Preflight: both domains must resolve to this host's public IP, and TCP"
 echo "port 80 must be reachable from the internet (HTTP-01 challenge)."
 echo ""
 
-# Proxy must be running for ACME webroot (harness proxy name varies by compose project)
-if ! docker ps --format '{{.Names}}' | grep -q proxy; then
+# scripts/dev-stack supplies the exact project-scoped proxy container so
+# certificate issuance cannot accidentally target another running worktree.
+if [ -z "${DEV_STACK_PROXY_CONTAINER_ID:-}" ]; then
+  echo "ERROR: DEV_STACK_PROXY_CONTAINER_ID is required. Run scripts/dev-stack up."
+  exit 1
+fi
+if [ "$(docker inspect -f '{{.State.Running}}' "$DEV_STACK_PROXY_CONTAINER_ID" 2>/dev/null || true)" != "true" ]; then
   echo "ERROR: Proxy container must be running for ACME challenge."
-  echo "Start harness: docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml -f docker-compose.letsencrypt.yml up -d proxy"
+  echo "Start this worktree through scripts/dev-stack up."
   exit 1
 fi
 

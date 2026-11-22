@@ -1,6 +1,6 @@
 # ASTM LIS2-A2 Sample: Quality Control Results (Q-Segments)
 # Purpose: Test QC result processing (FR-021)
-# Reference: specs/004-astm-analyzer-mapping/research.md Q-segment format
+# Historical context: Git history for specs/004-astm-analyzer-mapping
 #
 # Q-segment format:
 #   Q|seq|test_code^control_lot^control_level|result_value|unit|timestamp|flag
@@ -55,7 +55,6 @@ Q|5|HCV^QC-SCREEN-NEG^NEGATIVE|NEGATIVE||20250115070500|N
 Q|6|HCV^QC-SCREEN-POS^POSITIVE|POSITIVE||20250115070600|N
 
 L|1|N
-
 
 
 

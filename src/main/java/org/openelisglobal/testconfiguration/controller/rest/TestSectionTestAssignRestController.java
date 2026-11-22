@@ -7,7 +7,6 @@ import java.util.List;
 import javax.validation.Valid;
 import org.hibernate.HibernateException;
 import org.openelisglobal.common.controller.BaseController;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.spring.util.SpringContext;
@@ -19,6 +18,7 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testconfiguration.form.TestSectionTestAssignForm;
 import org.openelisglobal.testconfiguration.service.TestSectionTestAssignService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -106,13 +106,13 @@ public class TestSectionTestAssignRestController extends BaseController {
     }
 
     @PostMapping(value = "/TestSectionTestAssign")
-    public TestSectionTestAssignForm postTestSectionTestAssign(HttpServletRequest request,
+    public ResponseEntity<?> postTestSectionTestAssign(HttpServletRequest request,
             @RequestBody @Valid TestSectionTestAssignForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         String testId = form.getTestId();
@@ -130,7 +130,7 @@ public class TestSectionTestAssignRestController extends BaseController {
         // they are moving it from
         if (testSectionId.equals(deactivateTestSectionId)) {
             // return findForward(FWD_SUCCESS_INSERT, form);
-            return form;
+            return ResponseEntity.ok(form);
         }
 
         if ("N".equals(testSection.getIsActive())) {
@@ -149,13 +149,13 @@ public class TestSectionTestAssignRestController extends BaseController {
             testSectionTestAssignService.updateTestAndTestSections(test, testSection, deActivateTestSection,
                     updateTestSection);
         } catch (HibernateException e) {
-            LogEvent.logDebug(e);
+            return saveFailure(e);
         }
 
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 }

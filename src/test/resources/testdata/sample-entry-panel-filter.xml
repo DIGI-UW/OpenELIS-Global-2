@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture for SampleEntryTestsForTypeProviderPanelFilterTest (OGC-1189).
+    Panel P (4001) contains two tests: T_IN (3001) and T_OUT (3002). Only T_IN
+    is in the sample-type-filtered list handed to linkTestsToPanels, so the panel's
+    test-id string for P must resolve to T_IN's id ONLY — T_OUT must be dropped
+    because its localized name is not in the filtered map. Each localization
+    carries an English value so getUserLocalizedTestName / Panel.getLocalizedName
+    resolve to distinct, non-blank names regardless of the test locale. A test_section
+    named "user" is required because the controller constructor resolves USER_TEST_SECTION_ID
+    via getTestSectionByName("user"). -->
+<dataset>
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
+
+    <localization id="10" description="user section name" />
+    <localization id="11" description="filter panel name" />
+    <localization id="12" description="test in name" />
+    <localization id="13" description="test out name" />
+
+    <localization_value id="10" localization_id="10"
+        locale="en" value="User Section" />
+    <localization_value id="11" localization_id="11"
+        locale="en" value="Filter Panel" />
+    <localization_value id="12" localization_id="12"
+        locale="en" value="Test In" />
+    <localization_value id="13" localization_id="13"
+        locale="en" value="Test Out" />
+
+    <test_section id="900" name="user"
+        description="Bench section for the current user" is_external="N"
+        is_active="Y" sort_order="1" name_localization_id="10"
+        lastupdated="2025-03-20 12:00:00.0" />
+
+    <test id="3001" description="Test In" loinc="300001"
+        reporting_description="Test In" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-01-01 12:00:00" active_end="2025-12-31 12:00:00"
+        is_reportable="N" time_holding="30" time_wait="15"
+        time_ta_average="60" time_ta_warning="90" time_ta_max="120"
+        label_qty="1" lastupdated="2025-03-20 12:00:00" local_code="TIN"
+        sort_order="1" name="Test In" orderable="true" guid="tin-3001"
+        name_localization_id="12" antimicrobial_resistance="false" />
+
+    <test id="3002" description="Test Out" loinc="300002"
+        reporting_description="Test Out" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-01-01 12:00:00" active_end="2025-12-31 12:00:00"
+        is_reportable="N" time_holding="30" time_wait="15"
+        time_ta_average="60" time_ta_warning="90" time_ta_max="120"
+        label_qty="1" lastupdated="2025-03-20 12:00:00" local_code="TOUT"
+        sort_order="2" name="Test Out" orderable="true" guid="tout-3002"
+        name_localization_id="13" antimicrobial_resistance="false" />
+
+    <panel id="4001" name="Filter Panel"
+        description="Panel with one in-type and one out-of-type test"
+        is_active="Y" sort_order="1" name_localization_id="11" />
+
+    <panel_item id="5001" panel_id="4001" sort_order="1"
+        test_id="3001" lastupdated="2025-03-26 10:00:00" />
+    <panel_item id="5002" panel_id="4001" sort_order="2"
+        test_id="3002" lastupdated="2025-03-26 10:00:00" />
+</dataset>

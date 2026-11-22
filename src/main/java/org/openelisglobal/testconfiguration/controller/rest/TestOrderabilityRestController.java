@@ -169,7 +169,7 @@ public class TestOrderabilityRestController extends BaseController {
         try {
             testService.updateAll(tests);
         } catch (HibernateException e) {
-            LogEvent.logDebug(e);
+            return saveFailure(e);
         }
 
         SpringContext.getBean(TypeOfSampleService.class).clearCache();

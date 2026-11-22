@@ -56,7 +56,17 @@ public class LogbookStatusResults {
 
     public List<TestResultItem> setSearchResults(StatusResultsForm form, ResultsLoadUtility resultsUtility)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        List<TestResultItem> tests = getSelectedTests(form, resultsUtility);
+        return setSearchResults(form, resultsUtility, null);
+    }
+
+    /**
+     * OGC-1020: same date/status search, optionally constrained to one test section
+     * — the unified worklist combines the Lab Unit selector with the date filter,
+     * which the legacy pages never did.
+     */
+    public List<TestResultItem> setSearchResults(StatusResultsForm form, ResultsLoadUtility resultsUtility,
+            String testSectionId) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+        List<TestResultItem> tests = getSelectedTests(form, resultsUtility, testSectionId);
         form.setSearchFinished(Boolean.TRUE);
 
         if (resultsUtility.inventoryNeeded()) {
@@ -70,7 +80,8 @@ public class LogbookStatusResults {
         return tests;
     }
 
-    private List<TestResultItem> getSelectedTests(StatusResultsForm form, ResultsLoadUtility resultsUtility) {
+    private List<TestResultItem> getSelectedTests(StatusResultsForm form, ResultsLoadUtility resultsUtility,
+            String testSectionId) {
         String collectionDate = form.getCollectionDate();
         String receivedDate = form.getRecievedDate();
         String analysisStatus = form.getSelectedAnalysisStatus();
@@ -109,6 +120,14 @@ public class LogbookStatusResults {
 
         if (!(GenericValidator.isBlankOrNull(test) || test.equals("0"))) {
             analysisList = blendLists(analysisList, getAnalysisForTest(test));
+            if (analysisList.isEmpty()) {
+                return new ArrayList<>();
+            }
+        }
+
+        if (!GenericValidator.isBlankOrNull(testSectionId)) {
+            analysisList.removeIf(analysis -> analysis.getTestSection() == null
+                    || !testSectionId.equals(analysis.getTestSection().getId()));
             if (analysisList.isEmpty()) {
                 return new ArrayList<>();
             }

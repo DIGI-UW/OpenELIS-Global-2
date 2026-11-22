@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- QA permission registry + QA Officer default role.
+
+         Permission keys are system_module rows named after the registry keys
+         (qa.view.overview / qc / eqa / qi / qms, plus the narrower write rights
+         qa.manage.qi and qa.manage.accreditation). Grants live in
+         system_role_module and are manageable in the existing Role Management
+         admin UI. At login the granted qa.* module names become Spring
+         authorities (hasAuthority) and ride the /session payload for frontend
+         gating.
+
+         Compat grants preserve the pre-registry audience of each surface:
+         the QA Overview shipped gated to Reception/Results/Validation, EQA
+         pages to Reception/Results, NCE+audit (QMS) to Reception/Validation.
+         qa.view.qc starts QA Officer + Global Administrator only — the
+         /qa/qc/* routes were never intentionally granted to anyone else. -->
+
+    <!-- qa.manage.accreditation is its own key rather than hasRole('ADMIN'):
+         the /admin shell is GLOBAL_ADMIN-only, which would lock out the QA
+         Officer the feature is written for. Reads ride qa.view.qms. -->
+    <changeSet author="openelisglobal" id="qa-036-register-qa-permission-modules">
+        <comment>Register the qa.* permission keys as system modules</comment>
+        <sql>
+            INSERT INTO clinlims.system_module
+                (id, name, description, has_select_flag, has_add_flag, has_update_flag, has_delete_flag)
+            SELECT nextval('clinlims.system_module_seq'), v.name, v.description, 'Y', 'N', 'N', 'N'
+            FROM (VALUES
+                ('qa.view.overview',        'Visibility of the Quality Assurance sidenav node and QA Overview page'),
+                ('qa.view.qc',              'Visibility of the Statistical QC pillar (QC Dashboard, Alerts, config pages)'),
+                ('qa.view.eqa',             'Visibility of the EQA pillar and EQA pages'),
+                ('qa.view.qi',              'Visibility of the Quality Indicators pillar and QI Dashboard'),
+                ('qa.view.qms',             'Visibility of the QMS pillar (NCE Register, Audit Trail)'),
+                ('qa.manage.qi',            'Manage the Quality Indicator configuration (thresholds, enable/disable)'),
+                ('qa.manage.accreditation', 'Manage accrediting bodies and per-test accreditation enrollment (Accreditation Status)')
+            ) AS v(name, description)
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_module m WHERE m.name = v.name);
+        </sql>
+        <rollback>
+            <delete tableName="system_module" schemaName="clinlims">
+                <where>name LIKE 'qa.%'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="qa-022-add-qa-officer-role">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims" />
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.system_role WHERE name = 'QA Officer'</sqlCheck>
+        </preConditions>
+        <comment>Create the QA Officer default role (FRS §6.2)</comment>
+        <insert tableName="system_role" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_seq"/>
+            <column name="name" value="QA Officer"/>
+            <column name="description" value="Laboratory quality assurance oversight (QA Overview and all QA pillars)"/>
+            <column name="is_grouping_role" value="false"/>
+            <column name="grouping_parent" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Roles')"/>
+            <column name="display_key" value="role.qaOfficer"/>
+            <column name="active" value="true"/>
+            <column name="editable" value="false"/>
+        </insert>
+        <rollback>
+            <delete tableName="system_role" schemaName="clinlims">
+                <where>name = 'QA Officer'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Default grants. QA Officer and Global Administrator hold every qa.* key;
+         the other three preserve the pre-registry audience of each surface, so no
+         one loses a page they could already reach. A role absent from this install
+         simply drops out of the join, and an existing grant is never duplicated. -->
+    <changeSet author="openelisglobal" id="qa-037-grant-qa-permissions">
+        <comment>Grant the qa.* permissions to QA Officer, Global Administrator and the compat roles</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_module
+                (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
+            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N', r.id, m.id
+            FROM (VALUES
+                ('QA Officer',           ARRAY['qa.view.overview','qa.view.qc','qa.view.eqa','qa.view.qi','qa.view.qms','qa.manage.qi','qa.manage.accreditation']),
+                ('Global Administrator', ARRAY['qa.view.overview','qa.view.qc','qa.view.eqa','qa.view.qi','qa.view.qms','qa.manage.qi','qa.manage.accreditation']),
+                ('Reception',            ARRAY['qa.view.overview','qa.view.qi','qa.view.eqa','qa.view.qms']),
+                ('Results',              ARRAY['qa.view.overview','qa.view.qi','qa.view.eqa']),
+                ('Validation',           ARRAY['qa.view.overview','qa.view.qi','qa.view.qms'])
+            ) AS g(role_name, module_names)
+            JOIN clinlims.system_role r ON r.name = g.role_name
+            JOIN clinlims.system_module m ON m.name::text = ANY(g.module_names)
+            WHERE NOT EXISTS (
+                SELECT 1 FROM clinlims.system_role_module x
+                WHERE x.system_role_id = r.id AND x.system_module_id = m.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_module
+                WHERE system_module_id IN (SELECT id FROM clinlims.system_module WHERE name LIKE 'qa.%');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

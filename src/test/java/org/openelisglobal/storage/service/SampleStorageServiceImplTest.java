@@ -1,18 +1,27 @@
 package org.openelisglobal.storage.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.dao.SampleItemDAO;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
+import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -23,6 +32,12 @@ public class SampleStorageServiceImplTest {
 
     @Mock
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
+
+    @Mock
+    private SampleItemDAO sampleItemDAO;
+
+    @Mock
+    private StorageLocationService storageLocationService;
 
     @InjectMocks
     private SampleStorageServiceImpl sampleStorageService;
@@ -110,6 +125,214 @@ public class SampleStorageServiceImplTest {
         assertEquals("Total elements should still be 100", 100, result.getTotalElements());
     }
 
+    // ── storageSkipped propagation ─────────────────────────────────────────────
+
+    @Test
+    public void testGetAllSamplesWithAssignments_WhenStorageSkippedTrue_AllFieldsCorrect() {
+        Sample sample = new Sample();
+        sample.setAccessionNumber("ACC-001");
+        sample.setStorageSkipped(true);
+
+        SampleItem item = buildSampleItem("1", sample);
+
+        when(sampleItemDAO.getAllSampleItems()).thenReturn(List.of(item));
+        when(sampleStorageAssignmentDAO.getAll()).thenReturn(new ArrayList<>());
+
+        List<Map<String, Object>> result = sampleStorageService.getAllSamplesWithAssignments();
+
+        assertEquals(1, result.size());
+        Map<String, Object> row = result.get(0);
+
+        assertEquals("1", row.get("id"));
+        assertEquals("1", row.get("sampleItemId"));
+        assertEquals("", row.get("sampleItemExternalId"));
+        assertEquals("ACC-001", row.get("sampleAccessionNumber"));
+        assertTrue("storageSkipped must be true", (Boolean) row.get("storageSkipped"));
+        assertEquals("", row.get("type"));
+        assertEquals("active", row.get("status"));
+        assertEquals("", row.get("location"));
+        assertNull("unassigned item must have null assignedBy", row.get("assignedBy"));
+        assertEquals("", row.get("date"));
+        assertEquals("", row.get("positionCoordinate"));
+        assertEquals("", row.get("notes"));
+    }
+
+    @Test
+    public void testGetAllSamplesWithAssignments_WhenStorageSkippedFalse_AllFieldsCorrect() {
+        Sample sample = new Sample();
+        sample.setAccessionNumber("ACC-002");
+        sample.setStorageSkipped(false);
+
+        SampleItem item = buildSampleItem("2", sample);
+
+        when(sampleItemDAO.getAllSampleItems()).thenReturn(List.of(item));
+        when(sampleStorageAssignmentDAO.getAll()).thenReturn(new ArrayList<>());
+
+        List<Map<String, Object>> result = sampleStorageService.getAllSamplesWithAssignments();
+
+        assertEquals(1, result.size());
+        Map<String, Object> row = result.get(0);
+
+        assertEquals("2", row.get("id"));
+        assertEquals("2", row.get("sampleItemId"));
+        assertEquals("ACC-002", row.get("sampleAccessionNumber"));
+        assertFalse("storageSkipped must be false", (Boolean) row.get("storageSkipped"));
+        assertEquals("", row.get("location"));
+        assertNull(row.get("assignedBy"));
+        assertEquals("", row.get("positionCoordinate"));
+        assertEquals("", row.get("notes"));
+    }
+
+    @Test
+    public void testGetAllSamplesWithAssignments_WhenStorageSkippedNull_TreatedAsFalse() {
+        Sample sample = new Sample();
+        sample.setAccessionNumber("ACC-003");
+        sample.setStorageSkipped(null);
+
+        SampleItem item = buildSampleItem("3", sample);
+
+        when(sampleItemDAO.getAllSampleItems()).thenReturn(List.of(item));
+        when(sampleStorageAssignmentDAO.getAll()).thenReturn(new ArrayList<>());
+
+        List<Map<String, Object>> result = sampleStorageService.getAllSamplesWithAssignments();
+
+        assertEquals(1, result.size());
+        Map<String, Object> row = result.get(0);
+
+        assertEquals("ACC-003", row.get("sampleAccessionNumber"));
+        assertFalse("null storageSkipped must be coerced to false", (Boolean) row.get("storageSkipped"));
+        assertEquals("", row.get("location"));
+        assertEquals("active", row.get("status"));
+    }
+
+    @Test
+    public void testGetAllSamplesWithAssignments_WhenSampleIsNull_DefaultsApplied() {
+        SampleItem item = buildSampleItem("4", null);
+
+        when(sampleItemDAO.getAllSampleItems()).thenReturn(List.of(item));
+        when(sampleStorageAssignmentDAO.getAll()).thenReturn(new ArrayList<>());
+
+        List<Map<String, Object>> result = sampleStorageService.getAllSamplesWithAssignments();
+
+        assertEquals(1, result.size());
+        Map<String, Object> row = result.get(0);
+
+        assertEquals("4", row.get("id"));
+        assertEquals("", row.get("sampleAccessionNumber"));
+        assertFalse("null sample must yield storageSkipped=false", (Boolean) row.get("storageSkipped"));
+        assertEquals("", row.get("location"));
+        assertNull(row.get("assignedBy"));
+    }
+
+    @Test
+    public void testGetAllSamplesWithAssignments_MixedSkipped_EachRowIndependent() {
+        Sample skipped = new Sample();
+        skipped.setAccessionNumber("ACC-SKIP");
+        skipped.setStorageSkipped(true);
+
+        Sample notSkipped = new Sample();
+        notSkipped.setAccessionNumber("ACC-NOSKIP");
+        notSkipped.setStorageSkipped(false);
+
+        SampleItem itemA = buildSampleItem("1", skipped);
+        SampleItem itemB = buildSampleItem("2", notSkipped);
+
+        when(sampleItemDAO.getAllSampleItems()).thenReturn(List.of(itemA, itemB));
+        when(sampleStorageAssignmentDAO.getAll()).thenReturn(new ArrayList<>());
+
+        List<Map<String, Object>> result = sampleStorageService.getAllSamplesWithAssignments();
+
+        assertEquals(2, result.size());
+
+        // Look the rows up by id: which of them comes first is the listing
+        // order's business, covered by its own test.
+        Map<String, Object> skippedRow = rowWithId(result, "1");
+        assertEquals("ACC-SKIP", skippedRow.get("sampleAccessionNumber"));
+        assertTrue("item 1 must be storage-skipped", (Boolean) skippedRow.get("storageSkipped"));
+
+        Map<String, Object> notSkippedRow = rowWithId(result, "2");
+        assertEquals("ACC-NOSKIP", notSkippedRow.get("sampleAccessionNumber"));
+        assertFalse("item 2 must not be storage-skipped", (Boolean) notSkippedRow.get("storageSkipped"));
+    }
+
+    private static Map<String, Object> rowWithId(List<Map<String, Object>> rows, String id) {
+        return rows.stream().filter(row -> id.equals(row.get("id"))).findFirst()
+                .orElseThrow(() -> new AssertionError("Expected a row for sample item " + id));
+    }
+
+    @Test
+    public void testGetAllSamplesWithAssignments_NullAndNullIdItemsFiltered() {
+        SampleItem nullItem = null;
+        SampleItem noIdItem = new SampleItem(); // id is null
+
+        Sample sample = new Sample();
+        sample.setAccessionNumber("ACC-REAL");
+        SampleItem realItem = buildSampleItem("5", sample);
+
+        when(sampleItemDAO.getAllSampleItems()).thenReturn(List.of(realItem));
+        when(sampleStorageAssignmentDAO.getAll()).thenReturn(new ArrayList<>());
+
+        List<Map<String, Object>> result = sampleStorageService.getAllSamplesWithAssignments();
+
+        // Only the item with a real id survives
+        assertEquals(1, result.size());
+        assertEquals("5", result.get(0).get("id"));
+        assertEquals("ACC-REAL", result.get(0).get("sampleAccessionNumber"));
+    }
+
+    // ── listing order ──────────────────────────────────────────────────────────
+
+    /**
+     * The listing is paged by the REST layer, so its order has to survive a
+     * disposal and put the newest items on page one: disposal clears the
+     * assignment's location, and an order built on location moved the row to a
+     * different page instead of leaving it in place.
+     */
+    @Test
+    public void testGetAllSamplesWithAssignments_OrdersByIdRatherThanLocation() {
+        SampleItem first = buildSampleItem("1", null);
+        SampleItem second = buildSampleItem("2", null);
+        SampleItem third = buildSampleItem("10", null);
+
+        StorageRoom room = new StorageRoom();
+        room.setId(7);
+        room.setName("A Room");
+
+        SampleStorageAssignment assignment = new SampleStorageAssignment();
+        assignment.setSampleItemId(10);
+        assignment.setLocationId(7);
+        assignment.setLocationType("room");
+
+        when(sampleItemDAO.getAllSampleItems()).thenReturn(List.of(first, second, third));
+        when(sampleStorageAssignmentDAO.getAll()).thenReturn(List.of(assignment));
+        when(storageLocationService.get(7, StorageRoom.class)).thenReturn(room);
+
+        List<Map<String, Object>> result = sampleStorageService.getAllSamplesWithAssignments();
+
+        assertEquals("assigned row must not jump ahead of the others", List.of("10", "2", "1"),
+                result.stream().map(row -> row.get("id")).collect(Collectors.toList()));
+        assertEquals("A Room", result.get(0).get("location"));
+    }
+
+    /**
+     * The fallback sorts a malformed id to the end. Returning the maximum instead
+     * put it on page one under the reversed comparator, ahead of the newest row.
+     */
+    @Test
+    public void testGetAllSamplesWithAssignments_NonNumericIdSortsLast() {
+        SampleItem numeric = buildSampleItem("1", null);
+        SampleItem malformed = buildSampleItem("ABC", null);
+        SampleItem highest = buildSampleItem("10", null);
+
+        when(sampleItemDAO.getAllSampleItems()).thenReturn(List.of(numeric, malformed, highest));
+        when(sampleStorageAssignmentDAO.getAll()).thenReturn(new ArrayList<>());
+
+        List<Map<String, Object>> result = sampleStorageService.getAllSamplesWithAssignments();
+
+        assertEquals("a non-numeric id must not outrank the newest real row", List.of("10", "1", "ABC"),
+                result.stream().map(row -> row.get("id")).collect(Collectors.toList()));
+    }
+
     // Helper method to create test assignments
     private List<SampleStorageAssignment> createTestAssignments(int count) {
         List<SampleStorageAssignment> assignments = new ArrayList<>();
@@ -119,5 +342,12 @@ public class SampleStorageServiceImplTest {
             assignments.add(assignment);
         }
         return assignments;
+    }
+
+    private SampleItem buildSampleItem(String id, Sample sample) {
+        SampleItem item = new SampleItem();
+        item.setId(id);
+        item.setSample(sample);
+        return item;
     }
 }

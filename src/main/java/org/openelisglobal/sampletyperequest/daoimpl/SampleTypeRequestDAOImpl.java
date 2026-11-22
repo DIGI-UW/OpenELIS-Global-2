@@ -16,20 +16,16 @@ public class SampleTypeRequestDAOImpl extends BaseDAOImpl<SampleTypeRequest, Int
         super(SampleTypeRequest.class);
     }
 
-    private Integer parseSampleId(String sampleId) {
+    private String normalizeSampleId(String sampleId) {
         if (sampleId == null || sampleId.trim().isEmpty()) {
             return null;
         }
-        try {
-            return Integer.valueOf(sampleId.trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return sampleId.trim();
     }
 
     @Override
     public List<SampleTypeRequest> getRequestsBySampleId(String sampleId) {
-        Integer id = parseSampleId(sampleId);
+        String id = normalizeSampleId(sampleId);
         if (id == null) {
             return Collections.emptyList();
         }
@@ -43,7 +39,7 @@ public class SampleTypeRequestDAOImpl extends BaseDAOImpl<SampleTypeRequest, Int
 
     @Override
     public List<SampleTypeRequest> getPendingRequestsBySampleId(String sampleId) {
-        Integer id = parseSampleId(sampleId);
+        String id = normalizeSampleId(sampleId);
         if (id == null) {
             return Collections.emptyList();
         }
@@ -58,7 +54,7 @@ public class SampleTypeRequestDAOImpl extends BaseDAOImpl<SampleTypeRequest, Int
 
     @Override
     public List<SampleTypeRequest> getFulfilledRequestsBySampleId(String sampleId) {
-        Integer id = parseSampleId(sampleId);
+        String id = normalizeSampleId(sampleId);
         if (id == null) {
             return Collections.emptyList();
         }

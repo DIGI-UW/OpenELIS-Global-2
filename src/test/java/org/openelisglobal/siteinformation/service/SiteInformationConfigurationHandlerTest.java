@@ -2,7 +2,9 @@ package org.openelisglobal.siteinformation.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,6 +33,18 @@ public class SiteInformationConfigurationHandlerTest {
     }
 
     @Test
+    public void createOnlyDefaultPreservesAnEnabledSetting() throws Exception {
+        var existing = new SiteInformation();
+        existing.setName("blockSelfValidation");
+        existing.setValue("true");
+        when(siteInformationService.getSiteInformationByName("blockSelfValidation")).thenReturn(existing);
+        handler.processConfiguration(csv("name,value,createOnly\nblockSelfValidation,false,true\n"), "default.csv");
+        assertEquals("true", existing.getValue());
+        verify(siteInformationService, never()).update(any());
+        verify(siteInformationService, never()).insert(any());
+    }
+
+    @Test
     public void processConfiguration_updatesExistingSiteInformationByName() throws Exception {
         SiteInformation existing = new SiteInformation();
         existing.setName("phone format");
@@ -56,7 +70,8 @@ public class SiteInformationConfigurationHandlerTest {
         assertEquals(4, existing.getGroup());
         assertEquals(false, existing.isEncrypted());
         assertSame(domain, existing.getDomain());
-        assertEquals("1", existing.getSysUserId());
+        // sysUserId is stamped by AuditableBaseObjectServiceImpl on insert/update
+        // (mocked here), not by the handler.
     }
 
     @Test
@@ -80,7 +95,6 @@ public class SiteInformationConfigurationHandlerTest {
         assertEquals("text", inserted.getValueType());
         assertEquals("phone", inserted.getTag());
         assertSame(domain, inserted.getDomain());
-        assertEquals("1", inserted.getSysUserId());
     }
 
     private static ByteArrayInputStream csv(String content) {

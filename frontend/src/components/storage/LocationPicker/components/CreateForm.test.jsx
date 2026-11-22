@@ -16,6 +16,7 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import CreateForm from "./CreateForm";
 import * as Utils from "../../../utils/Utils";
+import messages from "../../../../languages/en.json";
 
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
@@ -135,6 +136,52 @@ describe("CreateForm — cascading dropdowns", () => {
       id: 1,
       name: "Main Lab",
     });
+  });
+});
+
+describe("CreateForm — translations", () => {
+  it("has an en.json message for every level label", () => {
+    mockRoomsApi([]);
+    const onError = vi.fn();
+    render(
+      <IntlProvider locale="en" messages={messages} onError={onError}>
+        <CreateForm selection={{}} onLevelChange={vi.fn()} />
+      </IntlProvider>,
+    );
+    const missing = onError.mock.calls
+      .map(([err]) => err)
+      .filter((err) => err.code === "MISSING_TRANSLATION")
+      .map((err) => err.descriptor?.id);
+    expect(missing).toEqual([]);
+  });
+
+  it("labels the device-type dropdown with a real prompt, not the raw pattern", () => {
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.startsWith("/rest/storage/devices/types")) cb(["FREEZER"]);
+      else cb([]);
+    });
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <CreateForm
+          selection={{ room: { id: 1, name: "Main Lab" } }}
+          onLevelChange={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /add new device/i }));
+
+    expect(screen.getByText("Select device type")).toBeInTheDocument();
+    expect(screen.queryByText("Select {level}")).not.toBeInTheDocument();
+  });
+
+  it("renders no 'Add new' buttons when allowCreate is false", () => {
+    mockRoomsApi([]);
+    renderWithIntl(
+      <CreateForm selection={{}} onLevelChange={vi.fn()} allowCreate={false} />,
+    );
+    expect(screen.queryAllByRole("button", { name: /add new/i })).toHaveLength(
+      0,
+    );
   });
 });
 

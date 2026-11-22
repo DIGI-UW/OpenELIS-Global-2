@@ -99,7 +99,7 @@ sub printTime{
 }
 
 #my $upLoadtargetURL = 'http://54.191.189.60:8080/CDIOpenElis/importAnalyzer';
-my $upLoadtargetURL = 'https://localhost:8443/OpenELIS-Global/importAnalyzer';
+my $upLoadtargetURL = 'https://localhost:8443/api/OpenELIS-Global/importAnalyzer';
 
 my $stagingDir1 = ".\\staging";
 #my $stagingDir2 = "Y:";

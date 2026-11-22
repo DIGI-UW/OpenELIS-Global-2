@@ -28,6 +28,7 @@ public class SampleItemDTO {
     private Integer boxSampleItemId; // PK of BoxSampleItem (for reception status updates)
     private String receptionStatus; // Reception status (PENDING, RECEIVED_GOOD, etc.)
     private String receptionNotes; // Non-conformity notes from reception
+    private String destinationFacilityId; // Referral organization PK (for box lookup/creation)
 
     public SampleItemDTO() {
     }
@@ -131,6 +132,14 @@ public class SampleItemDTO {
 
     public void setReceptionNotes(String receptionNotes) {
         this.receptionNotes = receptionNotes;
+    }
+
+    public String getDestinationFacilityId() {
+        return destinationFacilityId;
+    }
+
+    public void setDestinationFacilityId(String destinationFacilityId) {
+        this.destinationFacilityId = destinationFacilityId;
     }
 
     /**

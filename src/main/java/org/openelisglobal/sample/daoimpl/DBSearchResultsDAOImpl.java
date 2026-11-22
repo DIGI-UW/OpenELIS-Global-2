@@ -63,7 +63,7 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             boolean queryDateOfBirth = !GenericValidator.isBlankOrNull(dateOfBirth);
             boolean queryGender = !GenericValidator.isBlankOrNull(gender);
 
-            String sql = buildQueryString(queryLastName, queryFirstName, querySTNumber, querySubjectNumber,
+            String sql = buildQueryString(lastName, firstName, false, querySTNumber, querySubjectNumber,
                     queryNationalId, queryExternalId, queryAnyID, queryPatientID, queryGuid, queryDateOfBirth,
                     queryGender);
 
@@ -111,9 +111,8 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             boolean queryDateOfBirth = !GenericValidator.isBlankOrNull(dateOfBirth);
             boolean queryGender = !GenericValidator.isBlankOrNull(gender);
 
-            String sql = buildQueryString(queryLastName, queryFirstName, querySTNumber, querySubjectNumber,
-                    queryNationalId, queryExternalId, queryAnyID, queryPatientID, queryGuid, queryDateOfBirth,
-                    queryGender);
+            String sql = buildQueryString(lastName, firstName, true, querySTNumber, querySubjectNumber, queryNationalId,
+                    queryExternalId, queryAnyID, queryPatientID, queryGuid, queryDateOfBirth, queryGender);
 
             org.hibernate.query.Query query = entityManager.unwrap(Session.class).createNativeQuery(sql);
 
@@ -124,8 +123,15 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             query.setParameter(ID_TYPE_FOR_GUID,
                     Integer.valueOf(PatientIdentityTypeMap.getInstance().getIDForType("GUID")));
 
-            lastName = '%' + lastName + '%';
-            firstName = '%' + firstName + '%';
+            if ((queryLastName && FuzzyNameMatch.isFuzzyMatchable(lastName))
+                    || (queryFirstName && FuzzyNameMatch.isFuzzyMatchable(firstName))) {
+                applySimilarityThreshold();
+            }
+            bindFuzzyNameParameters(query, LAST_NAME_TERM, LAST_NAME_SWAPS, lastName, queryLastName);
+            bindFuzzyNameParameters(query, FIRST_NAME_TERM, FIRST_NAME_SWAPS, firstName, queryFirstName);
+
+            lastName = queryLastName ? '%' + FuzzyNameMatch.normalize(lastName) + '%' : lastName;
+            firstName = queryFirstName ? '%' + FuzzyNameMatch.normalize(firstName) + '%' : firstName;
             STNumber = '%' + STNumber + '%';
             subjectNumber = '%' + subjectNumber + '%';
             nationalID = '%' + nationalID + '%';
@@ -146,7 +152,7 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
                 query.setParameter(NATIONAL_ID_PARAM, nationalID);
             }
             if (queryExternalId) {
-                query.setParameter(EXTERNAL_ID_PARAM, nationalID);
+                query.setParameter(EXTERNAL_ID_PARAM, externalID);
             }
             if (querySTNumber) {
                 query.setParameter(ST_NUMBER_PARAM, STNumber);
@@ -214,7 +220,7 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             boolean queryDateOfBirth = !GenericValidator.isBlankOrNull(dateOfBirth);
             boolean queryGender = !GenericValidator.isBlankOrNull(gender);
 
-            String sql = buildQueryString(queryLastName, queryFirstName, querySTNumber, querySubjectNumber,
+            String sql = buildQueryString(lastName, firstName, false, querySTNumber, querySubjectNumber,
                     queryNationalId, queryExternalId, queryAnyID, queryPatientID, queryGuid, queryDateOfBirth,
                     queryGender);
 
@@ -228,16 +234,16 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
                     Integer.valueOf(PatientIdentityTypeMap.getInstance().getIDForType("GUID")));
 
             if (queryFirstName) {
-                query.setParameter(FIRST_NAME_PARAM, firstName);
+                query.setParameter(FIRST_NAME_PARAM, FuzzyNameMatch.normalize(firstName));
             }
             if (queryLastName) {
-                query.setParameter(LAST_NAME_PARAM, lastName);
+                query.setParameter(LAST_NAME_PARAM, FuzzyNameMatch.normalize(lastName));
             }
             if (queryNationalId) {
                 query.setParameter(NATIONAL_ID_PARAM, nationalID);
             }
             if (queryExternalId) {
-                query.setParameter(EXTERNAL_ID_PARAM, nationalID);
+                query.setParameter(EXTERNAL_ID_PARAM, externalID);
             }
             if (querySTNumber) {
                 query.setParameter(ST_NUMBER_PARAM, STNumber);
@@ -278,6 +284,58 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
         return results;
     }
 
+    /**
+     * A name matches when it contains the term, exactly as it always has, or - for
+     * a search that is not asking for whole values - when it is a plausible
+     * misspelling of it. The alternatives sit inside one pair of brackets so the
+     * surrounding clause keeps ANDing as before.
+     */
+    private void appendNameCondition(StringBuilder queryBuilder, String column, String likeParam, String termParam,
+            String swapsParam, String value, boolean fuzzy) {
+
+        // lower() on every leg so all of them can use the GIN trigram index; an
+        // ilike here would fall back to a sequential scan and drag the whole OR
+        // down with it.
+        queryBuilder.append(" (lower(").append(column).append(") like :").append(likeParam);
+
+        if (fuzzy && FuzzyNameMatch.isFuzzyMatchable(value)) {
+            queryBuilder.append(" or lower(").append(column).append(") % :").append(termParam);
+            if (!FuzzyNameMatch.adjacentSwaps(value).isEmpty()) {
+                queryBuilder.append(" or lower(").append(column).append(") in (:").append(swapsParam).append(")");
+            }
+        }
+
+        queryBuilder.append(")");
+    }
+
+    @SuppressWarnings("rawtypes")
+    private void bindFuzzyNameParameters(org.hibernate.query.Query query, String termParam, String swapsParam,
+            String value, boolean queried) {
+
+        if (!queried || !FuzzyNameMatch.isFuzzyMatchable(value)) {
+            return;
+        }
+        query.setParameter(termParam, FuzzyNameMatch.normalize(value));
+
+        List<String> swaps = FuzzyNameMatch.adjacentSwaps(value);
+        if (!swaps.isEmpty()) {
+            query.setParameterList(swapsParam, swaps);
+        }
+    }
+
+    /**
+     * The trigram similarity operator reads its cut-off from a session setting, and
+     * PostgreSQL's 0.3 default is too strict for short names. SET LOCAL keeps the
+     * change inside this transaction so it cannot leak onto a pooled connection.
+     */
+    private void applySimilarityThreshold() {
+        entityManager.unwrap(Session.class).doWork(connection -> {
+            try (java.sql.Statement statement = connection.createStatement()) {
+                statement.execute("set local pg_trgm.similarity_threshold = " + FuzzyNameMatch.SIMILARITY_THRESHOLD);
+            }
+        });
+    }
+
     private String getFormatedDOB(String dob) {
         String format1 = "dd/MM/yyyy";
         String format2 = "MM/dd/yyyy";
@@ -297,9 +355,9 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
      * @param patientID     - if a previous query has already found a candidate
      *                      patient
      */
-    private String buildQueryString(boolean lastName, boolean firstName, boolean STNumber, boolean subjectNumber,
-            boolean nationalID, boolean externalID, boolean anyID, boolean patientID, boolean guid, boolean dateOfBirth,
-            boolean gender) {
+    private String buildQueryString(String lastName, String firstName, boolean fuzzyNames, boolean STNumber,
+            boolean subjectNumber, boolean nationalID, boolean externalID, boolean anyID, boolean patientID,
+            boolean guid, boolean dateOfBirth, boolean gender) {
 
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append("select p.id, pr.first_name, pr.last_name, p.gender, p.entered_birth_date, p.national_id,"
@@ -367,15 +425,15 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             queryBuilder.append(" and");
         }
 
-        if (lastName) {
-            queryBuilder.append(" pr.last_name ilike :");
-            queryBuilder.append(LAST_NAME_PARAM);
+        if (!GenericValidator.isBlankOrNull(lastName)) {
+            appendNameCondition(queryBuilder, "pr.last_name", LAST_NAME_PARAM, LAST_NAME_TERM, LAST_NAME_SWAPS,
+                    lastName, fuzzyNames);
             queryBuilder.append(" and");
         }
 
-        if (firstName) {
-            queryBuilder.append(" pr.first_name ilike :");
-            queryBuilder.append(FIRST_NAME_PARAM);
+        if (!GenericValidator.isBlankOrNull(firstName)) {
+            appendNameCondition(queryBuilder, "pr.first_name", FIRST_NAME_PARAM, FIRST_NAME_TERM, FIRST_NAME_SWAPS,
+                    firstName, fuzzyNames);
             queryBuilder.append(" and");
         }
 

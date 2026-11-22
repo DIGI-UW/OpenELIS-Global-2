@@ -44,10 +44,19 @@ class LoginPage {
   }
 
   signOut() {
-    // The user menu can render in a collapsed/animated state in headless runs.
-    // Prefer existence checks + forced clicks, then wait for login screen.
-    cy.get(SELECTORS.USER_ICON).should("exist").click({ force: true });
-    cy.get(SELECTORS.LOGOUT).should("exist").click({ force: true });
+    cy.intercept("POST", "**/Logout*").as("logoutRequest");
+    cy.get(SELECTORS.USER_ICON).should("be.visible").click();
+    cy.get(SELECTORS.LOGOUT).should("be.visible").click();
+    cy.wait("@logoutRequest").then(({ response }) => {
+      expect(response.statusCode).to.eq(302);
+      const redirect = new URL(
+        response.headers.location,
+        Cypress.config("baseUrl"),
+      );
+      expect(redirect.origin, "logout redirect origin").to.eq(
+        Cypress.config("baseUrl"),
+      );
+    });
     cy.get(SELECTORS.USERNAME, { timeout: 30000 }).should("be.visible");
   }
 

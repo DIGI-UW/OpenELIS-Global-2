@@ -14,6 +14,7 @@
 package org.openelisglobal.sample.dao;
 
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
@@ -28,6 +29,16 @@ public interface SampleDAO extends BaseDAO<Sample, String> {
     // public void deleteData(List samples) throws LIMSRuntimeException;
 
     List<Sample> getPageOfSamples(int startingRecNo) throws LIMSRuntimeException;
+
+    /**
+     * A page of samples, most recently created first (descending id). Unlike
+     * {@link #getPageOfSamples(int)} the page size is the caller's, not the system
+     * default.
+     *
+     * @param startingRecNo 1-based index of the first record
+     * @param pageSize      number of samples to return
+     */
+    List<Sample> getSamplesNewestFirst(int startingRecNo, int pageSize) throws LIMSRuntimeException;
 
     void getData(Sample sample) throws LIMSRuntimeException;
 
@@ -69,6 +80,12 @@ public interface SampleDAO extends BaseDAO<Sample, String> {
 
     String getLargestAccessionNumberWithPrefix(String prefix);
 
+    /**
+     * Environmental samples (domain E) whose lab number starts with the prefix,
+     * ignoring case, in lab number order, at most max.
+     */
+    List<Sample> getEnvironmentalSamplesWithAccessionNumberStartingWith(String prefix, int max);
+
     String getLargestAccessionNumberMatchingPattern(String startingWith, int size) throws LIMSRuntimeException;
 
     List<Sample> getSamplesWithPendingQaEventsByService(String serviceId) throws LIMSRuntimeException;
@@ -88,4 +105,9 @@ public interface SampleDAO extends BaseDAO<Sample, String> {
             LocalDate upperDate);
 
     List<Sample> getSamplesByPriority(OrderPriority priority) throws LIMSRuntimeException;
+
+    List<Sample> findSamplesWithRequiredByBefore(Timestamp horizon);
+
+    List<Sample> getStatSamplesReceivedBetweenWithAnalysisIn(Timestamp since, Timestamp cutoff,
+            List<String> analysisStatusIds);
 }

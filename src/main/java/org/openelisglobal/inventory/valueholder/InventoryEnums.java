@@ -11,20 +11,6 @@ public final class InventoryEnums {
     }
 
     /**
-     * Types of inventory items
-     */
-    public enum ItemType {
-        REAGENT, RDT, CARTRIDGE, HIV_KIT, SYPHILIS_KIT
-    }
-
-    /**
-     * Types of storage locations for inventory
-     */
-    public enum LocationType {
-        ROOM, REFRIGERATOR, FREEZER, SHELF, DRAWER, CABINET
-    }
-
-    /**
      * Status of inventory lots
      */
     public enum LotStatus {

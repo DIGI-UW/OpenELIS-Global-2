@@ -73,8 +73,9 @@ public class SampleEditController extends BaseController {
     private static final String[] ALLOWED_FIELDS = new String[] { "initialSampleConditionList", "sampleXML",
             //
             "sampleOrderItems.newRequesterName", "sampleOrderItems.modified", "sampleOrderItems.sampleId",
-            "sampleOrderItems.labNo", "sampleOrderItems.requestDate", "sampleOrderItems.receivedDateForDisplay",
-            "sampleOrderItems.receivedTime", "sampleOrderItems.nextVisitDate", "sampleOrderItems.requesterSampleID",
+            "sampleOrderItems.labNo", "sampleOrderItems.requiredBy", "sampleOrderItems.requestDate",
+            "sampleOrderItems.receivedDateForDisplay", "sampleOrderItems.receivedTime",
+            "sampleOrderItems.nextVisitDate", "sampleOrderItems.requesterSampleID",
             "sampleOrderItems.referringPatientNumber", "sampleOrderItems.referringSiteId",
             "sampleOrderItems.referringSiteName", "sampleOrderItems.referringSiteCode",
             "sampleOrderItems.referringSiteDepartmentId", "sampleOrderItems.referringSiteDepartmentName",
@@ -355,16 +356,30 @@ public class SampleEditController extends BaseController {
         form.setSampleTypes(userService.getUserSampleTypes(getSysUserId(request), Constants.ROLE_RECEPTION));
     }
 
+    /**
+     * The tests the sample item can still take: the sample type's active orderable
+     * tests that are not already live on the item (a cancelled one can be ordered
+     * again). Each carries the sample type so the screen can offer its panels.
+     */
     private void addPossibleTestsToList(SampleItem sampleItem, List<SampleEditItem> possibleTestList,
             String accessionNumber) {
 
         TypeOfSample typeOfSample = typeOfSampleService.get(sampleItem.getTypeOfSampleId());
+
+        Set<String> liveTestIds = new HashSet<>();
+        for (Analysis analysis : analysisService.getAnalysesBySampleItemsExcludingByStatusIds(sampleItem,
+                excludedAnalysisStatusList)) {
+            liveTestIds.add(analysis.getTest().getId());
+        }
 
         List<TypeOfSampleTest> typeOfSampleTestList = typeOfSampleTestService
                 .getTypeOfSampleTestsForSampleType(typeOfSample.getId());
         List<SampleEditItem> typeOfTestSampleItemList = new ArrayList<>();
 
         for (TypeOfSampleTest typeOfSampleTest : typeOfSampleTestList) {
+            if (liveTestIds.contains(typeOfSampleTest.getTestId())) {
+                continue;
+            }
             SampleEditItem sampleEditItem = new SampleEditItem();
 
             sampleEditItem.setTestId(typeOfSampleTest.getTestId());
@@ -372,6 +387,7 @@ public class SampleEditController extends BaseController {
             if ("Y".equals(test.getIsActive()) && test.getOrderable()) {
                 sampleEditItem.setTestName(TestServiceImpl.getUserLocalizedTestName(test));
                 sampleEditItem.setSampleItemId(sampleItem.getId());
+                sampleEditItem.setSampleTypeId(typeOfSample.getId());
                 sampleEditItem.setSortOrder(test.getSortOrder());
                 typeOfTestSampleItemList.add(sampleEditItem);
             }

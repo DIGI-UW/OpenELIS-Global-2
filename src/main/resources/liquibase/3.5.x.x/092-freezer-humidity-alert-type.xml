@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+  <changeSet id="3.5.0-092-add-freezer-humidity-alert-type" author="mherman22">
+    <preConditions onFail="MARK_RAN">
+      <tableExists schemaName="clinlims" tableName="alert"/>
+    </preConditions>
+    <comment>Add FREEZER_HUMIDITY to alert_type CHECK constraint so a humidity excursion can raise its own alert
+      instead of only colouring the reading. A separate type from FREEZER_TEMPERATURE because alerts deduplicate on
+      (alert_type, entity type, entity id), so sharing one would collapse a humidity breach and a temperature breach
+      on the same unit into a single row. The constraint is redeclared wholesale by every changeset that touches it,
+      so this list is 089's plus FREEZER_HUMIDITY - and this changeset now takes over 089's invariant: no changeset
+      anywhere in base-changelog.xml may redeclare chk_alert_type after this one, including the analyzer/ and qc/
+      changelogs, which base-changelog.xml includes after 3.5.x.x/base.xml.</comment>
+    <sql>
+      ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+      ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+      CHECK (alert_type IN (
+        'FREEZER_TEMPERATURE', 'FREEZER_HUMIDITY', 'FREEZER_OFFLINE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW',
+        'SAMPLE_TRACKING', 'OTHER', 'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE',
+        'CRITICAL_UNACKNOWLEDGED', 'REQUIRED_BY_DEADLINE', 'REFERRAL_CRITICAL_RESULT', 'REFERRAL_REJECTED',
+        'CRITICAL_RESULT', 'MICROBIOLOGY_CRITICAL'
+      ));
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

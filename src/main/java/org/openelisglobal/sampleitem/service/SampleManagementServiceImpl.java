@@ -16,6 +16,7 @@ package org.openelisglobal.sampleitem.service;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -382,9 +383,17 @@ public class SampleManagementServiceImpl implements SampleManagementService {
             List<String> addedTestIds = new ArrayList<>();
             List<String> skippedTestIds = new ArrayList<>();
 
+            String canceledStatusId = StatusService.getInstance().getStatusID(StatusService.AnalysisStatus.Canceled);
             for (Test test : tests) {
-                // Check for duplicate (test already ordered for this sample item)
-                Analysis existingAnalysis = analysisService.getAnalysisBySampleItemAndTest(sampleItemId, test.getId());
+                // Check for duplicate (test already ordered for this sample item).
+                // A canceled analysis doesn't count — otherwise a canceled test
+                // could never be re-ordered on the item, which also breaks the
+                // NCE Retest disposition (cancel + re-order, OGC-1023 FR-E3).
+                Analysis existingAnalysis = analysisService
+                        .getAnalysesBySampleItemsExcludingByStatusIds(sampleItem, Set.of(canceledStatusId)).stream()
+                        .filter(analysis -> analysis.getTest() != null
+                                && test.getId().equals(analysis.getTest().getId()))
+                        .findFirst().orElse(null);
 
                 if (existingAnalysis != null) {
                     // Skip duplicate

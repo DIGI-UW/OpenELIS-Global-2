@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- The Test Catalog Editor's inline custom option (FR-83, OGC-1142) stored
+         the typed text verbatim in TEST_RESULT.VALUE. Dictionary-variant rows
+         (types D/M/C) must hold a numeric dictionary id there: every consumer
+         resolves VALUE via getDictionaryById, and the id parse throws on raw
+         text, turning pages like MasterListsPage/calculatedValue into 500s.
+         Repair: materialize each distinct raw text as a dictionary entry
+         under the "Test Result" category — the one the legacy select-list
+         admin assigns to result options — reusing an active entry with the
+         same name, then repoint the rows. The save path now does this
+         resolution up front, so this only cleans rows written before the
+         fix. -->
+    <changeSet id="repair-free-text-dictionary-options" author="OGC">
+        <sql>
+            INSERT INTO clinlims.dictionary (id, is_active, dict_entry, sort_order, dictionary_category_id, lastupdated)
+            SELECT nextval('clinlims.dictionary_seq'), 'Y', v.value, 1,
+                   (SELECT min(dc.id) FROM clinlims.dictionary_category dc WHERE dc.name = 'Test Result'),
+                   now()
+            FROM (SELECT DISTINCT trim(tr.value) AS value
+                  FROM clinlims.test_result tr
+                  WHERE tr.tst_rslt_type IN ('D', 'M', 'C')
+                    AND tr.value IS NOT NULL
+                    AND trim(tr.value) &lt;&gt; ''
+                    AND trim(tr.value) !~ '^[0-9]+$') v
+            WHERE NOT EXISTS (
+                SELECT 1 FROM clinlims.dictionary d
+                WHERE trim(d.dict_entry) = v.value AND d.is_active = 'Y');
+
+            UPDATE clinlims.test_result tr
+            SET value = (SELECT d.id::text FROM clinlims.dictionary d
+                         WHERE trim(d.dict_entry) = trim(tr.value)
+                           AND d.is_active = 'Y'
+                         ORDER BY d.id LIMIT 1)
+            WHERE tr.tst_rslt_type IN ('D', 'M', 'C')
+              AND tr.value IS NOT NULL
+              AND trim(tr.value) &lt;&gt; ''
+              AND trim(tr.value) !~ '^[0-9]+$';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

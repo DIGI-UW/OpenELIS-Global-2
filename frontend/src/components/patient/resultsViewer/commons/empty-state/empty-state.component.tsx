@@ -1,6 +1,6 @@
 import React from "react";
 import { Layer, Link, Tile } from "@carbon/react";
-import { Trans, useTranslation } from "react-i18next";
+import { FormattedMessage } from "react-intl";
 import { EmptyDataIllustration } from "./empty-data-illustration.component";
 import { useLayoutType } from "../utils";
 //import styles from './empty-state.scss';
@@ -13,7 +13,6 @@ export interface EmptyStateProps {
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = (props) => {
-  const { t } = useTranslation();
   const isTablet = useLayoutType() === "tablet";
 
   return (
@@ -24,21 +23,19 @@ export const EmptyState: React.FC<EmptyStateProps> = (props) => {
         </div>
         <EmptyDataIllustration />
         <p className="content">
-          <Trans
-            i18nKey="emptyStateText"
+          <FormattedMessage
+            id="label.patientHistory.emptyState"
             values={{ displayText: props.displayText.toLowerCase() }}
-          >
-            There are no {props.displayText.toLowerCase()} to display for this
-            patient
-          </Trans>
+          />
         </p>
         <p className="action">
           {props.launchForm && (
             <span>
               <Link onClick={() => props.launchForm()}>
-                <>
-                  {t("record", "Record")} {props.displayText.toLowerCase()}
-                </>
+                <FormattedMessage
+                  id="label.patientHistory.record"
+                  values={{ displayText: props.displayText.toLowerCase() }}
+                />
               </Link>
             </span>
           )}

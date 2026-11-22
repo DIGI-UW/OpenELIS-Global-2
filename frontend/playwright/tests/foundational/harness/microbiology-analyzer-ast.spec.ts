@@ -1,0 +1,175 @@
+import { randomUUID } from "node:crypto";
+import { expect, test } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
+import { withAuthedPage } from "../../../helpers/api-session";
+import { activateShippedGeneXpert } from "../../../helpers/analyzer-setup-flow";
+import {
+  seedAnalyzerReviewMicrobiologyCase,
+  submitQcFailedAstAnalyzerResults,
+  submitUnmatchedAstAnalyzerResults,
+} from "../../../helpers/seed-microbiology-data";
+
+// Exercise normalized AST review with a real configured harness connection.
+// Instrument parsing and protocol compatibility have their own harness journeys.
+const run = randomUUID().slice(0, 8);
+const SOURCE_ANALYZER = `AST source ${run}`;
+
+const frameBelowHeader = async (page: Page, testId: string) => {
+  const target = page.getByTestId(testId);
+  await target.evaluate((element) => {
+    const headerHeight =
+      document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+    const targetTop = element.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({
+      top: targetTop - headerHeight - 16,
+      behavior: "instant",
+    });
+  });
+  await expect(target).toBeInViewport();
+};
+
+test.describe("Microbiology analyzer AST review", () => {
+  test.beforeAll(async ({ browser }) => {
+    await withAuthedPage(browser, (page) =>
+      activateShippedGeneXpert(page, SOURCE_ANALYZER, `GX-AST-${run}`),
+    );
+  });
+
+  test("Analyzer AST results expose QC evidence, resolve explicitly, and become reviewable", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const seeded = await seedAnalyzerReviewMicrobiologyCase(
+      page,
+      SOURCE_ANALYZER,
+    );
+    const activeQuery = new URLSearchParams({
+      grain: "ast",
+      q: seeded.caseId,
+    });
+    await page.goto(`/Microbiology/worklist?${activeQuery}`, {
+      waitUntil: "domcontentloaded",
+    });
+
+    const row = page.getByTestId(
+      `microbiology-worklist-row-${seeded.astRunId}`,
+    );
+    await expect(row).toBeVisible();
+    await expect(row).toContainText("Awaiting Results");
+
+    const browserIngressAttempt = await page.request.post(
+      "/api/OpenELIS-Global/rest/analyzer/events/ast",
+      { data: {} },
+    );
+    expect(browserIngressAttempt.status()).toBe(401);
+
+    await submitQcFailedAstAnalyzerResults(seeded);
+    const resultsQuery = new URLSearchParams({
+      grain: "ast",
+      status: "results-in",
+      q: seeded.caseId,
+    });
+    await page.goto(`/Microbiology/worklist?${resultsQuery}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(row).toBeVisible();
+    await expect(row).toContainText("QC Failed");
+    await row.focus();
+    await page.keyboard.press("Enter");
+    await page.waitForURL((url) => {
+      return (
+        url.pathname === `/Microbiology/cases/${seeded.caseId}` &&
+        url.searchParams.get("grain") === "ast" &&
+        url.searchParams.get("status") === "results-in" &&
+        url.searchParams.get("section") === "ast" &&
+        url.searchParams.get("astIsolateId") === seeded.isolateId &&
+        url.searchParams.get("astRunId") === seeded.astRunId
+      );
+    });
+
+    const astTestId = `ast-run-${seeded.astRunId}`;
+    const astCard = page.getByTestId(astTestId);
+    await expect(astCard).toBeVisible();
+    await expect(astCard.getByText("Analyzer QC failed")).toBeVisible();
+    await expect(astCard.getByText(SOURCE_ANALYZER)).toBeVisible();
+    await expect(astCard.getByText(/UAT-AST-CARD-/)).toBeVisible();
+    await expect(
+      astCard.getByRole("cell", { name: /^Ciprofloxacin \(UAT\)(?:\s|$)/ }),
+    ).toBeVisible();
+    await expect(page.getByText("Analyzer: Susceptible")).toBeVisible();
+    await frameBelowHeader(page, astTestId);
+    await testInfo.attach("analyzer-ast-qc-failed", {
+      body: await page.screenshot(),
+      contentType: "image/png",
+    });
+
+    await astCard
+      .getByRole("button", { name: "Override quality control hold" })
+      .click();
+    let modal = page.getByRole("dialog");
+    await modal
+      .getByLabel("Reason", { exact: true })
+      .fill("QC control investigated; supervisor accepts this run");
+    await modal.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(
+      astCard.getByText("Analyzer results ready for review"),
+    ).toBeVisible();
+    await astCard
+      .getByRole("button", { name: "Validate run", exact: true })
+      .click();
+    modal = page.getByRole("dialog");
+    await modal.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(
+      astCard.getByRole("button", { name: /Validated/ }),
+    ).toBeVisible();
+    await frameBelowHeader(page, astTestId);
+    await testInfo.attach("analyzer-ast-reviewed", {
+      body: await page.screenshot(),
+      contentType: "image/png",
+    });
+  });
+
+  test("Unmatched analyzer AST results remain visible for admin reconciliation", async ({
+    page,
+  }) => {
+    const seeded = await seedAnalyzerReviewMicrobiologyCase(
+      page,
+      SOURCE_ANALYZER,
+    );
+    const unmatched = await submitUnmatchedAstAnalyzerResults(seeded);
+
+    await page.goto("/Dashboard", {
+      waitUntil: "domcontentloaded",
+    });
+    // Admin opens its dashboard in one click, and the stuck analyzer events
+    // are one of its tiles, inside the admin shell.
+    const adminMenu = page.getByRole("link", { name: "Admin", exact: true });
+    await expect(adminMenu).toBeVisible();
+    await adminMenu.click();
+    await page
+      .getByTestId("admin-dashboard-tile")
+      .filter({ hasText: "Stuck analyzer events" })
+      .click();
+    await page.waitForURL((url) =>
+      url.pathname.endsWith("/stuckAnalyzerEvents"),
+    );
+
+    await expect(
+      page.getByRole("heading", { name: "Analyzer import issues" }),
+    ).toBeVisible();
+    const row = page.getByRole("row").filter({ hasText: unmatched.sourceId });
+    await expect(row).toContainText("AST result available");
+    await expect(row).toContainText(
+      "No AST run matched the analyzer and card identifiers.",
+    );
+    await expect(
+      row.getByRole("link", { name: "Open analyzer results" }),
+    ).toHaveAttribute(
+      "href",
+      `/AnalyzerResults?id=${seeded.analyzerInstrumentId}`,
+    );
+    await expect(
+      row.getByRole("button", { name: /retry|reprocess/i }),
+    ).toHaveCount(0);
+  });
+});

@@ -17,9 +17,11 @@
  */
 package org.openelisglobal.reports.action.implementation.reportBeans;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
@@ -48,6 +50,26 @@ public class WHONETCSVRoutineColumnBuilder {
         private String method;
         private String latitude;
         private String longitude;
+        private String origin = "";
+        private String purpose = "";
+        private String provenance = "";
+        private String siteCode = "";
+        private String siteName = "";
+
+        public WHONetRow microbiologyContext(String origin, String purpose, String provenance, String siteCode,
+                String siteName) {
+            this.origin = origin;
+            this.purpose = purpose;
+            this.provenance = provenance;
+            this.siteCode = siteCode;
+            this.siteName = siteName;
+            return this;
+        }
+
+        public String getMicrobiologyRow() {
+            return getRow() + delimiter + String.join(delimiter, csvQuote(origin), csvQuote(purpose),
+                    csvQuote(provenance), csvQuote(siteCode), csvQuote(siteName));
+        }
 
         private String delimiter = ",";
 
@@ -125,9 +147,32 @@ public class WHONETCSVRoutineColumnBuilder {
      * @return one string with all names.
      */
     public String getColumnNamesLine() {
-        return new StringBuilder().append(new WHONetRow("NATIONAL_ID", "FIRST_NAME", "LAST_NAME", "SEX", "BIRTH_DATE",
-                "DATE_ENTERED", "LAB_NUMBER", "COLLECTION_DATE", "SPECIMEN_TYPE", "ANTIBIOTIC", "ORGANISM", "RESULT",
-                "TEST_METHOD", "GPS_LATITUDE", "GPS_LONGITUDE").getRow()).append(eol).toString();
+        return columnNamesLine();
+    }
+
+    public static String columnNamesLine() {
+        return new StringBuilder()
+                .append(new WHONetRow("NATIONAL_ID", "FIRST_NAME", "LAST_NAME", "SEX", "BIRTH_DATE", "DATE_ENTERED",
+                        "LAB_NUMBER", "COLLECTION_DATE", "SPECIMEN_TYPE", "ANTIBIOTIC", "ORGANISM", "RESULT",
+                        "TEST_METHOD", "GPS_LATITUDE", "GPS_LONGITUDE").getRow())
+                .append(System.lineSeparator()).toString();
+    }
+
+    public static byte[] renderMicrobiologyRows(List<WHONetRow> rows) {
+        var lines = new ArrayList<String>();
+        lines.add(columnNamesLine().stripTrailing()
+                + ",\"ORIGIN\",\"CULTURE_PURPOSE\",\"RESULT_SOURCE\",\"SITE_CODE\",\"SITE_NAME\"");
+        rows.forEach(row -> lines.add(row.getMicrobiologyRow()));
+        return (String.join(System.lineSeparator(), lines) + System.lineSeparator()).getBytes(StandardCharsets.UTF_8);
+    }
+
+    public static byte[] renderRows(List<WHONetRow> rows) {
+        List<String> lines = new ArrayList<>();
+        lines.add(columnNamesLine().stripTrailing());
+        for (WHONetRow row : rows) {
+            lines.add(row.getRow());
+        }
+        return (String.join(System.lineSeparator(), lines) + System.lineSeparator()).getBytes(StandardCharsets.UTF_8);
     }
 
     /**

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Vector Sampling Sites -->
+  <changeSet id="3.4.0.0-create-vector-sampling-site-seq" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <sequenceExists sequenceName="vector_sampling_site_seq" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createSequence sequenceName="vector_sampling_site_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-create-vector-sampling-site-table" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="vector_sampling_site" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Sampling sites registry for vector surveillance (water sources, air monitoring, vector traps, soil)</comment>
+    <createTable tableName="vector_sampling_site" schemaName="clinlims">
+      <column name="id" type="NUMERIC(10,0)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="code" type="VARCHAR(20)">
+        <constraints nullable="false" unique="true"/>
+      </column>
+      <column name="name" type="VARCHAR(200)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="type" type="VARCHAR(100)"/>
+      <column name="contact_name" type="VARCHAR(100)"/>
+      <column name="contact_phone" type="VARCHAR(50)"/>
+      <column name="gps_latitude" type="VARCHAR(30)"/>
+      <column name="gps_longitude" type="VARCHAR(30)"/>
+      <column name="environmental_zone" type="VARCHAR(100)"/>
+      <column name="address" type="VARCHAR(500)"/>
+      <column name="description" type="VARCHAR(1000)"/>
+      <column name="source" type="VARCHAR(10)" defaultValue="LOCAL"/>
+      <column name="active" type="BOOLEAN" defaultValueBoolean="true"/>
+      <column name="sys_user_id" type="VARCHAR(255)"/>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+  </changeSet>
+
+</databaseChangeLog>

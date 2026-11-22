@@ -1,7 +1,6 @@
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
   postToOpenElisServerForBlob,
 } from "../utils/Utils";
 import config from "../../config.json";
@@ -32,6 +31,12 @@ const get = (endpoint) => {
   return promisify(getFromOpenElisServer, `${BASE_PATH}${endpoint}`);
 };
 
+// Utils reports an undelivered request by calling back with
+// { error, message, status: 0 }, which no >= 400 test catches, so the status
+// alone would let a dropped POST resolve as a success.
+const isFailedResponse = (json) =>
+  !!json && (!!json.error || json.status >= 400 || json.statusCode >= 400);
+
 // Helper for POST requests returning JSON
 const post = (endpoint, data) => {
   return new Promise((resolve, reject) => {
@@ -39,7 +44,7 @@ const post = (endpoint, data) => {
       `${BASE_PATH}${endpoint}`,
       JSON.stringify(data),
       (json) => {
-        if (json && (json.status >= 400 || json.statusCode >= 400)) {
+        if (isFailedResponse(json)) {
           // Handle validation errors object (field-level errors)
           if (json.errors && typeof json.errors === "object") {
             const errorMessages = Object.entries(json.errors)
@@ -49,13 +54,15 @@ const post = (endpoint, data) => {
             return;
           }
           // Handle standard message/error fields
-          reject(
-            new Error(
-              json.message ||
-                json.error ||
-                `Request failed with status ${json.status || json.statusCode}`,
-            ),
+          const err = new Error(
+            json.message ||
+              json.error ||
+              `Request failed with status ${json.status || json.statusCode}`,
           );
+          // Translated-error body from a LocalizedValidationException
+          err.errorCode = json.errorCode;
+          err.params = json.params;
+          reject(err);
         } else {
           resolve(json);
         }
@@ -89,11 +96,16 @@ const put = (endpoint, data) => {
                   .join(", ");
                 throw new Error(errorMessages);
               }
-              throw new Error(
+              const err = new Error(
                 errorJson.message ||
                   errorJson.error ||
                   `Failed to update: HTTP ${response.status}`,
               );
+              // Same translated-error body as post(); the catch below rethrows this
+              // object, so the fields survive.
+              err.errorCode = errorJson.errorCode;
+              err.params = errorJson.params;
+              throw err;
             })
             .catch((e) => {
               if (e.message && !e.message.includes("HTTP")) {
@@ -122,33 +134,18 @@ export const InventoryItemAPI = {
   // Get all items (both active and inactive)
   getAll: (filters = {}) => {
     const params = new URLSearchParams();
-    if (filters.itemType) params.append("itemType", filters.itemType);
     if (filters.isActive !== undefined)
       params.append("isActive", filters.isActive);
     const query = params.toString();
     return get(`/items/all${query ? `?${query}` : ""}`);
   },
 
-  // Get only active items
-  getAllActive: () => get("/items"),
-
   // Get item by ID
   getById: (id) => get(`/items/${id}`),
 
-  // Get all item types
-  getItemTypes: () => get("/items/types"),
+  getTags: () => get("/items/tags"),
 
-  // Get items by type
-  getByType: (itemType) => get(`/items/type/${itemType}`),
-
-  // Search items by name
-  search: (query) => get(`/items/search?query=${encodeURIComponent(query)}`),
-
-  // Get low stock items
   getLowStock: () => get("/items/low-stock"),
-
-  // Get stock level for an item
-  getStockLevel: (itemId) => get(`/items/${itemId}/stock`),
 
   // Create new item
   create: (item) => post("/items", item),
@@ -161,63 +158,81 @@ export const InventoryItemAPI = {
 
   // Activate item (restore from soft delete)
   activate: (id) => put(`/items/${id}/activate`, {}),
+
+  markOrdered: ({ itemIds, note, expectedDate }) =>
+    post("/items/mark-ordered", { itemIds, note, expectedDate }),
+
+  clearOrdered: (itemIds) => post("/items/clear-ordered", { itemIds }),
+};
+
+/** Items board API: one row per active item, sorted by urgency server side. */
+export const InventoryBoardAPI = {
+  get: (includeInactive = false) =>
+    get(`/board${includeInactive ? "?includeInactive=true" : ""}`),
+};
+
+export const InventoryCountAPI = {
+  record: (entries) => post("/count", { entries }),
+};
+
+export const InventoryImportAPI = {
+  preview: (csv) => post("/import/preview", { csv }),
+
+  apply: (csv) => post("/import/apply", { csv }),
+
+  templateUrl: () => `${config.serverBaseUrl}${BASE_PATH}/import/template`,
+};
+
+export const InventoryTagAPI = {
+  getDirectory: () => get("/tags"),
+
+  create: (name) => post("/tags", { name }),
+
+  deactivate: (name) => post("/tags/deactivate", { name }),
+
+  activate: (name) => post("/tags/activate", { name }),
 };
 
 /**
  * Inventory Lot API
  */
 export const InventoryLotAPI = {
-  // Get all lots with optional filters
-  getAll: (filters = {}) => {
-    const params = new URLSearchParams();
-    if (filters.status) params.append("status", filters.status);
-    if (filters.itemId) params.append("itemId", filters.itemId);
-    const query = params.toString();
-    return get(`/lots${query ? `?${query}` : ""}`);
-  },
-
-  // Get lot by ID
-  getById: (id) => get(`/lots/${id}`),
-
-  // Get available lots for an item (FEFO sorted)
-  getAvailableByItem: (itemId) => get(`/lots/item/${itemId}/available`),
-
-  // Get all lots for an item
-  getByItem: (itemId) => get(`/lots/item/${itemId}`),
-
-  // Get lots by storage location
-  getByLocation: (locationId) => get(`/lots/location/${locationId}`),
-
-  // Get expiring lots
-  getExpiring: (days = 30) => get(`/lots/expiring?days=${days}`),
-
-  // Get expired lots
-  getExpired: () => get("/lots/expired"),
-
-  // Create new lot
-  create: (lot) => post("/lots", lot),
+  // GET /lots takes no filters; the dashboard filters client-side.
+  getAll: () => get("/lots"),
 
   // Update lot
   update: (id, lot) => put(`/lots/${id}`, lot),
-
-  // Open lot (for reagents with stability tracking)
-  open: (id, openedDate) =>
-    post(`/lots/${id}/open`, { openedDate: openedDate || new Date() }),
 
   // Update QC status
   updateQCStatus: (id, qcStatus, notes) =>
     put(`/lots/${id}/qc-status`, { qcStatus, notes }),
 
   // Adjust quantity
-  adjust: (id, newQuantity, reason) =>
-    post(`/lots/${id}/adjust`, { newQuantity, reason }),
+  adjust: (id, newQuantity, reason, notes) =>
+    post(`/lots/${id}/adjust`, { newQuantity, reason, notes }),
 
   // Dispose lot
   dispose: (id, reason, notes) =>
     post(`/lots/${id}/dispose`, { reason, notes }),
 
-  // Process expired lots (batch operation)
-  processExpired: () => post("/lots/process-expired", {}),
+  printLabel: (id) =>
+    new Promise((resolve, reject) => {
+      postToOpenElisServerForBlob(
+        `${BASE_PATH}/lots/${id}/print-label`,
+        JSON.stringify({}),
+        (blob, response) => {
+          const disposition = response.headers.get("Content-Disposition");
+          const match =
+            disposition && disposition.match(/filename="?(.+?)"?$/i);
+          resolve({
+            data: blob,
+            contentType: response.headers.get("Content-Type"),
+            filename: match ? match[1] : `lot-${id}.pdf`,
+          });
+        },
+        (error) => reject(error),
+      );
+    }),
 };
 
 /**
@@ -230,121 +245,35 @@ export const InventoryManagementAPI = {
   // Receive new inventory
   receive: (receiveData) => post("/management/receive", receiveData),
 
-  // Check availability
-  checkAvailability: (itemId, quantity) =>
-    get(`/management/check-availability?itemId=${itemId}&quantity=${quantity}`),
-
-  // Get inventory alerts (low stock, expiring, expired)
-  getAlerts: (expirationWarningDays = 30) =>
-    get(`/management/alerts?expirationWarningDays=${expirationWarningDays}`),
+  /** A whole delivery in one transaction, so a failed line cannot half-apply. */
+  receiveBatch: (lots) => post("/management/receive/batch", lots),
 };
 
 /**
- * Storage Location API
- * Uses inventory-specific storage locations (separate from sample storage)
+ * Inventory Lot Storage API (OGC-657)
+ * Assigns/moves an InventoryLot's location using the same
+ * sample_storage_assignment-backed endpoints and audit trail as sample
+ * storage, keyed by inventoryLotId instead of sampleItemId.
  */
-export const StorageLocationAPI = {
-  // Get all active locations
-  getAll: async () => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer("/rest/inventory-storage-locations", (response) => {
-        if (response) {
-          resolve(response);
-        } else {
-          reject(new Error("Failed to fetch storage locations"));
-        }
-      });
-    });
-  },
+const STORAGE_BASE_PATH = "/rest/storage/inventory-lots";
 
-  // Get location by ID
-  getById: async (id) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${id}`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch storage location"));
-          }
-        },
-      );
-    });
-  },
+export const InventoryLotStorageAPI = {
+  // Get current location for a lot (empty object if unassigned)
+  getLocation: (lotId) =>
+    promisify(getFromOpenElisServer, `${STORAGE_BASE_PATH}/${lotId}`),
 
-  // Get top-level locations (no parent)
-  getTopLevel: async () => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        "/rest/inventory-storage-locations/top-level",
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch top-level locations"));
-          }
-        },
-      );
-    });
-  },
+  // Movement-audit rows for a lot (LotDetailsPanel's Movement History)
+  getMovements: (lotId) =>
+    promisify(getFromOpenElisServer, `${STORAGE_BASE_PATH}/${lotId}/movements`),
 
-  // Get child locations
-  getChildren: async (parentId) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${parentId}/children`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch child locations"));
-          }
-        },
-      );
-    });
-  },
-
-  // Get location path (hierarchical breadcrumb)
-  getPath: async (id) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${id}/path`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to fetch location path"));
-          }
-        },
-      );
-    });
-  },
-
-  // Check if location has active lots
-  hasActiveLots: async (id) => {
-    return new Promise((resolve, reject) => {
-      getFromOpenElisServer(
-        `/rest/inventory-storage-locations/${id}/has-active-lots`,
-        (response) => {
-          if (response) {
-            resolve(response);
-          } else {
-            reject(new Error("Failed to check active lots"));
-          }
-        },
-      );
-    });
-  },
-
-  // Create location
-  create: async (location) => {
-    return new Promise((resolve, reject) => {
+  // Assign a lot to a location for the first time
+  assignLocation: (payload) =>
+    new Promise((resolve, reject) => {
       postToOpenElisServerJsonResponse(
-        "/rest/inventory-storage-locations",
-        JSON.stringify(location),
+        `${STORAGE_BASE_PATH}/assign`,
+        JSON.stringify(payload),
         (json) => {
-          if (json && (json.status >= 400 || json.statusCode >= 400)) {
+          if (isFailedResponse(json)) {
             reject(
               new Error(
                 json.message ||
@@ -358,107 +287,76 @@ export const StorageLocationAPI = {
         },
         null,
       );
-    });
-  },
+    }),
 
-  // Update location
-  update: async (id, location) => {
-    return new Promise((resolve, reject) => {
-      putToOpenElisServer(
-        `/rest/inventory-storage-locations/${id}`,
-        JSON.stringify(location),
-        (status) => {
-          if (status >= 200 && status < 300) {
-            resolve({ success: true });
+  // Move an already-assigned lot to a new location
+  moveLocation: (payload) =>
+    new Promise((resolve, reject) => {
+      postToOpenElisServerJsonResponse(
+        `${STORAGE_BASE_PATH}/move`,
+        JSON.stringify(payload),
+        (json) => {
+          if (isFailedResponse(json)) {
+            reject(
+              new Error(
+                json.message ||
+                  json.error ||
+                  `Request failed with status ${json.status || json.statusCode}`,
+              ),
+            );
           } else {
-            reject(new Error(`Failed to update location: HTTP ${status}`));
+            resolve(json);
           }
         },
+        null,
       );
-    });
-  },
-
-  // Deactivate location
-  deactivate: async (id) => {
-    return new Promise((resolve, reject) => {
-      putToOpenElisServer(
-        `/rest/inventory-storage-locations/${id}/deactivate`,
-        "{}",
-        (status) => {
-          if (status >= 200 && status < 300) {
-            resolve({ success: true });
-          } else {
-            reject(new Error(`Failed to deactivate location: HTTP ${status}`));
-          }
-        },
-      );
-    });
-  },
+    }),
 };
 
 /**
  * Transaction API
  */
 export const TransactionAPI = {
-  // Get transaction by ID
-  getById: (id) => get(`/transactions/${id}`),
-
   // Get transactions for a lot
   getByLot: (lotId) => get(`/transactions/lot/${lotId}`),
-
-  // Get transactions by type
-  getByType: (transactionType) => get(`/transactions/type/${transactionType}`),
-
-  // Get transactions by date range
-  getByDateRange: (startDate, endDate) =>
-    get(`/transactions/date-range?startDate=${startDate}&endDate=${endDate}`),
-
-  // Get transactions by reference (test result, etc.)
-  getByReference: (referenceId, referenceType) =>
-    get(
-      `/transactions/reference?referenceId=${referenceId}&referenceType=${referenceType}`,
-    ),
 };
 
 /**
  * Usage API (test result linkage)
  */
 export const UsageAPI = {
-  // Get usage by test result ID
-  getByTestResult: (testResultId) => get(`/usage/test-result/${testResultId}`),
-
   // Get usage by lot ID
   getByLot: (lotId) => get(`/usage/lot/${lotId}`),
+};
 
-  // Get usage by item ID
-  getByItem: (itemId) => get(`/usage/item/${itemId}`),
-
-  // Get usage by analysis ID
-  getByAnalysis: (analysisId) => get(`/usage/analysis/${analysisId}`),
+const reportQuery = (params) => {
+  const queryParams = new URLSearchParams();
+  if (params.reportType) queryParams.append("reportType", params.reportType);
+  if (params.exportFormat)
+    queryParams.append("exportFormat", params.exportFormat);
+  if (params.startDate) queryParams.append("startDate", params.startDate);
+  if (params.endDate) queryParams.append("endDate", params.endDate);
+  if (params.includeInactive !== undefined)
+    queryParams.append("includeInactive", params.includeInactive);
+  if (params.includeExpired !== undefined)
+    queryParams.append("includeExpired", params.includeExpired);
+  (params.tags || []).forEach((tag) => queryParams.append("tags", tag));
+  return queryParams.toString();
 };
 
 /**
  * Reports API
  */
 export const ReportsAPI = {
+  preview: (params) =>
+    post(
+      `/reports/preview?${reportQuery({ ...params, exportFormat: undefined })}`,
+      {},
+    ),
+
   // Generate inventory report
   generate: async (params) => {
-    const queryParams = new URLSearchParams();
-    if (params.reportType) queryParams.append("reportType", params.reportType);
-    if (params.exportFormat)
-      queryParams.append("exportFormat", params.exportFormat);
-    if (params.startDate) queryParams.append("startDate", params.startDate);
-    if (params.endDate) queryParams.append("endDate", params.endDate);
-    if (params.includeInactive !== undefined)
-      queryParams.append("includeInactive", params.includeInactive);
-    if (params.includeExpired !== undefined)
-      queryParams.append("includeExpired", params.includeExpired);
-    if (params.groupByType !== undefined)
-      queryParams.append("groupByType", params.groupByType);
-    if (params.groupByLocation !== undefined)
-      queryParams.append("groupByLocation", params.groupByLocation);
-
-    const query = queryParams.toString();
+    const query = reportQuery(params);
     const endpoint = `${BASE_PATH}/reports/generate${query ? `?${query}` : ""}`;
 
     return new Promise((resolve, reject) => {
@@ -474,10 +372,11 @@ export const ReportsAPI = {
 
           // Extract filename from Content-Disposition header if available
           if (contentDisposition) {
-            const filenameMatch =
-              contentDisposition.match(/filename="?(.+)"?/i);
+            const filenameMatch = contentDisposition.match(
+              /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i,
+            );
             if (filenameMatch) {
-              filename = filenameMatch[1];
+              filename = decodeURIComponent(filenameMatch[1].trim());
             }
           }
 

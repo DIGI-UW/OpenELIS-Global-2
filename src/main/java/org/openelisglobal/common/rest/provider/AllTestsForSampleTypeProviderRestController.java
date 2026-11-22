@@ -17,10 +17,12 @@
 package org.openelisglobal.common.rest.provider;
 
 import java.util.List;
+import org.apache.commons.validator.GenericValidator;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -39,16 +41,18 @@ public class AllTestsForSampleTypeProviderRestController extends BaseRestControl
 
     @GetMapping("/AllTestsForSampleTypeProvider")
     public ResponseEntity<Object> processRequest(@RequestParam String sampleTypeId) {
-        if (sampleTypeId == null || sampleTypeId.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Internal error, please contact Admin and file bug report");
+        if (GenericValidator.isBlankOrNull(sampleTypeId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleTypeId is required");
+        }
+        if (!StringUtil.isInteger(sampleTypeId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("sampleTypeId must be a numeric id");
         }
 
         try {
             JSONObject jsonResult = createJsonGroupedTestNames(sampleTypeId);
             return ResponseEntity.ok(jsonResult);
         } catch (Exception e) {
-            LogEvent.logDebug(e);
+            LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Internal error, please contact Admin and file bug report");
         }

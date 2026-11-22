@@ -8,6 +8,7 @@ import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
+import org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment;
 import org.openelisglobal.sample.valueholder.Sample;
 
 public interface ResultValidationService {
@@ -15,4 +16,8 @@ public interface ResultValidationService {
     void persistdata(List<Result> deletableList, List<Analysis> analysisUpdateList, ArrayList<Result> resultUpdateList,
             List<AnalysisItem> resultItemList, ArrayList<Sample> sampleUpdateList, ArrayList<Note> noteUpdateList,
             IResultSaveService resultSaveService, List<IResultUpdate> updaters, String sysUserId);
+
+    void persistQcAcknowledgment(ValidationQcAcknowledgment acknowledgment);
+
+    List<ValidationQcAcknowledgment> getQcAcknowledgmentsByAnalysisId(Integer analysisId);
 }

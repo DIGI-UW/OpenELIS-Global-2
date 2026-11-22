@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    The pathology case view has never offered a status when a request is first
+    raised, so the form posted none and the row was stored with a null status,
+    reading as neither open nor closed. The screen itself has always shown such
+    a request as OPENED, and the operator has always been able to answer it, so
+    the stored value is what was wrong rather than the behaviour around it.
+
+    Requests raised from here on are stored as OPENED at creation. This brings
+    the rows already in the table to the same value the screen has been showing
+    for them all along, so that "this case has an outstanding request" can be
+    read from the request rows (FR-2.1, AC-6) rather than from a stage
+    of its own.
+    -->
+    <changeSet id="OGC-264-pathology-request-status-backfill" author="OGC">
+        <comment>Store the requests that were saved without a status as OPENED, the state the case view has always displayed for them</comment>
+        <update tableName="pathology_request" schemaName="clinlims">
+            <column name="status" value="OPENED"/>
+            <where>status IS NULL</where>
+        </update>
+        <rollback>
+            <!-- A row that was null cannot be told apart afterwards from one
+                 that was deliberately opened, and restoring the null would only
+                 recreate requests that no query can see as open and no screen
+                 can act on, which is the defect this changeset exists to
+                 remove. -->
+            <empty/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

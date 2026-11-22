@@ -1,0 +1,786 @@
+/**
+ * OGC-1027 (Validation v4 slice V1) — the triage surface on the Validation page:
+ * "Check before release" chips render only for rows carrying risk, filter chips
+ * carry live counts over the whole queue, and a filter narrows the visible rows.
+ */
+import React from "react";
+import { vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { IntlProvider } from "react-intl";
+import messages from "../../languages/en.json";
+import Validation from "./Validation";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+
+vi.mock("../utils/Utils", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    postToOpenElisServer: vi.fn(),
+    postToOpenElisServerJsonResponse: vi.fn(),
+    getFromOpenElisServer: vi.fn(),
+  };
+});
+
+vi.mock("../esignature/ESignatureButton", () => ({
+  default: ({ children, onSign, disabled, meaning }) => (
+    <button
+      type="button"
+      data-meaning={meaning}
+      disabled={disabled}
+      onClick={() => onSign && onSign(globalThis.__nextSignature)}
+    >
+      {children}
+    </button>
+  ),
+  SignatureMeaning: {
+    VALIDATED_AND_RELEASED: "VALIDATED_AND_RELEASED",
+    REVIEWED: "REVIEWED",
+  },
+}));
+
+vi.mock("../esignature/api", () => ({
+  isEsigEnabled: vi.fn(() => Promise.resolve({ enabled: false })),
+}));
+
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
+import { isEsigEnabled } from "../esignature/api";
+
+const row = (id, overrides = {}) => ({
+  id,
+  analysisId: String(100 + id),
+  accessionNumber: `ACC${id}`,
+  testName: `Test ${id}(Serum)`,
+  normalRange: "10 - 20",
+  normal: true,
+  qcStatus: "PASS",
+  result: "15",
+  resultType: "N",
+  nceOpen: false,
+  modified: false,
+  ackPending: false,
+  nonconforming: false,
+  critical: false,
+  clear: true,
+  ...overrides,
+});
+
+/** A row the server holds in Needs-review, carrying the given signals. */
+const held = (id, overrides = {}) => row(id, { clear: false, ...overrides });
+
+const renderValidation = (
+  rows,
+  configurationProperties = { AccessionFormat: "" },
+  params = "",
+  addNotification = vi.fn(),
+) =>
+  render(
+    <ConfigurationContext.Provider value={{ configurationProperties }}>
+      <NotificationContext.Provider
+        value={{ setNotificationVisible: vi.fn(), addNotification }}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <Validation
+            params={params}
+            results={{ resultList: rows, qcFailureList: [] }}
+          />
+        </IntlProvider>
+      </NotificationContext.Provider>
+    </ConfigurationContext.Provider>,
+  );
+
+const BULK_ON = { AccessionFormat: "", ALLOW_BULK_RELEASE_CLEAR: "true" };
+
+describe("Validation — result flags in the row (OGC-1121)", () => {
+  it("marks a critical value and an abnormal value differently, and a normal one not at all", () => {
+    renderValidation([
+      row(0),
+      row(1, { result: "120", normal: false, resultFlag: "ABNORMAL" }),
+      row(2, {
+        result: "200",
+        normal: false,
+        critical: true,
+        resultFlag: "CRITICAL",
+      }),
+    ]);
+
+    const normal = screen.getByTestId("validation-result-0");
+    const abnormal = screen.getByTestId("validation-result-1");
+    const critical = screen.getByTestId("validation-result-2");
+
+    expect(normal.querySelector('[data-testid^="flag-"]')).toBeNull();
+    expect(
+      abnormal.querySelector('[data-testid="flag-ABNORMAL"]'),
+    ).not.toBeNull();
+    expect(
+      critical.querySelector('[data-testid="flag-CRITICAL"]'),
+    ).not.toBeNull();
+    expect(critical).toHaveTextContent("Critical");
+    expect(abnormal).not.toHaveTextContent("Critical");
+    expect(critical.className).toContain("unifiedValueAccent--critical");
+    expect(abnormal.className).toContain("unifiedValueAccent--abnormal");
+
+    // The critical row also carries the row-level signal chip.
+    expect(screen.getByTestId("check-before-release-2")).toHaveTextContent(
+      "Critical",
+    );
+  });
+});
+
+describe("Validation — result value stays on one line", () => {
+  it("keeps a flagged scientific-notation value unbroken beside its flag", () => {
+    renderValidation([
+      row(0, {
+        result: "1.5 x 10^4",
+        normal: false,
+        critical: true,
+        resultFlag: "CRITICAL",
+      }),
+    ]);
+
+    const value = screen.getByTestId("validation-result-value-0");
+    expect(value).toHaveTextContent("1.5 x 10^4");
+    expect(value.style.whiteSpace).toBe("nowrap");
+    expect(value.querySelector('[data-testid^="flag-"]')).toBeNull();
+  });
+});
+
+describe("Validation — Check before release (OGC-1027)", () => {
+  it("renders a chip only for rows carrying a signal; a clean row is blank", () => {
+    renderValidation([row(0), row(1, { nceOpen: true, modified: true })]);
+
+    expect(screen.queryByTestId("check-before-release-0")).toBeNull();
+    const flagged = screen.getByTestId("check-before-release-1");
+    expect(flagged).toHaveTextContent("NCE open");
+    expect(flagged).toHaveTextContent("Modified");
+    expect(flagged).not.toHaveTextContent("Ack pending");
+  });
+
+  it("filter chips carry live counts computed over the whole queue", () => {
+    renderValidation([
+      row(0),
+      held(1, { nceOpen: true }),
+      held(2, { normal: false }),
+    ]);
+
+    expect(screen.getByTestId("triage-filter-all")).toHaveTextContent(
+      "All (3)",
+    );
+    expect(screen.getByTestId("triage-filter-needsReview")).toHaveTextContent(
+      "Needs review (2)",
+    );
+    expect(screen.getByTestId("triage-filter-nce")).toHaveTextContent(
+      "NCE (1)",
+    );
+    expect(screen.getByTestId("triage-filter-abnormal")).toHaveTextContent(
+      "Abnormal (1)",
+    );
+    expect(screen.getByTestId("validation-lane-summary")).toHaveTextContent(
+      "Clear: 1",
+    );
+    expect(screen.getByTestId("validation-lane-summary")).toHaveTextContent(
+      "Needs review: 2",
+    );
+  });
+
+  it("a filter narrows the visible rows but leaves the counts alone", () => {
+    renderValidation([row(0), row(1, { nceOpen: true })]);
+    expect(screen.getByText("ACC0")).toBeInTheDocument();
+    expect(screen.getByText("ACC1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("triage-filter-nce"));
+
+    expect(screen.queryByText("ACC0")).toBeNull();
+    expect(screen.getByText("ACC1")).toBeInTheDocument();
+    expect(screen.getByTestId("triage-filter-all")).toHaveTextContent(
+      "All (2)",
+    );
+    expect(screen.getByTestId("triage-filter-nce")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("expanding a row opens its review panel (OGC-1028)", () => {
+    renderValidation([
+      row(0, { methodName: "ICP-MS", analyzerName: "Leonardo" }),
+      row(1),
+    ]);
+    expect(screen.queryByTestId("validation-review-panel-0")).toBeNull();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /expand row/i })[0]);
+
+    const panel = screen.getByTestId("validation-review-panel-0");
+    expect(panel).toBeInTheDocument();
+    expect(panel).toHaveTextContent("ICP-MS");
+    expect(panel).toHaveTextContent("Leonardo");
+    expect(screen.queryByTestId("validation-review-panel-1")).toBeNull();
+  });
+
+  it("the queue has no Notes input of its own; the panel's note feeds the batch release (OGC-1028)", () => {
+    const results = { resultList: [row(0)], qcFailureList: [] };
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { AccessionFormat: "" } }}
+      >
+        <NotificationContext.Provider
+          value={{ setNotificationVisible: vi.fn(), addNotification: vi.fn() }}
+        >
+          <IntlProvider locale="en" messages={messages}>
+            <Validation params="" results={results} />
+          </IntlProvider>
+        </NotificationContext.Provider>
+      </ConfigurationContext.Provider>,
+    );
+    expect(screen.queryByRole("textbox")).toBeNull();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /expand row/i })[0]);
+    const composer = screen.getByLabelText("Validation note");
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+
+    fireEvent.change(composer, { target: { value: "Batch note" } });
+
+    expect(results.resultList[0].note).toBe("Batch note");
+    expect(results.resultList[0].noteVisibility).toBe("E");
+    expect(results.resultList[0].noteContext).toBe("VALIDATION");
+  });
+
+  it("'Release all clear' stays visible but disabled when the lab has bulk release turned off, and says so (OGC-1226 FR-14d)", () => {
+    renderValidation([row(0)]);
+    expect(screen.getByTestId("release-all-clear")).toBeDisabled();
+    expect(
+      screen.getByTestId("release-all-clear-why-bulkDisabled"),
+    ).toHaveTextContent("Bulk release is turned off");
+  });
+
+  it("'Release all clear (N)' counts the Clear lane and is disabled when it is empty (OGC-1029)", () => {
+    renderValidation(
+      [held(0, { nceOpen: true }), held(1, { normal: false })],
+      BULK_ON,
+    );
+    const button = screen.getByTestId("release-all-clear");
+    expect(button).toHaveTextContent("Release all clear (0)");
+    expect(button).toBeDisabled();
+  });
+
+  it("a disabled bulk button explains itself: rows with signals, most common named (OGC-1226 FR-14a)", () => {
+    renderValidation(
+      [
+        held(0, { nceOpen: true }),
+        held(1, { normal: false }),
+        held(2, { normal: false, modified: true }),
+      ],
+      BULK_ON,
+    );
+    const why = screen.getByTestId("release-all-clear-why-signals");
+    expect(why).toHaveTextContent(
+      "3 results in this queue carry something to check before release.",
+    );
+    expect(why).toHaveTextContent("Most common: Abnormal, NCE open, Modified.");
+    expect(
+      screen.queryByTestId("release-all-clear-why-noReference"),
+    ).toBeNull();
+  });
+
+  it("tests with no reference value in the catalogue are named apart, with the fix (OGC-1226 FR-14b, FR-15)", () => {
+    renderValidation(
+      [
+        held(0, { normalRange: "" }),
+        held(1, { normalRange: "" }),
+        held(2, { critical: true }),
+      ],
+      BULK_ON,
+    );
+    expect(
+      screen.getByTestId("release-all-clear-why-noReference"),
+    ).toHaveTextContent(
+      "2 results are for tests with no reference value recorded in the test catalogue, so they cannot be judged as normal. Record an expected normal value for these tests in the Test Catalogue to let their results clear.",
+    );
+    expect(
+      screen.getByTestId("release-all-clear-why-signals"),
+    ).toHaveTextContent(
+      "1 results in this queue carry something to check before release.",
+    );
+  });
+
+  it("an empty queue after a search keeps the disabled button and says nothing is waiting (OGC-1226 FR-14c)", () => {
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: BULK_ON }}
+      >
+        <NotificationContext.Provider
+          value={{ setNotificationVisible: vi.fn(), addNotification: vi.fn() }}
+        >
+          <IntlProvider locale="en" messages={messages}>
+            <Validation
+              params=""
+              results={{ resultList: [], qcFailureList: [], searched: true }}
+            />
+          </IntlProvider>
+        </NotificationContext.Provider>
+      </ConfigurationContext.Provider>,
+    );
+    expect(screen.getByTestId("release-all-clear")).toBeDisabled();
+    expect(
+      screen.getByTestId("release-all-clear-why-queueEmpty"),
+    ).toHaveTextContent("Nothing is waiting for validation.");
+  });
+
+  it("before any search there is no bulk button to explain", () => {
+    renderValidation([], BULK_ON);
+    expect(screen.queryByTestId("release-all-clear")).toBeNull();
+  });
+
+  it("the explanation disappears once something is clear, and the confirm dialog says what clearance checked (OGC-1226 FR-16)", () => {
+    renderValidation([row(0), held(1, { normal: false })], BULK_ON);
+    expect(screen.queryByTestId("release-all-clear-why")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("release-all-clear"));
+    expect(screen.getByTestId("release-all-clear-scope")).toHaveTextContent(
+      "It does not confirm that quality control was performed.",
+    );
+    expect(screen.getByTestId("release-all-clear-modal")).toHaveTextContent(
+      "no recorded QC failure",
+    );
+  });
+
+  it("the confirm dialog promises no e-signature when the site does not ask for one (OGC-1361)", async () => {
+    isEsigEnabled.mockResolvedValueOnce({ enabled: false });
+    renderValidation([row(0)], BULK_ON);
+
+    fireEvent.click(screen.getByTestId("release-all-clear"));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(isEsigEnabled).toHaveBeenCalled();
+    expect(screen.getByTestId("release-all-clear-body")).toHaveTextContent(
+      "This 1 result is in the Clear lane",
+    );
+    expect(screen.getByTestId("release-all-clear-body")).toHaveTextContent(
+      "A result that stops being clear before the release is skipped.",
+    );
+    expect(screen.queryByTestId("release-all-clear-esig")).toBeNull();
+    expect(screen.getByTestId("release-all-clear-modal")).not.toHaveTextContent(
+      "e-signature",
+    );
+  });
+
+  it("the confirm dialog names the one e-signature when the site asks for it (OGC-1361)", async () => {
+    isEsigEnabled.mockResolvedValueOnce({ enabled: true });
+    renderValidation([row(0)], BULK_ON);
+
+    fireEvent.click(screen.getByTestId("release-all-clear"));
+
+    expect(
+      await screen.findByTestId("release-all-clear-esig"),
+    ).toHaveTextContent("Releasing commits one e-signature for the whole set.");
+  });
+
+  it("the confirm list holds only Clear-lane rows and the signed release posts them with the page's search key (OGC-1029)", () => {
+    postToOpenElisServerJsonResponse.mockReset();
+    renderValidation(
+      [row(0), held(1, { nceOpen: true }), row(2)],
+      BULK_ON,
+      "?type=order&accessionNumber=ACC0",
+    );
+    const button = screen.getByTestId("release-all-clear");
+    expect(button).toHaveTextContent("Release all clear (2)");
+
+    fireEvent.click(button);
+    expect(screen.getByTestId("release-all-clear-row-0")).toBeInTheDocument();
+    expect(screen.getByTestId("release-all-clear-row-2")).toBeInTheDocument();
+    expect(screen.queryByTestId("release-all-clear-row-1")).toBeNull();
+
+    fireEvent.click(
+      screen.getByTestId("release-all-clear-sign").querySelector("button"),
+    );
+    const [url, body] = postToOpenElisServerJsonResponse.mock.calls[0];
+    expect(url).toBe("/rest/AccessionValidation/release-clear");
+    const payload = JSON.parse(body);
+    expect(payload.doRange).toBe(false);
+    expect(payload.accessionNumber).toBe("ACC0");
+    expect(payload.rows.map((r) => r.analysisId)).toEqual(["100", "102"]);
+    expect(payload.signatureId).toBeNull();
+  });
+
+  it("a bulk release carries the e-signature the validator gave (OGC-1364 v2)", () => {
+    postToOpenElisServerJsonResponse.mockReset();
+    globalThis.__nextSignature = { signatureId: 77 };
+    try {
+      renderValidation([row(0)], BULK_ON, "?type=order&accessionNumber=ACC0");
+      fireEvent.click(screen.getByTestId("release-all-clear"));
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+      const [, body] = postToOpenElisServerJsonResponse.mock.calls[0];
+      expect(JSON.parse(body).signatureId).toBe(77);
+    } finally {
+      globalThis.__nextSignature = undefined;
+    }
+  });
+
+  it("a bulk release that only validates part of a test says the test stays open (OGC-1608)", () => {
+    postToOpenElisServerJsonResponse.mockReset();
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>
+      callback({ released: [], accepted: ["100"], skipped: [] }),
+    );
+    const addNotification = vi.fn();
+    renderValidation(
+      [row(0)],
+      BULK_ON,
+      "?type=order&accessionNumber=ACC0",
+      addNotification,
+    );
+    fireEvent.click(screen.getByTestId("release-all-clear"));
+    fireEvent.click(
+      screen.getByTestId("release-all-clear-sign").querySelector("button"),
+    );
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "success",
+        message:
+          "1 result(s) validated on tests that stay open until their other components are resulted and validated.",
+      }),
+    );
+  });
+
+  it("a needs-review row offers 'Review →' which opens its panel (OGC-1029)", () => {
+    renderValidation([row(0), held(1, { normal: false })], BULK_ON);
+    expect(screen.queryByTestId("review-row-0")).toBeNull();
+    expect(screen.queryByTestId("validation-review-panel-1")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("review-row-1"));
+
+    expect(screen.getByTestId("validation-review-panel-1")).toBeInTheDocument();
+  });
+
+  it("the legacy per-row Validate/Retest checkboxes and batch button are gone (OGC-1030)", () => {
+    renderValidation([row(0)], BULK_ON);
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    expect(screen.queryByText(/^Validate$/)).toBeNull();
+  });
+
+  it("'Include auto-validated' fetches the accession's auto-validated rows into a read-only list (OGC-1030)", () => {
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/AccessionValidation/auto-validated")) {
+        callback([
+          {
+            analysisId: "900",
+            accessionNumber: "ACC0",
+            testName: "Auto Test(Serum)",
+            result: "7",
+            normalRange: "5 - 9",
+            resultDate: "01/09/2026",
+            autoValidated: true,
+          },
+        ]);
+      }
+    });
+    renderValidation([row(0)], BULK_ON, "?type=order&accessionNumber=ACC0");
+    expect(screen.queryByTestId("auto-validated-section")).toBeNull();
+    const toggle = screen.getByTestId("auto-validated-toggle");
+    expect(toggle).toHaveTextContent("Include auto-validated");
+
+    fireEvent.click(toggle.querySelector('[role="switch"], button, input'));
+
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/AccessionValidation/auto-validated?accessionNumber=ACC0",
+      expect.any(Function),
+    );
+    expect(screen.getByTestId("auto-validated-row-900")).toHaveTextContent(
+      "Auto Test(Serum)",
+    );
+    expect(screen.getByTestId("auto-validated-row-900")).toHaveTextContent(
+      "Auto-validated",
+    );
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+  });
+
+  it("'Include auto-validated' stays reachable when nothing on the accession awaits validation (OGC-1361)", () => {
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: BULK_ON }}
+      >
+        <NotificationContext.Provider
+          value={{ setNotificationVisible: vi.fn(), addNotification: vi.fn() }}
+        >
+          <IntlProvider locale="en" messages={messages}>
+            <Validation
+              params="?type=order&accessionNumber=ACC0"
+              results={{ resultList: [], qcFailureList: [], searched: true }}
+            />
+          </IntlProvider>
+        </NotificationContext.Provider>
+      </ConfigurationContext.Provider>,
+    );
+
+    expect(screen.getByTestId("auto-validated-toggle")).toHaveTextContent(
+      "Include auto-validated",
+    );
+  });
+
+  it("'Include auto-validated' is not offered before a search or for a non-accession search", () => {
+    renderValidation([], BULK_ON, "?type=order&accessionNumber=ACC0");
+    expect(screen.queryByTestId("auto-validated-toggle")).toBeNull();
+    renderValidation([row(0)], BULK_ON, "?type=testDate&testDate=01/09/2026");
+    expect(screen.queryByTestId("auto-validated-toggle")).toBeNull();
+  });
+
+  it("a patient result with no QC verdict sits in the Clear lane when the server says so (OGC-1226 FR-3)", () => {
+    renderValidation([row(0, { qcStatus: "UNKNOWN" })], BULK_ON);
+
+    expect(screen.queryByTestId("check-before-release-0")).toBeNull();
+    expect(screen.getByTestId("validation-lane-summary")).toHaveTextContent(
+      "Clear: 1",
+    );
+    expect(screen.getByTestId("release-all-clear")).toHaveTextContent(
+      "Release all clear (1)",
+    );
+  });
+
+  it("the page never derives a lane of its own: a chip-less row the server holds back stays in Needs-review (OGC-1226 FR-6)", () => {
+    renderValidation([held(0)], BULK_ON);
+
+    expect(screen.queryByTestId("check-before-release-0")).toBeNull();
+    expect(screen.getByTestId("validation-lane-summary")).toHaveTextContent(
+      "Clear: 0",
+    );
+    expect(screen.getByTestId("validation-lane-summary")).toHaveTextContent(
+      "Needs review: 1",
+    );
+  });
+});
+
+describe("Validation — sequential sign-off (OGC-1364 v2)", () => {
+  it("tags each row with its review level and offers Review where bulk release cannot help", () => {
+    renderValidation(
+      [
+        row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 }),
+        row(1, {
+          sequentialSignOff: true,
+          reviewLevels: 2,
+          reviewLevel: 2,
+          reviewRoleName: "Pathologist",
+          reviewBlockedReason: "roleRequired",
+        }),
+        row(2, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 2 }),
+        row(3),
+      ],
+      BULK_ON,
+    );
+
+    expect(screen.getByTestId("review-level-0")).toHaveTextContent(
+      "Level 1 of 2",
+    );
+    expect(screen.queryByTestId("review-level-3")).toBeNull();
+    expect(screen.getByTestId("review-row-0")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-row-2")).toBeNull();
+    expect(screen.getByTestId("release-all-clear")).toHaveTextContent(
+      "Release all clear (2)",
+    );
+
+    expect(screen.queryByTestId("review-level-1")).toBeNull();
+    const toggle = screen.getByRole("switch", {
+      name: "Show results waiting for others (1)",
+    });
+    fireEvent.click(toggle);
+    expect(screen.getByTestId("review-level-1")).toHaveTextContent(
+      "Level 2 of 2",
+    );
+    expect(screen.getByTestId("review-row-1")).toBeInTheDocument();
+  });
+
+  it("hides nothing and offers no switch while sequential sign-off is off", () => {
+    renderValidation(
+      [
+        row(0, {
+          reviewLevels: 1,
+          reviewLevel: 1,
+          selfValidationBlocked: true,
+        }),
+      ],
+      BULK_ON,
+    );
+    expect(screen.queryByTestId("show-waiting-toggle")).toBeNull();
+    expect(screen.getByText("1 item on this page")).toBeInTheDocument();
+  });
+
+  it("offers no waiting-for-others switch when nothing waits for others", () => {
+    renderValidation(
+      [
+        row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 }),
+        row(1),
+      ],
+      BULK_ON,
+    );
+    expect(screen.queryByTestId("show-waiting-toggle")).toBeNull();
+  });
+
+  it("signs level 1 of every clear row at an earlier level under one Reviewed signature", () => {
+    postToOpenElisServerJsonResponse.mockReset();
+    globalThis.__nextSignature = { signatureId: 91 };
+    try {
+      renderValidation(
+        [
+          row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 }),
+          row(1, { sequentialSignOff: true, reviewLevels: 3, reviewLevel: 1 }),
+          row(2, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 2 }),
+          row(3, {
+            reviewLevels: 2,
+            reviewLevel: 1,
+            clear: false,
+            normal: false,
+          }),
+        ],
+        BULK_ON,
+        "?type=order&accessionNumber=ACC0",
+      );
+      const open = screen.getByTestId("sign-all-clear");
+      expect(open).toHaveTextContent("Sign level 1 for all clear (2)");
+      expect(screen.getByTestId("release-all-clear")).toHaveTextContent(
+        "Release all clear (1)",
+      );
+      fireEvent.click(open);
+      expect(screen.getByTestId("release-all-clear-row-0")).toBeInTheDocument();
+      expect(screen.getByTestId("release-all-clear-row-1")).toBeInTheDocument();
+      expect(screen.queryByTestId("release-all-clear-row-2")).toBeNull();
+      const sign = screen
+        .getByTestId("release-all-clear-sign")
+        .querySelector("button");
+      expect(sign).toHaveAttribute("data-meaning", "REVIEWED");
+      fireEvent.click(sign);
+      const [url, body] = postToOpenElisServerJsonResponse.mock.calls[0];
+      expect(url).toBe("/rest/AccessionValidation/sign-clear");
+      const payload = JSON.parse(body);
+      expect(payload.rows.map((r) => r.analysisId)).toEqual(["100", "101"]);
+      expect(payload.signatureId).toBe(91);
+    } finally {
+      globalThis.__nextSignature = undefined;
+    }
+  });
+
+  it("names no single level when the clear rows are at different earlier levels", () => {
+    renderValidation(
+      [
+        row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 }),
+        row(1, { sequentialSignOff: true, reviewLevels: 3, reviewLevel: 2 }),
+      ],
+      BULK_ON,
+    );
+    expect(screen.getByTestId("sign-all-clear")).toHaveTextContent(
+      "Sign the next level for all clear (2)",
+    );
+  });
+
+  describe("when another validator got there first", () => {
+    const renderWithRefresh = (rows, refreshResults, addNotification) =>
+      render(
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: BULK_ON }}
+        >
+          <NotificationContext.Provider
+            value={{ setNotificationVisible: vi.fn(), addNotification }}
+          >
+            <IntlProvider locale="en" messages={messages}>
+              <Validation
+                params=""
+                refreshResults={refreshResults}
+                results={{ resultList: rows, qcFailureList: [] }}
+              />
+            </IntlProvider>
+          </NotificationContext.Provider>
+        </ConfigurationContext.Provider>,
+      );
+
+    const answerWith = (response) => {
+      postToOpenElisServerJsonResponse.mockReset();
+      postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+        cb(response),
+      );
+    };
+
+    it("titles the signing dialog for signing, and reloads the queue when every row went stale", () => {
+      answerWith({
+        signed: [],
+        skipped: [{ analysisId: "100", reason: "stale" }],
+      });
+      const refreshResults = vi.fn();
+      const addNotification = vi.fn();
+      renderWithRefresh(
+        [row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 })],
+        refreshResults,
+        addNotification,
+      );
+
+      fireEvent.click(screen.getByTestId("sign-all-clear"));
+      expect(
+        screen.getByText("Sign the next level for all clear results"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Release all clear results")).toBeNull();
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "The queue changed while you were reviewing. Reloading…",
+        }),
+      );
+      expect(refreshResults).toHaveBeenCalled();
+    });
+
+    it("says the bulk signing failed in signing words", () => {
+      answerWith({ error: "persistFailed" });
+      const addNotification = vi.fn();
+      renderWithRefresh(
+        [row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 })],
+        vi.fn(),
+        addNotification,
+      );
+
+      fireEvent.click(screen.getByTestId("sign-all-clear"));
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "The bulk signing could not be completed.",
+        }),
+      );
+    });
+
+    it("reloads the queue when every row of a bulk release went stale", () => {
+      answerWith({
+        released: [],
+        skipped: [{ analysisId: "100", reason: "stale" }],
+      });
+      const refreshResults = vi.fn();
+      renderWithRefresh([row(0)], refreshResults, vi.fn());
+
+      fireEvent.click(screen.getByTestId("release-all-clear"));
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+
+      expect(refreshResults).toHaveBeenCalled();
+    });
+  });
+
+  it("the release modal still signs Validated and Released", () => {
+    renderValidation(
+      [row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 2 })],
+      BULK_ON,
+    );
+    fireEvent.click(screen.getByTestId("release-all-clear"));
+    expect(
+      screen.getByTestId("release-all-clear-sign").querySelector("button"),
+    ).toHaveAttribute("data-meaning", "VALIDATED_AND_RELEASED");
+  });
+});

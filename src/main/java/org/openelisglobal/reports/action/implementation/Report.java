@@ -20,18 +20,28 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.sql.Date;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.text.ParseException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import net.sf.jasperreports.engine.JRDataSource;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JRParameter;
 import net.sf.jasperreports.engine.JasperRunManager;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.accreditation.dto.AccreditationReportData;
+import org.openelisglobal.accreditation.service.AccreditationReportService;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
@@ -42,6 +52,7 @@ import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.reports.action.implementation.reportBeans.ErrorMessages;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.valueholder.Test;
 import org.springframework.context.i18n.LocaleContextHolder;
 
 public abstract class Report implements IReportCreator {
@@ -59,6 +70,15 @@ public abstract class Report implements IReportCreator {
     protected String requestedReport;
     private String fullReportFilename;
     protected String systemUserId;
+
+    /** OGC-686: tests printed on this report that may be claimed as accredited. */
+    private final Set<String> accreditedCandidateTestIds = new HashSet<>();
+
+    /** OGC-686: latest release date among those tests; null before any is seen. */
+    private LocalDate accreditationReleaseDate;
+
+    private List<byte[]> accreditationLogos = new ArrayList<>();
+    private String accreditationNotesLine;
 
     @Override
     public void setRequestedReport(String report) {
@@ -119,13 +139,99 @@ public abstract class Report implements IReportCreator {
         reportParameters.put(JRParameter.REPORT_RESOURCE_BUNDLE, MessageUtil.getMessageSourceAsResourceBundle());
     }
 
+    /**
+     * OGC-686 — remember a test as claimable for accreditation.
+     *
+     * <p>
+     * Called once per analysis the report actually prints. Only validated in-house
+     * work counts: an unfinalized, cancelled or rejected analysis is not a result
+     * the lab is claiming, and a referred-out one was performed by another lab and
+     * so falls outside this lab's accredited scope.
+     *
+     * <p>
+     * The release dates accumulate here too, because the logo gate is evaluated as
+     * of the report's release date rather than the render date — a reprint after a
+     * body expires must reproduce the original PDF.
+     */
+    protected void recordAccreditationCandidate(Analysis analysis, Test test) {
+        if (analysis == null || test == null || GenericValidator.isBlankOrNull(test.getId())) {
+            return;
+        }
+        if (analysis.isReferredOut()) {
+            return;
+        }
+        AnalysisService analysisService = SpringContext.getBean(AnalysisService.class);
+        if (!SpringContext.getBean(IStatusService.class).matches(analysisService.getStatusId(analysis),
+                AnalysisStatus.Finalized)) {
+            return;
+        }
+        accreditedCandidateTestIds.add(test.getId());
+        Timestamp released = analysis.getReleasedDate();
+        if (released != null) {
+            LocalDate releaseDay = released.toLocalDateTime().toLocalDate();
+            if (accreditationReleaseDate == null || releaseDay.isAfter(accreditationReleaseDate)) {
+                accreditationReleaseDate = releaseDay;
+            }
+        }
+    }
+
+    /**
+     * OGC-686 — resolve the recorded tests into header parameters.
+     *
+     * <p>
+     * Must run after the report items are built (the test set is only complete
+     * then) and is a no-op when nothing qualifies, which leaves the template
+     * parameters null and prints exactly what pre-feature reports printed.
+     */
+    protected void addAccreditationParameters() {
+        if (reportParameters == null) {
+            createReportParameters();
+        }
+        AccreditationReportData accreditation = SpringContext.getBean(AccreditationReportService.class)
+                .resolve(accreditedCandidateTestIds, accreditationReleaseDate);
+        List<byte[]> logos = accreditation.getLogos();
+        accreditationLogos = logos;
+        accreditationNotesLine = accreditation.getNotesLine();
+        for (int slot = 0; slot < logos.size(); slot++) {
+            reportParameters.put("accredLogo" + (slot + 1), new ByteArrayInputStream(logos.get(slot)));
+        }
+        if (accreditation.getNotesLine() != null) {
+            reportParameters.put("accredNotesLine", accreditation.getNotesLine());
+        }
+    }
+
+    /** OGC-686 — the accreditation logos to print, empty when nothing qualifies. */
+    protected List<byte[]> getAccreditationLogos() {
+        return accreditationLogos;
+    }
+
+    /** OGC-686 — the accreditation notes line, or null. */
+    protected String getAccreditationNotesLine() {
+        return accreditationNotesLine;
+    }
+
     @Override
     public byte[] runReport() throws UnsupportedEncodingException, IOException, SQLException, IllegalStateException,
             JRException, ParseException {
+        return errorFound ? ReportErrorPdf.render(errorMsgs) : renderReport();
+    }
+
+    /**
+     * The report's PDF once its content is built. Reports still drawn by a Jasper
+     * template fill it with {@link #getReportDataSource()}.
+     */
+    protected byte[] renderReport() throws UnsupportedEncodingException, IOException, SQLException,
+            IllegalStateException, JRException, ParseException {
         return JasperRunManager.runReportToPdf(fullReportFilename, getReportParameters(), getReportDataSource());
     }
 
-    public abstract JRDataSource getReportDataSource() throws IllegalStateException;
+    /**
+     * Rows for the Jasper template; reports that override {@link #renderReport()}
+     * have none.
+     */
+    public JRDataSource getReportDataSource() throws IllegalStateException {
+        return null;
+    }
 
     @Override
     public HashMap<String, Object> getReportParameters() throws IllegalStateException {
@@ -304,5 +410,11 @@ public abstract class Report implements IReportCreator {
         return new ArrayList<>();
     }
 
-    protected abstract String reportFileName();
+    /**
+     * The Jasper template's name; reports that override {@link #renderReport()}
+     * have none.
+     */
+    protected String reportFileName() {
+        return null;
+    }
 }

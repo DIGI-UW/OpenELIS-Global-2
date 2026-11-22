@@ -17,6 +17,22 @@
         <delete tableName="panel_item" schemaName="clinlims">
             <where>test_id NOT IN (SELECT id FROM clinlims.test)</where>
         </delete>
+        <!--
+            Rolling this back is a no-op, declared rather than left to fail.
+
+            A delete has no inverse, so without this any rollback stops here with
+            "No inverse to DeleteDataChange created" and has to be unblocked by
+            hand. That is not an occasional collision: the changeset is
+            runAlways, so it re-executes on every start and is therefore always
+            among the most recently applied changesets, above whatever is
+            actually being rolled back. Every rollback on this product had to
+            pass it.
+
+            A no-op is also the truthful inverse. The rows this deletes are panel
+            items whose test no longer exists; restoring them would restore
+            broken references, and the next start would delete them again.
+        -->
+        <rollback />
     </changeSet>
 
 </databaseChangeLog>

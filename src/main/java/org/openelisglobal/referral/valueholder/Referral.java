@@ -45,9 +45,18 @@ public class Referral extends BaseObject<String> {
     private String priority;
     private Timestamp cancelDate;
     private String cancelReason;
+    private Boolean manuallyEntered = false;
+
+    // OGC-803/804 reception actions
+    private Boolean reconciled = false;
+    private Timestamp reconciledAt;
+    private String reconciledBy;
+    private String rejectReasonCode;
+    private String rejectReasonText;
 
     private ValueHolderInterface analysis = new ValueHolder();
     private ValueHolderInterface organization = new ValueHolder();
+    private ValueHolderInterface subcontract = new ValueHolder();
 
     @Override
     public String getId() {
@@ -123,8 +132,16 @@ public class Referral extends BaseObject<String> {
         this.organization.setValue(organization);
     }
 
+    public ReferralSubcontract getSubcontract() {
+        return (ReferralSubcontract) subcontract.getValue();
+    }
+
+    public void setSubcontract(ReferralSubcontract subcontract) {
+        this.subcontract.setValue(subcontract);
+    }
+
     public boolean isCanceled() {
-        return ReferralStatus.CANCELED.equals(status);
+        return ReferralStatus.CANCELLED.equals(status);
     }
 
     public void setRequestDate(Timestamp requestDate) {
@@ -236,6 +253,54 @@ public class Referral extends BaseObject<String> {
 
     public void setCancelReason(String cancelReason) {
         this.cancelReason = cancelReason;
+    }
+
+    public Boolean getManuallyEntered() {
+        return manuallyEntered;
+    }
+
+    public void setManuallyEntered(Boolean manuallyEntered) {
+        this.manuallyEntered = manuallyEntered;
+    }
+
+    public Boolean getReconciled() {
+        return reconciled;
+    }
+
+    public void setReconciled(Boolean reconciled) {
+        this.reconciled = reconciled;
+    }
+
+    public Timestamp getReconciledAt() {
+        return reconciledAt;
+    }
+
+    public void setReconciledAt(Timestamp reconciledAt) {
+        this.reconciledAt = reconciledAt;
+    }
+
+    public String getReconciledBy() {
+        return reconciledBy;
+    }
+
+    public void setReconciledBy(String reconciledBy) {
+        this.reconciledBy = reconciledBy;
+    }
+
+    public String getRejectReasonCode() {
+        return rejectReasonCode;
+    }
+
+    public void setRejectReasonCode(String rejectReasonCode) {
+        this.rejectReasonCode = rejectReasonCode;
+    }
+
+    public String getRejectReasonText() {
+        return rejectReasonText;
+    }
+
+    public void setRejectReasonText(String rejectReasonText) {
+        this.rejectReasonText = rejectReasonText;
     }
 
     public boolean isAssignedToBox() {

@@ -6,12 +6,12 @@ import java.util.Locale;
 import javax.validation.Valid;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.testconfiguration.form.UomCreateForm;
 import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -70,13 +70,13 @@ public class UomCreateRestController extends BaseController {
     }
 
     @PostMapping(value = "/UomCreate")
-    public UomCreateForm postUomCreate(HttpServletRequest request, @RequestBody @Valid UomCreateForm form,
+    public ResponseEntity<?> postUomCreate(HttpServletRequest request, @RequestBody @Valid UomCreateForm form,
             BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             setupDisplayItems(form);
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         String identifyingName = form.getUomEnglishName();
@@ -91,14 +91,14 @@ public class UomCreateRestController extends BaseController {
         try {
             unitOfMeasureService.insert(unitOfMeasure);
         } catch (LIMSRuntimeException e) {
-            LogEvent.logDebug(e);
+            return saveFailure(e);
         }
 
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.UNIT_OF_MEASURE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.UNIT_OF_MEASURE_INACTIVE);
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private UnitOfMeasure createUnitOfMeasure(String identifyingName, String userId) {

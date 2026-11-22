@@ -2,13 +2,14 @@ import React, { useContext, useEffect, useState } from "react";
 import { Button, Row, Stack } from "@carbon/react";
 import { Checkmark, CheckmarkFilled } from "@carbon/icons-react";
 import config from "../../config.json";
-import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
+import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { sampleObject } from "./Index";
 import { FormattedMessage, useIntl } from "react-intl";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
+import RangeNotAppliedWarning from "../order/RangeNotAppliedWarning";
 
 // Single Order print fallback for an order with no persisted label snapshot
 // (e.g. a no-test order: AddOrder only fetches the test-driven aggregation when
@@ -22,7 +23,13 @@ const buildOrderFallbackPrintUrl = (accessionNumber) =>
   `&type=order&quantity=1`;
 
 const OrderSuccessMessage = (props) => {
-  const { orderFormValues, setOrderFormValues, setSamples, setPage } = props;
+  const {
+    orderFormValues,
+    setOrderFormValues,
+    setSamples,
+    setPage,
+    saveResponse,
+  } = props;
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -134,7 +141,7 @@ const OrderSuccessMessage = (props) => {
   // belongs to this consumer (not the dialog) — the dialog is reused on case
   // views where there is no "done" semantic.
   const handleDone = () => {
-    setOrderFormValues(SampleOrderFormValues);
+    setOrderFormValues(createSampleOrderFormValues());
     setSamples([sampleObject]);
     setPage(0);
   };
@@ -166,13 +173,12 @@ const OrderSuccessMessage = (props) => {
     const providerFax = orderFormValues.sampleOrderItems.providerFax;
     const providerEmail = orderFormValues.sampleOrderItems.providerEmail;
 
-    setOrderFormValues(SampleOrderFormValues);
-
+    const freshValues = createSampleOrderFormValues();
     setOrderFormValues({
-      ...SampleOrderFormValues,
+      ...freshValues,
       rememberSiteAndRequester: true,
       sampleOrderItems: {
-        ...SampleOrderFormValues.sampleOrderItems,
+        ...freshValues.sampleOrderItems,
         referringSiteId: siteId,
         referringSiteName: siteName,
         providerId: providerId,
@@ -188,7 +194,7 @@ const OrderSuccessMessage = (props) => {
 
   useEffect(() => {
     if (!orderFormValues.rememberSiteAndRequester) {
-      setOrderFormValues(SampleOrderFormValues);
+      setOrderFormValues(createSampleOrderFormValues());
     }
     setSamples([sampleObject]);
   }, []);
@@ -206,6 +212,10 @@ const OrderSuccessMessage = (props) => {
             <FormattedMessage id="save.success" />
           </h4>
         </Stack>
+        <RangeNotAppliedWarning
+          tests={saveResponse?.rangeNotAppliedTests}
+          labNumber={accessionNumber}
+        />
         <div className="orderEntrySuccessPrintPanel">
           <PostSavePrintDialog
             accessionNumber={accessionNumber}

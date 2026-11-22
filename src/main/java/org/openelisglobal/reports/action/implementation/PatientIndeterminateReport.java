@@ -15,8 +15,7 @@ package org.openelisglobal.reports.action.implementation;
 
 import java.util.ArrayList;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -46,13 +45,23 @@ public abstract class PatientIndeterminateReport extends RetroCIPatientReport {
         return MessageUtil.getMessage("reports.label.patient.indeterminate");
     }
 
-    @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        if (!initialized) {
-            throw new IllegalStateException("initializeReport not called first");
-        }
+    /** The layouts the indeterminate results print in. */
+    protected enum Layout {
+        VERSION_ONE, VERSION_TWO, BY_LOCATION
+    }
 
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
+    protected Layout layout() {
+        return Layout.VERSION_ONE;
+    }
+
+    @Override
+    protected byte[] renderReport() {
+        String studyName = Objects.toString(reportParameters.get("studyName"), "");
+        return switch (layout()) {
+        case VERSION_ONE -> StudyIndeterminateResultsPdf.versionOne(reportItems, studyName);
+        case VERSION_TWO -> StudyIndeterminateResultsPdf.versionTwo(reportItems, studyName);
+        case BY_LOCATION -> StudyIndeterminateResultsPdf.byLocation(reportItems, studyName);
+        };
     }
 
     @Override
@@ -75,8 +84,8 @@ public abstract class PatientIndeterminateReport extends RetroCIPatientReport {
         data.setBirth_date(reportPatient.getBirthDateForDisplay());
         data.setAge(DateUtil.getCurrentAgeForDate(reportPatient.getBirthDate(), reportSample.getCollectionDate()));
         data.setGender(reportPatient.getGender());
-        data.setCollectiondate(
-                reportSample.getCollectionDateForDisplay() + " " + reportSample.getCollectionTimeForDisplay());
+        data.setCollectiondate(reportSample.getCollectionDate() == null ? null
+                : reportSample.getCollectionDateForDisplay() + " " + reportSample.getCollectionTimeForDisplay());
         data.setReceivedDate(reportSample.getReceivedDateForDisplay() + " " + reportSample.getReceivedTimeForDisplay());
 
         SampleOrganization sampleOrg = new SampleOrganization();

@@ -1,0 +1,205 @@
+package org.openelisglobal.fhir.service;
+
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import org.hl7.fhir.r4.model.DateTimeType;
+import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.Observation;
+import org.hl7.fhir.r4.model.Observation.ObservationStatus;
+import org.hl7.fhir.r4.model.Quantity;
+import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.ResourceType;
+import org.hl7.fhir.r4.model.StringType;
+import org.openelisglobal.analysis.service.AnalysisAnchor;
+import org.openelisglobal.analysis.service.AnalysisAnchorService;
+import org.openelisglobal.analysis.service.AnalysisServiceImpl;
+import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.audittrail.valueholder.History;
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.common.util.validator.GenericValidator;
+import org.openelisglobal.dataexchange.fhir.FhirConfig;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.history.service.HistoryService;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class ObservationTransformServiceImpl implements ObservationTransformService {
+
+    @Autowired
+    private FhirConfig fhirConfig;
+    @Autowired
+    private ResultService resultService;
+    @Autowired
+    private SampleHumanService sampleHumanService;
+    @Autowired
+    private DictionaryService dictionaryService;
+    @Autowired
+    private AnalysisAnchorService analysisAnchorService;
+    @Autowired
+    private IStatusService statusService;
+    @Autowired
+    private FhirCommonTransformService common;
+    @Autowired
+    private TerminologyTransformService terminologyTransformService;
+    @Autowired
+    private HistoryService historyService;
+    @Autowired
+    private SystemUserService systemUserService;
+
+    private static Quantity numericQuantity(String value) {
+        Quantity quantity = new Quantity();
+        String numericValue = value.trim();
+        for (String comparator : new String[] { "<=", ">=", "<", ">" }) {
+            if (numericValue.startsWith(comparator)) {
+                quantity.setComparator(Quantity.QuantityComparator.fromCode(comparator));
+                numericValue = numericValue.substring(comparator.length()).trim();
+                break;
+            }
+        }
+        quantity.setValue(new BigDecimal(StringUtil.normalizeScientificNotation(numericValue)));
+        return quantity;
+    }
+
+    @Override
+    public Observation transformResultToObservation(String resultId) {
+        return transformResultToObservation(resultService.get(resultId));
+    }
+
+    /**
+     * The person responsible for a released result is the one who validated it,
+     * never the ordering provider. No validator is stored on the result, so it is
+     * the user on the analysis's latest status change, read from the audit trail
+     * once the analysis is finalized. Users have no Practitioner resource, so the
+     * reference is by name.
+     */
+    private Reference validatorOf(Analysis analysis) {
+        if (analysis.getStatusId() == null
+                || !analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.Finalized))) {
+            return null;
+        }
+        try {
+            History finalization = null;
+            for (History row : historyService.getHistoryByRefIdAndRefTableId(analysis.getId(),
+                    AnalysisServiceImpl.getTableReferenceId())) {
+                if (row.getChanges() != null && row.getTimestamp() != null
+                        && new String(row.getChanges(), StandardCharsets.UTF_8).contains("<statusId>")
+                        && (finalization == null || row.getTimestamp().after(finalization.getTimestamp()))) {
+                    finalization = row;
+                }
+            }
+            SystemUser user = finalization == null ? null : systemUserService.getUserById(finalization.getSysUserId());
+            if (user == null) {
+                return null;
+            }
+            return new Reference().setDisplay(user.getNameForDisplay());
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "validatorOf",
+                    "could not read who validated analysis " + analysis.getId() + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    @Override
+    public Observation transformResultToObservation(Result result) {
+        LogEvent.logTrace(this.getClass().getSimpleName(), "transformResultToObservation",
+                "transformResultToObservation called");
+
+        Analysis analysis = result.getAnalysis();
+        Test test = analysis.getTest();
+        // Pool-anchored analyses have analysis.sampleItem == null; fall back to a
+        // representative pool member so the Specimen reference still resolves.
+        AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+        SampleItem sampleItem = analysis.getSampleItem() != null ? analysis.getSampleItem()
+                : (anchor != null ? anchor.getSampleItem() : null);
+        Sample sampleForResult = anchor != null ? anchor.getSample() : null;
+        Patient patient = sampleForResult != null ? sampleHumanService.getPatientForSample(sampleForResult) : null;
+        Observation observation = new Observation();
+
+        observation.setId(result.getFhirUuidAsString());
+        observation.getMeta().setLastUpdated(result.getLastupdated());
+        observation.addIdentifier(
+                common.createIdentifier(fhirConfig.getOeFhirSystem() + "/result_uuid", result.getFhirUuidAsString()));
+        Identifier facilityId = common.createFacilityIdentifier();
+        if (facilityId != null) {
+            observation.addIdentifier(facilityId);
+        }
+
+        // TODO make sure these align with each other.
+        // we may need to add detection for when result is changed and add those status
+        // to list
+        if (result.getAnalysis().getStatusId().equals(statusService.getStatusID(AnalysisStatus.Finalized))) {
+            observation.setStatus(ObservationStatus.FINAL);
+        } else if (result.getAnalysis().getStatusId().equals(statusService.getStatusID(AnalysisStatus.NotStarted))) {
+            LogEvent.logError(this.getClass().getSimpleName(), "transformResultToObservation",
+                    "recording result for analysis that is not started.");
+            observation.setStatus(ObservationStatus.UNKNOWN);
+        } else {
+            observation.setStatus(ObservationStatus.PRELIMINARY);
+        }
+
+        if (!GenericValidator.isBlankOrNull(result.getValue())) {
+            if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())
+                    && !"0".equals(result.getValue())) {
+                Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
+                observation.setValue(terminologyTransformService.transformAnswerToCodeableConcept(dictionary));
+            } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())
+                    && !"0".equals(result.getValue())) {
+                Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
+                observation.setValue(terminologyTransformService.transformAnswerToCodeableConcept(dictionary));
+            } else if (TypeOfTestResultServiceImpl.ResultType.isNumeric(result.getResultType())) {
+                Quantity quantity = numericQuantity(result.getValue());
+                quantity.setUnit(resultService.getUOM(result));
+                observation.setValue(quantity);
+            } else if (TypeOfTestResultServiceImpl.ResultType.isTextOnlyVariant(result.getResultType())) {
+                observation.setValue(new StringType(result.getValue()));
+            }
+        }
+        // Each result's Observation carries the whole-test codings PLUS, when it
+        // belongs to a component, that component's own codings — so a component
+        // Observation can bear more than one terminology (test + component), and the
+        // primary carries both too (OGC-1128/OGC-1129).
+        org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component = terminologyTransformService
+                .resolveResultComponent(test.getId(), result);
+        observation.setCode(terminologyTransformService.transformResultCodeableConcept(test, component,
+                sampleItem == null ? null : sampleItem.getTypeOfSampleId()));
+        observation.addBasedOn(common.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
+        if (sampleItem != null) {
+            observation.setSpecimen(common.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));
+        }
+        // OGC-356: Environmental samples don't have a patient
+        if (patient != null) {
+            observation.setSubject(common.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+        }
+        // observation.setIssued(result.getOriginalLastupdated());
+        observation.setIssued(analysis.getReleasedDate()); // update to get Released Date instead of commpleted date
+        // observation.setEffective(new
+        // DateTimeType(result.getLastupdated()));
+        if (analysis.getReleasedDate() != null) {
+            observation.setEffective(new DateTimeType(analysis.getReleasedDate()));
+        } else {
+            observation.setEffective(new DateTimeType(analysis.getStartedDate()));
+        }
+        // observation.setIssued(new Date());
+        Reference validator = validatorOf(analysis);
+        if (validator != null) {
+            observation.addPerformer(validator);
+        }
+
+        return observation;
+    }
+}

@@ -3,13 +3,14 @@ import { Checkbox } from "@carbon/react";
 import { jpSet } from "../../utils/JsonPath";
 import { useIntl } from "react-intl";
 
-export const updateMenuWithElementId = (newMenus, field, value) => {};
-
 export const MenuCheckBox = (props) => {
   const intl = useIntl();
 
   const setMenuIsActiveToValueIncludeChildren = (value, currentMenuItem) => {
-    let newCurrentMenuItem = { ...currentMenuItem };
+    let newCurrentMenuItem = {
+      ...currentMenuItem,
+      menu: { ...currentMenuItem.menu },
+    };
     if (newCurrentMenuItem.childMenus) {
       newCurrentMenuItem.childMenus = newCurrentMenuItem.childMenus.map(
         (childMenuItem) => {

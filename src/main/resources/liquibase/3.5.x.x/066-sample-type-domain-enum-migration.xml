@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-296 v2.1 Dependency 4: migrate the legacy one-character
+         TYPE_OF_SAMPLE.DOMAIN column to the single Clinical/Environmental/Vector
+         domain. Legacy codes map per D-030 (OGC-1145): H uman and N ewborn fold
+         into CLINICAL, E nvironmental becomes ENVIRONMENTAL, A nimal becomes
+         VECTOR; anything else backfills to CLINICAL, matching the OGC-936
+         test.domain backfill. A CLINICAL default makes the domain "required"
+         for any insert that omits it, while the column stays nullable so the
+         OGC-1145 legacy-safety contract (domainless sample types remain
+         offerable everywhere) is preserved. -->
+    <changeSet id="sample-type-domain-enum-migration" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims' AND table_name = 'type_of_sample'
+                AND column_name = 'domain' AND character_maximum_length &gt;= 20
+            </sqlCheck>
+        </preConditions>
+        <modifyDataType schemaName="clinlims" tableName="type_of_sample"
+            columnName="domain" newDataType="VARCHAR(20)"/>
+        <sql>
+            UPDATE clinlims.type_of_sample
+            SET domain = CASE UPPER(domain)
+                WHEN 'E' THEN 'ENVIRONMENTAL'
+                WHEN 'ENVIRONMENTAL' THEN 'ENVIRONMENTAL'
+                WHEN 'A' THEN 'VECTOR'
+                WHEN 'VECTOR' THEN 'VECTOR'
+                ELSE 'CLINICAL'
+            END
+            WHERE domain IS NOT NULL
+        </sql>
+        <addDefaultValue schemaName="clinlims" tableName="type_of_sample"
+            columnName="domain" columnDataType="VARCHAR(20)" defaultValue="CLINICAL"/>
+        <rollback>
+            <dropDefaultValue schemaName="clinlims" tableName="type_of_sample"
+                columnName="domain" columnDataType="VARCHAR(20)"/>
+            <sql>
+                UPDATE clinlims.type_of_sample
+                SET domain = CASE domain
+                    WHEN 'ENVIRONMENTAL' THEN 'E'
+                    WHEN 'VECTOR' THEN 'A'
+                    WHEN 'CLINICAL' THEN 'H'
+                    ELSE domain
+                END
+                WHERE domain IS NOT NULL
+            </sql>
+            <modifyDataType schemaName="clinlims" tableName="type_of_sample"
+                columnName="domain" newDataType="VARCHAR(1)"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

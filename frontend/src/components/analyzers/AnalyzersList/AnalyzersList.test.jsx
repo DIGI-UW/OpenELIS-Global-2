@@ -13,27 +13,20 @@
 // ========== MOCKS (BEFORE IMPORTS - Jest hoisting) ==========
 
 vi.mock("../../../services/analyzerService", () => ({
-  getAnalyzers: vi.fn(),
-  getAnalyzerTypes: vi.fn(),
-  getDefaultConfigs: vi.fn(),
-  getDefaultConfig: vi.fn(),
+  activateAnalyzer: vi.fn(),
+  changeAnalyzerUse: vi.fn(),
   createAnalyzer: vi.fn(),
+  deactivateAnalyzer: vi.fn(),
+  getAnalyzer: vi.fn(),
+  getAnalyzers: vi.fn(),
+  getAnalyzerDeliveryIssues: vi.fn(),
+  getBridgePairing: vi.fn(),
+  getAnalyzerLabUnits: vi.fn(),
+  getAnalyzerTypeCatalog: vi.fn(),
+  getAnalyzerTypeMapping: vi.fn(),
+  reactivateAnalyzer: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
-
-const mockHistory = {
-  push: vi.fn(),
-  replace: vi.fn(),
-};
-
-vi.mock("react-router-dom", async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    useHistory: () => mockHistory,
-    useLocation: () => ({ pathname: "/analyzers" }),
-  };
-});
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
 
@@ -41,12 +34,13 @@ vi.mock("react-router-dom", async (importOriginal) => {
 import React from "react";
 
 // 2. Testing Library (all utilities in one import)
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 
 // 3. userEvent (PREFERRED for user interactions)
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 
 // 5. IntlProvider (if component uses i18n)
 import { IntlProvider } from "react-intl";
@@ -59,11 +53,15 @@ import AnalyzersList from "./AnalyzersList";
 
 // 8. Utilities (import functions, not just for mocking)
 import {
+  activateAnalyzer,
+  changeAnalyzerUse,
+  deactivateAnalyzer,
+  getAnalyzer,
   getAnalyzers,
-  getAnalyzerTypes,
-  getDefaultConfigs,
-  getDefaultConfig,
-  createAnalyzer,
+  getAnalyzerDeliveryIssues,
+  getAnalyzerLabUnits,
+  getAnalyzerTypeCatalog,
+  reactivateAnalyzer,
 } from "../../../services/analyzerService";
 
 // 9. Messages/translations
@@ -72,10 +70,14 @@ import messages from "../../../languages/en.json";
 // ========== TEST SETUP ==========
 
 // Standard render helper with IntlProvider
-const renderWithIntl = (component) => {
+const renderWithIntl = (
+  component,
+  localeMessages = messages,
+  locale = "en",
+) => {
   return render(
     <BrowserRouter>
-      <IntlProvider locale="en" messages={messages}>
+      <IntlProvider locale={locale} messages={localeMessages}>
         {component}
       </IntlProvider>
     </BrowserRouter>,
@@ -87,12 +89,15 @@ const createMockAnalyzer = (overrides = {}) => ({
   id: "1",
   name: "Test Analyzer",
   analyzerType: "CHEMISTRY",
-  ipAddress: "192.168.1.100",
-  port: 5000,
+  profileId: "site.synthetic-analyzer",
+  profileRevision: 1,
+  bridgeConnectionId: "bridge-1",
+  connected: true,
   testUnitIds: ["1", "2"],
   active: true,
   lastModified: "2025-01-27T10:00:00Z",
   lifecycleStage: "SETUP",
+  heldResultCount: 0,
   ...overrides,
 });
 
@@ -100,38 +105,304 @@ describe("AnalyzersList", () => {
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks();
-    mockHistory.push.mockClear();
-    mockHistory.replace.mockClear();
-
-    // Default mock implementations for AnalyzerForm dependencies
-    getAnalyzerTypes.mockImplementation((filters, callback) => {
-      callback([
-        {
-          id: "1",
-          name: "Generic ASTM",
-          protocol: "ASTM",
-          isGenericPlugin: true,
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
+      bottom: 40,
+      height: 40,
+      left: 0,
+      right: 160,
+      top: 0,
+      width: 160,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    window.history.replaceState({}, "", "/analyzers");
+    getAnalyzer.mockImplementation(() => undefined);
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        schemaVersion: "1.0",
+        catalogFingerprint: `sha256:${"a".repeat(64)}`,
+        summary: {
+          total: 0,
+          inUse: 0,
+          needsAttention: 0,
+          deactivated: 0,
         },
-        {
-          id: "2",
-          name: "Generic HL7",
-          protocol: "HL7",
-          isGenericPlugin: true,
-        },
-      ]);
-    });
+        types: [],
+      }),
+    );
+    getAnalyzerLabUnits.mockImplementation((callback) => callback([]));
+  });
 
-    getDefaultConfigs.mockImplementation((callback) => {
-      callback([]);
-    });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
-    getDefaultConfig.mockImplementation((protocol, name, callback) => {
-      callback({ error: "Not found" });
+  test("a stored Active row does not claim reception before Bridge evidence arrives", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({
+        analyzers: [createMockAnalyzer({ status: "ACTIVE" })],
+      }),
+    );
+    let respond;
+    getAnalyzer.mockImplementation((_id, callback) => {
+      respond = callback;
     });
+    renderWithIntl(<AnalyzersList />);
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+      "Checking connection",
+    );
+    expect(screen.getByTestId("stat-active")).toHaveTextContent("0");
+    await act(async () =>
+      respond(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(/^Active$/);
+    expect(screen.getByTestId("analyzer-connection-1")).toHaveTextContent(
+      "Bridge reception active",
+    );
+    expect(screen.getByTestId("stat-active")).toHaveTextContent("1");
+  });
 
-    createAnalyzer.mockImplementation((data, callback) => {
-      callback({ id: "new-id", ...data });
+  test.each([
+    undefined,
+    {
+      connected: false,
+      connectionErrorKey: "analyzer.bridge.connection.httpStatus",
+    },
+  ])(
+    "unreachable or lost Bridge connection cannot leave a green Active badge: %j",
+    async (detail) => {
+      getAnalyzers.mockImplementation((_filters, callback) =>
+        callback({
+          analyzers: [createMockAnalyzer({ status: "ACTIVE" })],
+        }),
+      );
+      getAnalyzer.mockImplementation((_id, callback) => callback(detail));
+      renderWithIntl(<AnalyzersList />);
+      expect(await screen.findByTestId("status-badge-1")).toHaveTextContent(
+        detail ? "Connection unavailable" : "Could not check connection",
+      );
+      expect(screen.getByTestId("stat-active")).toHaveTextContent("0");
+      expect(screen.getByTestId("stat-needs-attention")).toHaveTextContent("1");
+      await userEvent.click(screen.getByTestId("analyzer-row-overflow-1"));
+      expect(
+        await screen.findByRole("menuitem", { name: "Configure connection" }),
+      ).toBeVisible();
+    },
+  );
+
+  test("hidden tabs pause polling and repeated focus events respect the refresh interval", async () => {
+    vi.useFakeTimers();
+    let hidden = false;
+    vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({ analyzers: [createMockAnalyzer({ status: "ACTIVE" })] }),
+    );
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    await act(async () => renderWithIntl(<AnalyzersList />));
+    expect(getAnalyzer).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      window.dispatchEvent(new Event("focus"));
+      await vi.advanceTimersByTimeAsync(10_000);
     });
+    expect(getAnalyzer).toHaveBeenCalledTimes(1);
+    hidden = true;
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      await vi.advanceTimersByTimeAsync(90_000);
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(getAnalyzer).toHaveBeenCalledTimes(1);
+    hidden = false;
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(getAnalyzer).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(getAnalyzer).toHaveBeenCalledTimes(3);
+  });
+
+  test("list refresh preserves observations but a replacement connection must be checked", async () => {
+    let reload;
+    const analyzer = createMockAnalyzer({ status: "ACTIVE" });
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      reload = callback;
+      callback({ analyzers: [analyzer] });
+    });
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    await act(async () => renderWithIntl(<AnalyzersList />));
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(/^Active$/);
+    getAnalyzer.mockImplementation(() => undefined);
+    await act(async () => reload({ analyzers: [{ ...analyzer }] }));
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(/^Active$/);
+    expect(getAnalyzer).toHaveBeenCalledTimes(1);
+    await act(async () =>
+      reload({
+        analyzers: [{ ...analyzer, bridgeConnectionId: "replacement" }],
+      }),
+    );
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+      "Checking connection",
+    );
+    expect(getAnalyzer).toHaveBeenCalledTimes(2);
+  });
+
+  test("a stopped Bridge runtime offers reactivation even when the saved lifecycle is Active", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({
+        analyzers: [createMockAnalyzer({ status: "ACTIVE" })],
+      }),
+    );
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "INACTIVE",
+          },
+        }),
+      ),
+    );
+    renderWithIntl(<AnalyzersList />);
+    expect(await screen.findByTestId("status-badge-1")).toHaveTextContent(
+      "Reception stopped",
+    );
+    await userEvent.click(screen.getByTestId("analyzer-row-overflow-1"));
+    expect(
+      await screen.findByTestId("analyzer-action-reactivate-1"),
+    ).toBeVisible();
+  });
+
+  test("reactivation refreshes a stopped observation immediately despite unchanged connection IDs", async () => {
+    const analyzer = createMockAnalyzer({ status: "ACTIVE" });
+    let runtime = "INACTIVE";
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({ analyzers: [{ ...analyzer }] }),
+    );
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        ...analyzer,
+        connection: { readiness: { ready: true }, actualRuntimeState: runtime },
+      }),
+    );
+    reactivateAnalyzer.mockImplementation((_id, callback) => {
+      runtime = "ACTIVE";
+      callback({ analyzerId: analyzer.id, activated: true });
+    });
+    renderWithIntl(<AnalyzersList />);
+    expect(await screen.findByTestId("status-badge-1")).toHaveTextContent(
+      "Reception stopped",
+    );
+    await userEvent.click(screen.getByTestId("analyzer-row-overflow-1"));
+    await userEvent.click(
+      await screen.findByTestId("analyzer-action-reactivate-1"),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", {
+        name: "Reactivate analyzer",
+        exact: true,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+        /^Active$/,
+      ),
+    );
+    expect(screen.getByTestId("stat-active")).toHaveTextContent("1");
+    expect(screen.getByTestId("stat-needs-attention")).toHaveTextContent("0");
+  });
+
+  test("periodic checks reveal Bridge loss and recovery without reloading the list", async () => {
+    vi.useFakeTimers();
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({
+        analyzers: [createMockAnalyzer({ status: "ACTIVE" })],
+      }),
+    );
+    let detail = createMockAnalyzer({
+      connection: { readiness: { ready: true }, actualRuntimeState: "ACTIVE" },
+    });
+    getAnalyzer.mockImplementation((_id, callback) => callback(detail));
+    await act(async () => renderWithIntl(<AnalyzersList />));
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(/^Active$/);
+    detail = undefined;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+      "Could not check connection",
+    );
+    detail = createMockAnalyzer({
+      connection: { readiness: { ready: true }, actualRuntimeState: "ACTIVE" },
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(/^Active$/);
+  });
+
+  test("a hung lookup expires and cannot overwrite the warning with a late response", async () => {
+    vi.useFakeTimers();
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({
+        analyzers: [createMockAnalyzer({ status: "ACTIVE" })],
+      }),
+    );
+    let respond;
+    getAnalyzer.mockImplementation((_id, callback) => {
+      respond = callback;
+    });
+    await act(async () => renderWithIntl(<AnalyzersList />));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+      "Could not check connection",
+    );
+    await act(async () =>
+      respond(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+      "Could not check connection",
+    );
   });
 
   /**
@@ -186,6 +457,746 @@ describe("AnalyzersList", () => {
     expect(name2).not.toBeNull();
     expect(name1.textContent).toContain("Hematology Analyzer 1");
     expect(name2.textContent).toContain("Chemistry Analyzer 1");
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Analyzers" }),
+    ).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute(
+      "href",
+      "/",
+    );
+    for (const name of ["Hematology Analyzer 1", "Chemistry Analyzer 1"]) {
+      expect(
+        within(screen.getByRole("row", { name: new RegExp(name) })).getByRole(
+          "button",
+          { name: "Actions" },
+        ),
+      ).toBeVisible();
+    }
+  });
+
+  test("positions row actions inside the viewport", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer()] });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(await screen.findByTestId("analyzer-row-overflow-1"));
+
+    expect(
+      document.querySelector(".cds--overflow-menu--flip"),
+    ).toBeInTheDocument();
+  });
+
+  test("does not expose the superseded analyzer QC rule editor", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer()] });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(await screen.findByTestId("analyzer-row-overflow-1"));
+
+    expect(
+      screen.queryByTestId("analyzer-action-qc-rules-1"),
+    ).not.toBeInTheDocument();
+  });
+
+  test("does not expose per-analyzer mapping or copy actions", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer()] });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(await screen.findByTestId("analyzer-row-overflow-1"));
+
+    expect(
+      screen.queryByTestId("analyzer-action-mappings-1"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-action-copy-mappings-1"),
+    ).not.toBeInTheDocument();
+  });
+
+  test("refreshes the analyzer dashboard when inline setup closes", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [createMockAnalyzer()] }));
+    });
+
+    renderWithIntl(<AnalyzersList />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Add Analyzer" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close analyzer setup" }),
+    );
+
+    await waitFor(() => expect(getAnalyzers).toHaveBeenCalledTimes(2));
+    expect(window.location.pathname).toBe("/analyzers");
+    expect(new URLSearchParams(window.location.search).get("setup")).toBeNull();
+  });
+
+  test("deactivates an active analyzer without exposing hard delete", async () => {
+    window.history.replaceState({}, "", "/analyzers?search=gene&status=ACTIVE");
+    const analyzer = createMockAnalyzer({
+      id: "42",
+      name: "GeneXpert Lab 1",
+      status: "ACTIVE",
+    });
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [analyzer] }));
+    });
+    deactivateAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "INACTIVE",
+        deactivated: true,
+        failure: null,
+      }),
+    );
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    expect(screen.queryByRole("menuitem", { name: "Delete" })).toBeNull();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Deactivate" }));
+
+    let params = new URLSearchParams(window.location.search);
+    expect(params.get("search")).toBe("gene");
+    expect(params.get("status")).toBe("ACTIVE");
+    expect(params.get("lifecycle")).toBe("deactivate");
+    expect(params.get("lifecycleAnalyzerId")).toBe("42");
+    expect(
+      screen.getByRole("heading", { name: "Deactivate analyzer" }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/configuration and history will be retained/i),
+    ).toBeVisible();
+    expect(screen.getByText(/Deactivate GeneXpert Lab 1\?/)).toBeVisible();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Deactivate analyzer$/ }),
+    );
+
+    expect(deactivateAnalyzer).toHaveBeenCalledWith("42", expect.any(Function));
+    await waitFor(() => expect(getAnalyzers).toHaveBeenCalledTimes(2));
+    params = new URLSearchParams(window.location.search);
+    expect(params.get("lifecycle")).toBeNull();
+    expect(params.get("lifecycleAnalyzerId")).toBeNull();
+    expect(params.get("search")).toBe("gene");
+    expect(params.get("status")).toBe("ACTIVE");
+  });
+
+  test("keeps the deactivation dialog open when a pending search updates the URL", () => {
+    const analyzer = createMockAnalyzer({
+      id: "42",
+      name: "GeneXpert Lab 1",
+      status: "ACTIVE",
+    });
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [analyzer] }));
+    });
+
+    vi.useFakeTimers();
+    try {
+      renderWithIntl(<AnalyzersList />);
+      fireEvent.change(screen.getByTestId("analyzer-search-input"), {
+        target: { value: "GeneXpert" },
+      });
+      fireEvent.click(screen.getByTestId("analyzer-row-overflow-42"));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Deactivate" }));
+      expect(
+        screen.getByRole("heading", { name: "Deactivate analyzer" }),
+      ).toBeVisible();
+
+      act(() => {
+        vi.runOnlyPendingTimers();
+      });
+      expect(new URLSearchParams(window.location.search).get("search")).toBe(
+        "GeneXpert",
+      );
+      expect(new URLSearchParams(window.location.search).get("lifecycle")).toBe(
+        "deactivate",
+      );
+      expect(
+        screen.getByRole("heading", { name: "Deactivate analyzer" }),
+      ).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("keeps lifecycle evidence visible while a request is in flight", async () => {
+    const analyzer = createMockAnalyzer({ id: "42", status: "ACTIVE" });
+    let finishDeactivation;
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [analyzer] }));
+    });
+    deactivateAnalyzer.mockImplementation((_id, callback) => {
+      finishDeactivation = callback;
+    });
+
+    renderWithIntl(<AnalyzersList />);
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    await userEvent.click(screen.getByRole("menuitem", { name: "Deactivate" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Deactivate analyzer$/ }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Cancel deactivation" }),
+    ).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(
+      screen.getByRole("heading", { name: "Deactivate analyzer" }),
+    ).toBeVisible();
+    expect(new URLSearchParams(window.location.search).get("lifecycle")).toBe(
+      "deactivate",
+    );
+
+    act(() => {
+      finishDeactivation({
+        analyzerId: "42",
+        status: "INACTIVE",
+        deactivated: true,
+      });
+    });
+    expect(
+      screen.queryByRole("heading", { name: "Deactivate analyzer" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("reactivates an inactive analyzer through the exact activation boundary", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers?search=gene&lifecycle=reactivate&lifecycleAnalyzerId=42",
+    );
+    const analyzer = createMockAnalyzer({
+      id: "42",
+      name: "GeneXpert Lab 1",
+      status: "INACTIVE",
+    });
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [analyzer] }));
+    });
+    reactivateAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "INACTIVE",
+        ready: false,
+        activated: false,
+        blockers: [{ code: "analyzer.activation.blocker.mappings" }],
+        statusCode: 422,
+      }),
+    );
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Reactivate analyzer" }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/setup will be checked again before it can be used/i),
+    ).toBeVisible();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Reactivate analyzer" }),
+    );
+
+    expect(reactivateAnalyzer).toHaveBeenCalledWith("42", expect.any(Function));
+    expect(
+      await screen.findByText("Analyzer mappings must be verified again."),
+    ).toBeVisible();
+    expect(getAnalyzers).toHaveBeenCalledTimes(1);
+    expect(new URLSearchParams(window.location.search).get("lifecycle")).toBe(
+      "reactivate",
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Cancel reactivation" }),
+    );
+    expect(
+      new URLSearchParams(window.location.search).get("lifecycle"),
+    ).toBeNull();
+  });
+
+  test("offers reactivation from error and offline states", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() =>
+        callback({
+          analyzers: [
+            createMockAnalyzer({ id: "41", status: "ERROR_PENDING" }),
+            createMockAnalyzer({ id: "42", status: "OFFLINE" }),
+          ],
+        }),
+      );
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-41"),
+    );
+    expect(screen.getByRole("menuitem", { name: "Reactivate" })).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Deactivate" })).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByTestId("analyzer-row-overflow-42"));
+    expect(screen.getByRole("menuitem", { name: "Reactivate" })).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Deactivate" })).toBeVisible();
+  });
+
+  test("retires an inactive analyzer and lists it again only when retired analyzers are shown", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() =>
+        callback({
+          analyzers: [createMockAnalyzer({ id: "44", status: "INACTIVE" })],
+        }),
+      );
+    });
+    changeAnalyzerUse.mockImplementation((_id, _action, callback) =>
+      callback({ changed: true }),
+    );
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-44"),
+    );
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toBeVisible();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Retire" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Retire analyzer$/ }),
+    );
+
+    expect(changeAnalyzerUse).toHaveBeenCalledWith(
+      "44",
+      "retire",
+      expect.any(Function),
+    );
+    await waitFor(() => expect(getAnalyzers).toHaveBeenCalledTimes(2));
+    expect(getAnalyzers.mock.calls[1][0].includeRetired).toBe(false);
+
+    await userEvent.click(screen.getByLabelText("Show retired analyzers"));
+
+    await waitFor(() =>
+      expect(getAnalyzers.mock.lastCall[0].includeRetired).toBe(true),
+    );
+    expect(
+      new URLSearchParams(window.location.search).get("includeRetired"),
+    ).toBe("true");
+  });
+
+  test("offers Restore and Delete, not Activate, for a retired analyzer", async () => {
+    window.history.replaceState({}, "", "/analyzers?includeRetired=true");
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() =>
+        callback({
+          analyzers: [createMockAnalyzer({ id: "45", status: "RETIRED" })],
+        }),
+      );
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-45"),
+    );
+    expect(getAnalyzers.mock.calls[0][0].includeRetired).toBe(true);
+    expect(screen.getByLabelText("Show retired analyzers")).toBeChecked();
+    expect(screen.getByRole("menuitem", { name: "Restore" })).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toBeVisible();
+    expect(
+      screen.queryByRole("menuitem", { name: "Activate" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Retire" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("offers Activate, not Deactivate, for an analyzer still being set up", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() =>
+        callback({
+          analyzers: [createMockAnalyzer({ id: "43", status: "SETUP" })],
+        }),
+      );
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-43"),
+    );
+    expect(screen.getByRole("menuitem", { name: "Activate" })).toBeVisible();
+    expect(
+      screen.queryByRole("menuitem", { name: "Deactivate" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("activates an analyzer from setup and lists what blocks it", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers?lifecycle=activate&lifecycleAnalyzerId=43",
+    );
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() =>
+        callback({
+          analyzers: [
+            createMockAnalyzer({
+              id: "43",
+              name: "GeneXpert Lab 2",
+              status: "SETUP",
+            }),
+          ],
+        }),
+      );
+    });
+    activateAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "43",
+        status: "SETUP",
+        ready: false,
+        activated: false,
+        blockers: [{ code: "analyzer.activation.blocker.mappings" }],
+        statusCode: 422,
+      }),
+    );
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Activate analyzer" }),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Activate analyzer" }),
+    );
+
+    expect(activateAnalyzer).toHaveBeenCalledWith("43", expect.any(Function));
+    expect(reactivateAnalyzer).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("Analyzer mappings must be verified again."),
+    ).toBeVisible();
+  });
+
+  test("opens an existing analyzer in linkable inline Instrument setup", async () => {
+    window.history.replaceState({}, "", "/analyzers?search=gene");
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({
+          analyzers: [
+            createMockAnalyzer({
+              id: "42",
+              profileId: "shipped.genexpert-astm",
+              profileRevision: 3,
+            }),
+          ],
+        });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit setup" }),
+    );
+
+    const params = new URLSearchParams(window.location.search);
+    expect(window.location.pathname).toBe("/analyzers");
+    expect(params.get("search")).toBe("gene");
+    expect(params.get("setup")).toBe("instrument");
+    expect(params.get("analyzerId")).toBe("42");
+    expect(params.get("profile")).toBe("shipped.genexpert-astm");
+    expect(params.get("revision")).toBe("3");
+  });
+
+  test("opens connection settings through the same linkable inline setup", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({
+          analyzers: [
+            createMockAnalyzer({
+              id: "42",
+              profileId: "shipped.genexpert-astm",
+              profileRevision: 3,
+            }),
+          ],
+        });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Configure connection" }),
+    );
+
+    const params = new URLSearchParams(window.location.search);
+    expect(window.location.pathname).toBe("/analyzers");
+    expect(params.get("setup")).toBe("connect");
+    expect(params.get("analyzerId")).toBe("42");
+    expect(params.get("profile")).toBe("shipped.genexpert-astm");
+    expect(params.get("revision")).toBe("3");
+    expect(
+      screen.queryByRole("menuitem", { name: "Test connection" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("opens the canonical Quality Control workflow with analyzer context and an exact return path", async () => {
+    window.history.replaceState({}, "", "/analyzers?search=gene&status=ACTIVE");
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer({ id: "42" })] });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Quality Control" }),
+    );
+
+    const params = new URLSearchParams(window.location.search);
+    expect(window.location.pathname).toBe("/analyzers/qc/instruments/42");
+    expect(params.get("returnTo")).toBe("/analyzers?search=gene&status=ACTIVE");
+  });
+
+  test("keeps the QC action available during a delayed search refresh", async () => {
+    getAnalyzers.mockImplementationOnce((_filters, callback) =>
+      callback({ analyzers: [createMockAnalyzer({ id: "42" })] }),
+    );
+    let completeSearch;
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      completeSearch = callback;
+    });
+    renderWithIntl(<AnalyzersList />);
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    act(() => {
+      window.history.pushState({}, "", "/analyzers?search=Test");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await waitFor(() => expect(completeSearch).toBeDefined());
+    expect(
+      screen.getByRole("menuitem", { name: "Quality Control" }),
+    ).toBeVisible();
+    act(() =>
+      completeSearch({ analyzers: [createMockAnalyzer({ id: "42" })] }),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Quality Control" }),
+    );
+    expect(window.location.pathname).toBe("/analyzers/qc/instruments/42");
+  });
+
+  test("opens the canonical analyzer result review from the analyzer dashboard", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer({ id: "42" })] });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "View results" }),
+    );
+
+    expect(window.location.pathname).toBe("/AnalyzerResults");
+    expect(new URLSearchParams(window.location.search).get("id")).toBe("42");
+  });
+
+  test("renders assigned lab-unit labels from the shared catalog", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({ analyzers: [createMockAnalyzer()] });
+      });
+    });
+    getAnalyzerLabUnits.mockImplementation((callback) =>
+      callback([
+        { id: "1", name: "Molecular Biology" },
+        { id: "2", name: "Hematology" },
+      ]),
+    );
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(await screen.findByTestId("analyzer-lab-units-1")).toHaveTextContent(
+      "Molecular Biology, Hematology",
+    );
+  });
+
+  test("surfaces held result attention and opens the affected analyzer results", async () => {
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => {
+        callback({
+          analyzers: [
+            createMockAnalyzer({
+              id: "1",
+              name: "GeneXpert bench 1",
+              status: "SETUP",
+              heldResultCount: 2,
+            }),
+            createMockAnalyzer({ id: "2", status: "VALIDATION" }),
+            createMockAnalyzer({ id: "3", status: "ACTIVE" }),
+            createMockAnalyzer({ id: "4", status: "INACTIVE" }),
+          ],
+        });
+      });
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(await screen.findByTestId("stat-total")).toHaveTextContent("4");
+    expect(screen.getByTestId("stat-active")).toHaveTextContent("1");
+    expect(screen.getByTestId("stat-setup")).toHaveTextContent("2");
+    expect(screen.getByTestId("stat-needs-attention")).toHaveTextContent("1");
+    expect(screen.getByTestId("held-results-attention")).toHaveTextContent(
+      "GeneXpert bench 1",
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByTestId("held-results-tag-1")).toHaveTextContent(
+      "Needs attention",
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Review held results" }),
+    );
+
+    expect(window.location.pathname).toBe("/AnalyzerResults");
+    expect(new URLSearchParams(window.location.search).get("id")).toBe("1");
+  });
+
+  test("surfaces results the Bridge could not deliver and opens them for review", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [createMockAnalyzer()] }));
+    });
+    getAnalyzerDeliveryIssues.mockImplementation((callback) => {
+      act(() =>
+        callback({
+          status: "success",
+          data: {
+            count: 3,
+            rows: [
+              { id: "recv-v1:a", state: "DMQ", actionable: true },
+              { id: "recv-v1:b", state: "DMQ", actionable: true },
+              { id: "recv-v1:c", state: "RETRYING", actionable: false },
+            ],
+          },
+        }),
+      );
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(
+      await screen.findByTestId("delivery-issues-attention"),
+    ).toHaveTextContent("3 analyzer results were not delivered");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Review undelivered results" }),
+    );
+
+    expect(window.location.pathname).toBe("/AnalyzerResults");
+    expect(new URLSearchParams(window.location.search).get("view")).toBe(
+      "import-issues",
+    );
+  });
+
+  test("shows no delivery banner when the Bridge holds nothing or cannot be reached", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [createMockAnalyzer()] }));
+    });
+    getAnalyzerDeliveryIssues.mockImplementation((callback) => {
+      act(() => callback(undefined));
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await screen.findByTestId("analyzers-table");
+    expect(
+      screen.queryByTestId("delivery-issues-attention"),
+    ).not.toBeInTheDocument();
+  });
+
+  test("uses the concise lab-facing analyzer columns in their review order", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [createMockAnalyzer()] }));
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await screen.findByTestId("analyzers-table");
+    const visibleHeaders = screen
+      .getAllByRole("columnheader")
+      .map(
+        (header) =>
+          header.querySelector(".cds--table-header-label")?.textContent,
+      );
+
+    expect(visibleHeaders).toEqual([
+      "Name",
+      "Connection",
+      "Lab Units",
+      "Analyzer type",
+      "Status",
+      "Actions",
+    ]);
+  });
+
+  test("shows a visible loading state until the analyzer list resolves", async () => {
+    let resolveAnalyzers;
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      resolveAnalyzers = callback;
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(await screen.findByTestId("analyzers-loading")).toBeVisible();
+    expect(screen.queryByTestId("analyzers-table")).not.toBeInTheDocument();
+
+    act(() => {
+      resolveAnalyzers({ analyzers: [] });
+    });
+
+    expect(await screen.findByTestId("analyzers-table")).toBeVisible();
+    expect(screen.queryByTestId("analyzers-loading")).not.toBeInTheDocument();
   });
 
   /**
@@ -242,16 +1253,12 @@ describe("AnalyzersList", () => {
     );
   });
 
-  /**
-   * Test: Open Add Analyzer modal shows form
-   *
-   * Arrange-Act-Assert pattern:
-   * 1. Arrange: Setup API mocks
-   * 2. Act: Click "Add Analyzer" button
-   * 3. Assert: Verify navigation to /analyzers/new (AnalyzerForm is now a
-   *    routed page, not an inline modal)
-   */
-  test("testClickAddAnalyzer_NavigatesToNewForm", async () => {
+  test("opens linkable Instrument setup inline while preserving the list", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers?search=chemistry&analyzerId=42&profile=stale&revision=1",
+    );
     // Arrange: Setup API mocks
     getAnalyzers.mockImplementation((filters, callback) => {
       act(() => {
@@ -273,8 +1280,112 @@ describe("AnalyzersList", () => {
     const addButton = screen.getByTestId("add-analyzer-button");
     await userEvent.click(addButton);
 
-    // Assert: navigation occurred to the new-analyzer route
-    expect(mockHistory.push).toHaveBeenCalledWith("/analyzers/new");
+    expect(window.location.pathname).toBe("/analyzers");
+    expect(new URLSearchParams(window.location.search).get("setup")).toBe(
+      "instrument",
+    );
+    expect(new URLSearchParams(window.location.search).get("search")).toBe(
+      "chemistry",
+    );
+    expect(
+      new URLSearchParams(window.location.search).get("analyzerId"),
+    ).toBeNull();
+    expect(
+      new URLSearchParams(window.location.search).get("profile"),
+    ).toBeNull();
+    expect(
+      new URLSearchParams(window.location.search).get("revision"),
+    ).toBeNull();
+    expect(screen.getByTestId("analyzers-list")).toBeVisible();
+    expect(
+      await screen.findByRole("region", { name: "Set up a new analyzer" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "Set up a new analyzer",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Instrument" }),
+    ).toBeVisible();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close analyzer setup" }),
+    );
+
+    expect(new URLSearchParams(window.location.search).get("setup")).toBeNull();
+    expect(new URLSearchParams(window.location.search).get("search")).toBe(
+      "chemistry",
+    );
+    expect(
+      screen.queryByRole("region", { name: "Set up a new analyzer" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("Add Analyzer clears an analyzer that was open for editing", async () => {
+    const existing = createMockAnalyzer({
+      id: "42",
+      name: "GX bench 1",
+      profileId: "shipped.genexpert-astm",
+      profileRevision: 3,
+      testUnitIds: ["7"],
+      lifecycleStage: "SETUP",
+    });
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers?setup=instrument&analyzerId=42&profile=shipped.genexpert-astm&revision=3",
+    );
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({ analyzers: [existing] }),
+    );
+    getAnalyzer.mockImplementation((_id, callback) => callback(existing));
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        schemaVersion: "1.0",
+        catalogFingerprint: `sha256:${"a".repeat(64)}`,
+        summary: {
+          total: 1,
+          inUse: 1,
+          needsAttention: 0,
+          deactivated: 0,
+        },
+        types: [
+          {
+            profileId: "shipped.genexpert-astm",
+            revision: 3,
+            displayName: "GeneXpert MTB/RIF",
+            manufacturer: "Cepheid",
+            protocol: "ASTM",
+            status: "ACTIVE",
+          },
+        ],
+      }),
+    );
+    getAnalyzerLabUnits.mockImplementation((callback) =>
+      callback([{ id: "7", name: "Molecular Biology" }]),
+    );
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(
+      await screen.findByRole("textbox", { name: "Analyzer name" }),
+    ).toHaveValue("GX bench 1");
+    await userEvent.click(screen.getByTestId("add-analyzer-button"));
+
+    expect(
+      new URLSearchParams(window.location.search).get("analyzerId"),
+    ).toBeNull();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("textbox", { name: "Analyzer name" }),
+      ).toHaveValue(""),
+    );
+    expect(screen.getByRole("combobox", { name: "Analyzer type" })).toHaveValue(
+      "",
+    );
+    expect(screen.getByText("Total items selected: 0.")).toBeInTheDocument();
   });
 
   /**
@@ -286,6 +1397,16 @@ describe("AnalyzersList", () => {
    * 3. Assert: Verify lifecycle stage badge is displayed with correct color
    */
   test("testStatusBadge_DisplaysCorrectly", async () => {
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
     // Arrange: Setup API mocks with analyzer data including status
     const mockAnalyzers = [
       createMockAnalyzer({
@@ -369,13 +1490,67 @@ describe("AnalyzersList", () => {
     // Wait for initial data load
     await screen.findByTestId("analyzer-name-1", {}, { timeout: 3000 });
 
-    // Find status filter dropdown
-    const statusFilter = screen.getByTestId("analyzer-status-filter");
-    expect(statusFilter).not.toBeNull();
+    const statusFilter = screen.getByRole("combobox", { name: "Status" });
+    await userEvent.click(statusFilter);
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Validation" }),
+    );
 
-    // Act: Select VALIDATION filter
-    // Note: Carbon Dropdown interaction may require specific approach
-    // For now, verify the filter exists and can be interacted with
-    expect(statusFilter).not.toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByTestId("analyzer-name-1")).not.toBeInTheDocument();
+      expect(screen.getByTestId("analyzer-name-2")).toBeVisible();
+      expect(screen.queryByTestId("analyzer-name-3")).not.toBeInTheDocument();
+    });
+    expect(new URLSearchParams(window.location.search).get("status")).toBe(
+      "VALIDATION",
+    );
+  });
+
+  test("restores bookmarked controls and results when browser history changes", async () => {
+    const allAnalyzers = [
+      createMockAnalyzer({ id: "1", name: "Hematology Analyzer" }),
+      createMockAnalyzer({ id: "2", name: "Chemistry Analyzer" }),
+    ];
+    getAnalyzers.mockImplementation((filters, callback) => {
+      const search = filters?.search?.toLowerCase();
+      callback({
+        analyzers: search
+          ? allAnalyzers.filter((analyzer) =>
+              analyzer.name.toLowerCase().includes(search),
+            )
+          : allAnalyzers,
+      });
+    });
+    window.history.replaceState({}, "", "/analyzers?search=Hematology");
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(await screen.findByTestId("analyzer-name-1")).toBeVisible();
+    expect(screen.queryByTestId("analyzer-name-2")).not.toBeInTheDocument();
+    expect(screen.getByTestId("analyzer-search-input")).toHaveValue(
+      "Hematology",
+    );
+
+    window.history.pushState({}, "", "/analyzers?search=Chemistry");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+
+    expect(await screen.findByTestId("analyzer-name-2")).toBeVisible();
+    expect(screen.queryByTestId("analyzer-name-1")).not.toBeInTheDocument();
+    expect(screen.getByTestId("analyzer-search-input")).toHaveValue(
+      "Chemistry",
+    );
+  });
+
+  test("passes a cancellable signal to the type catalog read", () => {
+    let catalogSignal;
+    getAnalyzers.mockImplementation(() => undefined);
+    getAnalyzerTypeCatalog.mockImplementation((_callback, signal) => {
+      catalogSignal = signal;
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(catalogSignal).toBeInstanceOf(AbortSignal);
+    expect(catalogSignal?.aborted).toBe(false);
   });
 });

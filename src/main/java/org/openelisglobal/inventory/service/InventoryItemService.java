@@ -1,23 +1,23 @@
 package org.openelisglobal.inventory.service;
 
+import java.time.LocalDate;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 
 public interface InventoryItemService extends BaseObjectService<InventoryItem, Long> {
 
-    List<ItemType> getAllItemTypes();
+    /** Every distinct tag any item carries, alphabetically. */
+    List<String> getAllTags();
+
+    int markOrdered(List<Long> itemIds, String note, LocalDate expectedDate, String sysUserId);
+
+    int clearOrdered(List<Long> itemIds, String sysUserId);
 
     /**
      * Get all active inventory items
      */
     List<InventoryItem> getAllActive();
-
-    /**
-     * Get items by item type (REAGENT, RDT, CARTRIDGE)
-     */
-    List<InventoryItem> getByItemType(ItemType itemType);
 
     /**
      * Get items by category
@@ -39,6 +39,12 @@ public interface InventoryItemService extends BaseObjectService<InventoryItem, L
      * Get item by FHIR UUID
      */
     InventoryItem getByFhirUuid(String fhirUuid);
+
+    /** The item carrying this UPC, or null. */
+    InventoryItem getByUpc(String upc);
+
+    /** The item with this name in any case, deactivated ones included, or null. */
+    InventoryItem getByExactName(String name);
 
     /**
      * Calculate total current stock quantity for an item across all available lots

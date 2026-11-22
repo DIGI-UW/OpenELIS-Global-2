@@ -1,6 +1,6 @@
 # ASTM LIS2-A2 Sample: Unmapped/Unknown Fields
 # Purpose: Test error dashboard and unmapped field handling (User Story 3)
-# Reference: specs/004-astm-analyzer-mapping/spec.md FR-011, FR-016, FR-017
+# Historical context: Git history for specs/004-astm-analyzer-mapping
 #
 # This sample contains fields that are NOT configured in the mapping:
 # - RETICULOCYTES (not in standard CBC mapping)
@@ -46,7 +46,6 @@ R|5|^^^FIBRINOGEN^Fibrinogen|320|mg/dL|200-400|N||F|20250115120100
 R|6|^^^UNKNOWN_FIELD^Invalid Test|999||Unknown|X||F|20250115120100
 
 L|1|N
-
 
 
 

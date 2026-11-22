@@ -2,12 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Dropdown, Checkbox, SkeletonText } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
-
-const INTERVALS = [
-  { id: "DAILY", labelKey: "reports.tat.daily" },
-  { id: "WEEKLY", labelKey: "reports.tat.weekly" },
-  { id: "MONTHLY", labelKey: "reports.tat.monthly" },
-];
+import { INTERVALS } from "./tatUtils";
 
 const COMPARE_OPTIONS = [
   { id: "", labelKey: "reports.tat.compareNone" },
@@ -46,7 +41,13 @@ function TATTrendsTab({ filters, buildQueryString }) {
 
   if (!filters) {
     return (
-      <div style={{ padding: "2rem", textAlign: "center", color: "var(--cds-text-helper)" }}>
+      <div
+        style={{
+          padding: "2rem",
+          textAlign: "center",
+          color: "var(--cds-text-helper)",
+        }}
+      >
         <FormattedMessage id="reports.tat.noResults" />
       </div>
     );
@@ -58,10 +59,18 @@ function TATTrendsTab({ filters, buildQueryString }) {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: "1rem",
+          marginBottom: "1rem",
+          flexWrap: "wrap",
+        }}
+      >
         <Dropdown
           id="trend-interval"
           titleText={intl.formatMessage({ id: "reports.tat.aggregation" })}
+          label={intl.formatMessage({ id: "reports.tat.aggregation" })}
           items={INTERVALS.map((i) => ({
             id: i.id,
             text: intl.formatMessage({ id: i.labelKey }),
@@ -72,12 +81,15 @@ function TATTrendsTab({ filters, buildQueryString }) {
               id: INTERVALS.find((i) => i.id === interval)?.labelKey,
             }),
           }}
+          itemToString={(item) => item?.text ?? ""}
           onChange={({ selectedItem }) => setInterval(selectedItem.id)}
           size="sm"
+          style={{ minWidth: "12rem" }}
         />
         <Dropdown
           id="trend-compare"
           titleText={intl.formatMessage({ id: "reports.tat.compareBy" })}
+          label={intl.formatMessage({ id: "reports.tat.compareBy" })}
           items={COMPARE_OPTIONS.map((o) => ({
             id: o.id,
             text: intl.formatMessage({ id: o.labelKey }),
@@ -85,14 +97,22 @@ function TATTrendsTab({ filters, buildQueryString }) {
           selectedItem={{
             id: compareBy,
             text: intl.formatMessage({
-              id: COMPARE_OPTIONS.find((o) => o.id === compareBy)?.labelKey || "reports.tat.compareNone",
+              id:
+                COMPARE_OPTIONS.find((o) => o.id === compareBy)?.labelKey ||
+                "reports.tat.compareNone",
             }),
           }}
+          itemToString={(item) => item?.text ?? ""}
           onChange={({ selectedItem }) => setCompareBy(selectedItem.id)}
           size="sm"
+          style={{ minWidth: "12rem" }}
         />
         <div>
-          <label style={{ fontSize: "12px", fontWeight: 600, display: "block" }}>{intl.formatMessage({ id: "reports.tat.metrics" })}</label>
+          <label
+            style={{ fontSize: "12px", fontWeight: 600, display: "block" }}
+          >
+            {intl.formatMessage({ id: "reports.tat.metrics" })}
+          </label>
           <div style={{ display: "flex", gap: "1rem" }}>
             <Checkbox
               id="show-median"
@@ -137,48 +157,76 @@ function TATTrendsTab({ filters, buildQueryString }) {
           {data.series.map((series, si) => (
             <div key={si} style={{ marginBottom: "1rem" }}>
               <strong>{series.label}</strong>
-              <div style={{ display: "flex", gap: "2px", alignItems: "flex-end", height: "150px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "2px",
+                  alignItems: "flex-end",
+                  height: "150px",
+                }}
+              >
                 {(() => {
                   const getMetricValue = (dp) =>
-                    showMedian ? (dp.median || 0) : showMean ? (dp.mean || 0) : showP90 ? (dp.percentile90 || 0) : 0;
+                    showMedian
+                      ? dp.median || 0
+                      : showMean
+                        ? dp.mean || 0
+                        : showP90
+                          ? dp.percentile90 || 0
+                          : 0;
                   const maxVal = Math.max(
                     ...series.dataPoints.map((d) => getMetricValue(d)),
                   );
                   return series.dataPoints.map((dp, di) => {
-                  const height = maxVal > 0 ? (getMetricValue(dp) / maxVal) * 130 : 0;
-                  return (
-                    <div
-                      key={di}
-                      style={{ flex: 1, textAlign: "center" }}
-                      title={`${dp.period}: ${showMedian ? "median" : showMean ? "mean" : "p90"} ${getMetricValue(dp)}h, count ${dp.count}`}
-                    >
+                    const height =
+                      maxVal > 0 ? (getMetricValue(dp) / maxVal) * 130 : 0;
+                    return (
                       <div
-                        style={{
-                          height: `${height}px`,
-                          backgroundColor: "var(--cds-support-success)",
-                          borderRadius: "2px 2px 0 0",
-                        }}
-                      />
-                      {showVolume && (
+                        key={di}
+                        style={{ flex: 1, textAlign: "center" }}
+                        title={`${dp.period}: ${showMedian ? "median" : showMean ? "mean" : "p90"} ${getMetricValue(dp)}h, count ${dp.count}`}
+                      >
                         <div
                           style={{
-                            height: "2px",
-                            backgroundColor: "var(--cds-border-subtle)",
+                            height: `${height}px`,
+                            backgroundColor: "var(--cds-support-success)",
+                            borderRadius: "2px 2px 0 0",
                           }}
                         />
-                      )}
-                      <div style={{ fontSize: "9px", color: "var(--cds-text-secondary)" }}>
-                        {dp.period.length > 7 ? dp.period.slice(5) : dp.period}
+                        {showVolume && (
+                          <div
+                            style={{
+                              height: "2px",
+                              backgroundColor: "var(--cds-border-subtle)",
+                            }}
+                          />
+                        )}
+                        <div
+                          style={{
+                            fontSize: "9px",
+                            color: "var(--cds-text-secondary)",
+                          }}
+                        >
+                          {dp.period.length > 7
+                            ? dp.period.slice(5)
+                            : dp.period}
+                        </div>
                       </div>
-                    </div>
-                  );
-                }); })()}
+                    );
+                  });
+                })()}
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div style={{ padding: "2rem", textAlign: "center", color: "var(--cds-text-helper)" }}>
+        <div
+          style={{
+            padding: "2rem",
+            textAlign: "center",
+            color: "var(--cds-text-helper)",
+          }}
+        >
           <FormattedMessage id="reports.tat.noResults" />
         </div>
       )}

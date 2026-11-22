@@ -1,0 +1,10 @@
+# Local session artifacts (not source): demo-E2E evidence binaries + meeting
+# transcripts. Binaries are reproducible (re-run the demo E2E) and shared by
+# upload, not committed. Text indexes (*.md) stay trackable. See the
+# evidence-bundle skill (DIGI-UW/code-qa).
+*.vtt
+evidence/*.webm
+evidence/*.mp4
+evidence/*.zip
+evidence/*.png
+evidence/bundle/

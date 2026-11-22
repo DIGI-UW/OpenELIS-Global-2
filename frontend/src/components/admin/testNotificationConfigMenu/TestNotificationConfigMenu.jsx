@@ -13,14 +13,9 @@ import {
   TableBody,
   TableHeader,
   TableCell,
-  TableSelectRow,
-  TableSelectAll,
   TableContainer,
   Pagination,
   Search,
-  Modal,
-  TextInput,
-  Dropdown,
   Checkbox,
   Select,
   SelectItem,
@@ -28,18 +23,17 @@ import {
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
-  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
-import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
+import { useHistory } from "react-router-dom";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { Settings } from "@carbon/icons-react";
-import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -50,6 +44,13 @@ let breadcrumbs = [
   },
 ];
 
+const CHANNEL_LABEL_IDS = {
+  patientEmail: "testnotification.patient.email",
+  patientSMS: "testnotification.patient.sms",
+  providerEmail: "testnotification.provider.email",
+  providerSMS: "testnotification.provider.sms",
+};
+
 function TestNotificationConfigMenu() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -57,6 +58,7 @@ function TestNotificationConfigMenu() {
   const intl = useIntl();
 
   const componentMounted = useRef(false);
+  const history = useHistory();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [loading, setLoading] = useState(true);
@@ -164,9 +166,18 @@ function TestNotificationConfigMenu() {
   }, [testNamesList]);
 
   const handleEditButtonClick = (id) => {
-    window.location.assign(
-      `/MasterListsPage/testNotificationConfig?testId=${id}`,
-    );
+    history.push(`/MasterListsPage/testNotificationConfig?testId=${id}`);
+  };
+
+  /**
+   * Exit discards any unsaved checkbox toggles by rereading the menu, the
+   * same request the mount effect makes. The page never leaves this route,
+   * so there is nothing for history.push to do here.
+   */
+  const discardPendingChanges = () => {
+    setSaveButton(true);
+    setLoading(true);
+    getFromOpenElisServer(`/rest/TestNotificationConfigMenu`, handleMenuItems);
   };
 
   function testNotificationConfigMenuSavePostCall() {
@@ -264,7 +275,18 @@ function TestNotificationConfigMenu() {
         <TableCell key={cell.id}>
           <Checkbox
             id={`checkbox-${row.id}-${cell.info.header}`}
-            labelText=""
+            hideLabel
+            labelText={intl.formatMessage(
+              { id: "testnotification.checkbox.label" },
+              {
+                channel: intl.formatMessage({
+                  id: CHANNEL_LABEL_IDS[cell.info.header],
+                }),
+                test:
+                  row.cells.find((c) => c.info.header === "testName")?.value ||
+                  row.id,
+              },
+            )}
             checked={
               testNotificationConfigMenuDataPost?.menuList.find(
                 (item) => item.testId === row.id,
@@ -325,11 +347,7 @@ function TestNotificationConfigMenu() {
                   <FormattedMessage id="label.button.save" />
                 </Button>{" "}
                 <Button
-                  onClick={() =>
-                    window.location.assign(
-                      "/MasterListsPage/testNotificationConfigMenu",
-                    )
-                  }
+                  onClick={discardPendingChanges}
                   kind="tertiary"
                   type="button"
                 >
@@ -562,11 +580,7 @@ function TestNotificationConfigMenu() {
                 <FormattedMessage id="label.button.save" />
               </Button>{" "}
               <Button
-                onClick={() =>
-                  window.location.assign(
-                    "/MasterListsPage/testNotificationConfigMenu",
-                  )
-                }
+                onClick={discardPendingChanges}
                 kind="tertiary"
                 type="button"
               >

@@ -15,8 +15,10 @@ import {
   postToOpenElisServerFullResponse,
 } from "../utils/Utils";
 
+import useInAppNavigation from "../common/useInAppNavigation";
 const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
   const { addNotification } = useContext(NotificationContext);
 
   const [mode, setMode] = useState("existing"); // "existing" or "new"
@@ -43,12 +45,17 @@ const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
     setLoading(true);
     setError(null);
 
+    // getFromOpenElisServer's 3rd arg is an AbortSignal, not an error callback;
+    // it reports failures by invoking the callback with an undefined response.
     getFromOpenElisServer(
       `/rest/shipping-box/by-facility/${sample.destinationFacilityId}`,
       (response) => {
         if (response) {
-          // Filter to only show DRAFT boxes
-          const draftBoxes = response.filter((box) => box.state === "DRAFT");
+          // Filter to DRAFT boxes, minus EQA boxes: those carry provider panel
+          // material to another lab and the server refuses a patient sample in one.
+          const draftBoxes = response.filter(
+            (box) => box.state === "DRAFT" && !box.eqaCycleId,
+          );
           setAvailableBoxes(draftBoxes);
 
           if (draftBoxes.length === 0) {
@@ -56,11 +63,9 @@ const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
           } else if (draftBoxes.length === 1) {
             setSelectedBoxId(draftBoxes[0].id.toString());
           }
+        } else {
+          setError(intl.formatMessage({ id: "shipment.error.fetchBoxes" }));
         }
-        setLoading(false);
-      },
-      (error) => {
-        setError(intl.formatMessage({ id: "shipment.error.fetchBoxes" }));
         setLoading(false);
       },
     );
@@ -139,7 +144,9 @@ const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
         ? `facilityId=${sample.destinationFacilityId}&`
         : "";
       const sampleParam = sample.sampleItemId || sample.id || "";
-      window.location.href = `/SampleShipment/create-box?${facilityParam}sampleItemId=${sampleParam}`;
+      navigate(
+        `/SampleShipment/create-box?${facilityParam}sampleItemId=${sampleParam}`,
+      )();
       setSubmitting(false);
     }
   };
@@ -263,7 +270,7 @@ const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
             />
           )}
 
-          {availableBoxes.length === 0 && (
+          {!error && availableBoxes.length === 0 && (
             <InlineNotification
               kind="warning"
               title={intl.formatMessage({

@@ -1,3 +1,8 @@
+export function getServiceWorkerUrl(baseUrl = import.meta.env.BASE_URL) {
+  const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+  return `${normalizedBaseUrl}service-worker.js`;
+}
+
 // Function to register the service worker
 export function registerServiceWorker() {
   // Only register service worker in production
@@ -10,7 +15,7 @@ export function registerServiceWorker() {
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      const swUrl = `./service-worker.js`;
+      const swUrl = getServiceWorkerUrl();
 
       navigator.serviceWorker
         .register(swUrl)

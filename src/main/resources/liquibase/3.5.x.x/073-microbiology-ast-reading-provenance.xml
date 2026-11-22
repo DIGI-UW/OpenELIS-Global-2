@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-ast-reading-provenance" author="OGC">
+        <addColumn schemaName="clinlims" tableName="micro_ast_reading">
+            <column name="source" type="VARCHAR(40)" defaultValue="MANUAL_ENTRY">
+                <constraints nullable="false"/>
+            </column>
+            <column name="matched_by" type="VARCHAR(40)"/>
+            <column name="units" type="VARCHAR(40)"/>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_reading
+            ADD CONSTRAINT micro_ast_reading_source_chk
+            CHECK (source IN ('MANUAL_ENTRY', 'ANALYZER_AUTO', 'OVERRIDE'))
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.micro_ast_reading
+                DROP CONSTRAINT IF EXISTS micro_ast_reading_source_chk;
+            </sql>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_reading" columnName="units"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_reading" columnName="matched_by"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_reading" columnName="source"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

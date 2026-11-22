@@ -1,32 +1,35 @@
-import { FormattedMessage } from "react-intl";
-import React from "react";
-export const auditTrailHeaderData = [
+/**
+ * The audit trail columns. Header text is a plain string: a sortable column
+ * builds its sort description from it, which reads "[object Object]" for an
+ * element.
+ */
+export const auditTrailHeaderData = (intl) => [
   {
     key: "timeStamp",
-    header: <FormattedMessage id="audittrail.table.heading.time" />,
+    header: intl.formatMessage({ id: "audittrail.table.heading.time" }),
   },
   {
     key: "item",
-    header: <FormattedMessage id="audittrail.table.heading.item" />,
+    header: intl.formatMessage({ id: "audittrail.table.heading.item" }),
   },
   {
     key: "attribute",
-    header: <FormattedMessage id="audittrail.table.heading.action" />,
+    header: intl.formatMessage({ id: "audittrail.table.heading.action" }),
   },
   {
     key: "identifier",
-    header: <FormattedMessage id="audittrail.table.heading.identifier" />,
+    header: intl.formatMessage({ id: "audittrail.table.heading.identifier" }),
   },
   {
     key: "user",
-    header: <FormattedMessage id="audittrail.table.heading.user" />,
+    header: intl.formatMessage({ id: "audittrail.table.heading.user" }),
   },
   {
     key: "oldValue",
-    header: <FormattedMessage id="audittrail.table.heading.oldvalue" />,
+    header: intl.formatMessage({ id: "audittrail.table.heading.oldvalue" }),
   },
   {
     key: "newValue",
-    header: <FormattedMessage id="audittrail.table.heading.newvalue" />,
+    header: intl.formatMessage({ id: "audittrail.table.heading.newvalue" }),
   },
 ];

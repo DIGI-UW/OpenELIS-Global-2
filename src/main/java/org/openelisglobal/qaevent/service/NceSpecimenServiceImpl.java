@@ -1,5 +1,6 @@
 package org.openelisglobal.qaevent.service;
 
+import java.util.Collection;
 import java.util.List;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.qaevent.dao.NceSpecimenDAO;
@@ -41,5 +42,11 @@ public class NceSpecimenServiceImpl extends AuditableBaseObjectServiceImpl<NceSp
     @Transactional(readOnly = true)
     public boolean existsByNceIdAndSampleItemId(Integer nceId, Integer sampleItemId) {
         return baseObjectDAO.existsByNceIdAndSampleItemId(nceId, sampleItemId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Integer> findAnalysisIdsWithOpenQcHold(Collection<Integer> analysisIds) {
+        return baseObjectDAO.findAnalysisIdsWithOpenQcHold(analysisIds);
     }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState } from "react";
 import {
   Tabs,
   TabList,
@@ -8,21 +8,16 @@ import {
   Heading,
 } from "@carbon/react";
 import { Settings as SettingsIcon } from "@carbon/icons-react";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { injectIntl } from "react-intl";
 import DeviceManagement from "./settings/DeviceManagement";
 import TemperatureThresholds from "./settings/TemperatureThresholds";
 import AlertSettings from "./settings/AlertSettings";
-import SystemSettings from "./settings/SystemSettings";
-import { AlertDialog } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
 
 function Settings({ intl }) {
   const [selectedTab, setSelectedTab] = useState(0);
-  const { notificationVisible } = useContext(NotificationContext);
 
   return (
     <div style={{ padding: "1rem 0" }}>
-      {notificationVisible === true ? <AlertDialog /> : ""}
       <div
         style={{
           display: "flex",
@@ -43,7 +38,6 @@ function Settings({ intl }) {
           <Tab>Device Management</Tab>
           <Tab>Temperature Thresholds</Tab>
           <Tab>Alert Settings</Tab>
-          <Tab>System Settings</Tab>
         </TabList>
         <TabPanels>
           <TabPanel>
@@ -54,9 +48,6 @@ function Settings({ intl }) {
           </TabPanel>
           <TabPanel>
             <AlertSettings />
-          </TabPanel>
-          <TabPanel>
-            <SystemSettings />
           </TabPanel>
         </TabPanels>
       </Tabs>

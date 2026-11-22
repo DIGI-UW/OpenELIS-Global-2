@@ -1,0 +1,291 @@
+import React, { useState } from "react";
+import { render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
+import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import messages from "../../languages/en.json";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
+import { SampleItemsDisplay, SearchSampleForm } from "./AliquotForm";
+
+vi.mock("../utils/Utils", async () => ({
+  ...(await vi.importActual("../utils/Utils")),
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServer: vi.fn(),
+}));
+
+let addNotification;
+
+const renderScreen = (screen) =>
+  render(
+    <MemoryRouter>
+      <ConfigurationContext.Provider value={{ configurationProperties: {} }}>
+        <NotificationContext.Provider
+          value={{
+            notificationVisible: false,
+            setNotificationVisible: vi.fn(),
+            addNotification,
+          }}
+        >
+          <IntlProvider locale="en" messages={messages}>
+            {screen}
+          </IntlProvider>
+        </NotificationContext.Provider>
+      </ConfigurationContext.Provider>
+    </MemoryRouter>,
+  );
+
+const SearchHarness = () => {
+  const [resetVersion, setResetVersion] = useState(0);
+  return (
+    <>
+      <SearchSampleForm
+        resetVersion={resetVersion}
+        setParam={vi.fn()}
+        setSearchBy={vi.fn()}
+        setSampleData={vi.fn()}
+      />
+      <button
+        type="button"
+        onClick={() => setResetVersion((value) => value + 1)}
+      >
+        complete aliquot
+      </button>
+    </>
+  );
+};
+
+describe("Aliquot completion state", () => {
+  beforeEach(() => {
+    addNotification = vi.fn();
+    getFromOpenElisServer.mockReset();
+    postToOpenElisServer.mockReset();
+    window.history.replaceState({}, "", "/Aliquot");
+  });
+
+  it("clears a typed accession number when aliquoting completes", async () => {
+    renderScreen(<SearchHarness />);
+    const accession = document.getElementById("accessionNumber");
+    await userEvent.type(accession, "ACC-7");
+    expect(accession).toHaveValue("ACC-7");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "complete aliquot" }),
+    );
+
+    await waitFor(() =>
+      expect(document.getElementById("accessionNumber")).toHaveValue(""),
+    );
+  });
+
+  it("clears a URL-prefilled accession without repeating the search", async () => {
+    window.history.replaceState({}, "", "/Aliquot?accessionNumber=ACC-URL");
+    getFromOpenElisServer.mockImplementation((url, callback) =>
+      callback({ sampleItems: [] }),
+    );
+    renderScreen(<SearchHarness />);
+    const accession = document.getElementById("accessionNumber");
+    await waitFor(() => expect(accession).toHaveValue("ACC-URL"));
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "complete aliquot" }),
+    );
+
+    await waitFor(() =>
+      expect(document.getElementById("accessionNumber")).toHaveValue(""),
+    );
+    expect(getFromOpenElisServer).toHaveBeenCalledOnce();
+  });
+
+  it("requests the parent workflow reset only after a successful save", async () => {
+    const onSaveSuccess = vi.fn();
+    postToOpenElisServer.mockImplementation((url, body, callback) =>
+      callback(200),
+    );
+    renderScreen(
+      <SampleItemsDisplay
+        sampleData={{
+          accessionNumber: "ACC-7",
+          sampleItems: [
+            {
+              externalId: "SPEC-7",
+              typeOfSample: "Serum",
+              quantity: 0,
+              analysis: [],
+              aliquots: [
+                {
+                  id: "SPEC-7.1",
+                  externalId: "SPEC-7.1",
+                  quantity: 0,
+                  analyses: [{ id: "AN-7" }],
+                },
+              ],
+            },
+          ],
+        }}
+        setSampleData={vi.fn()}
+        onSaveSuccess={onSaveSuccess}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save Aliquot Changes" }),
+    );
+
+    expect(postToOpenElisServer).toHaveBeenCalledWith(
+      "/rest/Aliquot",
+      JSON.stringify({
+        accessionNumber: "ACC-7",
+        sampleItems: [
+          {
+            externalId: "SPEC-7",
+            aliquots: [
+              {
+                externalId: "SPEC-7.1",
+                quantity: 0,
+                analyses: ["AN-7"],
+              },
+            ],
+          },
+        ],
+      }),
+      expect.any(Function),
+    );
+    expect(onSaveSuccess).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the workflow state when saving fails", async () => {
+    const onSaveSuccess = vi.fn();
+    postToOpenElisServer.mockImplementation((url, body, callback) =>
+      callback(500),
+    );
+    renderScreen(
+      <SampleItemsDisplay
+        sampleData={{
+          accessionNumber: "ACC-7",
+          sampleItems: [
+            {
+              externalId: "SPEC-7",
+              typeOfSample: "Serum",
+              quantity: 0,
+              analysis: [],
+              aliquots: [
+                {
+                  id: "SPEC-7.1",
+                  externalId: "SPEC-7.1",
+                  quantity: 0,
+                  analyses: [{ id: "AN-7" }],
+                },
+              ],
+            },
+          ],
+        }}
+        setSampleData={vi.fn()}
+        onSaveSuccess={onSaveSuccess}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save Aliquot Changes" }),
+    );
+
+    expect(onSaveSuccess).not.toHaveBeenCalled();
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "error" }),
+    );
+  });
+
+  it("shows the quantity allocated to aliquots when the tube has no quantity", async () => {
+    renderScreen(
+      <SampleItemsDisplay
+        sampleData={{
+          accessionNumber: "ACC-8",
+          sampleItems: [
+            {
+              externalId: "SPEC-8",
+              typeOfSample: "Respiratory Swab",
+              analysis: [],
+              aliquots: [
+                {
+                  id: "SPEC-8.1",
+                  externalId: "SPEC-8.1",
+                  quantity: 0,
+                  analyses: [{ id: "AN-8" }],
+                },
+              ],
+            },
+          ],
+        }}
+        setSampleData={vi.fn()}
+        onSaveSuccess={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Show Aliquoting/ }),
+    );
+    if (!screen.queryByText(/Allocated to Aliquots/)) {
+      await userEvent.click(
+        document.querySelector("button.cds--table-expand__button"),
+      );
+    }
+
+    const allocated = screen.getByText(/Allocated to Aliquots/).parentElement;
+    expect(allocated.textContent).toContain("0.00");
+    expect(allocated.textContent).not.toContain("NaN");
+  });
+
+  it("saves the quantity typed for an aliquot of a tube with no quantity", async () => {
+    postToOpenElisServer.mockImplementation((url, body, callback) =>
+      callback(200),
+    );
+    const Harness = () => {
+      const [sampleData, setSampleData] = useState({
+        accessionNumber: "ACC-9",
+        sampleItems: [
+          {
+            externalId: "SPEC-9",
+            typeOfSample: "Whole Blood",
+            analysis: [],
+            aliquots: [
+              {
+                id: "SPEC-9.1",
+                externalId: "SPEC-9.1",
+                quantity: 0,
+                analyses: [{ id: "AN-9" }],
+              },
+            ],
+          },
+        ],
+      });
+      return (
+        <SampleItemsDisplay
+          sampleData={sampleData}
+          setSampleData={setSampleData}
+          onSaveSuccess={vi.fn()}
+        />
+      );
+    };
+    renderScreen(<Harness />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Show Aliquoting/ }),
+    );
+    if (!document.getElementById("aliquot-quantity-0-0")) {
+      await userEvent.click(
+        document.querySelector("button.cds--table-expand__button"),
+      );
+    }
+
+    const quantity = document.getElementById("aliquot-quantity-0-0");
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, "2");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save Aliquot Changes" }),
+    );
+
+    const body = JSON.parse(postToOpenElisServer.mock.calls[0][1]);
+    expect(body.sampleItems[0].aliquots[0].quantity).toBe(2);
+  });
+});

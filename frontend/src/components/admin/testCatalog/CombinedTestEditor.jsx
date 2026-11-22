@@ -42,7 +42,8 @@ const rangeSignature = (ranges) =>
   JSON.stringify(
     (ranges || [])
       .map((r) => ({
-        componentId: r.componentId || null,
+        component: r.componentCode || r.componentId || null,
+        sampleTypeId: r.sampleTypeId || null,
         gender: r.gender || null,
         minAge: r.minAge ?? null,
         maxAge: r.maxAge ?? null,
@@ -50,9 +51,16 @@ const rangeSignature = (ranges) =>
         highNormal: r.highNormal ?? null,
         lowCritical: r.lowCritical ?? null,
         highCritical: r.highCritical ?? null,
+        lowValid: r.lowValid ?? null,
+        highValid: r.highValid ?? null,
+        lowReporting: r.lowReporting ?? null,
+        highReporting: r.highReporting ?? null,
       }))
       .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
   );
+
+const bounds = (low, high) =>
+  low == null && high == null ? "—" : `${low ?? "—"} / ${high ?? "—"}`;
 
 const CombinedTestEditor = () => {
   const intl = useIntl();
@@ -73,12 +81,18 @@ const CombinedTestEditor = () => {
   const [summaries, setSummaries] = useState([]);
   const [ranges, setRanges] = useState([]);
   const [components, setComponents] = useState([]);
+  // The union of the selected tests' sample types, for the range scope picker.
+  const [sampleTypes, setSampleTypes] = useState([]);
   const [differs, setDiffers] = useState(false);
   // FR-74 — per-test view of which tests diverge from the seed (first test), so
   // the admin sees exactly what "set all to" will overwrite.
   const [rangeDiffByTest, setRangeDiffByTest] = useState({});
   const [editingIndex, setEditingIndex] = useState(null);
   const [sharedSection, setSharedSection] = useState("ranges");
+  // Tests whose ranges (or the seed test's components) did not load. Applying a
+  // set seeded from a failed load would overwrite real ranges with nothing.
+  const [rangesLoadFailed, setRangesLoadFailed] = useState([]);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (testIds.length === 0) {
@@ -86,6 +100,17 @@ const CombinedTestEditor = () => {
     }
     setLoading(true);
     setError(false);
+    setRangesLoadFailed([]);
+    let componentsPending = true;
+    let rangesPending = true;
+    const failed = new Set();
+    const finish = () => {
+      if (componentsPending || rangesPending) {
+        return;
+      }
+      setRangesLoadFailed(testIds.filter((t) => failed.has(t)));
+      setLoading(false);
+    };
     getFromOpenElisServer(
       `/rest/test-catalog/group/summary?ids=${encodeURIComponent(ids)}`,
       (res) => {
@@ -98,11 +123,18 @@ const CombinedTestEditor = () => {
         // Pull each test's ranges to decide shared-vs-differs (FR-9/10).
         let pending = testIds.length;
         const perTest = {};
+        const typesById = {};
         testIds.forEach((id) => {
           getFromOpenElisServer(
             `/rest/test-catalog/tests/${id}/ranges`,
             (r) => {
+              if (!r || !Array.isArray(r.ranges)) {
+                failed.add(id);
+              }
               perTest[id] = (r && r.ranges) || [];
+              ((r && r.sampleTypes) || []).forEach((t) => {
+                typesById[t.id] = t;
+              });
               pending -= 1;
               if (pending === 0) {
                 const seedSig = rangeSignature(perTest[testIds[0]]);
@@ -113,14 +145,20 @@ const CombinedTestEditor = () => {
                 setDiffers(!allSame);
                 // FR-74 — record which tests differ from the seed for the breakdown.
                 const diffMap = {};
+                const seedLoaded = !failed.has(testIds[0]);
                 testIds.forEach((t) => {
-                  diffMap[t] = rangeSignature(perTest[t]) !== seedSig;
+                  diffMap[t] =
+                    seedLoaded &&
+                    !failed.has(t) &&
+                    rangeSignature(perTest[t]) !== seedSig;
                 });
                 setRangeDiffByTest(diffMap);
                 // Seed the editor from the first test's ranges (the "set all to"
                 // starting point when they differ; the shared value when they agree).
                 setRanges(perTest[testIds[0]] || []);
-                setLoading(false);
+                setSampleTypes(Object.values(typesById));
+                rangesPending = false;
+                finish();
               }
             },
           );
@@ -138,11 +176,15 @@ const CombinedTestEditor = () => {
               label: c.label || c.code || c.id,
             })),
           );
+        } else {
+          failed.add(testIds[0]);
         }
+        componentsPending = false;
+        finish();
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ids]);
+  }, [ids, reloadKey]);
 
   const handleSaveRange = (r) => {
     setRanges((prev) =>
@@ -167,12 +209,17 @@ const CombinedTestEditor = () => {
   };
 
   const handleSaveAll = () => {
+    if (rangesLoadFailed.length > 0) {
+      return;
+    }
     setSaving(true);
-    // Strip ids: the shared set is written fresh into each test's own rows.
+    // Strip ids: the shared set is written fresh into each test's own rows. The
+    // server maps componentId onto each test's own component (FR-11/FR-19).
     const payload = {
       testIds,
       ranges: ranges.map((r) => ({
         componentId: r.componentId || null,
+        sampleTypeId: r.sampleTypeId || null,
         gender: r.gender || null,
         minAge: r.minAge,
         maxAge: r.maxAge,
@@ -180,6 +227,10 @@ const CombinedTestEditor = () => {
         highNormal: r.highNormal,
         lowCritical: r.lowCritical,
         highCritical: r.highCritical,
+        lowValid: r.lowValid,
+        highValid: r.highValid,
+        lowReporting: r.lowReporting ?? null,
+        highReporting: r.highReporting ?? null,
       })),
     };
     putToOpenElisServer(
@@ -209,6 +260,16 @@ const CombinedTestEditor = () => {
         }
       },
     );
+  };
+
+  const showSampleTypeColumn = sampleTypes.length > 1;
+
+  const sampleTypeLabel = (id) => {
+    if (!id) {
+      return intl.formatMessage({ id: "label.testCatalog.override.shared" });
+    }
+    const t = sampleTypes.find((x) => x.id === id);
+    return t ? t.name : id;
   };
 
   const breadcrumbs = [
@@ -389,7 +450,36 @@ const CombinedTestEditor = () => {
               <p>
                 <FormattedMessage id="label.testCatalog.group.rangesIntro" />
               </p>
-              {differs && (
+              {rangesLoadFailed.length > 0 && (
+                <div data-testid="group-ranges-load-error">
+                  <InlineNotification
+                    kind="error"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({ id: "error.title" })}
+                    subtitle={intl.formatMessage(
+                      { id: "label.testCatalog.group.rangesLoadError" },
+                      {
+                        tests: rangesLoadFailed
+                          .map(
+                            (t) =>
+                              (summaries.find((s) => s.testId === t) || {})
+                                .name || t,
+                          )
+                          .join(", "),
+                      },
+                    )}
+                  />
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    onClick={() => setReloadKey((k) => k + 1)}
+                  >
+                    <FormattedMessage id="common.retry" />
+                  </Button>
+                </div>
+              )}
+              {differs && rangesLoadFailed.length === 0 && (
                 <InlineNotification
                   kind="warning"
                   lowContrast
@@ -406,6 +496,11 @@ const CombinedTestEditor = () => {
               <Table size="sm">
                 <TableHead>
                   <TableRow>
+                    {showSampleTypeColumn && (
+                      <TableHeader>
+                        <FormattedMessage id="label.testCatalog.override.col.sampleType" />
+                      </TableHeader>
+                    )}
                     <TableHeader>
                       <FormattedMessage id="label.testCatalog.ranges.table.sex" />
                     </TableHeader>
@@ -416,6 +511,12 @@ const CombinedTestEditor = () => {
                       <FormattedMessage id="label.testCatalog.ranges.table.normal" />
                     </TableHeader>
                     <TableHeader>
+                      <FormattedMessage id="label.testCatalog.ranges.col.critical" />
+                    </TableHeader>
+                    <TableHeader>
+                      <FormattedMessage id="label.testCatalog.ranges.col.valid" />
+                    </TableHeader>
+                    <TableHeader>
                       <FormattedMessage id="label.testCatalog.sampleResults.actions" />
                     </TableHeader>
                   </TableRow>
@@ -423,14 +524,23 @@ const CombinedTestEditor = () => {
                 <TableBody>
                   {ranges.map((r, i) => (
                     <TableRow key={r.id || `r-${i}`}>
+                      {showSampleTypeColumn && (
+                        <TableCell data-testid={`group-range-sample-type-${i}`}>
+                          {sampleTypeLabel(r.sampleTypeId)}
+                        </TableCell>
+                      )}
                       <TableCell>{r.gender || "All"}</TableCell>
                       <TableCell>
                         {(r.minAge ?? 0) +
                           " – " +
                           (r.maxAge == null ? "∞" : r.maxAge)}
                       </TableCell>
-                      <TableCell>
-                        {(r.lowNormal ?? "—") + " / " + (r.highNormal ?? "—")}
+                      <TableCell>{bounds(r.lowNormal, r.highNormal)}</TableCell>
+                      <TableCell data-testid={`group-range-critical-${i}`}>
+                        {bounds(r.lowCritical, r.highCritical)}
+                      </TableCell>
+                      <TableCell data-testid={`group-range-valid-${i}`}>
+                        {bounds(r.lowValid, r.highValid)}
                       </TableCell>
                       <TableCell>
                         <Button
@@ -470,7 +580,7 @@ const CombinedTestEditor = () => {
                 </Button>
                 <Button
                   kind="primary"
-                  disabled={saving}
+                  disabled={saving || rangesLoadFailed.length > 0}
                   onClick={handleSaveAll}
                 >
                   <FormattedMessage id="button.testCatalog.setAllTo" />
@@ -491,6 +601,7 @@ const CombinedTestEditor = () => {
         <RangeModal
           range={editingIndex >= 0 ? ranges[editingIndex] : null}
           components={components}
+          sampleTypes={sampleTypes}
           onSave={handleSaveRange}
           onCancel={() => setEditingIndex(null)}
         />

@@ -1,6 +1,6 @@
 # HL7 v2.5 Sample: Stago STart 4 Coagulation Analyzer
 # Purpose: Test Stago STart 4 plugin HL7 parsing (Feature 011, M11)
-# Reference: specs/011-madagascar-analyzer-integration/research.md
+# Historical context: Git history for specs/011-madagascar-analyzer-integration
 #
 # Analyzer: Stago STart 4 (Coagulation/Hemostasis)
 # Protocol: HL7 v2.5 over Network

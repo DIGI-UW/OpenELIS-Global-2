@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    S-14 / OGC-624 FR-02 — subcontract lifecycle audit table.
+
+    Append-only history of every subcontract_status transition (including the
+    initial null -> DRAFT row written when the parent referral_subcontract is
+    created). Inserted by transition methods on ReferralService; read in audit
+    contexts via ReferralStatusHistoryDAO.findByReferralIdOrderedByChangedAt.
+  -->
+
+  <changeSet id="3.5.0.0-create-referral-status-history-seq" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <sequenceExists sequenceName="referral_status_history_seq" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createSequence sequenceName="referral_status_history_seq" schemaName="clinlims"
+                    startValue="1" incrementBy="1"/>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-create-referral-status-history-table" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="referral_status_history" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createTable tableName="referral_status_history" schemaName="clinlims">
+      <column name="id" type="numeric(10,0)">
+        <constraints primaryKey="true" nullable="false" primaryKeyName="referral_status_history_pk"/>
+      </column>
+      <column name="referral_id" type="numeric(10,0)">
+        <constraints nullable="false"
+                     foreignKeyName="fk_referral_status_history_referral"
+                     referencedTableName="referral"
+                     referencedTableSchemaName="clinlims"
+                     referencedColumnNames="id"/>
+      </column>
+      <column name="from_status" type="VARCHAR(30)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="to_status" type="VARCHAR(30)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="changed_by_user_id" type="numeric(10,0)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="changed_at" type="TIMESTAMP">
+        <constraints nullable="false"/>
+      </column>
+      <column name="notes" type="VARCHAR(500)">
+        <constraints nullable="true"/>
+      </column>
+      <column name="lastupdated" type="TIMESTAMP">
+        <constraints nullable="true"/>
+      </column>
+    </createTable>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-referral-status-history-referral-id-index" author="samuelmale">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <indexExists indexName="idx_referral_status_history_referral_id" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createIndex tableName="referral_status_history" schemaName="clinlims"
+                 indexName="idx_referral_status_history_referral_id">
+      <column name="referral_id"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>

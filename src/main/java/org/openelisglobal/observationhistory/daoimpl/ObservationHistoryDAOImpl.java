@@ -231,4 +231,19 @@ public class ObservationHistoryDAOImpl extends BaseDAOImpl<ObservationHistory, S
     public ObservationHistory getById(ObservationHistory observation) throws LIMSRuntimeException {
         return get(observation.getId()).orElse(null);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ObservationHistory> getObservationHistoriesByType(String typeId) throws LIMSRuntimeException {
+        String sql = "from ObservationHistory oh where oh.observationHistoryTypeId = :typeId";
+        try {
+            Query<ObservationHistory> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    ObservationHistory.class);
+            query.setParameter("typeId", typeId);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getObservationHistoriesByType");
+        }
+        return null;
+    }
 }

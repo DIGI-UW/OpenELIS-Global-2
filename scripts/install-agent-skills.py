@@ -9,6 +9,7 @@ This script is the generic installer entrypoint and supports two sources:
    - .specify/oe/commands/
 2) Packaged skills (scanned in this precedence order; later wins on collision):
    - .ai/skills/<skill-name>/             (upstream/vanilla packaged skills)
+   - tools/code-qa/skills/<skill-name>/   (shared code-qa skills suite, submodule)
    - .specify/oe/skills/<skill-name>/     (OpenELIS-specific packaged skills)
 
 Outputs are generated into agent runtime folders:
@@ -201,6 +202,7 @@ def main() -> None:
     oe_dir = repo_root / ".specify" / "oe" / "commands"
     packaged_skills_roots = [
         repo_root / ".ai" / "skills",
+        repo_root / "tools" / "code-qa" / "skills",
         repo_root / ".specify" / "oe" / "skills",
     ]
     targets = build_targets(repo_root, args.target)

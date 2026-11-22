@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-ast-override-history" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_ast_override_event">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"
+                    primaryKeyName="pk_micro_ast_override_event"/>
+            </column>
+            <column name="reading_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="action" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_interpretation" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="to_interpretation" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="performed_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="performed_by" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint
+            constraintName="fk_micro_ast_override_event_reading"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_override_event"
+            baseColumnNames="reading_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_ast_reading"
+            referencedColumnNames="id" onDelete="CASCADE"/>
+        <createIndex schemaName="clinlims" tableName="micro_ast_override_event"
+            indexName="idx_micro_ast_override_event_reading_time">
+            <column name="reading_id"/>
+            <column name="performed_at"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_override_event
+            ADD CONSTRAINT micro_ast_override_event_action_chk
+            CHECK (action IN ('OVERRIDE', 'REVERT'))
+        </sql>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_ast_override_event"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

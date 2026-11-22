@@ -1,5 +1,6 @@
 package org.openelisglobal.alert.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,11 +15,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.TypeDef;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.hibernate.type.JsonBinaryType;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -74,8 +77,22 @@ public class Alert extends BaseObject<Long> {
     @Column(name = "alert_entity_type", length = 100, nullable = false)
     private String alertEntityType;
 
-    @Column(name = "alert_entity_id", nullable = false)
+    /**
+     * Numeric entity id for entities keyed by a database sequence (Freezer,
+     * Equipment, Sample, ...). Nullable because string-keyed entities (e.g.
+     * microbiology's UUID-keyed cases/criticals) use {@link #alertEntityRef}
+     * instead; exactly one of the two must be set (enforced by a DB check
+     * constraint, see 3.5.x.x/057-alert-entity-ref.xml).
+     */
+    @Column(name = "alert_entity_id")
     private Long alertEntityId;
+
+    /**
+     * String entity reference for entities keyed by a non-numeric id, e.g. a UUID.
+     * See {@link #alertEntityId} for the numeric-keyed counterpart.
+     */
+    @Column(name = "alert_entity_ref", length = 64)
+    private String alertEntityRef;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "severity", length = 20, nullable = false)
@@ -85,9 +102,11 @@ public class Alert extends BaseObject<Long> {
     @Column(name = "status", length = 20, nullable = false)
     private AlertStatus status;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     @Column(name = "start_time", nullable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE")
     private OffsetDateTime startTime;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     @Column(name = "end_time", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     private OffsetDateTime endTime;
 
@@ -98,6 +117,7 @@ public class Alert extends BaseObject<Long> {
     @Column(name = "context_data", columnDefinition = "jsonb")
     private String contextData;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     @Column(name = "acknowledged_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     private OffsetDateTime acknowledgedAt;
 
@@ -106,6 +126,10 @@ public class Alert extends BaseObject<Long> {
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private SystemUser acknowledgedBy;
 
+    @Column(name = "acknowledgment_notes", columnDefinition = "TEXT")
+    private String acknowledgmentNotes;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     @Column(name = "resolved_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     private OffsetDateTime resolvedAt;
 
@@ -117,9 +141,15 @@ public class Alert extends BaseObject<Long> {
     @Column(name = "resolution_notes", columnDefinition = "TEXT")
     private String resolutionNotes;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     @Column(name = "last_duplicate_time", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     private OffsetDateTime lastDuplicateTime;
 
     @Column(name = "duplicate_count", nullable = false)
     private Integer duplicateCount = 0;
+
+    public String getStartTimeForDisplay() {
+        return startTime == null ? null
+                : DateUtil.convertTimestampToStringDateAndConfiguredHourTime(Timestamp.from(startTime.toInstant()));
+    }
 }

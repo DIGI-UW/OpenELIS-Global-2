@@ -87,6 +87,8 @@ const renderWithProviders = (
   );
 };
 
+let viewportIsDesktop = true;
+
 describe("Layout", () => {
   beforeAll(() => {
     // Minimal service worker mock to satisfy notification component
@@ -103,26 +105,24 @@ describe("Layout", () => {
         configurable: true,
       });
     }
-    if (!window.matchMedia) {
-      Object.defineProperty(window, "matchMedia", {
-        writable: true,
-        value: vi.fn().mockImplementation((query) => ({
-          matches: false,
-          media: query,
-          onchange: null,
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-          addListener: vi.fn(),
-          removeListener: vi.fn(),
-          dispatchEvent: vi.fn(),
-        })),
-      });
-    }
+    // Viewport-aware matchMedia: useIsDesktop keys off the desktop query.
+    // Tests flip `viewportIsDesktop` before rendering to simulate small screens.
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query === "(min-width: 1024px)" && viewportIsDesktop,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    viewportIsDesktop = true;
   });
 
   describe("TwoModeLayout integration", () => {
@@ -286,6 +286,40 @@ describe("Layout", () => {
         "has-add",
       );
     });
+
+    test("testLayout_NotificationContext_KeepsNotificationsRaisedTogether", () => {
+      const NotificationConsumer = () => {
+        const { addNotification, notifications } =
+          useContext(NotificationContext);
+        return (
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                addNotification({ kind: "success", message: "first" });
+                addNotification({ kind: "warning", message: "second" });
+              }}
+            >
+              raise
+            </button>
+            <span data-testid="notification-messages">
+              {notifications.map((n) => n.message).join(",")}
+            </span>
+          </div>
+        );
+      };
+
+      renderWithProviders(
+        <Layout>
+          <NotificationConsumer />
+        </Layout>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "raise" }));
+
+      expect(screen.getByTestId("notification-messages").textContent).toBe(
+        "first,second",
+      );
+    });
   });
 
   describe("route-based configuration", () => {
@@ -350,6 +384,95 @@ describe("Layout", () => {
       // Note: defaultMode is "lock" for /analyzers
     });
 
+    test("testLayout_MicrobiologyRoute_UsesLockedNavigation", async () => {
+      renderWithProviders(
+        <Layout>
+          <div>Microbiology Content</div>
+        </Layout>,
+        { route: "/Microbiology/worklist" },
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId("content-wrapper")).toHaveClass(
+          "content-nav-locked",
+        ),
+      );
+    });
+
+    test("testLayout_MicrobiologyRoute_DefaultsToCollapsedNavigationOnCompactViewport", async () => {
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = vi.fn().mockImplementation((query) => ({
+        matches: query === "(max-width: 1056px)",
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      try {
+        const { container } = renderWithProviders(
+          <Layout>
+            <div>Microbiology Content</div>
+          </Layout>,
+          { route: "/Microbiology/worklist" },
+        );
+
+        await waitFor(() => {
+          expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+            "content-nav-locked",
+          );
+          expect(container.querySelector(".cds--side-nav")).not.toHaveClass(
+            "cds--side-nav--expanded",
+          );
+        });
+        expect(
+          screen.getByRole("button", { name: "Open menu" }),
+        ).toBeInTheDocument();
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
+    });
+
+    test("testLayout_AdminRoute_DefaultsToCollapsedNavigationOnCompactViewport", async () => {
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = vi.fn().mockImplementation((query) => ({
+        matches: query === "(max-width: 1056px)",
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      try {
+        const { container } = renderWithProviders(
+          <Layout>
+            <Admin />
+          </Layout>,
+          { route: "/MasterListsPage" },
+        );
+
+        await waitFor(() => {
+          expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+            "content-nav-locked",
+          );
+          expect(container.querySelector(".cds--side-nav")).not.toHaveClass(
+            "cds--side-nav--expanded",
+          );
+        });
+        expect(
+          screen.getByRole("button", { name: "Open menu" }),
+        ).toBeInTheDocument();
+      } finally {
+        window.matchMedia = originalMatchMedia;
+      }
+    });
+
     test.each([
       "/admin",
       "/MasterListsPage",
@@ -374,7 +497,8 @@ describe("Layout", () => {
       ).toBeInTheDocument();
     });
 
-    test("testLayout_AdminRoute_ReopensNavWhenPersistedClosed", async () => {
+    // Stale legacy "close" preference must not hide the desktop nav
+    test("testLayout_AdminRoute_IgnoresStaleClosePreference", async () => {
       window.localStorage.setItem("adminSideNavMode", "close");
 
       const { container } = renderWithProviders(
@@ -391,6 +515,177 @@ describe("Layout", () => {
       expect(
         screen.getByText(enMessages["sidenav.label.admin.testmgt"]),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("responsive viewport behavior", () => {
+    /**
+     * Regression test for the tablet occlusion bug: on a small viewport the
+     * nav must never render persistently over the content — even with a stale
+     * mode preference left in localStorage by an older app version.
+     */
+    test("testLayout_SmallViewport_NavClosedByDefault", () => {
+      viewportIsDesktop = false;
+      window.localStorage.setItem("mainSideNavMode", "lock"); // stale legacy key
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).not.toHaveClass("cds--side-nav--expanded");
+      expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+        "content-nav-locked",
+      );
+    });
+
+    test("testLayout_SmallViewport_HamburgerTogglesOverlayDrawer", () => {
+      viewportIsDesktop = false;
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      fireEvent.click(container.querySelector("#sidenav-menu-button"));
+
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      // Overlay drawer (non-persistent), content not pushed
+      expect(sideNav).toHaveClass("cds--side-nav--hidden");
+      expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+        "content-nav-locked",
+      );
+
+      fireEvent.click(container.querySelector("#sidenav-menu-button"));
+      expect(container.querySelector(".cds--side-nav")).not.toHaveClass(
+        "cds--side-nav--expanded",
+      );
+    });
+
+    test("testLayout_Desktop_NavAlwaysRenderedWithoutHamburger", () => {
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).not.toHaveClass("cds--side-nav--hidden");
+      expect(screen.getByTestId("content-wrapper")).toHaveClass(
+        "content-nav-locked",
+      );
+      // No nav toggle exists on desktop
+      expect(container.querySelector("#sidenav-menu-button")).toBeNull();
+    });
+
+    test("testLayout_SmallViewport_HamburgerRendered", () => {
+      viewportIsDesktop = false;
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      expect(container.querySelector("#sidenav-menu-button")).not.toBeNull();
+    });
+  });
+
+  describe("sidenav pin preference", () => {
+    /**
+     * The desktop nav is pinned by default (persistent, pushing content), but
+     * the pin toggle at the top of the sidenav lets the user unpin it into an
+     * on-demand overlay drawer. The preference persists via localStorage.
+     */
+    test("testLayout_Desktop_PinToggleRendered", () => {
+      renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      expect(screen.getByTestId("sidenav-pin-toggle")).toBeInTheDocument();
+    });
+
+    test("testLayout_SmallViewport_NoPinToggle", () => {
+      viewportIsDesktop = false;
+
+      renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      expect(screen.queryByTestId("sidenav-pin-toggle")).toBeNull();
+    });
+
+    test("testLayout_Desktop_UnpinConvertsNavToOverlayDrawer", () => {
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      fireEvent.click(screen.getByTestId("sidenav-pin-toggle"));
+
+      // Nav stays visible mid-interaction, but as an overlay drawer:
+      // content is no longer pushed and the hamburger appears.
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).toHaveClass("cds--side-nav--hidden");
+      expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+        "content-nav-locked",
+      );
+      expect(container.querySelector("#sidenav-menu-button")).not.toBeNull();
+      expect(window.localStorage.getItem("sideNavPinned")).toBe("false");
+    });
+
+    test("testLayout_Desktop_UnpinnedPreferenceRestoredOnLoad", () => {
+      window.localStorage.setItem("sideNavPinned", "false");
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      // Unpinned desktop behaves like the small-viewport drawer
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).not.toHaveClass("cds--side-nav--expanded");
+      expect(screen.getByTestId("content-wrapper")).not.toHaveClass(
+        "content-nav-locked",
+      );
+
+      fireEvent.click(container.querySelector("#sidenav-menu-button"));
+      expect(container.querySelector(".cds--side-nav")).toHaveClass(
+        "cds--side-nav--expanded",
+      );
+    });
+
+    test("testLayout_Desktop_RepinRestoresPersistentNav", () => {
+      window.localStorage.setItem("sideNavPinned", "false");
+
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+      );
+
+      fireEvent.click(screen.getByTestId("sidenav-pin-toggle"));
+
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).not.toHaveClass("cds--side-nav--hidden");
+      expect(screen.getByTestId("content-wrapper")).toHaveClass(
+        "content-nav-locked",
+      );
+      expect(container.querySelector("#sidenav-menu-button")).toBeNull();
+      expect(window.localStorage.getItem("sideNavPinned")).toBe("true");
     });
   });
 
@@ -432,6 +727,124 @@ describe("Layout", () => {
       // User icon should be present in header for language/user panel access
       const userIcon = document.querySelector("#user-Icon");
       expect(userIcon).toBeTruthy();
+    });
+  });
+
+  describe("while the server is unreachable (OGC-1442)", () => {
+    let defaultServer;
+
+    beforeAll(() => {
+      defaultServer = getFromOpenElisServer.getMockImplementation();
+    });
+
+    afterEach(() => {
+      getFromOpenElisServer.mockImplementation(defaultServer);
+    });
+
+    const ConfigReader = () => {
+      const { configurationProperties, reloadConfiguration } =
+        useContext(ConfigurationContext);
+      return (
+        <>
+          <p data-testid="banner">
+            {configurationProperties.BANNER_TEXT || "no banner"}
+          </p>
+          <p data-testid="lab-unit-rule">
+            {String(configurationProperties.REQUIRE_LAB_UNIT_AT_LOGIN)}
+          </p>
+          <button type="button" onClick={reloadConfiguration}>
+            Reload configuration
+          </button>
+        </>
+      );
+    };
+
+    const failingWhen = (failing) => (url, callback) => {
+      if (failing(url)) {
+        callback(undefined);
+      } else if (url === "/rest/configuration-properties") {
+        callback({ BANNER_TEXT: "Test Lab" });
+      } else if (url === "/rest/supportedlocales/active") {
+        callback([]);
+      }
+    };
+
+    test("a failed configuration load leaves the configuration readable, not undefined", () => {
+      getFromOpenElisServer.mockImplementation(
+        failingWhen((url) => url.includes("configuration-properties")),
+      );
+
+      renderWithProviders(
+        <Layout>
+          <ConfigReader />
+        </Layout>,
+        { userContext: { userSessionDetails: {}, logout: vi.fn() } },
+      );
+
+      expect(screen.getByTestId("banner").textContent).toBe("no banner");
+      expect(screen.getByTestId("lab-unit-rule").textContent).toBe("undefined");
+    });
+
+    test("a failed reload keeps the configuration already loaded", async () => {
+      let down = false;
+      getFromOpenElisServer.mockImplementation(failingWhen(() => down));
+
+      renderWithProviders(
+        <Layout>
+          <ConfigReader />
+        </Layout>,
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("banner").textContent).toBe("Test Lab"),
+      );
+
+      down = true;
+      fireEvent.click(screen.getByText("Reload configuration"));
+
+      await waitFor(() =>
+        expect(
+          getFromOpenElisServer.mock.calls.filter(
+            ([url]) => url === "/rest/configuration-properties",
+          ).length,
+        ).toBe(2),
+      );
+      expect(screen.getByTestId("banner").textContent).toBe("Test Lab");
+    });
+
+    test("loads the supported locales once the session check has answered", async () => {
+      getFromOpenElisServer.mockImplementation(failingWhen(() => false));
+      const localeFetches = () =>
+        getFromOpenElisServer.mock.calls.filter(
+          ([url]) => url === "/rest/supportedlocales/active",
+        ).length;
+      const pending = { userSessionDetails: {}, logout: vi.fn() };
+
+      const { rerender } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+        { userContext: pending },
+      );
+      expect(localeFetches()).toBe(0);
+
+      rerender(
+        <MemoryRouter initialEntries={["/"]}>
+          <IntlProvider locale="en" messages={enMessages}>
+            <UserSessionDetailsContext.Provider
+              value={{
+                ...pending,
+                userSessionDetails: { authenticated: false },
+              }}
+            >
+              <Layout>
+                <div>Content</div>
+              </Layout>
+            </UserSessionDetailsContext.Provider>
+          </IntlProvider>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => expect(localeFetches()).toBe(1));
     });
   });
 });

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-inventory-usage-link" author="OGC">
+        <createTable schemaName="clinlims" tableName="micro_inventory_usage_link">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"
+                    primaryKeyName="pk_micro_inventory_usage_link"/>
+            </column>
+            <column name="case_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="inventory_usage_id" type="BIGINT">
+                <constraints nullable="false" unique="true"
+                    uniqueConstraintName="uq_micro_inventory_usage"/>
+            </column>
+            <column name="usage_context" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="activity_id" type="VARCHAR(36)"/>
+            <column name="ast_run_id" type="VARCHAR(36)"/>
+            <column name="test_reagent_link_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_micro_inventory_usage_case"
+            baseTableSchemaName="clinlims" baseTableName="micro_inventory_usage_link" baseColumnNames="case_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_micro_inventory_usage_shared"
+            baseTableSchemaName="clinlims" baseTableName="micro_inventory_usage_link"
+            baseColumnNames="inventory_usage_id" referencedTableSchemaName="clinlims"
+            referencedTableName="inventory_usage" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_micro_inventory_usage_activity"
+            baseTableSchemaName="clinlims" baseTableName="micro_inventory_usage_link" baseColumnNames="activity_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_case_activity" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_micro_inventory_usage_ast_run"
+            baseTableSchemaName="clinlims" baseTableName="micro_inventory_usage_link" baseColumnNames="ast_run_id"
+            referencedTableSchemaName="clinlims" referencedTableName="micro_ast_run" referencedColumnNames="id"/>
+
+        <createIndex schemaName="clinlims" tableName="micro_inventory_usage_link"
+            indexName="idx_micro_inventory_usage_case">
+            <column name="case_id"/>
+        </createIndex>
+        <createIndex schemaName="clinlims" tableName="micro_inventory_usage_link"
+            indexName="idx_micro_inventory_usage_action">
+            <column name="usage_context"/>
+            <column name="activity_id"/>
+            <column name="ast_run_id"/>
+        </createIndex>
+
+        <sql>
+            ALTER TABLE clinlims.micro_inventory_usage_link
+            ADD CONSTRAINT micro_inventory_usage_context_chk
+            CHECK (
+                (usage_context = 'CULTURE_SETUP' AND activity_id IS NOT NULL AND ast_run_id IS NULL)
+                OR
+                (usage_context = 'AST_SETUP' AND activity_id IS NULL AND ast_run_id IS NOT NULL)
+            );
+        </sql>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="micro_inventory_usage_link"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

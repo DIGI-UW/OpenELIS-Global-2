@@ -43,6 +43,13 @@ public class PatientPhotoServiceImpl extends AuditableBaseObjectServiceImpl<Pati
             String photoType = extractPhotoType(photoBase64);
             String cleanBase64 = cleanBase64Data(photoBase64);
             String thumbnail = createThumbnail(cleanBase64);
+            if (thumbnail == null) {
+                // The payload decoded as base64 but not as an image, so there is no
+                // thumbnail to store and the column is NOT NULL. Say why, instead of
+                // letting it surface as a constraint violation.
+                throw new LIMSRuntimeException(
+                        "The photo could not be read as an image." + " Supported formats are JPEG, PNG, GIF and BMP.");
+            }
 
             PatientPhoto existingPhoto = baseObjectDAO.getByPatientId(patientId);
 

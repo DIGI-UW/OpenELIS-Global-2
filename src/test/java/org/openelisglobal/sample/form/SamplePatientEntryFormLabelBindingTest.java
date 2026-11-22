@@ -86,4 +86,5 @@ public class SamplePatientEntryFormLabelBindingTest {
         assertNull("a save body without labelPersistRequest leaves the field null (hook stays guarded)",
                 form.getLabelPersistRequest());
     }
+
 }

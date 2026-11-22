@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="3.5.0.0-vector-sampling-site-add-subtype" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="vector_sampling_site" schemaName="clinlims" columnName="subtype"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="vector_sampling_site" schemaName="clinlims">
+      <column name="subtype" type="VARCHAR(200)"/>
+    </addColumn>
+  </changeSet>
+
+<changeSet id="3.5.0.0-vector-sampling-site-drop-address" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <columnExists tableName="vector_sampling_site" schemaName="clinlims" columnName="address"/>
+    </preConditions>
+    <dropColumn tableName="vector_sampling_site" schemaName="clinlims" columnName="address"/>
+  </changeSet>
+
+  <changeSet id="3.5.0.0-vector-sampling-site-add-location-org-id" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="vector_sampling_site" schemaName="clinlims" columnName="location_org_id"/>
+      </not>
+    </preConditions>
+    <addColumn tableName="vector_sampling_site" schemaName="clinlims">
+      <column name="location_org_id" type="VARCHAR(255)"/>
+    </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

@@ -1,10 +1,12 @@
-The files in this directory pertain to backing up the OpenELIS database.
-The script currently installed by default sends the backup files to Seattle. 
-a different destination is wanted then there are two generic versions. 
+Legacy Linux database backup helper
 
-OffSiteBackupLinux.pl is configured for Linux and sends files via ftp.
-OffSiteBackupWindows.pl. is configured for Windows and sends files via http.
+The Linux scripts remain inputs to the legacy native installer in build.sh.
+They dump the clinlims PostgreSQL schema, compress it, retain local copies and
+send queued copies to their configured FTP destination. They do not back up
+installation keys, certificates or Docker configuration.
 
-More information on configuration can be found in BackupHowTo.docx
-
-receive-file.pl is a perl script to be used on the receiving http server.
+The obsolete HTTP upload receiver and its Windows/Haiti upload scripts have
+been removed. Sites that deployed copies must remove the CGI endpoint from
+their web server and replace the old upload destination. Removing repository
+files does not change those deployed copies or delete their existing backups.
+Repository history retains the removed code.

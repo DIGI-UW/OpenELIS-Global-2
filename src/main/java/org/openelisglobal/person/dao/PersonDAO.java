@@ -43,4 +43,24 @@ public interface PersonDAO extends BaseDAO<Person, String> {
     Person getPersonByLastName(String lastName) throws LIMSRuntimeException;
 
     Person getPersonById(String personId) throws LIMSRuntimeException;
+
+    /**
+     * Searches Persons already used as a Requestor contact (i.e. linked via a
+     * sample_requester row of the given requesterTypeId) by name, so the Requestor
+     * type-ahead only surfaces known contacts rather than every Person in the
+     * system (patients included).
+     */
+    List<Person> getPagesOfSearchedRequestorContacts(int startingRecNo, String searchValue, long requesterTypeId)
+            throws LIMSRuntimeException;
+
+    int getTotalSearchedRequestorContactCount(String searchValue, long requesterTypeId) throws LIMSRuntimeException;
+
+    /**
+     * Exact first+last name match against Persons already used as a Requestor
+     * contact, mirroring OrganizationService.getActiveOrganizationByName — used to
+     * dedup a typed-in-new Requestor against an existing one before creating a
+     * duplicate Person.
+     */
+    Person getRequestorContactByName(String firstName, String lastName, long requesterTypeId)
+            throws LIMSRuntimeException;
 }

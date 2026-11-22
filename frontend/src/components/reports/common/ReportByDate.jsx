@@ -5,8 +5,6 @@ import {
   Grid,
   Column,
   Section,
-  SelectItem,
-  Select,
   Button,
   Loading,
 } from "@carbon/react";
@@ -14,6 +12,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import "../../Style.css";
 import { AlertDialog } from "../../common/CustomNotification";
 import CustomDatePicker from "../../common/CustomDatePicker";
+import SearchableSelect from "../../common/SearchableSelect";
 import config from "../../../config.json";
 import { encodeDate, Roles } from "../../utils/Utils";
 import { getFromOpenElisServer } from "../../utils/Utils";
@@ -31,35 +30,22 @@ const ReportByDate = (props) => {
   });
 
   const handleDatePickerChangeDate = (datePicker, date) => {
-    let updatedDate = encodeDate(date);
-    let obj = null;
-    switch (datePicker) {
-      case "startDate":
-        obj = {
-          ...reportFormValues,
-          startDate: updatedDate,
-        };
-        break;
-      case "endDate":
-        obj = {
-          ...reportFormValues,
-          endDate: updatedDate,
-        };
-        break;
-      default:
-    }
-    setReportFormValues(obj);
+    const updatedDate = encodeDate(date);
+    setReportFormValues((current) => ({
+      ...current,
+      [datePicker]: updatedDate,
+    }));
   };
 
   const handleSubmit = () => {
     if (!reportFormValues.startDate || !reportFormValues.endDate) {
-      setReportFormValues({
-        ...reportFormValues,
+      setReportFormValues((current) => ({
+        ...current,
         error: intl.formatMessage({
           id: "error.dateRange.start",
           defaultMessage: "Please select Start and end date.",
         }),
-      });
+      }));
       return;
     }
 
@@ -69,20 +55,20 @@ const ReportByDate = (props) => {
         props.report === "activityReportByTestSection") &&
       !reportFormValues.value
     ) {
-      setReportFormValues({
-        ...reportFormValues,
+      setReportFormValues((current) => ({
+        ...current,
         error: intl.formatMessage({
           id: "error.value",
           defaultMessage: "Please select a value.",
         }),
-      });
+      }));
       return;
     }
 
-    setReportFormValues({
-      ...reportFormValues,
+    setReportFormValues((current) => ({
+      ...current,
       error: "",
-    });
+    }));
 
     setLoading(true);
     let baseParams = "";
@@ -148,7 +134,6 @@ const ReportByDate = (props) => {
       }
     };
 
-    console.log("props", props);
     if (
       props.report === "activityReportByTest" ||
       props.report === "activityReportByPanel" ||
@@ -227,35 +212,23 @@ const ReportByDate = (props) => {
               </Column>
               <Column lg={8} md={8} sm={4}>
                 {list && list.length > 0 && (
-                  <Select
+                  <SearchableSelect
                     id="type"
                     labelText={intl.formatMessage({
                       id: "label.form.searchby",
                     })}
+                    placeholder={intl.formatMessage({
+                      id: getSelectLabel(),
+                    })}
+                    options={list}
                     value={reportFormValues.value}
-                    onChange={(e) =>
-                      setReportFormValues({
-                        ...reportFormValues,
-                        value: e.target.value,
-                      })
+                    onChange={(value) =>
+                      setReportFormValues((current) => ({
+                        ...current,
+                        value,
+                      }))
                     }
-                  >
-                    <SelectItem
-                      key={"emptyselect"}
-                      value={""}
-                      text={intl.formatMessage({
-                        id: getSelectLabel(),
-                        defaultMessage: "Seelect Test",
-                      })}
-                    />
-                    {list.map((statusOption) => (
-                      <SelectItem
-                        key={statusOption.id}
-                        value={statusOption.id}
-                        text={statusOption.value}
-                      />
-                    ))}
-                  </Select>
+                  />
                 )}
               </Column>
             </Grid>

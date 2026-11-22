@@ -40,8 +40,33 @@ public class TestStorageHistoryRestController {
         this.testService = testService;
     }
 
+    /**
+     * Response shape for one history row — a plain DTO, never the Hibernate entity
+     * (which leaks lastupdated / sysUserId; the editor surface returns DTOs
+     * everywhere else).
+     */
+    public static class HistoryDto {
+        public String id;
+        public String changedBy;
+        public String changedAt;
+        public String changeType;
+        public String previousValues;
+        public String newValues;
+
+        static HistoryDto of(TestSampleHandlingHistory row) {
+            HistoryDto dto = new HistoryDto();
+            dto.id = row.getId();
+            dto.changedBy = row.getChangedBy();
+            dto.changedAt = row.getChangedAt() == null ? null : row.getChangedAt().toString();
+            dto.changeType = row.getChangeType();
+            dto.previousValues = row.getPreviousValues();
+            dto.newValues = row.getNewValues();
+            return dto;
+        }
+    }
+
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<TestSampleHandlingHistory> getHistory(@PathVariable String testId) {
+    public List<HistoryDto> getHistory(@PathVariable String testId) {
         Test test = testService.getTestById(testId);
         if (test == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Test not found: " + testId);
@@ -50,6 +75,7 @@ public class TestStorageHistoryRestController {
         if (handling == null) {
             return Collections.emptyList();
         }
-        return historyService.getByHandlingId(handling.getId());
+        return historyService.getByHandlingId(handling.getId()).stream().map(HistoryDto::of)
+                .collect(java.util.stream.Collectors.toList());
     }
 }

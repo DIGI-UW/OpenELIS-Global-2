@@ -42,6 +42,17 @@ public class TestTerminologyMapping extends BaseObject<String> {
     @Column(name = "component_id", length = 36)
     private String componentId;
 
+    /**
+     * Optional specimen scope (OGC-1145 FR-11): when set, this mapping applies only
+     * to that sample type (LOINC is specimen-specific by the standard); when null
+     * the mapping is shared across every sample type the test associates. Phase 1
+     * writes only shared (null) mappings; the Phase 2 per-specimen override
+     * populates this without migration.
+     */
+    @Column(name = "sample_type_id", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String sampleTypeId;
+
     @Column(name = "source", nullable = false, length = 20)
     private String source;
 
@@ -91,6 +102,14 @@ public class TestTerminologyMapping extends BaseObject<String> {
         this.componentId = componentId;
     }
 
+    public String getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(String sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
+    }
+
     public String getSource() {
         return source;
     }
@@ -103,8 +122,12 @@ public class TestTerminologyMapping extends BaseObject<String> {
         return code;
     }
 
+    /**
+     * Stored trimmed: exact-match routing and the duplicate checks compare codes as
+     * stored (OGC-1465).
+     */
     public void setCode(String code) {
-        this.code = code;
+        this.code = code == null ? null : code.trim();
     }
 
     public String getRelationship() {

@@ -28,6 +28,7 @@ import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import DataTable from "react-data-table-component";
 import { Formik } from "formik";
 import { jpSet } from "../utils/JsonPath";
+import { requestFailed, serverMessage } from "../utils/requestOutcome";
 import config from "../../config.json";
 
 /**
@@ -95,7 +96,7 @@ function GenericSampleResults({
   // Breadcrumb navigation
   const defaultBreadcrumbs = [
     { label: "home.label", link: "/" },
-    { label: "sample.label.generic", link: "/GenericSample/Order" },
+    { label: "menu.genericSample", link: "/GenericSample/Order" },
     { label: "result.entry.label" },
   ];
 
@@ -255,7 +256,7 @@ function GenericSampleResults({
       JSON.stringify(dataToSend),
       (resp) => {
         setIsSubmitting(false);
-        if (resp) {
+        if (resp && !requestFailed(resp)) {
           addNotification({
             title: intl.formatMessage({ id: "notification.title" }),
             message: intl.formatMessage({ id: "success.save.msg" }),
@@ -269,7 +270,9 @@ function GenericSampleResults({
         } else {
           addNotification({
             title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage({ id: "error.save.msg" }),
+            message:
+              serverMessage(resp) ||
+              intl.formatMessage({ id: "error.save.msg" }),
             kind: NotificationKinds.error,
           });
           if (onSaveError) {

@@ -1,0 +1,337 @@
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Button,
+  DataTable,
+  Heading,
+  InlineLoading,
+  InlineNotification,
+  Link,
+  Section,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tag,
+} from "@carbon/react";
+import { useIntl } from "react-intl";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
+
+const ENDPOINT = "/rest/analyzer/delivery-issues";
+
+const hasMessage = (intl, id) =>
+  Object.prototype.hasOwnProperty.call(intl.messages, id);
+
+const formatReason = (intl, reason) => {
+  if (!reason) {
+    return intl.formatMessage({ id: "analyzer.deliveryIssues.reason.none" });
+  }
+  const id = `analyzer.deliveryIssues.reason.${reason}`;
+  return hasMessage(intl, id)
+    ? intl.formatMessage({ id })
+    : intl.formatMessage(
+        { id: "analyzer.deliveryIssues.reason.unknown" },
+        { code: reason },
+      );
+};
+
+const formatActionError = (intl, response) => {
+  const id = response?.messageKey;
+  return id && hasMessage(intl, id)
+    ? intl.formatMessage({ id }, response.messageArgs)
+    : intl.formatMessage({ id: "analyzer.deliveryIssues.error.actionFailed" });
+};
+
+const DeliveryIssuesPanel = () => {
+  const intl = useIntl();
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+  const [bridgeState, setBridgeState] = useState(null);
+  const [pendingId, setPendingId] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const [retryReceiptId, setRetryReceiptId] = useState(null);
+
+  const load = useCallback(() => {
+    getFromOpenElisServer(ENDPOINT, (response) => {
+      const data = response?.status === "success" ? response.data : null;
+      const valid =
+        Array.isArray(data?.rows) && data.count === data.rows.length;
+      setRows(valid ? data.rows : []);
+      if (valid) {
+        setRetryReceiptId((id) =>
+          data.rows.some((row) => row.id === id) ? id : null,
+        );
+      }
+      setLoadFailed(!valid);
+      setBridgeState(
+        !valid
+          ? null
+          : data.bridgeConfigured === false
+            ? "notConfigured"
+            : data.bridgePaired === false
+              ? "notPaired"
+              : null,
+      );
+      setLoadError(
+        !valid && response?.messageKey
+          ? formatActionError(intl, response)
+          : null,
+      );
+      setLoading(false);
+    });
+  }, [intl]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const act = (row, action) => {
+    setPendingId(row.id);
+    setActionError(null);
+    setRetryReceiptId(null);
+    postToOpenElisServerJsonResponse(
+      `${ENDPOINT}/${encodeURIComponent(row.id)}/${action}`,
+      "{}",
+      (response) => {
+        setPendingId(null);
+        const queued =
+          action === "retry" &&
+          response?.status === "accepted" &&
+          response?.state === "QUEUED";
+        if (
+          !queued &&
+          !(action === "dismiss" && response?.status === "success")
+        ) {
+          setActionError(formatActionError(intl, response));
+          return;
+        }
+        setRetryReceiptId(queued ? row.id : null);
+        setLoading(true);
+        load();
+      },
+    );
+  };
+
+  const headers = useMemo(
+    () =>
+      [
+        "analyzer",
+        "sender",
+        "received",
+        "status",
+        "attempts",
+        "reason",
+        "detail",
+        "actions",
+      ].map((key) => ({
+        key,
+        header: intl.formatMessage({
+          id: `analyzer.deliveryIssues.column.${key}`,
+        }),
+      })),
+    [intl],
+  );
+
+  const tableRows = rows.map((row) => ({
+    id: row.id,
+    analyzer:
+      row.analyzerName ||
+      intl.formatMessage(
+        { id: "analyzer.deliveryIssues.unrecognizedSender" },
+        { source: row.sourceId || "-" },
+      ),
+    sender: row.sender || "-",
+    received: row.receivedAt
+      ? intl.formatDate(new Date(row.receivedAt), {
+          dateStyle: "medium",
+          timeStyle: "short",
+        })
+      : "-",
+    status: (
+      <Tag type={row.state === "DMQ" ? "red" : "warm-gray"}>
+        {intl.formatMessage({
+          id:
+            row.state === "DMQ"
+              ? "analyzer.deliveryIssues.state.deadLettered"
+              : row.state === "RETRYING"
+                ? "analyzer.deliveryIssues.state.retrying"
+                : "analyzer.deliveryIssues.state.queued",
+        })}
+      </Tag>
+    ),
+    attempts: row.attempts,
+    reason: ["RECEIVED", "PENDING"].includes(row.state)
+      ? intl.formatMessage({ id: "analyzer.deliveryIssues.queuedReason" })
+      : formatReason(intl, row.failureReason),
+    detail: row.lastError
+      ? row.state === "DMQ"
+        ? row.lastError
+        : intl.formatMessage(
+            { id: "analyzer.deliveryIssues.previousError" },
+            { detail: row.lastError },
+          )
+      : "-",
+    actions: row.actionable ? (
+      <>
+        <Button
+          kind="ghost"
+          size="sm"
+          disabled={pendingId !== null}
+          onClick={() => act(row, "retry")}
+        >
+          {intl.formatMessage({ id: "analyzer.deliveryIssues.retry" })}
+        </Button>
+        <Button
+          kind="ghost"
+          size="sm"
+          disabled={pendingId !== null}
+          onClick={() => act(row, "dismiss")}
+        >
+          {intl.formatMessage({ id: "analyzer.deliveryIssues.dismiss" })}
+        </Button>
+      </>
+    ) : (
+      "-"
+    ),
+  }));
+
+  return (
+    <Section
+      level={3}
+      data-testid="analyzer-delivery-issues"
+      style={{ marginTop: "2rem" }}
+    >
+      <Heading>
+        {intl.formatMessage({ id: "analyzer.deliveryIssues.title" })}
+      </Heading>
+      <p>{intl.formatMessage({ id: "analyzer.deliveryIssues.description" })}</p>
+      <p>
+        {intl.formatMessage({ id: "analyzer.deliveryIssues.retryGuidance" })}{" "}
+        <Link href="/analyzers">
+          {intl.formatMessage({ id: "analyzer.deliveryIssues.reviewSetup" })}
+        </Link>
+      </p>
+      <Button
+        kind="tertiary"
+        size="sm"
+        disabled={loading || pendingId !== null}
+        onClick={() => {
+          setRetryReceiptId(null);
+          setLoading(true);
+          load();
+        }}
+      >
+        {intl.formatMessage({ id: "analyzer.deliveryIssues.refresh" })}
+      </Button>
+      {retryReceiptId && (
+        <InlineNotification
+          kind="info"
+          lowContrast
+          onCloseButtonClick={() => setRetryReceiptId(null)}
+          title={intl.formatMessage({
+            id: "analyzer.deliveryIssues.retryRequested",
+          })}
+        />
+      )}
+      {actionError && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          title={actionError}
+          onCloseButtonClick={() => setActionError(null)}
+        />
+      )}
+      {loading ? (
+        <InlineLoading
+          description={intl.formatMessage({
+            id: "analyzer.deliveryIssues.loading",
+          })}
+        />
+      ) : loadFailed ? (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title={
+            loadError ||
+            intl.formatMessage({
+              id: "analyzer.deliveryIssues.loadFailed",
+            })
+          }
+        />
+      ) : bridgeState === "notConfigured" ? (
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "analyzer.bridgePairing.error.notConfigured",
+          })}
+        />
+      ) : bridgeState === "notPaired" ? (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "analyzer.bridgePairing.unpaired.title",
+          })}
+          subtitle={intl.formatMessage({
+            id: "analyzer.deliveryIssues.notPaired.subtitle",
+          })}
+        />
+      ) : tableRows.length === 0 ? (
+        <InlineNotification
+          kind="success"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({ id: "analyzer.deliveryIssues.empty" })}
+        />
+      ) : (
+        <DataTable rows={tableRows} headers={headers}>
+          {({
+            rows: dataRows,
+            headers: dataHeaders,
+            getHeaderProps,
+            getRowProps,
+          }) => (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    {dataHeaders.map((header) => (
+                      <TableHeader
+                        key={header.key}
+                        {...getHeaderProps({ header })}
+                      >
+                        {header.header}
+                      </TableHeader>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {dataRows.map((row) => (
+                    <TableRow key={row.id} {...getRowProps({ row })}>
+                      {row.cells.map((cell) => (
+                        <TableCell key={cell.id}>{cell.value}</TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DataTable>
+      )}
+    </Section>
+  );
+};
+
+export default DeliveryIssuesPanel;

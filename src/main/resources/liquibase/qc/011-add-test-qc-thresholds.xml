@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- TestQcThreshold: 1:1 QC acceptance thresholds per test (OGC-554 FR-01) -->
+    <changeSet id="qc-011-create-test-qc-threshold" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="test_qc_threshold"/>
+            </not>
+        </preConditions>
+        <comment>Create per-test QC threshold table (OGC-554)</comment>
+        <createTable tableName="test_qc_threshold">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="test_id" type="INT">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="blank_threshold" type="NUMERIC(15,5)"/>
+            <column name="rpd_threshold" type="NUMERIC(15,5)"/>
+            <column name="recovery_window_pct" type="NUMERIC(15,5)"/>
+            <column name="sys_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+            baseTableName="test_qc_threshold"
+            baseColumnNames="test_id"
+            constraintName="fk_test_qc_threshold_test"
+            referencedTableName="test"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="test_qc_threshold"
+            baseColumnNames="sys_user_id"
+            constraintName="fk_test_qc_threshold_user"
+            referencedTableName="system_user"
+            referencedColumnNames="id"/>
+        <rollback>
+            <dropTable tableName="test_qc_threshold"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

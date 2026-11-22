@@ -34,6 +34,14 @@ public class RangeCoverageValidationServiceTest {
         return l;
     }
 
+    /** A range scoped to one specimen (a per-sample-type override). */
+    private static ResultLimit specimenLimit(String gender, double minAge, double maxAge, String componentId,
+            String sampleTypeId) {
+        ResultLimit l = limit(gender, minAge, maxAge, componentId);
+        l.setSampleTypeId(sampleTypeId);
+        return l;
+    }
+
     @Test
     public void contiguousRangesFromZero_areComplete() {
         CoverageReport r = service.validate(
@@ -139,5 +147,75 @@ public class RangeCoverageValidationServiceTest {
                 .validate(Arrays.asList(limit("M", 0d, 1d), limit(null, 1d, Double.POSITIVE_INFINITY)));
         assertEquals(Status.COMPLETE, r.male.status);
         assertTrue(r.male.gaps.isEmpty());
+    }
+
+    /**
+     * The reported defect: a male override running 0–30 with nothing behind it was
+     * reported COMPLETE, because every specimen-scoped gap used to be discarded.
+     * The ages above 30 are genuinely uncovered and must gate activation.
+     */
+    @Test
+    public void specimenOverrideWithNoSharedSet_reportsItsTailGap() {
+        CoverageReport r = service.validate(Arrays.asList(specimenLimit("M", 0d, 30d, "comp-a", "26"),
+                specimenLimit("F", 0d, Double.POSITIVE_INFINITY, "comp-a", "26")));
+
+        assertEquals(Status.GAP, r.male.status);
+        assertEquals(1, r.male.gaps.size());
+        assertEquals(30d, r.male.gaps.get(0).fromAge, 1e-9);
+        assertEquals(Double.POSITIVE_INFINITY, r.male.gaps.get(0).toAge, 0d);
+        assertTrue(r.hasGaps());
+        // The female override is open-ended, so she is covered.
+        assertEquals(Status.COMPLETE, r.female.status);
+    }
+
+    /**
+     * The behaviour the discard was protecting: an override that covers only part
+     * of the axis is fine when the component's shared set covers the rest, because
+     * the shared set backs the unclaimed ages at resolution time.
+     */
+    @Test
+    public void specimenOverrideBackedByASharedSet_isComplete() {
+        CoverageReport r = service.validate(Arrays.asList(limit("M", 0d, Double.POSITIVE_INFINITY, "comp-a"),
+                specimenLimit("M", 0d, 30d, "comp-a", "26")));
+
+        assertEquals(Status.COMPLETE, r.male.status);
+        assertTrue(r.male.gaps.isEmpty());
+        // Restating an age window the shared set also covers is the point of an
+        // override, so it is not reported as an overlap.
+        assertTrue(r.male.overlaps.isEmpty());
+        assertFalse(r.hasGaps());
+    }
+
+    /** A shared set on another component cannot back this component's override. */
+    @Test
+    public void sharedSetOnAnotherComponent_doesNotBackTheOverride() {
+        CoverageReport r = service.validate(Arrays.asList(limit("M", 0d, Double.POSITIVE_INFINITY, "comp-b"),
+                specimenLimit("M", 0d, 30d, "comp-a", "26")));
+
+        assertEquals(Status.GAP, r.male.status);
+        assertEquals(1, r.male.gaps.size());
+        assertEquals("comp-a", r.male.gaps.get(0).componentId);
+    }
+
+    /** Overlaps inside a single specimen scope are still real findings. */
+    @Test
+    public void overlapWithinOneSpecimenScope_isStillDetected() {
+        CoverageReport r = service.validate(Arrays.asList(specimenLimit("M", 0d, 20d, "comp-a", "26"),
+                specimenLimit("M", 10d, Double.POSITIVE_INFINITY, "comp-a", "26")));
+
+        assertEquals(Status.OVERLAP, r.male.status);
+        assertEquals(1, r.male.overlaps.size());
+        assertTrue(r.male.gaps.isEmpty());
+    }
+
+    /** Two specimens leaving the same window uncovered is one finding, not two. */
+    @Test
+    public void sameGapAcrossTwoSpecimens_isReportedOnce() {
+        CoverageReport r = service.validate(
+                Arrays.asList(specimenLimit("M", 0d, 30d, "comp-a", "26"), specimenLimit("M", 0d, 30d, "comp-a", "1")));
+
+        assertEquals(Status.GAP, r.male.status);
+        assertEquals(1, r.male.gaps.size());
+        assertEquals(30d, r.male.gaps.get(0).fromAge, 1e-9);
     }
 }

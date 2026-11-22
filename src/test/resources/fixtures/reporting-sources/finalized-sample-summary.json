@@ -1,0 +1,15 @@
+{
+  "id": "FINALIZED_SAMPLE_SUMMARY",
+  "version": 1,
+  "label": "Finalized sample summary",
+  "source": "SAMPLE_TESTING",
+  "dateAnchor": "collectionDate",
+  "layouts": ["SPREADSHEET", "RESULT_LIST"],
+  "attributes": ["specimenId", "accessionNumber", "resultValue"],
+  "catalogs": ["tests"],
+  "filters": [],
+  "defaultColumns": {
+    "SPREADSHEET": ["specimenId", "accessionNumber"],
+    "RESULT_LIST": ["accessionNumber", "resultValue"]
+  }
+}

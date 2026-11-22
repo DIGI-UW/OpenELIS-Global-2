@@ -27,6 +27,7 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.servlet.validation.AjaxServlet;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -65,15 +66,17 @@ public class PendingAnalysisForTestProviderRestController extends BaseRestContro
     @GetMapping("/getPendingAnalysisForTestProvider")
     public ResponseEntity<Object> processRequest(@RequestParam String testId) {
         if (GenericValidator.isBlankOrNull(testId)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Internal error, please contact Admin and file bug report");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("testId is required");
+        }
+        if (!StringUtil.isInteger(testId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("testId must be a numeric id");
         }
 
         try {
             JSONObject jsonResult = createJsonGroupedAnalysis(testId);
             return ResponseEntity.ok(jsonResult);
         } catch (Exception e) {
-            LogEvent.logDebug(e);
+            LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Internal error, please contact Admin and file bug report");
         }

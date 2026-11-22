@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+  <changeSet id="012-ogc-1383-case-structure" author="OpenELIS">
+    <preConditions onFail="HALT" onFailMessage="Review duplicate historical analysis ownership before installing V2 case structure; no owner can be inferred safely.">
+      <sqlCheck expectedResult="0">SELECT COUNT(*) FROM (SELECT analysis_id FROM clinlims.micro_case_analysis GROUP BY analysis_id HAVING COUNT(*) &gt; 1) duplicates</sqlCheck>
+    </preConditions>
+    <addColumn schemaName="clinlims" tableName="micro_case">
+      <column name="status" type="varchar(20)" />
+      <column name="sample_id" type="numeric(10)" />
+      <column name="sample_type_id" type="numeric(10)" />
+      <column name="lab_unit_id" type="numeric(10)" />
+      <column name="program_id" type="numeric(10)" />
+    </addColumn>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case" baseColumnNames="sample_id" referencedTableSchemaName="clinlims" referencedTableName="sample" referencedColumnNames="id" constraintName="fk_micro_case_v2_sample" />
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case" baseColumnNames="sample_type_id" referencedTableSchemaName="clinlims" referencedTableName="type_of_sample" referencedColumnNames="id" constraintName="fk_micro_case_v2_sample_type" />
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case" baseColumnNames="lab_unit_id" referencedTableSchemaName="clinlims" referencedTableName="test_section" referencedColumnNames="id" constraintName="fk_micro_case_v2_lab_unit" />
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case" baseColumnNames="program_id" referencedTableSchemaName="clinlims" referencedTableName="program" referencedColumnNames="id" constraintName="fk_micro_case_v2_program" />
+    <dropNotNullConstraint schemaName="clinlims" tableName="micro_case" columnName="sample_item_id" columnDataType="numeric(10)" />
+    <dropUniqueConstraint schemaName="clinlims" tableName="micro_case" constraintName="uq_micro_case_sample_workflow" />
+    <createIndex schemaName="clinlims" tableName="micro_case" indexName="idx_micro_case_v2_group">
+      <column name="sample_id" />
+      <column name="sample_type_id" />
+      <column name="lab_unit_id" />
+    </createIndex>
+    <sql>ALTER TABLE clinlims.micro_case ADD CONSTRAINT ck_micro_case_status CHECK (status IN ('ACTIVE','CANCELLED','REJECTED'));</sql>
+    <rollback>
+      <sql>ALTER TABLE clinlims.micro_case DROP CONSTRAINT ck_micro_case_status;</sql>
+      <dropColumn schemaName="clinlims" tableName="micro_case" columnName="status" />
+      <dropIndex schemaName="clinlims" tableName="micro_case" indexName="idx_micro_case_v2_group" />
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case" constraintName="fk_micro_case_v2_sample" />
+      <dropColumn schemaName="clinlims" tableName="micro_case" columnName="sample_id" />
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case" constraintName="fk_micro_case_v2_sample_type" />
+      <dropColumn schemaName="clinlims" tableName="micro_case" columnName="sample_type_id" />
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case" constraintName="fk_micro_case_v2_lab_unit" />
+      <dropColumn schemaName="clinlims" tableName="micro_case" columnName="lab_unit_id" />
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case" constraintName="fk_micro_case_v2_program" />
+      <dropColumn schemaName="clinlims" tableName="micro_case" columnName="program_id" />
+      <addNotNullConstraint schemaName="clinlims" tableName="micro_case" columnName="sample_item_id" columnDataType="numeric(10)" />
+      <addUniqueConstraint schemaName="clinlims" tableName="micro_case" columnNames="sample_item_id,workflow_type" constraintName="uq_micro_case_sample_workflow" />
+    </rollback>
+  </changeSet>
+  <changeSet id="012-ogc-1383-analysis-ownership" author="OpenELIS">
+    <addColumn schemaName="clinlims" tableName="micro_case_analysis">
+      <column name="case_role" type="varchar(20)" />
+      <column name="collected_in_sets" type="boolean" />
+      <column name="placement" type="varchar(30)" />
+      <column name="cancelled_at" type="timestamp" />
+      <column name="cancelled_by" type="varchar(20)" />
+      <column name="cancellation_reason" type="text" />
+    </addColumn>
+    <dropUniqueConstraint schemaName="clinlims" tableName="micro_case_analysis" constraintName="uq_micro_case_analysis_case_analysis" />
+    <sql>CREATE UNIQUE INDEX uq_micro_case_analysis_active ON clinlims.micro_case_analysis (analysis_id) WHERE cancelled_at IS NULL; ALTER TABLE clinlims.micro_case_analysis ADD CONSTRAINT ck_micro_case_analysis_role CHECK (case_role IN ('CULTURE','DIRECT','CASE'));</sql>
+    <rollback>
+      <sql>DROP INDEX clinlims.uq_micro_case_analysis_active; ALTER TABLE clinlims.micro_case_analysis DROP CONSTRAINT ck_micro_case_analysis_role;</sql>
+      <dropColumn schemaName="clinlims" tableName="micro_case_analysis" columnName="case_role" />
+      <dropColumn schemaName="clinlims" tableName="micro_case_analysis" columnName="collected_in_sets" />
+      <dropColumn schemaName="clinlims" tableName="micro_case_analysis" columnName="placement" />
+      <dropColumn schemaName="clinlims" tableName="micro_case_analysis" columnName="cancelled_at" />
+      <dropColumn schemaName="clinlims" tableName="micro_case_analysis" columnName="cancelled_by" />
+      <dropColumn schemaName="clinlims" tableName="micro_case_analysis" columnName="cancellation_reason" />
+      <addUniqueConstraint schemaName="clinlims" tableName="micro_case_analysis" columnNames="case_id,analysis_id" constraintName="uq_micro_case_analysis_case_analysis" />
+    </rollback>
+  </changeSet>
+  <changeSet id="012-ogc-1383-members-requests-splits" author="OpenELIS">
+    <createTable schemaName="clinlims" tableName="micro_case_sample">
+      <column name="id" type="varchar(36)">
+        <constraints nullable="false" primaryKey="true" primaryKeyName="pk_micro_case_sample" />
+      </column>
+      <column name="case_id" type="varchar(36)">
+        <constraints nullable="false" />
+      </column>
+      <column name="sample_item_id" type="numeric(10)">
+        <constraints nullable="false" />
+      </column>
+      <column name="joined_at" type="timestamp">
+        <constraints nullable="false" />
+      </column>
+      <column name="joined_by" type="varchar(20)">
+        <constraints nullable="false" />
+      </column>
+      <column name="split_out_at" type="timestamp" />
+      <column name="split_out_by" type="varchar(20)" />
+      <column name="split_reason" type="text" />
+      <column name="last_updated" type="timestamp" />
+    </createTable>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_sample" baseColumnNames="case_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id" constraintName="fk_micro_case_sample_case" />
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_sample" baseColumnNames="sample_item_id" referencedTableSchemaName="clinlims" referencedTableName="sample_item" referencedColumnNames="id" constraintName="fk_micro_case_sample_sample_item" />
+    <createIndex schemaName="clinlims" tableName="micro_case_sample" indexName="idx_micro_case_sample_case">
+      <column name="case_id" />
+    </createIndex>
+    <createTable schemaName="clinlims" tableName="micro_case_request">
+      <column name="id" type="varchar(36)">
+        <constraints nullable="false" primaryKey="true" primaryKeyName="pk_micro_case_request" />
+      </column>
+      <column name="case_id" type="varchar(36)">
+        <constraints nullable="false" />
+      </column>
+      <column name="sample_type_request_id" type="integer">
+        <constraints nullable="false" />
+      </column>
+      <column name="test_id" type="numeric(10)">
+        <constraints nullable="false" />
+      </column>
+      <column name="sample_type_id" type="numeric(10)">
+        <constraints nullable="false" />
+      </column>
+      <column name="case_role" type="varchar(20)">
+        <constraints nullable="false" />
+      </column>
+      <column name="collected_in_sets" type="boolean">
+        <constraints nullable="false" />
+      </column>
+      <column name="requested_at" type="timestamp">
+        <constraints nullable="false" />
+      </column>
+      <column name="requested_by" type="varchar(20)">
+        <constraints nullable="false" />
+      </column>
+      <column name="sample_item_id" type="numeric(10)" />
+      <column name="analysis_id" type="numeric(10)" />
+      <column name="cancelled_at" type="timestamp" />
+      <column name="cancelled_by" type="varchar(20)" />
+      <column name="cancellation_reason" type="text" />
+      <column name="last_updated" type="timestamp" />
+    </createTable>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_request" baseColumnNames="case_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id" constraintName="fk_micro_case_request_case" />
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_request" baseColumnNames="sample_type_request_id" referencedTableSchemaName="clinlims" referencedTableName="sample_type_request" referencedColumnNames="id" constraintName="fk_micro_case_request_sample_type_request" />
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_request" baseColumnNames="test_id" referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id" constraintName="fk_micro_case_request_test" />
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_request" baseColumnNames="sample_type_id" referencedTableSchemaName="clinlims" referencedTableName="type_of_sample" referencedColumnNames="id" constraintName="fk_micro_case_request_sample_type" />
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_request" baseColumnNames="sample_item_id" referencedTableSchemaName="clinlims" referencedTableName="sample_item" referencedColumnNames="id" constraintName="fk_micro_case_request_sample_item" />
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_request" baseColumnNames="analysis_id" referencedTableSchemaName="clinlims" referencedTableName="analysis" referencedColumnNames="id" constraintName="fk_micro_case_request_analysis" />
+    <createIndex schemaName="clinlims" tableName="micro_case_request" indexName="idx_micro_case_request_case">
+      <column name="case_id" />
+    </createIndex>
+    <createTable schemaName="clinlims" tableName="micro_case_split">
+      <column name="id" type="varchar(36)">
+        <constraints nullable="false" primaryKey="true" primaryKeyName="pk_micro_case_split" />
+      </column>
+      <column name="source_case_id" type="varchar(36)">
+        <constraints nullable="false" />
+      </column>
+      <column name="result_case_id" type="varchar(36)">
+        <constraints nullable="false" />
+      </column>
+      <column name="sample_item_id" type="numeric(10)">
+        <constraints nullable="false" />
+      </column>
+      <column name="occurred_at" type="timestamp">
+        <constraints nullable="false" />
+      </column>
+      <column name="performed_by" type="varchar(20)">
+        <constraints nullable="false" />
+      </column>
+      <column name="reason" type="text">
+        <constraints nullable="false" />
+      </column>
+      <column name="last_updated" type="timestamp" />
+    </createTable>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_split" baseColumnNames="source_case_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id" constraintName="fk_micro_case_split_source_case" />
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_split" baseColumnNames="result_case_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id" constraintName="fk_micro_case_split_result_case" />
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_split" baseColumnNames="sample_item_id" referencedTableSchemaName="clinlims" referencedTableName="sample_item" referencedColumnNames="id" constraintName="fk_micro_case_split_sample_item" />
+    <createIndex schemaName="clinlims" tableName="micro_case_split" indexName="idx_micro_case_split_source_case">
+      <column name="source_case_id" />
+    </createIndex>
+    <createIndex schemaName="clinlims" tableName="micro_case_split" indexName="idx_micro_case_split_result_case">
+      <column name="result_case_id" />
+    </createIndex>
+    <sql>CREATE UNIQUE INDEX uq_micro_case_sample_active ON clinlims.micro_case_sample (case_id, sample_item_id) WHERE split_out_at IS NULL;
+CREATE UNIQUE INDEX uq_micro_case_request_active ON clinlims.micro_case_request (sample_type_request_id, test_id) WHERE cancelled_at IS NULL;
+CREATE INDEX idx_micro_case_request_sample ON clinlims.micro_case_request (sample_item_id);
+ALTER TABLE clinlims.micro_case_request ADD CONSTRAINT ck_micro_case_request_role CHECK (case_role IN ('CULTURE','DIRECT','CASE'));
+ALTER TABLE clinlims.micro_case_request ADD CONSTRAINT ck_micro_case_request_sets CHECK (NOT collected_in_sets OR case_role = 'CULTURE');
+ALTER TABLE clinlims.micro_case_split ADD CONSTRAINT ck_micro_case_split_distinct CHECK (source_case_id &lt;&gt; result_case_id);</sql>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="micro_case_split" />
+      <dropTable schemaName="clinlims" tableName="micro_case_request" />
+      <dropTable schemaName="clinlims" tableName="micro_case_sample" />
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

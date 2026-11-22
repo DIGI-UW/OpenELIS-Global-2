@@ -2,6 +2,7 @@ package org.openelisglobal.analyzerresults.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,34 +27,8 @@ import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * Unit tests for the upsert / dedupe contract in
- * {@link AnalyzerResultsServiceImpl#insertAnalyzerResults}.
- * <p>
- * This is the single persistence method shared by every analyzer import path —
- * legacy plugins (GenericASTM, GenericHL7, GenericFile, per-device plugins) all
- * route through {@code AnalyzerLineInserter.persistImport()} →
- * {@code insertAnalyzerResults}, and the new FHIR bridge path
- * ({@code AnalyzerFhirImportController.importFhirBundle}) calls it directly.
- * The three-case contract this method implements (keyed on
- * {@code (analyzerId, accessionNumber, testName)}) is the authoritative upsert
- * semantics for the whole system, so it gets exercised here rather than being
- * duplicated per import path.
- * </p>
- * <p>
- * Three cases:
- * <ol>
- * <li><b>No previous row</b> — fresh insert.</li>
- * <li><b>Exact re-import</b> — same key AND same completeDate OR same result
- * value: skip silently (idempotent).</li>
- * <li><b>Corrected re-export</b> — same key but DIFFERENT completeDate AND
- * DIFFERENT result value: insert the new row as a linked correction
- * ({@code readOnly=true}, {@code duplicateAnalyzerResultId} backlink on both
- * rows).</li>
- * </ol>
- * This layout matches the plan mellow-honking-cascade Phase 1.6 upsert
- * invariants ({@code sampleAccession}, {@code testCode}, {@code analyzerId}) as
- * the dedupe key.
- * </p>
+ * Distinct deliveries must survive staging, even when their values or times
+ * match.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerResultsServiceImplTest {
@@ -76,6 +51,8 @@ public class AnalyzerResultsServiceImplTest {
         ar.setTestName(TEST_NAME);
         ar.setResult(result);
         ar.setCompleteDate(completeDate);
+        ar.setSourceConnectionId("connection-1");
+        ar.setSourceMessageId(java.util.UUID.randomUUID().toString());
         return ar;
     }
 
@@ -118,11 +95,12 @@ public class AnalyzerResultsServiceImplTest {
     }
 
     // ------------------------------------------------------------------
-    // Case 2 — exact re-import: skip silently (idempotent)
+    // Distinct deliveries remain visible even when their measured values or
+    // timestamps match.
     // ------------------------------------------------------------------
 
     @Test
-    public void reImport_sameCompleteDate_skipsInsertAndUpdate() {
+    public void distinctDeliveryAtSameTimeRemainsVisible() {
         Timestamp when = new Timestamp(1_700_000_000_000L);
         AnalyzerResults existing = existingRow("42", "1520.5", when);
         AnalyzerResults incoming = newIncoming("9999.9", when); // different value, SAME date
@@ -130,12 +108,12 @@ public class AnalyzerResultsServiceImplTest {
 
         service.insertAnalyzerResults(List.of(incoming), USER_ID);
 
-        verify(baseObjectDAO, never()).insert(any(AnalyzerResults.class));
-        verify(baseObjectDAO, never()).update(any(AnalyzerResults.class));
+        verify(baseObjectDAO).insert(incoming);
+        verify(baseObjectDAO).update(existing);
     }
 
     @Test
-    public void reImport_sameResultValue_skipsInsertAndUpdate() {
+    public void distinctDeliveryWithSameValueRemainsVisible() {
         AnalyzerResults existing = existingRow("42", "1520.5", new Timestamp(1_700_000_000_000L));
         AnalyzerResults incoming = newIncoming("1520.5", new Timestamp(1_800_000_000_000L)); // same value, different
                                                                                              // date
@@ -143,12 +121,75 @@ public class AnalyzerResultsServiceImplTest {
 
         service.insertAnalyzerResults(List.of(incoming), USER_ID);
 
-        verify(baseObjectDAO, never()).insert(any(AnalyzerResults.class));
-        verify(baseObjectDAO, never()).update(any(AnalyzerResults.class));
+        verify(baseObjectDAO).insert(incoming);
+        verify(baseObjectDAO).update(existing);
+    }
+
+    @Test
+    public void newDeliveryDoesNotOverwriteAHeldDelivery() {
+        AnalyzerResults held = existingRow("held-id-42", "REVIEW REQUIRED", new Timestamp(1_700_000_000_000L));
+        held.setReadOnly(true);
+        held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
+        held.setTestId("601");
+        held.setResultType("A");
+        held.setSourceConnectionId("bridge-connection-7f3c");
+        held.setSourceProfileId("genexpert-astm");
+        held.setSourceProfileRevision(3);
+        held.setRawTestCode("MTB-RIF");
+        held.setRawResultValue("REVIEW REQUIRED");
+        held.setSourceMessageId("message-before-mapping");
+
+        AnalyzerResults incoming = newIncoming("9001", new Timestamp(1_800_000_000_000L));
+        incoming.setTestId("601");
+        incoming.setResultType("D");
+        incoming.setSourceConnectionId("bridge-connection-7f3c");
+        incoming.setSourceProfileId("genexpert-astm");
+        incoming.setSourceProfileRevision(3);
+        incoming.setRawTestCode("MTB-RIF");
+        incoming.setRawResultValue("REVIEW REQUIRED");
+        incoming.setSourceMessageId("message-after-mapping");
+        when(baseObjectDAO.getDuplicateResultByAccessionAndTest(incoming)).thenReturn(List.of(held));
+
+        service.insertAnalyzerResults(List.of(incoming), USER_ID);
+
+        verify(baseObjectDAO).insert(incoming);
+        assertEquals("new-id-777", incoming.getId());
+        assertEquals("held-id-42", held.getId());
+        assertEquals("REVIEW REQUIRED", held.getResult());
+        assertEquals("message-before-mapping", held.getSourceMessageId());
+        assertTrue(held.isReadOnly());
+        assertEquals("message-after-mapping", incoming.getSourceMessageId());
+    }
+
+    @Test
+    public void aHeldRowFromAnotherRecordOfTheSameCodeIsNotAdvanced() {
+        AnalyzerResults held = existingRow("held-id-43", "DETECTED", new Timestamp(1_700_000_000_000L));
+        held.setReadOnly(true);
+        held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
+        held.setSourceConnectionId("bridge-connection-7f3c");
+        held.setSourceProfileId("genexpert-astm");
+        held.setSourceProfileRevision(3);
+        held.setRawTestCode("HIVVL");
+        held.setRawSubIdentity("HIV-1");
+        held.setRawResultValue("DETECTED");
+
+        AnalyzerResults incoming = newIncoming("Detected", new Timestamp(1_800_000_000_000L));
+        incoming.setSourceConnectionId("bridge-connection-7f3c");
+        incoming.setSourceProfileId("genexpert-astm");
+        incoming.setSourceProfileRevision(3);
+        incoming.setRawTestCode("HIVVL");
+        incoming.setRawResultValue("DETECTED");
+        when(baseObjectDAO.getDuplicateResultByAccessionAndTest(incoming)).thenReturn(List.of(held));
+
+        service.insertAnalyzerResults(List.of(incoming), USER_ID);
+
+        ArgumentCaptor<AnalyzerResults> inserted = ArgumentCaptor.forClass(AnalyzerResults.class);
+        verify(baseObjectDAO).insert(inserted.capture());
+        assertNotEquals("held-id-43", inserted.getValue().getId());
     }
 
     // ------------------------------------------------------------------
-    // Case 3 — corrected re-export: insert linked correction row
+    // Repeated measurements remain linked for local review.
     // ------------------------------------------------------------------
 
     @Test
@@ -181,12 +222,8 @@ public class AnalyzerResultsServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
-    public void reImport_bothCompleteDateAndResultNull_isTreatedAsCorrection() {
-        // Pathological case: a previously-staged row with null completeDate AND
-        // null result value. The loop never satisfies the "duplicate" predicate,
-        // so the incoming row is inserted as a linked correction. This test
-        // documents current behavior — if we want null+null to be a no-op skip
-        // instead, the fix is a null-guarded early-return in the loop.
+    public void distinctDeliveryIsRetainedWhenPreviousTimeAndValueAreMissing() {
+        // Missing timestamps or values do not prove two deliveries are the same.
         AnalyzerResults existing = existingRow("old-id-99", null, null);
         AnalyzerResults incoming = newIncoming("new-value", new Timestamp(1_800_000_000_000L));
         when(baseObjectDAO.getDuplicateResultByAccessionAndTest(incoming)).thenReturn(List.of(existing));
@@ -217,9 +254,8 @@ public class AnalyzerResultsServiceImplTest {
         Collections.addAll(batch, freshA, freshB, dupeC);
         service.insertAnalyzerResults(batch, USER_ID);
 
-        // Two fresh inserts, zero for the dupe
-        verify(baseObjectDAO, times(2)).insert(any(AnalyzerResults.class));
-        verify(baseObjectDAO, never()).update(any(AnalyzerResults.class));
+        verify(baseObjectDAO, times(3)).insert(any(AnalyzerResults.class));
+        verify(baseObjectDAO).update(existingForC);
     }
 
     @Test
@@ -229,22 +265,4 @@ public class AnalyzerResultsServiceImplTest {
         verify(baseObjectDAO, never()).update(any(AnalyzerResults.class));
     }
 
-    /**
-     * A4 — Import Issues panel backend: the service must pass-through to the DAO so
-     * the REST endpoint reaches the {@code import_issue_reason IS NOT NULL} query
-     * without an extra layer of filtering that could silently drop rows.
-     */
-    @Test
-    public void findWithImportIssues_delegatesToDaoWithSameLimit() {
-        AnalyzerResults orphan = new AnalyzerResults();
-        orphan.setAccessionNumber("ACC-42");
-        orphan.setTestName("CT");
-        orphan.setImportIssueReason("unmapped_code:CT");
-        when(baseObjectDAO.findWithImportIssues(25)).thenReturn(List.of(orphan));
-
-        List<AnalyzerResults> rows = service.findWithImportIssues(25);
-        assertEquals(1, rows.size());
-        assertEquals("unmapped_code:CT", rows.get(0).getImportIssueReason());
-        verify(baseObjectDAO, times(1)).findWithImportIssues(25);
-    }
 }

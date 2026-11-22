@@ -9,7 +9,7 @@ import OEHeader from "./Header";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./Layout";
 import messages from "../../languages/en.json";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { getFromOpenElisServer, getFromOpenElisServerV2 } from "../utils/Utils";
 
 // Mock Utils
 vi.mock("../utils/Utils", async () => {
@@ -279,19 +279,16 @@ const MOCK_MENU_DATA = [
   },
 ];
 
-// Mock sidenav props that Layout.js would provide
-const SIDENAV_MODES = {
-  SHOW: "show",
-  LOCK: "lock",
-  CLOSE: "close",
-};
-
 const renderHeader = (options = {}) => {
   const {
     initialRoute = "/",
-    sidenavMode = "close",
+    isDesktop = true,
+    navOpen = isDesktop,
     menuData = MOCK_MENU_DATA,
     navContext = "main",
+    sessionDetails = mockUserSessionDetails,
+    logout = vi.fn(),
+    showSideNav = true,
   } = options;
   const mockGetFromServer = getFromOpenElisServer;
   mockGetFromServer.mockImplementation((url, callback) => {
@@ -305,29 +302,31 @@ const renderHeader = (options = {}) => {
   });
 
   const mockToggle = vi.fn();
-  const mockSetMode = vi.fn();
+  const mockCloseSideNav = vi.fn();
 
   const result = render(
     <MemoryRouter initialEntries={[initialRoute]}>
       <IntlProvider locale="en" messages={messages}>
         <UserSessionDetailsContext.Provider
-          value={{ userSessionDetails: mockUserSessionDetails }}
+          value={{ userSessionDetails: sessionDetails, logout }}
         >
           <ConfigurationContext.Provider value={mockConfigurationContext}>
             <NotificationContext.Provider value={mockNotificationContext}>
               <OEHeader
                 onChangeLanguage={vi.fn()}
-                mode={sidenavMode}
-                isExpanded={sidenavMode !== "close"}
+                navOpen={navOpen}
+                isDesktop={isDesktop}
                 toggleSideNav={mockToggle}
-                setMode={mockSetMode}
-                SIDENAV_MODES={SIDENAV_MODES}
+                closeSideNav={mockCloseSideNav}
                 navContext={navContext}
+                showSideNav={showSideNav}
               />
               <Route
                 path="*"
                 render={({ location }) => (
-                  <span data-testid="current-path">{location.pathname}</span>
+                  <span data-testid="current-path">
+                    {location.pathname + location.search}
+                  </span>
                 )}
               />
             </NotificationContext.Provider>
@@ -336,53 +335,212 @@ const renderHeader = (options = {}) => {
       </IntlProvider>
     </MemoryRouter>,
   );
-  return { ...result, mockSetMode, mockToggle };
+  return { ...result, mockCloseSideNav, mockToggle };
 };
 
 describe("Header Component - M2b Enhancement Tests", () => {
+  test("preserves stable selectors on Carbon parent and leaf menu labels", async () => {
+    const { container } = renderHeader();
+
+    await waitFor(() => {
+      expect(container.querySelector("#menu_sample")).toBeInTheDocument();
+      expect(container.querySelector("#menu_results")).toBeInTheDocument();
+      expect(container.querySelector("#menu_reports")).toBeInTheDocument();
+      expect(container.querySelector("span#menu_home")).toBeInTheDocument();
+      expect(
+        container.querySelector("span#menu_sample_add"),
+      ).toBeInTheDocument();
+    });
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorageMock.clear();
   });
 
-  describe("Lock Mode Support (useSideNavPreference integration)", () => {
-    /**
-     * TEST: Lock mode persists sidenav expansion
-     * When user toggles to lock mode, sidenav should stay open even after interactions
-     * This requires integrating useSideNavPreference hook
-     */
-    test("lock mode sets isFixedNav=true on SideNav", async () => {
-      // Set lock mode in localStorage
-      localStorageMock.setItem("mainSideNavMode", "lock");
+  test("renders Carbon sidenav lists with direct list-item children", async () => {
+    const { container } = renderHeader();
 
-      const { container } = renderHeader();
-
-      await waitFor(
-        () => {
-          // Carbon's SideNav with isFixedNav={true} renders with class "cds--side-nav--fixed"
-          // Note: Implementation may vary depending on Carbon version, but prop should be passed
-          const sideNav = container.querySelector(".cds--side-nav");
-          expect(sideNav).toBeTruthy();
-        },
-        { timeout: 3000 },
-      );
+    await waitFor(() => {
+      expect(container.querySelector("#menu_home_nav")).toBeTruthy();
     });
 
-    test("toggle button cycles through states (close -> show -> lock)", async () => {
+    const sideNavLists = container.querySelectorAll(
+      ".cds--side-nav__items, .cds--side-nav__menu",
+    );
+    expect(sideNavLists.length).toBeGreaterThan(0);
+    sideNavLists.forEach((list) => {
+      Array.from(list.children).forEach((child) => {
+        expect(child.tagName).toBe("LI");
+      });
+    });
+  });
+
+  describe("reporting navigation", () => {
+    const leaf = (id, label, url) => ({
+      menu: {
+        elementId: id,
+        displayKey: label,
+        actionURL: url,
+        isActive: true,
+      },
+      childMenus: [],
+    });
+    const menuData = [
+      MOCK_MENU_DATA[0],
+      {
+        menu: {
+          elementId: "menu_reports",
+          displayKey: "banner.menu.reports",
+          isActive: true,
+        },
+        childMenus: [
+          leaf(
+            "menu_reports_status_patient",
+            "openreports.patientTestStatus",
+            "/Report?type=patient&report=patientCILNSP_vreduit",
+          ),
+          leaf(
+            "menu_reports_custom_data_export",
+            "reporting.title",
+            "/reports/custom-data-export",
+          ),
+          leaf(
+            "menu_reports_queue",
+            "reporting.queue",
+            "/reports/custom-data-export?view=queue",
+          ),
+        ],
+      },
+    ];
+
+    test.each([
+      [
+        "/reports/custom-data-export?job=example&view=queue&page=2&review=example",
+        "My Report Queue",
+      ],
+      [
+        "/reports/custom-data-export?view=builder&step=columns&type=SAMPLE_TESTING",
+        "Custom Data Export",
+      ],
+      [
+        "/Report?report=patientCILNSP_vreduit&review=example&type=patient",
+        "Patient Status Report",
+      ],
+    ])(
+      "a deep link selects only its menu entry and opens Reports: %s",
+      async (initialRoute, name) => {
+        const { container } = renderHeader({ menuData, initialRoute });
+        const selected = await screen.findByRole("link", { name, exact: true });
+        expect(selected).toHaveAttribute("aria-current", "page");
+        expect(
+          container.querySelectorAll('.cds--side-nav [aria-current="page"]'),
+        ).toHaveLength(1);
+        expect(
+          screen.getByRole("button", { name: "Reports", exact: true }),
+        ).toHaveAttribute("aria-expanded", "true");
+      },
+    );
+
+    test("opening the queue from Home expands Reports and preserves native modified-click behavior", async () => {
+      renderHeader({ menuData, initialRoute: "/Dashboard" });
+      const reports = await screen.findByRole("button", {
+        name: "Reports",
+        exact: true,
+      });
+      fireEvent.click(reports);
+      const queue = screen.getByRole("link", {
+        name: "My Report Queue",
+        exact: true,
+      });
+      expect(fireEvent.click(queue, { ctrlKey: true })).toBe(true);
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/Dashboard",
+      );
+      fireEvent.click(queue);
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/reports/custom-data-export?view=queue",
+      );
+      expect(
+        screen.getByRole("link", { name: "My Report Queue", exact: true }),
+      ).toHaveAttribute("aria-current", "page");
+      expect(
+        screen.getByRole("button", { name: "Reports", exact: true }),
+      ).toHaveAttribute("aria-expanded", "true");
+    });
+  });
+
+  describe("Home item active state", () => {
+    test.each(["/", "/Dashboard"])(
+      "landing on %s highlights the Home menu item",
+      async (route) => {
+        const { container } = renderHeader({ initialRoute: route });
+
+        await waitFor(() => {
+          expect(container.querySelector('a[href="/Dashboard"]')).toBeTruthy();
+        });
+
+        const homeLink = container.querySelector('a[href="/Dashboard"]');
+        expect(homeLink).toHaveClass("cds--side-nav__link--current");
+        expect(homeLink).toHaveAttribute("aria-current", "page");
+      },
+    );
+  });
+
+  describe("Responsive sidenav", () => {
+    test("desktop renders a persistent expanded nav and no toggle button", async () => {
       const { container } = renderHeader();
 
-      await waitFor(
-        () => {
-          const menuButton = container.querySelector('[data-cy="menuButton"]');
-          expect(menuButton).toBeTruthy();
+      await waitFor(() => {
+        expect(container.querySelector(".cds--side-nav")).toBeTruthy();
+      });
 
-          // Initial state (assuming default is close)
-          // Click 1 -> Show
-          // Click 2 -> Lock
-          // Click 3 -> Close
-        },
-        { timeout: 3000 },
-      );
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).not.toHaveClass("cds--side-nav--hidden");
+      expect(container.querySelector('[data-cy="menuButton"]')).toBeNull();
+    });
+
+    test("small viewport renders hamburger; nav is a closed overlay drawer", async () => {
+      const { container, mockToggle } = renderHeader({ isDesktop: false });
+
+      await waitFor(() => {
+        expect(container.querySelector('[data-cy="menuButton"]')).toBeTruthy();
+      });
+
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).not.toHaveClass("cds--side-nav--expanded");
+      expect(sideNav).toHaveClass("cds--side-nav--hidden");
+
+      fireEvent.click(container.querySelector('[data-cy="menuButton"]'));
+      expect(mockToggle).toHaveBeenCalledTimes(1);
+    });
+
+    test("small viewport with drawer open closes on outside mousedown", async () => {
+      const { container, mockCloseSideNav } = renderHeader({
+        isDesktop: false,
+        navOpen: true,
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector(".cds--side-nav")).toHaveClass(
+          "cds--side-nav--expanded",
+        );
+      });
+
+      fireEvent.mouseDown(document.body);
+      expect(mockCloseSideNav).toHaveBeenCalled();
+    });
+
+    test("desktop never closes nav on outside mousedown", async () => {
+      const { container, mockCloseSideNav } = renderHeader();
+
+      await waitFor(() => {
+        expect(container.querySelector(".cds--side-nav")).toBeTruthy();
+      });
+
+      fireEvent.mouseDown(document.body);
+      expect(mockCloseSideNav).not.toHaveBeenCalled();
     });
   });
 
@@ -442,8 +600,8 @@ describe("Header Component - M2b Enhancement Tests", () => {
   });
 
   describe("Existing Functionality Preservation", () => {
-    test("menu toggle button is visible when authenticated", async () => {
-      const { container } = renderHeader();
+    test("menu toggle button is visible when authenticated on small viewports", async () => {
+      const { container } = renderHeader({ isDesktop: false });
 
       await waitFor(() => {
         const menuButton = container.querySelector('[data-cy="menuButton"]');
@@ -480,141 +638,22 @@ describe("Header Component - M2b Enhancement Tests", () => {
   });
 
   describe("URL Matching and Active State", () => {
-    /**
-     * Test: URL matching logic is covered by E2E tests
-     * Unit testing active state requires complex DOM mocking
-     * See: cypress/e2e/sidenavEnhanced.cy.js for comprehensive URL matching tests
-     *
-     * Note: Active state is determined by:
-     * 1. Exact match: location.pathname === menuItem.menu.actionURL
-     * 2. Prefix match: location.pathname.startsWith(menuItem.menu.actionURL + "/")
-     * 3. Length check: actionURL.length > 1 (prevents "/" from matching everything)
-     */
-    test("URL matching logic documentation", () => {
-      // This test documents the URL matching algorithm
-      // Actual behavior is tested in E2E tests with real navigation
-      expect(true).toBe(true);
-    });
-
-    /**
-     * Test: Active state styling verification
-     * Verifies that active nav items have correct styling:
-     * - Left border (4px blue)
-     * - Background color (not transparent)
-     * - No double borders
-     * - No white background on focus/active
-     * - Subnav items (like workplan) show active state correctly
-     */
-    test("active nav items have correct styling", async () => {
-      // Sidenav must be expanded to see menu items
-      const { container } = renderHeader({
-        initialRoute: "/Storage",
-        sidenavMode: "show",
-      });
-
-      await waitFor(
-        () => {
-          const activeLink = container.querySelector(
-            '.cds--side-nav__link--current[href="/Storage"]',
+    test.each(["/Storage", "/WorkPlanByTest"])(
+      "nested route %s has one active, visible navigation destination",
+      async (initialRoute) => {
+        const { container } = renderHeader({ initialRoute });
+        await waitFor(() => {
+          const selected = container.querySelector(
+            '.cds--side-nav [aria-current="page"]',
           );
-          expect(activeLink).toBeTruthy();
-
-          // Log DOM for debugging (uncomment to inspect)
-          // logDOM(container, '.cds--side-nav__link--current');
-          // screen.debug(activeLink);
-
-          // Verify active link exists and has correct class
+          expect(selected).toHaveAttribute("href", initialRoute);
+          expect(selected).toBeVisible();
           expect(
-            activeLink.classList.contains("cds--side-nav__link--current"),
-          ).toBe(true);
-
-          // Verify it's a subnav item (has reduced-padding class on parent)
-          const menuItem = activeLink.closest(".cds--side-nav__menu-item");
-          expect(menuItem).toBeTruthy();
-          expect(
-            menuItem.classList.contains("reduced-padding-nav-menu-item"),
-          ).toBe(true);
-        },
-        { timeout: 5000 },
-      );
-    });
-
-    /**
-     * Test: Workplan subnav shows active state
-     * Verifies that subnav items like workplan correctly show active state
-     * when the current path matches their actionURL
-     */
-    test("workplan subnav shows active state when path matches", async () => {
-      // Sidenav must be expanded to see menu items
-      const { container } = renderHeader({
-        initialRoute: "/WorkPlanByTest",
-        sidenavMode: "show",
-      });
-
-      await waitFor(
-        () => {
-          const workplanLink = container.querySelector(
-            '.cds--side-nav__link[href="/WorkPlanByTest"]',
-          );
-          expect(workplanLink).toBeTruthy();
-
-          // Log DOM for debugging (uncomment to inspect)
-          // logDOM(container, '[href="/WorkPlanByTest"]');
-
-          // Verify workplan link has active class
-          expect(
-            workplanLink.classList.contains("cds--side-nav__link--current"),
-          ).toBe(true);
-
-          // Verify it's a subnav item
-          const menuItem = workplanLink.closest(".cds--side-nav__menu-item");
-          expect(menuItem).toBeTruthy();
-          expect(
-            menuItem.classList.contains("reduced-padding-nav-menu-item"),
-          ).toBe(true);
-        },
-        { timeout: 5000 },
-      );
-    });
-
-    /**
-     * Test: No double borders on active items
-     * Verifies that active items don't have multiple borders applied
-     * Note: jsdom's getComputedStyle has limitations, so we check class and structure instead
-     */
-    test("active items have only left border, no double borders", async () => {
-      // Sidenav must be expanded to see menu items
-      const { container } = renderHeader({
-        initialRoute: "/Storage",
-        sidenavMode: "show",
-      });
-
-      await waitFor(
-        () => {
-          const activeLink = container.querySelector(
-            '.cds--side-nav__link--current[href="/Storage"]',
-          );
-          expect(activeLink).toBeTruthy();
-
-          // Verify active class is present
-          expect(
-            activeLink.classList.contains("cds--side-nav__link--current"),
-          ).toBe(true);
-
-          // Verify it's a subnav item (has reduced-padding class on parent)
-          const menuItem = activeLink.closest(".cds--side-nav__menu-item");
-          expect(menuItem).toBeTruthy();
-          expect(
-            menuItem.classList.contains("reduced-padding-nav-menu-item"),
-          ).toBe(true);
-
-          // In jsdom, getComputedStyle may not work correctly, so we verify structure instead
-          // The CSS rules ensure only left border is applied (verified via CSS file)
-          // For actual computed styles, use browser DevTools or E2E tests
-        },
-        { timeout: 5000 },
-      );
-    });
+            container.querySelectorAll('.cds--side-nav [aria-current="page"]'),
+          ).toHaveLength(1);
+        });
+      },
+    );
   });
 
   describe("Menu Initialization", () => {
@@ -662,156 +701,6 @@ describe("Header Component - M2b Enhancement Tests", () => {
     });
   });
 
-  describe("Mouse Leave Behavior (Context-Aware Auto-Hide)", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.runOnlyPendingTimers();
-      vi.useRealTimers();
-    });
-
-    test("auto-hides in main context SHOW mode when mouse leaves nav", async () => {
-      const mockSetMode = vi.fn();
-      const { container } = renderHeader({
-        sidenavMode: "show",
-      });
-
-      // Override setMode prop
-      const header = container.querySelector("#mainHeader");
-      expect(header).toBeTruthy();
-
-      const sideNav = container.querySelector(".cds--side-nav");
-      expect(sideNav).toBeTruthy();
-
-      // Simulate mouse leave event with relatedTarget outside nav/header
-      const mouseLeaveEvent = new MouseEvent("mouseleave", {
-        bubbles: true,
-        cancelable: true,
-        relatedTarget: document.body, // Mouse moved to body (outside nav/header)
-      });
-
-      sideNav.dispatchEvent(mouseLeaveEvent);
-
-      // Timer should be set (350ms delay)
-      expect(mockSetMode).not.toHaveBeenCalled();
-
-      // Fast-forward 350ms
-      vi.advanceTimersByTime(350);
-
-      // Now setMode should be called with CLOSE
-      // Note: We need to access the actual setMode from the component
-      // This test verifies the timer is set correctly
-    });
-
-    test("cancels hide timer when mouse enters nav in main context", async () => {
-      const { container } = renderHeader({
-        sidenavMode: "show",
-      });
-
-      const sideNav = container.querySelector(".cds--side-nav");
-      expect(sideNav).toBeTruthy();
-
-      // First, trigger mouse leave to start timer
-      const mouseLeaveEvent = new MouseEvent("mouseleave", {
-        bubbles: true,
-        cancelable: true,
-        relatedTarget: document.body,
-      });
-      sideNav.dispatchEvent(mouseLeaveEvent);
-
-      // Then, trigger mouse enter to cancel timer
-      const mouseEnterEvent = new MouseEvent("mouseenter", {
-        bubbles: true,
-        cancelable: true,
-      });
-      sideNav.dispatchEvent(mouseEnterEvent);
-
-      // Fast-forward 350ms
-      vi.advanceTimersByTime(350);
-
-      // Timer should have been cancelled, so setMode should not be called
-      // Note: This test verifies the timer cancellation logic
-    });
-
-    test("clears hide timer when pathname changes", async () => {
-      const { container, rerender } = renderHeader({
-        initialRoute: "/Dashboard",
-        sidenavMode: "show",
-      });
-
-      const sideNav = container.querySelector(".cds--side-nav");
-      expect(sideNav).toBeTruthy();
-
-      // Trigger mouse leave to start timer
-      const mouseLeaveEvent = new MouseEvent("mouseleave", {
-        bubbles: true,
-        cancelable: true,
-        relatedTarget: document.body,
-      });
-      sideNav.dispatchEvent(mouseLeaveEvent);
-
-      // Simulate navigation (pathname change)
-      rerender(
-        <MemoryRouter initialEntries={["/Storage"]}>
-          <IntlProvider locale="en" messages={messages}>
-            <UserSessionDetailsContext.Provider
-              value={{ userSessionDetails: mockUserSessionDetails }}
-            >
-              <ConfigurationContext.Provider value={mockConfigurationContext}>
-                <NotificationContext.Provider value={mockNotificationContext}>
-                  <OEHeader
-                    onChangeLanguage={vi.fn()}
-                    mode="show"
-                    isExpanded={true}
-                    toggleSideNav={vi.fn()}
-                    setMode={vi.fn()}
-                    SIDENAV_MODES={SIDENAV_MODES}
-                  />
-                </NotificationContext.Provider>
-              </ConfigurationContext.Provider>
-            </UserSessionDetailsContext.Provider>
-          </IntlProvider>
-        </MemoryRouter>,
-      );
-
-      // Fast-forward 350ms
-      vi.advanceTimersByTime(350);
-
-      // Timer should have been cleared on navigation, so setMode should not be called
-      // Note: This test verifies the navigation guard logic
-    });
-  });
-
-  describe("Storage Context Defaults", () => {
-    test("storage context defaults to LOCK mode", () => {
-      const { container } = renderHeader({
-        initialRoute: "/Storage",
-        sidenavMode: "lock",
-      });
-
-      const sideNav = container.querySelector(".cds--side-nav");
-      expect(sideNav).toBeTruthy();
-
-      // In LOCK mode, SideNav should be expanded and fixed
-      expect(sideNav.classList.contains("cds--side-nav--expanded")).toBe(true);
-    });
-
-    test("main context defaults to CLOSE mode", () => {
-      const { container } = renderHeader({
-        initialRoute: "/Dashboard",
-        sidenavMode: "close",
-      });
-
-      const sideNav = container.querySelector(".cds--side-nav");
-      expect(sideNav).toBeTruthy();
-
-      // In CLOSE mode, SideNav should not be expanded
-      expect(sideNav.classList.contains("cds--side-nav--expanded")).toBe(false);
-    });
-  });
-
   describe("Admin navigation context switching", () => {
     const MENU_DATA = [
       {
@@ -834,9 +723,8 @@ describe("Header Component - M2b Enhancement Tests", () => {
       },
     ];
 
-    test("clicking link to /MasterListsPage does not force persisted nav closed", async () => {
-      const { container, mockSetMode } = renderHeader({
-        sidenavMode: "lock",
+    test("clicking link to /MasterListsPage keeps the desktop nav open", async () => {
+      const { container, mockCloseSideNav } = renderHeader({
         menuData: MENU_DATA,
       });
       await waitFor(() => {
@@ -846,12 +734,14 @@ describe("Header Component - M2b Enhancement Tests", () => {
       });
 
       fireEvent.click(container.querySelector("#menu_administration_nav"));
-      expect(mockSetMode).not.toHaveBeenCalled();
+      expect(mockCloseSideNav).not.toHaveBeenCalled();
+      expect(container.querySelector(".cds--side-nav")).toHaveClass(
+        "cds--side-nav--expanded",
+      );
     });
 
-    test("clicking a non-admin leaf does NOT call setMode", async () => {
-      const { container, mockSetMode } = renderHeader({
-        sidenavMode: "lock",
+    test("clicking a non-admin leaf keeps the desktop nav open", async () => {
+      const { container, mockCloseSideNav } = renderHeader({
         menuData: MENU_DATA,
       });
       await waitFor(() => {
@@ -859,13 +749,43 @@ describe("Header Component - M2b Enhancement Tests", () => {
       });
 
       fireEvent.click(container.querySelector("#menu_home_nav"));
-      expect(mockSetMode).not.toHaveBeenCalled();
+      expect(mockCloseSideNav).not.toHaveBeenCalled();
+      expect(container.querySelector(".cds--side-nav")).toHaveClass(
+        "cds--side-nav--expanded",
+      );
+    });
+
+    test("Admin opens its dashboard in one click, with no submenu to expand", async () => {
+      // The shipped menu carries no children under Admin: the dashboard itself
+      // lists the admin destinations, stuck analyzer events among them.
+      const configuredAdminMenu = [
+        MENU_DATA[0],
+        {
+          ...MENU_DATA[1],
+          menu: { ...MENU_DATA[1].menu, actionURL: "/MasterListsPage" },
+          childMenus: [],
+        },
+      ];
+      renderHeader({ menuData: configuredAdminMenu });
+
+      const adminMenu = await screen.findByRole("link", { name: "Admin" });
+      expect(adminMenu).toHaveAttribute("href", "/MasterListsPage");
+      expect(
+        screen.queryByRole("button", { name: "Admin" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Stuck analyzer events"),
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(adminMenu);
+      expect(screen.getByTestId("current-path")).toHaveTextContent(
+        "/MasterListsPage",
+      );
     });
 
     test("admin context renders Admin nav contents instead of main menu contents", async () => {
       renderHeader({
         initialRoute: "/MasterListsPage",
-        sidenavMode: "lock",
         menuData: MENU_DATA,
         navContext: "admin",
       });
@@ -886,7 +806,6 @@ describe("Header Component - M2b Enhancement Tests", () => {
     test("admin nav items expose href and current-route state", async () => {
       renderHeader({
         initialRoute: "/MasterListsPage/billingMenuManagement",
-        sidenavMode: "lock",
         navContext: "admin",
       });
 
@@ -904,7 +823,6 @@ describe("Header Component - M2b Enhancement Tests", () => {
     test("admin back control navigates to /Dashboard", async () => {
       renderHeader({
         initialRoute: "/MasterListsPage",
-        sidenavMode: "lock",
         navContext: "admin",
       });
 
@@ -914,5 +832,282 @@ describe("Header Component - M2b Enhancement Tests", () => {
         "/Dashboard",
       );
     });
+  });
+
+  describe("User panel actions", () => {
+    test.each([{ authenticated: false }, {}])(
+      "unauthenticated or unresolved shell does not request protected header resources",
+      async (sessionDetails) => {
+        renderHeader({
+          sessionDetails,
+        });
+
+        await waitFor(() => {
+          expect(screen.getByRole("button", { name: "Language" })).toBeTruthy();
+        });
+
+        expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+          "/rest/notifications",
+          expect.any(Function),
+        );
+        expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+          "/rest/properties",
+          expect.any(Function),
+        );
+        expect(getFromOpenElisServerV2).not.toHaveBeenCalledWith(
+          "/rest/notification/pnconfig",
+        );
+      },
+    );
+
+    test("subscription state loads only when Notifications is opened", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(() => {
+        expect(getFromOpenElisServer).toHaveBeenCalledWith(
+          "/rest/notifications",
+          expect.any(Function),
+        );
+      });
+      expect(getFromOpenElisServerV2).not.toHaveBeenCalledWith(
+        "/rest/notification/pnconfig",
+      );
+
+      fireEvent.click(container.querySelector("#notification-Icon"));
+
+      await waitFor(() => {
+        expect(getFromOpenElisServerV2).toHaveBeenCalledWith(
+          "/rest/notification/pnconfig",
+        );
+      });
+    });
+
+    test("authenticated panel orders locale, change password, then logout", async () => {
+      const { container } = renderHeader();
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('[data-cy="headerChangePassword"]'),
+        ).toBeTruthy();
+      });
+
+      const panelItems = [
+        ...container.querySelectorAll(".headerPanel ul > li"),
+      ];
+      const localeIndex = panelItems.findIndex((li) =>
+        li.querySelector("#selector"),
+      );
+      const changePasswordIndex = panelItems.findIndex(
+        (li) => li.dataset.cy === "headerChangePassword",
+      );
+      const logoutIndex = panelItems.findIndex(
+        (li) => li.dataset.cy === "logOut",
+      );
+
+      expect(localeIndex).toBeGreaterThan(-1);
+      expect(changePasswordIndex).toBe(localeIndex + 1);
+      expect(logoutIndex).toBe(changePasswordIndex + 1);
+    });
+
+    test("change password item navigates to /ChangePasswordLogin", async () => {
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { ...originalLocation, href: "" };
+
+      const { container } = renderHeader();
+      await waitFor(() => {
+        expect(
+          container.querySelector('[data-cy="headerChangePassword"]'),
+        ).toBeTruthy();
+      });
+
+      fireEvent.click(
+        container.querySelector('[data-cy="headerChangePassword"]'),
+      );
+      expect(window.location.href).toBe("/ChangePasswordLogin");
+
+      window.location = originalLocation;
+    });
+
+    test("logout item calls the session logout", async () => {
+      const logout = vi.fn();
+      const { container } = renderHeader({ logout });
+
+      await waitFor(() => {
+        expect(container.querySelector('[data-cy="logOut"]')).toBeTruthy();
+      });
+
+      fireEvent.click(container.querySelector('[data-cy="logOut"]'));
+      expect(logout).toHaveBeenCalledTimes(1);
+    });
+
+    test("unauthenticated panel hides change password and logout but keeps locale", async () => {
+      const { container } = renderHeader({
+        sessionDetails: { authenticated: false },
+      });
+
+      expect(container.querySelector("#selector")).toBeTruthy();
+      expect(
+        container.querySelector('[data-cy="headerChangePassword"]'),
+      ).toBeNull();
+      expect(container.querySelector('[data-cy="logOut"]')).toBeNull();
+    });
+  });
+
+  describe("Focused screen (showSideNav=false)", () => {
+    test("hides the sidenav and hamburger even when authenticated", async () => {
+      const desktop = renderHeader({ showSideNav: false });
+      await waitFor(() => {
+        expect(desktop.container.querySelector("#user-Icon")).toBeTruthy();
+      });
+      expect(desktop.container.querySelector(".cds--side-nav")).toBeNull();
+      desktop.unmount();
+
+      const mobile = renderHeader({ showSideNav: false, isDesktop: false });
+      expect(
+        mobile.container.querySelector('[data-cy="menuButton"]'),
+      ).toBeNull();
+    });
+
+    test("still renders the sidenav by default", async () => {
+      const { container } = renderHeader();
+      await waitFor(() => {
+        expect(container.querySelector(".cds--side-nav")).toBeTruthy();
+      });
+    });
+  });
+});
+
+describe("OEHeader menu items whose children are all deactivated", () => {
+  // A parent renders as an expandable SideNavMenu and never navigates, so a
+  // parent left holding only deactivated children became an expandable that
+  // opened onto nothing — the Storage Management case.
+  const MENU_WITH_DEACTIVATED_CHILDREN = [
+    {
+      menu: {
+        elementId: "menu_storage",
+        displayKey: "banner.menu.storage",
+        actionURL: "",
+        isActive: true,
+      },
+      childMenus: [
+        {
+          menu: {
+            elementId: "menu_storage_management",
+            displayKey: "storage.nav.dashboard",
+            actionURL: "/Storage",
+            isActive: true,
+          },
+          childMenus: [
+            {
+              menu: {
+                elementId: "menu_storage_rooms",
+                displayKey: "storage.nav.rooms",
+                actionURL: "/Storage/rooms",
+                isActive: false,
+              },
+              childMenus: [],
+            },
+            {
+              menu: {
+                elementId: "menu_storage_boxes",
+                displayKey: "storage.nav.boxes",
+                actionURL: "/Storage/boxes",
+                isActive: false,
+              },
+              childMenus: [],
+            },
+          ],
+        },
+      ],
+    },
+  ];
+
+  test("renders the parent as a navigable link, not an empty expandable", async () => {
+    const { container } = renderHeader({
+      menuData: MENU_WITH_DEACTIVATED_CHILDREN,
+    });
+
+    // The leaf branch puts elementId + "_nav" on the anchor itself; the bare
+    // elementId lands on an inner span. An expandable parent renders a
+    // button.cds--side-nav__submenu instead, so this anchor would not exist.
+    const link = await waitFor(() => {
+      const el = container.querySelector(
+        'a#menu_storage_management_nav[href="/Storage"]',
+      );
+      expect(el).toBeTruthy();
+      return el;
+    });
+
+    expect(
+      link.closest("li").querySelector(".cds--side-nav__submenu"),
+    ).toBeNull();
+  });
+
+  test("navigates when the parent is clicked", async () => {
+    const { container, getByTestId } = renderHeader({
+      menuData: MENU_WITH_DEACTIVATED_CHILDREN,
+    });
+
+    const link = await waitFor(() => {
+      const el = container.querySelector(
+        'a#menu_storage_management_nav[href="/Storage"]',
+      );
+      expect(el).toBeTruthy();
+      return el;
+    });
+
+    fireEvent.click(link);
+
+    await waitFor(() => {
+      expect(getByTestId("current-path").textContent).toBe("/Storage");
+    });
+  });
+
+  // A deactivated row is not reachable from the sidenav, so a URL that only
+  // matches one must not auto-expand the parent onto rows nobody can use.
+  const MENU_WITH_A_DEACTIVATED_MATCH = [
+    {
+      menu: {
+        elementId: "menu_storage",
+        displayKey: "banner.menu.storage",
+        actionURL: "",
+        isActive: true,
+      },
+      childMenus: [
+        {
+          menu: {
+            elementId: "menu_storage_cold",
+            displayKey: "sidenav.label.storage.coldstorage",
+            actionURL: "/ColdStorage",
+            isActive: true,
+          },
+          childMenus: [],
+        },
+        {
+          menu: {
+            elementId: "menu_storage_rooms",
+            displayKey: "storage.nav.rooms",
+            actionURL: "/Storage/rooms",
+            isActive: false,
+          },
+          childMenus: [],
+        },
+      ],
+    },
+  ];
+
+  test("a deactivated child's path does not expand its parent", async () => {
+    const { container } = renderHeader({
+      menuData: MENU_WITH_A_DEACTIVATED_MATCH,
+      initialRoute: "/Storage/rooms",
+    });
+
+    const submenu = await waitFor(() => {
+      const el = container.querySelector("button.cds--side-nav__submenu");
+      expect(el).toBeTruthy();
+      return el;
+    });
+    expect(submenu).toHaveAttribute("aria-expanded", "false");
   });
 });

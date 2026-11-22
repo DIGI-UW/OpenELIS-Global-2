@@ -40,4 +40,13 @@ public interface PanelItemService extends BaseObjectService<PanelItem, String> {
      * renumbering stays in Panel Management).
      */
     void setMembershipsForTest(Test test, Map<String, Integer> positionByPanelId, String sysUserId);
+
+    /**
+     * OGC-224 — the panel-side mirror of {@link #setMembershipsForTest}: reconcile
+     * a panel's ordered member tests in one transaction. {@code positionByTestId}
+     * maps each desired test id to its 1-based position (panel_item.sort_order —
+     * the same field the test-side Panels section edits: one model, two views);
+     * member tests not in the map are removed.
+     */
+    void setMembershipsForPanel(Panel panel, Map<String, Integer> positionByTestId, String sysUserId);
 }

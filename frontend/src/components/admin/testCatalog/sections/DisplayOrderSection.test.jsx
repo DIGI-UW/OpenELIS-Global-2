@@ -56,12 +56,14 @@ const orderFor1 = {
 };
 
 // Default wiring: sample-types list, then the test-order for the selected type.
-const wireServer = (order = orderFor1) => {
+const wireServer = (order = orderFor1, basicInfo = { testId: "42" }) => {
   getFromOpenElisServer.mockImplementation((url, cb) => {
     if (url === "/rest/test-catalog/sample-types") {
       cb(sampleTypes);
     } else if (url.includes("/test-order")) {
       cb(order);
+    } else if (url.endsWith("/basic-info")) {
+      cb(basicInfo);
     }
   });
 };
@@ -117,5 +119,65 @@ describe("DisplayOrderSection", () => {
         messages["label.testCatalog.displayOrder.loadError"],
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("DisplayOrderSection opened from a test (OGC-1238)", () => {
+  const orderFor2 = {
+    sampleTypeId: "2",
+    tests: [
+      { testId: "5", testName: "Albumin", displayOrder: 1 },
+      { testId: "42", testName: "Ferritin", displayOrder: 2 },
+    ],
+  };
+
+  const wireBySampleType = (basicInfo) =>
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-catalog/sample-types") {
+        cb(sampleTypes);
+      } else if (url.endsWith("/sample-types/1/test-order")) {
+        cb(orderFor1);
+      } else if (url.endsWith("/sample-types/2/test-order")) {
+        cb(orderFor2);
+      } else if (url.endsWith("/tests/42/basic-info")) {
+        cb(basicInfo);
+      }
+    });
+
+  it("opens on the edited test's own sample type and marks its row", async () => {
+    wireBySampleType({ testId: "42", sampleTypeId: "2", sampleTypeIds: ["2"] });
+    renderSection();
+
+    expect(await screen.findByText("Ferritin")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(
+        messages["label.testCatalog.displayOrder.pickSampleType"],
+      ).value,
+    ).toBe("2");
+    expect(screen.getByTestId("display-order-current-test")).toHaveTextContent(
+      messages["label.testCatalog.displayOrder.currentTest"],
+    );
+    expect(screen.getByTestId("order-row-42")).toContainElement(
+      screen.getByTestId("display-order-current-test"),
+    );
+  });
+
+  it("uses a linked sample type when the test has no primary one", async () => {
+    wireBySampleType({
+      testId: "42",
+      sampleTypeId: null,
+      sampleTypeIds: ["2"],
+    });
+    renderSection();
+
+    expect(await screen.findByText("Ferritin")).toBeInTheDocument();
+  });
+
+  it("falls back to the first sample type when the test's is not listed", async () => {
+    wireBySampleType({ testId: "42", sampleTypeId: "99", sampleTypeIds: [] });
+    renderSection();
+
+    expect(await screen.findByText("Glucose")).toBeInTheDocument();
+    expect(screen.queryByTestId("display-order-current-test")).toBeNull();
   });
 });

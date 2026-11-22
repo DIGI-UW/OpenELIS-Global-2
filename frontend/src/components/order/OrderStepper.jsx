@@ -5,63 +5,157 @@ import { useIntl } from "react-intl";
 import { useOrderContext } from "./OrderContext";
 
 /**
- * OrderStepper - Progress indicator for the 4-step sample collection workflow.
+ * OrderStepper - Progress indicator for the order workflow (FR-A12).
  *
- * Shows completed/in-progress/pending states for:
- * - Step 0: Enter Order
- * - Step 1: Collect Sample
- * - Step 2: Label & Store
- * - Step 3: QA Review
+ * Clinical: Enter Order → Prepare Samples → Sample check (only while the
+ * laboratory's clinical sample acceptance setting is not Off).
+ * Environmental: Enter → Label → Sample check.
+ * Vector: Enter → Label → Sample check → Complete.
  *
- * Step completion is based on:
- * - Enter: order has labNumber
- * - Collect: samples have sampleItemId
- * - Label: all samples have storage assigned OR storageSkipped is true
- * - QA: order is finalized
+ * A clinical step is complete when the order's recorded progress says so:
+ * Prepare Samples once the order is Samples prepared, Sample check once it is
+ * Ready for testing. Orders saved before progress was recorded fall back to
+ * the step flags derived from their data.
  */
 
-const ORDER_STEPS = [
-  { label: "order.step.enter", path: "/order/enter", key: "enter" },
-  { label: "order.step.collect", path: "/order/collect", key: "collect" },
-  { label: "order.step.label", path: "/order/label", key: "label" },
-  { label: "order.step.qa", path: "/order/qa", key: "qa" },
+const CLINICAL_ORDER_STEPS = [
+  { label: "order.step.enter", path: "/order/clinical/enter", key: "enter" },
+  {
+    label: "order.step.prepare",
+    path: "/order/clinical/collect",
+    key: "prepare",
+  },
+  {
+    label: "order.step.sampleCheck",
+    path: "/order/clinical/qa",
+    key: "check",
+  },
 ];
 
-const OrderStepper = ({ currentStep, onStepClick, className = "" }) => {
+const ENVIRONMENTAL_ORDER_STEPS = [
+  {
+    label: "order.step.enter",
+    path: "/order/environmental/enter",
+    key: "enter",
+  },
+  {
+    label: "order.step.label",
+    path: "/order/environmental/label",
+    key: "label",
+  },
+  {
+    label: "order.step.sampleCheck",
+    path: "/order/environmental/qa",
+    key: "qa",
+  },
+];
+
+const VECTOR_ORDER_STEPS = [
+  { label: "order.step.enter", path: "/order/vector/enter", key: "enter" },
+  { label: "order.step.label", path: "/order/vector/label", key: "label" },
+  { label: "order.step.sampleCheck", path: "/order/vector/qa", key: "qa" },
+  {
+    label: "order.step.complete",
+    path: "/order/vector/complete",
+    key: "complete",
+  },
+];
+
+// Backward-compat alias used by any code that still imports ORDER_STEPS
+const ORDER_STEPS = CLINICAL_ORDER_STEPS;
+
+/**
+ * The steps a workflow shows, from the URL prefix. The clinical Sample check
+ * step exists only while the sample acceptance setting is not Off (FR-F1).
+ */
+export const stepsForPath = (pathname, sampleCheckEnabled = true) => {
+  if (pathname.startsWith("/order/vector")) return VECTOR_ORDER_STEPS;
+  if (pathname.startsWith("/order/environmental"))
+    return ENVIRONMENTAL_ORDER_STEPS;
+  return sampleCheckEnabled
+    ? CLINICAL_ORDER_STEPS
+    : CLINICAL_ORDER_STEPS.filter((step) => step.key !== "check");
+};
+
+const PROGRESS_RANK = {
+  ENTERED: 1,
+  SAMPLES_PREPARED: 2,
+  READY_FOR_TESTING: 3,
+};
+
+/** Whether the recorded progress has reached the given status. */
+export const progressReached = (status, target) =>
+  Boolean(status) &&
+  status !== "CANCELLED" &&
+  (PROGRESS_RANK[status] || 0) >= (PROGRESS_RANK[target] || 0);
+
+const timeOf = (timestamp) => {
+  if (!timestamp) return null;
+  const match = String(timestamp).match(/(\d{2}):(\d{2})/);
+  return match ? `${match[1]}:${match[2]}` : null;
+};
+
+const OrderStepper = ({
+  currentStep,
+  steps,
+  onStepClick,
+  className = "",
+  currentStepNote,
+}) => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
-  const { samples, storageSkipped, labNumber, stepProgress } =
-    useOrderContext();
+  const {
+    samples,
+    storageSkipped,
+    labNumber,
+    stepProgress,
+    progress,
+    sampleCheckEnabled,
+  } = useOrderContext();
+
+  const resolvedSteps =
+    steps || stepsForPath(location.pathname, sampleCheckEnabled);
 
   // Determine current step from URL if not provided
   const activeStep =
     currentStep !== undefined
       ? currentStep
-      : ORDER_STEPS.findIndex((step) => location.pathname === step.path);
+      : resolvedSteps.findIndex((step) => location.pathname === step.path);
 
-  // Calculate step completion based on actual data state
-  const isStepComplete = (stepIndex) => {
-    const stepKey = ORDER_STEPS[stepIndex]?.key;
+  const recorded = Boolean(progress?.status);
 
+  // Calculate step completion from the recorded progress, else from data
+  const isStepComplete = (stepKey) => {
     switch (stepKey) {
       case "enter":
-        // Enter is complete if we have a lab number
         return !!labNumber;
 
+      case "prepare":
+        if (recorded) {
+          return progressReached(progress.status, "SAMPLES_PREPARED");
+        }
+        return Boolean(stepProgress?.collect && stepProgress?.label);
+
+      case "check":
+        if (recorded) {
+          return progress.status === "READY_FOR_TESTING";
+        }
+        return stepProgress?.qa || false;
+
       case "collect":
-        // Collect is complete if all samples have sampleItemId
         return samples.length > 0 && samples.every((s) => s.sampleItemId);
 
       case "label": {
-        // Label is complete if all samples have storage OR storage is skipped
         const allHaveStorage =
           samples.length > 0 && samples.every((s) => s.storageLocationId);
-        return allHaveStorage || storageSkipped;
+        return allHaveStorage || storageSkipped || stepProgress?.label || false;
       }
 
       case "qa":
-        // QA is complete based on stepProgress (set when order is finalized)
+        return stepProgress?.qa || false;
+
+      case "complete":
         return stepProgress?.qa || false;
 
       default:
@@ -69,12 +163,38 @@ const OrderStepper = ({ currentStep, onStepClick, className = "" }) => {
     }
   };
 
+  const completedAt = (stepKey) => {
+    if (!recorded) return null;
+    if (stepKey === "enter") return timeOf(progress.enteredAt);
+    if (stepKey === "prepare") return timeOf(progress.preparedAt);
+    if (stepKey === "check") return timeOf(progress.readyAt);
+    return null;
+  };
+
+  const secondaryLabel = (step, index) => {
+    if (progress?.status === "CANCELLED") {
+      return intl.formatMessage({ id: "order.status.cancelled" });
+    }
+    if (isStepComplete(step.key)) {
+      const time = completedAt(step.key);
+      return time
+        ? intl.formatMessage({ id: "order.step.doneAt" }, { time })
+        : intl.formatMessage({ id: "order.step.done" });
+    }
+    if (index === activeStep && currentStepNote) {
+      return currentStepNote;
+    }
+    return intl.formatMessage({ id: "order.step.notStarted" });
+  };
+
   const handleStepClick = (stepIndex) => {
     if (onStepClick) {
       onStepClick(stepIndex);
     } else {
-      // Default behavior: navigate to the step's path
-      history.push(ORDER_STEPS[stepIndex].path);
+      const path = resolvedSteps[stepIndex].path;
+      history.push(
+        labNumber ? `${path}?order=${encodeURIComponent(labNumber)}` : path,
+      );
     }
   };
 
@@ -85,17 +205,23 @@ const OrderStepper = ({ currentStep, onStepClick, className = "" }) => {
       spaceEqually={true}
       onChange={(stepIndex) => handleStepClick(stepIndex)}
     >
-      {ORDER_STEPS.map((step, index) => (
+      {resolvedSteps.map((step, index) => (
         <ProgressStep
           key={step.path}
-          complete={isStepComplete(index)}
-          current={index === activeStep}
+          data-testid={`order-step-${step.key}`}
+          complete={isStepComplete(step.key)}
           label={intl.formatMessage({ id: step.label })}
+          secondaryLabel={secondaryLabel(step, index)}
         />
       ))}
     </ProgressIndicator>
   );
 };
 
-export { ORDER_STEPS };
+export {
+  ORDER_STEPS,
+  CLINICAL_ORDER_STEPS,
+  ENVIRONMENTAL_ORDER_STEPS,
+  VECTOR_ORDER_STEPS,
+};
 export default OrderStepper;

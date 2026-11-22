@@ -2,16 +2,15 @@ package org.openelisglobal.program.service;
 
 import jakarta.transaction.Transactional;
 import org.apache.commons.lang3.StringUtils;
-import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.valueholder.OrderProgramDisplayItem;
 import org.openelisglobal.program.valueholder.ProgramSample;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +26,7 @@ public class OrderProgramsDisplayServiceImpl implements OrderProgramsDisplayServ
     private SampleService sampleService;
 
     @Autowired
-    private FhirUtil fhirUtil;
+    private QuestionnaireStorageService questionnaireStorageService;
 
     @Autowired
     private OrganizationService organizationService;
@@ -70,19 +69,15 @@ public class OrderProgramsDisplayServiceImpl implements OrderProgramsDisplayServ
 
         display.setRequester(sampleItem.getProviderLastName() + " " + sampleItem.getProviderFirstName());
 
-        if (ps.getProgram().getQuestionnaireUUID() != null) {
-            display.setProgramQuestionnaire(fhirUtil.getLocalFhirClient().read().resource(Questionnaire.class)
-                    .withId(ps.getProgram().getQuestionnaireUUID().toString()).execute());
-        }
+        display.setProgramQuestionnaire(
+                questionnaireStorageService.getQuestionnaire(ps.getProgram().getQuestionnaireUUID()).orElse(null));
 
         if (ps.getQuestionnaireResponseUuid() != null) {
-
-            QuestionnaireResponse qr = fhirUtil.getLocalFhirClient().read().resource(QuestionnaireResponse.class)
-                    .withId(ps.getQuestionnaireResponseUuid().toString()).execute();
-
+            QuestionnaireResponse qr = questionnaireStorageService
+                    .getQuestionnaireResponse(ps.getQuestionnaireResponseUuid()).orElse(null);
             display.setProgramQuestionnaireResponse(qr);
-
-            display.setQuestionnaireStatus(qr.hasStatus() ? qr.getStatus().toCode().toUpperCase() : "UNKNOWN");
+            display.setQuestionnaireStatus(
+                    qr != null && qr.hasStatus() ? qr.getStatus().toCode().toUpperCase() : "UNKNOWN");
         } else {
             display.setQuestionnaireStatus("NOT_STARTED");
         }

@@ -2,30 +2,27 @@ package org.openelisglobal.dataexchange.fhir;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
-import ca.uhn.fhir.rest.client.api.IClientInterceptor;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
-import ca.uhn.fhir.rest.client.interceptor.BasicAuthInterceptor;
-import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.net.SocketTimeoutException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+
 import org.apache.commons.validator.GenericValidator;
 import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
-import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CodeableConcept;
+import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.ResourceType;
+import org.hl7.fhir.r4.model.ServiceRequest;
 import org.itech.fhir.dataexport.core.service.FhirClientFetcher;
-import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -35,29 +32,20 @@ public class FhirUtil implements FhirClientFetcher {
     private FhirConfig fhirConfig;
     @Autowired
     private FhirContext fhirContext;
+
     @Autowired
-    private CloseableHttpClient closeableHttpClient;
+    private FhirClientFactory clients;
+    @Autowired
+    @Qualifier("partnerFhirHttpClient")
+    private CloseableHttpClient partnerHttpClient;
 
     @Override
     public IGenericClient getFhirClient(String fhirStorePath) {
-        IGenericClient fhirClient = fhirContext.newRestfulGenericClient(fhirStorePath);
-        if (!GenericValidator.isBlankOrNull(fhirConfig.getUsername())) {
-            IClientInterceptor authInterceptor = new BasicAuthInterceptor(fhirConfig.getUsername(),
-                    fhirConfig.getPassword());
-            fhirClient.registerInterceptor(authInterceptor);
-        }
-
-        return fhirClient;
+        return clients.create(fhirStorePath);
     }
 
     public IGenericClient getLocalFhirClient() {
-        IGenericClient fhirClient = fhirContext.newRestfulGenericClient(fhirConfig.getLocalFhirStorePath());
-        if (!GenericValidator.isBlankOrNull(fhirConfig.getUsername())) {
-            IClientInterceptor authInterceptor = new BasicAuthInterceptor(fhirConfig.getUsername(),
-                    fhirConfig.getPassword());
-            fhirClient.registerInterceptor(authInterceptor);
-        }
-        return fhirClient;
+        return clients.create(fhirConfig.getLocalFhirStorePath());
     }
 
     public IParser getFhirParser() {
@@ -65,111 +53,73 @@ public class FhirUtil implements FhirClientFetcher {
     }
 
     public IGenericClient getFhirClient(String fhirStorePath, String token) {
-        IGenericClient fhirClient = fhirContext.newRestfulGenericClient(fhirStorePath);
-        BearerTokenAuthInterceptor authInterceptor = new BearerTokenAuthInterceptor(token);
-        fhirClient.registerInterceptor(authInterceptor);
-        return fhirClient;
+        return clients.createBearer(fhirStorePath, token);
     }
 
     public IGenericClient getFhirClient(String fhirStorePath, String username, String password) {
-        IGenericClient fhirClient = fhirContext.newRestfulGenericClient(fhirStorePath);
-        BasicAuthInterceptor authInterceptor = new BasicAuthInterceptor(username, password);
-        fhirClient.registerInterceptor(authInterceptor);
-        return fhirClient;
+        return clients.create(fhirStorePath, username, password);
     }
 
-    public String getAccessToken(String authUrl, String authUserName, String authPassowrd) throws IOException {
+    public String getAccessToken(String authUrl, String authUserName, String authPassword) throws IOException {
+        URI endpoint = URI.create(authUrl);
+        FhirClientFactory.requireHttps(endpoint);
+        if (endpoint.getHost() == null || endpoint.getUserInfo() != null || endpoint.getFragment() != null) {
+            throw new IllegalArgumentException("Invalid FHIR authentication endpoint");
+        }
         HttpPost httpPost = new HttpPost(authUrl);
 
-        String json = String.format("{\"username\":\"%s\",\"password\":\"%s\"}", authUserName, authPassowrd);
-        StringEntity entity = new StringEntity(json);
+        String json = new ObjectMapper().createObjectNode().put("username", authUserName).put("password", authPassword)
+                .toString();
+        StringEntity entity = new StringEntity(json, StandardCharsets.UTF_8);
         httpPost.setEntity(entity);
         httpPost.setHeader("Accept", "application/json");
         httpPost.setHeader("Content-type", "application/json");
         ObjectMapper mapper = new ObjectMapper();
         JsonNode response = mapper.createObjectNode();
-        try (CloseableHttpResponse res = closeableHttpClient.execute(httpPost)) {
-            if (res.getStatusLine().getStatusCode() == 200) {
-                response = mapper.readTree(EntityUtils.toString(res.getEntity(), StandardCharsets.UTF_8));
+        try (CloseableHttpResponse res = partnerHttpClient.execute(httpPost)) {
+            if (res.getStatusLine().getStatusCode() != 200) {
+                throw new IOException("FHIR authentication endpoint did not accept the request");
             }
+            response = res.getEntity() == null ? null
+                    : mapper.readTree(EntityUtils.toString(res.getEntity(), StandardCharsets.UTF_8));
         }
-        return response.get("access_token").asText();
+        JsonNode token = response == null ? null : response.get("access_token");
+        if (token == null || !token.isTextual() || token.asText().isBlank()) {
+            throw new IOException("FHIR authentication endpoint returned no access token");
+        }
+        return token.asText();
     }
 
-    private String extractFhirPath(HttpServletRequest request) {
-        String requestUri = request.getRequestURI();
-        String contextPath = request.getContextPath();
-        String path = requestUri.substring(contextPath.length());
-        return path.replaceFirst("/fhir", "");
-    }
-
-    private String buildQueryPath(String base, String fhirPath, String queryString) {
-        StringBuilder url = new StringBuilder(base);
-        if (!base.endsWith("/") && !fhirPath.startsWith("/")) {
-            url.append("/");
+    /**
+     * Extracts the sample domain code (H, E, V) from a ServiceRequest's category
+     * codings using the {@code {oeFhirSystem}/samp_domain} system.
+     *
+     * @return the domain code, or {@code null} if no domain category is present
+     */
+    public String getSampleDomain(ServiceRequest serviceRequest) {
+        if (serviceRequest == null) {
+            return null;
         }
-        url.append(fhirPath);
-        if (queryString != null && !queryString.isBlank()) {
-            url.append("?").append(queryString);
-        }
-        return url.toString();
-    }
-
-    public Bundle forwardSearchToFhirStore(HttpServletRequest request) {
-        String method = "forwardSearchToFhirStore";
-        try {
-            String fhirPath = extractFhirPath(request);
-            LogEvent.logDebug(this.getClass().getSimpleName(), method,
-                    "Received FHIR search request for path: " + fhirPath);
-
-            String targetUrl = buildQueryPath(fhirConfig.getLocalFhirStorePath(), fhirPath, request.getQueryString());
-
-            HttpGet httpGet = new HttpGet(targetUrl);
-            addAuthHeader(httpGet);
-            httpGet.setHeader(HttpHeaders.ACCEPT, "application/fhir+json");
-
-            try (CloseableHttpResponse response = closeableHttpClient.execute(httpGet)) {
-                int statusCode = response.getStatusLine().getStatusCode();
-                String body = EntityUtils.toString(response.getEntity());
-
-                LogEvent.logDebug(this.getClass().getSimpleName(), method,
-                        "FHIR store responded with status: " + statusCode);
-
-                if (statusCode >= 200 && statusCode < 300) {
-
-                    return getFhirParser().parseResource(Bundle.class, body);
-                } else {
-                    LogEvent.logError(this.getClass().getSimpleName(), method,
-                            "FHIR store returned error: " + statusCode + " - " + body);
-                    throw new RuntimeException("FHIR store returned error: " + statusCode);
+        String domainSystem = fhirConfig.getOeFhirSystem() + "/samp_domain";
+        for (CodeableConcept category : serviceRequest.getCategory()) {
+            for (Coding coding : category.getCoding()) {
+                if (domainSystem.equals(coding.getSystem())) {
+                    return coding.getCode();
                 }
             }
-        } catch (SocketTimeoutException | ConnectTimeoutException e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Timeout while calling FHIR store: " + e.getMessage());
-            throw new RuntimeException("Timeout communicating with FHIR store", e);
-
-        } catch (IOException e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "I/O error while calling FHIR store: " + e.getMessage());
-            throw new RuntimeException("Error communicating with FHIR store", e);
-
-        } catch (ca.uhn.fhir.parser.DataFormatException e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method, "FHIR parsing error: " + e.getMessage());
-            throw new RuntimeException("Error parsing FHIR response", e);
-
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method, "Unexpected error: " + e.getMessage());
-            throw new RuntimeException("Unexpected error communicating with FHIR store", e);
         }
+        return null;
     }
 
-    private void addAuthHeader(org.apache.http.HttpRequest httpRequest) {
-        String username = fhirConfig.getUsername();
-        String password = fhirConfig.getPassword();
-        if (username != null && !username.isBlank()) {
-            String encoding = Base64.getEncoder().encodeToString((username + ":" + password).getBytes());
-            httpRequest.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + encoding);
-        }
+    /**
+     * True when the reference points at a Patient by id. The subject of an
+     * environmental or vector ServiceRequest is a Location or a contained Group,
+     * which must not be read as a Patient.
+     */
+    public static boolean refersToPatient(Reference reference) {
+        return reference != null
+                && ResourceType.Patient.name().equals(reference.getReferenceElement().getResourceType())
+                && !GenericValidator.isBlankOrNull(reference.getReferenceElement().getIdPart());
     }
+
 }

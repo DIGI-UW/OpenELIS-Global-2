@@ -51,6 +51,24 @@ public interface TestReflexService extends BaseObjectService<TestReflex, String>
 
     ReflexRule getReflexRuleByAnalyteId(String analyteId);
 
+    /**
+     * Whether the rule that owns this executable row is switched on right now.
+     *
+     * <p>
+     * Deactivating a rule is meant to delete its rows and reactivating to write
+     * them back, so row presence looks like the switch — but saving a rule rebuilds
+     * its rows whatever its state, so a deactivated rule can keep a full set of
+     * them and go on firing. The flag on the rule is the switch, and it is asked at
+     * execution because it can change between the row being written and the next
+     * result arriving.
+     *
+     * <p>
+     * A row with no rule behind it — a reflex seeded before the rule builder
+     * existed, or one the user-choice path constructs in memory — has no flag to
+     * consult and is treated as active, which is how it behaves today.
+     */
+    boolean isReflexRuleActive(TestReflex reflex);
+
     List<TestReflex> getTestReflexsByTestAnalyteId(String testAnalyteId);
 
     List<TestReflex> getTestReflexsByTestId(String testId);

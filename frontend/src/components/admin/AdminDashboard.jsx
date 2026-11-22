@@ -2,8 +2,10 @@ import React from "react";
 import { FormattedMessage } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { ClickableTile, Column, Grid } from "@carbon/react";
+import PageBreadCrumb from "../common/PageBreadCrumb";
 import {
   ArrowRight,
+  Bullhorn,
   CharacterWholeNumber,
   ChartBubble,
   ConnectionSignal,
@@ -15,6 +17,8 @@ import {
   Settings,
   TableOfContents,
   User,
+  WarningAlt,
+  Plug,
 } from "@carbon/icons-react";
 
 const ADMIN_DASHBOARD_LINKS = [
@@ -24,8 +28,8 @@ const ADMIN_DASHBOARD_LINKS = [
     icon: User,
   },
   {
-    messageId: "organization.main.title",
-    path: "organizationManagement",
+    messageId: "sidenav.label.admin.locations",
+    path: "locations",
     icon: ContainerSoftware,
   },
   {
@@ -59,7 +63,7 @@ const ADMIN_DASHBOARD_LINKS = [
     icon: ListDropdown,
   },
   {
-    messageId: "sidenav.label.admin.program",
+    messageId: "admin.programs.title",
     path: "program",
     icon: ChartBubble,
   },
@@ -78,6 +82,21 @@ const ADMIN_DASHBOARD_LINKS = [
     path: "barcodeConfiguration",
     icon: QrCode,
   },
+  {
+    messageId: "sidenav.label.admin.notifications",
+    path: "notificationTriggerConfig/triggers",
+    icon: Bullhorn,
+  },
+  {
+    messageId: "analyzer.importIssues.events.title",
+    path: "stuckAnalyzerEvents",
+    icon: WarningAlt,
+  },
+  {
+    messageId: "modules.admin.title",
+    path: "modules",
+    icon: Plug,
+  },
 ];
 
 export default function AdminDashboard({ basePath }) {
@@ -90,6 +109,12 @@ export default function AdminDashboard({ basePath }) {
 
   return (
     <section className="admin-dashboard" data-testid="admin-dashboard">
+      <PageBreadCrumb
+        breadcrumbs={[
+          { label: "home.label", link: "/" },
+          { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+        ]}
+      />
       <h2>
         <FormattedMessage id="admin.dashboard.title" />
       </h2>

@@ -1,6 +1,7 @@
 package org.openelisglobal.inventory.dao;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
@@ -8,6 +9,10 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 
 public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
+
+    InventoryLot getForUpdate(Long lotId) throws LIMSRuntimeException;
+
+    void refreshForUpdate(InventoryLot lot) throws LIMSRuntimeException;
 
     /**
      * Get all lots for a specific inventory item
@@ -31,6 +36,12 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
     List<InventoryLot> getExpiredActiveLots() throws LIMSRuntimeException;
 
     /**
+     * ACTIVE or IN_USE lots with stock whose effective expiry is past or within
+     * daysAhead.
+     */
+    List<InventoryLot> getStockedLotsExpiringWithin(int daysAhead) throws LIMSRuntimeException;
+
+    /**
      * Get lot by lot number
      */
     InventoryLot getByLotNumber(String lotNumber) throws LIMSRuntimeException;
@@ -39,11 +50,6 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
      * Get lot by barcode
      */
     InventoryLot getByBarcode(String barcode) throws LIMSRuntimeException;
-
-    /**
-     * Get lots by storage location
-     */
-    List<InventoryLot> getByStorageLocationId(Long locationId) throws LIMSRuntimeException;
 
     /**
      * Get lots by QC status
@@ -59,6 +65,12 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
      * Get total current quantity for an inventory item across all lots
      */
     Integer getTotalCurrentQuantity(Long itemId) throws LIMSRuntimeException;
+
+    /**
+     * Get available stock per item ID, by the rule of
+     * {@link InventoryLot#countsAsAvailableStock()}
+     */
+    Map<Long, Double> getAvailableQuantityByItem() throws LIMSRuntimeException;
 
     /**
      * Get lot by FHIR UUID

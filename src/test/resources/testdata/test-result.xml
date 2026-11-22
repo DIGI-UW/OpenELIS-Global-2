@@ -87,11 +87,13 @@
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"
         lastupdated="2025-03-20 12:00:00.0" sort_order="2147483647"
-        is_active="Y" name_localization_id="1" display_key="TestKey1" />
+        is_active="Y" name_localization_id="1" display_key="TestKey1"
+        domain="CLINICAL" />
     <test_section id="2" name="TestSection2"
         description="SectionDescription2" org_id="4" is_external="N"
         lastupdated="2025-03-21 13:00:00.0" sort_order="2147483646"
-        is_active="Y" name_localization_id="2" display_key="TestKey2" />
+        is_active="Y" name_localization_id="2" display_key="TestKey2"
+        domain="CLINICAL" />
 
     <test_formats id="1" lastupdated="2025-03-21 12:00:00" />
     <test_formats id="2" lastupdated="2025-03-21 12:00:00" />
@@ -120,14 +122,14 @@
 
 
     <test_result id="1" test_id="1" result_group="1"
-        flags="FLAG1" tst_rslt_type="N" value="5.6" significant_digits="2"
-        quant_limit="10.0" cont_level="High" lastupdated="2025-04-01 12:00:00"
-        scriptlet_id="1" sort_order="1" is_quantifiable="true"
-        is_active="true" is_normal="true" />
+        flags="FLAG1" tst_rslt_type="N" value="5.6"
+        reporting_decimal_places="2" quant_limit="10.0" cont_level="High"
+        lastupdated="2025-04-01 12:00:00" scriptlet_id="1" sort_order="1"
+        is_quantifiable="true" is_active="true" is_normal="true" />
 
     <test_result id="2" test_id="2" result_group="2"
         flags="FLAG2" tst_rslt_type="T" value="Positive"
-        significant_digits="0" quant_limit="15.1" cont_level="High"
+        reporting_decimal_places="0" quant_limit="15.1" cont_level="High"
         lastupdated="2025-04-01 12:30:00" scriptlet_id="2" sort_order="2"
         is_quantifiable="true" is_active="true" is_normal="false" />
 

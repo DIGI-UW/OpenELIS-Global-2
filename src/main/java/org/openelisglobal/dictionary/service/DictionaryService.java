@@ -17,6 +17,12 @@ public interface DictionaryService extends BaseObjectService<Dictionary, String>
 
     boolean duplicateDictionaryExists(Dictionary dictionary);
 
+    /**
+     * The entries in this one's category with its name or abbreviation, ignoring
+     * case and surrounding spaces.
+     */
+    List<Dictionary> findDuplicates(Dictionary dictionary);
+
     boolean isDictionaryFrozen(Dictionary dictionary);
 
     List<Dictionary> getDictionaryEntriesByCategoryId(String categoryId);
@@ -39,4 +45,6 @@ public interface DictionaryService extends BaseObjectService<Dictionary, String>
     int getCountSearchedDictionaries(String searchString);
 
     List<Dictionary> getPagesOfSearchedDictionaries(int startingRecNo, String searchString);
+
+    List<Dictionary> getActiveSortedEntriesByCategoryName(String categoryName);
 }

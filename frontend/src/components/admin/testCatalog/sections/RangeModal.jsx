@@ -50,7 +50,13 @@ const displayAge = (range) => {
   };
 };
 
-const RangeModal = ({ range, components = [], onSave, onCancel }) => {
+const RangeModal = ({
+  range,
+  components = [],
+  sampleTypes = [],
+  onSave,
+  onCancel,
+}) => {
   const intl = useIntl();
   const editing = !!(range && range.id);
 
@@ -63,6 +69,7 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
       return {
         id: undefined,
         componentId: defaultComponentId,
+        sampleTypeId: "",
         gender: "",
         ageUnit: "years",
         minAgeValue: "0",
@@ -73,12 +80,15 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
         highCritical: "",
         lowValid: "",
         highValid: "",
+        lowReporting: "",
+        highReporting: "",
       };
     }
     return {
       id: range.id,
       // Preserve the existing association; fall back to the sole component.
       componentId: range.componentId || defaultComponentId,
+      sampleTypeId: range.sampleTypeId || "",
       gender: range.gender || "",
       ...displayAge(range),
       lowNormal: numOrEmpty(range.lowNormal),
@@ -87,15 +97,19 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
       highCritical: numOrEmpty(range.highCritical),
       lowValid: numOrEmpty(range.lowValid),
       highValid: numOrEmpty(range.highValid),
+      lowReporting: numOrEmpty(range.lowReporting),
+      highReporting: numOrEmpty(range.highReporting),
     };
   });
   const [ageError, setAgeError] = useState(false);
   const [boundsError, setBoundsError] = useState(false);
+  const [reportingError, setReportingError] = useState(false);
 
   const set = (patch) =>
     setDraft((prev) => {
       setAgeError(false);
       setBoundsError(false);
+      setReportingError(false);
       return { ...prev, ...patch };
     });
 
@@ -130,9 +144,20 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
         return;
       }
     }
+    const lowReporting = parseOrNull(draft.lowReporting);
+    const highReporting = parseOrNull(draft.highReporting);
+    if (
+      lowReporting !== null &&
+      highReporting !== null &&
+      lowReporting > highReporting
+    ) {
+      setReportingError(true);
+      return;
+    }
     onSave({
       id: draft.id,
       componentId: draft.componentId || null,
+      sampleTypeId: draft.sampleTypeId || null,
       gender: draft.gender || null,
       minAge: minDays,
       maxAge: maxDays,
@@ -142,6 +167,8 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
       highCritical: parseOrNull(draft.highCritical),
       lowValid: parseOrNull(draft.lowValid),
       highValid: parseOrNull(draft.highValid),
+      lowReporting,
+      highReporting,
     });
   };
 
@@ -187,6 +214,29 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
             />
             {components.map((c) => (
               <SelectItem key={c.id} value={c.id} text={c.label} />
+            ))}
+          </Select>
+        )}
+
+        {/* OGC-1145 Phase 2 — override for a specific specimen; blank = the
+            shared set that applies to every sample type the test runs on. */}
+        {sampleTypes.length > 1 && (
+          <Select
+            id="range-sample-type"
+            labelText={intl.formatMessage({
+              id: "label.testCatalog.override.col.sampleType",
+            })}
+            value={draft.sampleTypeId || ""}
+            onChange={(e) => set({ sampleTypeId: e.target.value })}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "label.testCatalog.override.shared",
+              })}
+            />
+            {sampleTypes.map((t) => (
+              <SelectItem key={t.id} value={t.id} text={t.name} />
             ))}
           </Select>
         )}
@@ -263,6 +313,26 @@ const RangeModal = ({ range, components = [], onSave, onCancel }) => {
           {numField("lowValid", "label.testCatalog.ranges.modal.lowValid")}
           {numField("highValid", "label.testCatalog.ranges.modal.highValid")}
         </div>
+        <div style={{ display: "flex", gap: "1rem" }}>
+          {numField(
+            "lowReporting",
+            "label.testCatalog.ranges.modal.lowReporting",
+          )}
+          {numField(
+            "highReporting",
+            "label.testCatalog.ranges.modal.highReporting",
+          )}
+        </div>
+        {reportingError && (
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "error.testCatalog.ranges.reportingInverted",
+            })}
+          />
+        )}
         {boundsError && (
           <InlineNotification
             kind="error"

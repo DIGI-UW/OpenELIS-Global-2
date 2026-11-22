@@ -1,5 +1,8 @@
 package org.openelisglobal.testcatalog.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.util.Locale;
 import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -21,6 +24,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class TestCatalogCreationServiceImpl implements TestCatalogCreationService {
 
+    /** Stable key for the advisory lock that serializes test creates (OGC-1464). */
+    private static final long TEST_CREATE_LOCK_KEY = 730_702L;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @Autowired
     private TestService testService;
 
@@ -39,20 +48,33 @@ public class TestCatalogCreationServiceImpl implements TestCatalogCreationServic
     @Override
     @Transactional(readOnly = true)
     public boolean codeInUse(String code) {
+        return codeInUse(code, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean codeInUse(String code, String excludeTestId) {
         if (GenericValidator.isBlankOrNull(code)) {
             return false;
         }
-        for (Test test : testService.getAllTests(false)) {
-            if (code.equalsIgnoreCase(test.getLocalCode())) {
-                return true;
-            }
+        String sql = "SELECT count(*) FROM clinlims.test WHERE lower(trim(local_code)) = :code"
+                + (excludeTestId == null ? "" : " AND CAST(id AS varchar) <> :exclude");
+        jakarta.persistence.Query query = entityManager.createNativeQuery(sql).setParameter("code",
+                code.trim().toLowerCase(Locale.ROOT));
+        if (excludeTestId != null) {
+            query.setParameter("exclude", excludeTestId);
         }
-        return false;
+        return ((Number) query.getSingleResult()).longValue() > 0;
     }
 
     @Override
     @Transactional
     public String createInactiveTest(CreateTestParams params, String sysUserId) {
+        entityManager.createNativeQuery("SELECT 1 FROM pg_advisory_xact_lock(:key)")
+                .setParameter("key", TEST_CREATE_LOCK_KEY).getResultList();
+        if (codeInUse(params.code)) {
+            throw new CodeInUseException(params.code);
+        }
         Localization nameLocalization = LocalizationServiceImpl.createNewLocalization(params.name, params.name,
                 LocalizationType.TEST_NAME);
         nameLocalization.setSysUserId(sysUserId);
@@ -97,9 +119,17 @@ public class TestCatalogCreationServiceImpl implements TestCatalogCreationServic
         test.setSysUserId(sysUserId);
         String testId = testService.insert(test);
 
-        if (!GenericValidator.isBlankOrNull(params.sampleTypeId)) {
+        // OGC-1145 FR-2: link every requested sample type (deduped, order kept);
+        // the legacy scalar still works for callers that send a single type.
+        java.util.Set<String> sampleTypeIds = new java.util.LinkedHashSet<>();
+        if (params.sampleTypeIds != null) {
+            params.sampleTypeIds.stream().filter(id -> !GenericValidator.isBlankOrNull(id)).forEach(sampleTypeIds::add);
+        } else if (!GenericValidator.isBlankOrNull(params.sampleTypeId)) {
+            sampleTypeIds.add(params.sampleTypeId);
+        }
+        for (String sampleTypeId : sampleTypeIds) {
             TypeOfSampleTest sampleTypeLink = new TypeOfSampleTest();
-            sampleTypeLink.setTypeOfSampleId(params.sampleTypeId);
+            sampleTypeLink.setTypeOfSampleId(sampleTypeId);
             sampleTypeLink.setTestId(testId);
             sampleTypeLink.setSysUserId(sysUserId);
             typeOfSampleTestService.insert(sampleTypeLink);
@@ -118,6 +148,7 @@ public class TestCatalogCreationServiceImpl implements TestCatalogCreationServic
         primary.setDisplayOrder(0);
         primary.setIsPrimary(true);
         primary.setShowOnReport(true);
+        primary.setIsRequired(true);
         primary.setIsActive("Y");
         primary.setSysUserId(sysUserId);
         componentService.insert(primary);

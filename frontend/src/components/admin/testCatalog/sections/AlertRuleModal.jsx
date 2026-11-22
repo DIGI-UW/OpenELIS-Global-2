@@ -14,8 +14,11 @@ import { useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
+import StaleSaveNotice, {
+  isStaleConflict,
+} from "../../../common/StaleSaveNotice";
 
 const TRIGGER_TYPES = [
   "ALL",
@@ -25,8 +28,13 @@ const TRIGGER_TYPES = [
   "COMPLIANCE_BREACH",
 ];
 
+/** Scope value standing for "every component" / "every specimen". */
+const ANY = "";
+
 const blankRule = () => ({
   name: "",
+  componentId: ANY,
+  sampleTypeId: ANY,
   triggerType: "ALL",
   triggerValue: "",
   notifySms: false,
@@ -56,18 +64,38 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
   const [form, setForm] = useState(blankRule());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [stale, setStale] = useState(false);
   const [roles, setRoles] = useState([]);
+  // A rule names a measurement, and on a multi-component test the test name
+  // does not: Ct Value and the coded PCR Result beside it are different things
+  // to alert on.
+  const [components, setComponents] = useState([]);
+  const [sampleTypes, setSampleTypes] = useState([]);
 
   useEffect(() => {
     if (!open) {
       return;
     }
     setError(null);
+    setStale(false);
     setForm(rule && rule.id ? { ...blankRule(), ...rule } : blankRule());
     getFromOpenElisServer(`/rest/test-catalog/${testId}/alerts/roles`, (data) =>
       setRoles(Array.isArray(data) ? data : []),
     );
+    getFromOpenElisServer(
+      `/rest/test-catalog/${testId}/alerts/components`,
+      (data) => setComponents(Array.isArray(data) ? data : []),
+    );
+    getFromOpenElisServer(
+      `/rest/test-catalog/${testId}/alerts/sample-types`,
+      (data) => setSampleTypes(Array.isArray(data) ? data : []),
+    );
   }, [open, rule, testId]);
+
+  // A test with one component has nothing to disambiguate, so the picker stays
+  // out of the way; the rule is unscoped and means what it always meant.
+  const multiComponent = components.length > 1;
+  const multiSpecimen = sampleTypes.length > 1;
 
   const set = (field, value) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -97,16 +125,51 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
         onClose();
       } else {
         setError(
-          intl.formatMessage({ id: "label.testCatalog.alerts.saveError" }),
+          intl.formatMessage({
+            id:
+              status === 400
+                ? "label.testCatalog.alerts.saveRefused"
+                : "label.testCatalog.alerts.saveError",
+          }),
         );
       }
     };
-    const payload = JSON.stringify(form);
+    // explicit whitelist — the form state may carry server-managed fields
+    // (id, testId, lastupdated) from the GET representation on edit
+    const payload = JSON.stringify({
+      name: form.name,
+      componentId: form.componentId || null,
+      sampleTypeId: form.sampleTypeId || null,
+      triggerType: form.triggerType,
+      triggerValue: form.triggerValue,
+      notifySms: form.notifySms,
+      notifyEmail: form.notifyEmail,
+      notifyOrderingPhysician: form.notifyOrderingPhysician,
+      notifyPatient: form.notifyPatient,
+      notifyReferringFacility: form.notifyReferringFacility,
+      notifyCustomPhone: form.notifyCustomPhone,
+      notifyCustomEmail: form.notifyCustomEmail,
+      notifyRoleId: form.notifyRoleId,
+      acknowledgmentRequired: form.acknowledgmentRequired,
+      enabled: form.enabled,
+      ...(isEdit ? { version: form.version } : {}),
+    });
     if (isEdit) {
-      putToOpenElisServer(
+      putToOpenElisServerFullResponse(
         `/rest/test-catalog/${testId}/alerts/${rule.id}`,
         payload,
-        cb,
+        async (response) => {
+          const status = response ? response.status : 0;
+          if (status === 409) {
+            const body = await response.json().catch(() => null);
+            if (isStaleConflict(status, body)) {
+              setSaving(false);
+              setStale(true);
+              return;
+            }
+          }
+          cb(status);
+        },
       );
     } else {
       postToOpenElisServer(`/rest/test-catalog/${testId}/alerts`, payload, cb);
@@ -125,7 +188,7 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
       })}
       primaryButtonText={intl.formatMessage({ id: "button.save" })}
       secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
-      primaryButtonDisabled={saving}
+      primaryButtonDisabled={saving || stale}
       size="md"
     >
       <Stack gap={5}>
@@ -135,9 +198,80 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
             id: "label.testCatalog.alerts.field.name",
           })}
           value={form.name}
+          maxLength={100}
           onChange={(e) => set("name", e.target.value)}
           invalid={!!error && !form.name.trim()}
         />
+
+        {multiComponent && (
+          <Dropdown
+            id="alert-component"
+            titleText={intl.formatMessage({
+              id: "label.testCatalog.alerts.field.component",
+            })}
+            helperText={intl.formatMessage({
+              id: "label.testCatalog.alerts.field.componentHelp",
+            })}
+            label={intl.formatMessage({
+              id: "label.testCatalog.alerts.scope.anyComponent",
+            })}
+            items={[
+              { id: ANY, value: ANY },
+              ...components.map((c) => ({ id: c.id, value: c.value })),
+            ]}
+            itemToString={(item) =>
+              item && item.id
+                ? item.value
+                : intl.formatMessage({
+                    id: "label.testCatalog.alerts.scope.anyComponent",
+                  })
+            }
+            selectedItem={
+              [
+                { id: ANY, value: ANY },
+                ...components.map((c) => ({ id: c.id, value: c.value })),
+              ].find((i) => i.id === (form.componentId || ANY)) || null
+            }
+            onChange={({ selectedItem }) =>
+              set("componentId", selectedItem ? selectedItem.id : ANY)
+            }
+          />
+        )}
+
+        {multiSpecimen && (
+          <Dropdown
+            id="alert-sample-type"
+            titleText={intl.formatMessage({
+              id: "label.testCatalog.alerts.field.sampleType",
+            })}
+            helperText={intl.formatMessage({
+              id: "label.testCatalog.alerts.field.sampleTypeHelp",
+            })}
+            label={intl.formatMessage({
+              id: "label.testCatalog.alerts.scope.anySampleType",
+            })}
+            items={[
+              { id: ANY, value: ANY },
+              ...sampleTypes.map((t) => ({ id: t.id, value: t.value })),
+            ]}
+            itemToString={(item) =>
+              item && item.id
+                ? item.value
+                : intl.formatMessage({
+                    id: "label.testCatalog.alerts.scope.anySampleType",
+                  })
+            }
+            selectedItem={
+              [
+                { id: ANY, value: ANY },
+                ...sampleTypes.map((t) => ({ id: t.id, value: t.value })),
+              ].find((i) => i.id === (form.sampleTypeId || ANY)) || null
+            }
+            onChange={({ selectedItem }) =>
+              set("sampleTypeId", selectedItem ? selectedItem.id : ANY)
+            }
+          />
+        )}
 
         <RadioButtonGroup
           legendText={intl.formatMessage({
@@ -167,6 +301,7 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
               id: "label.testCatalog.alerts.field.specificValue",
             })}
             value={form.triggerValue || ""}
+            maxLength={100}
             onChange={(e) => set("triggerValue", e.target.value)}
             invalid={!!error && !form.triggerValue}
           />
@@ -236,6 +371,7 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
               id: "label.testCatalog.alerts.recipient.customPhone",
             })}
             value={form.notifyCustomPhone || ""}
+            maxLength={20}
             onChange={(e) => set("notifyCustomPhone", e.target.value)}
           />
           <TextInput
@@ -244,6 +380,7 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
               id: "label.testCatalog.alerts.recipient.customEmail",
             })}
             value={form.notifyCustomEmail || ""}
+            maxLength={100}
             onChange={(e) => set("notifyCustomEmail", e.target.value)}
           />
           <Dropdown
@@ -277,6 +414,15 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
           onToggle={(checked) => set("acknowledgmentRequired", checked)}
         />
 
+        {stale && (
+          <StaleSaveNotice
+            testId="alert-rule-stale-save"
+            onRefresh={() => {
+              onSaved();
+              onClose();
+            }}
+          />
+        )}
         {error && (
           <InlineNotification
             kind="error"

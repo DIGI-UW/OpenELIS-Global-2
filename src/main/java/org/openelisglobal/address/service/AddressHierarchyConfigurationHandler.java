@@ -2,12 +2,11 @@ package org.openelisglobal.address.service;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.organization.valueholder.OrganizationType;
@@ -80,7 +79,7 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
     @Override
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
 
         // Read and validate header
         String headerLine = reader.readLine();
@@ -234,7 +233,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
             OrganizationType newType = new OrganizationType();
             newType.setName(typeName);
             updateOrganizationType(newType, level, values, displayKeyIndex);
-            newType.setSysUserId("1");
             String typeId = organizationTypeService.insert(newType);
             newType.setId(typeId);
             updateSiteInformationLabel(level, typeName);
@@ -251,7 +249,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
 
     private void updateOrganizationType(OrganizationType orgType, int level, String[] values, int displayKeyIndex) {
         orgType.setHierarchyLevel(level);
-        orgType.setSysUserId("1");
     }
 
     private void updateSiteInformationLabel(int level, String typeName) {
@@ -267,7 +264,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
             SiteInformation siteInfo = siteInformationService.getSiteInformationByName(siteInfoName);
             if (siteInfo != null) {
                 siteInfo.setValue(typeName);
-                siteInfo.setSysUserId("1");
                 siteInformationService.update(siteInfo);
                 LogEvent.logInfo(this.getClass().getSimpleName(), "updateSiteInformationLabel",
                         "Updated " + siteInfoName + " to: " + typeName);
@@ -286,7 +282,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         SiteInformation siteInfo = siteInformationService.getSiteInformationByName(siteInfoName);
         if (siteInfo != null) {
             siteInfo.setValue(defaultValue);
-            siteInfo.setSysUserId("1");
             siteInformationService.update(siteInfo);
             LogEvent.logInfo(this.getClass().getSimpleName(), "updateDefaultValue",
                     "Updated default for level " + level + " to: " + defaultValue);
@@ -297,7 +292,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
             siteInfo.setValue(defaultValue);
             siteInfo.setDescription("Default address hierarchy value for level " + level);
             siteInfo.setValueType("text");
-            siteInfo.setSysUserId("1");
             siteInformationService.insert(siteInfo);
             LogEvent.logInfo(this.getClass().getSimpleName(), "updateDefaultValue",
                     "Created default for level " + level + ": " + defaultValue);
@@ -329,7 +323,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         SiteInformation siteInfo = siteInformationService.getSiteInformationByName(siteInfoName);
         if (siteInfo != null) {
             siteInfo.setValue(value);
-            siteInfo.setSysUserId("1");
             siteInformationService.update(siteInfo);
             LogEvent.logInfo(this.getClass().getSimpleName(), "updateOptionalMetadata",
                     "Updated " + siteInfoName + " to: " + value);
@@ -341,7 +334,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         siteInfo.setValue(value);
         siteInfo.setDescription(description);
         siteInfo.setValueType("text");
-        siteInfo.setSysUserId("1");
         siteInformationService.insert(siteInfo);
         LogEvent.logInfo(this.getClass().getSimpleName(), "updateOptionalMetadata",
                 "Created " + siteInfoName + ": " + value);
@@ -361,7 +353,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         SiteInformation siteInfo = siteInformationService.getSiteInformationByName(siteInfoName);
         if (siteInfo != null) {
             siteInfo.setValue(normalized);
-            siteInfo.setSysUserId("1");
             siteInformationService.update(siteInfo);
             LogEvent.logInfo(this.getClass().getSimpleName(), "updateInputType",
                     "Updated inputType for level " + level + " to: " + normalized
@@ -372,7 +363,6 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
             siteInfo.setValue(normalized);
             siteInfo.setDescription("Address hierarchy input control type for level " + level);
             siteInfo.setValueType("text");
-            siteInfo.setSysUserId("1");
             siteInformationService.insert(siteInfo);
             LogEvent.logInfo(this.getClass().getSimpleName(), "updateInputType",
                     "Created inputType for level " + level + ": " + normalized

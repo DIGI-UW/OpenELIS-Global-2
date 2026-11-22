@@ -39,7 +39,8 @@ public class PersonAddressDAOImpl extends BaseDAOImpl<PersonAddress, AddressPK> 
         if (personId == null || personId.trim().isEmpty()) {
             return new ArrayList<>();
         }
-        String sql = "from PersonAddress pa where pa.compoundId.targetId = :personId";
+        String sql = "from PersonAddress pa where pa.compoundId.targetId = :personId"
+                + " order by pa.compoundId.addressPartId";
 
         try {
             Query<PersonAddress> query = entityManager.unwrap(Session.class).createQuery(sql, PersonAddress.class);

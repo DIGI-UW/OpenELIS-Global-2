@@ -1,19 +1,29 @@
 import React from "react";
 import { Grid, Column, Section, Tag } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
-import Avatar from "react-avatar";
-import { openPatientResults, type PatientSearchResult } from "./searchService";
+import AsyncAvatar from "../../patient/photoManagement/photoAvatar/AyncAvatar";
+import { type PatientSearchResult } from "./searchService";
+import useInAppNavigation from "../../common/useInAppNavigation";
 
 interface SearchOutputProps {
   patientData: PatientSearchResult[];
   loading?: boolean;
   className?: string;
+  onSelect?: () => void;
 }
 
 const SearchOutput: React.FC<SearchOutputProps> = ({
   patientData,
   className = "patientHead",
+  onSelect,
 }) => {
+  const navigate = useInAppNavigation();
+  const openPatientResults = (patientId?: string | number) => {
+    if (patientId) {
+      onSelect?.();
+      navigate("/PatientResults/" + patientId)();
+    }
+  };
   return (
     <div>
       {patientData.map((patient) => {
@@ -27,19 +37,13 @@ const SearchOutput: React.FC<SearchOutputProps> = ({
                 >
                   <Column lg={2} md={1}>
                     <div role="img">
-                      <Avatar
-                        alt="Patient avatar"
-                        color="rgba(0,0,0,0)"
-                        name={`${patient.lastName ?? ""} ${
+                      <AsyncAvatar
+                        patientId={patient.patientID ?? patient.id}
+                        hasPhoto={Boolean(patient.patientID ?? patient.id)}
+                        patientName={`${patient.lastName ?? ""} ${
                           patient.firstName ?? ""
                         }`}
-                        src={""}
-                        size={patient.referringFacility ? "50" : "40"}
-                        textSizeRatio={2}
-                        style={{
-                          backgroundImage: `url('/images/patient-background.svg')`,
-                          marginTop: "5px",
-                        }}
+                        size={patient.referringFacility ? 50 : 40}
                       />
                     </div>
                   </Column>

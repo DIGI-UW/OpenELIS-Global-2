@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Upgrade guard, included before every other changelog. Seed inserts added since
+    3.2.2.0 (the first is 2.8.x.x/menu.xml id 17) take their ids from nextval('<table>_seq').
+    On a database whose sequence fell behind its table, for instance after rows were
+    imported with explicit ids or a dump was restored partially, those inserts hit a
+    duplicate primary key and the upgrade stops. Raise every <table>_seq to at least the
+    table's highest numeric id first. Sequences are only ever moved forward.
+    -->
+    <changeSet id="upgrade-000-resync-id-sequences" author="mozzy11">
+        <sql splitStatements="false"><![CDATA[
+            DO $$
+            DECLARE
+                seq RECORD;
+                highest NUMERIC;
+            BEGIN
+                FOR seq IN
+                    SELECT s.sequence_schema, s.sequence_name, c.table_name
+                    FROM information_schema.sequences s
+                    JOIN information_schema.columns c
+                      ON c.table_schema = s.sequence_schema
+                     AND c.table_name = regexp_replace(s.sequence_name, '_seq$', '')
+                     AND c.column_name = 'id'
+                     AND c.data_type IN ('numeric', 'integer', 'bigint', 'smallint')
+                    WHERE s.sequence_schema = 'clinlims'
+                      AND s.sequence_name LIKE '%\_seq'
+                LOOP
+                    EXECUTE format('SELECT max(id) FROM %I.%I', seq.sequence_schema, seq.table_name)
+                        INTO highest;
+                    IF highest IS NOT NULL AND highest >= 1 AND highest < 9223372036854775807 THEN
+                        EXECUTE format(
+                            'SELECT setval(%L, greatest(%s, (SELECT last_value FROM %I.%I)))',
+                            seq.sequence_schema || '.' || seq.sequence_name,
+                            floor(highest)::bigint,
+                            seq.sequence_schema, seq.sequence_name);
+                    END IF;
+                END LOOP;
+            END
+            $$;
+        ]]></sql>
+    </changeSet>
+
+</databaseChangeLog>

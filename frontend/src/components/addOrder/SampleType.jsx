@@ -1,6 +1,9 @@
 import {
+  Button,
   Checkbox,
   FormGroup,
+  InlineLoading,
+  InlineNotification,
   Layer,
   Loading,
   Search,
@@ -10,7 +13,14 @@ import {
   TextInput,
   Tile,
 } from "@carbon/react";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import OrderReferralRequest from "../addOrder/OrderReferralRequest";
@@ -18,6 +28,7 @@ import CustomCheckBox from "../common/CustomCheckBox";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { NotificationKinds } from "../common/CustomNotification";
 import CustomSelect from "../common/CustomSelect";
+import SearchableSelect from "../common/SearchableSelect";
 import CustomTextInput from "../common/CustomTextInput";
 import CustomTimePicker from "../common/CustomTimePicker";
 import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
@@ -28,6 +39,14 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import GpsCoordinatesCapture from "./GpsCoordinatesCapture";
 import LabelsSection from "../barcodeWorkflow/LabelsSection";
 
+/** The entries whose name contains the search term, ignoring case. */
+const matchingByName = (entries, term) => {
+  const query = (term || "").toLowerCase();
+  return (entries || []).filter((entry) =>
+    (entry?.name || "").toLowerCase().includes(query),
+  );
+};
+
 const SampleType = (props) => {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -36,32 +55,42 @@ const SampleType = (props) => {
 
   const componentMounted = useRef(false);
   const sampleTypesRef = useRef(null);
+  const sampleTypeTestsFetchRef = useRef(0);
 
-  const { index, rejectSampleReasons, removeSample, sample } = props;
+  const {
+    index,
+    rejectSampleReasons,
+    sample,
+    domain,
+    allowReferral = true,
+  } = props;
 
   const [sampleTypes, setSampleTypes] = useState([]);
   const [selectedSampleType, setSelectedSampleType] = useState({
-    id: null,
+    id: sample?.sampleTypeId || null,
     name: "",
     element_index: 0,
   });
   const [sampleTypeTests, setSampleTypeTests] = useState(
     sampleTypeTestsStructure,
   );
-  const [selectedTests, setSelectedTests] = useState([]);
-  const [searchBoxTests, setSearchBoxTests] = useState([]);
-  const [requestTestReferral, setRequestTestReferral] = useState(false);
+  const [selectedTests, setSelectedTests] = useState(sample?.tests || []);
+  const [testsLoadState, setTestsLoadState] = useState("idle");
+  const [testsRetry, setTestsRetry] = useState(0);
+  const [referralListsFailed, setReferralListsFailed] = useState(false);
+  const [requestTestReferral, setRequestTestReferral] = useState(
+    sample?.requestReferralEnabled === true,
+  );
   const [referralReasons, setReferralReasons] = useState([]);
   const [referralOrganizations, setReferralOrganizations] = useState([]);
   const [testSearchTerm, setTestSearchTerm] = useState("");
-  const [referralRequests, setReferralRequests] = useState([]);
+  const [referralRequests, setReferralRequests] = useState(
+    sample?.referralItems || [],
+  );
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const [rejectionReasonsDisabled, setRejectionReasonsDisabled] =
-    useState(true);
-  const [selectedPanels, setSelectedPanels] = useState([]);
+  const [selectedPanels, setSelectedPanels] = useState(sample?.panels || []);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
-  const [searchBoxPanels, setSearchBoxPanels] = useState([]);
   const [uomList, setUomList] = useState([]);
   const [sampleXml, setSampleXml] = useState(
     sample?.sampleXML != null
@@ -225,10 +254,10 @@ const SampleType = (props) => {
       const defaultReferralRequest = [];
       selectedTests.map((test) => {
         defaultReferralRequest.push({
-          reasonForReferral: referralReasons[0].id,
+          reasonForReferral: referralReasons[0]?.id ?? "",
           referrer:
             userSessionDetails.firstName + " " + userSessionDetails.lastName,
-          institute: referralOrganizations[0].id,
+          institute: referralOrganizations[0]?.id ?? "",
           sentDate: "",
           testId: test.id,
         });
@@ -238,13 +267,13 @@ const SampleType = (props) => {
   };
 
   const handleTestSearchChange = (event) => {
-    const query = event.target.value;
-    setTestSearchTerm(query);
-    const results = sampleTypeTests.tests.filter((test) => {
-      return test.name.toLowerCase().includes(query.toLowerCase());
-    });
-    setSearchBoxTests(results);
+    setTestSearchTerm(event.target.value);
   };
+
+  const searchBoxTests = useMemo(
+    () => matchingByName(sampleTypeTests?.tests, testSearchTerm),
+    [sampleTypeTests, testSearchTerm],
+  );
 
   const handleRemoveSelectedTest = (test) => {
     removedTestFromSelectedTests(test);
@@ -264,11 +293,13 @@ const SampleType = (props) => {
   };
 
   function findTestById(testId) {
-    return sampleTypeTests.tests.find((test) => test.id === testId);
+    return (sampleTypeTests?.tests || []).find((test) => test.id === testId);
   }
 
   function findTestIndex(testId) {
-    return sampleTypeTests.tests.findIndex((test) => test.id === testId);
+    return (sampleTypeTests?.tests || []).findIndex(
+      (test) => test.id === testId,
+    );
   }
 
   const panelIsSelected = (panelId) => {
@@ -299,7 +330,7 @@ const SampleType = (props) => {
         if (isChecked) {
           if (!testIsSelected(test.id)) {
             setSelectedTests((prevState) => {
-              return [...prevState, { id: test.id, name: test.name }];
+              return [...prevState, { ...test }];
             });
           }
         } else {
@@ -310,16 +341,9 @@ const SampleType = (props) => {
   };
 
   const removedTestFromSelectedTests = (test) => {
-    let index = 0;
-    for (let i in selectedTests) {
-      if (selectedTests[i].id === test.id) {
-        const newTests = selectedTests;
-        newTests.splice(index, 1);
-        setSelectedTests([...newTests]);
-        break;
-      }
-      index++;
-    }
+    setSelectedTests((currentTests) =>
+      currentTests.filter((selectedTest) => selectedTest.id !== test.id),
+    );
   };
 
   function removeReferralRequest(test) {
@@ -337,8 +361,16 @@ const SampleType = (props) => {
 
   const handleFetchSampleTypeTests = (e, index) => {
     setSelectedTests([]);
+    setSelectedPanels([]);
     setReferralRequests([]);
+    setTestSearchTerm("");
+    setPanelSearchTerm("");
     const { value } = e.target;
+    if (value === "") {
+      sampleTypeTestsFetchRef.current += 1;
+      setSampleTypeTests(sampleTypeTestsStructure);
+      setTestsLoadState("idle");
+    }
     const selectedSampleTypeOption =
       sampleTypesRef.current.options[sampleTypesRef.current.selectedIndex].text;
     setSelectedSampleType({
@@ -358,12 +390,6 @@ const SampleType = (props) => {
     if (componentMounted.current) {
       setSampleTypes(res);
       setLoading(false);
-    }
-  };
-
-  const fetchSampleTypeTests = (res) => {
-    if (componentMounted.current) {
-      setSampleTypeTests(res);
     }
   };
 
@@ -393,12 +419,18 @@ const SampleType = (props) => {
 
   const displayReferralReasonsOptions = (res) => {
     if (componentMounted.current) {
-      setReferralReasons(res);
+      setReferralReasons(Array.isArray(res) ? res : []);
+      if (!Array.isArray(res)) {
+        setReferralListsFailed(true);
+      }
     }
   };
   const displayReferralOrgOptions = (res) => {
     if (componentMounted.current) {
-      setReferralOrganizations(res);
+      setReferralOrganizations(Array.isArray(res) ? res : []);
+      if (!Array.isArray(res)) {
+        setReferralListsFailed(true);
+      }
     }
   };
 
@@ -415,7 +447,6 @@ const SampleType = (props) => {
       ...sampleXml,
       rejected: checked,
     });
-    setRejectionReasonsDisabled(!rejectionReasonsDisabled);
   }
 
   const removedPanelFromSelectedPanels = (panel) => {
@@ -432,14 +463,21 @@ const SampleType = (props) => {
     }
   };
 
+  const selectedSampleTypeName =
+    selectedSampleType.name ||
+    sampleTypes?.find(
+      (sampleType) => String(sampleType.id) === String(selectedSampleType.id),
+    )?.value ||
+    "";
+
   const handlePanelSearchChange = (event) => {
-    const query = event.target.value;
-    setPanelSearchTerm(query);
-    const results = sampleTypeTests.panels.filter((panel) => {
-      return panel.name.toLowerCase().includes(query.toLowerCase());
-    });
-    setSearchBoxPanels(results);
+    setPanelSearchTerm(event.target.value);
   };
+
+  const searchBoxPanels = useMemo(
+    () => matchingByName(sampleTypeTests?.panels, panelSearchTerm),
+    [sampleTypeTests, panelSearchTerm],
+  );
 
   const handleFilterSelectPanel = (panel) => {
     setPanelSearchTerm("");
@@ -460,7 +498,7 @@ const SampleType = (props) => {
 
   function addTestToSelectedTests(test) {
     if (!testIsSelected(test.id)) {
-      setSelectedTests([...selectedTests, { id: test.id, name: test.name }]);
+      setSelectedTests([...selectedTests, { ...test }]);
     }
   }
 
@@ -474,32 +512,47 @@ const SampleType = (props) => {
   useEffect(() => {
     componentMounted.current = true;
     if (selectedSampleType.id !== "" && selectedSampleType.id != null) {
+      const fetchId = ++sampleTypeTestsFetchRef.current;
+      setTestsLoadState("loading");
       getFromOpenElisServer(
         `/rest/sample-type-tests?sampleType=${selectedSampleType.id}`,
-        fetchSampleTypeTests,
+        (res) => {
+          if (
+            componentMounted.current &&
+            fetchId === sampleTypeTestsFetchRef.current
+          ) {
+            if (res && Array.isArray(res.tests)) {
+              setSampleTypeTests(res);
+              setTestsLoadState("loaded");
+            } else {
+              setSampleTypeTests(sampleTypeTestsStructure);
+              setTestsLoadState("failed");
+            }
+          }
+        },
       );
     }
     return () => {
       componentMounted.current = false;
     };
-  }, [selectedSampleType.id]);
+  }, [selectedSampleType.id, testsRetry]);
 
   useEffect(() => {
-    getFromOpenElisServer(`/rest/UomCreate`, fetchUomCreate);
+    getFromOpenElisServer("/rest/uom", fetchUomList);
   }, []);
 
-  const fetchUomCreate = (res) => {
-    if (componentMounted.current && res) {
-      setUomList(res.existingUomList || []);
+  const fetchUomList = (res) => {
+    if (componentMounted.current) {
+      setUomList(Array.isArray(res) ? res : []);
     }
   };
 
   useEffect(() => {
     props.sampleTypeObject({
-      sampleRejected: rejectionReasonsDisabled,
+      sampleRejected: Boolean(sampleXml.rejected),
       sampleObjectIndex: index,
     });
-  }, [rejectionReasonsDisabled]);
+  }, [sampleXml.rejected]);
 
   useEffect(() => {
     props.sampleTypeObject({
@@ -518,18 +571,7 @@ const SampleType = (props) => {
     }
   }, [selectedPanels, sampleTypeTests]);
 
-  const repopulateUI = () => {
-    if (props.sample !== null) {
-      setSelectedTests(props.sample.tests);
-      setSelectedPanels(props.sample.panels);
-      setSelectedSampleType({
-        id: props.sample.sampleTypeId,
-      });
-    }
-  };
-
-  useEffect(() => {
-    componentMounted.current = true;
+  const loadReferralLists = () => {
     getFromOpenElisServer(
       "/rest/displayList/REFERRAL_REASONS",
       displayReferralReasonsOptions,
@@ -538,12 +580,45 @@ const SampleType = (props) => {
       "/rest/displayList/REFERRAL_ORGANIZATIONS",
       displayReferralOrgOptions,
     );
-    repopulateUI();
-    getFromOpenElisServer("/rest/user-sample-types", fetchSamplesTypes);
+  };
+
+  const retryReferralLists = () => {
+    setReferralListsFailed(false);
+    loadReferralLists();
+  };
+
+  useEffect(() => {
+    componentMounted.current = true;
+    loadReferralLists();
+    const sampleTypesEndpoint =
+      domain === "E"
+        ? "/rest/environmental-sample-types"
+        : domain === "V"
+          ? "/rest/vector-sample-types"
+          : "/rest/user-sample-types";
+    getFromOpenElisServer(sampleTypesEndpoint, fetchSamplesTypes);
     return () => {
       componentMounted.current = false;
     };
   }, []);
+
+  const domainFetchRef = useRef(0);
+  useEffect(() => {
+    const fetchId = ++domainFetchRef.current;
+    const sampleTypesEndpoint =
+      domain === "E"
+        ? "/rest/environmental-sample-types"
+        : domain === "V"
+          ? "/rest/vector-sample-types"
+          : "/rest/user-sample-types";
+    setLoading(true);
+    getFromOpenElisServer(sampleTypesEndpoint, (res) => {
+      if (componentMounted.current && fetchId === domainFetchRef.current) {
+        setSampleTypes(res);
+        setLoading(false);
+      }
+    });
+  }, [domain]);
 
   return (
     <>
@@ -574,15 +649,22 @@ const SampleType = (props) => {
 
         <CustomCheckBox
           id={"reject_" + index}
+          checked={Boolean(sampleXml.rejected)}
           onChange={(value) => handleRejection(value)}
           label={intl.formatMessage({ id: "sample.reject.label" })}
         />
         {sampleXml.rejected && (
           <CustomSelect
             id={"rejectedReasonId_" + index}
+            labelText={intl.formatMessage({ id: "sample.reject.reason.label" })}
+            aria-required="true"
             options={rejectSampleReasons}
-            disabled={rejectionReasonsDisabled}
+            disabled={!sampleXml.rejected}
             value={sampleXml.rejectionReason}
+            invalid={!sampleXml.rejectionReason}
+            invalidText={intl.formatMessage({
+              id: "sample.reject.reasonRequired",
+            })}
             onChange={(e) => handleReasons(e)}
           />
         )}
@@ -602,11 +684,11 @@ const SampleType = (props) => {
             })}
           />
 
-          <CustomSelect
+          <SearchableSelect
             id={"uomId_" + index}
             labelText={intl.formatMessage({ id: "sample.uom.label" })}
+            placeholder={intl.formatMessage({ id: "sample.uom.search" })}
             options={uomList}
-            disabled={false}
             value={sampleXml.uom}
             onChange={(value) => handleUom(value)}
           />
@@ -769,10 +851,10 @@ const SampleType = (props) => {
               orderLabelText={intl.formatMessage({
                 id: "barcode.labels.order.row",
               })}
-              specimenLabelFormatter={(sampleNumber) =>
+              specimenLabelFormatter={() =>
                 intl.formatMessage(
                   { id: "barcode.labels.sample.row" },
-                  { sampleNumber },
+                  { sampleNumber: index + 1 },
                 )
               }
               runningTotalLabel={intl.formatMessage({
@@ -933,6 +1015,15 @@ const SampleType = (props) => {
             <div>
               {(() => {
                 if (!testSearchTerm) return null;
+                if (testsLoadState === "loading") {
+                  return (
+                    <InlineLoading
+                      description={intl.formatMessage({
+                        id: "sample.tests.loading",
+                      })}
+                    />
+                  );
+                }
                 if (searchBoxTests && searchBoxTests.length) {
                   return (
                     <ul className={"searchTestsList"}>
@@ -964,6 +1055,34 @@ const SampleType = (props) => {
               })()}
             </div>
           </FormGroup>
+          {testsLoadState === "loading" && !testSearchTerm && (
+            <InlineLoading
+              description={intl.formatMessage({ id: "sample.tests.loading" })}
+            />
+          )}
+          {testsLoadState === "failed" && (
+            <div data-testid={"sample-tests-load-failed-" + index}>
+              <InlineNotification
+                kind="error"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage(
+                  { id: "sample.tests.loadFailed" },
+                  { sampleType: selectedSampleTypeName },
+                )}
+                subtitle={intl.formatMessage({
+                  id: "sample.tests.loadFailed.hint",
+                })}
+              />
+              <Button
+                kind="tertiary"
+                size="sm"
+                onClick={() => setTestsRetry((attempt) => attempt + 1)}
+              >
+                <FormattedMessage id="common.retry" />
+              </Button>
+            </div>
+          )}
           {sampleTypeTests.tests != null &&
             sampleTypeTests.tests.map((test) => {
               return test.name === "" ? (
@@ -983,25 +1102,44 @@ const SampleType = (props) => {
             })}
         </div>
 
-        <div className="requestTestReferral">
-          <Checkbox
-            id={`useReferral_` + index}
-            labelText={intl.formatMessage({
-              id: "label.refertest.referencelab",
-            })}
-            onChange={handleReferralRequest}
-          />
-          {requestTestReferral === true && (
-            <OrderReferralRequest
-              index={index}
-              selectedTests={selectedTests}
-              referralReasons={referralReasons}
-              referralOrganizations={referralOrganizations}
-              referralRequests={referralRequests}
-              setReferralRequests={setReferralRequests}
+        {allowReferral && (
+          <div className="requestTestReferral">
+            <Checkbox
+              id={`useReferral_` + index}
+              labelText={intl.formatMessage({
+                id: "label.refertest.referencelab",
+              })}
+              checked={requestTestReferral}
+              disabled={referralListsFailed && !requestTestReferral}
+              onChange={handleReferralRequest}
             />
-          )}
-        </div>
+            {referralListsFailed && (
+              <div data-testid={"sample-referral-lists-failed-" + index}>
+                <InlineNotification
+                  kind="warning"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage({
+                    id: "sample.referral.listsFailed",
+                  })}
+                />
+                <Button kind="tertiary" size="sm" onClick={retryReferralLists}>
+                  <FormattedMessage id="common.retry" />
+                </Button>
+              </div>
+            )}
+            {requestTestReferral === true && (
+              <OrderReferralRequest
+                index={index}
+                selectedTests={selectedTests}
+                referralReasons={referralReasons}
+                referralOrganizations={referralOrganizations}
+                referralRequests={referralRequests}
+                setReferralRequests={setReferralRequests}
+              />
+            )}
+          </div>
+        )}
       </div>
     </>
   );

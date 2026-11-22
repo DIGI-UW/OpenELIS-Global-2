@@ -12,6 +12,7 @@ import org.openelisglobal.testconfiguration.form.SampleTypeRenameEntryForm;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -64,14 +65,14 @@ public class SampleTypeRenameEntryRestController extends BaseController {
     }
 
     @PostMapping(value = "/SampleTypeRenameEntry")
-    public SampleTypeRenameEntryForm updateSampleTypeRenameEntry(HttpServletRequest request,
+    public ResponseEntity<?> updateSampleTypeRenameEntry(HttpServletRequest request,
             @RequestBody @Valid SampleTypeRenameEntryForm form, BindingResult result) {
         if (result.hasErrors()) {
             saveErrors(result);
             form.setSampleTypeList(
                     DisplayListService.getInstance().getList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE));
             // return findForward(FWD_FAIL_INSERT, form);
-            return form;
+            return validationRefusal(result);
         }
 
         String sampleTypeId = form.getSampleTypeId();
@@ -85,7 +86,7 @@ public class SampleTypeRenameEntryRestController extends BaseController {
                 DisplayListService.getInstance().getList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE));
 
         // return findForward(FWD_SUCCESS_INSERT, form);
-        return form;
+        return ResponseEntity.ok(form);
     }
 
     private void updateSampleTypeNames(String sampleTypeId, String nameEnglish, String nameFrench, String userId) {

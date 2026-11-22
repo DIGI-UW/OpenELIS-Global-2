@@ -175,8 +175,10 @@ export class ESignatureError extends Error {
  */
 export const SignatureMeaning = {
   AUTHORED: "AUTHORED",
+  MODIFIED: "MODIFIED",
   VALIDATED_AND_RELEASED: "VALIDATED_AND_RELEASED",
   REJECTED: "REJECTED",
+  REVIEWED: "REVIEWED",
 };
 
 /**

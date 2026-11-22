@@ -29,6 +29,12 @@
         fhir_uuid="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14" sys_user_id="1"
         last_updated="2024-01-01 00:00:00" />
 
+    <!-- Storage Box -->
+    <storage_box id="1000" label="Box B1" code="BOX-B1"
+        type="plate" rows="8" columns="12" parent_rack_id="1000" active="true"
+        fhir_uuid="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
     <!-- Sample -->
     <sample id="1000" accession_number="INT001"
         received_date="2024-01-01 00:00:00" entered_date="2024-01-01 00:00:00"

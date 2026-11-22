@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-811 - the legacy per-analysis result_file (1:1 with analysis, single
+    file, inline blob) is superseded by component-scoped order attachments.
+    Existing files are migrated into order_attachment, stamped with their
+    analysis and that analysis's PRIMARY result component so they become
+    normal component-level attachments (the component stays NULL only for
+    tests that genuinely have no active components).
+
+    Primary-component selection mirrors the domain rule
+    (TestResultComponentServiceImpl.pickPrimary): the explicit is_primary
+    flag first, then the legacy 'PRIMARY' code, then the lowest display
+    order. The legacy "data:" prefix that result_file rows carry in
+    file_type (an old upload quirk) is stripped so the serve endpoints emit
+    a valid Content-Type.
+
+    The result_file rows themselves are NOT deleted or altered - only rows
+    still referenced by an analysis are migrated (unreferenced rows are
+    orphans left behind by the old save path's per-save cloning). Ids come
+    from order_attachment_seq, the sequence the entity uses.
+    -->
+    <changeSet id="order-attachment-003-migrate-result-files" author="mozzy">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists schemaName="clinlims" tableName="result_file"/>
+                <columnExists schemaName="clinlims" tableName="order_attachment" columnName="analysis_id"/>
+            </and>
+        </preConditions>
+        <comment>Migrate legacy analysis result files to component-scoped order attachments</comment>
+        <sql>
+            INSERT INTO clinlims.order_attachment
+                (id, sample_id, analysis_id, test_result_component_id, original_file_name,
+                 file_type, file_size_bytes, file_content, uploaded_by, uploaded_at, is_deleted)
+            SELECT nextval('clinlims.order_attachment_seq'),
+                   si.samp_id,
+                   a.id,
+                   (SELECT trc.id FROM clinlims.test_result_component trc
+                     WHERE trc.test_id = a.test_id AND trc.is_active = 'Y'
+                     ORDER BY trc.is_primary DESC,
+                              (trc.code = 'PRIMARY') DESC,
+                              COALESCE(trc.display_order, 2147483647) ASC,
+                              trc.id ASC
+                     LIMIT 1),
+                   rf.file_name,
+                   CASE WHEN rf.file_type LIKE 'data:%' THEN substring(rf.file_type from 6)
+                        ELSE rf.file_type END,
+                   octet_length(rf.file_content),
+                   rf.file_content,
+                   NULL,
+                   rf.uploaded_at,
+                   false
+            FROM clinlims.result_file rf
+            JOIN clinlims.analysis a ON a.result_file_id = rf.id
+            JOIN clinlims.sample_item si ON si.id = a.sampitem_id
+            WHERE NOT EXISTS (
+                SELECT 1 FROM clinlims.order_attachment oa
+                 WHERE oa.analysis_id = a.id
+                   AND oa.original_file_name = rf.file_name
+                   AND oa.file_size_bytes = octet_length(rf.file_content));
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

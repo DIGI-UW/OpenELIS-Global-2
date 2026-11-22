@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-1054-analyzer-verification-evidence" author="OGC">
+        <comment>
+            Bind new analyzer verification to the exact Bridge profile
+            fingerprint and durable OpenELIS audit event. Existing rows remain
+            historical evidence but are stale until the user confirms again.
+        </comment>
+
+        <addColumn schemaName="clinlims" tableName="analyzer_site_binding_confirmation">
+            <column name="profile_revision_fingerprint" type="VARCHAR(71)"/>
+            <column name="audit_event_id" type="numeric(10)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_analyzer_confirmation_audit_event"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_site_binding_confirmation"
+            baseColumnNames="audit_event_id" referencedTableSchemaName="clinlims"
+            referencedTableName="history" referencedColumnNames="id"/>
+        <sql>
+            ALTER TABLE clinlims.analyzer_site_binding_confirmation
+            ADD CONSTRAINT chk_analyzer_confirmation_profile_fingerprint
+            CHECK (profile_revision_fingerprint IS NULL OR
+                profile_revision_fingerprint ~ '^sha256:[0-9a-f]{64}$');
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.analyzer_site_binding_confirmation
+                DROP CONSTRAINT IF EXISTS chk_analyzer_confirmation_profile_fingerprint;
+            </sql>
+            <dropForeignKeyConstraint schemaName="clinlims"
+                baseTableName="analyzer_site_binding_confirmation"
+                constraintName="fk_analyzer_confirmation_audit_event"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_site_binding_confirmation"
+                columnName="audit_event_id"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_site_binding_confirmation"
+                columnName="profile_revision_fingerprint"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -269,6 +269,12 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     @Override
     @Transactional(readOnly = true)
     public Person getPersonRequester(Sample sample) {
+        return getPersonRequester(sample, PERSON_REQUESTER_TYPE_ID);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Person getPersonRequester(Sample sample, long requesterTypeId) {
         if (sample == null) {
             return null;
         }
@@ -276,7 +282,7 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
         List<SampleRequester> requesters = sampleRequesterService.getRequestersForSampleId(sample.getId());
 
         for (SampleRequester requester : requesters) {
-            if (PERSON_REQUESTER_TYPE_ID == requester.getRequesterTypeId()) {
+            if (requesterTypeId == requester.getRequesterTypeId()) {
                 Person person = new Person();
                 person.setId(String.valueOf(requester.getRequesterId()));
                 personService.getData(person);
@@ -448,6 +454,12 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
 
     @Override
     @Transactional(readOnly = true)
+    public List<Sample> getEnvironmentalSamplesWithAccessionNumberStartingWith(String prefix, int max) {
+        return getBaseObjectDAO().getEnvironmentalSamplesWithAccessionNumberStartingWith(prefix, max);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public String getLargestAccessionNumberMatchingPattern(String startingWith, int size) {
         return getBaseObjectDAO().getLargestAccessionNumberMatchingPattern(startingWith, size);
     }
@@ -522,6 +534,12 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     @Transactional(readOnly = true)
     public List<Sample> getPageOfSamples(int startingRecNo) {
         return getBaseObjectDAO().getPageOfSamples(startingRecNo);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Sample> getSamplesNewestFirst(int startingRecNo, int pageSize) {
+        return getBaseObjectDAO().getSamplesNewestFirst(startingRecNo, pageSize);
     }
 
     @Override
@@ -604,5 +622,17 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     @Transactional(readOnly = true)
     public List<Sample> getSamplesByPriority(OrderPriority priority) {
         return sampleDAO.getSamplesByPriority(priority);
+    }
+
+    @Override
+    public List<Sample> findSamplesWithRequiredByBefore(java.sql.Timestamp horizon) {
+        return sampleDAO.findSamplesWithRequiredByBefore(horizon);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Sample> getStatSamplesReceivedBetweenWithAnalysisIn(java.sql.Timestamp since, java.sql.Timestamp cutoff,
+            List<String> analysisStatusIds) {
+        return sampleDAO.getStatSamplesReceivedBetweenWithAnalysisIn(since, cutoff, analysisStatusIds);
     }
 }

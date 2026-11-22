@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <!-- type_of_test_result required by ResultLimitServiceImpl @PostConstruct -->
+    <type_of_test_result id="801" description="Numeric"
+        test_result_type="N" hl7_value="NM" lastupdated="2024-01-01 00:00:00" />
+    <type_of_test_result id="802"
+        description="Dictionary" test_result_type="D" hl7_value="CE"
+        lastupdated="2024-01-01 00:00:00" />
+    <type_of_test_result id="803"
+        description="Multiselect" test_result_type="M" hl7_value="CE"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Test -->
+    <test id="9001" description="pH" loinc="11558-4"
+        reporting_description="pH" sticker_req_flag="N" is_active="Y"
+        active_begin="2024-01-01 00:00:00" active_end="2030-12-31 00:00:00"
+        is_reportable="Y" time_holding="0" time_wait="0" time_ta_average="0"
+        time_ta_warning="0" time_ta_max="0" label_qty="1"
+        lastupdated="2024-01-01 00:00:00" local_code="PH" sort_order="1"
+        name="pH" orderable="true" guid="ce000001-0000-0000-0000-000000000001"
+        antimicrobial_resistance="false" />
+
+    <!-- Sample -->
+    <sample id="9001" accession_number="TST-CE-0001" domain="E"
+        next_item_sequence="1" revision="0" entered_date="2024-06-01 08:00:00"
+        received_date="2024-06-01 08:00:00"
+        collection_date="2024-06-01 07:00:00" status="R"
+        lastupdated="2024-06-01 08:00:00" spec_or_isolate="S"
+        is_confirmation="false" />
+
+    <!-- Sample item -->
+    <sample_item id="9001" sort_order="1" status_id="1"
+        samp_id="9001" lastupdated="2024-06-01 08:00:00" />
+
+    <!-- Analysis -->
+    <analysis id="9001" sampitem_id="9001" test_id="9001"
+        revision="0" status="A" analysis_type="MANUAL" />
+
+    <!-- Compliance standard -->
+    <compliance_standard id="9001"
+        fhir_uuid="ce000001-0000-0000-0000-000000000002"
+        name="PP No. 22/2021 - Water Quality" version="2021"
+        description="Water quality regulation" issuing_body="Government"
+        regulation_number="PP 22/2021" country_region="Indonesia"
+        status="ACTIVE" effective_date="2024-01-01" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <!-- Second standard for multi-standard test -->
+    <compliance_standard id="9002"
+        fhir_uuid="ce000001-0000-0000-0000-000000000003" name="WHO-DWG-4"
+        version="4" description="WHO drinking water guidelines"
+        issuing_body="WHO" regulation_number="WHO-DWG-4"
+        country_region="Global" status="ACTIVE" effective_date="2024-01-01"
+        sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <!-- Parameter groups -->
+    <parameter_group id="9001"
+        fhir_uuid="ce000001-0000-0000-0000-000000000004" standard_id="9001"
+        name="Physical Parameters"
+        description="Physical water quality parameters" sort_order="1"
+        is_mandatory="true" sys_user_id="1" last_updated="2024-01-01 00:00:00" />
+
+    <parameter_group id="9002"
+        fhir_uuid="ce000001-0000-0000-0000-000000000005" standard_id="9002"
+        name="Physical Parameters" description="WHO physical parameters"
+        sort_order="1" is_mandatory="true" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <!-- Thresholds: PP 22/2021 pH RANGE 6-9, WHO-DWG-4 pH RANGE 6.5-8.5 -->
+    <compliance_threshold id="9001"
+        fhir_uuid="ce000001-0000-0000-0000-000000000006" group_id="9001"
+        test_id="9001" parameter_code="pH" display_name="pH"
+        threshold_type="RANGE" min_value="6.0" max_value="9.0"
+        is_mandatory="true" is_active="true" sort_order="1" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <compliance_threshold id="9002"
+        fhir_uuid="ce000001-0000-0000-0000-000000000007" group_id="9002"
+        test_id="9001" parameter_code="pH" display_name="pH"
+        threshold_type="RANGE" min_value="6.5" max_value="8.5"
+        is_mandatory="true" is_active="true" sort_order="1" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <!-- Join: sample 9001 linked to standard 9001 only (T14, T16 scenario) -->
+    <sample_compliance_standards id="9001"
+        sample_id="9001" compliance_standard_id="9001" priority="0"
+        created_date="2024-06-01 08:00:00" last_updated="2024-06-01 08:00:00" />
+
+</dataset>

@@ -25,12 +25,12 @@ import {
 } from "@carbon/react";
 import { Notification } from "@carbon/icons-react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import "./AlertSettings.scss";
 import { fetchAlertConfig, saveAlertConfig } from "../api";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+import { NotificationKinds } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import { hasRole, Roles } from "../../utils/Utils";
 
 // Map UI alert types to backend NotificationNature enum values
 const getAlertTypes = (intl) => [
@@ -62,8 +62,12 @@ const getAlertTypes = (intl) => [
 
 function AlertSettings() {
   const intl = useIntl();
-  const { notificationVisible, setNotificationVisible, addNotification } =
+  const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  // AlertNotificationConfigRestController is ADMIN-only at class level, so a
+  // non-admin who clicks Save gets a failed request back.
+  const canManageAlertConfig = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);
@@ -208,25 +212,16 @@ function AlertSettings() {
   }
 
   return (
-    <div style={{ padding: "1rem 0" }}>
-      {notificationVisible === true ? <AlertDialog /> : ""}
-
+    <div className="oe-alertSettings">
       <Section>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            marginBottom: "1.5rem",
-          }}
-        >
+        <div className="oe-alertSettings-headerRow">
           <Notification size={24} />
           <Heading>
             <FormattedMessage id="coldStorage.alertConfiguration" />
           </Heading>
         </div>
 
-        <Heading style={{ marginBottom: "1rem", fontSize: "1.125rem" }}>
+        <Heading className="oe-alertSettings-subheading">
           <FormattedMessage id="coldStorage.emailSmsNotifications" />
         </Heading>
         <InlineNotification
@@ -239,7 +234,7 @@ function AlertSettings() {
           })}
           lowContrast
           hideCloseButton
-          style={{ marginBottom: "1.5rem" }}
+          className="oe-alertSettings-infoNotification"
         />
 
         <DataTable rows={preferences} headers={headers}>
@@ -266,9 +261,7 @@ function AlertSettings() {
                         <strong>{preference.alertType}</strong>
                       </TableCell>
                       <TableCell>
-                        <span
-                          style={{ color: "#525252", fontSize: "0.875rem" }}
-                        >
+                        <span className="oe-alertSettings-description">
                           {preference.description}
                         </span>
                       </TableCell>
@@ -304,11 +297,11 @@ function AlertSettings() {
           )}
         </DataTable>
 
-        <div style={{ marginTop: "2rem", marginBottom: "2rem" }}>
-          <Heading style={{ marginBottom: "1rem" }}>
+        <div className="oe-alertSettings-escalationSection">
+          <Heading className="oe-alertSettings-escalationHeading">
             <FormattedMessage id="coldStorage.escalationRules" />
           </Heading>
-          <div style={{ marginBottom: "1rem" }}>
+          <div className="oe-alertSettings-escalationToggle">
             <Toggle
               id="escalation-enabled"
               labelText={intl.formatMessage({
@@ -320,14 +313,7 @@ function AlertSettings() {
           </div>
 
           {escalationEnabled && (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "1rem",
-                marginTop: "1rem",
-              }}
-            >
+            <div className="oe-alertSettings-escalationFields">
               <NumberInput
                 id="escalation-delay"
                 label={intl.formatMessage({
@@ -360,7 +346,7 @@ function AlertSettings() {
           )}
         </div>
 
-        <div style={{ marginTop: "1.5rem" }}>
+        <div className="oe-alertSettings-notesSection">
           <InlineNotification
             kind="warning"
             title={intl.formatMessage({
@@ -372,14 +358,7 @@ function AlertSettings() {
             lowContrast
             hideCloseButton
           />
-          <ul
-            style={{
-              marginTop: "1rem",
-              marginLeft: "1.5rem",
-              color: "#525252",
-              fontSize: "0.875rem",
-            }}
-          >
+          <ul className="oe-alertSettings-notesList">
             <li>
               <FormattedMessage id="coldStorage.notification.createRecord" />
             </li>
@@ -395,16 +374,18 @@ function AlertSettings() {
           </ul>
         </div>
 
-        <Button
-          kind="primary"
-          onClick={handleSave}
-          disabled={saving}
-          style={{ marginTop: "1.5rem", width: "100%", maxWidth: "none" }}
-        >
-          {saving
-            ? intl.formatMessage({ id: "coldStorage.saving" })
-            : intl.formatMessage({ id: "coldStorage.saveNotificationPrefs" })}
-        </Button>
+        {canManageAlertConfig && (
+          <Button
+            kind="primary"
+            onClick={handleSave}
+            disabled={saving}
+            className="oe-alertSettings-saveButton"
+          >
+            {saving
+              ? intl.formatMessage({ id: "coldStorage.saving" })
+              : intl.formatMessage({ id: "coldStorage.saveNotificationPrefs" })}
+          </Button>
+        )}
       </Section>
     </div>
   );

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+  Two corrections to 057-alert-entity-ref, kept out of that changeset because
+  databases have already applied it and Liquibase validates its checksum.
+
+  1. 086 unions the referral and critical-result alert types, then 057
+     redeclares chk_alert_type for string-keyed entities and would drop them
+     again. Redeclare it as the union of both, so the order of those two
+     changesets stops deciding which types survive.
+  2. Rolling 057 back restores alert_entity_id NOT NULL while string-keyed rows
+     still hold a null there, which fails. Remove those rows first; they exist
+     only because this changeset introduced the column that identifies them.
+  -->
+  <changeSet id="OGC-782-alert-type-union-with-entity-ref" author="OGC">
+    <preConditions onFail="MARK_RAN">
+      <tableExists tableName="alert" schemaName="clinlims"/>
+    </preConditions>
+
+    <sql>
+      ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+      ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+      CHECK (alert_type IN (
+        'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+        'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED',
+        'REQUIRED_BY_DEADLINE', 'REFERRAL_CRITICAL_RESULT', 'REFERRAL_REJECTED', 'CRITICAL_RESULT',
+        'MICROBIOLOGY_CRITICAL'
+      ));
+    </sql>
+
+    <rollback>
+      <sql>
+        DELETE FROM clinlims.alert
+        WHERE alert_entity_id IS NULL AND alert_entity_ref IS NOT NULL;
+
+        ALTER TABLE clinlims.alert DROP CONSTRAINT IF EXISTS chk_alert_type;
+        ALTER TABLE clinlims.alert ADD CONSTRAINT chk_alert_type
+        CHECK (alert_type IN (
+          'FREEZER_TEMPERATURE', 'EQUIPMENT_FAILURE', 'INVENTORY_LOW', 'SAMPLE_TRACKING', 'OTHER',
+          'EQA_DEADLINE', 'SAMPLE_EXPIRATION', 'STAT_UPCOMING', 'STAT_OVERDUE', 'CRITICAL_UNACKNOWLEDGED',
+          'MICROBIOLOGY_CRITICAL'
+        ));
+      </sql>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

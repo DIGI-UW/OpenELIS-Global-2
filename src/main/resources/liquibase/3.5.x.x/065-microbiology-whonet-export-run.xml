@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="OGC-782-microbiology-whonet-export-run" author="OGC">
+    <createTable tableName="micro_whonet_export_run" schemaName="clinlims">
+      <column name="id" type="varchar(36)">
+        <constraints primaryKey="true" primaryKeyName="pk_micro_whonet_export_run" nullable="false"/>
+      </column>
+      <column name="from_date" type="date">
+        <constraints nullable="false"/>
+      </column>
+      <column name="to_date" type="date">
+        <constraints nullable="false"/>
+      </column>
+      <column name="significance_policy" type="varchar(40)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="dedup_policy" type="varchar(40)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="case_count" type="integer">
+        <constraints nullable="false"/>
+      </column>
+      <column name="isolate_count" type="integer">
+        <constraints nullable="false"/>
+      </column>
+      <column name="row_count" type="integer">
+        <constraints nullable="false"/>
+      </column>
+      <column name="excluded_row_count" type="integer">
+        <constraints nullable="false"/>
+      </column>
+      <column name="file_name" type="varchar(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="content_sha256" type="varchar(64)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="generated_at" type="timestamp">
+        <constraints nullable="false"/>
+      </column>
+      <column name="generated_by" type="varchar(20)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="lastupdated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+      <column name="last_updated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+
+    <createIndex schemaName="clinlims" tableName="micro_whonet_export_run"
+      indexName="idx_micro_whonet_export_generated_at">
+      <column name="generated_at" descending="true"/>
+    </createIndex>
+
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="micro_whonet_export_run"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="OGC-782-microbiology-whonet-export-run-cleanup" author="OGC">
+    <dropIndex schemaName="clinlims" tableName="micro_whonet_export_run"
+      indexName="idx_micro_whonet_export_generated_at"/>
+    <dropColumn schemaName="clinlims" tableName="micro_whonet_export_run" columnName="lastupdated"/>
+
+    <rollback>
+      <addColumn schemaName="clinlims" tableName="micro_whonet_export_run">
+        <column name="lastupdated" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP"/>
+      </addColumn>
+      <createIndex schemaName="clinlims" tableName="micro_whonet_export_run"
+        indexName="idx_micro_whonet_export_generated_at">
+        <column name="generated_at" descending="true"/>
+      </createIndex>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

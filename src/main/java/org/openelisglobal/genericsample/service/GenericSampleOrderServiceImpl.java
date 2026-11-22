@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
@@ -45,10 +44,8 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
-import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.genericsample.form.GenericSampleImportResult;
 import org.openelisglobal.genericsample.form.GenericSampleImportResult.ImportRow;
 import org.openelisglobal.genericsample.form.GenericSampleOrderForm;
@@ -60,6 +57,7 @@ import org.openelisglobal.program.service.ProgramSampleService;
 import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.program.valueholder.ProgramSample;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.dao.SampleDAO;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
@@ -118,13 +116,10 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
     private NoteBookSampleService noteBookSampleService;
 
     @Autowired
-    private FhirPersistanceService fhirPersistanceService;
+    private QuestionnaireStorageService questionnaireStorageService;
 
     @Autowired
     private FhirUtil fhirUtil;
-
-    @Autowired
-    private FhirConfig fhirConfig;
 
     @Autowired
     private BarcodeInfoService barcodeInfoService;
@@ -486,10 +481,10 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
             QuestionnaireResponse questionnaireResponse = createQuestionnaireResponse(form.getFhirQuestionnaire(),
                     form.getFhirResponses(), questionnaireResponseUuid);
             LogEvent.logInfo(this.getClass().getSimpleName(), "saveProgramSample",
-                    "Saving QuestionnaireResponse to FHIR store for sample: " + sample.getAccessionNumber());
-            fhirPersistanceService.updateFhirResourceInFhirStore(questionnaireResponse);
+                    "Saving QuestionnaireResponse for sample: " + sample.getAccessionNumber());
+            questionnaireStorageService.saveQuestionnaireResponse(questionnaireResponse);
             LogEvent.logInfo(this.getClass().getSimpleName(), "saveProgramSample",
-                    "QuestionnaireResponse saved successfully to FHIR store");
+                    "QuestionnaireResponse saved successfully");
         }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "saveProgramSample",
@@ -548,10 +543,10 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
             QuestionnaireResponse questionnaireResponse = createQuestionnaireResponse(form.getFhirQuestionnaire(),
                     form.getFhirResponses(), questionnaireResponseUuid);
             LogEvent.logInfo(this.getClass().getSimpleName(), "saveNotebookSample",
-                    "Saving QuestionnaireResponse to FHIR store for sample: " + sample.getAccessionNumber());
-            fhirPersistanceService.updateFhirResourceInFhirStore(questionnaireResponse);
+                    "Saving QuestionnaireResponse for sample: " + sample.getAccessionNumber());
+            questionnaireStorageService.saveQuestionnaireResponse(questionnaireResponse);
             LogEvent.logInfo(this.getClass().getSimpleName(), "saveNotebookSample",
-                    "QuestionnaireResponse saved successfully to FHIR store");
+                    "QuestionnaireResponse saved successfully");
         }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "saveNotebookSample",
@@ -1009,29 +1004,11 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
     }
 
     private QuestionnaireResponse getQuestionnaireResponseFromFhir(String uuid) {
-        try {
-            if (StringUtils.isBlank(fhirConfig.getLocalFhirStorePath())) {
-                return null;
-            }
-            IGenericClient fhirClient = fhirUtil.getLocalFhirClient();
-            return fhirClient.read().resource(QuestionnaireResponse.class).withId(uuid).execute();
-        } catch (Exception e) {
-            LogEvent.logError("Failed to retrieve QuestionnaireResponse from FHIR store: " + uuid, e);
-            return null;
-        }
+        return questionnaireStorageService.getQuestionnaireResponse(uuid).orElse(null);
     }
 
     private Questionnaire getQuestionnaireFromFhir(String questionnaireId) {
-        try {
-            if (StringUtils.isBlank(fhirConfig.getLocalFhirStorePath())) {
-                return null;
-            }
-            IGenericClient fhirClient = fhirUtil.getLocalFhirClient();
-            return fhirClient.read().resource(Questionnaire.class).withId(questionnaireId).execute();
-        } catch (Exception e) {
-            LogEvent.logError("Failed to retrieve Questionnaire from FHIR store: " + questionnaireId, e);
-            return null;
-        }
+        return questionnaireStorageService.getQuestionnaire(questionnaireId).orElse(null);
     }
 
     private Map<String, Object> extractResponsesFromQuestionnaireResponse(QuestionnaireResponse questionnaireResponse) {
@@ -1150,9 +1127,9 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
                 try {
                     QuestionnaireResponse questionnaireResponse = createQuestionnaireResponse(
                             form.getFhirQuestionnaire(), form.getFhirResponses(), questionnaireResponseUuid);
-                    fhirPersistanceService.updateFhirResourceInFhirStore(questionnaireResponse);
-                } catch (FhirLocalPersistingException e) {
-                    LogEvent.logError("Failed to update QuestionnaireResponse to FHIR store", e);
+                    questionnaireStorageService.saveQuestionnaireResponse(questionnaireResponse);
+                } catch (RuntimeException e) {
+                    LogEvent.logError("Failed to update QuestionnaireResponse", e);
                 }
             }
 
@@ -1202,9 +1179,9 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
                 try {
                     QuestionnaireResponse questionnaireResponse = createQuestionnaireResponse(
                             form.getFhirQuestionnaire(), form.getFhirResponses(), questionnaireResponseUuid);
-                    fhirPersistanceService.updateFhirResourceInFhirStore(questionnaireResponse);
-                } catch (FhirLocalPersistingException e) {
-                    LogEvent.logError("Failed to update QuestionnaireResponse to FHIR store", e);
+                    questionnaireStorageService.saveQuestionnaireResponse(questionnaireResponse);
+                } catch (RuntimeException e) {
+                    LogEvent.logError("Failed to update QuestionnaireResponse", e);
                 }
             }
 
@@ -2134,22 +2111,7 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
     }
 
     private Questionnaire loadQuestionnaire(String questionnaireId) {
-        if (GenericValidator.isBlankOrNull(questionnaireId)) {
-            return null;
-        }
-
-        try {
-            IGenericClient fhirClient = fhirUtil.getLocalFhirClient();
-            Questionnaire questionnaire = fhirClient.read().resource(Questionnaire.class).withId(questionnaireId)
-                    .execute();
-            LogEvent.logInfo(this.getClass().getSimpleName(), "loadQuestionnaire",
-                    "Loaded questionnaire " + questionnaireId);
-            return questionnaire;
-        } catch (Exception e) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "loadQuestionnaire",
-                    "Unable to load questionnaire " + questionnaireId + ". " + e.getMessage());
-            return null;
-        }
+        return questionnaireStorageService.getQuestionnaire(questionnaireId).orElse(null);
     }
 
     /**

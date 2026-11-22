@@ -7,6 +7,6 @@ public interface ModbusClientService {
 
     Optional<ReadingResult> readCurrentValues(Freezer freezer);
 
-    record ReadingResult(double temperatureCelsius, Double humidityPercentage) {
+    record ReadingResult(double temperatureCelsius, Double humidityPercentage, Double temperatureCelsius2) {
     }
 }

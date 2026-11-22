@@ -179,7 +179,7 @@ function createRow(table, firstName, lastName, gender, DOB, stNumber, subjectNum
 		var selectionCell = newRow.insertCell(++cellCounter);
 		if( !localDB){
 			var dataSourceCell = newRow.insertCell(++cellCounter);
-			dataSourceCell.innerHTML = nonNullString( dataSourceName );
+			dataSourceCell.textContent = nonNullString( dataSourceName );
 		}
 		var lastNameCell = newRow.insertCell(++cellCounter);
 		var firstNameCell = newRow.insertCell(++cellCounter);
@@ -189,23 +189,27 @@ function createRow(table, firstName, lastName, gender, DOB, stNumber, subjectNum
 		var stCell = supportSTNumber ? newRow.insertCell(++cellCounter) : null;
 		var subjectNumberCell = supportSubjectNumber ? newRow.insertCell(++cellCounter) : null;
 		var nationalCell = supportNationalID ? newRow.insertCell(++cellCounter) : null;
-		selectionCell.innerHTML = getSelectionHtml( row, pk );
-		lastNameCell.innerHTML = nonNullString( lastName );
-		firstNameCell.innerHTML = nonNullString( firstName );
-		genderCell.innerHTML = nonNullString( gender );
-		if( supportSTNumber){stCell.innerHTML = nonNullString( stNumber );}
-		if( supportSubjectNumber){subjectNumberCell.innerHTML = nonNullString( subjectNumber );}
-		if( supportNationalID){nationalCell.innerHTML = nonNullString( nationalID );}
+		var selection = document.createElement("input");
+        selection.type = "radio";
+        selection.name = "selPatient";
+        selection.id = "sel_" + row;
+        selection.value = pk;
+        selection.addEventListener("click", function () { selectPatient(this.value); });
+        selectionCell.appendChild(selection);
+		lastNameCell.textContent = nonNullString( lastName );
+		firstNameCell.textContent = nonNullString( firstName );
+		genderCell.textContent = nonNullString( gender );
+		if( supportSTNumber){stCell.textContent = nonNullString( stNumber );}
+		if( supportSubjectNumber){subjectNumberCell.textContent = nonNullString( subjectNumber );}
+		if( supportNationalID){nationalCell.textContent = nonNullString( nationalID );}
 
-		dobCell.innerHTML = nonNullString( DOB );
-		if(supportMothersName){motherCell.innerHTML = nonNullString( mother );}
+		dobCell.textContent = nonNullString( DOB );
+		if(supportMothersName){motherCell.textContent = nonNullString( mother );}
 
 		return row;
 }
 
-function getSelectionHtml( row, key){
-	return "<input name='selPatient' id='sel_" + row + "' value='" + key + "' onclick='selectPatient(this.value)' type='radio'>";
-}
+
 
 function /*String*/ nonNullString( target ){
 	return target == "null" ? "" : target;

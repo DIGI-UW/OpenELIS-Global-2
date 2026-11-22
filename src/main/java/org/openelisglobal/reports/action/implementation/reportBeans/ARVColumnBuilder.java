@@ -36,6 +36,14 @@ public abstract class ARVColumnBuilder extends CIColumnBuilder {
         super(dateRange, projectStr);
     }
 
+    /**
+     * @param dateType the date the export range applies to; order date when null
+     */
+    public ARVColumnBuilder(DateRange dateRange, String projectStr, DateType dateType) {
+        super(dateRange, projectStr);
+        this.dateType = dateType;
+    }
+
     /** This is the order we want them in the CSV file. */
     @Override
     protected abstract void defineAllReportColumns();
@@ -49,7 +57,7 @@ public abstract class ARVColumnBuilder extends CIColumnBuilder {
 
         // Switch date column according to selected DateType: PK
         String dateColumn = "s.entered_date ";
-        switch (dateType) {
+        switch (dateType == null ? DateType.ORDER_DATE : dateType) {
         case ORDER_DATE:
             dateColumn = "s.entered_date ";
             break;
@@ -57,7 +65,7 @@ public abstract class ARVColumnBuilder extends CIColumnBuilder {
             dateColumn = "a.released_date ";
             break;
         case PRINT_DATE:
-            dateColumn = "dt.report_generation_time ";
+            dateColumn = LAST_PRINT_DATE;
         default:
             break;
         }

@@ -5,12 +5,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
-import org.hl7.fhir.r4.model.Questionnaire;
-import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
-import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -20,6 +17,7 @@ import org.openelisglobal.program.valueholder.cytology.CytologyDiagnosis;
 import org.openelisglobal.program.valueholder.cytology.CytologyDiagnosis.CytologyDiagnosisResultType;
 import org.openelisglobal.program.valueholder.cytology.CytologyDisplayItem;
 import org.openelisglobal.program.valueholder.cytology.CytologySample;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +33,7 @@ public class CytologyDisplayServiceImpl implements CytologyDisplayService {
     private CytologySampleService cytologySampleService;
 
     @Autowired
-    private FhirUtil fhirUtil;
+    private QuestionnaireStorageService questionnaireStorageService;
 
     @Autowired
     private OrganizationService organizationService;
@@ -64,11 +62,10 @@ public class CytologyDisplayServiceImpl implements CytologyDisplayService {
         displayItem.setLabNumber(cytologySample.getSample().getAccessionNumber());
         displayItem.setPathologySampleId(cytologySample.getId());
         displayItem.setPatientPK(patient.getId());
-        displayItem.setProgramQuestionnaire(fhirUtil.getLocalFhirClient().read().resource(Questionnaire.class)
-                .withId(cytologySample.getProgram().getQuestionnaireUUID().toString()).execute());
-        displayItem.setProgramQuestionnaireResponse(
-                fhirUtil.getLocalFhirClient().read().resource(QuestionnaireResponse.class)
-                        .withId(cytologySample.getQuestionnaireResponseUuid().toString()).execute());
+        displayItem.setProgramQuestionnaire(questionnaireStorageService
+                .getQuestionnaire(cytologySample.getProgram().getQuestionnaireUUID()).orElse(null));
+        displayItem.setProgramQuestionnaireResponse(questionnaireStorageService
+                .getQuestionnaireResponse(cytologySample.getQuestionnaireResponseUuid()).orElse(null));
 
         cytologySample.getSlides().size();
         displayItem.setSlides(cytologySample.getSlides());

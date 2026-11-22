@@ -25,10 +25,11 @@ public class TestCatalogBean {
     private Localization reportLocalization;
     private String testUnit;
     private String sampleType;
+    private String sampleTypeId;
     private String panel;
     private String resultType;
     private String uom = "n/a";
-    private String significantDigits = "n/a";
+    private String reportingDecimalPlaces = "n/a";
     private String loinc;
     private String active;
     private String orderable;
@@ -43,6 +44,11 @@ public class TestCatalogBean {
     private int testSortOrder = Integer.MAX_VALUE;
     private boolean inLabOnly;
     private boolean antimicrobialResistance;
+
+    private String qcBlankThreshold;
+    private String qcRpdThreshold;
+    private String qcRecoveryWindowPct;
+    private String timeHolding;
 
     public String getId() {
         return id;
@@ -82,6 +88,14 @@ public class TestCatalogBean {
 
     public void setSampleType(String sampleType) {
         this.sampleType = sampleType;
+    }
+
+    public String getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(String sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
     }
 
     public String getPanel() {
@@ -132,12 +146,12 @@ public class TestCatalogBean {
         this.loinc = loinc;
     }
 
-    public String getSignificantDigits() {
-        return significantDigits;
+    public String getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(String significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(String reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public boolean isHasDictionaryValues() {
@@ -226,5 +240,37 @@ public class TestCatalogBean {
 
     public void setAntimicrobialResistance(boolean antimicrobialResistance) {
         this.antimicrobialResistance = antimicrobialResistance;
+    }
+
+    public String getQcBlankThreshold() {
+        return qcBlankThreshold;
+    }
+
+    public void setQcBlankThreshold(String qcBlankThreshold) {
+        this.qcBlankThreshold = qcBlankThreshold;
+    }
+
+    public String getQcRpdThreshold() {
+        return qcRpdThreshold;
+    }
+
+    public void setQcRpdThreshold(String qcRpdThreshold) {
+        this.qcRpdThreshold = qcRpdThreshold;
+    }
+
+    public String getQcRecoveryWindowPct() {
+        return qcRecoveryWindowPct;
+    }
+
+    public void setQcRecoveryWindowPct(String qcRecoveryWindowPct) {
+        this.qcRecoveryWindowPct = qcRecoveryWindowPct;
+    }
+
+    public String getTimeHolding() {
+        return timeHolding;
+    }
+
+    public void setTimeHolding(String timeHolding) {
+        this.timeHolding = timeHolding;
     }
 }

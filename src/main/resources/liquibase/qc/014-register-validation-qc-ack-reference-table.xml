@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Register validation_qc_acknowledgment in reference_tables so that
+         AuditTrailService.saveNewHistory(...) can resolve it when writing the
+         generic audit-trail history row (S-08 FR-04 audit requirement). -->
+    <changeSet id="qc-014-register-validation-qc-ack-reference-table" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE LOWER(TRIM(name)) = 'validation_qc_acknowledgment'
+            </sqlCheck>
+        </preConditions>
+        <comment>Register validation_qc_acknowledgment for the generic history audit trail (OGC-554 FR-04)</comment>
+        <sql>
+            INSERT INTO clinlims.reference_tables (id, name, keep_history, is_hl7_encoded, lastupdated)
+            VALUES (
+                (SELECT COALESCE(MAX(id), 0) + 1 FROM clinlims.reference_tables),
+                'VALIDATION_QC_ACKNOWLEDGMENT',
+                'Y',
+                'N',
+                CURRENT_TIMESTAMP
+            );
+        </sql>
+        <!-- Bump the Postgres sequence past our manual insert so subsequent auto-id
+             allocations don't collide. H2 (test DB) has no such sequence, so this is
+             postgresql-only. -->
+        <sql dbms="postgresql">
+            SELECT setval(
+                'clinlims.reference_tables_seq',
+                CAST((SELECT MAX(id) FROM clinlims.reference_tables) AS BIGINT)
+            );
+        </sql>
+        <rollback>
+            DELETE FROM clinlims.reference_tables
+            WHERE LOWER(TRIM(name)) = 'validation_qc_acknowledgment';
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

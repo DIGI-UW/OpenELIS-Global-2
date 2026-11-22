@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    EQA V2.5 (OGC-935): the menu row for the provider's Participant follow-up
+    register. qa/019 seeded the five V2 lanes and qa/031 added In-House
+    Blinding, but this register was reachable only from links inside the
+    provider workbench and from the participant's own queue — so a provider who
+    had not scored a cycle recently had no way to find it.
+
+    The action_url is the route the SPA serves (/qa/eqa/provider/follow-ups),
+    the convention qa/029 established after the My Cycles row shipped as a dead
+    click. Presentation order 75 puts it beside the Provider row it belongs
+    with.
+
+    The row carries no role linkage because the menu model has none: menu rows
+    are visible to every authenticated user on this lineage, and the page's own
+    grant is what gates it. This matches every other row under menu_eqa rather
+    than inventing gating the model cannot enforce.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet author="openelisglobal" id="qa-082-add-menu-eqa-provider-followups">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_eqa_provider_followups'</sqlCheck>
+        </preConditions>
+        <comment>Participant follow-up — the provider's register of correspondence with other labs</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_eqa')" />
+            <column name="presentation_order" value="75" />
+            <column name="element_id" value="menu_eqa_provider_followups" />
+            <column name="action_url" value="/qa/eqa/provider/follow-ups" />
+            <column name="display_key" value="banner.menu.eqa.providerFollowups" />
+            <column name="tool_tip_key" value="banner.menu.eqa.providerFollowups" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id = 'menu_eqa_provider_followups'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

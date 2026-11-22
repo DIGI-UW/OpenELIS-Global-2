@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <localization id="1" description="Test Description 1" />
+    <localization id="2" description="Test Description 2" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="TB" />
+    <localization_value id="2" localization_id="2"
+        locale="en" value="Chem" />
+
+    <person id="1" last_name="Doe" first_name="John"
+        lastupdated="2026-01-01 12:00:00" />
+    <patient id="1" person_id="1" is_merged="false"
+        lastupdated="2026-01-01 12:00:00" />
+
+    <person id="2" last_name="Smith" first_name="Jane"
+        lastupdated="2026-01-01 12:00:00" />
+    <patient id="2" person_id="2" is_merged="false"
+        lastupdated="2026-01-01 12:00:00" />
+
+    <organization id="1" lastupdated="2026-01-01 12:00:00.0"
+        name="Global Health Org" city="New York" zip_code="10001"
+        short_name="GHG" multiple_unit="NYC Unit"
+        street_address="123 Health St" state="NY"
+        internet_address="www.globalhealth.org" clia_num="CLIA12345"
+        pws_id="PWS123" local_abbrev="1" code="GHG001" />
+
+    <test_section id="1" name="Chemistry"
+        description="Chemistry Section" org_id="1" is_external="N"
+        lastupdated="2026-01-01 12:00:00.0" sort_order="1"
+        name_localization_id="1" display_key="TestKey1" />
+
+    <test id="1" description="Basic Test"
+        lastupdated="2026-01-01 12:00:00" test_section_id="1" sort_order="1"
+        name="Basic Test" is_active="Y" name_localization_id="1"
+        reporting_name_localization_id="1" orderable="true"
+        guid="rc-test-guid-0001" />
+    <test id="2" description="Another Test"
+        lastupdated="2026-01-01 12:00:00" test_section_id="1" sort_order="2"
+        name="Another Test" is_active="Y" name_localization_id="2"
+        reporting_name_localization_id="2" orderable="true"
+        guid="rc-test-guid-0002" />
+
+    <calculation id="1" name="Calc 1" sample_id="1" test_id="1"
+        result="5.0" toggled="true" active="true" note="Note 1"
+        last_updated="2026-01-01 12:00:00" />
+    <calculation id="2" name="Calc 2" sample_id="1" test_id="2"
+        result="10.0" toggled="true" active="true" note="Note 2"
+        last_updated="2026-01-01 12:00:00" />
+
+    <result id="1" sort_order="1" result_type="N" value="5.0"
+        is_reportable="Y" lastupdated="2026-01-01 12:00:00" />
+    <result id="2" sort_order="2" result_type="N" value="10.0"
+        is_reportable="Y" lastupdated="2026-01-01 12:00:00" />
+
+    <result_calculation id="1" calculation_id="1"
+        patient_id="1" result_id="1" />
+    <result_calculation id="2" calculation_id="2"
+        patient_id="1" result_id="2" />
+    <result_calculation id="3" calculation_id="1"
+        patient_id="2" result_id="1" />
+</dataset>

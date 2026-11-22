@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Positive;
 import java.sql.Timestamp;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.qc.valueholder.QCControlLot;
+import org.openelisglobal.qc.valueholder.QCFrequencyType;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
 /**
@@ -41,7 +42,9 @@ public class QCControlLotForm extends BaseForm {
     @Pattern(regexp = "[1-9]\\d*", message = "must be a positive numeric ID")
     private String testId;
 
-    @NotBlank
+    // Optional since OGC-1147: omitted for a bench control lot on a manual
+    // method, which has no analyzer. @Pattern skips a null, and the JSON body
+    // omits the field rather than sending an empty string.
     @Pattern(regexp = "[1-9]\\d*", message = "must be a positive numeric ID")
     private String instrumentId;
 
@@ -78,6 +81,16 @@ public class QCControlLotForm extends BaseForm {
     private QCControlLot controlLot;
 
     private Timestamp lastupdated;
+
+    private QCFrequencyType qcFrequencyType = QCFrequencyType.DAILY;
+
+    @Positive
+    private Integer qcFrequencyHours;
+
+    @Positive
+    private Integer shiftDefinitionHours = 8;
+
+    private Boolean qcRequired = Boolean.TRUE;
 
     public QCControlLotForm() {
         setFormName("qcControlLotForm");
@@ -135,8 +148,13 @@ public class QCControlLotForm extends BaseForm {
         return instrumentId;
     }
 
+    /**
+     * Collapses a blank analyzer to null here rather than at each consumer, so
+     * "bench lot" has exactly one representation downstream — the entity, the
+     * validator and the JSON echoed back to the client all see null.
+     */
     public void setInstrumentId(String instrumentId) {
-        this.instrumentId = instrumentId;
+        this.instrumentId = (instrumentId == null || instrumentId.isBlank()) ? null : instrumentId;
     }
 
     public String getCalculationMethod() {
@@ -233,5 +251,37 @@ public class QCControlLotForm extends BaseForm {
 
     public void setLastupdated(Timestamp lastupdated) {
         this.lastupdated = lastupdated;
+    }
+
+    public QCFrequencyType getQcFrequencyType() {
+        return qcFrequencyType;
+    }
+
+    public void setQcFrequencyType(QCFrequencyType qcFrequencyType) {
+        this.qcFrequencyType = qcFrequencyType;
+    }
+
+    public Integer getQcFrequencyHours() {
+        return qcFrequencyHours;
+    }
+
+    public void setQcFrequencyHours(Integer qcFrequencyHours) {
+        this.qcFrequencyHours = qcFrequencyHours;
+    }
+
+    public Integer getShiftDefinitionHours() {
+        return shiftDefinitionHours;
+    }
+
+    public void setShiftDefinitionHours(Integer shiftDefinitionHours) {
+        this.shiftDefinitionHours = shiftDefinitionHours;
+    }
+
+    public Boolean getQcRequired() {
+        return qcRequired;
+    }
+
+    public void setQcRequired(Boolean qcRequired) {
+        this.qcRequired = qcRequired;
     }
 }

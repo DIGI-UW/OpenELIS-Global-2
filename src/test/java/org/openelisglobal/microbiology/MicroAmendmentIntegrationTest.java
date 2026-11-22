@@ -1,0 +1,524 @@
+package org.openelisglobal.microbiology;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.BiConsumer;
+import org.junit.Before;
+import org.junit.Test;
+import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.service.AnalysisServiceImpl;
+import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analyte.service.AnalyteService;
+import org.openelisglobal.analyte.valueholder.Analyte;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.history.service.HistoryService;
+import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
+import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
+import org.openelisglobal.microbiology.service.MicroAstPanelAssignmentService;
+import org.openelisglobal.microbiology.service.MicroAstReportChoiceService;
+import org.openelisglobal.microbiology.service.MicroAstService;
+import org.openelisglobal.microbiology.service.MicroBreakpointAdminService;
+import org.openelisglobal.microbiology.service.MicroCaseAmendmentService;
+import org.openelisglobal.microbiology.service.MicroCaseAnalysisService;
+import org.openelisglobal.microbiology.service.MicroCaseService;
+import org.openelisglobal.microbiology.service.MicroIdentificationHistoryService;
+import org.openelisglobal.microbiology.service.MicroIsolateService;
+import org.openelisglobal.microbiology.service.MicroReportReleaseService;
+import org.openelisglobal.microbiology.service.MicroReportVersionService;
+import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
+import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
+import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
+import org.openelisglobal.microbiology.valueholder.MicroAstReportChoice;
+import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
+import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
+import org.openelisglobal.microbiology.valueholder.MicroCaseRole;
+import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
+import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
+import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
+import org.openelisglobal.microbiology.valueholder.MicroReportVersionType;
+import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.testanalyte.service.TestAnalyteService;
+import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
+import org.openelisglobal.userrole.service.UserRoleService;
+import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
+import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+
+public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
+
+    @Autowired
+    private AnalysisService analysisService;
+
+    @Autowired
+    private MicroAstPanelAssignmentService panelAssignments;
+
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroAstPanelDAO panelDAO;
+
+    @Autowired
+    private AnalyteService analyteService;
+
+    @Autowired
+    private MicrobiologyTestFixtures fixtures;
+
+    @Autowired
+    private MicroBreakpointAdminService breakpointAdminService;
+
+    @Autowired
+    private MicroCaseAnalysisService caseAnalysisService;
+
+    @Autowired
+    private TestAnalyteService testAnalyteService;
+
+    @Autowired
+    private TestResultService testResultService;
+
+    @Autowired
+    private SampleItemService sampleItemService;
+
+    @Autowired
+    private MicroIsolateService isolateService;
+
+    @Autowired
+    private MicroAstService astService;
+
+    @Autowired
+    private MicroReportReleaseService reportReleaseService;
+
+    @Autowired
+    private MicroCaseAmendmentService amendmentService;
+
+    @Autowired
+    private MicroAstReportChoiceService reportChoiceService;
+
+    @Autowired
+    private MicroReportVersionService reportVersionService;
+
+    @Autowired
+    private MicroIdentificationHistoryService identificationHistoryService;
+
+    @Autowired
+    private MicroCaseService caseService;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private MicroCaseDAO caseDAO;
+
+    @Autowired
+    private MicroOrganismDAO organismDAO;
+
+    @Autowired
+    private MicrobiologyCaseAccessService caseAccessService;
+
+    @Autowired
+    private SystemUserService systemUserService;
+
+    @Autowired
+    private RoleService roleService;
+
+    @Autowired
+    private UserRoleService userRoleService;
+
+    @Autowired
+    private MicroCaseAnalysisDAO caseAnalysisDAO;
+
+    @Autowired
+    private IStatusService statusService;
+
+    @Autowired
+    private ResultService resultService;
+
+    @Autowired
+    private HistoryService historyService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Before
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+        executeDataSetWithStateManagement("testdata/system-user.xml");
+        executeDataSetWithStateManagement("testdata/role.xml");
+    }
+
+    @Test
+    public void amendmentAppendsIdentificationAndReportHistoryThenRelocks() {
+        FinalCase fixture = createFinalCase();
+
+        amendmentService.openAmendment(fixture.caseId(), "Correct identification", fixture.userId());
+        try {
+            amendmentService.openAmendment(fixture.caseId(), "Open a second amendment", fixture.userId());
+            fail("Expected only one open amendment per case");
+        } catch (RuntimeException expected) {
+            assertEquals("AMENDMENT_ALREADY_OPEN", expected.getMessage());
+        }
+
+        MicroOrganism correctedOrganism = fixtures.createOrganism("Klebsiella pneumoniae", "Enterobacterales",
+                fixture.panelId());
+        correctedOrganism.getLabGroups().add("Enterobacterales");
+        organismDAO.update(correctedOrganism);
+        isolateService.updateIdentification(fixture.isolateId(), correctedOrganism.getId(), "Klebsiella pneumoniae",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
+        MicroAstRun superseded = astService.getRunsForIsolate(fixture.isolateId()).getFirst();
+        MicroAstRun corrected = astService.startRun(fixture.isolateId(), fixture.panelId(),
+                superseded.getBreakpointStandardId(), fixture.userId());
+        astService.getPanelAntibiotics(fixture.panelId()).forEach(ordered -> astService.recordReading(corrected.getId(),
+                ordered.getAntibioticId(), MicroAstMethod.MIC, new BigDecimal("4"), fixture.userId()));
+        astService.reviewRun(corrected.getId(), fixture.userId());
+        reportReleaseService.releaseAmended(fixture.caseId(), fixture.userId());
+
+        List<MicroReportVersion> versions = reportVersionService.getVersions(fixture.caseId());
+        assertEquals(2, versions.size());
+        assertEquals(Integer.valueOf(1), versions.get(0).getVersionNumber());
+        assertEquals(MicroReportVersionType.FINAL.name(), versions.get(0).getReleaseType());
+        assertTrue(versions.get(0).getContent().contains("Escherichia coli"));
+        assertEquals(Integer.valueOf(2), versions.get(1).getVersionNumber());
+        assertEquals(MicroReportVersionType.AMENDED.name(), versions.get(1).getReleaseType());
+        assertEquals(versions.get(0).getId(), versions.get(1).getCorrectsVersionId());
+        assertTrue(versions.get(1).getContent().contains("Klebsiella pneumoniae"));
+        assertTrue(reportVersionService.getSourcesForCase(fixture.caseId()).size() >= 2);
+
+        List<MicroIsolateIdentificationEvent> history = identificationHistoryService.getHistory(fixture.isolateId());
+        assertEquals(2, history.size());
+        MicroIsolateIdentificationEvent amendedIdentification = history.stream()
+                .filter(event -> "Confirmatory identification corrected the organism".equals(event.getReason()))
+                .findFirst().orElseThrow();
+        assertEquals(fixture.originalOrganismText(), amendedIdentification.getPreviousOrganismText());
+        assertEquals("Klebsiella pneumoniae", amendedIdentification.getNewOrganismText());
+
+        MicroCase relocked = caseService.getCase(fixture.caseId());
+        assertEquals(MicroCaseStage.FINAL_RELEASED.name(), relocked.getStage());
+        assertEquals(MicroCaseFinalReleaseState.FINAL_RELEASED.name(), relocked.getFinalReleaseState());
+        assertNull(amendmentService.getOpenAmendment(fixture.caseId()));
+    }
+
+    @Test
+    public void cancellingAnAmendedReidentificationRestoresTheReleasedSusceptibilitySelection() {
+        FinalCase fixture = createFinalCase();
+        MicroAstRun released = astService.getRunsForIsolate(fixture.isolateId()).getFirst();
+        List<String> releasedReadings = selectedReadingIds(fixture.isolateId());
+        assertEquals(astService.getReadingsForRun(released.getId()).stream().map(r -> r.getId()).sorted().toList(),
+                releasedReadings);
+        amendmentService.openAmendment(fixture.caseId(), "Correct identification", fixture.userId());
+        MicroOrganism correctedOrganism = fixtures.createOrganism("Klebsiella oxytoca " + UUID.randomUUID(),
+                "Enterobacterales", fixture.panelId());
+
+        isolateService.updateIdentification(fixture.isolateId(), correctedOrganism.getId(), "Klebsiella pneumoniae",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
+
+        assertEquals(List.of(), selectedReadingIds(fixture.isolateId()));
+        assertEquals("RERUN_REQUIRED", astService.getRunsForIsolate(fixture.isolateId()).getFirst().getStatus());
+
+        amendmentService.cancelAmendment(fixture.caseId(), "Withdraw the correction", fixture.userId());
+
+        assertEquals(releasedReadings, selectedReadingIds(fixture.isolateId()));
+        MicroAstRun restored = astService.getRunsForIsolate(fixture.isolateId()).getFirst();
+        assertEquals("REVIEWED", restored.getStatus());
+        assertTrue(restored.isReportable());
+    }
+
+    @Test
+    public void cancellingAnAmendmentRestoresAReviewedRunTheReportDidNotSelect() {
+        FinalCase fixture = createFinalCase(2);
+        Map<String, Boolean> released = reportableByRun(fixture.isolateId());
+        assertEquals(List.of(false, true), released.values().stream().sorted().toList());
+        amendmentService.openAmendment(fixture.caseId(), "Correct identification", fixture.userId());
+        MicroOrganism correctedOrganism = fixtures.createOrganism("Klebsiella oxytoca " + UUID.randomUUID(),
+                "Enterobacterales", fixture.panelId());
+        isolateService.updateIdentification(fixture.isolateId(), correctedOrganism.getId(), null,
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
+        assertEquals(List.of("RERUN_REQUIRED", "RERUN_REQUIRED"), statuses(fixture.isolateId()));
+
+        amendmentService.cancelAmendment(fixture.caseId(), "Withdraw the correction", fixture.userId());
+
+        assertEquals(List.of("REVIEWED", "REVIEWED"), statuses(fixture.isolateId()));
+        assertEquals(released, reportableByRun(fixture.isolateId()));
+    }
+
+    @Test
+    public void cancellingAnAmendmentGivesTheOriginalOrganismItsPanelBack() {
+        FinalCase fixture = createFinalCase();
+        assertEquals(List.of(fixture.panelId()), activePanels(fixture.isolateId()));
+        amendmentService.openAmendment(fixture.caseId(), "Correct identification", fixture.userId());
+        MicroOrganism staphylococcus = fixtures.createOrganism("Staphylococcus aureus " + UUID.randomUUID(),
+                "Staphylococci", null);
+        isolateService.updateIdentification(fixture.isolateId(), staphylococcus.getId(), null,
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
+        assertEquals(List.of(), activePanels(fixture.isolateId()));
+
+        amendmentService.cancelAmendment(fixture.caseId(), "Withdraw the correction", fixture.userId());
+
+        assertEquals(List.of(fixture.panelId()), activePanels(fixture.isolateId()));
+    }
+
+    @Test
+    public void cancellingAnAmendmentRestoresTheRetiredPanelNotTheCurrentDefault() {
+        FinalCase fixture = createFinalCase();
+        var currentDefault = new org.openelisglobal.microbiology.valueholder.MicroAstPanel();
+        currentDefault.setName("Current default " + UUID.randomUUID());
+        currentDefault.setOrganismGroup("Enterobacterales");
+        currentDefault.setPublishedAt(new Timestamp(System.currentTimeMillis()));
+        currentDefault.setPublishedBy(fixture.userId());
+        panelDAO.insert(currentDefault);
+        var organism = organismDAO.get(fixture.organismId()).orElseThrow();
+        organism.setDefaultAstPanelId(currentDefault.getId());
+        organismDAO.update(organism);
+        amendmentService.openAmendment(fixture.caseId(), "Correct identification", fixture.userId());
+        MicroOrganism staphylococcus = fixtures.createOrganism("Staphylococcus aureus " + UUID.randomUUID(),
+                "Staphylococci", null);
+        isolateService.updateIdentification(fixture.isolateId(), staphylococcus.getId(), null,
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
+        assertEquals(List.of(), activePanels(fixture.isolateId()));
+
+        amendmentService.cancelAmendment(fixture.caseId(), "Withdraw the correction", fixture.userId());
+
+        assertEquals(List.of(fixture.panelId()), activePanels(fixture.isolateId()));
+    }
+
+    private List<String> activePanels(String isolateId) {
+        return panelAssignments.getAssignments(isolateId).stream().map(a -> a.getPanelId()).toList();
+    }
+
+    private Map<String, Boolean> reportableByRun(String isolateId) {
+        return astService.getRunsForIsolate(isolateId).stream()
+                .collect(java.util.stream.Collectors.toMap(MicroAstRun::getId, MicroAstRun::isReportable));
+    }
+
+    private List<String> statuses(String isolateId) {
+        return astService.getRunsForIsolate(isolateId).stream().map(MicroAstRun::getStatus).toList();
+    }
+
+    private List<String> selectedReadingIds(String isolateId) {
+        return reportChoiceService.getChoices(isolateId).stream().map(MicroAstReportChoice::getReadingId).sorted()
+                .toList();
+    }
+
+    @Test
+    public void outerFailureRollsBackTheEntireAmendmentOpenTransaction() {
+        FinalCase fixture = createFinalCase();
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+
+        try {
+            transaction.executeWithoutResult(status -> {
+                amendmentService.openAmendment(fixture.caseId(), "Must roll back", fixture.userId());
+                throw new IllegalStateException("FORCED_ROLLBACK");
+            });
+            fail("Expected the transaction to roll back");
+        } catch (IllegalStateException expected) {
+            assertEquals("FORCED_ROLLBACK", expected.getMessage());
+        }
+
+        assertTrue(amendmentService.getHistory(fixture.caseId()).isEmpty());
+        assertEquals(1, reportVersionService.getVersions(fixture.caseId()).size());
+        MicroCase unchanged = caseService.getCase(fixture.caseId());
+        assertEquals(MicroCaseStage.FINAL_RELEASED.name(), unchanged.getStage());
+        assertEquals(MicroCaseFinalReleaseState.FINAL_RELEASED.name(), unchanged.getFinalReleaseState());
+    }
+
+    @Test
+    public void finalReleaseReleasesACultureOrdersOwnTestWithoutAResult() {
+        Analysis[] orders = new Analysis[2];
+        FinalCase fixture = createFinalCase((microCase, sampleItem) -> {
+            orders[0] = cultureOrder(microCase, sampleItem);
+            orders[1] = cultureOrder(microCase, sampleItem);
+            orders[1].setStatusId(statusService.getStatusID(AnalysisStatus.Canceled));
+            analysisService.update(orders[1]);
+        });
+
+        Analysis released = analysisService.get(orders[0].getId());
+        assertEquals(AnalysisStatus.Finalized, statusService.getAnalysisStatusForID(released.getStatusId()));
+        assertNotNull(released.getReleasedDate());
+        assertTrue(resultService.getResultsByAnalysis(released).isEmpty());
+        assertTrue("the release is in the analysis history under the releasing user",
+                historyService
+                        .getHistoryByRefIdAndRefTableId(released.getId(), AnalysisServiceImpl.getTableReferenceId())
+                        .stream().anyMatch(entry -> fixture.userId().equals(entry.getSysUserId())));
+        Analysis cancelled = analysisService.get(orders[1].getId());
+        assertEquals(AnalysisStatus.Canceled, statusService.getAnalysisStatusForID(cancelled.getStatusId()));
+        assertNull(cancelled.getReleasedDate());
+    }
+
+    private Analysis cultureOrder(MicroCase microCase, SampleItem sampleItem) {
+        Analysis analysis = fixtures.createAnalysis(sampleItem, fixtures.createCatalogTest());
+        MicroCaseAnalysis link = new MicroCaseAnalysis();
+        link.setCaseId(microCase.getId());
+        link.setAnalysisId(analysis.getId());
+        link.setCaseRole(MicroCaseRole.CULTURE);
+        link.setPlacement("INITIAL");
+        caseAnalysisDAO.insert(link);
+        return analysis;
+    }
+
+    private FinalCase createFinalCase() {
+        return createFinalCase(1);
+    }
+
+    private FinalCase createFinalCase(int reviewedRuns) {
+        return createFinalCase(reviewedRuns, (microCase, sampleItem) -> {
+        });
+    }
+
+    private FinalCase createFinalCase(BiConsumer<MicroCase, SampleItem> beforeRelease) {
+        return createFinalCase(1, beforeRelease);
+    }
+
+    private FinalCase createFinalCase(int reviewedRuns, BiConsumer<MicroCase, SampleItem> beforeRelease) {
+        fixtures.ensureRequiredWorkflowStatuses();
+        String labUnitId = fixtures.createLabUnit().getId();
+        String userId = createValidator(labUnitId);
+        String methodId = fixtures.createMethodId();
+        ReferenceData referenceData = fixtures.createReferenceData(methodId);
+        breakpointAdminService.activate(referenceData.standard().getId(), new java.sql.Date(System.currentTimeMillis()),
+                fixtures.defaultUserId());
+        SampleItem sampleItem = fixtures.createSampleWithSampleItem("OGC782M8A");
+        sampleItem.setTypeOfSample(fixtures.createTypeOfSample());
+        sampleItem.setSysUserId(userId);
+        sampleItemService.update(sampleItem);
+        MicroCase microCase = caseService.createOrGetCase(sampleItem.getId(), methodId, userId);
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            MicroCase persistedCase = caseDAO.getForUpdate(microCase.getId());
+            persistedCase.setLabUnitId(labUnitId);
+            caseDAO.update(persistedCase);
+        });
+        assertEquals(labUnitId, caseService.getCase(microCase.getId()).getLabUnitId());
+        assertTrue(caseAccessService.hasLabUnitRole(userId, labUnitId, Constants.ROLE_VALIDATION));
+        assertFalse(userRoleService.userInRole(userId, Constants.ROLE_GLOBAL_ADMIN));
+        linkReportableAnalysis(microCase, sampleItem, referenceData, userId);
+
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, userId);
+        isolateService.updateIdentification(isolate.getId(), referenceData.organism().getId(),
+                referenceData.organism().getDisplayName(), MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                MicroIsolateIdentificationStatus.CONFIRMED, "MALDI_TOF", new BigDecimal("99.5"), userId);
+        MicroAstRun run = astService.startRun(isolate.getId(), referenceData.panel().getId(),
+                referenceData.standard().getId(), userId);
+        for (int n = 1;; n++) {
+            for (var ordered : astService.getPanelAntibiotics(referenceData.panel().getId()))
+                astService.recordReading(run.getId(), ordered.getAntibioticId(), MicroAstMethod.MIC,
+                        new BigDecimal("4"), userId);
+            astService.reviewRun(run.getId(), userId);
+            if (n == reviewedRuns)
+                break;
+            run = astService.startRepeatRun(run.getId(), MicroAstAttemptType.RETEST, "Confirm the reading",
+                    MicroAstMethod.MIC, userId);
+        }
+        fixtures.prepareFinalCase(microCase, userId);
+        beforeRelease.accept(microCase, sampleItem);
+        reportReleaseService.releaseFinal(microCase.getId(), userId);
+        return new FinalCase(microCase.getId(), isolate.getId(), referenceData.organism().getId(),
+                referenceData.panel().getId(), referenceData.organism().getDisplayName(), userId);
+    }
+
+    private String createValidator(String labUnitId) {
+        SystemUser user = new SystemUser();
+        user.setLoginName("Amendment" + UUID.randomUUID().toString().substring(0, 12));
+        user.setFirstName("Amendment");
+        user.setLastName("Validator");
+        user.setIsActive(IActionConstants.YES);
+        user.setIsEmployee(IActionConstants.YES);
+        user.setSysUserId(TEST_SYS_USER_ID);
+        String userId = systemUserService.insert(user);
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            UserLabUnitRoles assignment = new UserLabUnitRoles();
+            assignment.setId(Integer.valueOf(userId));
+            LabUnitRoleMap mapping = new LabUnitRoleMap();
+            mapping.setLabUnit(labUnitId);
+            mapping.setRoles(Set.of(roleService.getRoleByName(Constants.ROLE_VALIDATION).getId(),
+                    roleService.getRoleByName(Constants.ROLE_RESULTS).getId()));
+            assignment.setLabUnitRoleMap(Set.of(mapping));
+            entityManager.persist(assignment);
+        });
+        return userId;
+    }
+
+    private void linkReportableAnalysis(MicroCase microCase, SampleItem sampleItem, ReferenceData referenceData,
+            String userId) {
+        org.openelisglobal.test.valueholder.Test test = fixtures.createCatalogTest();
+        Analysis analysis = new Analysis();
+        analysis.setSampleItem(sampleItem);
+        analysis.setTest(test);
+        analysis.setAnalysisType("MANUAL");
+        analysis.setIsReportable(IActionConstants.YES);
+        analysis.setRevision("0");
+        analysis.setStartedDate(Timestamp.from(Instant.now()));
+        analysis.setStatusId(fixtures.ensureAnalysisNotStartedStatus());
+        analysis.setFhirUuid(UUID.randomUUID());
+        analysis.setSysUserId(userId);
+        analysisService.insert(analysis);
+
+        String analyteSuffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        Analyte analyte = new Analyte();
+        analyte.setAnalyteName("Microbiology report " + analyteSuffix);
+        analyte.setLocalAbbreviation("M" + analyteSuffix);
+        analyte.setIsActive(IActionConstants.YES);
+        analyte.setSysUserId(userId);
+        analyteService.insert(analyte);
+
+        TestAnalyte testAnalyte = new TestAnalyte();
+        testAnalyte.setTest(test);
+        testAnalyte.setAnalyte(analyte);
+        testAnalyte.setSortOrder("0");
+        testAnalyte.setIsReportable(IActionConstants.YES);
+        testAnalyte.setSysUserId(userId);
+        testAnalyteService.insert(testAnalyte);
+
+        TestResult testResult = new TestResult();
+        testResult.setTest(test);
+        testResult.setTestResultType(ResultType.REMARK.getCharacterValue());
+        testResult.setIsActive(true);
+        testResult.setSortOrder("0");
+        testResult.setSysUserId(userId);
+        testResultService.insert(testResult);
+
+        caseAnalysisService.linkAnalysis(microCase, analysis, testAnalyte.getId());
+    }
+
+    private record FinalCase(String caseId, String isolateId, String organismId, String panelId,
+            String originalOrganismText, String userId) {
+    }
+}

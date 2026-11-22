@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,19 +38,30 @@ public class OrderAttachmentRestController extends BaseRestController {
     @Autowired
     private SampleService sampleService;
 
+    /**
+     * OGC-811: uploads may carry the analysis / result component they document
+     * (Results pages); order-entry uploads send neither and stay order-level.
+     */
     @PostMapping(value = "/{accessionNumber}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> uploadAttachments(@PathVariable String accessionNumber,
-            @RequestPart("files") List<MultipartFile> files, HttpServletRequest request) {
+            @RequestPart("files") List<MultipartFile> files,
+            @RequestParam(value = "analysisId", required = false) String analysisId,
+            @RequestParam(value = "testResultComponentId", required = false) String testResultComponentId,
+            HttpServletRequest request) {
         Sample sample = sampleService.getSampleByAccessionNumber(accessionNumber);
         if (sample == null || sample.getId() == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Order not found"));
         }
         try {
             Long sampleId = Long.valueOf(sample.getId());
+            Long analysisIdLong = parseNullableLong(analysisId);
+            String componentId = testResultComponentId == null || testResultComponentId.isBlank() ? null
+                    : testResultComponentId.trim();
             Integer userId = parseUserId(getSysUserId(request));
             for (MultipartFile file : files) {
                 if (file != null && !file.isEmpty()) {
-                    orderAttachmentService.createAttachmentFromUpload(sampleId, file, userId);
+                    orderAttachmentService.createAttachmentFromUpload(sampleId, file, userId, analysisIdLong,
+                            componentId);
                 }
             }
             List<OrderAttachment> attachments = orderAttachmentService.findActiveBySampleId(sampleId);
@@ -128,11 +140,23 @@ public class OrderAttachmentRestController extends BaseRestController {
         }
     }
 
+    private Long parseNullableLong(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("analysisId must be numeric: " + value);
+        }
+    }
+
     private Map<String, Object> toDto(OrderAttachment a) {
         Timestamp ts = a.getUploadedAt();
         return Map.of("id", a.getId(), "fileName", a.getOriginalFileName(), "fileType",
                 a.getFileType() == null ? "" : a.getFileType(), "fileSizeBytes",
-                a.getFileSizeBytes() == null ? 0L : a.getFileSizeBytes(), "uploadedAt",
-                ts == null ? "" : ts.toString());
+                a.getFileSizeBytes() == null ? 0L : a.getFileSizeBytes(), "uploadedAt", ts == null ? "" : ts.toString(),
+                "analysisId", a.getAnalysisId() == null ? "" : String.valueOf(a.getAnalysisId()),
+                "testResultComponentId", a.getTestResultComponentId() == null ? "" : a.getTestResultComponentId());
     }
 }
