@@ -66,6 +66,9 @@ public class LogoUploadRestController {
         if (removeImage) {
             removeImage(whichLogo);
         } else {
+            if (!validToWrite(form.getLogoFile())) {
+                return ResponseEntity.badRequest().build();
+            }
             updateImage(form.getLogoFile(), whichLogo);
         }
         return ResponseEntity.ok().build();
@@ -90,30 +93,16 @@ public class LogoUploadRestController {
         if (!GenericValidator.isBlankOrNull(imageId)) {
             Image image = imageService.get(imageId);
 
-            try {
-                logoUploadService.removeImage(image, logoInformation);
-            } catch (LIMSRuntimeException e) {
-                LogEvent.logError(e);
-            }
+            logoUploadService.removeImage(image, logoInformation);
         }
     }
 
-    private void updateImage(MultipartFile logoFile, String whichLogo) throws ServletException {
-        try {
-            if (validToWrite(logoFile)) {
+    private void updateImage(MultipartFile logoFile, String whichLogo) throws IOException {
+        File previewFile = new File(imageService.getFullPreviewPath() + imageService.getImageNameFilePath(whichLogo));
 
-                File previewFile = new File(
-                        imageService.getFullPreviewPath() + imageService.getImageNameFilePath(whichLogo));
+        logoFile.transferTo(previewFile);
 
-                logoFile.transferTo(previewFile);
-
-                writeFileImageToDatabase(previewFile, whichLogo);
-            }
-        } catch (RuntimeException e) {
-            throw new ServletException(e);
-        } catch (Exception e) {
-            throw new ServletException(e);
-        }
+        writeFileImageToDatabase(previewFile, whichLogo);
     }
 
     private void writeFileImageToDatabase(File file, String logoName) {
@@ -142,6 +131,7 @@ public class LogoUploadRestController {
             }
         } catch (IOException e) {
             LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error reading image file", e);
         } finally {
             if (fileInputStream != null) {
                 try {
@@ -156,11 +146,7 @@ public class LogoUploadRestController {
         image.setImage(imageData);
         image.setDescription(logoName);
 
-        try {
-            logoUploadService.saveImage(image, newImage, imageId, logoInformation);
-        } catch (LIMSRuntimeException e) {
-            LogEvent.logError(e);
-        }
+        logoUploadService.saveImage(image, newImage, imageId, logoInformation);
     }
 
     private boolean fileInImageDirectory(File file) {

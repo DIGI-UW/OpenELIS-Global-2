@@ -19,7 +19,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import org.apache.commons.validator.GenericValidator;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.servlet.reports.LogoUploadService;
 import org.openelisglobal.image.service.ImageService;
@@ -90,11 +89,7 @@ public class LogoUploadController {
         if (!GenericValidator.isBlankOrNull(imageId)) {
             Image image = imageService.get(imageId);
 
-            try {
-                logoUploadService.removeImage(image, logoInformation);
-            } catch (LIMSRuntimeException e) {
-                LogEvent.logError(e);
-            }
+            logoUploadService.removeImage(image, logoInformation);
         }
     }
 
@@ -156,11 +151,7 @@ public class LogoUploadController {
         image.setImage(imageData);
         image.setDescription(logoName);
 
-        try {
-            logoUploadService.saveImage(image, newImage, imageId, logoInformation);
-        } catch (LIMSRuntimeException e) {
-            LogEvent.logError(e);
-        }
+        logoUploadService.saveImage(image, newImage, imageId, logoInformation);
     }
 
     private boolean fileInImageDirectory(File file) {
