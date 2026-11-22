@@ -97,6 +97,7 @@ export default function LocationPickerModal({
     <ComposedModal
       open={isOpen}
       onClose={onCancel}
+      className="storage-location-modal-responsive"
       data-occupant-type={occupantType}
     >
       <ModalHeader
