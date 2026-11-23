@@ -242,7 +242,7 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         for (EQAResult result : providerScoringService.reportedResultsFor(cycle.getId(), organizationId)) {
             Test test = testOf(result.getTestId());
             rows.add(new Row(roundNumberOf(result), sectionOf(test), analyteLabelOf(test, result.getTestId()),
-                    reportedOf(result), targetOf(result, sealedTargets), null, result.getZScore(),
+                    reportedOf(result), EQAResultTarget.of(result, sealedTargets), null, result.getZScore(),
                     result.getPerformanceStatus(), null, null,
                     result.getSubmissionDate() == null ? null : formatDay(result.getSubmissionDate()), null,
                     Boolean.TRUE.equals(result.getIsLateSubmission())));
@@ -253,27 +253,10 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         return rows;
     }
 
-    /**
-     * A numeric target is copied onto the result when it is scored, so that is the
-     * value it was actually judged against. The sealed target is consulted only for
-     * a qualitative answer, whose target is a word that {@code target_value} —
-     * numeric — cannot hold. The sealed targets are keyed by result, so each of two
-     * samples of one analyte shows its own.
-     */
-    private static String targetOf(EQAResult result, Map<Long, String> sealedTargets) {
-        if (result.getResultText() != null) {
-            return sealedTargets.get(result.getId());
-        }
-        return number(result.getTargetValue());
-    }
-
     /** Numeric results carry the value; a qualitative one carries its text. */
     private static String reportedOf(EQAResult result) {
-        return result.getResultText() != null ? result.getResultText() : number(result.getResultValue());
-    }
-
-    private static String number(BigDecimal value) {
-        return value == null ? null : value.stripTrailingZeros().toPlainString();
+        return result.getResultText() != null ? result.getResultText()
+                : EQAResultTarget.number(result.getResultValue());
     }
 
     private Integer roundNumberOf(EQAResult result) {

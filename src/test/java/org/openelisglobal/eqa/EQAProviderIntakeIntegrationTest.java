@@ -420,6 +420,19 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
                 String.class, FIRST_ORG, TEST_VL));
     }
 
+    /**
+     * A participant's bundle guards a "+" against spreadsheet formulas as "'+"; the
+     * provider takes the answer in as "+" (OGC-1665 review).
+     */
+    @Test
+    public void aGuardedAnswerInTheBundleIsTakenInWithoutItsGuard() {
+        String csv = "analyte_name,result_value\nIntake HIV serology,'+\n";
+
+        scoringService.importReportedCsv(cycle.getId(), FIRST_ORG, csv, USER);
+
+        assertEquals("+", resultText(FIRST_ORG, TEST_SERO));
+    }
+
     @Test
     public void intakeRefusesATestOutsideTheSchemeAndACycleNotYetShipped() {
         try {
