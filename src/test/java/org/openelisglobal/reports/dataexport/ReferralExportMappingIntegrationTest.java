@@ -200,13 +200,18 @@ public class ReferralExportMappingIntegrationTest extends BaseWebContextSensitiv
     }
 
     private String export(String type, List<String> fields, String date, long expectedRows) throws Exception {
+        return export(type, fields, date, expectedRows, null);
+    }
+
+    private String export(String type, List<String> fields, String date, long expectedRows, String locale)
+            throws Exception {
         entityManager.flush();
         entityManager.clear();
         var definition = catalog.definition(type);
         var available = catalog.variables(definition, "TABLE").stream()
                 .collect(java.util.stream.Collectors.toMap(v -> v.id(), java.util.function.Function.identity()));
         var snapshot = new ExportSnapshot(definition, "TABLE", fields.stream().map(available::get).toList(),
-                new ExportFilter(date, date, List.of("1"), List.of(), List.of()), "UTC", List.of());
+                new ExportFilter(date, date, List.of("1"), List.of(), List.of()), "UTC", List.of(), locale);
         StringWriter output = new StringWriter();
         assertEquals(expectedRows, catalog.source(definition.source()).write(output, snapshot));
         return output.toString();
@@ -225,10 +230,31 @@ public class ReferralExportMappingIntegrationTest extends BaseWebContextSensitiv
         assertEquals("sentDate", catalog.definition("REFERRALS").dateAnchor());
         assertEquals("\uFEFFReferral ID,Referral Result ID,Result ID,Accession Number,Referred Test Name,Referral Date,"
                 + "Referral Result Value,Referral Result Date,Referral Status\r\n" + sent.getId() + "," + first.getId()
-                + "," + first.getResult().getId() + ",12345,Blood Test,2026-05-07,450,2026-05-08,REQUESTED\r\n"
+                + "," + first.getResult().getId()
+                + ",12345,Test Localization 1(Test Localization 1),2026-05-07,450,2026-05-08,REQUESTED\r\n"
                 + sent.getId() + "," + repeated.getId() + "," + repeated.getResult().getId()
-                + ",12345,Blood Test,2026-05-07,450,2026-05-09,REQUESTED\r\n" + pending.getId()
-                + ",,,12345,Blood Test,2026-05-07,,,REQUESTED\r\n", export("REFERRALS", fields, "2026-05-07", 3));
+                + ",12345,Test Localization 1(Test Localization 1),2026-05-07,450,2026-05-09,REQUESTED\r\n"
+                + pending.getId() + ",,,12345,Test Localization 1(Test Localization 1),2026-05-07,,,REQUESTED\r\n",
+                export("REFERRALS", fields, "2026-05-07", 3));
+    }
+
+    /**
+     * OGC-1680: the referred and returned tests read as the screens show them, with
+     * the specimen's sample type, in the language of the user who asked for the
+     * export, not as the catalog description ("Blood Test").
+     */
+    @Test
+    public void aReferredTestIsNamedInTheLanguageOfTheUserWhoAskedForTheExport() throws Exception {
+        var sent = referral("1", "2026-05-05T10:00:00Z", "2026-05-07T11:00:00Z");
+        returned(sent, "450", "2026-05-08T12:00:00Z");
+        var fields = List.of("referredTestName", "returnedTestName");
+
+        assertEquals("\uFEFFReferred Test Name,Returned Test Name\r\nTB(TB),TB(TB)\r\n",
+                export("REFERRALS", fields, "2026-05-07", 1, "fr-FR"));
+        assertEquals(
+                "\uFEFFReferred Test Name,Returned Test Name\r\n"
+                        + "Test Localization 1(Test Localization 1),Test Localization 1(Test Localization 1)\r\n",
+                export("REFERRALS", fields, "2026-05-07", 1, "en"));
     }
 
     /**

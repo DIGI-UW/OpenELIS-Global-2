@@ -33,6 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ReportingCatalogService {
     @Autowired
+    private ExportTestNames testNames;
+    @Autowired
     private List<ReportingSource> sources;
     @Autowired
     private ReportDefinitionService definitions;
@@ -170,7 +172,8 @@ public class ReportingCatalogService {
         var fields = variables(definition, layout).stream()
                 .filter(v -> permitted(v.id(), permittedTestIds, permittedComponentIds)).toList();
         List<String> defaults = defaultColumns(definition, layout, fields, false);
-        var tests = permittedTests.stream().map(t -> Map.of("id", t.getId(), "label", t.getDescription())).toList();
+        var names = testNames.labels(permittedTests, LocaleContextHolder.getLocale());
+        var tests = permittedTests.stream().map(t -> Map.of("id", t.getId(), "label", names.get(t.getId()))).toList();
         return Map.of("definition", definition, "variables", fields, "defaultColumns", defaults, "labSections",
                 sections.stream().map(s -> Map.of("id", s.getId(), "label", s.getValue())).toList(), "tests", tests,
                 "statuses", statusOptions(definition), "maxDays", settings.maxDays(), "maxActive", settings.maxActive(),

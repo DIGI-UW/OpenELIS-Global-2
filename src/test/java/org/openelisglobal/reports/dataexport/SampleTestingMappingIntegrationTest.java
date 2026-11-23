@@ -11,6 +11,7 @@ import java.io.StringWriter;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.apache.commons.csv.CSVFormat;
 import org.junit.Before;
@@ -42,6 +43,7 @@ import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -231,7 +233,7 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
                 List.of("FINALIZED"));
         var catalog = source.catalog();
         var pivot = catalog.stream().filter(v -> v.id().equals("component:" + componentId)).findFirst().orElseThrow();
-        assertEquals("Blood Test — Systolic", pivot.label());
+        assertEquals("Test Localization 1 — Systolic", pivot.label());
         for (String layout : definition.layouts()) {
             var fields = catalog.stream().filter(v -> v.id().equals("accessionNumber") || v.id().equals("receivedDate")
                     || v.id().equals(layout.equals("SPREADSHEET") ? pivot.id() : "resultValue")).toList();
@@ -308,7 +310,7 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
 
         String fieldId = "component:" + color.getId();
         var field = source.catalog().stream().filter(v -> v.id().equals(fieldId)).findFirst().orElseThrow();
-        assertEquals("Urine Test — Color", field.label());
+        assertEquals("Test Localization 2 — Color", field.label());
         ExportFilter filter = new ExportFilter("2026-08-21", "2026-08-21", List.of(analysis.getTestSection().getId()),
                 List.of("2"), List.of("FINALIZED"));
         ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
@@ -318,7 +320,7 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
 
         assertEquals(1, source.write(csv, new ExportSnapshot(definition, "SPREADSHEET", List.of(field), filter,
                 java.time.ZoneId.systemDefault().getId(), List.of(analysis.getStatusId()))));
-        assertEquals("Urine Test — Color\r\n2.75\r\n", csv.toString().substring(1));
+        assertEquals("Test Localization 2 — Color\r\n2.75\r\n", csv.toString().substring(1));
     }
 
     @Test
@@ -388,6 +390,55 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
                         + MessageUtil.getMessage("status.sample.entered")
                         + ",STAT,1,Ada Q Public,1980-02-03,F,WA-1001,555-0100,\"42 Lab Road, Seattle, WA, USA\"\r\n",
                 csv.toString().substring(1));
+    }
+
+    /**
+     * OGC-1680: tests and sample types read as the screens show them, in the
+     * language of the user who asked for the export, not as the catalog description
+     * ("Blood Test"). The field list is built in the user's language; the rows use
+     * the language the job carries. A test taken on two sample types names the
+     * first and counts the rest, as the test catalog does.
+     */
+    @Test
+    public void testAndSampleTypeNamesReadInTheLanguageOfTheUser() throws Exception {
+        entityManager.createNativeQuery("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id)"
+                + " VALUES (99801, 1, 1), (99802, 2, 1)").executeUpdate();
+        Locale previous = LocaleContextHolder.getLocale();
+        try {
+            LocaleContextHolder.setLocale(Locale.FRENCH);
+            assertEquals("TB(TB +1)", label("test:1"));
+            LocaleContextHolder.setLocale(Locale.ENGLISH);
+            assertEquals("Test Localization 1(Test Localization 1 +1)", label("test:1"));
+        } finally {
+            LocaleContextHolder.setLocale(previous);
+        }
+        Analysis analysis = analyses.get("1");
+        analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+        analyses.update(analysis);
+        reading(analysis, options.get("1"), "85.0");
+        entityManager.flush();
+        List<String> fieldIds = List.of("testName", "sampleType", "labSection");
+        var fields = fieldIds.stream()
+                .map(id -> source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow())
+                .toList();
+        ExportFilter filter = new ExportFilter("2023-11-15", "2023-11-15", List.of(analysis.getTestSection().getId()),
+                List.of("1"), List.of("FINALIZED"));
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("RESULT_LIST"), fieldIds, List.of(), List.of("testIds"),
+                Map.of("RESULT_LIST", fieldIds));
+
+        for (String[] expected : new String[][] { { "fr-FR", "TB,TB,TB" },
+                { "en", "Test Localization 1,Test Localization 1,Test Localization 1" } }) {
+            StringWriter csv = new StringWriter();
+            assertEquals(1, source.write(csv, new ExportSnapshot(definition, "RESULT_LIST", fields, filter,
+                    java.time.ZoneId.systemDefault().getId(), List.of(analysis.getStatusId()), expected[0])));
+            assertEquals(expected[0], "Test Name,Sample Type,Lab Section\r\n" + expected[1] + "\r\n",
+                    csv.toString().substring(1));
+        }
+    }
+
+    private String label(String id) {
+        return source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow().label();
     }
 
     @Test
@@ -562,7 +613,8 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
             try (var parsed = CSVFormat.RFC4180.parse(new StringReader(csv.toString().substring(1)))) {
                 var records = parsed.getRecords();
                 assertEquals(layout, 5, records.size());
-                assertEquals(layout.equals("SPREADSHEET") ? "Blood Test" : "Result Value", records.get(0).get(0));
+                assertEquals(layout.equals("SPREADSHEET") ? "Test Localization 1" : "Result Value",
+                        records.get(0).get(0));
                 assertTrue(records.stream().allMatch(record -> record.size() == 1));
                 assertEquals(layout, expected.stream().sorted().toList(),
                         records.subList(1, records.size()).stream().map(record -> record.get(0)).sorted().toList());
