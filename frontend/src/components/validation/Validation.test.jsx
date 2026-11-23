@@ -502,6 +502,56 @@ describe("Validation — Check before release (OGC-1027)", () => {
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
 
+  it("an auto-validated row shows when it was released, who saved it and the rule that released it (OGC-1017)", () => {
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/AccessionValidation/auto-validated")) {
+        callback([
+          {
+            analysisId: "901",
+            accessionNumber: "ACC0",
+            testName: "Recorded Test(Serum)",
+            result: "7",
+            normalRange: "5 - 9",
+            resultDate: "01/09/2026",
+            autoReleasedAt: "02/09/2026 10:15",
+            autoReleasedBy: "Ada Tech",
+            autoReleaseRule: "Hematology policy: No review",
+            autoValidated: true,
+          },
+          {
+            analysisId: "902",
+            accessionNumber: "ACC0",
+            testName: "Older Test(Serum)",
+            result: "8",
+            normalRange: "5 - 9",
+            resultDate: "01/08/2026",
+            autoValidated: true,
+          },
+        ]);
+      }
+    });
+    renderValidation([row(0)], BULK_ON, "?type=order&accessionNumber=ACC0");
+    const toggle = screen.getByTestId("auto-validated-toggle");
+    fireEvent.click(toggle.querySelector('[role="switch"], button, input'));
+
+    const recorded = screen.getByTestId("auto-validated-row-901");
+    expect(recorded).toHaveTextContent("02/09/2026 10:15");
+    expect(recorded).not.toHaveTextContent("01/09/2026");
+    expect(recorded).toHaveTextContent("Ada Tech");
+    expect(screen.getByTestId("auto-validated-rule-901")).toHaveTextContent(
+      "Hematology policy: No review",
+    );
+    expect(screen.getByTestId("auto-validated-row-902")).toHaveTextContent(
+      "01/08/2026",
+    );
+    expect(screen.getByTestId("auto-validated-rule-902")).toHaveTextContent(
+      "Not recorded",
+    );
+    expect(screen.getByText("Released under")).toBeInTheDocument();
+    expect(screen.getByText("Saved by")).toBeInTheDocument();
+  });
+
   it("'Include auto-validated' stays reachable when nothing on the accession awaits validation (OGC-1361)", () => {
     render(
       <ConfigurationContext.Provider

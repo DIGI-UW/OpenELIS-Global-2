@@ -28,6 +28,8 @@ public interface ValidationPolicyService {
      * turning useMultiLevelValidation off keeps the same behaviour.
      *
      * @throws ValidationPolicyRefusedException naming the field the policy breaks
+     * @throws ValidationPolicyStaleException   when the form's version is not the
+     *                                          stored one
      */
     ValidationPolicyView saveLabWideDefault(ValidationPolicyForm form, String sysUserId);
 
@@ -49,14 +51,23 @@ public interface ValidationPolicyService {
      * @throws ValidationPolicyRefusedException when the override is unknown or
      *                                          deactivated, or the policy breaks a
      *                                          rule
+     * @throws ValidationPolicyStaleException   when the form's version is not the
+     *                                          stored one
      */
     LabUnitPolicyView saveLabUnitOverride(Long id, ValidationPolicyForm form, String sysUserId);
 
     /**
      * Deactivates an override, handing its unit back to the lab-wide default, or
      * reactivates it with the policy it had.
+     *
+     * @param lastupdated the version the page listed; null skips the check
+     * @throws ValidationPolicyStaleException when the version is not the stored one
      */
-    LabUnitPolicyView setLabUnitOverrideActive(Long id, boolean active, String sysUserId);
+    LabUnitPolicyView setLabUnitOverrideActive(Long id, boolean active, String lastupdated, String sysUserId);
+
+    default LabUnitPolicyView setLabUnitOverrideActive(Long id, boolean active, String sysUserId) {
+        return setLabUnitOverrideActive(id, active, null, sysUserId);
+    }
 
     /**
      * Which results of the lab unit wait for review at entry when

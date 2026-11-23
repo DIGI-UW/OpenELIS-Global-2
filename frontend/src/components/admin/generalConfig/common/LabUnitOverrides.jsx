@@ -26,11 +26,13 @@ import {
   useServerData,
 } from "../../../utils/useServerData";
 import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
+import StaleSaveNotice from "../../../common/StaleSaveNotice";
 import "./ValidationPolicy.scss";
 import ValidationPolicyEditor, {
   policyError,
   draftPayload,
   levelRolesUrl,
+  refusalOf,
   toDraft,
 } from "./ValidationPolicyEditor";
 
@@ -40,15 +42,6 @@ const DOMAIN_TAG = {
   CLINICAL: "blue",
   ENVIRONMENTAL: "teal",
   VECTOR: "purple",
-};
-
-const refusalCode = async (response) => {
-  try {
-    const body = (await response?.json()) || {};
-    return body.code || "saveFailed";
-  } catch {
-    return "saveFailed";
-  }
 };
 
 /**
@@ -88,7 +81,7 @@ function OverrideModal({
 
   const submit = () => {
     if (!editing && !labUnitId) {
-      setRefusal("labUnitRequired");
+      setRefusal({ code: "labUnitRequired" });
       return;
     }
     setSaving(true);
@@ -99,13 +92,13 @@ function OverrideModal({
         onSaved(await response.json());
         return;
       }
-      setRefusal(await refusalCode(response));
+      setRefusal(await refusalOf(response));
     };
     const policy = draftPayload(draft);
     if (editing) {
       putToOpenElisServerFullResponse(
         `${LAB_UNIT_POLICIES_API}/${editing.id}`,
-        JSON.stringify(policy),
+        JSON.stringify({ ...policy, lastupdated: editing.lastupdated }),
         done,
       );
     } else {
@@ -188,12 +181,21 @@ function OverrideModal({
             title={message("overrides.turnsReviewOff", { unit: unitName })}
           />
         )}
-        {refusal && (
+        {refusal && refusal.stale && (
+          <StaleSaveNotice
+            testId="validation-override-stale"
+            message={message("refused.stale", {
+              who: refusal.modifiedBy,
+              when: refusal.modifiedAt,
+            })}
+          />
+        )}
+        {refusal && !refusal.stale && (
           <InlineNotification
             kind="error"
             lowContrast
             hideCloseButton
-            title={message(`refused.${refusal}`)}
+            title={message(`refused.${refusal.code}`)}
           />
         )}
         {saving && <InlineLoading description={message("saving")} />}
@@ -235,7 +237,7 @@ export default function LabUnitOverrides({ policies, failed, labDefault }) {
     setNotice(null);
     putToOpenElisServerFullResponse(
       `${LAB_UNIT_POLICIES_API}/${override.id}/active`,
-      JSON.stringify({ active }),
+      JSON.stringify({ active, lastupdated: override.lastupdated }),
       async (response) => {
         setBusyId(null);
         if (response && response.ok) {
@@ -249,8 +251,18 @@ export default function LabUnitOverrides({ policies, failed, labDefault }) {
           });
           return;
         }
-        const code = await refusalCode(response);
-        setNotice({ kind: "error", text: message(`refused.${code}`) });
+        const refusal = await refusalOf(response);
+        setNotice(
+          refusal.stale
+            ? {
+                kind: "stale",
+                text: message("refused.stale", {
+                  who: refusal.modifiedBy,
+                  when: refusal.modifiedAt,
+                }),
+              }
+            : { kind: "error", text: message(`refused.${refusal.code}`) },
+        );
       },
     );
   };
@@ -420,7 +432,13 @@ export default function LabUnitOverrides({ policies, failed, labDefault }) {
             </TableBody>
           </Table>
         )}
-        {notice && (
+        {notice && notice.kind === "stale" && (
+          <StaleSaveNotice
+            testId="validation-overrides-stale"
+            message={notice.text}
+          />
+        )}
+        {notice && notice.kind !== "stale" && (
           <InlineNotification
             kind={notice.kind}
             lowContrast
