@@ -110,6 +110,63 @@ describe("TestActivation", () => {
     });
   });
 
+  const threeSampleTypes = () => ({
+    activeTestList: [
+      ...activation().activeTestList,
+      {
+        sampleType: { id: "2", value: "Urine" },
+        activeTests: [{ id: "20", value: "Protein" }],
+        inactiveTests: [{ id: "21", value: "Ketones" }],
+      },
+    ],
+    inactiveTestList: [
+      {
+        sampleType: { id: "3", value: "Stool" },
+        activeTests: [],
+        inactiveTests: [{ id: "30", value: "Occult blood" }],
+      },
+    ],
+  });
+
+  it("lists active and inactive sample types without a React key warning", async () => {
+    const consoleError = vi.spyOn(console, "error");
+    onServer = threeSampleTypes();
+
+    renderScreen();
+
+    await waitFor(() => expect(glucose()).toBeInTheDocument());
+    expect(document.getElementById("2-21")).not.toBeChecked();
+    expect(document.getElementById("3-30")).toBeInTheDocument();
+    fireEvent.click(document.getElementById("2-21"));
+    await waitFor(() => expect(document.getElementById("2-21")).toBeChecked());
+    fireEvent.click(submitButtons()[0]);
+    expect(
+      await screen.findByText("The following tests will be activated:"),
+    ).toBeInTheDocument();
+    const keyWarnings = consoleError.mock.calls
+      .map((args) => args.map(String).join(" "))
+      .filter((text) => text.includes('unique "key"'));
+    consoleError.mockRestore();
+    expect(keyWarnings).toEqual([]);
+  });
+
+  it("names only the sample types that were inactive as about to be activated", async () => {
+    onServer = threeSampleTypes();
+    renderScreen();
+    await waitFor(() => expect(glucose()).toBeInTheDocument());
+
+    fireEvent.click(document.getElementById("2-21"));
+    fireEvent.click(document.getElementById("3-30"));
+    await waitFor(() => expect(document.getElementById("3-30")).toBeChecked());
+    fireEvent.click(submitButtons()[0]);
+
+    const toActivate = await screen.findByTestId(
+      "test-activation-sample-types-to-activate",
+    );
+    expect(toActivate).toHaveTextContent("Stool");
+    expect(toActivate).not.toHaveTextContent("Urine");
+  });
+
   it("shows each active test as turned on", async () => {
     renderScreen();
 

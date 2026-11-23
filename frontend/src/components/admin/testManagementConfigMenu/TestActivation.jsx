@@ -1045,8 +1045,8 @@ function TestActivation() {
           changedTestActivationData?.activeTestList?.length > 0 ? (
             <Grid fullWidth={true}>
               {changedTestActivationData?.activeTestList?.map((sample) => (
-                <>
-                  <Column lg={16} md={8} sm={4} key={sample.sampleType.id}>
+                <React.Fragment key={sample.sampleType.id}>
+                  <Column lg={16} md={8} sm={4}>
                     <Section>
                       <Section>
                         <Section>
@@ -1097,7 +1097,7 @@ function TestActivation() {
                       />
                     </Column>
                   ))}
-                </>
+                </React.Fragment>
               ))}
             </Grid>
           ) : (
@@ -1123,8 +1123,8 @@ function TestActivation() {
           changedTestActivationData?.inactiveTestList?.length > 0 ? (
             <Grid fullWidth={true}>
               {changedTestActivationData.inactiveTestList.map((sample) => (
-                <>
-                  <Column lg={16} md={8} sm={4} key={sample.sampleType.id}>
+                <React.Fragment key={sample.sampleType.id}>
+                  <Column lg={16} md={8} sm={4}>
                     <Section>
                       <Section>
                         <Section>
@@ -1175,7 +1175,7 @@ function TestActivation() {
                       />
                     </Column>
                   ))}
-                </>
+                </React.Fragment>
               ))}
             </Grid>
           ) : (
@@ -1364,12 +1364,12 @@ function TestActivation() {
                   );
 
                   return activatedTests.map((test) => (
-                    <>
-                      <Column lg={4} md={4} sm={4} key={`${index}-${test.id}`}>
+                    <React.Fragment key={`${index}-${test.id}`}>
+                      <Column lg={4} md={4} sm={4}>
                         <span>{test.value}</span>
                       </Column>
                       <br />
-                    </>
+                    </React.Fragment>
                   ));
                 })}
             </Grid>
@@ -1394,9 +1394,19 @@ function TestActivation() {
               </Column>
             </Grid>
             <br />
-            <Grid fullWidth={true}>
+            <Grid
+              fullWidth={true}
+              data-testid="test-activation-sample-types-to-activate"
+            >
               {sampleTypesWithIdValueActivatedSorting
-                ?.filter((sampleType) => sampleType.activated === true)
+                ?.filter(
+                  (sampleType) =>
+                    sampleType.activated === true &&
+                    !(testActivationData?.activeTestList || []).some(
+                      (sample) =>
+                        String(sample.sampleType.id) === String(sampleType.id),
+                    ),
+                )
                 .map((sampleType) => (
                   <Column lg={4} md={4} sm={4} key={sampleType.id}>
                     <span>{sampleType.value}</span>
