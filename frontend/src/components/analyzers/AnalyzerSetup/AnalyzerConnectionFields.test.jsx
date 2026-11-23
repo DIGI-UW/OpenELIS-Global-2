@@ -136,6 +136,36 @@ describe("profile-defined connection choices", () => {
     );
   });
 
+  it("saves a cleared order destination independently of the analyzer IP", async () => {
+    const onSave = vi.fn();
+    renderFields(
+      [
+        {
+          key: "host",
+          inputKind: "TEXT",
+          labelKey: "analyzer.connection.field.host",
+          currentValue: "192.0.2.21",
+        },
+        {
+          key: "outboundHost",
+          inputKind: "TEXT",
+          labelKey: "analyzer.connection.field.outboundHost",
+          currentValue: "orders.example.test",
+        },
+      ],
+      onSave,
+    );
+    const destination = screen.getByLabelText(
+      "Order destination (DNS name or IP)",
+    );
+    await userEvent.clear(destination);
+    await userEvent.click(screen.getByRole("button"));
+    expect(onSave).toHaveBeenCalledWith({
+      host: "192.0.2.21",
+      outboundHost: "",
+    });
+  });
+
   it("reveals and saves dependent fields only for the matching typed choice", async () => {
     const onSave = vi.fn();
     renderFields(
