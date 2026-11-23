@@ -898,7 +898,7 @@
   "analyzer.connection.field.host": "Host",
   "analyzer.connection.field.outboundHost": "Order destination (DNS name or IP)",
   "analyzer.connection.field.outboundHost.help": "For two-way connections, enter the host that receives orders. Leave blank to send orders to the analyzer’s saved IP address.",
-  "analyzer.connection.field.host.help": "When the analyzer connects to the Bridge, enter its source IP or leave blank to match by instrument identity. When the Bridge connects as a client, enter the analyzer’s DNS name or IP.",
+  "analyzer.connection.field.host.help": "When the analyzer sends results to the Bridge, enter its source IP to restrict incoming results to that address. Leaving it blank removes this IP restriction. When the Bridge connects as a client, enter the analyzer’s DNS name or IP.",
   "analyzer.connection.field.numberFormat": "Decimal separator in results",
   "analyzer.connection.numberFormat.comma": "Comma (12,5)",
   "analyzer.connection.numberFormat.point": "Point (12.5)",
