@@ -51,6 +51,9 @@ import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
+import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.valueholder.Referral;
+import org.openelisglobal.referral.valueholder.ReferralSubcontract;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.bean.SampleEditItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
@@ -66,6 +69,7 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -110,6 +114,9 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
 
     @Autowired
     private SampleLocationService sampleLocationService;
+    @Autowired
+    @Lazy
+    private ReferralService referralService;
 
     private static final String PATIENTLESS_SUBJECT_ID = "subject";
 
@@ -283,6 +290,7 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
                     .setRequester(common.createReferenceFor(ResourceType.Practitioner, provider.getFhirUuidAsString()));
         }
         addRequestFormDetails(serviceRequest, sample);
+        addReferralTransportDetails(serviceRequest, analysis);
 
         return serviceRequest;
     }
@@ -321,6 +329,44 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
         addRequestFormExtension(serviceRequest, sample, ObservationType.CY_LMP, "cyLmp");
         addRequestFormExtension(serviceRequest, sample, ObservationType.CY_PARITY, "cyParity");
         addRequestFormExtension(serviceRequest, sample, ObservationType.CY_LAST_PREGNANCY, "cyLastPregnancy");
+    }
+
+    /**
+     * Transport details of the referral for this test (mode, vehicle, driver and
+     * hand-off time), published as extensions named
+     * {oeFhirSystem}/order_referral<Field>. Nothing is added when the test is not
+     * referred or a detail is empty; a read failure is logged and skipped so the
+     * order is still published.
+     */
+    private void addReferralTransportDetails(ServiceRequest serviceRequest, Analysis analysis) {
+        if (analysis == null || analysis.getId() == null) {
+            return;
+        }
+        try {
+            Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
+            ReferralSubcontract subcontract = referral == null ? null : referral.getSubcontract();
+            if (subcontract == null) {
+                return;
+            }
+            addReferralExtension(serviceRequest, "referralTransportMode", subcontract.getTransportMode());
+            addReferralExtension(serviceRequest, "referralVehicleRegistration", subcontract.getVehicleRegistration());
+            addReferralExtension(serviceRequest, "referralDriverName", subcontract.getDriverName());
+            if (subcontract.getHandoffDatetime() != null) {
+                serviceRequest
+                        .addExtension(new Extension(fhirConfig.getOeFhirSystem() + "/order_referralHandoffDatetime",
+                                new DateTimeType(subcontract.getHandoffDatetime())));
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "addReferralTransportDetails",
+                    "could not read referral transport for analysis " + analysis.getId() + ": " + e.getMessage());
+        }
+    }
+
+    private void addReferralExtension(ServiceRequest serviceRequest, String name, String value) {
+        if (!GenericValidator.isBlankOrNull(value)) {
+            serviceRequest.addExtension(
+                    new Extension(fhirConfig.getOeFhirSystem() + "/order_" + name, new StringType(value.trim())));
+        }
     }
 
     private void addRequestFormExtension(ServiceRequest serviceRequest, Sample sample, ObservationType type,

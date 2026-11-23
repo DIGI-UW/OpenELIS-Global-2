@@ -66,6 +66,7 @@ import org.openelisglobal.referral.service.ReferralSetService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
+import org.openelisglobal.referral.valueholder.ReferralSubcontract;
 import org.openelisglobal.reports.service.DocumentTrackService;
 import org.openelisglobal.reports.service.DocumentTypeService;
 import org.openelisglobal.reports.valueholder.DocumentTrack;
@@ -227,6 +228,7 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         }
         Task task = createReferralTask(fhirOrg, fhirPatient, serviceRequest, requester, sample);
         task.setId(referral.getFhirUuidAsString());
+        addTransportInputs(task, referral);
         if (requester.isPresent()) {
             updateResources.put(requester.get().getIdElement().getIdPart(), requester.get());
         }
@@ -309,6 +311,7 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         }
         Task task = createReferralTask(fhirOrg, fhirPatient, serviceRequest, requester, sample);
         task.setId(referral.getFhirUuidAsString());
+        addTransportInputs(task, referral);
         task.setStatus(TaskStatus.COMPLETED);
         task.addOutput(
                 new Task.TaskOutputComponent().setValue(fhirTransformService.createReferenceFor(diagnosticReport))
@@ -379,6 +382,7 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         }
         Task task = createReferralTask(fhirOrg, fhirPatient, serviceRequest, requester, sample);
         task.setId(referral.getFhirUuidAsString());
+        addTransportInputs(task, referral);
         task.setStatus(TaskStatus.CANCELLED);
         task.setStatusReason(new CodeableConcept().setText("lost in transit"));
         if (reason != null && !reason.isBlank()) {
@@ -448,6 +452,7 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         }
         Task task = createReferralTask(fhirOrg, fhirPatient, serviceRequest, requester, sample);
         task.setId(referral.getFhirUuidAsString());
+        addTransportInputs(task, referral);
         task.setStatus(TaskStatus.REJECTED);
         task.setStatusReason(new CodeableConcept().setText("rejected by reference lab"));
         if (reasonText != null && !reasonText.isBlank()) {
@@ -528,6 +533,39 @@ public class FhirReferralServiceImpl implements FhirReferralService {
 
         bundle.addEntry(new BundleEntryComponent().setResource(task));
         return task;
+    }
+
+    /** FHIR Task.input entries carrying the referral's transport details. */
+    static void addTransportInputs(Task task, ReferralSubcontract subcontract, String oeFhirSystem) {
+        if (subcontract == null) {
+            return;
+        }
+        addTaskInput(task, oeFhirSystem, "transport_mode", subcontract.getTransportMode());
+        addTaskInput(task, oeFhirSystem, "vehicle_registration", subcontract.getVehicleRegistration());
+        addTaskInput(task, oeFhirSystem, "driver_name", subcontract.getDriverName());
+    }
+
+    private static void addTaskInput(Task task, String oeFhirSystem, String code, String value) {
+        if (org.apache.commons.lang3.StringUtils.isBlank(value)) {
+            return; // leave empty values out rather than sending blank inputs
+        }
+        task.addInput()
+                .setType(new CodeableConcept()
+                        .addCoding(new Coding().setSystem(oeFhirSystem + "/referral_transport").setCode(code)))
+                .setValue(new StringType(value));
+    }
+
+    /**
+     * Adds the referral's transport details to the Task. Best effort: a problem
+     * reading them is logged and never stops the referral reaching the FHIR store.
+     */
+    private void addTransportInputs(Task task, Referral referral) {
+        try {
+            addTransportInputs(task, referral == null ? null : referral.getSubcontract(), fhirConfig.getOeFhirSystem());
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "addTransportInputs",
+                    "transport details not added to the referral task: " + e.getMessage());
+        }
     }
 
     @Override
