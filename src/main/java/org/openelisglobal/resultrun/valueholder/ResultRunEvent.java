@@ -30,6 +30,7 @@ public class ResultRunEvent extends BaseObject<Long> {
     public static final String RETEST_REQUESTED = "retestRequested";
     public static final String REJECTED_QC = "rejectedQc";
     public static final String ACCEPTED_DESPITE_QC = "acceptedDespiteQc";
+    public static final String SUPERSEDED = "superseded";
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "result_run_event_generator")

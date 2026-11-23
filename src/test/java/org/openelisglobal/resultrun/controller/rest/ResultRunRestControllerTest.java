@@ -2,6 +2,7 @@ package org.openelisglobal.resultrun.controller.rest;
 
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -12,6 +13,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -109,6 +111,20 @@ public class ResultRunRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.totalRows").value(1))
                 .andExpect(jsonPath("$.rows[0].value").value("91"))
                 .andExpect(jsonPath("$.rows[0].part").value("Log viral load"));
+    }
+
+    /**
+     * OGC-1200 slice 5b: confirming a retest link answers 400 with the reason when
+     * the run retests nothing of the named run, and 404 for a run that does not
+     * exist.
+     */
+    @Test
+    public void aRetestLinkWithNothingToLinkIsRefusedWithTheReason() throws Exception {
+        mockMvc.perform(post("/rest/result-runs/" + runId + "/tests/1/retest-of").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"runId\": 1}")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.CoreMatchers.containsString("does not retest")));
+        mockMvc.perform(post("/rest/result-runs/999999999/tests/1/retest-of").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"runId\": 1}")).andExpect(status().isNotFound());
     }
 
     @Test

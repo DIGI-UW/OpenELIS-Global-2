@@ -464,6 +464,7 @@ const RunView: React.FC<RunViewProps> = ({
             <RunQcBlock
               runId={header.id}
               qc={header.qc}
+              onOpenRun={onOpenRun}
               onRecorded={(qc) => {
                 setHeader((current) =>
                   current ? { ...current, qc } : current,
@@ -502,7 +503,13 @@ const RunView: React.FC<RunViewProps> = ({
                   "run.label.state",
                   <Tag
                     size="sm"
-                    type={header.state === "HELD" ? "red" : "cyan"}
+                    type={
+                      header.state === "HELD"
+                        ? "red"
+                        : header.state === "SUPERSEDED"
+                          ? "gray"
+                          : "cyan"
+                    }
                   >
                     {intl.formatMessage({ id: runStateKey(header.state) })}
                   </Tag>,
@@ -526,13 +533,14 @@ const RunView: React.FC<RunViewProps> = ({
                     />
                   </Button>
                 )}
-                {header.analyzerId && header.state !== "COMPLETE" && (
-                  <Link
-                    href={`/AnalyzerResults?id=${encodeURIComponent(header.analyzerId)}`}
-                  >
-                    <FormattedMessage id="run.action.acceptOnImport" />
-                  </Link>
-                )}
+                {header.analyzerId &&
+                  ["OPEN", "HELD"].includes(header.state) && (
+                    <Link
+                      href={`/AnalyzerResults?id=${encodeURIComponent(header.analyzerId)}`}
+                    >
+                      <FormattedMessage id="run.action.acceptOnImport" />
+                    </Link>
+                  )}
               </div>
               {rawState === "loading" && <InlineLoading />}
               {rawState === "failed" && (

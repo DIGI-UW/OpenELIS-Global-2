@@ -93,4 +93,13 @@ public interface RunQcService {
     org.openelisglobal.resultrun.valueholder.ResultRunTestDisposition decide(Long runId, String testId,
             org.openelisglobal.resultrun.valueholder.RunTestAction action, String reason, boolean fileNce,
             String sysUserId);
+
+    /**
+     * Confirms this run as the retest of an earlier run's test (FR-C5): the earlier
+     * run's samples it set aside for that test and this run covers are linked, the
+     * earlier test reads superseded, and the earlier run is superseded once every
+     * test it covered was retested and linked (FR-A3). Nothing is accepted or
+     * released by the link. Refused when nothing is left to link.
+     */
+    void confirmRetest(Long runId, String testId, Long retestOfRunId, String sysUserId);
 }

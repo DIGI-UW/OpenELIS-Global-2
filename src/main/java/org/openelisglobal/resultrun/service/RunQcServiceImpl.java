@@ -32,11 +32,15 @@ import org.openelisglobal.qc.valueholder.RunVerdictSource;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultrun.dao.ResultRunDAO;
 import org.openelisglobal.resultrun.dao.ResultRunEventDAO;
+import org.openelisglobal.resultrun.dao.ResultRunRetestDAO;
+import org.openelisglobal.resultrun.dao.ResultRunRetestDAO.RetestedSample;
 import org.openelisglobal.resultrun.dao.ResultRunTestDispositionDAO;
+import org.openelisglobal.resultrun.form.RunLink;
 import org.openelisglobal.resultrun.form.RunQcBlock;
 import org.openelisglobal.resultrun.form.RunTestVerdict;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultrun.valueholder.ResultRunEvent;
+import org.openelisglobal.resultrun.valueholder.ResultRunRetest;
 import org.openelisglobal.resultrun.valueholder.ResultRunState;
 import org.openelisglobal.resultrun.valueholder.ResultRunTestDisposition;
 import org.openelisglobal.resultrun.valueholder.RunTestAction;
@@ -89,6 +93,8 @@ public class RunQcServiceImpl implements RunQcService {
     @Lazy
     @Autowired
     private NCEventService ncEventService;
+    @Autowired
+    private ResultRunRetestDAO retestDAO;
 
     @Override
     @Transactional(readOnly = true)
@@ -323,6 +329,9 @@ public class RunQcServiceImpl implements RunQcService {
         Map<String, QCControlLot> lots = new HashMap<>();
         Map<String, ResultRunTestDisposition> decisions = new HashMap<>();
         dispositionDAO.getDispositions(runId).forEach(decision -> decisions.put(decision.getTestId(), decision));
+        Set<String> held = heldTestIds(runId);
+        Map<String, List<RunLink>> retestOf = retestOf(runId);
+        Map<String, List<RunLink>> supersededBy = supersededBy(runId);
         List<RunQcBlock.TestLine> lines = verdicts.entrySet().stream().map(entry -> {
             ResultRunTestDisposition decision = decisions.get(entry.getKey());
             return new RunQcBlock.TestLine(entry.getKey(), TestServiceImpl.getUserLocalizedTestName(entry.getKey()),
@@ -330,7 +339,11 @@ public class RunQcServiceImpl implements RunQcService {
                     controls.stream().filter(control -> entry.getKey().equals(control.getTestId()))
                             .map(control -> controlLine(control, lots)).toList(),
                     decision == null ? null : decision.getAction().name(),
-                    decision == null || decision.getNceId() == null ? null : nceNumberOf(decision.getNceId()));
+                    decision == null || decision.getNceId() == null ? null : nceNumberOf(decision.getNceId()),
+                    retestOf.getOrDefault(entry.getKey(), List.of()),
+                    offersRetestLinks(entry.getKey(), held, decision) ? retestSuggestions(runId, entry.getKey())
+                            : List.of(),
+                    supersededBy.getOrDefault(entry.getKey(), List.of()));
         }).toList();
         return new RunQcBlock(overallOf(verdicts.values(), decisions.keySet()), lines);
     }
@@ -448,15 +461,152 @@ public class RunQcServiceImpl implements RunQcService {
             decision.setNceId(fileNce(run, testId, action, decision, analysisIds, sysUserId).getId());
             dispositionDAO.update(decision);
         }
+        if (action == RunTestAction.RETEST) {
+            rememberSetAside(decision, analysisIds, sysUserId);
+        }
         if (action != RunTestAction.ACCEPT_DESPITE) {
             resultRunDAO.getStagedRows(List.of(runId)).stream()
-                    .filter(row -> !row.getIsControl() && testId.equals(row.getTestId()))
-                    .forEach(analyzerResultsService::delete);
+                    .filter(row -> !row.getIsControl() && testId.equals(row.getTestId())).forEach(row -> {
+                        releaseLaterReadingsOf(row, sysUserId);
+                        analyzerResultsService.delete(row);
+                    });
         }
         log(runId, eventOf(action), testId, decision.getNceId() == null ? null : "nce " + decision.getNceId(),
                 sysUserId);
         refreshState(runId, sysUserId);
         return decision;
+    }
+
+    /**
+     * A reading of the same sample and test that arrived after this one was flagged
+     * as its duplicate; with this one set aside it is a reading of its own again,
+     * open to review and acceptance.
+     */
+    private void releaseLaterReadingsOf(AnalyzerResults row, String sysUserId) {
+        for (AnalyzerResults later : analyzerResultsService.getAllMatching("duplicateAnalyzerResultId", row.getId())) {
+            if (later.getId().equals(row.getId())) {
+                continue;
+            }
+            later.setDuplicateAnalyzerResultId(null);
+            later.setReadOnly(false);
+            later.setSysUserId(sysUserId);
+            analyzerResultsService.update(later);
+        }
+    }
+
+    private void rememberSetAside(ResultRunTestDisposition decision, List<String> analysisIds, String sysUserId) {
+        for (String analysisId : analysisIds) {
+            ResultRunRetest retest = new ResultRunRetest();
+            retest.setDispositionId(decision.getId());
+            retest.setAnalysisId(analysisId);
+            retest.setSysUserId(sysUserId);
+            retestDAO.insert(retest);
+        }
+    }
+
+    /**
+     * A run may be the retest of an earlier run's test unless its own control holds
+     * that test undecided or it set the test aside itself.
+     */
+    private static boolean offersRetestLinks(String testId, Set<String> held, ResultRunTestDisposition decision) {
+        return !held.contains(testId) && (decision == null || decision.getAction() == RunTestAction.ACCEPT_DESPITE);
+    }
+
+    private List<RunLink> retestSuggestions(Long runId, String testId) {
+        Map<Long, Long> unlinkedByRun = retestDAO
+                .findUnlinked(testId, resultRunDAO.getAnalysisIdsOfRunTest(runId, testId), runId).stream()
+                .collect(Collectors.groupingBy(RetestedSample::runId, java.util.TreeMap::new, Collectors.counting()));
+        return unlinkedByRun.entrySet().stream().map(entry -> new RunLink(entry.getKey(),
+                ResultRun.labelOf(entry.getKey()), entry.getValue().intValue(), setAsideCount(entry.getKey(), testId)))
+                .toList();
+    }
+
+    private int setAsideCount(Long runId, String testId) {
+        return (int) retestDAO.findSetAsideBy(runId).stream().filter(sample -> testId.equals(sample.testId())).count();
+    }
+
+    private Map<String, List<RunLink>> retestOf(Long runId) {
+        Map<String, Map<Long, Long>> byTest = retestDAO.findRetestedIn(runId).stream()
+                .collect(Collectors.groupingBy(RetestedSample::testId,
+                        Collectors.groupingBy(RetestedSample::runId, java.util.TreeMap::new, Collectors.counting())));
+        Map<String, List<RunLink>> links = new HashMap<>();
+        byTest.forEach(
+                (testId, counts) -> links
+                        .put(testId,
+                                counts.entrySet().stream()
+                                        .map(entry -> new RunLink(entry.getKey(), ResultRun.labelOf(entry.getKey()),
+                                                entry.getValue().intValue(), setAsideCount(entry.getKey(), testId)))
+                                        .toList()));
+        return links;
+    }
+
+    private Map<String, List<RunLink>> supersededBy(Long runId) {
+        Map<String, List<RetestedSample>> byTest = retestDAO.findSetAsideBy(runId).stream()
+                .collect(Collectors.groupingBy(RetestedSample::testId));
+        Map<String, List<RunLink>> links = new HashMap<>();
+        byTest.forEach((testId, samples) -> {
+            Map<Long, Long> byRetestRun = samples.stream().filter(sample -> sample.retestedInRunId() != null)
+                    .collect(Collectors.groupingBy(RetestedSample::retestedInRunId, java.util.TreeMap::new,
+                            Collectors.counting()));
+            if (!byRetestRun.isEmpty()) {
+                links.put(testId,
+                        byRetestRun
+                                .entrySet().stream().map(entry -> new RunLink(entry.getKey(),
+                                        ResultRun.labelOf(entry.getKey()), entry.getValue().intValue(), samples.size()))
+                                .toList());
+            }
+        });
+        return links;
+    }
+
+    @Override
+    @Transactional
+    public void confirmRetest(Long runId, String testId, Long retestOfRunId, String sysUserId) {
+        ResultRunTestDisposition decision = testId == null ? null
+                : dispositionDAO.getDispositions(runId).stream().filter(d -> testId.equals(d.getTestId())).findFirst()
+                        .orElse(null);
+        List<RetestedSample> unlinked = testId == null || retestOfRunId == null
+                || !offersRetestLinks(testId, heldTestIds(runId), decision) ? List.of()
+                        : retestDAO.findUnlinked(testId, resultRunDAO.getAnalysisIdsOfRunTest(runId, testId), runId)
+                                .stream().filter(sample -> retestOfRunId.equals(sample.runId())).toList();
+        int linked = unlinked.isEmpty() ? 0
+                : retestDAO.link(unlinked.get(0).dispositionId(),
+                        unlinked.stream().map(RetestedSample::analysisId).toList(), runId, sysUserId,
+                        new Timestamp(System.currentTimeMillis()));
+        if (linked == 0) {
+            throw new IllegalArgumentException(MessageUtil.getMessage("run.refusal.noRetestToLink"));
+        }
+        log(retestOfRunId, ResultRunEvent.SUPERSEDED, testId,
+                "by " + ResultRun.labelOf(runId) + ": " + linked + " of " + setAsideCount(retestOfRunId, testId),
+                sysUserId);
+        refreshSupersession(retestOfRunId, sysUserId);
+    }
+
+    /**
+     * An earlier run is superseded when nothing is left in it to review and every
+     * test it covers was retested and all its retested samples linked (FR-A3).
+     */
+    private void refreshSupersession(Long runId, String sysUserId) {
+        ResultRun run = resultRunDAO.get(runId).orElse(null);
+        if (run == null || run.getState() == ResultRunState.SUPERSEDED
+                || (run.getState() == ResultRunState.OPEN && resultRunDAO.countStagedRows(runId) > 0)) {
+            return;
+        }
+        Map<String, List<RetestedSample>> setAside = retestDAO.findSetAsideBy(runId).stream()
+                .collect(Collectors.groupingBy(RetestedSample::testId));
+        Set<String> covered = testVerdicts(runId).keySet();
+        boolean replaced = !covered.isEmpty() && covered.stream().allMatch(testId -> setAside.containsKey(testId)
+                && setAside.get(testId).stream().allMatch(sample -> sample.retestedInRunId() != null));
+        if (!replaced) {
+            return;
+        }
+        run.setState(ResultRunState.SUPERSEDED);
+        run.setSysUserId(sysUserId);
+        resultRunDAO.update(run);
+        log(runId, ResultRunEvent.SUPERSEDED, null,
+                setAside.values().stream().flatMap(List::stream).map(RetestedSample::retestedInRunId).distinct()
+                        .sorted().map(ResultRun::labelOf).collect(Collectors.joining(", ", "by ", "")),
+                sysUserId);
     }
 
     /**

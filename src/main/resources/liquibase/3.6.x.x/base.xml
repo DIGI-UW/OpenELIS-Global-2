@@ -72,6 +72,8 @@
   <include relativeToChangelogFile="true" file="043-validation-policy-audit-auto-release.xml"/>
   <!-- OGC-768: environmental order type (regulation-driven or ad-hoc) -->
   <include relativeToChangelogFile="true" file="044-env-order-branch-observation-type.xml"/>
+  <!-- OGC-1200 slice 5b: the samples a Retest set aside, and the run confirmed as their retest -->
+  <include relativeToChangelogFile="true" file="045-result-run-retest.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>

@@ -16,8 +16,10 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
+import useSiteDateFormat from "../../../common/useSiteDateFormat";
 import { formatRunTime } from "./runFormat";
 import RunTestDecision from "./RunTestDecision";
+import RunRetestLink from "./RunRetestLink";
 
 export interface RunControlLine {
   id: string;
@@ -31,6 +33,13 @@ export interface RunControlLine {
   recordedAt?: string | null;
 }
 
+export interface RunLinkItem {
+  runId: number;
+  label: string;
+  count: number;
+  total: number;
+}
+
 export interface RunQcTestLine {
   testId: string;
   testName: string;
@@ -38,6 +47,9 @@ export interface RunQcTestLine {
   controls: RunControlLine[];
   decision?: string | null;
   nceNumber?: string | null;
+  retestOf?: RunLinkItem[];
+  retestSuggestions?: RunLinkItem[];
+  supersededBy?: RunLinkItem[];
 }
 
 export interface RunQc {
@@ -55,6 +67,7 @@ interface RunQcBlockProps {
   runId: number;
   qc: RunQc;
   onRecorded: (qc: RunQc) => void;
+  onOpenRun?: (runId: number) => void;
 }
 
 type Kind = "measured" | "controlLine";
@@ -108,8 +121,14 @@ const verdictTag = (verdict?: string | null) => {
  * it, and Record control, which adds a control to the run. A failed control
  * holds that test's rows, and only those (FR-C4).
  */
-const RunQcBlock: React.FC<RunQcBlockProps> = ({ runId, qc, onRecorded }) => {
+const RunQcBlock: React.FC<RunQcBlockProps> = ({
+  runId,
+  qc,
+  onRecorded,
+  onOpenRun,
+}) => {
   const intl = useIntl();
+  const { pattern } = useSiteDateFormat();
   const recordable = qc.tests.filter((test) => !test.decision);
   const [recording, setRecording] = useState(false);
   const [draft, setDraft] = useState<Draft>(
@@ -220,7 +239,7 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({ runId, qc, onRecorded }) => {
       control.verdictSource &&
         intl.formatMessage({ id: `run.qc.source.${control.verdictSource}` }),
       control.operator,
-      control.recordedAt && formatRunTime(intl, control.recordedAt),
+      control.recordedAt && formatRunTime(intl, control.recordedAt, pattern),
     ]
       .filter(Boolean)
       .join(" · ");
@@ -262,6 +281,12 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({ runId, qc, onRecorded }) => {
               {intl.formatMessage({ id: `run.verdict.${test.verdict}` })}
             </Tag>
             <RunTestDecision runId={runId} test={test} onDecided={onRecorded} />
+            <RunRetestLink
+              runId={runId}
+              test={test}
+              onLinked={onRecorded}
+              onOpenRun={onOpenRun}
+            />
             {test.controls.length > 0 && (
               <ul className="runQcControls">
                 {test.controls.map((control) => (

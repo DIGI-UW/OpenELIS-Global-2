@@ -105,7 +105,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             ResultRun run = existing.get();
             run.setRowCount(run.getRowCount() + runRows.size());
             run.setLastActivityAt(now);
-            if (!run.getState().isActive()) {
+            if (!run.getState().isActive() && run.getState() != ResultRunState.SUPERSEDED) {
                 run.setState(ResultRunState.OPEN);
                 run.setCompletedAt(null);
             }

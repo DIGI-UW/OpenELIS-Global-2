@@ -158,6 +158,33 @@ public class ResultRunRestController extends BaseRestController {
         return ResponseEntity.ok(runQcService.qcBlock(id));
     }
 
+    /** The earlier run the page confirms this run retests (FR-C5). */
+    public record RetestOf(Long runId) {
+    }
+
+    /**
+     * Confirms this run as the retest of an earlier run's test (FR-C5), which
+     * supersedes it there (FR-A3), and answers with the QC block as it now stands.
+     */
+    @PostMapping(value = "/{id}/tests/{testId}/retest-of", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> confirmRetest(HttpServletRequest request, @PathVariable Long id,
+            @PathVariable String testId, @RequestBody RetestOf retestOf) {
+        RunViewer viewer = viewer(request);
+        if (resultRunService.getHeader(id, viewer).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!viewer.testIds().contains(testId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        try {
+            runQcService.confirmRetest(id, testId, retestOf == null ? null : retestOf.runId(), getSysUserId(request));
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage() == null ? "Invalid retest link" : e.getMessage();
+            return ResponseEntity.badRequest().body(Map.of("message", message));
+        }
+        return ResponseEntity.ok(runQcService.qcBlock(id));
+    }
+
     private RunViewer viewer(HttpServletRequest request) {
         String sysUserId = getSysUserId(request);
         String roleId = roleService.getRoleByName(Constants.ROLE_RESULTS).getId();
