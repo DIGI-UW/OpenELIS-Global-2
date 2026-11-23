@@ -144,6 +144,29 @@ public class ExportLocationsIntegrationTest extends BaseWebContextSensitiveTest 
                 .definition().selectedVariables());
     }
 
+    /**
+     * OGC-1655: the Routine sample export ships as a shared Spreadsheet report
+     * dated by order entry, with the Routine CSV Report's columns in its order and
+     * then every test, and every column can be run.
+     */
+    @Test
+    public void theRoutineSampleExportShipsWithTheRoutineColumnsThenEveryTest() throws Exception {
+        predefined.ensure();
+
+        SavedReportDefinition routine = read(PredefinedExportReports.ROUTINE_ID);
+        assertEquals("Routine sample export", stored(PredefinedExportReports.ROUTINE_ID).getName());
+        assertEquals("SPREADSHEET", routine.layout());
+        assertEquals("orderEnteredDate", routine.filters().dateBasis());
+        assertEquals(List.of("accessionNumber", "labUnit", "nationalId", "sex", "dateOfBirth", "ageYears", "ageMonths",
+                "ageWeeks", "receivedDate", "enteredDate", "collectionDate", "referringSiteCode", "referringSite",
+                "program", "orderStatus"), routine.selectedVariables().subList(0, 15));
+        assertTrue(routine.selectedVariables().contains("test:1"));
+        assertFalse("no location areas unless a user adds them",
+                routine.selectedVariables().contains("area:" + ExportLocationFixture.DISTRICT_TYPE));
+        assertEquals(routine.selectedVariables(), catalog
+                .validateSaved(ExportLocationFixture.reportingAdmin(entityManager), routine).selectedVariables());
+    }
+
     private void addZoneAboveTheRegion() {
         ExportLocationFixture.insertType(entityManager, "99715", "Health Zone", null);
         ExportLocationFixture.organization(entityManager, "99705", "Papua Zone", null, null, "99715");

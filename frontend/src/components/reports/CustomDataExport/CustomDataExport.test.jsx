@@ -25,6 +25,7 @@ const source = {
   layouts: ["SPREADSHEET", "RESULT_LIST"],
 };
 let configuredFilters;
+let configuredDateBases;
 let configuredDefaults;
 let alternateCatalog;
 const field = (id, label, group = "sample") => ({ id, label, group });
@@ -42,6 +43,7 @@ const catalog = (layout) => ({
   statuses: [{ id: "FINALIZED", label: "Finalized" }],
   maxDays: 90,
   timezone: "UTC",
+  dateBases: configuredDateBases,
 });
 let requests;
 let failSubmission;
@@ -66,6 +68,7 @@ const json = (body, status = 200) => ({
 beforeEach(() => {
   consoleErrors = vi.spyOn(console, "error");
   configuredFilters = ["labSectionIds", "testIds", "resultStatuses"];
+  configuredDateBases = undefined;
   configuredDefaults = { SPREADSHEET: [], RESULT_LIST: [] };
   alternateCatalog = undefined;
   clearReportingDraft();
@@ -417,6 +420,23 @@ test("rerun preserves a removed field and requires correction after its catalog 
     }),
   ).toBeDisabled();
   expect(requests).toEqual([]);
+
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Remove the unavailable columns (1)",
+    }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByText(messages["reporting.columns.stale"])).toBeNull(),
+  );
+  expect(
+    screen.queryByRole("button", { name: "Remove test:removed" }),
+  ).toBeNull();
+  expect(
+    screen.getByRole("button", {
+      name: messages["reporting.design.nextFilters"],
+    }),
+  ).toBeEnabled();
 });
 
 test("the mock overview leads to collapsed groups and Add actions without selecting the whole test catalog", async () => {
@@ -769,6 +789,40 @@ test("configured selection and reordered preview are submitted, then a download 
     "test:1",
   ]);
   expect(requests[0].filterSpec.dateFrom).toBe("2026-08-01");
+});
+
+test("Sample & Testing applies the period to the chosen date and sends that choice with the request", async () => {
+  configuredFilters = [
+    "labSectionIds",
+    "testIds",
+    "resultStatuses",
+    "dateBasis",
+  ];
+  configuredDateBases = ["collectionDate", "receivedDate", "orderEnteredDate"];
+  open();
+  await start();
+  await period();
+  const basis = screen.getByLabelText("Date basis");
+  expect(basis).toHaveValue("collectionDate");
+  expect(screen.getByText(/Uses specimen collection dates in UTC/)).toBeVisible();
+  fireEvent.change(basis, { target: { value: "orderEnteredDate" } });
+  expect(screen.getByText(/Uses order entry dates in UTC/)).toBeVisible();
+  review();
+  expect(screen.getByText(/order entry dates/)).toBeVisible();
+  generate();
+  await screen.findByRole("link", { name: "Download CSV" });
+  expect(requests[0].filterSpec.dateBasis).toBe("orderEnteredDate");
+});
+
+test("a report type that offers no date choice shows none and sends none", async () => {
+  open();
+  await start();
+  await period();
+  expect(screen.queryByLabelText("Date basis")).toBeNull();
+  review();
+  generate();
+  await screen.findByRole("link", { name: "Download CSV" });
+  expect(requests[0].filterSpec).not.toHaveProperty("dateBasis");
 });
 
 test("failed submission retains choices and retries with the same request identity", async () => {
