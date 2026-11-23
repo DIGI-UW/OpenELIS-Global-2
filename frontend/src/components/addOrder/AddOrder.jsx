@@ -409,16 +409,6 @@ const AddOrder = (props) => {
     handleTbField(field, next.join(","));
   }
 
-  const TB_TEST_OPTIONS = [
-    { code: "SMEAR", label: "order.tb.test.smear" },
-    { code: "CULTURE_DST", label: "order.tb.test.cultureDst" },
-    { code: "LPA", label: "order.tb.test.lpa" },
-    { code: "GENEXPERT", label: "order.tb.test.genexpert" },
-  ];
-  const tbSelectedTests = (orderFormValues.sampleOrderItems.tbTestRequest ?? "")
-    .split(",")
-    .filter(Boolean);
-
   function handleTbField(field, value) {
     setOrderFormValues({
       ...orderFormValues,
@@ -427,13 +417,6 @@ const AddOrder = (props) => {
         [field]: value,
       },
     });
-  }
-
-  function handleTbTest(code, checked) {
-    const next = checked
-      ? [...tbSelectedTests.filter((c) => c !== code), code]
-      : tbSelectedTests.filter((c) => c !== code);
-    handleTbField("tbTestRequest", next.join(","));
   }
 
   function handleTbOrderReason(value) {
@@ -1743,24 +1726,6 @@ const AddOrder = (props) => {
                   value={orderFormValues.sampleOrderItems.tbSuspectNumber ?? ""}
                   onChange={handleTbSuspectNumber}
                 />
-              </Column>
-              <Column lg={16} md={8} sm={4}>
-                <fieldset className="cds--fieldset">
-                  <legend className="cds--label">
-                    <FormattedMessage id="order.tb.testRequest.label" />
-                  </legend>
-                  {TB_TEST_OPTIONS.map((opt) => (
-                    <Checkbox
-                      key={opt.code}
-                      id={`tbTest-${opt.code}`}
-                      labelText={intl.formatMessage({ id: opt.label })}
-                      checked={tbSelectedTests.includes(opt.code)}
-                      onChange={(_event, { checked }) =>
-                        handleTbTest(opt.code, checked)
-                      }
-                    />
-                  ))}
-                </fieldset>
               </Column>
               <Column lg={16} md={8} sm={4}>
                 <RadioButtonGroup
