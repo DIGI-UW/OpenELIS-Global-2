@@ -63,6 +63,9 @@ export default function ReportingView(p) {
     job,
   } = p;
   const data = catalog.data;
+  const dateAnchor =
+    (data?.definition.filters?.includes("dateBasis") && draft.dateBasis) ||
+    data?.definition.dateAnchor;
   const busy =
     submission.isLoading || ["QUEUED", "GENERATING"].includes(job.data?.state);
   const notification = (kind, title, subtitle) => (
@@ -767,13 +770,35 @@ export default function ReportingView(p) {
                     <p className="column-hint">
                       {t("reporting.periodHelp", {
                         // i18n-keys: reporting.dateAnchor.*
-                        dateMeaning: t(
-                          `reporting.dateAnchor.${data.definition.dateAnchor}`,
-                        ),
+                        dateMeaning: t(`reporting.dateAnchor.${dateAnchor}`),
                         days: data.maxDays,
                         timezone: data.timezone,
                       })}
                     </p>
+                    {data.dateBases?.length > 0 && (
+                      <Select
+                        id="reporting-date-basis"
+                        labelText={t("reporting.dateBasis.label")}
+                        value={dateAnchor}
+                        onChange={(event) =>
+                          update({
+                            dateBasis:
+                              event.target.value === data.definition.dateAnchor
+                                ? null
+                                : event.target.value,
+                          })
+                        }
+                      >
+                        {data.dateBases.map((basis) => (
+                          <SelectItem
+                            key={basis}
+                            value={basis}
+                            // i18n-keys: reporting.dateBasis.*
+                            text={t(`reporting.dateBasis.${basis}`)}
+                          />
+                        ))}
+                      </Select>
+                    )}
                     <div className="filter-grid">
                       <TextInput
                         id="reporting-from"
@@ -958,9 +983,7 @@ export default function ReportingView(p) {
                           count: p.periodDays,
                         })}
                         {" · "}
-                        {t(
-                          `reporting.dateAnchor.${data.definition.dateAnchor}`,
-                        )}
+                        {t(`reporting.dateAnchor.${dateAnchor}`)}
                       </span>
                     </div>
                     <div className="review-section">

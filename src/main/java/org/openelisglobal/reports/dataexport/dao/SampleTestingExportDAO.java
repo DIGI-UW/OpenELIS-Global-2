@@ -43,6 +43,18 @@ public interface SampleTestingExportDAO extends BaseDAO<Result, String> {
 
     String dictionary(String id);
 
+    /** When the order was entered, with its time (OGC-1655). */
+    java.sql.Timestamp enteredAt(String sampleId);
+
+    /**
+     * The order's program: the program it was ordered under, else its program
+     * answer (OGC-1655).
+     */
+    String program(String sampleId);
+
+    /** The lab units of the specimen's tests (OGC-1655). */
+    List<org.openelisglobal.test.valueholder.TestSection> labUnits(String specimenId);
+
     List<String> qualifiers(String resultId);
 
     void clearReadBatch();

@@ -1,13 +1,13 @@
 {
   "id": "SAMPLE_TESTING",
-  "version": 5,
+  "version": 6,
   "label": "Sample & Testing",
   "source": "SAMPLE_TESTING",
   "dateAnchor": "collectionDate",
   "layouts": ["SPREADSHEET", "RESULT_LIST"],
-  "attributes": ["accessionNumber", "specimenId", "collectionDate", "collectionTime", "receivedDate", "receivedTime", "orderDate", "sampleType", "sampleStatus", "priority", "numberOfTests", "patientName", "dateOfBirth", "sex", "nationalId", "phoneNumber", "address", "resultId", "testName", "component", "loincCode", "resultValue", "resultUnit", "resultStatus", "dateResulted", "validationDate", "labSection", "orderToResultMinutes", "receivedToValidatedMinutes", "orderToCollectionMinutes", "collectionToReceivedMinutes", "resultedToValidatedMinutes"],
+  "attributes": ["accessionNumber", "specimenId", "collectionDate", "collectionTime", "receivedDate", "receivedTime", "orderDate", "sampleType", "sampleStatus", "orderStatus", "priority", "numberOfTests", "enteredDate", "program", "labUnit", "ageYears", "ageMonths", "ageWeeks", "patientName", "dateOfBirth", "sex", "nationalId", "phoneNumber", "address", "resultId", "testName", "component", "loincCode", "resultValue", "resultUnit", "resultStatus", "dateResulted", "validationDate", "labSection", "orderToResultMinutes", "receivedToValidatedMinutes", "orderToCollectionMinutes", "collectionToReceivedMinutes", "resultedToValidatedMinutes"],
   "catalogs": ["tests", "components", "observations", "testTurnaround", "componentTurnaround", "location"],
-  "filters": ["labSectionIds", "testIds", "resultStatuses"],
+  "filters": ["labSectionIds", "testIds", "resultStatuses", "dateBasis"],
   "defaultColumns": {
     "SPREADSHEET": [],
     "RESULT_LIST": []
