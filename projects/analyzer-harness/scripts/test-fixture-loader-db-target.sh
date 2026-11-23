@@ -21,6 +21,7 @@ for fixture in \
   reporting-non-conformance.sql \
   reporting-referrals.sql \
   reporting-locations.sql \
+  environmental-regulation.sql \
   reporting-recovery.sql; do
   touch "$FIXTURE_DIR/fixtures/$fixture"
 done

@@ -37,6 +37,26 @@ import SearchableSelect from "../../../common/SearchableSelect";
 import CustomDatePicker from "../../../common/CustomDatePicker";
 import { ConfigurationContext } from "../../../layout/Layout";
 
+/**
+ * An empty sample row as the manifest adds it, optionally of a sample type
+ * already (OGC-768 quick add).
+ */
+export const newSampleRow = (index, sampleTypeId = "") => ({
+  index,
+  sampleRejected: false,
+  rejectionReason: "",
+  sampleTypeId,
+  sampleXML: null,
+  panels: [],
+  tests: [],
+  referralItems: [],
+  container: "",
+  gpsLatitude: "",
+  gpsLongitude: "",
+  locationDetails: "",
+  qcMetadata: null,
+});
+
 const SampleTestSection = ({
   samples,
   setSamples,
@@ -44,6 +64,7 @@ const SampleTestSection = ({
   workflowType,
   orderData,
   renderSampleNote,
+  planTestIds,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
@@ -311,24 +332,66 @@ const SampleTestSection = ({
   };
 
   const handleAddSample = () => {
-    const newSample = {
-      index: samples.length,
-      sampleRejected: false,
-      rejectionReason: "",
-      sampleTypeId: "",
-      sampleXML: null,
-      panels: [],
-      tests: [],
-      referralItems: [],
-      // Environmental manifest fields
-      container: "",
-      gpsLatitude: "",
-      gpsLongitude: "",
-      locationDetails: "",
-      qcMetadata: null,
-    };
-    setSamples([...samples, newSample]);
+    setSamples([...samples, newSampleRow(samples.length)]);
   };
+
+  /**
+   * OGC-768: the regulation-driven test plan starts each row with the plan tests
+   * its sample type runs. A row that already has tests when the plan first sees
+   * it (a reopened order, or tests picked before any standard) keeps its
+   * selection; only tests a standard adds later are ticked. A test the plan
+   * ticked is ticked once: taken off, it stays off. One dropped from the plan
+   * comes off only the rows the plan ticked it on.
+   */
+  const planAppliedRef = useRef({});
+  const planKey = (planTestIds || []).map(String).join(",");
+  useEffect(() => {
+    if (!planTestIds || isReadOnly) {
+      return;
+    }
+    const plan = new Set(planTestIds.map(String));
+    let changed = false;
+    const updated = samples.map((sample, index) => {
+      if (!sample?.sampleTypeId || !testsPerSample[index]) {
+        return sample;
+      }
+      const key = `${index}:${sample.sampleTypeId}`;
+      let state = planAppliedRef.current[key];
+      if (!state) {
+        state = { added: new Set(), declined: new Set() };
+        if ((sample.tests || []).length > 0) {
+          plan.forEach((id) => state.declined.add(id));
+        }
+        planAppliedRef.current[key] = state;
+      }
+      let tests = sample.tests || [];
+      const dropped = tests.filter(
+        (test) =>
+          state.added.has(String(test.id)) && !plan.has(String(test.id)),
+      );
+      if (dropped.length > 0) {
+        tests = tests.filter((test) => !dropped.includes(test));
+        dropped.forEach((test) => state.added.delete(String(test.id)));
+        changed = true;
+      }
+      const toAdd = testsPerSample[index].filter(
+        (test) =>
+          plan.has(String(test.id)) &&
+          !state.added.has(String(test.id)) &&
+          !state.declined.has(String(test.id)) &&
+          !tests.some((chosen) => String(chosen.id) === String(test.id)),
+      );
+      if (toAdd.length > 0) {
+        toAdd.forEach((test) => state.added.add(String(test.id)));
+        tests = [...tests, ...toAdd];
+        changed = true;
+      }
+      return tests === (sample.tests || []) ? sample : { ...sample, tests };
+    });
+    if (changed) {
+      applySamples(updated);
+    }
+  }, [planKey, testsPerSample, samples.length]);
 
   const hasSetTest = (sample, index) =>
     (sample.tests || []).some((selected) => {
