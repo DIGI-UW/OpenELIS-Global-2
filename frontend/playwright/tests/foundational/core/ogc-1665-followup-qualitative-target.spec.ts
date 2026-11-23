@@ -82,7 +82,8 @@ test.describe("EQA follow-up register qualitative target (OGC-1665)", () => {
       await page.locator("#cycle-number").fill("1");
       await page.locator("#cycle-planned-start").click();
       await pickCalendarDay(page, 1, 1);
-      await pickCalendarDay(page, 15);
+      await page.locator("#cycle-planned-end").click();
+      await pickCalendarDay(page, 15, 1);
       await expect(page.locator("#cycle-planned-end")).not.toHaveValue("");
       await page.getByRole("button", { name: "Next", exact: true }).click();
 
