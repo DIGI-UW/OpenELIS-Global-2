@@ -61,6 +61,7 @@ public class SampleStorageServiceFlexibleAssignmentTest {
     private StorageRoom testRoom;
     private static final String TEST_EXTERNAL_ID = "EXT-2024-001";
     private static final String TEST_SAMPLE_ITEM_ID = "123";
+    private static final Integer ACTING_USER_ID = 42;
 
     @Before
     public void setUp() {
@@ -99,7 +100,7 @@ public class SampleStorageServiceFlexibleAssignmentTest {
         // Mock external ID lookup for resolveSampleItem (ID lookup has been removed)
         lenient().when(sampleItemService.getSampleItemsByExternalID(TEST_EXTERNAL_ID))
                 .thenReturn(java.util.Collections.singletonList(testSampleItem));
-        lenient().when(userContextHolder.requireSysUserId()).thenReturn("1");
+        lenient().when(userContextHolder.requireSysUserId()).thenReturn(String.valueOf(ACTING_USER_ID));
     }
 
     @Test
@@ -125,8 +126,10 @@ public class SampleStorageServiceFlexibleAssignmentTest {
             SampleStorageAssignment a = (SampleStorageAssignment) assignment;
             return a.getLocationId().equals(10) &&
                    a.getLocationType().equals("device") &&
-                   a.getPositionCoordinate() == null;
+                   a.getPositionCoordinate() == null &&
+                   ACTING_USER_ID.equals(a.getAssignedByUserId());
         }));
+        verify(sampleStorageMovementDAO).insert(argThat(movement -> ACTING_USER_ID.equals(movement.getMovedByUserId())));
     }
 
     @Test
@@ -279,6 +282,8 @@ public class SampleStorageServiceFlexibleAssignmentTest {
             SampleStorageAssignment a = (SampleStorageAssignment) assignment;
             return a.getLocationId().equals(20) && a.getLocationType().equals("shelf");
         }));
+        verify(sampleStorageMovementDAO)
+                .insert(argThat(movement -> ACTING_USER_ID.equals(movement.getMovedByUserId())));
     }
 
     @Test
