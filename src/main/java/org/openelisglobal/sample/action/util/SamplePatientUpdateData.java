@@ -40,6 +40,7 @@ import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IsoDateNormalizer;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
@@ -978,9 +979,9 @@ public class SamplePatientUpdateData {
                     ValueType.DICTIONARY);
         }
 
-        createObservation(sampleOrder.getRequestDate(),
+        createObservation(IsoDateNormalizer.toIso(sampleOrder.getRequestDate()),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.REQUEST_DATE), ValueType.LITERAL);
-        createClearableObservation(sampleOrder.getNextVisitDate(),
+        createClearableObservation(IsoDateNormalizer.toIso(sampleOrder.getNextVisitDate()),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.NEXT_VISIT_DATE),
                 ValueType.LITERAL);
         createObservation(sampleOrder.getTestLocationCode(),
