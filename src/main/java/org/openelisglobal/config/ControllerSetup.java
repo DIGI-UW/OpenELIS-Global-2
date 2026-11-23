@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 // Leaves HIGHEST_PRECEDENCE free for a package-scoped @ControllerAdvice.
@@ -70,6 +71,21 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
         LogEvent.logDebug(this.getClass().getName(), "handleAccessDenied", ex.getMessage());
         return new ResponseEntity<>(buildGenericErrorBody(HttpStatus.FORBIDDEN), new HttpHeaders(),
                 HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * Keeps ResponseStatusException on its intended status code (e.g. 400 Bad
+     * Request, 401 Unauthorized, 404 Not Found): handleRuntimeException would
+     * otherwise claim them, since ResponseStatusException is a RuntimeException.
+     */
+    @ExceptionHandler(value = { ResponseStatusException.class })
+    protected ResponseEntity<Object> handleResponseStatusException(ResponseStatusException ex, WebRequest request) {
+        if (ex.getStatusCode().is5xxServerError()) {
+            LogEvent.logError(ex);
+        } else {
+            LogEvent.logDebug(this.getClass().getName(), "handleResponseStatusException", ex.getMessage());
+        }
+        return handleExceptionInternal(ex, null, ex.getResponseHeaders(), ex.getStatusCode(), request);
     }
 
     @ExceptionHandler(InvalidClinicalAttachmentException.class)

@@ -71,6 +71,21 @@ public class ControllerSetupExceptionHandlingTest {
         public String refused() {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "paging.currentPage must name a loaded page");
         }
+
+        @GetMapping("/not-found")
+        public String notFound() {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "holiday not found");
+        }
+
+        @GetMapping("/unauthorized")
+        public String unauthorized() {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
+        }
+
+        @GetMapping("/server-error-status")
+        public String serverErrorStatus() {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "upstream failed");
+        }
     }
 
     private MockMvc mockMvc;
@@ -136,6 +151,34 @@ public class ControllerSetupExceptionHandlingTest {
         withSiteMessages.perform(get("/refused")).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("paging.currentPage must name a loaded page"))
                 .andExpect(jsonPath("$.title").value("Bad Request"));
+    }
+
+    @Test
+    public void responseStatusException_badRequest_answers400() throws Exception {
+        mockMvc.perform(get("/refused")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail").value("paging.currentPage must name a loaded page"))
+                .andExpect(jsonPath("$.title").value("Bad Request"));
+    }
+
+    @Test
+    public void responseStatusException_notFound_answers404() throws Exception {
+        mockMvc.perform(get("/not-found")).andExpect(status().isNotFound()).andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.detail").value("holiday not found"))
+                .andExpect(jsonPath("$.title").value("Not Found"));
+    }
+
+    @Test
+    public void responseStatusException_unauthorized_answers401() throws Exception {
+        mockMvc.perform(get("/unauthorized")).andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401)).andExpect(jsonPath("$.detail").value("Not authenticated"))
+                .andExpect(jsonPath("$.title").value("Unauthorized"));
+    }
+
+    @Test
+    public void responseStatusException_serverError_answers500() throws Exception {
+        mockMvc.perform(get("/server-error-status")).andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500)).andExpect(jsonPath("$.detail").value("upstream failed"))
+                .andExpect(jsonPath("$.title").value("Internal Server Error"));
     }
 
     @Test
