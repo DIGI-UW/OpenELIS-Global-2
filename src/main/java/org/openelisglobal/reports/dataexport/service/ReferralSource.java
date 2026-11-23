@@ -28,11 +28,14 @@ public class ReferralSource implements ReportingSource {
     private final ReferralExportDAO referrals;
     private final ReportingResultValues values;
     private final ReportingCsvWriter csv;
+    private final ExportLocations locations;
 
-    public ReferralSource(ReferralExportDAO referrals, ReportingResultValues values, ReportingCsvWriter csv) {
+    public ReferralSource(ReferralExportDAO referrals, ReportingResultValues values, ReportingCsvWriter csv,
+            ExportLocations locations) {
         this.referrals = referrals;
         this.values = values;
         this.csv = csv;
+        this.locations = locations;
     }
 
     @Override
@@ -42,6 +45,12 @@ public class ReferralSource implements ReportingSource {
 
     @Override
     public List<ReportingVariable> catalog() {
+        List<ReportingVariable> fields = new java.util.ArrayList<>(referralFields());
+        fields.addAll(locations.catalog(List.of("TABLE")));
+        return fields;
+    }
+
+    private static List<ReportingVariable> referralFields() {
         return List.of(field("referralId", "Referral ID", "text"),
                 field("referralResultId", "Referral Result ID", "text"), field("resultId", "Result ID", "text"),
                 field("referralAccessionNumber", "Accession Number", "text"),
@@ -61,7 +70,8 @@ public class ReferralSource implements ReportingSource {
     @Override
     public void validateConfiguration(ReportSourceConfig configuration) {
         if (!List.of("sentDate", "requestDate").contains(configuration.dateAnchor())
-                || !configuration.layouts().equals(List.of("TABLE")) || !configuration.catalogs().isEmpty()
+                || !configuration.layouts().equals(List.of("TABLE"))
+                || !List.of(ExportLocations.GROUP).containsAll(configuration.catalogs())
                 || !List.of("labSectionIds", "testIds").containsAll(configuration.filters()))
             throw new IllegalArgumentException("reporting.definition.unsupportedMapping");
         if (!catalog().stream().map(ReportingVariable::id).collect(Collectors.toSet())
@@ -77,6 +87,7 @@ public class ReferralSource implements ReportingSource {
         // Per-export memo so repeated coded values cost one dictionary query each
         // rather than one per row; see ReportingResultValues.format.
         Map<String, String> dictionaryCache = new HashMap<>();
+        Map<String, Map<String, String>> locationCache = new HashMap<>();
         try (var stream = referrals.stream(request)) {
             var input = stream.iterator();
             Iterator<ExportRecord> records = new Iterator<>() {
@@ -89,7 +100,7 @@ public class ReferralSource implements ReportingSource {
                         var result = row.returnedResult() == null ? null : row.returnedResult().getResult();
                         if (result != null && values.isQualifier(result))
                             continue;
-                        var compiled = compile(row, zone, referringLab, dictionaryCache);
+                        var compiled = compile(row, zone, referringLab, dictionaryCache, locationCache);
                         if (++count % 250 == 0)
                             referrals.clearReadBatch();
                         return compiled;
@@ -127,12 +138,13 @@ public class ReferralSource implements ReportingSource {
     }
 
     private Compiled compile(ReferralExportDAO.Row row, ZoneId zone, String referringLab,
-            Map<String, String> dictionaryCache) {
+            Map<String, String> dictionaryCache, Map<String, Map<String, String>> locationCache) {
         var referral = row.referral();
         var returned = row.returnedResult();
         var result = returned == null ? null : returned.getResult();
         var test = row.returnedTest();
-        Map<String, String> fields = new LinkedHashMap<>();
+        Map<String, String> fields = new LinkedHashMap<>(
+                locations.forSample(referral.getAnalysis().getSampleItem().getSample(), locationCache));
         fields.put("referralId", referral.getId());
         fields.put("referralAccessionNumber", referral.getAnalysis().getSampleItem().getSample().getAccessionNumber());
         fields.put("referringLab", referringLab);

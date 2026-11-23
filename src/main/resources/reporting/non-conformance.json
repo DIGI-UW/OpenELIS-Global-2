@@ -1,6 +1,6 @@
 {
   "id": "NON_CONFORMANCE",
-  "version": 1,
+  "version": 2,
   "label": "Non-Conformance",
   "source": "NON_CONFORMANCE",
   "dateAnchor": "eventOrRecordedDate",
@@ -21,7 +21,9 @@
     "ncRecordedDate",
     "ncRecordSource"
   ],
-  "catalogs": [],
+  "catalogs": [
+    "location"
+  ],
   "filters": [
     "labSectionIds"
   ],

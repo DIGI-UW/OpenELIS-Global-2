@@ -20,10 +20,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class NonConformanceSource implements ReportingSource {
     private final NonConformanceExportDAO occurrences;
     private final ReportingCsvWriter csv;
+    private final ExportLocations locations;
 
-    public NonConformanceSource(NonConformanceExportDAO occurrences, ReportingCsvWriter csv) {
+    public NonConformanceSource(NonConformanceExportDAO occurrences, ReportingCsvWriter csv,
+            ExportLocations locations) {
         this.occurrences = occurrences;
         this.csv = csv;
+        this.locations = locations;
     }
 
     @Override
@@ -33,6 +36,12 @@ public class NonConformanceSource implements ReportingSource {
 
     @Override
     public List<ReportingVariable> catalog() {
+        List<ReportingVariable> fields = new java.util.ArrayList<>(nonConformanceFields());
+        fields.addAll(locations.catalog(List.of("TABLE")));
+        return fields;
+    }
+
+    private static List<ReportingVariable> nonConformanceFields() {
         return List.of(field("ncAccessionNumber", "Accession Number", "text"),
                 field("rejectionReason", "Rejection Reason", "text"), field("rejectionDate", "Rejection Date", "date"),
                 field("rejectionStage", "Rejection Stage", "text"), field("rejectedBy", "Rejected By", "text"),
@@ -49,7 +58,8 @@ public class NonConformanceSource implements ReportingSource {
     @Override
     public void validateConfiguration(ReportSourceConfig configuration) {
         if (!"eventOrRecordedDate".equals(configuration.dateAnchor())
-                || !configuration.layouts().equals(List.of("TABLE")) || !configuration.catalogs().isEmpty()
+                || !configuration.layouts().equals(List.of("TABLE"))
+                || !List.of(ExportLocations.GROUP).containsAll(configuration.catalogs())
                 || !List.of("labSectionIds").containsAll(configuration.filters()))
             throw new IllegalArgumentException("reporting.definition.unsupportedMapping");
         if (!catalog().stream().map(ReportingVariable::id).collect(Collectors.toSet())
@@ -60,9 +70,11 @@ public class NonConformanceSource implements ReportingSource {
     @Override
     public long write(Writer output, ExportSnapshot request) throws IOException {
         ZoneId zone = ZoneId.of(request.timezone());
+        Map<String, Map<String, String>> locationCache = new java.util.HashMap<>();
         try (var events = occurrences.events(request); var rejections = occurrences.rejections(request)) {
             var records = java.util.stream.Stream.concat(events.map(row -> {
                 Map<String, String> fields = common(row.accession(), row.specimenId(), row.reason());
+                fields.putAll(locations.forAccession(row.accession(), locationCache));
                 fields.put("rejectionStage", row.stage());
                 fields.put("rejectedBy", row.reporter());
                 fields.put("ncStatus", row.status());
@@ -74,6 +86,7 @@ public class NonConformanceSource implements ReportingSource {
                 return record("event:" + row.eventId() + (row.linkId() == null ? "" : ":link:" + row.linkId()), fields);
             }), rejections.map(row -> {
                 Map<String, String> fields = common(row.accession(), row.specimenId(), row.reason());
+                fields.putAll(locations.forAccession(row.accession(), locationCache));
                 String recorded = row.recordedDate() == null ? null
                         : row.recordedDate().toInstant().atZone(zone).toLocalDate().toString();
                 fields.put("rejectionDate", recorded);

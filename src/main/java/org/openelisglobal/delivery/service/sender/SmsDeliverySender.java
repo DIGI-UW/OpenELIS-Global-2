@@ -61,6 +61,8 @@ public class SmsDeliverySender implements DeliverySender {
         try {
             smsNotificationSender.send(notification);
             return null;
+        } catch (DeliveryException e) {
+            throw e;
         } catch (RuntimeException e) {
             throw new DeliveryException(Code.OTHER,
                     e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage(), e);

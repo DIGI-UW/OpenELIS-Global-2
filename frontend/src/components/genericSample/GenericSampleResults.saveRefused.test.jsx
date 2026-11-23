@@ -24,7 +24,7 @@ vi.mock("../utils/Utils", async (importOriginal) => ({
   ...utilsMock,
 }));
 
-vi.mock("../layout/Layout", () => ({
+vi.mock("../layout/contexts", () => ({
   NotificationContext: React.createContext({
     notificationVisible: false,
     ...notify,

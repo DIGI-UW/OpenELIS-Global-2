@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    This table records who moved a pathology case to which stage, and when
+    (ISO 15189:2022 7.3.1(d)). A row is added each time a case enters a stage
+    and completed when the case leaves it. A return to an earlier stage adds a
+    row too, marked RETURN with its reason. The only thing the bench records on
+    a row is the processor run, once, at Processing.
+
+    The operator and the times are not columns on pathology_sample. That table
+    holds one status, so a second pass through a stage would overwrite the
+    first, and eleven stages would mean twenty-two more columns.
+
+    Cases on file get no row. Who moved them was never recorded, and the
+    operator column cannot be empty, so their history starts with the first
+    move after the upgrade.
+    -->
+
+    <changeSet id="OGC-264-pathology-stage-event-table" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="pathology_stage_event"/>
+            </not>
+        </preConditions>
+        <comment>Record each stage a pathology case enters, with the operator and the time</comment>
+        <createSequence schemaName="clinlims" sequenceName="pathology_stage_event_seq"
+            incrementBy="1" startValue="1"/>
+        <createTable schemaName="clinlims" tableName="pathology_stage_event">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" primaryKeyName="pathology_stage_event_pkey" nullable="false"/>
+            </column>
+            <column name="pathology_sample_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stage" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entered_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entered_by" type="NUMERIC(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="completed_at" type="TIMESTAMP"/>
+            <column name="completed_by" type="NUMERIC(10)"/>
+            <column name="direction" type="VARCHAR(8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason" type="VARCHAR(255)"/>
+            <column name="run_reference" type="VARCHAR(64)"/>
+            <column name="notes" type="TEXT"/>
+            <!-- The row's optimistic-lock version; BaseObject maps it to last_updated. -->
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <!-- No cascade: a case with stage history cannot be deleted. -->
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_stage_event" baseColumnNames="pathology_sample_id"
+            referencedTableSchemaName="clinlims" referencedTableName="pathology_sample" referencedColumnNames="id"
+            constraintName="pathology_stage_event_case_fk"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_stage_event" baseColumnNames="entered_by"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"
+            constraintName="pathology_stage_event_entered_by_fk"/>
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims" baseTableName="pathology_stage_event" baseColumnNames="completed_by"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"
+            constraintName="pathology_stage_event_completed_by_fk"/>
+        <!-- The open-source XML has no check-constraint change, so the two rules on
+            direction and reason are written in SQL; dropping the table removes them. -->
+        <sql>
+            ALTER TABLE clinlims.pathology_stage_event ADD CONSTRAINT pathology_stage_event_direction_ck
+            CHECK (direction IN ('FORWARD', 'RETURN'));
+            ALTER TABLE clinlims.pathology_stage_event ADD CONSTRAINT pathology_stage_event_return_reason_ck
+            CHECK (direction != 'RETURN' OR reason IS NOT NULL);
+        </sql>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="pathology_stage_event"/>
+            <dropSequence schemaName="clinlims" sequenceName="pathology_stage_event_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-stage-event-case-index" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists schemaName="clinlims" indexName="idx_pathology_stage_event_case"/>
+            </not>
+        </preConditions>
+        <comment>Read a case's stage history in the order it happened</comment>
+        <createIndex schemaName="clinlims" tableName="pathology_stage_event" indexName="idx_pathology_stage_event_case">
+            <column name="pathology_sample_id"/>
+            <column name="entered_at"/>
+        </createIndex>
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="pathology_stage_event" indexName="idx_pathology_stage_event_case"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

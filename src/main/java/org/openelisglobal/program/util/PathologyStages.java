@@ -91,6 +91,53 @@ public final class PathologyStages {
     }
 
     /**
+     * The stage a case standing at {@code current} is sent on to: the first later
+     * stage this deployment uses, skipping DECALCIFICATION unless the specimen was
+     * flagged for it (FR-2.3, FR-2.4, FR-4.1). Empty from READY_PATHOLOGIST on,
+     * since from there the pathologist's own actions move the case. The search
+     * starts from the stage's own position even when that stage is switched off, so
+     * a case parked there still moves on.
+     */
+    public static Optional<PathologyStatus> next(PathologyStatus current, Predicate<PathologyStatus> deploymentEnabled,
+            boolean decalcificationRequired) {
+        Objects.requireNonNull(current, "current");
+        Objects.requireNonNull(deploymentEnabled, "deploymentEnabled");
+        if (current.ordinal() >= PathologyStatus.READY_PATHOLOGIST.ordinal()) {
+            return Optional.empty();
+        }
+        return ordered().stream().filter(status -> status.ordinal() > current.ordinal())
+                .filter(status -> applies(status, deploymentEnabled, decalcificationRequired)).findFirst();
+    }
+
+    /**
+     * The stage a case standing at {@code current} is returned to: the nearest
+     * earlier stage that applies to it, on the same rules as {@link #next}
+     * (FR-2.5). Empty at ACCESSIONED, which has nothing before it, and at
+     * COMPLETED, which only a reopen may move.
+     */
+    public static Optional<PathologyStatus> previous(PathologyStatus current,
+            Predicate<PathologyStatus> deploymentEnabled, boolean decalcificationRequired) {
+        Objects.requireNonNull(current, "current");
+        Objects.requireNonNull(deploymentEnabled, "deploymentEnabled");
+        if (current == PathologyStatus.COMPLETED) {
+            return Optional.empty();
+        }
+        return ordered().stream().filter(status -> status.ordinal() < current.ordinal())
+                .filter(status -> applies(status, deploymentEnabled, decalcificationRequired))
+                .reduce((earlier, later) -> later);
+    }
+
+    /**
+     * A stage this case visits: one the deployment uses, and for DECALCIFICATION
+     * one the specimen was flagged for.
+     */
+    private static boolean applies(PathologyStatus status, Predicate<PathologyStatus> deploymentEnabled,
+            boolean decalcificationRequired) {
+        return isEnabled(status, deploymentEnabled)
+                && (status != PathologyStatus.DECALCIFICATION || decalcificationRequired);
+    }
+
+    /**
      * The React Intl message id for a stage's label. Derived from the constant name
      * rather than stored on the enum, because the enum has no room for a per-locale
      * label: the English message bundle holds the label the screen renders, and the

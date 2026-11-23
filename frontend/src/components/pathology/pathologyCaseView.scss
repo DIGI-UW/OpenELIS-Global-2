@@ -59,14 +59,19 @@ $field-inline-size: 12rem;
   flex: 0 0 auto;
 }
 
-// Keep the shared guidance above the action row. Carbon's own description
-// remains available through its uploader's existing accessible association.
-.pathology-case-view__upload-hint {
+// A line of guidance in helper text, such as the upload hint above a slide's
+// actions (Carbon's own description stays on the uploader) or what a label
+// check asks the bench to scan.
+.pathology-case-view__hint {
   @include type.type-style("helper-text-01");
 
   color: var(--cds-text-secondary);
-  flex-basis: 100%;
   margin: 0;
+}
+
+// Something in a wrapping line of controls that takes a line of its own.
+.pathology-case-view__own-line {
+  flex-basis: 100%;
 }
 
 .pathology-case-view__slide-upload .cds--label-description {
@@ -149,12 +154,170 @@ $field-inline-size: 12rem;
   max-inline-size: 20rem;
 }
 
+// The action bar's status slot: the stage the case stands at, and the return
+// beside it, which opens into a reason field and its two buttons on the same
+// wrapping line.
+.pathology-case-view__stage-control,
+.pathology-case-view__return-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}
+
 .pathology-case-view__stage-control {
-  max-inline-size: 18rem;
+  align-items: center;
+}
+
+// The status group takes the room the action group leaves and wraps its own
+// controls inside it, so an open return row does not push the three action
+// buttons onto a line of their own. Its basis is zero, not its content: with
+// the reason field and its two buttons open, the content is wider than the
+// room, and a content-sized group would wrap the action group under it.
+.case-view__action-bar-status:has(> .pathology-case-view__stage-control) {
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+
+.pathology-case-view__stage-readout {
+  @include type.type-style("heading-compact-01");
+}
+
+// The reason field carries its label above the input and its helper text
+// below, so the buttons are lined up with the input itself: they start
+// below the label (one line of label-01 and the label's own bottom margin),
+// not at the foot of the helper text.
+.pathology-case-view__return-row {
+  align-items: flex-start;
+}
+
+.pathology-case-view__return-row > .cds--btn {
+  margin-block-start: spacing.$spacing-06;
+}
+
+.pathology-case-view__return-row > .case-view__locked-hint {
+  flex-basis: 100%;
+}
+
+// A reason is a sentence, but the field must leave the buttons beside it: it
+// takes what room the row has, between a width that still shows a few words
+// and the width every other field has, so the two buttons stay on its line
+// where the action bar is narrow.
+.pathology-case-view__return-row .cds--form-item {
+  flex: 1 1 8rem;
+  max-inline-size: $field-inline-size;
+  min-inline-size: 8rem;
+}
+
+// A stage history row's stage and its Returned tag, side by side.
+.pathology-case-view__stage-event-stage {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}
+
+// A stage list scrolls sideways on its own where the centre column is
+// narrower than its columns.
+.pathology-case-view__stage-events {
+  max-inline-size: 100%;
+  overflow-x: auto;
+
+  // The region is a tab stop so a keyboard can scroll it; the ring shows
+  // where focus is, in the theme's own focus colour.
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+// A return's reason, under the Returned tag in a one-stage list.
+.pathology-case-view__stage-event-reason {
+  display: block;
+  margin-block-start: spacing.$spacing-02;
 }
 
 .pathology-case-view__heading {
   @include type.type-style("heading-compact-01");
 
   margin-block-end: spacing.$spacing-03;
+}
+
+// The sentence that opens the microtomy section.
+.pathology-case-view__lead {
+  @include type.type-style("body-compact-01");
+
+  color: var(--cds-text-secondary);
+  margin-block-end: spacing.$spacing-03;
+}
+
+// One block and the slides cut from it. The group is not a row: Playwright
+// and the tests find slide rows by the row class, and the group holds them.
+.pathology-case-view__group {
+  border-block-end: 1px solid var(--cds-border-subtle);
+}
+
+// The block's toggle, identity, tissue, slide count and Add slide, on one
+// wrapping line, with Add slide at its end.
+.pathology-case-view__group-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+  padding-block: spacing.$spacing-04;
+}
+
+// A block's identity shares the header's line, rather than the line of its
+// own it takes above a row's fields.
+.pathology-case-view__group-header > .pathology-case-view__row-identity {
+  flex-basis: auto;
+}
+
+.pathology-case-view__group-title {
+  @include type.type-style("heading-compact-01");
+}
+
+.pathology-case-view__group-meta {
+  @include type.type-style("body-compact-01");
+
+  color: var(--cds-text-secondary);
+}
+
+.pathology-case-view__group-add {
+  margin-inline-start: auto;
+}
+
+// Why a block's Add slide is held back, on a line of its own under it.
+.pathology-case-view__group-hint {
+  text-align: end;
+}
+
+// The slides sit indented under their block, and the group's own rule closes
+// the last of them.
+.pathology-case-view__group-body {
+  padding-inline-start: spacing.$spacing-07;
+}
+
+.pathology-case-view__group-body > .pathology-case-view__row:last-child {
+  border-block-end: 0;
+}
+
+// A slide's label check: the hint, a mismatch when there is one, and the two
+// scanned fields with their buttons, under the row's own fields.
+.pathology-case-view__verify {
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-03;
+}
+
+// The buttons line up with the inputs, below the fields' labels.
+.pathology-case-view__verify-fields {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}
+
+// A verified slide's tag and the sentence naming who checked it.
+.pathology-case-view__label-verification {
+  display: inline-flex;
 }

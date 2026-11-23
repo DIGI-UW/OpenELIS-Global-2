@@ -138,6 +138,36 @@ public class NonConformanceExportMappingIntegrationTest extends BaseWebContextSe
         }
     }
 
+    /**
+     * OGC-1652: a rejection names where the specimen came from, found through its
+     * lab number, and an event with no specimen leaves the Location columns blank.
+     */
+    @Test
+    public void aRejectionCarriesWhereItsSpecimenCameFrom() throws Exception {
+        executeDataSetWithStateManagement("testdata/reporting-nonconformance.xml");
+        ExportLocationFixture.attach(entityManager, "1");
+        var specimen = entityManager.find(SampleItem.class, "1");
+        specimen.setRejected(true);
+        specimen.setRejectReasonId("90001");
+        event(null, "2026-05-05");
+        entityManager.flush();
+        entityManager.clear();
+        var definition = catalog.definition("NON_CONFORMANCE");
+        var available = catalog.variables(definition, "TABLE").stream()
+                .collect(java.util.stream.Collectors.toMap(v -> v.id(), java.util.function.Function.identity()));
+        var fields = List.of("ncRecordSource", "ncAccessionNumber", "referringSite", "wardDept",
+                "area:" + ExportLocationFixture.REGION_TYPE);
+        var snapshot = new ExportSnapshot(definition, "TABLE", fields.stream().map(available::get).toList(),
+                new ExportFilter("2026-05-05", "2026-05-05", List.of("1"), List.of(), List.of()), "UTC", List.of());
+        var output = new java.io.StringWriter();
+
+        catalog.source(definition.source()).write(output, snapshot);
+
+        String csv = output.toString();
+        assertTrue(csv, csv.contains("Recorded rejection,12345,Alotau Hospital,Maternity Ward,Southern Region\r\n"));
+        assertTrue(csv, csv.contains("Non-conformance event,,,,\r\n"));
+    }
+
     private NcEvent event(String happened, String recorded) {
         var event = new NcEvent();
         event.setDateOfEvent(happened == null ? null : Date.valueOf(happened));

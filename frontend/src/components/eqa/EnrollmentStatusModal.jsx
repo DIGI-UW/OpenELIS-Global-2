@@ -1,11 +1,6 @@
 import React, { useState } from "react";
-import {
-  DatePicker,
-  DatePickerInput,
-  Modal,
-  Stack,
-  TextArea,
-} from "@carbon/react";
+import { DatePickerInput, Modal, Stack, TextArea } from "@carbon/react";
+import { DatePicker } from "../common/DatePicker";
 import { useIntl } from "react-intl";
 import { toLocalIsoDate } from "../utils/Utils";
 import { calendarOnlyInput } from "./eqaCommon";

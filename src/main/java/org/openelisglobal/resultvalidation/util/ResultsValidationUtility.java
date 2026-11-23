@@ -43,6 +43,7 @@ import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.QAService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
@@ -77,6 +78,7 @@ import org.openelisglobal.result.action.util.CriticalRangeFormat;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
 import org.openelisglobal.result.action.util.StoredDictionaryResult;
 import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.service.ResultServiceImpl;
 import org.openelisglobal.result.service.ResultSignatureService;
 import org.openelisglobal.result.valueholder.QcEvaluation;
 import org.openelisglobal.result.valueholder.Result;
@@ -114,6 +116,8 @@ public class ResultsValidationUtility {
     protected TestSectionService testSectionService;
     @Autowired
     protected ResultService resultService;
+    @Autowired
+    protected RuleResultScope ruleResultScope;
     @Autowired
     protected TestResultService testResultService;
     @Autowired
@@ -557,8 +561,8 @@ public class ResultsValidationUtility {
         }
         for (org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component : components) {
             if (component.getId().equals(result.getTestResult().getComponentId())
-                    && !GenericValidator.isBlankOrNull(component.getLabel())) {
-                return displayTestName + " — " + component.getLabel();
+                    && !GenericValidator.isBlankOrNull(component.getLocalizedLabel())) {
+                return displayTestName + " — " + component.getLocalizedLabel();
             }
         }
         return displayTestName;
@@ -704,7 +708,11 @@ public class ResultsValidationUtility {
         setResultLimitDependencies(resultLimit, testItem, testResults);
         testItem.setRangeNotAppliedReason(
                 rangeSelection.isRangeNotApplied() ? rangeSelection.getReason().getMessageKey() : null);
-        testItem.setCritical(ValidationSignals.isCritical(resultLimit, result));
+        boolean criticalAnswer = result != null && "D".equals(result.getResultType())
+                && testResultService.isCriticalAnswer(test.getId(),
+                        result.getTestResult() == null ? null : result.getTestResult().getComponentId(),
+                        result.getValue());
+        testItem.setCritical(criticalAnswer || ValidationSignals.isCritical(resultLimit, result));
         testItem.setAnalysisMethod(analysis.getAnalysisType());
         testItem.setResult(result);
         testItem.setDictionaryResults(
@@ -717,8 +725,9 @@ public class ResultsValidationUtility {
         } else {
             testItem.setResultType(getTestResultType(testResults));
         }
-        testItem.setResultFlag(ValidationSignals.resultFlag(resultLimit, testItem.getResultType(),
-                result == null ? null : result.getValue()));
+        testItem.setResultFlag(criticalAnswer ? ValidationSignals.FLAG_CRITICAL
+                : ValidationSignals.resultFlag(resultLimit, testItem.getResultType(),
+                        result == null ? null : result.getValue()));
         testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType()));
         testItem.setTestSortNumber(test.getSortOrder());
         testItem.setReflexGroup(analysis.getTriggeredReflex());
@@ -834,30 +843,27 @@ public class ResultsValidationUtility {
     public final List<AnalysisItem> testResultListToAnalysisItemList(List<ResultValidationItem> testResultList) {
         List<AnalysisItem> analysisResultList = new ArrayList<>();
 
-        /*
-         * The issue with multiselect results is that each selection is one
-         * ResultValidationItem but they all need to be condensed into one AnalysisItem
-         * (whose multiSelectResultValues carries every selection as JSON). The
-         * condensing is scoped per analysis: other results of the same accession —
-         * other analyses, or other components of a multi-component analysis — must
-         * still get their own rows. Qualified results found among an analysis's
-         * multiselect selections are captured onto its condensed item.
-         */
-        Map<String, AnalysisItem> condensedMultiSelectByAnalysis = new HashMap<>();
+        // Condense each analysis component's multiselect selections into one row,
+        // carrying any qualified result; other components keep their own rows.
+        Map<String, AnalysisItem> condensedMultiSelectByComponent = new HashMap<>();
+        Map<String, String> primaryByTest = new HashMap<>();
         for (ResultValidationItem testResultItem : testResultList) {
-            String analysisId = testResultItem.getAnalysis().getId();
             boolean multiSelect = TypeOfTestResultServiceImpl.ResultType
                     .isMultiSelectVariant(testResultItem.getResultType());
+            String componentKey = multiSelect
+                    ? testResultItem.getAnalysis().getId() + "|"
+                            + ruleResultScope.componentIdOf(testResultItem.getResult(), primaryByTest)
+                    : null;
 
-            if (!multiSelect || !condensedMultiSelectByAnalysis.containsKey(analysisId)) {
-                AnalysisItem convertedItem = testResultItemToAnalysisItem(testResultItem);
+            if (!multiSelect || !condensedMultiSelectByComponent.containsKey(componentKey)) {
+                AnalysisItem convertedItem = testResultItemToAnalysisItem(testResultItem, primaryByTest);
                 analysisResultList.add(convertedItem);
                 if (multiSelect) {
-                    condensedMultiSelectByAnalysis.put(analysisId, convertedItem);
+                    condensedMultiSelectByComponent.put(componentKey, convertedItem);
                 }
             }
 
-            AnalysisItem condensedItem = condensedMultiSelectByAnalysis.get(analysisId);
+            AnalysisItem condensedItem = multiSelect ? condensedMultiSelectByComponent.get(componentKey) : null;
             if (condensedItem != null && testResultItem.isHasQualifiedResult()) {
                 condensedItem.setQualifiedResultValue(testResultItem.getQualifiedResultValue());
                 condensedItem.setQualifiedDictionaryId(testResultItem.getQualifiedDictionaryId());
@@ -1015,7 +1021,7 @@ public class ResultsValidationUtility {
                     .componentOf(testResultComponentService.getComponentsByTestId(testResultItem.getTestId()),
                             componentId);
             if (component != null) {
-                analysisResultItem.setComponentLabel(component.getLabel());
+                analysisResultItem.setComponentLabel(component.getLocalizedLabel());
                 analysisResultItem.setComponentDisplayOrder(component.getDisplayOrder());
             }
         }
@@ -1098,7 +1104,8 @@ public class ResultsValidationUtility {
         }
     }
 
-    public final AnalysisItem testResultItemToAnalysisItem(ResultValidationItem testResultItem) {
+    public final AnalysisItem testResultItemToAnalysisItem(ResultValidationItem testResultItem,
+            Map<String, String> primaryByTest) {
         AnalysisItem analysisResultItem = new AnalysisItem();
         String testUnits = rowUnits(testResultItem.getTestId(), testResultItem.getResult());
         String testName = testResultItem.getTestName();
@@ -1144,8 +1151,12 @@ public class ResultsValidationUtility {
         analysisResultItem.setNormal(testResultItem.isNormalResult());
         if (result != null) {
             if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(testResultItem.getResultType())) {
-                Analysis analysis = testResultItem.getAnalysis();
-                analysisResultItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
+                String componentId = ruleResultScope.componentIdOf(result, primaryByTest);
+                analysisResultItem.setMultiSelectResultValues(ResultServiceImpl
+                        .getJSONStringForMultiSelect(resultService.getResultsByAnalysis(testResultItem.getAnalysis())
+                                .stream().filter(r -> java.util.Objects
+                                        .equals(ruleResultScope.componentIdOf(r, primaryByTest), componentId))
+                                .collect(Collectors.toList())));
             } else {
                 analysisResultItem.setResult("N".equals(result.getResultType()) ? result.getEnteredValue()
                         : getFormattedResult(testResultItem));

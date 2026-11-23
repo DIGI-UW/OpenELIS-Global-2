@@ -6,23 +6,33 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.qc.form.BenchQCCaptureForm;
+import org.openelisglobal.resultrun.form.ResultRunChip;
 import org.openelisglobal.resultrun.form.ResultRunHeader;
 import org.openelisglobal.resultrun.form.ResultRunListResponse;
 import org.openelisglobal.resultrun.form.ResultRunRowsPage;
+import org.openelisglobal.resultrun.form.ResultRunSelection;
+import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.service.ResultRunService;
+import org.openelisglobal.resultrun.service.RunQcService;
+import org.openelisglobal.resultrun.valueholder.RunTestAction;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.systemuser.service.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,12 +49,14 @@ public class ResultRunRestController extends BaseRestController {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final ResultRunService resultRunService;
+    private final RunQcService runQcService;
     private final UserService userService;
     private final RoleService roleService;
 
-    public ResultRunRestController(ResultRunService resultRunService, UserService userService,
-            RoleService roleService) {
+    public ResultRunRestController(ResultRunService resultRunService, RunQcService runQcService,
+            UserService userService, RoleService roleService) {
         this.resultRunService = resultRunService;
+        this.runQcService = runQcService;
         this.userService = userService;
         this.roleService = roleService;
     }
@@ -62,8 +74,17 @@ public class ResultRunRestController extends BaseRestController {
 
     @GetMapping(value = "/{id}/rows", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ResultRunRowsPage> rows(HttpServletRequest request, @PathVariable Long id,
-            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "50") int pageSize) {
-        return ResponseEntity.of(resultRunService.getRows(id, viewer(request), page, pageSize));
+            @RequestParam(required = false) String chip, @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int pageSize) {
+        return ResponseEntity
+                .of(resultRunService.getRows(id, viewer(request), ResultRunChip.fromRequest(chip), page, pageSize));
+    }
+
+    /** What a bulk action on this selection would cover (FR-E11, FR-E12). */
+    @PostMapping(value = "/{id}/selection", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ResultRunSelectionSummary> selection(HttpServletRequest request, @PathVariable Long id,
+            @RequestBody ResultRunSelection selection) {
+        return ResponseEntity.of(resultRunService.summarizeSelection(id, viewer(request), selection));
     }
 
     /**
@@ -78,6 +99,63 @@ public class ResultRunRestController extends BaseRestController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(OBJECT_MAPPER.readTree(json.get()));
+    }
+
+    /**
+     * Records a control on the run (FR-E2 Record control) and answers with the
+     * run's QC block as it now stands. The control's test must be one the user
+     * holds Results rights for.
+     */
+    @PostMapping(value = "/{id}/controls", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> recordControl(HttpServletRequest request, @PathVariable Long id,
+            @RequestBody BenchQCCaptureForm capture) {
+        RunViewer viewer = viewer(request);
+        if (resultRunService.getHeader(id, viewer).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        if (capture == null || capture.testId() == null || !viewer.testIds().contains(capture.testId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        try {
+            runQcService.recordControl(id, capture, Integer.parseInt(getSysUserId(request)));
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage() == null ? "Invalid control result" : e.getMessage();
+            return ResponseEntity.badRequest().body(Map.of("message", message));
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(runQcService.qcBlock(id));
+    }
+
+    /** What the page sends to decide a held test (FR-C5). */
+    public record TestDecision(String action, String reason, boolean fileNce) {
+    }
+
+    /**
+     * Decides a held test of the run: Retest, Reject, or Accept despite the QC
+     * failure (FR-C5), and answers with the QC block as it now stands.
+     */
+    @PostMapping(value = "/{id}/tests/{testId}/decision", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> decide(HttpServletRequest request, @PathVariable Long id, @PathVariable String testId,
+            @RequestBody TestDecision decision) {
+        RunViewer viewer = viewer(request);
+        if (resultRunService.getHeader(id, viewer).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!viewer.testIds().contains(testId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        RunTestAction action;
+        try {
+            action = RunTestAction.valueOf(decision.action());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Unknown decision"));
+        }
+        try {
+            runQcService.decide(id, testId, action, decision.reason(), decision.fileNce(), getSysUserId(request));
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage() == null ? "Invalid decision" : e.getMessage();
+            return ResponseEntity.badRequest().body(Map.of("message", message));
+        }
+        return ResponseEntity.ok(runQcService.qcBlock(id));
     }
 
     private RunViewer viewer(HttpServletRequest request) {

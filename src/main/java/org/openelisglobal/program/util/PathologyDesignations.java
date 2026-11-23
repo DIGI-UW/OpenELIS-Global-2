@@ -74,6 +74,16 @@ public final class PathologyDesignations {
         return join(scheme.getSeparator(), accessionNumber, blockDesignation, slideDesignation);
     }
 
+    /**
+     * A slide as its label and the bench name it, block first ("A1.1"), joined with
+     * the scheme's separator as the barcode is. A slide whose block is not known is
+     * named by itself.
+     */
+    public static String slideOnBlockName(String blockDesignation, String slideDesignation, DesignationScheme scheme) {
+        requireScheme(scheme);
+        return join(scheme.getSeparator(), blockDesignation, slideDesignation);
+    }
+
     // helpers
 
     /**

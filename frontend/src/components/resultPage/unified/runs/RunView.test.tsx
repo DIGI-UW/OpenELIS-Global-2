@@ -3,13 +3,34 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
+import { ConfigurationContext } from "../../../layout/Layout";
 
 const { utilsMock } = vi.hoisted(() => ({
-  utilsMock: { getFromOpenElisServer: vi.fn() },
+  utilsMock: {
+    getFromOpenElisServer: vi.fn(),
+    postToOpenElisServerJsonResponse: vi.fn(),
+  },
 }));
 
 vi.mock("../../../utils/Utils", () => utilsMock);
 vi.mock("../../../common/PageBreadCrumb", () => ({ default: () => <div /> }));
+vi.mock("../UnifiedResults", () => ({
+  default: ({ runEntry, accessionNumber }: any) => (
+    <div
+      data-testid="embedded-entry"
+      data-accession={accessionNumber}
+      data-run-row={runEntry.runRowId}
+      data-value={runEntry.value}
+      data-reported={runEntry.reported}
+      data-test={runEntry.testId}
+      data-component={runEntry.componentId}
+    >
+      <button type="button" onClick={runEntry.onAccepted}>
+        accept-stub
+      </button>
+    </div>
+  ),
+}));
 
 import RunView, { prettyJson } from "./RunView";
 
@@ -23,8 +44,8 @@ const HEADER = {
   method: "mindray-bs200",
   labUnits: ["Biochemistry"],
   operatorName: "op-7",
-  openedAt: "2026-11-04T08:00:00Z",
-  lastActivityAt: "2026-11-04T09:00:00Z",
+  openedAt: "2026-11-04T12:00:00Z",
+  lastActivityAt: "2026-11-04T13:00:00Z",
   dispositioned: 3,
   total: 12,
   rawAvailable: true,
@@ -44,6 +65,8 @@ const ROWS = {
       units: "mmol/L",
       control: false,
       duplicate: false,
+      testId: "61",
+      componentId: "8",
     },
     {
       id: "42",
@@ -56,12 +79,12 @@ const ROWS = {
   ],
 };
 
-const wire = (header: unknown) =>
+const wire = (header: unknown, rows: unknown = ROWS) =>
   utilsMock.getFromOpenElisServer.mockImplementation(
     (endPoint: string, callback: (response: unknown) => void) => {
       if (endPoint === "/rest/result-runs/7") return callback(header);
       if (endPoint.startsWith("/rest/result-runs/7/rows"))
-        return callback(header ? ROWS : undefined);
+        return callback(header ? rows : undefined);
       if (endPoint === "/rest/result-runs/7/raw")
         return callback({ resourceType: "Bundle" });
       if (endPoint.startsWith("/rest/result-runs"))
@@ -70,17 +93,21 @@ const wire = (header: unknown) =>
     },
   );
 
-const renderRun = (filtersReplaced = false) => {
+const renderRun = (filtersReplaced = false, dateLocale = "en-US") => {
   const onBack = vi.fn();
   render(
-    <IntlProvider locale="en" messages={messages}>
-      <RunView
-        runId={7}
-        filtersReplaced={filtersReplaced}
-        onBack={onBack}
-        onOpenRun={vi.fn()}
-      />
-    </IntlProvider>,
+    <ConfigurationContext.Provider
+      value={{ configurationProperties: { DEFAULT_DATE_LOCALE: dateLocale } }}
+    >
+      <IntlProvider locale="en" messages={messages}>
+        <RunView
+          runId={7}
+          filtersReplaced={filtersReplaced}
+          onBack={onBack}
+          onOpenRun={vi.fn()}
+        />
+      </IntlProvider>
+    </ConfigurationContext.Provider>,
   );
   return onBack;
 };
@@ -89,6 +116,60 @@ describe("OGC-1200 run view", () => {
   beforeEach(() => {
     cleanup();
     utilsMock.getFromOpenElisServer.mockReset();
+  });
+
+  it("recounts the Runs chip once a held test is decided", () => {
+    let held = 1;
+    utilsMock.getFromOpenElisServer.mockImplementation(
+      (endPoint: string, callback: (response: unknown) => void) => {
+        if (endPoint === "/rest/result-runs/7")
+          return callback({
+            ...HEADER,
+            state: held ? "HELD" : "COMPLETE",
+            qc: {
+              overall: held ? "HELD" : "DECIDED",
+              tests: [
+                {
+                  testId: "11",
+                  testName: "Glucose",
+                  verdict: "FAIL",
+                  controls: [],
+                  decision: held ? null : "REJECT",
+                },
+              ],
+            },
+          });
+        if (endPoint.startsWith("/rest/result-runs/7/rows"))
+          return callback(ROWS);
+        if (endPoint.startsWith("/rest/result-runs"))
+          return callback({ open: 2, held, runs: [] });
+        return callback(undefined);
+      },
+    );
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (url: string, body: string, callback: (response: unknown) => void) => {
+        held = 0;
+        callback({
+          overall: "DECIDED",
+          tests: [
+            {
+              testId: "11",
+              testName: "Glucose",
+              verdict: "FAIL",
+              controls: [],
+              decision: "REJECT",
+            },
+          ],
+        });
+      },
+    );
+    renderRun();
+    expect(screen.getByTestId("runs-chip")).toHaveTextContent("2 open, 1 held");
+
+    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+    fireEvent.click(screen.getByTestId("run-qc-decide-confirm-11"));
+
+    expect(screen.getByTestId("runs-chip")).toHaveTextContent("2 open, 0 held");
   });
 
   it("shows the run's settings, progress and values", () => {
@@ -113,6 +194,16 @@ describe("OGC-1200 run view", () => {
     expect(
       screen.getByRole("link", { name: /analyzer import page/i }),
     ).toHaveAttribute("href", "/AnalyzerResults?id=3");
+  });
+
+  it("shows the run's times in the site date format", () => {
+    wire(HEADER);
+    renderRun(false, "fr-FR");
+
+    expect(screen.getByTestId("run-settings")).toHaveTextContent("04/11/2026");
+    expect(screen.getByTestId("run-settings")).not.toHaveTextContent(
+      "11/4/2026",
+    );
   });
 
   it("shows the raw message inline, not in a dialog", () => {
@@ -154,5 +245,306 @@ describe("OGC-1200 run view", () => {
       '{\n  "resourceType": "Bundle"\n}',
     );
     expect(prettyJson("not json")).toBe("not json");
+  });
+});
+
+describe("OGC-1200 slice 2: chips, paging and selection", () => {
+  const COUNTED = {
+    ...HEADER,
+    chipCounts: {
+      all: 120,
+      needsReview: 9,
+      critical: 2,
+      abnormal: 4,
+      exceptions: 3,
+      held: 0,
+      normal: 108,
+    },
+  };
+  const pageOf = (ids: string[], category: string, flag?: string) => ({
+    page: 1,
+    pageSize: 50,
+    totalRows: 120,
+    rows: ids.map((id) => ({
+      id,
+      accessionNumber: `LAB-${id}`,
+      testName: "Glucose",
+      value: "9",
+      control: false,
+      duplicate: false,
+      flag,
+      category,
+    })),
+  });
+  const rowRequests: string[] = [];
+  const summaries: unknown[] = [];
+
+  beforeEach(() => {
+    cleanup();
+    rowRequests.length = 0;
+    summaries.length = 0;
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+    utilsMock.getFromOpenElisServer.mockImplementation(
+      (endPoint: string, callback: (response: unknown) => void) => {
+        if (endPoint === "/rest/result-runs/7") return callback(COUNTED);
+        if (endPoint.startsWith("/rest/result-runs/7/rows")) {
+          rowRequests.push(endPoint);
+          if (endPoint.includes("chip=CRITICAL")) {
+            return callback(pageOf(["90", "91"], "CRITICAL", "CRITICAL"));
+          }
+          return callback(
+            endPoint.includes("page=2")
+              ? pageOf(["60"], "NORMAL")
+              : pageOf(["10", "11"], "NORMAL"),
+          );
+        }
+        if (endPoint.startsWith("/rest/result-runs"))
+          return callback({ open: 1, held: 0, runs: [] });
+        return callback(undefined);
+      },
+    );
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (endPoint: string, body: string, callback: (r: unknown) => void) => {
+        summaries.push(JSON.parse(body));
+        callback({
+          selected: 2,
+          critical: 0,
+          abnormal: 0,
+          normal: 1,
+          skipped: [
+            {
+              id: "11",
+              accessionNumber: "LAB-11",
+              testName: "Glucose",
+              reason: "EXCEPTION",
+            },
+          ],
+        });
+      },
+    );
+  });
+
+  it("shows each chip with its count over the whole run and asks the server for the chip's rows", () => {
+    renderRun();
+
+    expect(screen.getByTestId("run-chip-ALL")).toHaveTextContent("All (120)");
+    expect(screen.getByTestId("run-chip-NEEDS_REVIEW")).toHaveTextContent(
+      "Needs review (9)",
+    );
+    expect(rowRequests.at(-1)).toContain("chip=ALL&page=1&pageSize=50");
+
+    fireEvent.click(screen.getByTestId("run-chip-CRITICAL"));
+
+    expect(rowRequests.at(-1)).toContain("chip=CRITICAL&page=1");
+    expect(screen.getByTestId("run-row-90")).toBeInTheDocument();
+    expect(screen.getByTestId("run-chip-CRITICAL")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("keeps a selection across pages and summarises it from the server, naming skipped rows", () => {
+    renderRun();
+
+    fireEvent.click(screen.getByLabelText("Select the value of LAB-10"));
+    fireEvent.click(screen.getByLabelText("Select the value of LAB-11"));
+    fireEvent.click(screen.getByRole("button", { name: /next page/i }));
+    expect(rowRequests.at(-1)).toContain("page=2");
+    fireEvent.click(screen.getByRole("button", { name: /previous page/i }));
+
+    expect(screen.getByLabelText("Select the value of LAB-10")).toBeChecked();
+    expect(summaries.at(-1)).toEqual({
+      all: false,
+      chip: "ALL",
+      ids: ["10", "11"],
+      excluded: [],
+    });
+    expect(screen.getByTestId("run-selection")).toHaveTextContent(
+      "Selected values: 2 (0 critical, 0 abnormal, 1 normal).",
+    );
+    expect(screen.getByTestId("run-selection-skipped")).toHaveTextContent(
+      "LAB-11, Glucose: exception to resolve first",
+    );
+  });
+
+  it("selects all in the filter as the chip less exclusions, never as a list of rows", () => {
+    renderRun();
+    fireEvent.click(screen.getByTestId("run-chip-CRITICAL"));
+    fireEvent.click(screen.getByLabelText("Select the value of LAB-90"));
+
+    fireEvent.click(screen.getByTestId("run-select-all"));
+    fireEvent.click(screen.getByLabelText("Select the value of LAB-91"));
+
+    expect(summaries.at(-1)).toEqual({
+      all: true,
+      chip: "CRITICAL",
+      ids: [],
+      excluded: ["91"],
+    });
+    expect(screen.getByLabelText("Select the value of LAB-90")).toBeChecked();
+
+    fireEvent.click(screen.getByTestId("run-clear-selection"));
+    expect(screen.queryByTestId("run-selection")).not.toBeInTheDocument();
+  });
+
+  it("adds a row outside the filter chip to a select-all-in-filter selection", () => {
+    renderRun();
+    fireEvent.click(screen.getByTestId("run-chip-CRITICAL"));
+    fireEvent.click(screen.getByLabelText("Select the value of LAB-90"));
+    fireEvent.click(screen.getByTestId("run-select-all"));
+    fireEvent.click(screen.getByTestId("run-chip-ALL"));
+
+    const outside = screen.getByLabelText("Select the value of LAB-10");
+    expect(outside).not.toBeChecked();
+    fireEvent.click(outside);
+
+    expect(screen.getByLabelText("Select the value of LAB-10")).toBeChecked();
+    expect(summaries.at(-1)).toEqual({
+      all: true,
+      chip: "CRITICAL",
+      ids: ["10"],
+      excluded: [],
+    });
+
+    fireEvent.click(screen.getByLabelText("Select the value of LAB-10"));
+    expect(
+      screen.getByLabelText("Select the value of LAB-10"),
+    ).not.toBeChecked();
+    expect(summaries.at(-1)).toEqual({
+      all: true,
+      chip: "CRITICAL",
+      ids: [],
+      excluded: [],
+    });
+  });
+
+  it("says when the selection cannot be counted and keeps the run on screen", () => {
+    let fail = true;
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (endPoint: string, body: string, callback: (r: unknown) => void) =>
+        callback(
+          fail
+            ? { error: "Service Unavailable", status: 503 }
+            : {
+                selected: 1,
+                critical: 0,
+                abnormal: 0,
+                normal: 1,
+                skipped: [],
+              },
+        ),
+    );
+    renderRun();
+
+    fireEvent.click(screen.getByLabelText("Select the value of LAB-10"));
+
+    expect(screen.getByTestId("run-selection-failed")).toHaveTextContent(
+      "The selection could not be counted.",
+    );
+    expect(screen.getByTestId("run-row-10")).toBeInTheDocument();
+
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(
+      screen.queryByTestId("run-selection-failed"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("run-selection")).toHaveTextContent(
+      "Selected values: 1 (0 critical, 0 abnormal, 1 normal).",
+    );
+  });
+
+  describe("slice 3: a row expands into its Results Entry row", () => {
+    const rowsRequests = () =>
+      utilsMock.getFromOpenElisServer.mock.calls.filter(([endPoint]) =>
+        String(endPoint).startsWith("/rest/result-runs/7/rows"),
+      ).length;
+
+    it("opens the order's pending row with the analyzer value, under the run's provenance", () => {
+      wire(HEADER);
+      renderRun();
+
+      fireEvent.click(screen.getByTestId("run-row-expand-41"));
+
+      const entry = screen.getByTestId("embedded-entry");
+      expect(entry).toHaveAttribute("data-accession", "DEV0126000000000400");
+      expect(entry).toHaveAttribute("data-run-row", "41");
+      expect(entry).toHaveAttribute("data-value", "5.4");
+      expect(entry).toHaveAttribute("data-test", "61");
+      expect(entry).toHaveAttribute("data-component", "8");
+      expect(screen.getByTestId("run-row-provenance")).toHaveTextContent(
+        "From RUN-7, analyzer Mindray BS-200: HIVVL — Log viral load reported 5.4 mmol/L.",
+      );
+      expect(screen.getByTestId("run-row-provenance")).toHaveTextContent(
+        "No reagent lot is recorded on this run.",
+      );
+    });
+
+    it("prefills a dictionary value with the choice the import resolved, keeping the instrument's text", () => {
+      wire(HEADER, {
+        ...ROWS,
+        rows: [
+          {
+            ...ROWS.rows[0],
+            testName: "SARS-CoV-2",
+            part: null,
+            value: "POS",
+            units: null,
+            stagedResult: "1398",
+          },
+        ],
+      });
+      renderRun();
+
+      fireEvent.click(screen.getByTestId("run-row-expand-41"));
+
+      const entry = screen.getByTestId("embedded-entry");
+      expect(entry).toHaveAttribute("data-value", "1398");
+      expect(entry).toHaveAttribute("data-reported", "POS");
+      expect(screen.getByTestId("run-row-provenance")).toHaveTextContent(
+        "SARS-CoV-2 reported POS.",
+      );
+    });
+
+    it("explains a control instead of offering to accept it", () => {
+      wire(HEADER);
+      renderRun();
+
+      fireEvent.click(screen.getByTestId("run-row-expand-42"));
+
+      expect(screen.getByTestId("run-row-entry-42")).toHaveTextContent(
+        "A control is recorded with the run's quality control",
+      );
+      expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
+    });
+
+    it("holds only the rows of the test a failed control covers", () => {
+      const held = { ...ROWS.rows[0], id: "43", category: "HELD" };
+      const open = { ...ROWS.rows[0], id: "44", category: "NORMAL" };
+      wire({ ...HEADER, state: "HELD" }, { ...ROWS, rows: [held, open] });
+      renderRun();
+
+      expect(screen.getAllByText("Held: QC failed")).toHaveLength(1);
+      fireEvent.click(screen.getByTestId("run-row-expand-43"));
+      expect(screen.getByTestId("run-row-entry-43")).toHaveTextContent(
+        "A control for this test failed in this run, so this value is held",
+      );
+      expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("run-row-expand-44"));
+      expect(screen.getByTestId("embedded-entry")).toBeInTheDocument();
+    });
+
+    it("reloads the run and closes the row once the value is accepted", () => {
+      wire(HEADER);
+      renderRun();
+      fireEvent.click(screen.getByTestId("run-row-expand-41"));
+      const before = rowsRequests();
+
+      fireEvent.click(screen.getByRole("button", { name: "accept-stub" }));
+
+      expect(rowsRequests()).toBe(before + 1);
+      expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
+    });
   });
 });

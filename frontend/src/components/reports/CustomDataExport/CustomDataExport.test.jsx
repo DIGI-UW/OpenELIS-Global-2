@@ -522,6 +522,48 @@ test.each([
   },
 );
 
+test("a referral export offers where the specimen came from as a Location group", async () => {
+  alternateCatalog = {
+    ...catalog("TABLE"),
+    definition: {
+      id: "REFERRALS",
+      label: "Referrals",
+      layouts: ["TABLE"],
+      dateAnchor: "sentDate",
+      filters: [],
+    },
+    statuses: [],
+    variables: [
+      field("referralId", "Referral ID", "referrals"),
+      field("referringSite", "Requesting Facility", "location"),
+      field("area:7", "Health District", "location"),
+    ],
+    defaultColumns: ["referralId"],
+  };
+  open();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Start a new export" }),
+  );
+  fireEvent.click(await screen.findByRole("radio", { name: /Referrals/ }));
+  const available = await screen.findByRole("region", {
+    name: "Available fields",
+  });
+  const location = within(available).getByRole("button", {
+    name: "Location",
+    exact: true,
+  });
+  fireEvent.click(location);
+  fireEvent.click(
+    within(available).getByRole("button", { name: "Add Health District" }),
+  );
+  expect(
+    screen.getByRole("heading", { name: "Your CSV columns (1)" }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Remove Health District" }),
+  ).toBeVisible();
+});
+
 test("the mock column picker keeps exact keyboard ordering and focus", async () => {
   open();
   fireEvent.click(

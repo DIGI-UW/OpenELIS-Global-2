@@ -54,7 +54,7 @@ describe("Validation QC-hold", () => {
     // …and the full reason, rendered in the DOM as DefinitionTooltip content —
     // the old title-prop approach left this sentence nowhere on the page.
     expect(
-      screen.getByText(messages["validation.qcHold.tooltip"]),
+      screen.getByText(messages["validation.qcHeld.tooltip"]),
     ).toBeInTheDocument();
   });
 
@@ -65,10 +65,10 @@ describe("Validation QC-hold", () => {
     // emit the raw id instead).
     expect(screen.getAllByText("QC failed")).toHaveLength(1);
     expect(
-      screen.getByText(messages["validation.legend.qcHold"]),
+      screen.getByText(messages["validation.legend.qcHeld"]),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(messages["validation.qcHold.tooltip"]),
+      screen.queryByText(messages["validation.qcHeld.tooltip"]),
     ).not.toBeInTheDocument();
   });
 });

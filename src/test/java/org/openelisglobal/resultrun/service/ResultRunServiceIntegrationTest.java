@@ -272,6 +272,35 @@ public class ResultRunServiceIntegrationTest extends BaseWebContextSensitiveTest
         assertNull("a row already resulted is not waiting", resulted.getWaitingRun());
     }
 
+    /**
+     * A test with parts is waiting part by part: the part a run holds a value for
+     * says so, the main value names the primary part, and a part the run sent
+     * nothing for is entered at the bench as usual.
+     */
+    @Test
+    public void eachPartOfATestIsMarkedWaitingOnlyForTheValueTheRunHoldsForIt() {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_active,"
+                + " lastupdated, is_primary) VALUES ('rrs-main', ?::numeric, 'VL', 'Viral load', 0, 'Y', NOW(), true),"
+                + " ('rrs-ct', ?::numeric, 'CT', 'Ct', 1, 'Y', NOW(), false),"
+                + " ('rrs-call', ?::numeric, 'CALL', 'Call', 2, 'Y', NOW(), false)", TEST_A, TEST_A, TEST_A);
+        AnalyzerResults main = row("RUN1200P", TEST_A, "1009.64", false);
+        AnalyzerResults ct = row("RUN1200P", TEST_A, "33.0", false);
+        ct.setComponentId("rrs-ct");
+        ResultRun run = open("msg-13", List.of(main, ct));
+        TestResultItem mainRow = item("RUN1200P", null);
+        mainRow.setTestResultComponentId("rrs-main");
+        TestResultItem ctRow = item("RUN1200P", null);
+        ctRow.setTestResultComponentId("rrs-ct");
+        TestResultItem callRow = item("RUN1200P", null);
+        callRow.setTestResultComponentId("rrs-call");
+
+        resultRunService.markWaiting(List.of(mainRow, ctRow, callRow));
+
+        assertEquals("RUN-" + run.getId(), mainRow.getWaitingRun().label());
+        assertEquals("RUN-" + run.getId(), ctRow.getWaitingRun().label());
+        assertNull("the run sent nothing for the call", callRow.getWaitingRun());
+    }
+
     @Test
     public void aCompletedRunHoldsNothingWaiting() {
         List<AnalyzerResults> rows = List.of(row("RUN1200W", TEST_A, "4", false));
