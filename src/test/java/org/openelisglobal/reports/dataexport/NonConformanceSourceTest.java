@@ -17,6 +17,7 @@ import org.openelisglobal.reports.dataexport.dao.NonConformanceExportDAO.Rejecti
 import org.openelisglobal.reports.dataexport.form.ExportFilter;
 import org.openelisglobal.reports.dataexport.form.ExportSnapshot;
 import org.openelisglobal.reports.dataexport.form.ReportSourceConfig;
+import org.openelisglobal.reports.dataexport.service.ExportLocations;
 import org.openelisglobal.reports.dataexport.service.NonConformanceSource;
 import org.openelisglobal.reports.dataexport.service.ReportingCsvWriter;
 
@@ -24,7 +25,7 @@ public class NonConformanceSourceTest {
     @Test
     public void csvRetainsDatesBasisAndIndependentEqualOccurrences() throws Exception {
         var dao = mock(NonConformanceExportDAO.class);
-        var source = new NonConformanceSource(dao, new ReportingCsvWriter());
+        var source = new NonConformanceSource(dao, new ReportingCsvWriter(), mock(ExportLocations.class));
         List<String> ids = List.of("ncOccurrenceId", "ncAccessionNumber", "rejectionDate", "ncDateBasis", "ncEventDate",
                 "ncRecordedDate", "rejectionReason");
         var fields = ids.stream()

@@ -34,6 +34,8 @@ public class ReportingSavedConfigService {
     private final ReportingAccess access;
     private final Clock clock;
     private final ObjectMapper mapper = new ObjectMapper();
+    @Autowired(required = false)
+    private PredefinedExportReports predefined;
 
     @Autowired
     public ReportingSavedConfigService(ReportDefinitionService definitions, ReportingCatalogService catalog,
@@ -182,7 +184,8 @@ public class ReportingSavedConfigService {
         }
     }
 
-    private SavedReportView view(ReportDefinition stored, SavedReportDefinition definition) {
+    private SavedReportView view(ReportDefinition stored, SavedReportDefinition saved) {
+        SavedReportDefinition definition = predefined == null ? saved : predefined.current(stored, saved);
         String version = stored.getLastupdated() == null ? null : stored.getLastupdated().toInstant().toString();
         String createdAt = stored.getCreatedDate() == null ? null : stored.getCreatedDate().toInstant().toString();
         return new SavedReportView(stored.getId(), stored.getName(), version, stored.getCreatedBy(),
