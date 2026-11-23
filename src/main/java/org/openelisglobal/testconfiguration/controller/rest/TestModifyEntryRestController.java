@@ -218,12 +218,13 @@ public class TestModifyEntryRestController extends BaseController {
             bean.setLoinc(test.getLoinc());
             bean.setActive(test.isActive() ? "Active" : "Not active");
             bean.setUom(testService.getUOM(test, false));
-            if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(resultType)
-                    && testResultService.getAllActiveTestResultsPerTest(test).size() != 0) {
-                bean.setReportingDecimalPlaces(
-                        testResultService.getAllActiveTestResultsPerTest(test).get(0).getReportingDecimalPlaces());
-                bean.setHasLimitValues(true);
-                bean.setResultLimits(getResultLimits(test, bean.getReportingDecimalPlaces()));
+            if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(resultType)) {
+                List<TestResult> testResults = testResultService.getAllActiveTestResultsPerTest(test);
+                if (testResults.size() > 0) {
+                    bean.setReportingDecimalPlaces(testResults.get(0).getReportingDecimalPlaces());
+                    bean.setHasLimitValues(true);
+                    bean.setResultLimits(getResultLimits(test, bean.getReportingDecimalPlaces()));
+                }
             }
             bean.setHasDictionaryValues(
                     TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(bean.getResultType()));

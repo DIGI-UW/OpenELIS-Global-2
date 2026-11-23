@@ -116,8 +116,7 @@ public class TestCatalogRestController extends BaseController {
             if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(resultType)) {
                 List<TestResult> testResults = testService.getPossibleTestResults(test);
                 if (testResults.size() > 0) {
-                    catalog.setReportingDecimalPlaces(
-                            testService.getPossibleTestResults(test).get(0).getReportingDecimalPlaces());
+                    catalog.setReportingDecimalPlaces(testResults.get(0).getReportingDecimalPlaces());
                 } else {
                     LogEvent.logWarn(this.getClass().getSimpleName(), "createTestList",
                             "test that doesn't have an active test result found. Possibly issue with data in"
