@@ -171,8 +171,8 @@ function ReportingBuilder({ owner }) {
   );
   const catalog = useQuery({
     ...serverQuery(
-      ["reporting-catalog", owner, draft.reportType, draft.layout],
-      `${reportingPath}/variables?reportType=${encodeURIComponent(draft.reportType)}&layout=${encodeURIComponent(draft.layout)}`,
+      ["reporting-catalog", owner, draft.reportType, draft.layout, intl.locale],
+      `${reportingPath}/variables?reportType=${encodeURIComponent(draft.reportType)}&layout=${encodeURIComponent(draft.layout)}&locale=${encodeURIComponent(intl.locale)}`,
     ),
     enabled: panel === "builder" && !!draft.reportType,
   });

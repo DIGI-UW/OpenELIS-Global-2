@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -29,13 +30,15 @@ public class ReferralSource implements ReportingSource {
     private final ReportingResultValues values;
     private final ReportingCsvWriter csv;
     private final ExportLocations locations;
+    private final ExportTestNames testNames;
 
     public ReferralSource(ReferralExportDAO referrals, ReportingResultValues values, ReportingCsvWriter csv,
-            ExportLocations locations) {
+            ExportLocations locations, ExportTestNames testNames) {
         this.referrals = referrals;
         this.values = values;
         this.csv = csv;
         this.locations = locations;
+        this.testNames = testNames;
     }
 
     @Override
@@ -100,7 +103,8 @@ public class ReferralSource implements ReportingSource {
                         var result = row.returnedResult() == null ? null : row.returnedResult().getResult();
                         if (result != null && values.isQualifier(result))
                             continue;
-                        var compiled = compile(row, zone, referringLab, dictionaryCache, locationCache);
+                        var compiled = compile(row, zone, request.userLocale(), referringLab, dictionaryCache,
+                                locationCache);
                         if (++count % 250 == 0)
                             referrals.clearReadBatch();
                         return compiled;
@@ -137,7 +141,7 @@ public class ReferralSource implements ReportingSource {
         }
     }
 
-    private Compiled compile(ReferralExportDAO.Row row, ZoneId zone, String referringLab,
+    private Compiled compile(ReferralExportDAO.Row row, ZoneId zone, Locale locale, String referringLab,
             Map<String, String> dictionaryCache, Map<String, Map<String, String>> locationCache) {
         var referral = row.referral();
         var returned = row.returnedResult();
@@ -150,7 +154,8 @@ public class ReferralSource implements ReportingSource {
         fields.put("referringLab", referringLab);
         fields.put("referredLab", referral.getOrganization() == null ? referral.getOrganizationName()
                 : referral.getOrganization().getOrganizationName());
-        fields.put("referredTestName", referral.getAnalysis().getTest().getDescription());
+        var specimenType = referral.getAnalysis().getSampleItem().getTypeOfSample();
+        fields.put("referredTestName", testNames.withSpecimen(referral.getAnalysis().getTest(), specimenType, locale));
         fields.put("requestDate", date(referral.getRequestDate(), zone));
         fields.put("referralDate", date(referral.getSentDate(), zone));
         fields.put("referralStatus", referral.getStatus() == null ? null : referral.getStatus().name());
@@ -158,7 +163,7 @@ public class ReferralSource implements ReportingSource {
         fields.put("referralResultDate", returned == null ? null : date(returned.getReferralReportDate(), zone));
         fields.put("resultId", result == null ? null : result.getId());
         fields.put("referralResultValue", result == null ? null : values.format(result, dictionaryCache));
-        fields.put("returnedTestName", test == null ? null : test.getDescription());
+        fields.put("returnedTestName", testNames.withSpecimen(test, specimenType, locale));
         fields.put("resultUnit", test == null || test.getUnitOfMeasure() == null ? null
                 : test.getUnitOfMeasure().getUnitOfMeasureName());
         String component = result == null || result.getTestResult() == null ? null

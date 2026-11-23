@@ -15,6 +15,7 @@ import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceType;
 import org.openelisglobal.reports.dataexport.form.ExportSnapshot;
 import org.openelisglobal.reports.dataexport.service.ExportDateRange;
+import org.openelisglobal.reports.dataexport.service.ExportTestNames;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +31,7 @@ public class NonConformanceExportDAOImpl extends BaseDAOImpl<NcEvent, Integer> i
         var filter = request.filterSpec();
         String hql = "select e.id, link.id, si.id, coalesce(s.accessionNumber, e.labOrderNumber), "
                 + "case when si.rejected = true then reason.qaEventName else null end, kind.id, "
-                + "section.testSectionName, e.nameOfReporter, e.dateOfEvent, e.reportDate, e.status "
+                + "section.id, e.nameOfReporter, e.dateOfEvent, e.reportDate, e.status "
                 + "from NcEvent e left join NceSpecimen link on link.nceId = e.id "
                 + "left join SampleItem si on cast(si.id as integer) = link.sampleItemId "
                 + "left join si.sample s left join QaEvent reason on reason.id = si.rejectReasonId "
@@ -54,6 +55,12 @@ public class NonConformanceExportDAOImpl extends BaseDAOImpl<NcEvent, Integer> i
                 + "order by e.id, link.id";
         Map<Integer, String> typeLabels = new HashMap<>();
         Locale locale = request.userLocale();
+        Map<String, String> sectionNames = new HashMap<>();
+        for (org.openelisglobal.test.valueholder.TestSection section : entityManager
+                .createQuery("from TestSection", org.openelisglobal.test.valueholder.TestSection.class)
+                .getResultList()) {
+            sectionNames.put(section.getId(), ExportTestNames.sectionName(section, locale));
+        }
         for (NceType type : entityManager.createQuery("from NceType", NceType.class).getResultList()) {
             typeLabels.put(type.getId(),
                     ShippedLabels.label(type.getDisplayKey(), type.getNameLocalization(), type.getName(), locale));
@@ -65,8 +72,9 @@ public class NonConformanceExportDAOImpl extends BaseDAOImpl<NcEvent, Integer> i
                 .setParameter("units", filter.labSectionIds().stream().map(Integer::valueOf).toList())
                 .setHint(QueryHints.HINT_FETCH_SIZE, 250).setHint(QueryHints.HINT_READONLY, true).getResultStream()
                 .map(r -> new EventRow((Integer) r[0], (Integer) r[1], (String) r[2], (String) r[3],
-                        r[4] != null ? (String) r[4] : typeLabels.get((Integer) r[5]), (String) r[6], (String) r[7],
-                        (Date) r[8], (Date) r[9], (String) r[10]));
+                        r[4] != null ? (String) r[4] : typeLabels.get((Integer) r[5]),
+                        r[6] == null ? null : sectionNames.get(String.valueOf(r[6])), (String) r[7], (Date) r[8],
+                        (Date) r[9], (String) r[10]));
     }
 
     @Override

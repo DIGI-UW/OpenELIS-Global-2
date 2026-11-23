@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -34,6 +35,7 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,6 +59,8 @@ public class SampleTestingSource implements ReportingSource {
     private IStatusService statuses;
     @Autowired
     private ExportLocations locations;
+    @Autowired
+    private ExportTestNames testNames;
 
     @Override
     public String id() {
@@ -118,13 +122,14 @@ public class SampleTestingSource implements ReportingSource {
         common(fields, "collectionToReceivedMinutes", "Collection to Received (min)", "number", "turnaround", BOTH);
         common(fields, "resultedToValidatedMinutes", "Resulted to Validated (min)", "number", "turnaround", DETAIL);
         var tests = dao.tests();
-        var names = tests.stream().collect(Collectors.toMap(t -> t.getId(), t -> t.getDescription()));
+        var names = testNames.labels(tests, LocaleContextHolder.getLocale());
         tests.forEach(t -> fields
-                .add(new ReportingVariable("test:" + t.getId(), t.getDescription(), "result", "tests", true, BOTH)));
-        tests.forEach(t -> turnaroundFields(fields, "test:" + t.getId(), t.getDescription(), "testTurnaround"));
+                .add(new ReportingVariable("test:" + t.getId(), names.get(t.getId()), "result", "tests", true, BOTH)));
+        tests.forEach(t -> turnaroundFields(fields, "test:" + t.getId(), names.get(t.getId()), "testTurnaround"));
         dao.components().stream().filter(c -> names.containsKey(c.getTestId())).forEach(c -> {
             String id = "component:" + c.getId();
-            String label = names.get(c.getTestId()) + " — " + c.getLabel();
+            String label = names.get(c.getTestId()) + " — "
+                    + ExportTestNames.componentLabel(c, LocaleContextHolder.getLocale());
             fields.add(new ReportingVariable(id, label, c.getResultType(), "components", true, BOTH));
             turnaroundFields(fields, id, label, "componentTurnaround");
         });
@@ -240,14 +245,15 @@ public class SampleTestingSource implements ReportingSource {
     /**
      * The sample type as the application shows it (its localized name), not the
      * catalog description: an environmental sample exported as "Air Minum" while
-     * every screen said "Drinking Water".
+     * every screen said "Drinking Water". It reads in the language of the user who
+     * asked for the export (OGC-1680), not the language the export worker runs in.
      */
-    static String sampleTypeName(TypeOfSample type) {
+    static String sampleTypeName(TypeOfSample type, Locale locale) {
         if (type == null) {
             return null;
         }
         Localization localization = type.getLocalization();
-        String localized = localization == null ? null : localization.getLocalizedValue();
+        String localized = localization == null ? null : localization.getLocalizedValue(locale);
         return localized == null || localized.isBlank() ? type.getDescription() : localized;
     }
 
@@ -289,21 +295,21 @@ public class SampleTestingSource implements ReportingSource {
         a.put("receivedDate", date(specimen.getReceivedDate(), zone));
         a.put("receivedTime", time(specimen.getReceivedDate(), zone));
         a.put("orderDate", sample.getEnteredDate() == null ? null : sample.getEnteredDate().toLocalDate().toString());
-        a.put("sampleType", sampleTypeName(specimen.getTypeOfSample()));
+        a.put("sampleType", sampleTypeName(specimen.getTypeOfSample(), request.userLocale()));
         a.put("sampleStatus", statuses.getStatusNameFromId(specimen.getStatusId()));
         a.put("priority", sample.getPriority() == null ? null : sample.getPriority().toString());
         a.put("numberOfTests", Long.toString(analysisCount));
         a.put("resultId", r.getId());
-        a.put("testName", test.getName());
+        a.put("testName", ExportTestNames.name(test, request.userLocale()));
         a.put("component", component == null || !multiComponentTests.contains(component.getTestId()) ? null
-                : component.getLabel());
+                : ExportTestNames.componentLabel(component, request.userLocale()));
         a.put("loincCode", test.getLoinc());
         a.put("resultUnit", resultUnit(component, test, units));
         a.put("resultStatus", analysis.isCorrectedSincePatientReport() ? "Corrected"
                 : statuses.getStatusNameFromId(analysis.getStatusId()));
         a.put("dateResulted", timestamp(analysis.getCompletedDate(), zone));
         a.put("validationDate", timestamp(analysis.getReleasedDate(), zone));
-        a.put("labSection", analysis.getTestSection() == null ? null : analysis.getTestSection().getTestSectionName());
+        a.put("labSection", ExportTestNames.sectionName(analysis.getTestSection(), request.userLocale()));
         Instant order = sample.getEnteredDate() == null ? null
                 : sample.getEnteredDate().toLocalDate().atStartOfDay(zone).toInstant();
         Instant collected = instant(specimen.getCollectionDate());
