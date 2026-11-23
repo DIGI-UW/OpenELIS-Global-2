@@ -18,4 +18,29 @@ public interface NonConformanceExportDAO extends BaseDAO<NcEvent, Integer> {
     Stream<EventRow> events(ExportSnapshot request);
 
     Stream<RejectionRow> rejections(ExportSnapshot request);
+
+    /**
+     * A specimen rejected at order entry or since, with no recorded rejection
+     * occurrence (OGC-1656).
+     */
+    record SpecimenRejectionRow(String specimenId, String accession, String rejectReasonId, Timestamp rejectedAt) {
+    }
+
+    /**
+     * Rejected specimens that no rejection occurrence records, by when they were
+     * rejected: the rejection-reason note order entry writes, else the specimen's
+     * last change.
+     */
+    Stream<SpecimenRejectionRow> specimenRejections(ExportSnapshot request);
+
+    /** The reason order entry wrote when it rejected the specimen, if any. */
+    String rejectionNote(String specimenId);
+
+    /** A dictionary entry's text, if the id names one. */
+    String dictionaryEntry(String id);
+
+    org.openelisglobal.sampleitem.valueholder.SampleItem specimen(String specimenId);
+
+    /** The tests ordered on the specimen, in order. */
+    java.util.List<org.openelisglobal.test.valueholder.Test> tests(String specimenId);
 }

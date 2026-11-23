@@ -35,6 +35,7 @@ public class PredefinedExportReports {
     public static final String REFERRALS_ID = "CSV-PREDEFINED-REFERRALS-BY-LOCATION";
     public static final String NON_CONFORMANCE_ID = "CSV-PREDEFINED-NC-BY-LOCATION";
     public static final String ROUTINE_ID = "CSV-PREDEFINED-ROUTINE-SAMPLES";
+    public static final String REJECTIONS_ID = "CSV-PREDEFINED-SAMPLE-REJECTIONS";
     private static final String TYPE = "CSV_SAVED";
     private static final List<String> NON_CONFORMANCE_COLUMNS = List.of("ncAccessionNumber", "rejectionReason",
             "rejectionDate", "rejectionStage", "ncStatus");
@@ -48,6 +49,14 @@ public class PredefinedExportReports {
             "dateOfBirth", "ageYears", "ageMonths", "ageWeeks", "receivedDate", "enteredDate", "collectionDate",
             "referringSiteCode", "referringSite", "program", "orderStatus");
 
+    /**
+     * The CSV Rejection Report's columns, in its order (OGC-1656): Lab No, Request
+     * Date, Site Name, Sample, Test, Rejection Reason, Rejection Date. Choosing
+     * Test gives one row per rejected test.
+     */
+    private static final List<String> REJECTION_COLUMNS = List.of("ncAccessionNumber", "ncRequestDate", "referringSite",
+            "ncSampleType", "ncTest", "rejectionReason", "rejectionDate");
+
     private record Predefined(String id, String name, String reportType, String layout, String dateBasis,
             boolean byLocation) {
     }
@@ -56,7 +65,8 @@ public class PredefinedExportReports {
             new Predefined(REFERRALS_ID, "Referrals by location", "REFERRALS", "TABLE", null, true),
             new Predefined(NON_CONFORMANCE_ID, "Non-conformance by location", "NON_CONFORMANCE", "TABLE", null, true),
             new Predefined(ROUTINE_ID, "Routine sample export", "SAMPLE_TESTING", "SPREADSHEET", "orderEnteredDate",
-                    false));
+                    false),
+            new Predefined(REJECTIONS_ID, "Sample rejections", "NON_CONFORMANCE", "TABLE", null, false));
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -104,6 +114,7 @@ public class PredefinedExportReports {
         List<String> columns = switch (report.id()) {
         case NON_CONFORMANCE_ID -> NON_CONFORMANCE_COLUMNS;
         case ROUTINE_ID -> routineColumns(source);
+        case REJECTIONS_ID -> REJECTION_COLUMNS;
         default -> catalog.defaultColumns(source, report.layout());
         };
         LinkedHashSet<String> selected = new LinkedHashSet<>(columns);

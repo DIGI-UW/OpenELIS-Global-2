@@ -48,7 +48,8 @@ public class NonConformanceSource implements ReportingSource {
                 field("ncOccurrenceId", "Occurrence ID", "text"), field("ncStatus", "Status", "text"),
                 field("ncSpecimenId", "Specimen ID", "text"), field("ncDateBasis", "Date Basis", "text"),
                 field("ncEventDate", "Event Date", "date"), field("ncRecordedDate", "Recorded Date", "date"),
-                field("ncRecordSource", "Record Source", "text"));
+                field("ncRecordSource", "Record Source", "text"), field("ncRequestDate", "Request Date", "date"),
+                field("ncSampleType", "Sample Type", "text"), field("ncTest", "Test", "text"));
     }
 
     private static ReportingVariable field(String id, String label, String type) {
@@ -70,11 +71,17 @@ public class NonConformanceSource implements ReportingSource {
     @Override
     public long write(Writer output, ExportSnapshot request) throws IOException {
         ZoneId zone = ZoneId.of(request.timezone());
+        java.util.Locale locale = request.userLocale();
+        boolean byTest = request.variables().stream().anyMatch(field -> "ncTest".equals(field.id()));
         Map<String, Map<String, String>> locationCache = new java.util.HashMap<>();
-        try (var events = occurrences.events(request); var rejections = occurrences.rejections(request)) {
-            var records = java.util.stream.Stream.concat(events.map(row -> {
+        Map<String, Map<String, String>> specimenCache = new java.util.HashMap<>();
+        try (var events = occurrences.events(request);
+                var rejections = occurrences.rejections(request);
+                var rejectedSpecimens = occurrences.specimenRejections(request)) {
+            var eventRecords = events.map(row -> {
                 Map<String, String> fields = common(row.accession(), row.specimenId(), row.reason());
                 fields.putAll(locations.forAccession(row.accession(), locationCache));
+                fields.putAll(specimenFields(row.specimenId(), zone, locale, specimenCache));
                 fields.put("rejectionStage", row.stage());
                 fields.put("rejectedBy", row.reporter());
                 fields.put("ncStatus", row.status());
@@ -84,20 +91,76 @@ public class NonConformanceSource implements ReportingSource {
                 fields.put("ncRecordedDate", date(row.recordedDate()));
                 fields.put("ncRecordSource", "Non-conformance event");
                 return record("event:" + row.eventId() + (row.linkId() == null ? "" : ":link:" + row.linkId()), fields);
-            }), rejections.map(row -> {
+            });
+            var rejectionRecords = rejections.flatMap(row -> {
                 Map<String, String> fields = common(row.accession(), row.specimenId(), row.reason());
                 fields.putAll(locations.forAccession(row.accession(), locationCache));
-                String recorded = row.recordedDate() == null ? null
-                        : row.recordedDate().toInstant().atZone(zone).toLocalDate().toString();
+                fields.putAll(specimenFields(row.specimenId(), zone, locale, specimenCache));
+                String recorded = localDate(row.recordedDate(), zone);
                 fields.put("rejectionDate", recorded);
                 fields.put("ncDateBasis", "Recorded rejection date");
                 fields.put("ncRecordedDate", recorded);
                 fields.put("ncRecordSource", "Recorded rejection");
-                return record("rejection:" + row.id(), fields);
-            }));
+                return perTest(byTest, "rejection:" + row.id(), row.specimenId(), fields, locale);
+            });
+            var specimenRecords = rejectedSpecimens.flatMap(row -> {
+                String reason = occurrences.rejectionNote(row.specimenId());
+                Map<String, String> fields = common(row.accession(), row.specimenId(),
+                        reason != null ? reason : occurrences.dictionaryEntry(row.rejectReasonId()));
+                fields.putAll(locations.forAccession(row.accession(), locationCache));
+                fields.putAll(specimenFields(row.specimenId(), zone, locale, specimenCache));
+                String rejected = localDate(row.rejectedAt(), zone);
+                fields.put("rejectionDate", rejected);
+                fields.put("ncDateBasis", "Recorded rejection date");
+                fields.put("ncRecordedDate", rejected);
+                fields.put("ncRecordSource", "Rejected specimen");
+                return perTest(byTest, "specimen:" + row.specimenId(), row.specimenId(), fields, locale);
+            });
+            var records = java.util.stream.Stream.concat(java.util.stream.Stream.concat(eventRecords, rejectionRecords),
+                    specimenRecords);
             return csv.write(output, ReportingCsvWriter.Layout.TABLE,
                     request.variables().stream().map(ReportingVariable::exportField).toList(), records.iterator());
         }
+    }
+
+    /**
+     * One row per rejected test when the Test column is chosen, else one row for
+     * the occurrence (OGC-1656, v1.6 BR-012).
+     */
+    private java.util.stream.Stream<ExportRecord> perTest(boolean byTest, String id, String specimenId,
+            Map<String, String> fields, java.util.Locale locale) {
+        var tests = byTest && specimenId != null ? occurrences.tests(specimenId)
+                : java.util.List.<org.openelisglobal.test.valueholder.Test>of();
+        if (tests.isEmpty()) {
+            return java.util.stream.Stream.of(record(id, fields));
+        }
+        return java.util.stream.IntStream.range(0, tests.size()).mapToObj(index -> {
+            Map<String, String> row = new LinkedHashMap<>(fields);
+            row.put("ncTest", ExportTestNames.name(tests.get(index), locale));
+            return record(id + ":test:" + (index + 1), row);
+        });
+    }
+
+    /** The specimen's sample type and when its order was received (OGC-1656). */
+    private Map<String, String> specimenFields(String specimenId, ZoneId zone, java.util.Locale locale,
+            Map<String, Map<String, String>> cache) {
+        if (specimenId == null) {
+            return Map.of();
+        }
+        return cache.computeIfAbsent(specimenId, id -> {
+            Map<String, String> fields = new LinkedHashMap<>();
+            var specimen = occurrences.specimen(id);
+            if (specimen != null) {
+                fields.put("ncRequestDate",
+                        localDate(SampleTestingSource.received(specimen, specimen.getSample()), zone));
+                fields.put("ncSampleType", SampleTestingSource.sampleTypeName(specimen.getTypeOfSample(), locale));
+            }
+            return fields;
+        });
+    }
+
+    private static String localDate(java.sql.Timestamp value, ZoneId zone) {
+        return value == null ? null : value.toInstant().atZone(zone).toLocalDate().toString();
     }
 
     private static Map<String, String> common(String accession, String specimen, String reason) {

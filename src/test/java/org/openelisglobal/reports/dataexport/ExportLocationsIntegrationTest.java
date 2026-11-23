@@ -167,6 +167,23 @@ public class ExportLocationsIntegrationTest extends BaseWebContextSensitiveTest 
                 .validateSaved(ExportLocationFixture.reportingAdmin(entityManager), routine).selectedVariables());
     }
 
+    /**
+     * OGC-1656: Sample rejections ships with the CSV Rejection Report's columns in
+     * its order, and every column can be run.
+     */
+    @Test
+    public void sampleRejectionsShipsWithTheRejectionReportColumns() throws Exception {
+        predefined.ensure();
+
+        SavedReportDefinition rejections = read(PredefinedExportReports.REJECTIONS_ID);
+        assertEquals("Sample rejections", stored(PredefinedExportReports.REJECTIONS_ID).getName());
+        assertEquals("NON_CONFORMANCE", rejections.reportType());
+        assertEquals(List.of("ncAccessionNumber", "ncRequestDate", "referringSite", "ncSampleType", "ncTest",
+                "rejectionReason", "rejectionDate"), rejections.selectedVariables());
+        assertEquals(rejections.selectedVariables(), catalog
+                .validateSaved(ExportLocationFixture.reportingAdmin(entityManager), rejections).selectedVariables());
+    }
+
     private void addZoneAboveTheRegion() {
         ExportLocationFixture.insertType(entityManager, "99715", "Health Zone", null);
         ExportLocationFixture.organization(entityManager, "99705", "Papua Zone", null, null, "99715");
