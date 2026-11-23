@@ -420,6 +420,23 @@ test("rerun preserves a removed field and requires correction after its catalog 
     }),
   ).toBeDisabled();
   expect(requests).toEqual([]);
+
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Remove the unavailable columns (1)",
+    }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByText(messages["reporting.columns.stale"])).toBeNull(),
+  );
+  expect(
+    screen.queryByRole("button", { name: "Remove test:removed" }),
+  ).toBeNull();
+  expect(
+    screen.getByRole("button", {
+      name: messages["reporting.design.nextFilters"],
+    }),
+  ).toBeEnabled();
 });
 
 test("the mock overview leads to collapsed groups and Add actions without selecting the whole test catalog", async () => {

@@ -1140,8 +1140,22 @@ export default function ReportingView(p) {
                 </div>
               </>
             )}
-            {stale.length > 0 &&
-              notification("warning", t("reporting.columns.stale"))}
+            {stale.length > 0 && (
+              <div data-testid="reporting-stale-columns">
+                {notification("warning", t("reporting.columns.stale"))}
+                <Button
+                  kind="tertiary"
+                  size="sm"
+                  onClick={() =>
+                    p.setColumns(selected.filter((id) => byId.has(id)))
+                  }
+                >
+                  {t("reporting.columns.removeUnavailable", {
+                    count: stale.length,
+                  })}
+                </Button>
+              </div>
+            )}
             {submission.error &&
               notification(
                 "error",

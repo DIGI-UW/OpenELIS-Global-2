@@ -1,7 +1,6 @@
 package org.openelisglobal.reports.dataexport.dao;
 
 import java.sql.Timestamp;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Stream;
@@ -33,7 +32,7 @@ public class SampleTestingExportDAOImpl extends BaseDAOImpl<Result, String> impl
         var dates = ExportDateRange.of(filter.dateFrom(), filter.dateTo(), ZoneId.of(request.timezone()),
                 Integer.MAX_VALUE);
         boolean entered = "orderEnteredDate".equals(filter.dateBasis());
-        String date = entered ? "s.enteredDate"
+        String date = entered ? "coalesce(s.orderEnteredAt, s.enteredDate)"
                 : "receivedDate".equals(filter.dateBasis()) ? "coalesce(si.receivedDate, s.receivedTimestamp)"
                         : "si.collectionDate";
         String hql = "select r from Result r join fetch r.analysis a join fetch a.sampleItem si "
@@ -43,13 +42,8 @@ public class SampleTestingExportDAOImpl extends BaseDAOImpl<Result, String> impl
                 + date + " < :to " + "and a.testSection.id in :sections and a.statusId in :statuses "
                 + (filter.testIds().isEmpty() ? "" : "and t.id in :tests ")
                 + "order by si.id, a.id, coalesce(tr.componentId, ''), coalesce(r.grouping, 0), r.resultType, r.id";
-        var query = entityManager.createQuery(hql, Result.class)
-                .setParameter("from",
-                        entered ? java.sql.Date.valueOf(LocalDate.parse(filter.dateFrom()))
-                                : Timestamp.from(dates.start()))
-                .setParameter("to",
-                        entered ? java.sql.Date.valueOf(LocalDate.parse(filter.dateTo()).plusDays(1))
-                                : Timestamp.from(dates.endExclusive()))
+        var query = entityManager.createQuery(hql, Result.class).setParameter("from", Timestamp.from(dates.start()))
+                .setParameter("to", Timestamp.from(dates.endExclusive()))
                 .setParameter("sections", filter.labSectionIds()).setParameter("statuses", request.statusIds())
                 .setHint(QueryHints.HINT_FETCH_SIZE, 250).setHint(QueryHints.HINT_READONLY, true);
         if (!filter.testIds().isEmpty())
@@ -124,7 +118,9 @@ public class SampleTestingExportDAOImpl extends BaseDAOImpl<Result, String> impl
 
     @Override
     public Timestamp enteredAt(String sampleId) {
-        List<?> rows = entityManager.createNativeQuery("SELECT entered_date FROM clinlims.sample WHERE id = :id")
+        List<?> rows = entityManager
+                .createNativeQuery(
+                        "SELECT coalesce(order_entered_at, entered_date) FROM clinlims.sample WHERE id = :id")
                 .setParameter("id", Integer.valueOf(sampleId)).getResultList();
         Object value = rows.isEmpty() ? null : rows.get(0);
         return value instanceof Timestamp stamp ? stamp

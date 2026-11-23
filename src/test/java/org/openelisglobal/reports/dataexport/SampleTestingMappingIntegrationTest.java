@@ -551,6 +551,51 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
     }
 
     /**
+     * OGC-1655 review: Date Entered is the time order entry first saved the order
+     * (the day alone holds midnight), and the Entered date period files it under
+     * the same day it prints in the reporting zone, whatever the server's zone.
+     */
+    @Test
+    public void dateEnteredIsTheRecordedEntryTimeAndItsPeriodFollowsTheReportingZone() throws Exception {
+        entityManager
+                .createNativeQuery(
+                        "UPDATE clinlims.sample SET order_entered_at = TIMESTAMP '2024-06-03 00:30:00' WHERE id = 1")
+                .executeUpdate();
+        Analysis analysis = analyses.get("1");
+        analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+        analyses.update(analysis);
+        reading(analysis, options.get("1"), "85.0");
+        entityManager.flush();
+        entityManager.clear();
+        List<String> fieldIds = List.of("enteredDate");
+        var fields = fieldIds.stream()
+                .map(id -> source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow())
+                .toList();
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("SPREADSHEET"), fieldIds, List.of(), List.of("testIds"),
+                Map.of("SPREADSHEET", fieldIds));
+        String section = analysis.getTestSection().getId();
+        java.time.Instant entered = Timestamp.valueOf("2024-06-03 00:30:00").toInstant();
+
+        for (java.time.ZoneId zone : List.of(java.time.ZoneId.systemDefault(),
+                java.time.ZoneId.of("Pacific/Honolulu"))) {
+            java.time.LocalDate day = entered.atZone(zone).toLocalDate();
+            StringWriter csv = new StringWriter();
+            ExportFilter onTheDay = new ExportFilter(day.toString(), day.toString(), List.of(section), List.of("1"),
+                    List.of("FINALIZED"), "orderEnteredDate");
+            assertEquals(zone + " " + day, 1, source.write(csv, new ExportSnapshot(definition, "SPREADSHEET", fields,
+                    onTheDay, zone.getId(), List.of(analysis.getStatusId()))));
+            assertEquals("Date Entered\r\n" + entered.atZone(zone).toOffsetDateTime() + "\r\n",
+                    csv.toString().substring(1));
+            java.time.LocalDate other = day.plusDays(1);
+            ExportFilter dayAfter = new ExportFilter(other.toString(), other.toString(), List.of(section), List.of("1"),
+                    List.of("FINALIZED"), "orderEnteredDate");
+            assertEquals(zone + " " + other, 0, source.write(new StringWriter(), new ExportSnapshot(definition,
+                    "SPREADSHEET", fields, dayAfter, zone.getId(), List.of(analysis.getStatusId()))));
+        }
+    }
+
+    /**
      * OGC-1655: the period applies to the date the user chose: the specimen's
      * collection (the default), its receipt, or the order's entry.
      */

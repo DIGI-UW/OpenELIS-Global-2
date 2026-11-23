@@ -93,6 +93,7 @@
   "reporting.request.invalid": "Check your reporting period, filters and selected columns, then try again.",
   "reporting.request.conflict": "This submission identifier was already used for different report choices. Start a new report.",
   "reporting.columns.stale": "Some selected columns are no longer available. Remove them and choose from the current catalog.",
+  "reporting.columns.removeUnavailable": "Remove the unavailable columns ({count})",
   "reporting.jobs.limit": "You have reached the active-report limit. Wait for a report to finish, then try again.",
   "reporting.access.denied": "Your current OpenELIS access does not permit this report.",
   "reporting.access.scopeChanged": "Your access to the selected lab sections has changed. Review the report with your current access.",

@@ -43,7 +43,10 @@ public interface SampleTestingExportDAO extends BaseDAO<Result, String> {
 
     String dictionary(String id);
 
-    /** When the order was entered, with its time (OGC-1655). */
+    /**
+     * When order entry first saved the order, with its time; for an order saved
+     * before that time was recorded, the day it was entered (OGC-1655).
+     */
     java.sql.Timestamp enteredAt(String sampleId);
 
     /**
