@@ -81,7 +81,7 @@ public class ExportLocationsIntegrationTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void everyReportTypeOffersTheLocationGroup() {
-        for (String type : List.of("SAMPLE_TESTING", "REFERRALS", "NON_CONFORMANCE")) {
+        for (String type : List.of("SAMPLE_TESTING", "REFERRALS", "NON_CONFORMANCE", "SAMPLE_REJECTIONS")) {
             var definition = catalog.definition(type);
             String layout = definition.layouts().get(0);
             List<String> ids = catalog.variables(definition, layout).stream().map(ReportingVariable::id).toList();
@@ -169,7 +169,7 @@ public class ExportLocationsIntegrationTest extends BaseWebContextSensitiveTest 
 
     /**
      * OGC-1656: Sample rejections ships with the CSV Rejection Report's columns in
-     * its order, and every column can be run.
+     * its order, on the rejections-only report type, and every column can be run.
      */
     @Test
     public void sampleRejectionsShipsWithTheRejectionReportColumns() throws Exception {
@@ -177,7 +177,7 @@ public class ExportLocationsIntegrationTest extends BaseWebContextSensitiveTest 
 
         SavedReportDefinition rejections = read(PredefinedExportReports.REJECTIONS_ID);
         assertEquals("Sample rejections", stored(PredefinedExportReports.REJECTIONS_ID).getName());
-        assertEquals("NON_CONFORMANCE", rejections.reportType());
+        assertEquals("SAMPLE_REJECTIONS", rejections.reportType());
         assertEquals(List.of("ncAccessionNumber", "ncRequestDate", "referringSite", "ncSampleType", "ncTest",
                 "rejectionReason", "rejectionDate"), rejections.selectedVariables());
         assertEquals(rejections.selectedVariables(), catalog

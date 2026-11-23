@@ -82,7 +82,7 @@ public class NonConformanceExportDAOImpl extends BaseDAOImpl<NcEvent, Integer> i
     }
 
     @Override
-    public Stream<RejectionRow> rejections(ExportSnapshot request) {
+    public Stream<RejectionRow> rejections(ExportSnapshot request, boolean rejectedSpecimensOnly) {
         var filter = request.filterSpec();
         var dates = ExportDateRange.of(filter.dateFrom(), filter.dateTo(), ZoneId.of(request.timezone()),
                 Integer.MAX_VALUE);
@@ -90,6 +90,7 @@ public class NonConformanceExportDAOImpl extends BaseDAOImpl<NcEvent, Integer> i
                 + "from SampleQaEvent occurrence join occurrence.sample s "
                 + "left join occurrence.sampleItem si join occurrence.qaEvent reason "
                 + "where occurrence.enteredDate >= :from and occurrence.enteredDate < :to "
+                + (rejectedSpecimensOnly ? "and si.rejected = true " : "")
                 // NonConformityUpdateWorker.addSampleQaEvent records the occurrence's
                 // own section as a SECTION QaObservation, so that is the scope. Using
                 // any related analysis instead exports an occurrence recorded against
@@ -161,9 +162,10 @@ public class NonConformanceExportDAOImpl extends BaseDAOImpl<NcEvent, Integer> i
     }
 
     @Override
-    public java.util.List<Test> tests(String specimenId) {
+    public java.util.List<Test> tests(String specimenId, java.util.List<String> labSectionIds) {
         return entityManager
-                .createQuery("select a.test from Analysis a where a.sampleItem.id = :item order by a.id", Test.class)
-                .setParameter("item", specimenId).getResultList();
+                .createQuery("select a.test from Analysis a where a.sampleItem.id = :item "
+                        + "and a.testSection.id in :sections order by a.id", Test.class)
+                .setParameter("item", specimenId).setParameter("sections", labSectionIds).getResultList();
     }
 }

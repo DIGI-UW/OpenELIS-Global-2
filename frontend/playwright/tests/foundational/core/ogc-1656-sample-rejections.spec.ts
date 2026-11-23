@@ -5,7 +5,9 @@ import type { Page } from "@playwright/test";
  * OGC-1656: the shared "Sample rejections" report reproduces the CSV Rejection
  * Report in Custom Data Export, with its columns in the old file's order. The
  * fixture order REPORTING-MVP-NCE (src/test/resources/fixtures, received
- * 2026-05-10) carries non-conformance records in that period.
+ * 2026-05-10) carries a rejected specimen and non-conformance events in that
+ * period. Like the old file, the report lists the rejection only, one row per
+ * test; an event would be a row without a test.
  */
 
 const REJECTION_HEADERS = [
@@ -92,5 +94,6 @@ test("Sample rejections runs with the Rejection Report's columns", async ({
   const rows = records.filter((cells) => cells[0] === "REPORTING-MVP-NCE");
   expect(rows.length).toBeGreaterThan(0);
   expect(rows.every((cells) => cells[1] === "2026-05-10")).toBe(true);
+  expect(rows.every((cells) => cells[4] !== "")).toBe(true);
   expect(errors).toEqual([]);
 });

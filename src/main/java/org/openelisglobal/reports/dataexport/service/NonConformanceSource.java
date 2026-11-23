@@ -29,6 +29,19 @@ public class NonConformanceSource implements ReportingSource {
         this.locations = locations;
     }
 
+    /**
+     * The date anchor of a report type that lists every non-conformance: events,
+     * recorded occurrences and rejected specimens.
+     */
+    static final String EVENTS_AND_REJECTIONS = "eventOrRecordedDate";
+
+    /**
+     * The date anchor of a report type that lists rejected specimens only, as the
+     * CSV Rejection Report does (OGC-1656): no event, and no occurrence on a
+     * specimen that was not rejected.
+     */
+    static final String REJECTIONS_ONLY = "rejectionDate";
+
     @Override
     public String id() {
         return "NON_CONFORMANCE";
@@ -58,7 +71,7 @@ public class NonConformanceSource implements ReportingSource {
 
     @Override
     public void validateConfiguration(ReportSourceConfig configuration) {
-        if (!"eventOrRecordedDate".equals(configuration.dateAnchor())
+        if (!List.of(EVENTS_AND_REJECTIONS, REJECTIONS_ONLY).contains(configuration.dateAnchor())
                 || !configuration.layouts().equals(List.of("TABLE"))
                 || !List.of(ExportLocations.GROUP).containsAll(configuration.catalogs())
                 || !List.of("labSectionIds").containsAll(configuration.filters()))
@@ -73,10 +86,13 @@ public class NonConformanceSource implements ReportingSource {
         ZoneId zone = ZoneId.of(request.timezone());
         java.util.Locale locale = request.userLocale();
         boolean byTest = request.variables().stream().anyMatch(field -> "ncTest".equals(field.id()));
+        boolean rejectionsOnly = REJECTIONS_ONLY.equals(request.definition().dateAnchor());
+        List<String> sections = request.filterSpec().labSectionIds();
         Map<String, Map<String, String>> locationCache = new java.util.HashMap<>();
         Map<String, Map<String, String>> specimenCache = new java.util.HashMap<>();
-        try (var events = occurrences.events(request);
-                var rejections = occurrences.rejections(request);
+        try (var events = rejectionsOnly ? java.util.stream.Stream.<NonConformanceExportDAO.EventRow>empty()
+                : occurrences.events(request);
+                var rejections = occurrences.rejections(request, rejectionsOnly);
                 var rejectedSpecimens = occurrences.specimenRejections(request)) {
             var eventRecords = events.map(row -> {
                 Map<String, String> fields = common(row.accession(), row.specimenId(), row.reason());
@@ -101,7 +117,7 @@ public class NonConformanceSource implements ReportingSource {
                 fields.put("ncDateBasis", "Recorded rejection date");
                 fields.put("ncRecordedDate", recorded);
                 fields.put("ncRecordSource", "Recorded rejection");
-                return perTest(byTest, "rejection:" + row.id(), row.specimenId(), fields, locale);
+                return perTest(byTest, sections, "rejection:" + row.id(), row.specimenId(), fields, locale);
             });
             var specimenRecords = rejectedSpecimens.flatMap(row -> {
                 String reason = occurrences.rejectionNote(row.specimenId());
@@ -114,7 +130,7 @@ public class NonConformanceSource implements ReportingSource {
                 fields.put("ncDateBasis", "Recorded rejection date");
                 fields.put("ncRecordedDate", rejected);
                 fields.put("ncRecordSource", "Rejected specimen");
-                return perTest(byTest, "specimen:" + row.specimenId(), row.specimenId(), fields, locale);
+                return perTest(byTest, sections, "specimen:" + row.specimenId(), row.specimenId(), fields, locale);
             });
             var records = java.util.stream.Stream.concat(java.util.stream.Stream.concat(eventRecords, rejectionRecords),
                     specimenRecords);
@@ -127,9 +143,9 @@ public class NonConformanceSource implements ReportingSource {
      * One row per rejected test when the Test column is chosen, else one row for
      * the occurrence (OGC-1656, v1.6 BR-012).
      */
-    private java.util.stream.Stream<ExportRecord> perTest(boolean byTest, String id, String specimenId,
-            Map<String, String> fields, java.util.Locale locale) {
-        var tests = byTest && specimenId != null ? occurrences.tests(specimenId)
+    private java.util.stream.Stream<ExportRecord> perTest(boolean byTest, List<String> sections, String id,
+            String specimenId, Map<String, String> fields, java.util.Locale locale) {
+        var tests = byTest && specimenId != null ? occurrences.tests(specimenId, sections)
                 : java.util.List.<org.openelisglobal.test.valueholder.Test>of();
         if (tests.isEmpty()) {
             return java.util.stream.Stream.of(record(id, fields));

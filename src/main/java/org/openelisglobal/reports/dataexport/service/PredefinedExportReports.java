@@ -66,7 +66,7 @@ public class PredefinedExportReports {
             new Predefined(NON_CONFORMANCE_ID, "Non-conformance by location", "NON_CONFORMANCE", "TABLE", null, true),
             new Predefined(ROUTINE_ID, "Routine sample export", "SAMPLE_TESTING", "SPREADSHEET", "orderEnteredDate",
                     false),
-            new Predefined(REJECTIONS_ID, "Sample rejections", "NON_CONFORMANCE", "TABLE", null, false));
+            new Predefined(REJECTIONS_ID, "Sample rejections", "SAMPLE_REJECTIONS", "TABLE", null, false));
 
     private final ObjectMapper mapper = new ObjectMapper();
 

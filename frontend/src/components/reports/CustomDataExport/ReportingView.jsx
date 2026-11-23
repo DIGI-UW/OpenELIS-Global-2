@@ -27,6 +27,7 @@ const sourceTagColors = {
   SAMPLE_TESTING: "blue",
   REFERRALS: "teal",
   NON_CONFORMANCE: "magenta",
+  SAMPLE_REJECTIONS: "red",
 };
 
 // The presentation follows ReportBuilder/ReportQueue in openelis-work 5b2df7e34f.
@@ -77,7 +78,12 @@ export default function ReportingView(p) {
     />
   );
   const pending = t("reporting.design.pending");
-  const declaredTypes = ["SAMPLE_TESTING", "REFERRALS", "NON_CONFORMANCE"];
+  const declaredTypes = [
+    "SAMPLE_TESTING",
+    "REFERRALS",
+    "NON_CONFORMANCE",
+    "SAMPLE_REJECTIONS",
+  ];
   const connectedTypes = declaredTypes.filter((id) =>
     types.data?.some((type) => type.id === id),
   );

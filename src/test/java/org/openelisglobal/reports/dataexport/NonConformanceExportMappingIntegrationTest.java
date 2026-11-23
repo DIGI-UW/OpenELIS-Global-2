@@ -105,7 +105,7 @@ public class NonConformanceExportMappingIntegrationTest extends BaseWebContextSe
                 assertEquals("Haemolysed", row.reason());
             }
         }
-        try (var rows = occurrences.rejections(request("2026-05-05", "2026-05-05"))) {
+        try (var rows = occurrences.rejections(request("2026-05-05", "2026-05-05"), false)) {
             var legacy = rows.toList();
             assertEquals(1, legacy.size());
             assertEquals("90001", legacy.get(0).id());
@@ -227,9 +227,53 @@ public class NonConformanceExportMappingIntegrationTest extends BaseWebContextSe
         try (var rows = occurrences.specimenRejections(request("2026-05-05", "2026-05-05"))) {
             assertEquals(0, rows.count());
         }
-        try (var rows = occurrences.rejections(request("2026-05-05", "2026-05-05"))) {
+        try (var rows = occurrences.rejections(request("2026-05-05", "2026-05-05"), false)) {
             assertEquals(1, rows.count());
         }
+    }
+
+    /**
+     * OGC-1656 review: the Test column stays inside the requester's lab sections. A
+     * test from another section on the same rejected specimen is not a row.
+     */
+    @Test
+    public void perTestRowsStayInsideTheRequestersLabSections() throws Exception {
+        rejectAtOrderEntry();
+        entityManager.createNativeQuery("INSERT INTO clinlims.analysis (id, sampitem_id, test_sect_id, test_id,"
+                + " revision, status_id, analysis_type, lastupdated) VALUES (99951, 1, 2, 2, 1, 4, 'ROUTINE', now())")
+                .executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
+
+        String byTest = write(List.of("ncAccessionNumber", "ncTest", "ncRecordSource"));
+
+        assertTrue(byTest, byTest.contains("12345,Test Localization 1,Rejected specimen\r\n"));
+        assertFalse(byTest, byTest.contains("Test Localization 2"));
+    }
+
+    /**
+     * OGC-1656 review: Sample rejections lists rejected specimens only, as the CSV
+     * Rejection Report does. Non-Conformance keeps every event and occurrence.
+     */
+    @Test
+    public void sampleRejectionsListsRejectedSpecimensOnly() throws Exception {
+        executeDataSetWithStateManagement("testdata/reporting-nonconformance.xml");
+        event("2026-05-05", "2026-05-05");
+        entityManager.flush();
+        List<String> columns = List.of("ncAccessionNumber", "rejectionReason", "ncRecordSource");
+
+        String beforeRejection = write("SAMPLE_REJECTIONS", columns);
+        assertFalse(beforeRejection, beforeRejection.contains("12345"));
+        assertFalse(beforeRejection, beforeRejection.contains("Non-conformance event"));
+        String everything = write("NON_CONFORMANCE", columns);
+        assertTrue(everything, everything.contains("Non-conformance event"));
+        assertTrue(everything, everything.contains("12345,Haemolysed,Recorded rejection\r\n"));
+
+        rejectAtOrderEntry();
+        entityManager.flush();
+        String rejections = write("SAMPLE_REJECTIONS", columns);
+        assertTrue(rejections, rejections.contains("12345,Haemolysed,Recorded rejection\r\n"));
+        assertFalse(rejections, rejections.contains("Non-conformance event"));
     }
 
     private void rejectAtOrderEntry() {
@@ -245,7 +289,11 @@ public class NonConformanceExportMappingIntegrationTest extends BaseWebContextSe
     }
 
     private String write(List<String> fieldIds) throws Exception {
-        var definition = catalog.definition("NON_CONFORMANCE");
+        return write("NON_CONFORMANCE", fieldIds);
+    }
+
+    private String write(String reportType, List<String> fieldIds) throws Exception {
+        var definition = catalog.definition(reportType);
         var available = catalog.variables(definition, "TABLE").stream()
                 .collect(java.util.stream.Collectors.toMap(v -> v.id(), java.util.function.Function.identity()));
         var snapshot = new ExportSnapshot(definition, "TABLE", fieldIds.stream().map(available::get).toList(),
