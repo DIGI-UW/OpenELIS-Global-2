@@ -26,12 +26,16 @@ import { csrfToken } from "../../../helpers/api-session";
  * must show R as the target. Prep counts two samples for five participants
  * plus five in reserve. The register row nests its results table, so the
  * result row is found as the matching row that holds no table of its own.
+ *
+ * OGC-1666: the participant's cycle history names each result's sample, in
+ * sample order. The samples end in 10 and 2 and are sealed in that order, so
+ * only a numeric comparison puts the 2 first.
  */
 
 const RUN = Date.now().toString(36);
 const N = PROVIDER_PARTICIPANT_COUNT;
 const API = "/api/OpenELIS-Global/rest";
-const REACTIVE_SAMPLE = `Q-${RUN}-1`;
+const REACTIVE_SAMPLE = `Q-${RUN}-10`;
 const NON_REACTIVE_SAMPLE = `Q-${RUN}-2`;
 
 let seed: ProviderSchemeSeed;
@@ -223,6 +227,32 @@ test.describe("EQA follow-up register qualitative target (OGC-1665)", () => {
       const cells = resultRow.getByRole("cell");
       await expect(cells.nth(1)).toHaveText("NR");
       await expect(cells.nth(2)).toHaveText("R");
+    });
+
+    await test.step("the cycle history names each sample, in sample order", async () => {
+      await page.goto(
+        `/qa/eqa/provider/schemes/${seed.programId}/performance`,
+        {
+          timeout: NAV_TIMEOUT,
+        },
+      );
+      await page
+        .locator("tr", { hasText: seed.organizationNames[0] })
+        .getByRole("button", { name: "Cycle history" })
+        .click();
+      const history = page
+        .locator("table", {
+          has: page.getByRole("columnheader", { name: "Sample" }),
+        })
+        .last();
+      const rows = history.locator(":scope > tbody > tr");
+      await expect(rows).toHaveCount(2, { timeout: UI_TIMEOUT });
+      await expect(rows.nth(0).getByRole("cell").nth(2)).toHaveText(
+        NON_REACTIVE_SAMPLE,
+      );
+      await expect(rows.nth(1).getByRole("cell").nth(2)).toHaveText(
+        REACTIVE_SAMPLE,
+      );
     });
   });
 });

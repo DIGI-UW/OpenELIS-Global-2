@@ -60,6 +60,15 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
     /** The performance window: a laboratory's last four scored cycles. */
     private static final int ROLLING_WINDOW = 4;
 
+    /**
+     * The order the Performance Report's Scoring detail uses (OGC-1666): analyte,
+     * then panel sample in natural order with no sample last.
+     */
+    private static final Comparator<Map<String, Object>> ANALYTE_THEN_SAMPLE = Comparator
+            .comparing((Map<String, Object> row) -> (String) row.get("test"),
+                    Comparator.nullsLast(Comparator.<String>naturalOrder()))
+            .thenComparing(row -> (String) row.get("sampleCode"), EQASampleCodeOrder.ORDER);
+
     private static final String ACTIVE_ENROLLMENT = "Active";
 
     /**
@@ -215,7 +224,14 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
         String scoredOn = scoredOn(cycle);
         Map<Long, String> sampleCodes = sampleCodes(cycle);
         Map<Long, String> sealedTargets = sealedTargetsByResult(cycleId);
-        for (EQAResult result : resultsFor(cycleId, organizationId)) {
+        List<EQAResult> ordered = new ArrayList<>(resultsFor(cycleId, organizationId));
+        Map<Long, String> testNames = new HashMap<>();
+        ordered.forEach(result -> testNames.computeIfAbsent(result.getTestId(), this::testName));
+        ordered.sort(Comparator
+                .comparing((EQAResult result) -> testNames.get(result.getTestId()),
+                        Comparator.nullsLast(Comparator.<String>naturalOrder()))
+                .thenComparing(result -> sampleCodes.get(result.getPanelSampleId()), EQASampleCodeOrder.ORDER));
+        for (EQAResult result : ordered) {
             String sampleCode = sampleCodes.get(result.getPanelSampleId());
             String target = result.getResultText() != null
                     ? StringUtil.csvEscape(EQAResultTarget.of(result, sealedTargets))
@@ -843,6 +859,7 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
                     mostRecent = result.getPerformanceStatus().name();
                 }
             }
+            analytes.sort(ANALYTE_THEN_SAMPLE);
             cycleRow.put("analytes", analytes);
             history.add(cycleRow);
         }
