@@ -317,6 +317,7 @@ public class SampleStorageServiceInventoryLotIntegrationTest extends BaseWebCont
     @Test
     public void sampleItemOccupant_assignAndMove_stillWorkAfterOccupantGeneralization() throws Exception {
         executeDataSetWithStateManagement("testdata/sample-storage-integration-test-data.xml");
+        authenticateAs("testuser");
         try {
             // sample_item id 1002 (from that fixture) has no pre-existing assignment.
             Map<String, Object> response = sampleStorageService.assignSampleItemWithLocation("1002", "1000", "room",
@@ -466,6 +467,7 @@ public class SampleStorageServiceInventoryLotIntegrationTest extends BaseWebCont
     @Test
     public void findByOccupantType_returnsTheLotAssignmentsAndNotTheSampleOnes() throws Exception {
         executeDataSetWithStateManagement("testdata/sample-storage-integration-test-data.xml");
+        authenticateAs("testuser");
         try {
             sampleStorageService.assignSampleItemWithLocation("1002", "1000", "room", null, "sample occupant");
             sampleStorageService.assignInventoryLotWithLocation(LOT_1, "1000", "room", null, "lot occupant", "1");
