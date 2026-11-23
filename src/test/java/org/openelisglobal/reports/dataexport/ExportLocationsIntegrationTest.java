@@ -81,7 +81,7 @@ public class ExportLocationsIntegrationTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void everyReportTypeOffersTheLocationGroup() {
-        for (String type : List.of("SAMPLE_TESTING", "REFERRALS", "NON_CONFORMANCE")) {
+        for (String type : List.of("SAMPLE_TESTING", "REFERRALS", "NON_CONFORMANCE", "SAMPLE_REJECTIONS")) {
             var definition = catalog.definition(type);
             String layout = definition.layouts().get(0);
             List<String> ids = catalog.variables(definition, layout).stream().map(ReportingVariable::id).toList();
@@ -165,6 +165,23 @@ public class ExportLocationsIntegrationTest extends BaseWebContextSensitiveTest 
                 routine.selectedVariables().contains("area:" + ExportLocationFixture.DISTRICT_TYPE));
         assertEquals(routine.selectedVariables(), catalog
                 .validateSaved(ExportLocationFixture.reportingAdmin(entityManager), routine).selectedVariables());
+    }
+
+    /**
+     * OGC-1656: Sample rejections ships with the CSV Rejection Report's columns in
+     * its order, on the rejections-only report type, and every column can be run.
+     */
+    @Test
+    public void sampleRejectionsShipsWithTheRejectionReportColumns() throws Exception {
+        predefined.ensure();
+
+        SavedReportDefinition rejections = read(PredefinedExportReports.REJECTIONS_ID);
+        assertEquals("Sample rejections", stored(PredefinedExportReports.REJECTIONS_ID).getName());
+        assertEquals("SAMPLE_REJECTIONS", rejections.reportType());
+        assertEquals(List.of("ncAccessionNumber", "ncRequestDate", "referringSite", "ncSampleType", "ncTest",
+                "rejectionReason", "rejectionDate"), rejections.selectedVariables());
+        assertEquals(rejections.selectedVariables(), catalog
+                .validateSaved(ExportLocationFixture.reportingAdmin(entityManager), rejections).selectedVariables());
     }
 
     private void addZoneAboveTheRegion() {

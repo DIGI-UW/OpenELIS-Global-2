@@ -513,18 +513,29 @@ test.each([
     "eventOrRecordedDate",
     "event dates when known, otherwise recorded dates (identified by Date Basis)",
   ],
+  ["rejectionDate", "rejection dates"],
 ])(
   "another report starts with explicit Add choices and explains its %s period",
   async (dateAnchor, dateMeaning) => {
-    const nc = dateAnchor === "eventOrRecordedDate";
-    const typeLabel = nc ? "Non-Conformance" : "Referrals";
+    const nc = ["eventOrRecordedDate", "rejectionDate"].includes(dateAnchor);
+    const rejections = dateAnchor === "rejectionDate";
+    const typeId = rejections
+      ? "SAMPLE_REJECTIONS"
+      : nc
+        ? "NON_CONFORMANCE"
+        : "REFERRALS";
+    const typeLabel = rejections
+      ? "Sample rejections"
+      : nc
+        ? "Non-Conformance"
+        : "Referrals";
     const groupLabel = nc ? "Non-Conformance / Rejections" : "Referrals";
     const fieldId = nc ? "ncOccurrenceId" : "referralId";
     const fieldLabel = nc ? "Occurrence ID" : "Referral ID";
     alternateCatalog = {
       ...catalog("TABLE"),
       definition: {
-        id: nc ? "NON_CONFORMANCE" : "REFERRALS",
+        id: typeId,
         label: typeLabel,
         layouts: ["TABLE"],
         dateAnchor,
