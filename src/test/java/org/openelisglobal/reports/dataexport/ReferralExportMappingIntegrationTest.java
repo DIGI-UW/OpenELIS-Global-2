@@ -231,6 +231,25 @@ public class ReferralExportMappingIntegrationTest extends BaseWebContextSensitiv
                 + ",,,12345,Blood Test,2026-05-07,,,REQUESTED\r\n", export("REFERRALS", fields, "2026-05-07", 3));
     }
 
+    /**
+     * OGC-1652: a referral names where its specimen came from, down to the
+     * geographic areas above the facility, nearest first.
+     */
+    @Test
+    public void aReferralCarriesWhereItsSpecimenCameFrom() throws Exception {
+        ExportLocationFixture.attach(entityManager, "1");
+        referral("1", "2026-05-05T10:00:00Z", "2026-05-07T11:00:00Z");
+        String district = "area:" + ExportLocationFixture.DISTRICT_TYPE;
+        String region = "area:" + ExportLocationFixture.REGION_TYPE;
+
+        assertEquals(
+                "﻿Accession Number,Requesting Facility,Requesting Facility Code,Ward / Dept,Health District,"
+                        + "Health Region\r\n12345,Alotau Hospital,ALT-01,Maternity Ward,Milne Bay District,"
+                        + "Southern Region\r\n",
+                export("REFERRALS", List.of("referralAccessionNumber", "referringSite", "referringSiteCode", "wardDept",
+                        district, region), "2026-05-07", 1));
+    }
+
     @Test
     public void anotherReferralDefinitionChangesDateAndColumnsThroughConfiguration() throws Exception {
         referral("1", "2026-05-05T10:00:00Z", "2026-05-07T11:00:00Z");

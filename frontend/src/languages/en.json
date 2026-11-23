@@ -56,6 +56,7 @@
   "reporting.group.testTurnaround": "Turnaround by test",
   "reporting.group.componentTurnaround": "Turnaround by result component",
   "reporting.group.observations": "Additional questions",
+  "reporting.group.location": "Location",
   "reporting.headerPreview": "CSV header preview",
   "reporting.moveUp": "Move {field} up",
   "reporting.moveDown": "Move {field} down",

@@ -55,6 +55,8 @@ public class SampleTestingSource implements ReportingSource {
     private ReportingResultValues resultValues;
     @Autowired
     private IStatusService statuses;
+    @Autowired
+    private ExportLocations locations;
 
     @Override
     public String id() {
@@ -69,8 +71,8 @@ public class SampleTestingSource implements ReportingSource {
     @Override
     public void validateConfiguration(ReportSourceConfig configuration) {
         if (!"collectionDate".equals(configuration.dateAnchor())
-                || !List.of("tests", "components", "observations", "testTurnaround", "componentTurnaround")
-                        .containsAll(configuration.catalogs())
+                || !List.of("tests", "components", "observations", "testTurnaround", "componentTurnaround",
+                        ExportLocations.GROUP).containsAll(configuration.catalogs())
                 || !List.of("labSectionIds", "testIds", "resultStatuses").containsAll(configuration.filters())) {
             throw new IllegalArgumentException("reporting.definition.unsupportedMapping");
         }
@@ -128,6 +130,7 @@ public class SampleTestingSource implements ReportingSource {
         });
         dao.observationTypes().forEach(t -> fields.add(new ReportingVariable("observation:" + t.getId(),
                 t.getDescription(), "text", "observations", false, BOTH)));
+        fields.addAll(locations.catalog(BOTH));
         return fields;
     }
 
@@ -155,6 +158,7 @@ public class SampleTestingSource implements ReportingSource {
                 .collect(Collectors.groupingBy(TestResultComponent::getTestId, Collectors.counting())).entrySet()
                 .stream().filter(entry -> entry.getValue() > 1).map(Map.Entry::getKey).collect(Collectors.toSet());
         Map<String, String> dictionaryCache = new HashMap<>();
+        Map<String, Map<String, String>> locationCache = new HashMap<>();
         var units = dao.unitsOfMeasure().stream().collect(
                 Collectors.toMap(UnitOfMeasure::getId, UnitOfMeasure::getUnitOfMeasureName, (first, second) -> first));
         ZoneId zone = ZoneId.of(request.timezone());
@@ -179,8 +183,9 @@ public class SampleTestingSource implements ReportingSource {
                             specimenId = specimen.getId();
                             Patient patient = dao.patient(specimen.getSample().getId());
                             patientFields = patientFields(patient, zone);
-                            observationFields = observationFields(
-                                    dao.observations(specimen.getSample().getId(), specimenId));
+                            observationFields = new LinkedHashMap<>(
+                                    observationFields(dao.observations(specimen.getSample().getId(), specimenId)));
+                            observationFields.putAll(locations.forSample(specimen.getSample(), locationCache));
                         }
                         if (!Objects.equals(sampleId, specimen.getSample().getId())) {
                             sampleId = specimen.getSample().getId();

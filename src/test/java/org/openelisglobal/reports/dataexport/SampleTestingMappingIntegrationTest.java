@@ -246,6 +246,49 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
         }
     }
 
+    /**
+     * OGC-1652: a result row names where its sample came from: the requesting
+     * facility, its code, the ward and the areas above the facility.
+     */
+    @Test
+    public void aResultCarriesWhereItsSampleCameFrom() throws Exception {
+        Analysis analysis = analyses.get("1");
+        String status = statuses.getStatusID(AnalysisStatus.Finalized);
+        analysis.setStatusId(status);
+        analyses.update(analysis);
+        SampleItem specimen = analysis.getSampleItem();
+        specimen.setCollectionDate(Timestamp.valueOf("2026-08-20 10:00:00"));
+        specimens.update(specimen);
+        Result result = new Result();
+        result.setAnalysis(analysis);
+        result.setResultType("N");
+        result.setValue("120");
+        result.setIsReportable("Y");
+        entityManager.persist(result);
+        ExportLocationFixture.attach(entityManager, specimen.getSample().getId());
+        entityManager.flush();
+        String accession = specimen.getSample().getAccessionNumber();
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("RESULT_LIST"), List.of("accessionNumber", "resultValue"),
+                List.of("location"), List.of("testIds"), Map.of("RESULT_LIST", List.of("accessionNumber")));
+        List<String> ids = List.of("accessionNumber", "referringSite", "referringSiteCode", "wardDept",
+                "area:" + ExportLocationFixture.DISTRICT_TYPE, "area:" + ExportLocationFixture.REGION_TYPE);
+        var fields = ids.stream()
+                .map(id -> source.catalog().stream().filter(v -> v.id().equals(id)).findFirst().orElseThrow()).toList();
+        StringWriter csv = new StringWriter();
+
+        source.write(csv,
+                new ExportSnapshot(definition, "RESULT_LIST", fields,
+                        new ExportFilter("2026-08-01", "2026-08-31", List.of(analysis.getTestSection().getId()),
+                                List.of("1"), List.of("FINALIZED")),
+                        java.time.ZoneId.systemDefault().getId(), List.of(status)));
+
+        String[] lines = csv.toString().split("\r\n");
+        assertEquals("﻿Accession Number,Requesting Facility,Requesting Facility Code,Ward / Dept,"
+                + "Health District,Health Region", lines[0]);
+        assertEquals(accession + ",Alotau Hospital,ALT-01,Maternity Ward,Milne Bay District,Southern Region", lines[1]);
+    }
+
     @Test
     public void secondConfiguredTestArrangementExportsWithoutReportingCodeChanges() throws Exception {
         List<TestResultComponent> configured = components.saveSampleResults("2",
