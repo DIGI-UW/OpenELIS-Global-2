@@ -241,7 +241,7 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
-    public void blockingZoneRowWithoutDiskContentLoadsAndNeverMatches() throws Exception {
+    public void blockingZoneRowWithoutDiskContentLoadsAndEndsTheSearch() throws Exception {
         var fixture = new ReferencePackageFixture("2099.63", "ZONEBLOCK");
         var lines = fixture.files.get("breakpoints.csv").lines().toList();
         fixture.files.put("breakpoints.csv", lines.get(0) + "\n" + lines.get(1) + "\n"
@@ -257,10 +257,10 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
                 "ZONE", null, "ZONE", null, null).orElseThrow();
         assertNull(blocking.getSusceptibleValue());
         assertNull(blocking.getResistantValue());
-        assertNull(rules.findBestRule(standard.getId(), organism.getId(), java.util.Set.of(), antibiotic.getId(),
-                "ZONE", null, "ZONE"));
-        assertNull(rules.findContextualRule(standard.getId(), organism.getId(), java.util.Set.of(), antibiotic.getId(),
-                "ZONE", null, "ZONE", null, "30ug"));
+        assertEquals(blocking.getId(), rules.findBestRule(standard.getId(), organism.getId(), java.util.Set.of(),
+                antibiotic.getId(), "ZONE", null, "ZONE").getId());
+        assertEquals(blocking.getId(), rules.findContextualRule(standard.getId(), organism.getId(), java.util.Set.of(),
+                antibiotic.getId(), "ZONE", null, "ZONE", null, "30ug").getId());
     }
 
     @Test
@@ -1847,5 +1847,41 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
 
     private static String suffix() {
         return java.util.UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    @Test
+    public void aSpeciesZoneRowWithoutValuesStopsABroaderZoneRule() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.64", "ZONEFALL");
+        load(fixture);
+        var standard = standard(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
+        var blocking = zoneRule(standard.getId(), organism.getId(), antibiotic.getId(), null, null, null);
+        var broad = zoneRule(standard.getId(), null, antibiotic.getId(), "30ug", new BigDecimal("20"),
+                new BigDecimal("17"));
+
+        var found = rules.findContextualRule(standard.getId(), organism.getId(), java.util.Set.of(), antibiotic.getId(),
+                "ZONE", null, "ZONE", null, "30ug");
+
+        assertNotNull(broad.getId());
+        assertEquals(blocking.getId(), found == null ? null : found.getId());
+    }
+
+    private MicroBreakpointRule zoneRule(String standardId, String organismId, String antibioticId, String diskContent,
+            BigDecimal susceptible, BigDecimal resistant) {
+        var rule = new MicroBreakpointRule();
+        rule.setStandardId(standardId);
+        rule.setOrganismId(organismId);
+        rule.setAntibioticId(antibioticId);
+        rule.setMethod("ZONE");
+        rule.setBreakpointType("ZONE");
+        rule.setDiskContent(diskContent);
+        rule.setSusceptibleValue(susceptible);
+        rule.setResistantValue(resistant);
+        rule.setUnits("mm");
+        rule.setIsActive("Y");
+        rule.setLastUpdatedBy("1");
+        rules.insert(rule);
+        return rule;
     }
 }
