@@ -81,15 +81,15 @@ public class InventoryLotRestControllerLifecycleIntegrationTest extends BaseWebC
     }
 
     @Test
-    public void testGetById_WithInvalidIdFormat_ShouldReturnInternalServerError() throws Exception {
+    public void testGetById_WithInvalidIdFormat_ShouldReturnBadRequest() throws Exception {
         mockMvc.perform(get("/rest/inventory/lots/invalid-id").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
-    public void testGetById_WithInvalidId_ShouldReturnInternalServerError() throws Exception {
+    public void testGetById_WithNonExistentId_ShouldReturnNotFound() throws Exception {
         mockMvc.perform(get("/rest/inventory/lots/99999").contentType(MediaType.APPLICATION_JSON).session(mockSession))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isNotFound());
     }
 
     @Test
