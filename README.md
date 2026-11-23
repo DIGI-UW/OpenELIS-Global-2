@@ -156,15 +156,16 @@ placeholder for one.
 An option's value follows it after a space, as in `--setup light` and
 `--module ../my-module` (`--setup=light` works too).
 
-| Option              | Default | What it does                                                                                                                                                                       |
-| ------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--setup full`      | yes     | Starts the whole stack: database, webapp, frontend, proxy, FHIR server, Analyzer Bridge and analyzer simulator.                                                                    |
-| `--setup light`     |         | Starts only the database, webapp, frontend and proxy. Every lab workflow runs without the other three (see the light setup above). Switching setups keeps the same database.       |
-| `--module <folder>` |         | Builds the module in `<folder>` and deploys it into the stack. Repeat it for several modules. See [Running a module from its source](#running-a-module-from-its-source).           |
-| `--build`           |         | Builds the container images from this checkout instead of pulling the published ones. Needed after changes to frontend dependencies, Dockerfiles, the Analyzer Bridge or the mock. |
-| `--skip-build`      |         | Builds and pulls nothing: reuses this checkout's last WAR and the images the last `up` ran. Cannot be combined with `--build`.                                                     |
-| `--no-wait`         |         | Returns without waiting for the login page.                                                                                                                                        |
-| `--no-scenarios`    |         | Does not create the analyzer test scenarios (the light setup never creates them).                                                                                                  |
+| Option              | Default | What it does                                                                                                                                                                                                                                    |
+| ------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--setup full`      | yes     | Starts the whole stack: database, webapp, frontend, proxy, FHIR server, Analyzer Bridge and analyzer simulator.                                                                                                                                 |
+| `--setup light`     |         | Starts only the database, webapp, frontend and proxy. Every lab workflow runs without the other three (see the light setup above). Switching setups keeps the same database.                                                                    |
+| `--module <folder>` |         | Builds the module in `<folder>` and deploys it into the stack. Repeat it for several modules. See [Running a module from its source](#running-a-module-from-its-source).                                                                        |
+| `--build`           |         | Builds the container images from this checkout instead of pulling the published ones. Needed after changes to frontend dependencies, Dockerfiles, the Analyzer Bridge or the mock.                                                              |
+| `--skip-build`      |         | Builds and pulls nothing: reuses this checkout's last WAR and the images the last `up` ran. Cannot be combined with `--build`.                                                                                                                  |
+| `--pull`            |         | Pulls the latest published images now. Without it, `up` pulls them on its first run in each terminal and when an image is missing, and later runs in that terminal reuse the local images. Cannot be combined with `--build` or `--skip-build`. |
+| `--no-wait`         |         | Returns without waiting for the login page.                                                                                                                                                                                                     |
+| `--no-scenarios`    |         | Does not create the analyzer test scenarios (the light setup never creates them).                                                                                                                                                               |
 
 `status`, `env` and `down` follow the setup of the last `up`.
 
@@ -173,14 +174,14 @@ An option's value follows it after a space, as in `--setup light` and
 Set these in front of the command for one run, or as lines in the `.env` file at
 the root of this repository to keep them:
 
-| Setting                     | Default                       | What it does                                                                                                                                                                                     |
-| --------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `DEV_STACK_IMAGE_TAG`       | `develop`                     | Tag of the published development images `up` pulls, for example a release such as `DEV_STACK_IMAGE_TAG=3.4.0`. `up --skip-build` keeps the images of the last `up` instead.                      |
-| `DEV_STACK_IMAGE_NAMESPACE` | `itechuw`                     | Docker Hub namespace of those images.                                                                                                                                                            |
-| `DEV_STACK_TLS`             | `local-ca` on localhost       | HTTPS mode: `local-ca` (trusted local certificates, needs mkcert), `self-signed` (no mkcert, the browser warns), or `letsencrypt` (a public domain).                                             |
-| `DEV_STACK_HTTPS_PORT`      | a free port, picked by Docker | Port the stack answers HTTPS on. Set `443` to open it at `https://localhost`; it must be free, so only one stack at a time can use it. `scripts/dev-stack url` always prints the address in use. |
-| `DEV_STACK_HTTP_PORT`       | a free port, picked by Docker | Port for plain HTTP, which redirects to HTTPS. Set `80` together with `DEV_STACK_HTTPS_PORT=443`.                                                                                                |
-| `LETSENCRYPT_DOMAIN`        | `localhost`                   | Domain the stack answers on; see [the development guide](docs/dev_setup.md) for domain setups.                                                                                                   |
+| Setting                     | Default                       | What it does                                                                                                                                                                                                                                          |
+| --------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DEV_STACK_IMAGE_TAG`       | `develop`                     | Tag of the published development images `up` runs (pulled on the first run in each terminal, when missing, or with `--pull`), for example a release such as `DEV_STACK_IMAGE_TAG=3.4.0`. `up --skip-build` keeps the images of the last `up` instead. |
+| `DEV_STACK_IMAGE_NAMESPACE` | `itechuw`                     | Docker Hub namespace of those images.                                                                                                                                                                                                                 |
+| `DEV_STACK_TLS`             | `local-ca` on localhost       | HTTPS mode: `local-ca` (trusted local certificates, needs mkcert), `self-signed` (no mkcert, the browser warns), or `letsencrypt` (a public domain).                                                                                                  |
+| `DEV_STACK_HTTPS_PORT`      | a free port, picked by Docker | Port the stack answers HTTPS on. Set `443` to open it at `https://localhost`; it must be free, so only one stack at a time can use it. `scripts/dev-stack url` always prints the address in use.                                                      |
+| `DEV_STACK_HTTP_PORT`       | a free port, picked by Docker | Port for plain HTTP, which redirects to HTTPS. Set `80` together with `DEV_STACK_HTTPS_PORT=443`.                                                                                                                                                     |
+| `LETSENCRYPT_DOMAIN`        | `localhost`                   | Domain the stack answers on; see [the development guide](docs/dev_setup.md) for domain setups.                                                                                                                                                        |
 
 For example, for one run: `DEV_STACK_IMAGE_TAG=3.4.0 scripts/dev-stack up`, or
 to keep it, add the line `DEV_STACK_IMAGE_TAG=3.4.0` to `.env`. To open the
@@ -197,6 +198,7 @@ DEV_STACK_HTTP_PORT=80
 scripts/dev-stack up                                   # full stack, from this checkout's source
 scripts/dev-stack up --setup light                     # database, webapp, frontend, proxy only
 scripts/dev-stack up --skip-build                      # restart quickly with the last build
+scripts/dev-stack up --pull                            # get the latest published images
 scripts/dev-stack up --module ../my-module             # also build and deploy a module
 scripts/dev-stack up --setup light --module ../my-module
 scripts/dev-stack url                                  # print the address

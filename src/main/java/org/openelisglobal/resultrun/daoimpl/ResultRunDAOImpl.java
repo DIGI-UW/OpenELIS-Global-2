@@ -109,6 +109,53 @@ public class ResultRunDAOImpl extends BaseDAOImpl<ResultRun, Long> implements Re
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Object[]> getRunsOfAnalyses(Collection<String> analysisIds) {
+        if (analysisIds == null || analysisIds.isEmpty()) {
+            return List.of();
+        }
+        try {
+            Query<Object[]> query = session()
+                    .createQuery("SELECT DISTINCT r.analysis.id, r.runId, r.analysis.test.id FROM Result r"
+                            + " WHERE r.runId IS NOT NULL AND r.analysis.id IN (:analysisIds)", Object[].class);
+            query.setParameterList("analysisIds", analysisIds);
+            return query.list();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error finding the runs of analyses", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getTestIdsOfResults(Long runId) {
+        try {
+            return session().createQuery("SELECT DISTINCT r.analysis.test.id FROM Result r WHERE r.runId = :runId",
+                    String.class).setParameter("runId", runId).list();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error finding the tests of a run's results", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getAnalysisIdsOfRunTest(Long runId, String testId) {
+        try {
+            java.util.Set<String> ids = new java.util.LinkedHashSet<>(session()
+                    .createQuery("SELECT DISTINCT r.analysis.id FROM Result r WHERE r.runId = :runId"
+                            + " AND r.analysis.test.id = :testId", String.class)
+                    .setParameter("runId", runId).setParameter("testId", testId).list());
+            ids.addAll(session().createQuery(
+                    "SELECT DISTINCT a.id FROM Analysis a, AnalyzerResults ar"
+                            + " WHERE ar.runId = :runId AND ar.testId = :testId AND ar.isControl = false"
+                            + " AND a.test.id = ar.testId AND a.sampleItem.sample.accessionNumber = ar.accessionNumber",
+                    String.class).setParameter("runId", runId).setParameter("testId", testId).list());
+            return List.copyOf(ids);
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error finding the analyses of a run's test", e);
+        }
+    }
+
     private Session session() {
         return entityManager.unwrap(Session.class);
     }

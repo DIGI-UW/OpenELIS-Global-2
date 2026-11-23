@@ -32,7 +32,7 @@ const { utilsMock, mergeServiceMock } = vi.hoisted(() => ({
 vi.mock("../../utils/Utils", () => utilsMock);
 vi.mock("./patientMergeService", () => mergeServiceMock);
 
-vi.mock("../../layout/Layout", () => ({
+vi.mock("../../layout/contexts", () => ({
   NotificationContext: React.createContext({
     notificationVisible: false,
     setNotificationVisible: vi.fn(),

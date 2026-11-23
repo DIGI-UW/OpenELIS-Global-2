@@ -291,4 +291,17 @@ public class TestCatalogLabUnitStatusIntegrationTest extends BaseWebContextSensi
         assertEquals(200,
                 labUnits.updateLabUnit(request(), String.valueOf(ACTIVE_C), unchanged).getStatusCode().value());
     }
+
+    @org.junit.Test
+    public void aRefusedGramStainTestLeavesTheNameUnsaved() throws Exception {
+        LabUnitManagementDTO unitC = labUnits.getLabUnit(String.valueOf(ACTIVE_C)).getBody().getData();
+        unitC.setNames(java.util.Map.of("en", "LabUnitStatusIT X"));
+        unitC.setGramStainTestId(String.valueOf(TEST_ID));
+
+        var refused = labUnits.updateLabUnit(request(), String.valueOf(ACTIVE_C), unitC);
+        assertEquals(422, refused.getStatusCode().value());
+        assertEquals("Select an active, orderable test in this lab unit", refused.getBody().getMessage());
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.localization_value WHERE localization_id = ?", Integer.class, ACTIVE_C));
+    }
 }

@@ -2,10 +2,17 @@ package org.openelisglobal.internationalization;
 
 import static org.junit.Assert.assertEquals;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -28,13 +35,37 @@ public class UiMessagesTest {
     }
 
     @Test
-    public void aRegionalLanguageLayersOverItsBaseLanguageThenEnglish() {
+    public void aRegionalLanguageLayersOverItsBaseLanguageThenEnglish() throws Exception {
         UiMessages malagasyFrench = UiMessages.forLocale(Locale.of("fr", "MG"), null);
+        Map<String, String> english = shippedCatalogue("en");
+        Set<String> french = new HashSet<>(shippedCatalogue("fr").keySet());
+        french.addAll(shippedCatalogue("fr_MG").keySet());
+        String englishOnly = english.keySet().stream().filter(key -> !french.contains(key)).sorted().findFirst()
+                .orElse(null);
 
         assertEquals("the regional file wins", "Suivante", malagasyFrench.get("reporting.next"));
-        assertEquals("a key only English holds prints in English", "Results: final report",
-                malagasyFrench.get("report.patient.title.final"));
+        Assume.assumeNotNull(englishOnly);
+        assertEquals("a key only English holds prints in English", english.get(englishOnly),
+                malagasyFrench.get(englishOnly));
         assertEquals(List.of("fr", "fr_MG"), UiMessages.filesFor(Locale.of("fr", "MG")));
+    }
+
+    /**
+     * A shipped file as it is, without the English beneath it. Transifex fills in
+     * French for more keys with every sync, so a key named here would stop being
+     * English-only.
+     */
+    private static Map<String, String> shippedCatalogue(String file) throws Exception {
+        try (InputStream in = UiMessages.class.getClassLoader()
+                .getResourceAsStream(UiMessages.CATALOGUE + file + ".json")) {
+            Map<String, String> strings = new HashMap<>();
+            new ObjectMapper().readTree(in).fields().forEachRemaining(entry -> {
+                if (entry.getValue().isTextual()) {
+                    strings.put(entry.getKey(), entry.getValue().asText());
+                }
+            });
+            return strings;
+        }
     }
 
     @Test

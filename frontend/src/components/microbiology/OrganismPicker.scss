@@ -1,0 +1,16 @@
+@use "@carbon/styles/scss/spacing";
+
+.organismPicker__row {
+  display: flex;
+  gap: spacing.$spacing-03;
+  align-items: baseline;
+}
+
+.organismPicker__code,
+.organismPicker__former {
+  color: var(--cds-text-secondary);
+}
+
+.organismPicker__former {
+  font-style: italic;
+}

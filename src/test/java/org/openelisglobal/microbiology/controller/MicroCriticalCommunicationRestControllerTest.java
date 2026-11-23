@@ -30,7 +30,8 @@ public class MicroCriticalCommunicationRestControllerTest {
             assertEquals("targetType is invalid", exception.getMessage());
         }
 
-        verify(service, never()).logCommunication(any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any());
+        verify(service, never()).logCommunication(any(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(),
+                any());
     }
 
     private MockHttpServletRequest requestFor(String userId) {

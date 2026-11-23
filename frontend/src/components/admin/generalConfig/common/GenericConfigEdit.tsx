@@ -266,6 +266,13 @@ const GenericConfigEdit = ({
       invalidateServerData();
       reloadConfiguration();
       onDone();
+    } else if (status === 409) {
+      showAlertMessage(
+        intl.formatMessage({ id: "config.stale" }),
+        NotificationKinds.error,
+      );
+      seededRecord.current = null;
+      invalidateServerData();
     } else {
       showAlertMessage(
         intl.formatMessage({ id: "server.error.msg" }),

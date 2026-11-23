@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -13,7 +14,6 @@ import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.resultrun.form.ResultRunRowCategory;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
-import org.openelisglobal.resultrun.valueholder.ResultRunState;
 import org.openelisglobal.resultvalidation.util.ValidationSignals;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -47,19 +47,22 @@ public class ResultRunRowClassifier {
     @Lazy
     @Autowired
     private AnalysisService analysisService;
+    @Lazy
+    @Autowired
+    private RunQcService runQcService;
 
     public List<ClassifiedRow> classify(ResultRun run, List<AnalyzerResults> rows) {
         Map<String, Optional<Sample>> samples = new HashMap<>();
         Map<String, Optional<Patient>> patients = new HashMap<>();
         Map<String, ResultLimit> limits = new HashMap<>();
-        boolean held = run.getState() == ResultRunState.HELD;
+        Set<String> heldTests = run.getId() == null ? Set.of() : runQcService.heldTestIds(run.getId());
         return rows.stream().map(row -> {
             String flag = flagFor(row, samples, patients, limits);
-            return new ClassifiedRow(row, flag, categoryOf(row, flag, held));
+            return new ClassifiedRow(row, flag, categoryOf(row, flag, heldTests.contains(row.getTestId())));
         }).toList();
     }
 
-    static ResultRunRowCategory categoryOf(AnalyzerResults row, String flag, boolean runHeld) {
+    static ResultRunRowCategory categoryOf(AnalyzerResults row, String flag, boolean testHeld) {
         if (row.getIsControl()) {
             return ResultRunRowCategory.CONTROL;
         }
@@ -67,7 +70,7 @@ public class ResultRunRowClassifier {
                 || "INVALID".equals(flag)) {
             return ResultRunRowCategory.EXCEPTION;
         }
-        if (runHeld) {
+        if (testHeld) {
             return ResultRunRowCategory.HELD;
         }
         if ("CRITICAL".equals(flag)) {

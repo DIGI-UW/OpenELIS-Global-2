@@ -242,7 +242,7 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         for (EQAResult result : providerScoringService.reportedResultsFor(cycle.getId(), organizationId)) {
             Test test = testOf(result.getTestId());
             rows.add(new Row(roundNumberOf(result), sectionOf(test), analyteLabelOf(test, result.getTestId()),
-                    reportedOf(result), targetOf(result, sealedTargets), null, result.getZScore(),
+                    reportedOf(result), EQAResultTarget.of(result, sealedTargets), null, result.getZScore(),
                     result.getPerformanceStatus(), null, null,
                     result.getSubmissionDate() == null ? null : formatDay(result.getSubmissionDate()), null,
                     Boolean.TRUE.equals(result.getIsLateSubmission())));
@@ -253,27 +253,10 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         return rows;
     }
 
-    /**
-     * A numeric target is copied onto the result when it is scored, so that is the
-     * value it was actually judged against. The sealed target is consulted only for
-     * a qualitative answer, whose target is a word that {@code target_value} —
-     * numeric — cannot hold. The sealed targets are keyed by result, so each of two
-     * samples of one analyte shows its own.
-     */
-    private static String targetOf(EQAResult result, Map<Long, String> sealedTargets) {
-        if (result.getResultText() != null) {
-            return sealedTargets.get(result.getId());
-        }
-        return number(result.getTargetValue());
-    }
-
     /** Numeric results carry the value; a qualitative one carries its text. */
     private static String reportedOf(EQAResult result) {
-        return result.getResultText() != null ? result.getResultText() : number(result.getResultValue());
-    }
-
-    private static String number(BigDecimal value) {
-        return value == null ? null : value.stripTrailingZeros().toPlainString();
+        return result.getResultText() != null ? result.getResultText()
+                : EQAResultTarget.number(result.getResultValue());
     }
 
     private Integer roundNumberOf(EQAResult result) {
@@ -327,14 +310,12 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         // cycle at once, so one date covers every row on the page.
         metaCell(meta, MessageUtil.getMessage("eqa.report.scoredOn"),
                 cycle.getActualEndDate() == null ? DASH : cycle.getActualEndDate().toString());
-        metaCell(meta, MessageUtil.getMessage("eqa.report.laboratory"), siteName());
-        metaCell(meta, MessageUtil.getMessage("eqa.report.generated"), formatDate(new Date()));
-        if (participant != null) {
-            // Whose results these are. On the provider's copy the Laboratory cell
-            // above names the provider, so without this line the two would be
-            // indistinguishable.
+        if (participant == null) {
+            metaCell(meta, MessageUtil.getMessage("eqa.report.laboratory"), siteName());
+        } else {
             metaCell(meta, MessageUtil.getMessage("eqa.report.participant"), participant);
         }
+        metaCell(meta, MessageUtil.getMessage("eqa.report.generated"), formatDate(new Date()));
         // The block is four columns and each fact adds two cells, so an odd number
         // of facts leaves the last row short — and iText renders only complete
         // rows, dropping it silently. That already cost the cycle-level report its

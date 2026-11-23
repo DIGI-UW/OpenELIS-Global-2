@@ -171,12 +171,14 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
 
         int followups = 0;
         Map<Long, String> sampleCodes = sampleCodes(cycle);
+        Map<Long, String> sealedTargets = sealedTargetsByResult(cycleId);
         for (Map.Entry<Long, List<EQAResult>> entry : byOrganization(distribution.getId()).entrySet()) {
             if (count(entry.getValue(), EQAPerformanceStatus.UNACCEPTABLE) == 0) {
                 continue;
             }
             followupService.enqueueForOrganization(cycle.getScheme(), cycle, entry.getKey(),
-                    snapshotRows(entry.getValue(), sampleCodes), isPersistentFailure(cycle, entry.getKey()), sysUserId);
+                    snapshotRows(entry.getValue(), sampleCodes, sealedTargets),
+                    isPersistentFailure(cycle, entry.getKey()), sysUserId);
             followups++;
         }
 
@@ -212,8 +214,12 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
         EQACycle cycle = cycle(cycleId);
         String scoredOn = scoredOn(cycle);
         Map<Long, String> sampleCodes = sampleCodes(cycle);
+        Map<Long, String> sealedTargets = sealedTargetsByResult(cycleId);
         for (EQAResult result : resultsFor(cycleId, organizationId)) {
             String sampleCode = sampleCodes.get(result.getPanelSampleId());
+            String target = result.getResultText() != null
+                    ? StringUtil.csvEscape(EQAResultTarget.of(result, sealedTargets))
+                    : number(result.getTargetValue());
             // Only the free-text cells are escaped. Running a decimal through csvEscape
             // would quote a negative Z as a formula and print it as '-0.28 (found
             // driving the download, 2026-08-24).
@@ -222,8 +228,7 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
                     .append(analyte == null ? "" : StringUtil.csvEscape(analyte)).append(',')
                     .append(result.getResultText() != null ? StringUtil.csvEscape(result.getResultText())
                             : number(result.getResultValue()))
-                    .append(',').append(number(result.getTargetValue())).append(',').append(number(result.getZScore()))
-                    .append(',')
+                    .append(',').append(target).append(',').append(number(result.getZScore())).append(',')
                     .append(result.getPerformanceStatus() == null ? "" : result.getPerformanceStatus().name())
                     .append(',').append(scoredOn).append(',')
                     .append(sampleCode == null ? "" : StringUtil.csvEscape(sampleCode)).append('\n');
@@ -883,8 +888,11 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
 
     /**
      * The snapshot the register prints; it outlives later re-scoring of the row.
+     * Its target is the one the Performance Report prints, qualitative targets
+     * included.
      */
-    private List<Map<String, Object>> snapshotRows(List<EQAResult> results, Map<Long, String> sampleCodes) {
+    private List<Map<String, Object>> snapshotRows(List<EQAResult> results, Map<Long, String> sampleCodes,
+            Map<Long, String> sealedTargets) {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (EQAResult result : results) {
             if (result.getPerformanceStatus() != EQAPerformanceStatus.UNACCEPTABLE) {
@@ -896,7 +904,7 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
             row.put("panelSampleId", result.getPanelSampleId());
             row.put("sampleCode", sampleCodes.get(result.getPanelSampleId()));
             row.put("reported", reportedOf(result));
-            row.put("target", result.getTargetValue());
+            row.put("target", EQAResultTarget.of(result, sealedTargets));
             row.put("zScore", result.getZScore());
             row.put("performanceStatus", result.getPerformanceStatus().name());
             rows.add(row);

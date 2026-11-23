@@ -1,7 +1,9 @@
 package org.openelisglobal.microbiology.daoimpl;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -14,6 +16,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule, String>
         implements MicroBreakpointRuleDAO {
+    /** A WHONET rule at any level the organism :organism belongs to. */
+    private static final String WHONET_RULE_COVERS = " or exists (select w.id from MicroWhonetOrganism w, MicroOrganism o"
+            + " where o.id = :organism and w.taxonomicStatus = 'C' and lower(w.whonetOrgCode) = lower(o.whonetCode)"
+            + " and ((r.organismCodeType = 'WHONET_ORG_CODE' and lower(r.organismCode) = lower(w.whonetOrgCode))"
+            + " or (r.organismCodeType = 'SEROVAR_GROUP' and lower(r.organismCode) = lower(w.serovarGroup))"
+            + " or (r.organismCodeType = 'SPECIES_GROUP' and lower(r.organismCode) = lower(w.speciesGroup))"
+            + " or (r.organismCodeType = 'GENUS_CODE' and lower(r.organismCode) = lower(w.genusCode))"
+            + " or (r.organismCodeType = 'GENUS_GROUP' and lower(r.organismCode) = lower(w.genusGroup))"
+            + " or (r.organismCodeType = 'FAMILY_CODE' and lower(r.organismCode) = lower(w.familyCode))"
+            + " or (r.organismCodeType = 'ANAEROBE+SUBKINGDOM_CODE' and w.anaerobe is not null"
+            + " and lower(r.organismCode) = lower(concat('AN', w.subkingdomCode)))"
+            + " or (r.organismCodeType = 'ANAEROBE' and w.anaerobe is not null) or r.organismCodeType = 'ALL'))";
 
     public MicroBreakpointRuleDAOImpl() {
         super(MicroBreakpointRule.class);
@@ -21,34 +35,35 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
 
     @Override
     @Transactional(readOnly = true)
-    public MicroBreakpointRule findBestRule(String standardId, String organismId, String organismGroup,
+    public MicroBreakpointRule findBestRule(String standardId, String organismId, Set<String> organismGroups,
             String antibioticId, String method, String specimenTypeId, String breakpointType) {
-        return findContextualRule(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
+        return findContextualRule(standardId, organismId, organismGroups, antibioticId, method, specimenTypeId,
                 breakpointType, null, null);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public MicroBreakpointRule findContextualRule(String standardId, String organismId, String organismGroup,
+    public MicroBreakpointRule findContextualRule(String standardId, String organismId, Set<String> organismGroups,
             String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext,
             String diskContent) {
         Query<MicroBreakpointRule> query = entityManager.unwrap(Session.class)
                 .createQuery("from MicroBreakpointRule r where r.isActive = 'Y' and r.standardId = :standardId"
                         + " and r.antibioticId = :antibioticId and r.breakpointType = :breakpointType"
                         + " and (r.clinicalContext is null or r.clinicalContext = :clinicalContext)"
-                        + " and (r.diskContent is null or r.diskContent = :diskContent)"
+                        + " and (r.diskContent = :diskContent or (r.diskContent is null and r.breakpointType <> 'ZONE'))"
                         + " and (r.method is null or r.method = :method)"
                         + " and (r.specimenTypeId is null or r.specimenTypeId = :specimenTypeId)"
-                        + " and (r.organismId = :organismId or r.organismGroup = :organismGroup"
+                        + " and (r.organismId = :organismId or r.organismGroup in (:organismGroups)"
                         + " or (r.organismId is null and r.organismGroup is null))"
-                        + " order by case when r.organismId = :organismId then 0"
-                        + " when r.organismGroup = :organismGroup then 1 else 2 end,"
+                        + " and r.organismCodeType is null order by case when r.organismId = :organismId then 0"
+                        + " when r.organismGroup in (:organismGroups) then 1 else 2 end,"
                         + " case when r.clinicalContext = :clinicalContext then 0 else 1 end,"
                         + " case when r.specimenTypeId = :specimenTypeId then 0 else 1 end,"
-                        + " case when r.method = :method then 0 else 1 end", MicroBreakpointRule.class);
+                        + " case when r.method = :method then 0 else 1 end, r.id", MicroBreakpointRule.class);
         query.setParameter("standardId", standardId);
         query.setParameter("organismId", organismId);
-        query.setParameter("organismGroup", organismGroup);
+        // Hibernate 5 cannot bind an empty list; no group is ever blank.
+        query.setParameterList("organismGroups", organismGroups.isEmpty() ? Set.of("") : organismGroups);
         query.setParameter("antibioticId", antibioticId);
         query.setParameter("method", method);
         query.setParameter("specimenTypeId", specimenTypeId);
@@ -57,6 +72,19 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
         query.setParameter("diskContent", diskContent);
         query.setMaxResults(1);
         return query.uniqueResultOptional().orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroBreakpointRule> findWhonetRules(String standardId, String antibioticId, String breakpointType) {
+        return entityManager
+                .createQuery(
+                        "from MicroBreakpointRule r where r.isActive = 'Y'"
+                                + " and r.standardId = :standardId and r.antibioticId = :antibioticId"
+                                + " and r.breakpointType = :breakpointType and r.organismCodeType is not null",
+                        MicroBreakpointRule.class)
+                .setParameter("standardId", standardId).setParameter("antibioticId", antibioticId)
+                .setParameter("breakpointType", breakpointType).getResultList();
     }
 
     @Override
@@ -74,14 +102,14 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
     public Optional<MicroBreakpointRule> findByNaturalKey(String standardId, String organismId, String organismGroup,
             String antibioticId, String method, String specimenTypeId, String breakpointType) {
         return findByContextualNaturalKey(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
-                breakpointType, null);
+                breakpointType, null, null);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<MicroBreakpointRule> findByContextualNaturalKey(String standardId, String organismId,
             String organismGroup, String antibioticId, String method, String specimenTypeId, String breakpointType,
-            String clinicalContext) {
+            String clinicalContext, String diskContent) {
         Query<MicroBreakpointRule> query = entityManager.unwrap(Session.class)
                 .createQuery("from MicroBreakpointRule r where r.standardId = :standardId"
                         + " and ((r.organismId = :organismId) or (r.organismId is null and :organismId is null))"
@@ -90,7 +118,8 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
                         + " and ((r.method = :method) or (r.method is null and :method is null))"
                         + " and ((r.specimenTypeId = :specimenTypeId) or (r.specimenTypeId is null and :specimenTypeId is null))"
                         + " and r.breakpointType = :breakpointType"
-                        + " and (r.clinicalContext = :clinicalContext or (r.clinicalContext is null and :clinicalContext is null))",
+                        + " and (r.clinicalContext = :clinicalContext or (r.clinicalContext is null and :clinicalContext is null))"
+                        + " and (r.diskContent = :diskContent or (r.diskContent is null and :diskContent is null))",
                         MicroBreakpointRule.class);
         query.setParameter("standardId", standardId);
         query.setParameter("organismId", organismId);
@@ -100,7 +129,23 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
         query.setParameter("specimenTypeId", specimenTypeId);
         query.setParameter("breakpointType", breakpointType);
         query.setParameter("clinicalContext", clinicalContext);
+        query.setParameter("diskContent", diskContent);
         return query.uniqueResultOptional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroBreakpointRule> getActiveByAntibioticIds(Collection<String> antibioticIds) {
+        if (antibioticIds.isEmpty()) {
+            return List.of();
+        }
+        return entityManager.unwrap(Session.class)
+                .createQuery(
+                        "from MicroBreakpointRule r where r.isActive = 'Y' and r.antibioticId in (:antibioticIds)"
+                                + " and r.standardId in (select s.id from MicroBreakpointStandard s"
+                                + " where s.isActive = 'Y' and s.lifecycleStatus = 'ACTIVE')",
+                        MicroBreakpointRule.class)
+                .setParameterList("antibioticIds", antibioticIds).list();
     }
 
     @Override
@@ -119,7 +164,8 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
             String method, String specimenTypeId, int offset, int limit) {
         Query<MicroBreakpointRule> query = entityManager.unwrap(Session.class).createQuery(
                 "from MicroBreakpointRule r" + searchWhere(q, organism, antibiotic, method, specimenTypeId)
-                        + " order by r.organismGroup, r.organismId, r.antibioticId, r.method",
+                        + " order by r.organismGroup, r.organismId, r.organismCodeType, r.organismCode,"
+                        + " r.antibioticId, r.method, r.diskContent, r.siteOfInfection, r.id",
                 MicroBreakpointRule.class);
         setSearchParameters(query, standardId, q, organism, antibiotic, method, specimenTypeId);
         query.setFirstResult(offset);
@@ -153,11 +199,18 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
             hql.append(" and (lower(coalesce(r.organismGroup, '')) like :q")
                     .append(" or exists (select o.id from MicroOrganism o where o.id = r.organismId")
                     .append(" and lower(o.displayName) like :q)")
+                    .append(" or lower(coalesce(r.organismCode, '')) like :q")
+                    .append(" or lower(coalesce(r.siteOfInfection, '')) like :q")
+                    .append(" or lower(coalesce(r.diskContent, '')) like :q")
+                    .append(" or exists (select o.id from MicroOrganism o")
+                    .append(" where r.organismCodeType = 'WHONET_ORG_CODE'")
+                    .append(" and lower(o.whonetCode) = lower(r.organismCode) and lower(o.displayName) like :q)")
                     .append(" or exists (select a.id from MicroAntibiotic a where a.id = r.antibioticId")
                     .append(" and (lower(a.displayName) like :q or lower(a.whonetCode) like :q)))");
         }
         if (organism != null && !organism.isBlank()) {
-            hql.append(" and (r.organismId = :organism or r.organismGroup = :organism)");
+            hql.append(" and (r.organismId = :organism or r.organismGroup = :organism").append(WHONET_RULE_COVERS)
+                    .append(")");
         }
         if (antibiotic != null && !antibiotic.isBlank()) {
             hql.append(" and r.antibioticId = :antibiotic");

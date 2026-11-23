@@ -32,6 +32,7 @@ public class ComplianceEvaluationResult {
         private String thresholdDisplay;
         private String units;
         private ComplianceStatus status;
+        private String analysisId;
 
         public String getParameterCode() {
             return parameterCode;
@@ -79,6 +80,18 @@ public class ComplianceEvaluationResult {
 
         public void setStatus(ComplianceStatus status) {
             this.status = status;
+        }
+
+        /**
+         * The analysis judged; a result judged against several standards has a line per
+         * standard and the same analysis.
+         */
+        public String getAnalysisId() {
+            return analysisId;
+        }
+
+        public void setAnalysisId(String analysisId) {
+            this.analysisId = analysisId;
         }
     }
 }

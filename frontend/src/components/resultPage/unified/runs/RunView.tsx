@@ -20,6 +20,7 @@ import {
   Tag,
   Tile,
 } from "@carbon/react";
+import { WarningFilled } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -28,6 +29,9 @@ import {
 import { FlagChip } from "../flags";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import RunsChip from "./RunsChip";
+import RunQcBlock, { RunQc } from "./RunQcBlock";
+import UnifiedResults from "../UnifiedResults";
+import useSiteDateFormat from "../../../common/useSiteDateFormat";
 import { formatRunTime, runSourceKey, runStateKey } from "./runFormat";
 import {
   EMPTY_SELECTION,
@@ -59,6 +63,7 @@ export interface RunHeader {
   total: number;
   rawAvailable: boolean;
   chipCounts?: RunChipCounts;
+  qc?: RunQc | null;
 }
 
 interface RunRow {
@@ -74,6 +79,9 @@ interface RunRow {
   instrumentFlags?: string | null;
   flag?: string | null;
   category?: string | null;
+  testId?: string | null;
+  componentId?: string | null;
+  stagedResult?: string | null;
 }
 
 interface RunRowsPage {
@@ -132,9 +140,10 @@ const breadcrumbs = [
  * names where the run came from and how far its review has gone, and its
  * values page server-side. FR-E1a, E11, E11a, E12: the worklist chips filter
  * the run with counts over the whole run, and a selection follows the run
- * across pages and chips. Accepting the values arrives with the next slice;
- * until then they are accepted on the analyzer import page, linked from the
- * header.
+ * across pages and chips. FR-E10, E10a, E13: a row expands into the Results
+ * Entry row with the analyzer's value prefilled and editable, and accepting it
+ * is a Results Entry save. Bulk actions on a selection are still taken on the
+ * analyzer import page, linked from the header.
  */
 const RunView: React.FC<RunViewProps> = ({
   runId,
@@ -143,6 +152,7 @@ const RunView: React.FC<RunViewProps> = ({
   onOpenRun,
 }) => {
   const intl = useIntl();
+  const { pattern } = useSiteDateFormat();
   const [header, setHeader] = useState<RunHeader | null>(null);
   const [headerState, setHeaderState] = useState<
     "loading" | "ready" | "missing"
@@ -161,6 +171,8 @@ const RunView: React.FC<RunViewProps> = ({
   const [summaryFailed, setSummaryFailed] = useState(false);
   const [summaryAttempt, setSummaryAttempt] = useState(0);
   const [summary, setSummary] = useState<SelectionSummary | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -182,6 +194,29 @@ const RunView: React.FC<RunViewProps> = ({
   }, [runId]);
 
   useEffect(() => {
+    if (!reload) {
+      return;
+    }
+    const controller = new AbortController();
+    getFromOpenElisServer(
+      `/rest/result-runs/${runId}`,
+      (response?: RunHeader) => {
+        if (response) {
+          setHeader(response);
+        }
+      },
+      controller.signal,
+    );
+    return () => controller.abort();
+  }, [runId, reload]);
+
+  const accepted = useCallback(() => {
+    setExpandedId(null);
+    setSelection(EMPTY_SELECTION);
+    setReload((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
     const controller = new AbortController();
     setRowsLoading(true);
     getFromOpenElisServer(
@@ -193,7 +228,7 @@ const RunView: React.FC<RunViewProps> = ({
       controller.signal,
     );
     return () => controller.abort();
-  }, [runId, chip, page, pageSize]);
+  }, [runId, chip, page, pageSize, reload]);
 
   useEffect(() => {
     setSummaryFailed(false);
@@ -282,10 +317,79 @@ const RunView: React.FC<RunViewProps> = ({
         </Tag>
       );
     }
+    if (row.category === "HELD") {
+      return (
+        <Tag size="sm" type="red" renderIcon={WarningFilled}>
+          <FormattedMessage id="run.row.held" />
+        </Tag>
+      );
+    }
     return (
       <Tag size="sm" type="green">
         <FormattedMessage id="run.row.ready" />
       </Tag>
+    );
+  };
+
+  /**
+   * FR-E10: what a run adds above the Results Entry row, then the row itself.
+   * A control, a duplicate, a value the import could not place, or a value in a
+   * held run is not accepted here, and the panel says why.
+   */
+  const runRowEntry = (row: RunRow) => {
+    const notAccepted = row.control
+      ? "run.entry.control"
+      : row.duplicate
+        ? "run.entry.duplicate"
+        : row.importIssueReason
+          ? "run.entry.importIssue"
+          : row.category === "HELD"
+            ? "run.entry.testHeld"
+            : header?.state !== "OPEN" && header?.state !== "HELD"
+              ? "run.entry.closed"
+              : null;
+    return (
+      <div className="runRowEntry" data-testid={`run-row-entry-${row.id}`}>
+        <p className="runRowProvenance" data-testid="run-row-provenance">
+          <FormattedMessage
+            id="run.entry.provenance"
+            values={{
+              run: header?.label ?? "",
+              analyzer: header?.analyzerName || "—",
+              test: `${row.testName || "—"}${row.part ? ` — ${row.part}` : ""}`,
+              value: `${row.value || "—"}${row.units ? ` ${row.units}` : ""}`,
+            }}
+          />{" "}
+          <FormattedMessage id="run.entry.noLot" />
+        </p>
+        {notAccepted || !row.accessionNumber || !row.value ? (
+          <InlineNotification
+            kind="info"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage(
+              { id: notAccepted ?? "run.entry.noPendingRow" },
+              { reason: row.importIssueReason ?? "" },
+            )}
+          />
+        ) : (
+          <UnifiedResults
+            embedded
+            accessionNumber={row.accessionNumber}
+            runEntry={{
+              runId,
+              runRowId: row.id,
+              testId: row.testId,
+              componentId: row.componentId,
+              value: row.stagedResult || row.value,
+              reported: row.value,
+              units: row.units,
+              analyzerId: header?.analyzerId,
+              onAccepted: accepted,
+            }}
+          />
+        )}
+      </div>
     );
   };
 
@@ -318,7 +422,11 @@ const RunView: React.FC<RunViewProps> = ({
           <Button kind="tertiary" size="sm" onClick={onBack}>
             <FormattedMessage id="run.action.backToAll" />
           </Button>
-          <RunsChip activeRunId={runId} onOpenRun={onOpenRun} />
+          <RunsChip
+            activeRunId={runId}
+            onOpenRun={onOpenRun}
+            refreshKey={reload}
+          />
         </Column>
         {showFiltersNotice && (
           <Column lg={16} md={8} sm={4}>
@@ -351,6 +459,20 @@ const RunView: React.FC<RunViewProps> = ({
             />
           </Column>
         )}
+        {header?.qc && (
+          <Column lg={16} md={8} sm={4}>
+            <RunQcBlock
+              runId={header.id}
+              qc={header.qc}
+              onRecorded={(qc) => {
+                setHeader((current) =>
+                  current ? { ...current, qc } : current,
+                );
+                setReload((n) => n + 1);
+              }}
+            />
+          </Column>
+        )}
         {header && (
           <Column lg={16} md={8} sm={4}>
             <Tile className="runHeaderTile" data-testid="run-settings">
@@ -368,12 +490,13 @@ const RunView: React.FC<RunViewProps> = ({
                 {setting("run.label.operator", header.operatorName)}
                 {setting(
                   "run.label.opened",
-                  header.openedAt && formatRunTime(intl, header.openedAt),
+                  header.openedAt &&
+                    formatRunTime(intl, header.openedAt, pattern),
                 )}
                 {setting(
                   "run.label.lastActivity",
                   header.lastActivityAt &&
-                    formatRunTime(intl, header.lastActivityAt),
+                    formatRunTime(intl, header.lastActivityAt, pattern),
                 )}
                 {setting(
                   "run.label.state",
@@ -534,6 +657,7 @@ const RunView: React.FC<RunViewProps> = ({
               <Table size="lg" aria-label={header.label} data-testid="run-rows">
                 <TableHead>
                   <TableRow>
+                    <TableHeader className="unifiedExpandHeader" />
                     <TableHeader>
                       <Checkbox
                         id={`run-select-page-${runId}`}
@@ -567,35 +691,64 @@ const RunView: React.FC<RunViewProps> = ({
                 </TableHead>
                 <TableBody>
                   {rows?.rows.map((row) => (
-                    <TableRow key={row.id} data-testid={`run-row-${row.id}`}>
-                      <TableCell>
-                        <Checkbox
-                          id={`run-select-${row.id}`}
-                          labelText={intl.formatMessage(
-                            { id: "run.bulk.selectRow" },
-                            { labNumber: row.accessionNumber || row.id },
-                          )}
-                          hideLabel
-                          checked={isSelected(selection, row)}
-                          onChange={() =>
-                            setSelection((current) => toggleRow(current, row))
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>{row.accessionNumber || "—"}</TableCell>
-                      <TableCell>
-                        {row.testName || "—"}
-                        {row.part ? ` — ${row.part}` : ""}
-                      </TableCell>
-                      <TableCell>{row.value || "—"}</TableCell>
-                      <TableCell>{row.units || "—"}</TableCell>
-                      <TableCell>
-                        <FlagChip flag={row.flag} />
-                        {row.instrumentFlags ? ` ${row.instrumentFlags}` : ""}
-                        {!row.flag && !row.instrumentFlags ? "—" : ""}
-                      </TableCell>
-                      <TableCell>{statusTag(row)}</TableCell>
-                    </TableRow>
+                    <React.Fragment key={row.id}>
+                      <TableRow data-testid={`run-row-${row.id}`}>
+                        <TableCell className="unifiedExpandCell">
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            className="unifiedExpandButton"
+                            aria-expanded={expandedId === row.id}
+                            aria-label={intl.formatMessage({
+                              id:
+                                expandedId === row.id
+                                  ? "label.results.collapseRow"
+                                  : "label.results.expandRow",
+                            })}
+                            data-testid={`run-row-expand-${row.id}`}
+                            onClick={() =>
+                              setExpandedId(
+                                expandedId === row.id ? null : row.id,
+                              )
+                            }
+                          >
+                            {expandedId === row.id ? "▼" : "▶"}
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          <Checkbox
+                            id={`run-select-${row.id}`}
+                            labelText={intl.formatMessage(
+                              { id: "run.bulk.selectRow" },
+                              { labNumber: row.accessionNumber || row.id },
+                            )}
+                            hideLabel
+                            checked={isSelected(selection, row)}
+                            onChange={() =>
+                              setSelection((current) => toggleRow(current, row))
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>{row.accessionNumber || "—"}</TableCell>
+                        <TableCell>
+                          {row.testName || "—"}
+                          {row.part ? ` — ${row.part}` : ""}
+                        </TableCell>
+                        <TableCell>{row.value || "—"}</TableCell>
+                        <TableCell>{row.units || "—"}</TableCell>
+                        <TableCell>
+                          <FlagChip flag={row.flag} />
+                          {row.instrumentFlags ? ` ${row.instrumentFlags}` : ""}
+                          {!row.flag && !row.instrumentFlags ? "—" : ""}
+                        </TableCell>
+                        <TableCell>{statusTag(row)}</TableCell>
+                      </TableRow>
+                      {expandedId === row.id && (
+                        <TableRow className="unifiedExpandedRow">
+                          <TableCell colSpan={8}>{runRowEntry(row)}</TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>

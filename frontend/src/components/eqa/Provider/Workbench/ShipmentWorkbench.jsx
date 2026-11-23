@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   Button,
   Checkbox,
-  DatePicker,
   DatePickerInput,
   InlineNotification,
   Table,
@@ -14,6 +13,7 @@ import {
   Tag,
   TextInput,
 } from "@carbon/react";
+import { DatePicker } from "../../../common/DatePicker";
 import { useIntl } from "react-intl";
 import {
   formatDateOnly,

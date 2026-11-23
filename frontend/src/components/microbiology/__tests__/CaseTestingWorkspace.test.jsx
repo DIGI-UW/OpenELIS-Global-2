@@ -1,10 +1,19 @@
 import React from "react";
 import { vi } from "vitest";
+vi.mock("../../common/textMacro/TextMacroService", () => ({
+  getTextMacros: vi.fn(() => Promise.resolve([])),
+}));
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import CaseTestingWorkspace from "../CaseTestingWorkspace";
 import messages from "../../../languages/en.json";
+import { getTextMacros } from "../../common/textMacro/TextMacroService";
+import {
+  expandedPhrase,
+  offerOnePhrasePerContext,
+  typePhraseCode,
+} from "./phraseFields";
 vi.mock("../../utils/Utils", async () => ({
   ...(await vi.importActual("../../utils/Utils")),
   getFromOpenElisServer: vi.fn((url, cb) =>
@@ -19,6 +28,7 @@ const detail = {
   id: "case-1",
   canWrite: true,
   canValidate: true,
+  canLogCritical: true,
   samples: [
     {
       sampleItemId: "sample-1",
@@ -80,9 +90,7 @@ describe("case testing workspace", () => {
     api.addNote.mockRejectedValue(new Error("save failed"));
     show(api);
     await screen.findByText("Two-component assay");
-    fireEvent.change(screen.getByLabelText("Testing section"), {
-      target: { value: "HISTORY" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Case timeline" }));
     fireEvent.change(screen.getByLabelText("New note"), {
       target: { value: "Follow up" },
     });
@@ -297,6 +305,33 @@ describe("case testing workspace", () => {
       screen.getByRole("textbox", { name: "Result for Rifampicin" }),
     ).toHaveValue("34");
   });
+  test("extra decimals warn and the full value is saved", async () => {
+    const api = service();
+    show(api);
+    await openEditor();
+    enter("MTB", "12.345");
+    enter("Rifampicin", "34");
+    expect(
+      await screen.findByText(/full entered value is retained/),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+    await waitFor(() =>
+      expect(api.saveResults).toHaveBeenCalledWith(
+        "case-1",
+        "20",
+        expect.objectContaining({
+          components: [
+            expect.objectContaining({
+              componentId: "primary",
+              value: "12.345",
+            }),
+            expect.objectContaining({ componentId: "rif", value: "34" }),
+          ],
+        }),
+      ),
+    );
+    await screen.findByText("Awaiting validation");
+  });
   test("out-of-unit readers cannot edit, validate, add tests, or append notes", async () => {
     const api = service();
     api.getTests.mockResolvedValue([
@@ -327,11 +362,48 @@ describe("case testing workspace", () => {
     show(api);
     await screen.findByText("Two-component assay");
     expect(screen.queryByText("Additional assay")).toBeNull();
-    fireEvent.change(screen.getByLabelText("Testing section"), {
-      target: { value: "ADDITIONAL" },
-    });
+    fireEvent.click(document.querySelector("#case-scope-ADDITIONAL button"));
     expect(screen.getByText("Additional assay")).toBeTruthy();
     expect(screen.queryByText("Two-component assay")).toBeNull();
+  });
+  test("case notes and result notes expand case-note phrases and save the text", async () => {
+    offerOnePhrasePerContext();
+    const api = service();
+    api.addNote.mockResolvedValue({ id: "n1" });
+    show(api);
+    await screen.findByText("Two-component assay");
+
+    const caseNote = screen.getByLabelText("New note");
+    await typePhraseCode(caseNote);
+    expect(caseNote).toHaveValue("Seen Phrase for MICROBIOLOGY_CASE_NOTE ");
+    fireEvent.click(screen.getByRole("button", { name: "Save note" }));
+    await waitFor(() =>
+      expect(api.addNote).toHaveBeenLastCalledWith(
+        "case-1",
+        expect.stringMatching(expandedPhrase("MICROBIOLOGY_CASE_NOTE")),
+        false,
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Notes (0)" }));
+    const dialog = screen.getByRole("dialog");
+    const resultNote = within(dialog).getByLabelText("New note");
+    await typePhraseCode(resultNote);
+    expect(resultNote).toHaveValue("Seen Phrase for MICROBIOLOGY_CASE_NOTE ");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save note" }));
+    await waitFor(() =>
+      expect(api.addNote).toHaveBeenLastCalledWith(
+        "case-1",
+        expect.stringMatching(expandedPhrase("MICROBIOLOGY_CASE_NOTE")),
+        false,
+        "RESULT",
+        "20",
+      ),
+    );
+    expect(getTextMacros).toHaveBeenCalledWith(
+      "MICROBIOLOGY_CASE_NOTE",
+      expect.any(AbortSignal),
+    );
   });
   test("notes preserve a failed draft and display the attributed saved entry", async () => {
     const api = service();
@@ -505,10 +577,7 @@ describe("culture test chooser", () => {
       ],
     });
     await screen.findByText("Two-component assay");
-    fireEvent.change(
-      screen.getByLabelText(messages["microbiology.testing.scope"]),
-      { target: { value: "CULTURE" } },
-    );
+    fireEvent.click(document.querySelector("#case-scope-CULTURE button"));
     await screen.findByRole("heading", { name: /PLATE-1/ });
   };
   test("Gram shortcut adds the test under its culture and opens its result editor", async () => {
@@ -553,6 +622,11 @@ describe("culture test chooser", () => {
       }),
     );
     const chooser = document.getElementById("culture-test-chooser");
+    expect(
+      within(chooser).getByRole("heading", {
+        name: "Add test or panel on culture PLATE-1",
+      }),
+    ).toBeInTheDocument();
     fireEvent.click(within(chooser).getByRole("button", { name: /Sputum.*0/ }));
     fireEvent.click(
       await within(chooser).findByRole("button", { name: "Follow-up test" }),
@@ -620,7 +694,10 @@ it("honors the worklist setup action through the shared chooser and records the 
     </IntlProvider>,
   );
   const dialog = await screen.findByRole("dialog");
-  expect(screen.getByLabelText("Testing section")).toHaveValue("CULTURE");
+  expect(document.querySelector("#case-scope-CULTURE button")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
   expect(within(dialog).getByLabelText("Outcome")).toHaveValue("GROWTH");
   fireEvent.click(
     within(dialog).getByRole("button", { name: "Save", exact: true }),
@@ -636,9 +713,7 @@ it("honors the worklist setup action through the shared chooser and records the 
   expect(changed).toHaveBeenCalledTimes(1);
   expect(navigate).toHaveBeenCalledWith("CULTURE");
   await waitFor(() => expect(api.getTimeline).toHaveBeenCalledTimes(2));
-  fireEvent.change(screen.getByLabelText("Testing section"), {
-    target: { value: "HISTORY" },
-  });
+  fireEvent.click(screen.getByRole("button", { name: "Case timeline" }));
   expect(await screen.findByText(/Recorded growth/)).toBeVisible();
 });
 
@@ -733,11 +808,121 @@ test("cancelling an AST run refreshes the case timeline", async () => {
   const fetched = api.getTimeline.mock.calls.length;
   fireEvent.click(
     within(modal).getByRole("button", {
-      name: messages["microbiology.m6.save"],
-      exact: true,
+      name: messages["microbiology.m6.action.cancel"],
     }),
   );
   await waitFor(() => expect(api.astAction).toHaveBeenCalledTimes(1));
+  await waitFor(() =>
+    expect(api.getTimeline.mock.calls.length).toBeGreaterThan(fetched),
+  );
+});
+
+test("cancelling an amendment refreshes the case timeline", async () => {
+  const api = service();
+  api.getCaseAmendments = vi.fn().mockResolvedValue([]);
+  api.getCaseReportVersions = vi.fn().mockResolvedValue([]);
+  api.cancelCaseAmendment = vi.fn().mockResolvedValue({});
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={{
+          ...detail,
+          canAmend: true,
+          finalReleaseState: "AMENDMENT_IN_PROGRESS",
+        }}
+        service={api}
+        scanSearch="?scope=AMENDMENT"
+      />
+    </IntlProvider>,
+  );
+  fireEvent.change(
+    await screen.findByLabelText(
+      messages["microbiology.amendment.cancelReason"],
+    ),
+    { target: { value: "Withdraw the correction" } },
+  );
+  const fetched = api.getTimeline.mock.calls.length;
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: new RegExp(messages["microbiology.amendment.cancel"]),
+    }),
+  );
+  await waitFor(() => expect(api.cancelCaseAmendment).toHaveBeenCalledTimes(1));
+  await waitFor(() =>
+    expect(api.getTimeline.mock.calls.length).toBeGreaterThan(fetched),
+  );
+});
+
+test("a locked case still lets results users log a critical call", async () => {
+  const api = service();
+  api.getCriticalCommunications = vi.fn().mockResolvedValue([]);
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={{ ...detail, canWrite: false, canLogCritical: true }}
+        service={api}
+        scanSearch="?scope=CRITICAL"
+      />
+    </IntlProvider>,
+  );
+  expect(
+    await screen.findByRole("button", { name: "Log communication" }),
+  ).toBeInTheDocument();
+});
+
+test("re-identifying from the Isolates section refreshes the case timeline", async () => {
+  const api = service();
+  const identified = {
+    id: "i1",
+    label: "ISO-1",
+    cultureId: "r1",
+    cultureLabel: "PLATE-1",
+    significance: "UNKNOWN",
+    status: "FINAL",
+    organismId: "o1",
+    method: "Biochemical identification",
+    sourceSampleItemId: "sample-1",
+    canIdentify: false,
+    canReidentify: true,
+    canAcknowledge: false,
+    version: "v1",
+    history: [],
+  };
+  const isolates = { isolates: [identified], referrals: [], referred: false };
+  api.getIsolates = vi.fn().mockResolvedValue(isolates);
+  api.getIsolateOptions = vi.fn().mockResolvedValue({
+    methods: [{ id: "m1", value: "Biochemical identification" }],
+    organisms: [{ id: "o1", value: "Escherichia coli" }],
+    sampleTypes: [],
+    sources: [{ id: "sample-1", value: "SOURCE-1", sampleTypeId: "type-1" }],
+    tests: [],
+    organizations: [],
+    referralOrganizations: [],
+    reasons: [],
+  });
+  api.getCultures = vi.fn().mockResolvedValue([]);
+  api.isolateAction = vi.fn().mockResolvedValue(isolates);
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?scope=ISOLATES"
+      />
+    </IntlProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Reidentify", exact: true }),
+  );
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText(/Re-identification reason/), {
+    target: { value: "Corrected after confirmatory panel" },
+  });
+  const fetched = api.getTimeline.mock.calls.length;
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  await waitFor(() => expect(api.isolateAction).toHaveBeenCalledTimes(1));
   await waitFor(() =>
     expect(api.getTimeline.mock.calls.length).toBeGreaterThan(fetched),
   );
@@ -769,6 +954,9 @@ test("consumes a critical communication target after saving and unlocks the next
   fireEvent.change(screen.getByLabelText("Recipient"), {
     target: { value: "Provider" },
   });
+  fireEvent.change(screen.getByLabelText("Call outcome"), {
+    target: { value: "CONFIRMED" },
+  });
   fireEvent.change(screen.getByLabelText("Message"), {
     target: { value: "Critical result called" },
   });
@@ -786,6 +974,85 @@ test("consumes a critical communication target after saving and unlocks the next
   expect(screen.getByLabelText("Critical result target")).toHaveValue("CASE");
 });
 
+test("a case bar jump scrolls to its section and focuses the heading on every jump", async () => {
+  const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+  const api = service();
+  const view = (jump) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?scope=ADDITIONAL"
+        jump={jump}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(view({ scope: "ADDITIONAL" }));
+  const heading = await screen.findByRole("button", {
+    name: messages["microbiology.testing.additional"],
+    expanded: true,
+  });
+  await waitFor(() => expect(heading).toHaveFocus());
+  expect(scroll.mock.contexts.filter((el) => el === heading)).toHaveLength(1);
+  heading.blur();
+  rerender(view({ scope: "ADDITIONAL" }));
+  await waitFor(() => expect(heading).toHaveFocus());
+  expect(scroll.mock.contexts.filter((el) => el === heading)).toHaveLength(2);
+  scroll.mockRestore();
+});
+test("a case bar jump reopens a section the user collapsed", async () => {
+  const api = service();
+  const view = (jump) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?scope=ADDITIONAL"
+        jump={jump}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(view(null));
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: messages["microbiology.testing.additional"],
+      expanded: true,
+    }),
+  );
+  const heading = await screen.findByRole("button", {
+    name: messages["microbiology.testing.additional"],
+    expanded: false,
+  });
+  rerender(view({ scope: "ADDITIONAL" }));
+  await waitFor(() => expect(heading).toHaveAttribute("aria-expanded", "true"));
+  await waitFor(() => expect(heading).toHaveFocus());
+});
+test("a case bar jump to the timeline scrolls to and focuses its heading on every jump", async () => {
+  const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+  const api = service();
+  const view = (jump) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?scope=HISTORY"
+        jump={jump}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(view({ scope: "HISTORY" }));
+  const heading = await screen.findByRole("button", {
+    name: messages["microbiology.case.timeline"],
+    expanded: true,
+  });
+  await waitFor(() => expect(heading).toHaveFocus());
+  expect(scroll.mock.contexts.filter((el) => el === heading)).toHaveLength(1);
+  heading.blur();
+  rerender(view({ scope: "HISTORY" }));
+  await waitFor(() => expect(heading).toHaveFocus());
+  expect(scroll.mock.contexts.filter((el) => el === heading)).toHaveLength(2);
+  scroll.mockRestore();
+});
 test("pending AST links focus the requested isolate after loading and navigation", async () => {
   const api = service();
   api.getAstWorkspace = vi.fn().mockResolvedValue({
@@ -814,7 +1081,10 @@ test("pending AST links focus the requested isolate after loading and navigation
   const { rerender } = render(view("i2"));
   const target = await screen.findByTestId("ast-isolate-i2");
   await waitFor(() => expect(target).toHaveFocus());
-  expect(screen.getByLabelText("Testing section")).toHaveValue("AST");
+  expect(document.querySelector("#case-scope-AST button")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
   expect(screen.getByTestId("ast-isolate-i1")).not.toHaveFocus();
   rerender(view("i1"));
   await waitFor(() =>

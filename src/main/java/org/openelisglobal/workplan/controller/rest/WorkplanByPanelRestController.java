@@ -83,7 +83,7 @@ public class WorkplanByPanelRestController extends WorkplanRestController {
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         WorkplanForm form = new WorkplanForm();
-        WorkplanPaging paging = new WorkplanPaging();
+        WorkplanPaging paging = new WorkplanPaging("panel:" + panelID);
         List<TestResultItem> workplanTests = new ArrayList<TestResultItem>();
         List<TestResultItem> filteredTests = new ArrayList<TestResultItem>();
 
@@ -117,6 +117,7 @@ public class WorkplanByPanelRestController extends WorkplanRestController {
 
                 for (Analysis analysis : analysisList) {
                     TestResultItem testResultItem = new TestResultItem();
+                    testResultItem.setAnalysisId(analysis.getId());
                     testResultItem.setTestId(analysis.getTest().getId());
                     Sample sample = analysis.getSampleItem().getSample();
                     testResultItem.setAccessionNumber(sample.getAccessionNumber());

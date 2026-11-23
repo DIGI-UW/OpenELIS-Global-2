@@ -112,13 +112,6 @@ public class CalculatedValueRestController {
     }
 
     /**
-     * The component a calculation writes to has to belong to its resulting test and
-     * be able to hold the value it produces. A calculation yields a number, so a
-     * coded component is not somewhere it can land - and validating the test's
-     * primary instead would accept exactly the configuration this is meant to
-     * catch.
-     */
-    /**
      * An unset component picker posts "", which Postgres reads as a key that does
      * not exist rather than as no key at all, and the foreign key rejects it. Both
      * the destination and every operand normalise to NULL.
@@ -136,6 +129,10 @@ public class CalculatedValueRestController {
         }
     }
 
+    /**
+     * The destination must be a component of the resulting test; a coded one needs
+     * the answer the rule writes.
+     */
     private void validateDestination(Calculation calculation) {
         String componentId = calculation.getComponentId();
         if (componentId == null || componentId.isBlank() || calculation.getTestId() == null) {
@@ -149,9 +146,9 @@ public class CalculatedValueRestController {
         }
         String destinationType = ruleResultScope.resultTypeForComponent(testId, componentId,
                 testService.getResultType(testService.get(testId)));
-        if (!"N".equals(destinationType)) {
+        if (!"N".equals(destinationType) && (calculation.getResult() == null || calculation.getResult().isBlank())) {
             throw new CalculationRuleViolation(DESTINATION_NOT_NUMERIC,
-                    Map.of("component", String.valueOf(destination.getLabel())));
+                    Map.of("component", String.valueOf(destination.getLocalizedLabel())));
         }
     }
 
