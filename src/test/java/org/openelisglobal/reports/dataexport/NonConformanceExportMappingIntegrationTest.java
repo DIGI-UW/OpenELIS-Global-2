@@ -139,6 +139,25 @@ public class NonConformanceExportMappingIntegrationTest extends BaseWebContextSe
     }
 
     /**
+     * OGC-1680 review: the Rejection Stage names the reporting lab unit as the
+     * screens do in the user's language, as Sample & Testing names it.
+     */
+    @Test
+    public void theRejectionStageNamesTheLabUnitInTheLanguageOfTheUser() {
+        var event = event(null, "2026-05-05");
+        entityManager.flush();
+
+        try (var rows = occurrences.events(request("2026-05-05", "2026-05-05", "en"))) {
+            assertEquals("Test Localization 1",
+                    rows.filter(row -> row.eventId().equals(event.getId())).findFirst().orElseThrow().stage());
+        }
+        try (var rows = occurrences.events(request("2026-05-05", "2026-05-05", "fr-FR"))) {
+            assertEquals("TB",
+                    rows.filter(row -> row.eventId().equals(event.getId())).findFirst().orElseThrow().stage());
+        }
+    }
+
+    /**
      * OGC-1652: a rejection names where the specimen came from, found through its
      * lab number, and an event with no specimen leaves the Location columns blank.
      */

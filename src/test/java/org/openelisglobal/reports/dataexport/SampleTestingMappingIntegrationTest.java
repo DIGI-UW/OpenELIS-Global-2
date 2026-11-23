@@ -437,6 +437,64 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
         }
     }
 
+    /**
+     * OGC-1680 review: a result component's translated label (OGC-1610) names its
+     * field and fills the Component column in the user's language.
+     */
+    @Test
+    public void componentLabelsReadInTheLanguageOfTheUser() throws Exception {
+        List<TestResultComponent> configured = components.saveSampleResults("1",
+                List.of(component("PRIMARY", "Systolic", 0), component("DIA", "Diastolic", 1)), null, null,
+                TEST_SYS_USER_ID);
+        TestResultComponent primary = configured.stream().filter(c -> "PRIMARY".equals(c.getCode())).findFirst()
+                .orElseThrow();
+        Number localization = (Number) entityManager.createNativeQuery("SELECT nextval('clinlims.localization_seq')")
+                .getSingleResult();
+        entityManager.createNativeQuery("INSERT INTO clinlims.localization (id, description) VALUES (?1, 'Systolic')")
+                .setParameter(1, localization.longValue()).executeUpdate();
+        entityManager.createNativeQuery("INSERT INTO clinlims.localization_value (id, localization_id, locale, value,"
+                + " origin) VALUES (nextval('clinlims.localization_value_seq'), ?1, 'fr', 'Systolique', 'SITE')")
+                .setParameter(1, localization.longValue()).executeUpdate();
+        entityManager.createNativeQuery(
+                "UPDATE clinlims.test_result_component SET label_localization_id = ?1 WHERE CAST(id AS varchar) = ?2")
+                .setParameter(1, localization.longValue()).setParameter(2, primary.getId()).executeUpdate();
+        TestResult option = options.getAllMatching("componentId", primary.getId()).get(0);
+        Analysis analysis = analyses.get("1");
+        analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+        analyses.update(analysis);
+        reading(analysis, option, "120");
+        entityManager.flush();
+        entityManager.clear();
+
+        Locale previous = LocaleContextHolder.getLocale();
+        try {
+            LocaleContextHolder.setLocale(Locale.FRENCH);
+            assertEquals("TB — Systolique", label("component:" + primary.getId()));
+            LocaleContextHolder.setLocale(Locale.ENGLISH);
+            assertEquals("Test Localization 1 — Systolic", label("component:" + primary.getId()));
+        } finally {
+            LocaleContextHolder.setLocale(previous);
+        }
+        List<String> fieldIds = List.of("component");
+        var fields = fieldIds.stream()
+                .map(id -> source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow())
+                .toList();
+        ExportFilter filter = new ExportFilter("2023-11-15", "2023-11-15", List.of(analysis.getTestSection().getId()),
+                List.of("1"), List.of("FINALIZED"));
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("RESULT_LIST"), fieldIds, List.of(), List.of("testIds"),
+                Map.of("RESULT_LIST", fieldIds));
+        for (String[] expected : new String[][] { { "fr-FR", "Systolique" }, { "en", "Systolic" } }) {
+            StringWriter csv = new StringWriter();
+            assertEquals(1,
+                    source.write(csv,
+                            new ExportSnapshot(definition, "RESULT_LIST", fields, filter,
+                                    java.time.ZoneId.systemDefault().getId(),
+                                    List.of(statuses.getStatusID(AnalysisStatus.Finalized)), expected[0])));
+            assertEquals(expected[0], "Component\r\n" + expected[1] + "\r\n", csv.toString().substring(1));
+        }
+    }
+
     private String label(String id) {
         return source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow().label();
     }

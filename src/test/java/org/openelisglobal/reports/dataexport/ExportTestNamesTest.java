@@ -37,4 +37,22 @@ public class ExportTestNamesTest {
         assertEquals("Glycémie", ExportTestNames.name(test, Locale.FRENCH));
         assertEquals("Glucose(Serum)", ExportTestNames.name(test, Locale.ENGLISH));
     }
+
+    /**
+     * A result component's label follows the job's language when it has a
+     * translation (OGC-1610), else keeps the label as entered.
+     */
+    @org.junit.Test
+    public void aComponentLabelFollowsTheJobsLanguage() {
+        org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component = new org.openelisglobal.testresultcomponent.valueholder.TestResultComponent();
+        component.setLabel("HIV-1 viral load");
+        Localization label = new Localization();
+        label.setLocalizedValue("fr", "Charge virale VIH-1");
+        component.setLabelLocalization(label);
+
+        assertEquals("Charge virale VIH-1", ExportTestNames.componentLabel(component, Locale.FRENCH));
+        assertEquals("HIV-1 viral load", ExportTestNames.componentLabel(component, Locale.ENGLISH));
+        component.setLabelLocalization(null);
+        assertEquals("HIV-1 viral load", ExportTestNames.componentLabel(component, Locale.FRENCH));
+    }
 }

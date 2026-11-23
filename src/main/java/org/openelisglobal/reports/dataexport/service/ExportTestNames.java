@@ -92,6 +92,20 @@ public class ExportTestNames {
         return name == null ? test.getDescription() : name;
     }
 
+    /**
+     * A result component's label in the given language (OGC-1610), else the label
+     * as entered.
+     */
+    public static String componentLabel(
+            org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component, Locale locale) {
+        if (component == null) {
+            return null;
+        }
+        Localization localization = component.getLabelLocalization();
+        String value = localization == null ? null : localization.getLocalizedValue(locale);
+        return GenericValidator.isBlankOrNull(value) ? component.getLabel() : value;
+    }
+
     /** A lab unit's name in the given language, as the screens show it. */
     public static String sectionName(TestSection section, Locale locale) {
         if (section == null) {

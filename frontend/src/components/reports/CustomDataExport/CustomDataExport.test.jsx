@@ -219,6 +219,46 @@ function open(entry = "/reports/custom-data-export") {
   return { ...rendered, history };
 }
 
+test("asks for the field list in the page's language, and asks again when the language changes (OGC-1680)", async () => {
+  const history = createMemoryHistory({
+    initialEntries: ["/reports/custom-data-export"],
+  });
+  const client = createQueryClient();
+  const page = (locale) => (
+    <Router history={history}>
+      <QueryClientProvider client={client}>
+        <IntlProvider locale={locale} messages={messages}>
+          <UserSessionDetailsContext.Provider
+            value={{ userSessionDetails: { userId: "1" } }}
+          >
+            <CustomDataExport />
+          </UserSessionDetailsContext.Provider>
+        </IntlProvider>
+      </QueryClientProvider>
+    </Router>
+  );
+  const { rerender } = render(page("en"));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Start a new export" }),
+  );
+  fireEvent.click(
+    await screen.findByRole("radio", { name: /Sample & Testing/ }),
+  );
+  const catalogUrls = () =>
+    fetch.mock.calls
+      .map(([url]) => String(url))
+      .filter((url) => url.includes("/variables"));
+  await waitFor(() =>
+    expect(catalogUrls().some((url) => url.includes("locale=en"))).toBe(true),
+  );
+
+  rerender(page("fr"));
+
+  await waitFor(() =>
+    expect(catalogUrls().some((url) => url.includes("locale=fr"))).toBe(true),
+  );
+});
+
 function recoverableJob(state) {
   return {
     id: "original-job",

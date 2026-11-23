@@ -128,7 +128,8 @@ public class SampleTestingSource implements ReportingSource {
         tests.forEach(t -> turnaroundFields(fields, "test:" + t.getId(), names.get(t.getId()), "testTurnaround"));
         dao.components().stream().filter(c -> names.containsKey(c.getTestId())).forEach(c -> {
             String id = "component:" + c.getId();
-            String label = names.get(c.getTestId()) + " — " + c.getLabel();
+            String label = names.get(c.getTestId()) + " — "
+                    + ExportTestNames.componentLabel(c, LocaleContextHolder.getLocale());
             fields.add(new ReportingVariable(id, label, c.getResultType(), "components", true, BOTH));
             turnaroundFields(fields, id, label, "componentTurnaround");
         });
@@ -301,7 +302,7 @@ public class SampleTestingSource implements ReportingSource {
         a.put("resultId", r.getId());
         a.put("testName", ExportTestNames.name(test, request.userLocale()));
         a.put("component", component == null || !multiComponentTests.contains(component.getTestId()) ? null
-                : component.getLabel());
+                : ExportTestNames.componentLabel(component, request.userLocale()));
         a.put("loincCode", test.getLoinc());
         a.put("resultUnit", resultUnit(component, test, units));
         a.put("resultStatus", analysis.isCorrectedSincePatientReport() ? "Corrected"
