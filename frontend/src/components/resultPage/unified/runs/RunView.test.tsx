@@ -196,6 +196,16 @@ describe("OGC-1200 run view", () => {
     ).toHaveAttribute("href", "/AnalyzerResults?id=3");
   });
 
+  it("shows a superseded run as history, with nothing left to accept on import", () => {
+    wire({ ...HEADER, state: "SUPERSEDED" });
+    renderRun();
+
+    expect(screen.getByTestId("run-settings")).toHaveTextContent("Superseded");
+    expect(
+      screen.queryByRole("link", { name: /analyzer import page/i }),
+    ).toBeNull();
+  });
+
   it("shows the run's times in the site date format", () => {
     wire(HEADER);
     renderRun(false, "fr-FR");

@@ -10,10 +10,12 @@ public record RunQcBlock(String overall, List<TestLine> tests) {
 
     /**
      * One test the run covers, with what was decided for it when its control failed
-     * (FR-C5) and the non-conformity that decision filed.
+     * (FR-C5) and the non-conformity that decision filed; the earlier runs this run
+     * is confirmed or suggested as the retest of, and the later runs that
+     * superseded it (FR-A3).
      */
     public record TestLine(String testId, String testName, String verdict, List<ControlLine> controls, String decision,
-            String nceNumber) {
+            String nceNumber, List<RunLink> retestOf, List<RunLink> retestSuggestions, List<RunLink> supersededBy) {
     }
 
     /**

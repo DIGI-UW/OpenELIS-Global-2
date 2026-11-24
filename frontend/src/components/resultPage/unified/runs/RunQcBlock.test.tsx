@@ -283,6 +283,158 @@ describe("Deciding a held test (OGC-1200 FR-C5)", () => {
   });
 });
 
+describe("RunQcBlock control times", () => {
+  it("shows when a control was recorded in the site date format", () => {
+    utilsMock.getFromOpenElisServer.mockImplementation(
+      (url: string, callback: (body: unknown) => void) => callback([]),
+    );
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <RunQcBlock
+          runId={7}
+          qc={{
+            overall: "HELD",
+            tests: [
+              {
+                testId: "11",
+                testName: "Glucose",
+                verdict: "FAIL",
+                controls: [
+                  {
+                    id: "c9",
+                    level: "KIT-1",
+                    observed: "INVALID",
+                    verdict: "FAIL",
+                    verdictSource: "DECLARED",
+                    operator: "Ana Lab",
+                    recordedAt: "2026-11-24T09:00:00Z",
+                  },
+                ],
+              },
+            ],
+          }}
+          onRecorded={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    expect(screen.getByTestId("run-qc-control-c9")).toHaveTextContent(
+      "11/24/2026",
+    );
+  });
+});
+
+describe("RunQcBlock retest links (OGC-1200 slice 5b)", () => {
+  const LATER: RunQc = {
+    overall: "PASS",
+    tests: [
+      {
+        testId: "11",
+        testName: "Glucose",
+        verdict: "NOT_REQUIRED",
+        controls: [],
+        retestSuggestions: [{ runId: 5, label: "RUN-5", count: 1, total: 2 }],
+      },
+    ],
+  };
+  const renderLinks = (qc: RunQc, onRecorded = vi.fn(), onOpenRun = vi.fn()) =>
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <RunQcBlock
+          runId={9}
+          qc={qc}
+          onRecorded={onRecorded}
+          onOpenRun={onOpenRun}
+        />
+      </IntlProvider>,
+    );
+
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+    utilsMock.getFromOpenElisServer.mockImplementation(
+      (url: string, callback: (body: unknown) => void) => callback([]),
+    );
+  });
+
+  it("suggests the earlier run and confirms it as the retest", () => {
+    const confirmed: RunQc = {
+      overall: "PASS",
+      tests: [
+        {
+          ...LATER.tests[0],
+          retestSuggestions: [],
+          retestOf: [{ runId: 5, label: "RUN-5", count: 1, total: 2 }],
+        },
+      ],
+    };
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (url: string, body: string, callback: (body: unknown) => void) =>
+        callback(confirmed),
+    );
+    const onRecorded = vi.fn();
+    renderLinks(LATER, onRecorded);
+
+    expect(
+      screen.getByTestId("run-qc-retest-suggestion-11-5"),
+    ).toHaveTextContent("Suggested: retest of RUN-5 (1 of 2 samples)");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm retest of RUN-5" }),
+    );
+
+    expect(utilsMock.postToOpenElisServerJsonResponse).toHaveBeenCalledWith(
+      "/rest/result-runs/9/tests/11/retest-of",
+      JSON.stringify({ runId: 5 }),
+      expect.any(Function),
+    );
+    expect(onRecorded).toHaveBeenCalledWith(confirmed);
+  });
+
+  it("says why the link was refused", () => {
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (url: string, body: string, callback: (body: unknown) => void) =>
+        callback({ message: "Already linked" }),
+    );
+    const onRecorded = vi.fn();
+    renderLinks(LATER, onRecorded);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm retest of RUN-5" }),
+    );
+
+    expect(screen.getByText("Already linked")).toBeInTheDocument();
+    expect(onRecorded).not.toHaveBeenCalled();
+  });
+
+  it("opens the run a confirmed link names", () => {
+    const onOpenRun = vi.fn();
+    renderLinks(
+      {
+        overall: "PASS",
+        tests: [
+          {
+            testId: "11",
+            testName: "Glucose",
+            verdict: "FAIL",
+            decision: "RETEST",
+            controls: [],
+            supersededBy: [{ runId: 9, label: "RUN-9", count: 2, total: 2 }],
+          },
+        ],
+      },
+      vi.fn(),
+      onOpenRun,
+    );
+
+    expect(screen.getByTestId("run-qc-superseded-by-11-9")).toHaveTextContent(
+      "Superseded by RUN-9 Samples: 2 of 2",
+    );
+    fireEvent.click(screen.getByText("Superseded by RUN-9"));
+    expect(onOpenRun).toHaveBeenCalledWith(9);
+    expect(screen.queryByRole("button", { name: /Confirm retest/ })).toBeNull();
+  });
+});
+
 describe("WaitingTag on a held row (FR-D4)", () => {
   it("says the row is held because QC failed in the run", () => {
     render(

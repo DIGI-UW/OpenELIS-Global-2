@@ -105,7 +105,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             ResultRun run = existing.get();
             run.setRowCount(run.getRowCount() + runRows.size());
             run.setLastActivityAt(now);
-            if (!run.getState().isActive()) {
+            if (!run.getState().isActive() && run.getState() != ResultRunState.SUPERSEDED) {
                 run.setState(ResultRunState.OPEN);
                 run.setCompletedAt(null);
             }
@@ -154,7 +154,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
 
     @Override
     @Transactional
-    public void rowLeftStaging(Long runId) {
+    public void rowLeftStaging(Long runId, String sysUserId) {
         if (runId == null) {
             return;
         }
@@ -165,12 +165,16 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         ResultRun run = found.get();
         Timestamp now = Timestamp.from(Instant.now());
         run.setLastActivityAt(now);
-        if (run.getSource() == ResultRunSource.ANALYZER && run.getState().isActive()
-                && baseObjectDAO.countStagedRows(runId) == 0) {
+        boolean completed = run.getSource() == ResultRunSource.ANALYZER && run.getState().isActive()
+                && baseObjectDAO.countStagedRows(runId) == 0;
+        if (completed) {
             run.setState(ResultRunState.COMPLETE);
             run.setCompletedAt(now);
         }
         update(run);
+        if (completed) {
+            runQcService.supersedeIfRetested(runId, sysUserId != null ? sysUserId : run.getSysUserId());
+        }
     }
 
     @Override
