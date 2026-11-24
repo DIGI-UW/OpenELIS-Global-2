@@ -40,6 +40,73 @@ const hasPendingChanges = (changes) =>
     (change) => Array.isArray(change) && change.length > 0,
   );
 
+const samplesOf = (data) => [
+  ...(data?.activeTestList || []),
+  ...(data?.inactiveTestList || []),
+];
+
+const activeTestKeys = (data) =>
+  new Set(
+    samplesOf(data).flatMap((sample) =>
+      (sample.activeTests || []).map(
+        (test) => `${sample.sampleType.id}:${test.id}`,
+      ),
+    ),
+  );
+
+// True when every test is on or off as stored, whatever the user toggled on the
+// way there.
+const sameActiveTests = (draft, stored) => {
+  const drafted = activeTestKeys(draft);
+  const kept = activeTestKeys(stored);
+  return (
+    drafted.size === kept.size && [...drafted].every((key) => kept.has(key))
+  );
+};
+
+const activeTestIds = (data) =>
+  new Set(
+    samplesOf(data).flatMap((sample) =>
+      (sample.activeTests || []).map((test) => String(test.id)),
+    ),
+  );
+
+// What the draft really changes. A test turned on and off again can leave an
+// entry in the change list, so only what differs from the stored state is
+// shown or sent.
+const effectiveChanges = (changes, draft, stored) => {
+  const wasOn = activeTestIds(stored);
+  const isOn = activeTestIds(draft);
+  const activeTypes = new Set(
+    (stored?.activeTestList || []).map((sample) =>
+      String(sample.sampleType.id),
+    ),
+  );
+  const typesWithTests = new Set(
+    samplesOf(draft)
+      .filter((sample) => (sample.activeTests || []).length > 0)
+      .map((sample) => String(sample.sampleType.id)),
+  );
+  return {
+    activateSample: changes.activateSample.filter(
+      (sample) =>
+        activeTypes.has(String(sample.id)) ||
+        typesWithTests.has(String(sample.id)),
+    ),
+    deactivateSample: changes.deactivateSample.filter(
+      (sample) =>
+        activeTypes.has(String(sample.id)) &&
+        !typesWithTests.has(String(sample.id)),
+    ),
+    activateTest: changes.activateTest.filter(
+      (test) => isOn.has(String(test.id)) && !wasOn.has(String(test.id)),
+    ),
+    deactivateTest: changes.deactivateTest.filter(
+      (test) => wasOn.has(String(test.id)) && !isOn.has(String(test.id)),
+    ),
+  };
+};
+
 // The two orderings the screen starts from, read off what is stored. Shared
 // so first showing them and going back to them cannot drift apart.
 const sampleTypeSortings = (data) => {
@@ -369,10 +436,6 @@ function TestActivation() {
           const sample = changedTestActivationData?.activeTestList.find(
             (s) => String(s.sampleType.id) === String(sampleTypeId),
           );
-          console.log(sample?.inactiveTests?.length);
-          console.log(sample?.activeTests?.length);
-          console.log(sample?.inactiveTests?.length > 0);
-          console.log(sample?.activeTests?.length === 1);
           if (
             sample?.inactiveTests?.length > 0 &&
             sample?.activeTests?.length === 1
@@ -472,8 +535,6 @@ function TestActivation() {
           const sample = changedTestActivationData?.inactiveTestList.find(
             (s) => String(s.sampleType.id) === String(sampleTypeId),
           );
-          console.log(sample?.activeTests?.length > 0);
-          console.log(sample?.inactiveTests?.length === 1); // 0 or 1
           if (sample?.activeTests?.length > 0 && sample?.inactiveTests === 1) {
             if (!deactivateSample.some((item) => item.id === sampleTypeId)) {
               deactivateSample.push({ id: sampleTypeId });
@@ -606,8 +667,6 @@ function TestActivation() {
           const sample = changedTestActivationData?.inactiveTestList.find(
             (s) => String(s.sampleType.id) === String(sampleTypeId),
           );
-          console.log(sample?.activeTests?.length > 0);
-          console.log(sample?.inactiveTests?.length === 1); // 0 or 1
           if (
             sample?.activateTest?.length > 0 &&
             sample?.inactiveTest?.length === 1
@@ -662,10 +721,10 @@ function TestActivation() {
       `/rest/TestActivation`,
       JSON.stringify({
         jsonChangeList: JSON.stringify({
-          activateSample: JSON.stringify(jsonChangeList.activateSample),
-          deactivateSample: JSON.stringify(jsonChangeList.deactivateSample),
-          activateTest: JSON.stringify(jsonChangeList.activateTest),
-          deactivateTest: JSON.stringify(jsonChangeList.deactivateTest),
+          activateSample: JSON.stringify(pendingChanges.activateSample),
+          deactivateSample: JSON.stringify(pendingChanges.deactivateSample),
+          activateTest: JSON.stringify(pendingChanges.activateTest),
+          deactivateTest: JSON.stringify(pendingChanges.deactivateTest),
         }),
       }),
       (res) => testActivationPostCallback(res),
@@ -697,6 +756,39 @@ function TestActivation() {
   }
 
   const activationDraftIsDirty = hasPendingChanges(jsonChangeList);
+
+  useEffect(() => {
+    if (
+      testActivationData &&
+      hasPendingChanges(jsonChangeList) &&
+      sameActiveTests(changedTestActivationData, testActivationData)
+    ) {
+      discardPendingChanges();
+    }
+  }, [changedTestActivationData, jsonChangeList, testActivationData]);
+
+  const pendingChanges = effectiveChanges(
+    jsonChangeList,
+    changedTestActivationData,
+    testActivationData,
+  );
+
+  const testsToActivate = new Set(
+    pendingChanges.activateTest.map((test) => String(test.id)),
+  );
+
+  const sampleTypesToActivate = (
+    sampleTypesWithIdValueActivatedSorting || []
+  ).filter(
+    (sampleType) =>
+      sampleType.activated === true &&
+      pendingChanges.activateSample.some(
+        (sample) => String(sample.id) === String(sampleType.id),
+      ) &&
+      !(testActivationData?.activeTestList || []).some(
+        (sample) => String(sample.sampleType.id) === String(sampleType.id),
+      ),
+  );
 
   useEffect(() => {
     if (!storedTestActivationData || activationDraftIsDirty) return;
@@ -1255,44 +1347,48 @@ function TestActivation() {
                 sampleTypeIdToListMapTests &&
                 sampleTypeIdToListMapTests?.length > 0 &&
                 Array.isArray(testArrangementArray) &&
-                testArrangementArray.map((testsArray, index) => (
-                  <SortableTestList
-                    key={index}
-                    sampleType={
-                      getSampleTypeValueWithId([
-                        sampleTypeIdToListMapTests[index],
-                      ])[0]?.value
-                    }
-                    tests={getTestIdsWithName(testsArray)}
-                    onSort={(updatedTests) => {
-                      setTestArrangementArray((prev) => {
-                        const newArrangement = [...prev];
-                        newArrangement[index] = updatedTests;
-                        return newArrangement;
-                      });
-                      setJsonChangeList((prev) => {
-                        const updatedActivateTest = prev.activateTest.map(
-                          (test) => {
-                            const matchIndex = updatedTests.findIndex(
-                              (t) => t.id === test.id,
-                            );
-                            if (matchIndex !== -1) {
-                              return {
-                                ...test,
-                                sortOrder: matchIndex,
-                              };
-                            }
-                            return test;
-                          },
-                        );
-                        return {
-                          ...prev,
-                          activateTest: updatedActivateTest,
-                        };
-                      });
-                    }}
-                  />
-                ))}
+                testArrangementArray.map((testsArray, index) =>
+                  !testsArray.some((t) =>
+                    testsToActivate.has(String(t.id)),
+                  ) ? null : (
+                    <SortableTestList
+                      key={index}
+                      sampleType={
+                        getSampleTypeValueWithId([
+                          sampleTypeIdToListMapTests[index],
+                        ])[0]?.value
+                      }
+                      tests={getTestIdsWithName(testsArray)}
+                      onSort={(updatedTests) => {
+                        setTestArrangementArray((prev) => {
+                          const newArrangement = [...prev];
+                          newArrangement[index] = updatedTests;
+                          return newArrangement;
+                        });
+                        setJsonChangeList((prev) => {
+                          const updatedActivateTest = prev.activateTest.map(
+                            (test) => {
+                              const matchIndex = updatedTests.findIndex(
+                                (t) => t.id === test.id,
+                              );
+                              if (matchIndex !== -1) {
+                                return {
+                                  ...test,
+                                  sortOrder: matchIndex,
+                                };
+                              }
+                              return test;
+                            },
+                          );
+                          return {
+                            ...prev,
+                            activateTest: updatedActivateTest,
+                          };
+                        });
+                      }}
+                    />
+                  ),
+                )}
             </div>
           </Column>
         </Grid>
@@ -1337,7 +1433,7 @@ function TestActivation() {
         </Grid>
         <br />
         <br />
-        {jsonChangeList?.activateTest && (
+        {pendingChanges.activateTest.length > 0 && (
           <>
             <Grid fullWidth={true}>
               <Column lg={16} md={8} sm={4}>
@@ -1360,7 +1456,11 @@ function TestActivation() {
                 testArrangementArray.length > 0 &&
                 testArrangementArray.map((testsArray, index) => {
                   const activatedTests = getTestIdsWithName(
-                    testsArray.filter((t) => t.activated === true),
+                    testsArray.filter(
+                      (t) =>
+                        t.activated === true &&
+                        testsToActivate.has(String(t.id)),
+                    ),
                   );
 
                   return activatedTests.map((test) => (
@@ -1376,7 +1476,7 @@ function TestActivation() {
           </>
         )}
         <br />
-        {jsonChangeList?.activateSample && (
+        {sampleTypesToActivate.length > 0 && (
           <>
             <Grid fullWidth={true}>
               <Column lg={16} md={8} sm={4}>
@@ -1398,25 +1498,16 @@ function TestActivation() {
               fullWidth={true}
               data-testid="test-activation-sample-types-to-activate"
             >
-              {sampleTypesWithIdValueActivatedSorting
-                ?.filter(
-                  (sampleType) =>
-                    sampleType.activated === true &&
-                    !(testActivationData?.activeTestList || []).some(
-                      (sample) =>
-                        String(sample.sampleType.id) === String(sampleType.id),
-                    ),
-                )
-                .map((sampleType) => (
-                  <Column lg={4} md={4} sm={4} key={sampleType.id}>
-                    <span>{sampleType.value}</span>
-                  </Column>
-                ))}
+              {sampleTypesToActivate.map((sampleType) => (
+                <Column lg={4} md={4} sm={4} key={sampleType.id}>
+                  <span>{sampleType.value}</span>
+                </Column>
+              ))}
             </Grid>
           </>
         )}
         <br />
-        {jsonChangeList?.deactivateTest && (
+        {pendingChanges.deactivateTest.length > 0 && (
           <>
             <Grid fullWidth={true}>
               <Column lg={16} md={8} sm={4}>
@@ -1435,21 +1526,20 @@ function TestActivation() {
             </Grid>
             <br />
             <Grid fullWidth={true}>
-              {jsonChangeList?.deactivateTest?.length > 0 &&
-                jsonChangeList.deactivateTest.map((test) => {
-                  const testValue = getTestIdsWithName([test])[0]?.value;
+              {pendingChanges.deactivateTest.map((test) => {
+                const testValue = getTestIdsWithName([test])[0]?.value;
 
-                  return (
-                    <Column lg={4} md={4} sm={4} key={test.id}>
-                      <span>{testValue}</span>
-                    </Column>
-                  );
-                })}
+                return (
+                  <Column lg={4} md={4} sm={4} key={test.id}>
+                    <span>{testValue}</span>
+                  </Column>
+                );
+              })}
             </Grid>
           </>
         )}
         <br />
-        {jsonChangeList?.deactivateSample && (
+        {pendingChanges.deactivateSample.length > 0 && (
           <>
             <Grid fullWidth={true}>
               <Column lg={16} md={8} sm={4}>
@@ -1468,18 +1558,17 @@ function TestActivation() {
             </Grid>
             <br />
             <Grid fullWidth={true}>
-              {jsonChangeList?.deactivateSample?.length > 0 &&
-                jsonChangeList.deactivateSample.map((sampleType) => {
-                  const sampleTypeValue = getSampleTypeValueWithId([
-                    { id: sampleType.id },
-                  ])[0]?.value;
+              {pendingChanges.deactivateSample.map((sampleType) => {
+                const sampleTypeValue = getSampleTypeValueWithId([
+                  { id: sampleType.id },
+                ])[0]?.value;
 
-                  return (
-                    <Column lg={4} md={4} sm={4} key={sampleType.id}>
-                      <span>{sampleTypeValue}</span>
-                    </Column>
-                  );
-                })}
+                return (
+                  <Column lg={4} md={4} sm={4} key={sampleType.id}>
+                    <span>{sampleTypeValue}</span>
+                  </Column>
+                );
+              })}
             </Grid>
           </>
         )}

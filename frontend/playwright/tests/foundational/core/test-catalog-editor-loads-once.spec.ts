@@ -179,7 +179,7 @@ test.describe("Test catalog editor, Alerts and Test Activation", () => {
     expect(sectionReads).toEqual([]);
   });
 
-  test("Test Activation names only the sample types a change turns on", async ({
+  test("Test Activation names only what a change turns on, and an undone change leaves nothing to submit", async ({
     page,
   }) => {
     const warnings = reactWarnings(page);
@@ -193,12 +193,17 @@ test.describe("Test catalog editor, Alerts and Test Activation", () => {
       const seeded = page.locator(`label[for="${SERUM}-${testId}"]`);
       await expect(seeded).toBeVisible({ timeout: NAV_TIMEOUT });
       await expect(page.locator(`[id="${SERUM}-${testId}"]`)).not.toBeChecked();
+      const submit = page
+        .getByRole("button", { name: "Submit", exact: true })
+        .first();
 
       await seeded.click();
-      await page
-        .getByRole("button", { name: "Submit", exact: true })
-        .first()
-        .click();
+      await expect(submit).toBeEnabled();
+      await seeded.click();
+      await expect(submit).toBeDisabled();
+
+      await seeded.click();
+      await submit.click();
 
       const dialog = page.getByRole("dialog");
       await expect(
@@ -206,8 +211,12 @@ test.describe("Test catalog editor, Alerts and Test Activation", () => {
       ).toBeVisible({ timeout: UI_TIMEOUT });
       await expect(dialog).toContainText(name);
       await expect(
+        dialog.getByText("The following sample types will be activated:"),
+      ).toHaveCount(0);
+      await expect(
         page.getByTestId("test-activation-sample-types-to-activate"),
-      ).toHaveText("");
+      ).toHaveCount(0);
+      await expect(dialog.getByText(/will be deactivated/)).toHaveCount(0);
       await dialog.getByRole("button", { name: "Back", exact: true }).click();
       expect(warnings).toEqual([]);
     } finally {
