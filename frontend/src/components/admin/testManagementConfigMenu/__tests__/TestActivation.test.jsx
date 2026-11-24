@@ -286,6 +286,84 @@ describe("TestActivation", () => {
     },
   );
 
+  const sharedTest = () => ({
+    activeTestList: [
+      ...activation().activeTestList,
+      {
+        sampleType: { id: "6", value: "Plasma" },
+        activeTests: [
+          { id: "10", value: "Glucose" },
+          { id: "60", value: "Creatinine" },
+        ],
+        inactiveTests: [],
+      },
+    ],
+    inactiveTestList: [],
+  });
+
+  const accept = async () => {
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) => callback(true),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+    const [, payload] = postToOpenElisServerJsonResponse.mock.calls[0];
+    const sent = JSON.parse(JSON.parse(payload).jsonChangeList);
+    return (key) => JSON.parse(sent[key]).map((item) => String(item.id));
+  };
+
+  it("turns off a test listed under two sample types when it is unchecked under one", async () => {
+    onServer = sharedTest();
+    await turnGlucoseOff();
+    expect(document.getElementById("6-10")).toBeChecked();
+    fireEvent.click(submitButtons()[0]);
+
+    await screen.findByText(headings.testsOff);
+    expect(shownHeadings()).toEqual(["testsOff"]);
+    expect(screen.getByRole("dialog")).toHaveTextContent("Glucose");
+    const sent = await accept();
+    expect(sent("deactivateTest")).toEqual(["10"]);
+  });
+
+  it("lists and sends a test unchecked under two sample types once", async () => {
+    const consoleError = vi.spyOn(console, "error");
+    onServer = sharedTest();
+    await turnGlucoseOff();
+    fireEvent.click(document.getElementById("6-10"));
+    await waitFor(() =>
+      expect(document.getElementById("6-10")).not.toBeChecked(),
+    );
+    fireEvent.click(submitButtons()[0]);
+
+    await screen.findByText(headings.testsOff);
+    expect(
+      screen.getByRole("dialog").textContent.match(/Glucose/g),
+    ).toHaveLength(1);
+    const keyWarnings = consoleError.mock.calls
+      .map((args) => args.map(String).join(" "))
+      .filter((text) => text.includes("same key"));
+    consoleError.mockRestore();
+    expect(keyWarnings).toEqual([]);
+    const sent = await accept();
+    expect(sent("deactivateTest")).toEqual(["10"]);
+  });
+
+  it("keeps the changes when Back returns from the confirmation", async () => {
+    await turnGlucoseOff();
+    fireEvent.click(submitButtons()[0]);
+    await screen.findByText(headings.testsOff);
+
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    await waitFor(() =>
+      expect(document.querySelector(".cds--modal.is-visible")).toBeNull(),
+    );
+    expect(glucose()).not.toBeChecked();
+    submitButtons().forEach((button) => expect(button).toBeEnabled());
+    fireEvent.click(submitButtons()[0]);
+    const sent = await accept();
+    expect(sent("deactivateTest")).toEqual(["10"]);
+  });
+
   it("heads only the deactivated tests when a test is turned off and its type keeps others", async () => {
     await turnGlucoseOff();
     fireEvent.click(submitButtons()[0]);

@@ -15,6 +15,7 @@ import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 const API = "/api/OpenELIS-Global";
 const TC = `${API}/rest/test-catalog`;
 const SERUM = "2";
+const PLASMA = "3";
 
 const csrfToken = async (page: Page): Promise<string> => {
   const state = await page.context().storageState();
@@ -28,7 +29,11 @@ const csrfToken = async (page: Page): Promise<string> => {
 
 const stamp = () => `${Date.now()}`.slice(-7);
 
-const seedTest = async (page: Page, headers: Record<string, string>) => {
+const seedTest = async (
+  page: Page,
+  headers: Record<string, string>,
+  sampleTypeIds: string[] = [SERUM],
+) => {
   const s = stamp();
   const name = `PWEL ${s}`;
   const labUnits = await (await page.request.get(`${TC}/lab-units`)).json();
@@ -40,7 +45,7 @@ const seedTest = async (page: Page, headers: Record<string, string>) => {
       code: `PWEL${s}`,
       domain: "CLINICAL",
       labUnitId: labUnits[0].id,
-      sampleTypeIds: [SERUM],
+      sampleTypeIds,
       description: name,
     },
   });
@@ -218,6 +223,69 @@ test.describe("Test catalog editor, Alerts and Test Activation", () => {
       ).toHaveCount(0);
       await expect(dialog.getByText(/will be deactivated/)).toHaveCount(0);
       await dialog.getByRole("button", { name: "Back", exact: true }).click();
+      expect(warnings).toEqual([]);
+    } finally {
+      await retire(page, headers, testId);
+    }
+  });
+
+  test("Test Activation turns off a test listed under two sample types from either one, and Back keeps the change", async ({
+    page,
+  }) => {
+    const warnings = reactWarnings(page);
+    await page.goto("/");
+    const headers = { "X-CSRF-Token": await csrfToken(page) };
+    const { testId, name } = await seedTest(page, headers, [SERUM, PLASMA]);
+    const underSerum = page.locator(`[id="${SERUM}-${testId}"]`);
+    const underPlasma = page.locator(`[id="${PLASMA}-${testId}"]`);
+    const submit = page
+      .getByRole("button", { name: "Submit", exact: true })
+      .first();
+    const dialog = page.getByRole("dialog");
+    const accept = async () => {
+      const saved = page.waitForResponse(
+        (response) =>
+          response.url().includes("/rest/TestActivation") &&
+          response.request().method() === "POST",
+      );
+      await dialog.getByRole("button", { name: "Accept", exact: true }).click();
+      await saved;
+    };
+    const open = async () => {
+      await page.goto("/MasterListsPage/TestActivation", {
+        waitUntil: "domcontentloaded",
+      });
+      await expect(page.locator(`label[for="${SERUM}-${testId}"]`)).toBeVisible(
+        { timeout: NAV_TIMEOUT },
+      );
+    };
+    try {
+      await open();
+      await page.locator(`label[for="${SERUM}-${testId}"]`).click();
+      await submit.click();
+      await expect(dialog).toContainText(name, { timeout: UI_TIMEOUT });
+      await accept();
+      await open();
+      await expect(underSerum).toBeChecked();
+      await expect(underPlasma).toBeChecked();
+
+      await page.locator(`label[for="${PLASMA}-${testId}"]`).click();
+      await expect(underSerum).toBeChecked();
+      await submit.click();
+      await expect(
+        dialog.getByText("The following tests will be deactivated:"),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+      await expect(dialog).toContainText(name);
+      await dialog.getByRole("button", { name: "Back", exact: true }).click();
+      await expect(underPlasma).not.toBeChecked();
+      await expect(submit).toBeEnabled();
+
+      await submit.click();
+      await expect(dialog).toContainText(name, { timeout: UI_TIMEOUT });
+      await accept();
+      await open();
+      await expect(underSerum).not.toBeChecked();
+      await expect(underPlasma).not.toBeChecked();
       expect(warnings).toEqual([]);
     } finally {
       await retire(page, headers, testId);

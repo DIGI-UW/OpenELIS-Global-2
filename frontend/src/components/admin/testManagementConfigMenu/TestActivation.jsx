@@ -64,19 +64,31 @@ const sameActiveTests = (draft, stored) => {
   );
 };
 
-const activeTestIds = (data) =>
-  new Set(
-    samplesOf(data).flatMap((sample) =>
-      (sample.activeTests || []).map((test) => String(test.id)),
-    ),
+// The tests on under a sample type in `from` and off under it in `to`. A test
+// listed under several sample types is one test, so one change under any of
+// them is a change of the test.
+const testsTurnedOff = (from, to) => {
+  const kept = activeTestKeys(to);
+  return new Set(
+    [...activeTestKeys(from)]
+      .filter((key) => !kept.has(key))
+      .map((key) => key.split(":")[1]),
+  );
+};
+
+const uniqueById = (items) =>
+  items.filter(
+    (item, index) =>
+      items.findIndex((other) => String(other.id) === String(item.id)) ===
+      index,
   );
 
 // What the draft really changes. A test turned on and off again can leave an
 // entry in the change list, so only what differs from the stored state is
-// shown or sent.
+// shown or sent, once.
 const effectiveChanges = (changes, draft, stored) => {
-  const wasOn = activeTestIds(stored);
-  const isOn = activeTestIds(draft);
+  const turnedOn = testsTurnedOff(draft, stored);
+  const turnedOff = testsTurnedOff(stored, draft);
   const activeTypes = new Set(
     (stored?.activeTestList || []).map((sample) =>
       String(sample.sampleType.id),
@@ -88,21 +100,25 @@ const effectiveChanges = (changes, draft, stored) => {
       .map((sample) => String(sample.sampleType.id)),
   );
   return {
-    activateSample: changes.activateSample.filter(
-      (sample) =>
-        activeTypes.has(String(sample.id)) ||
-        typesWithTests.has(String(sample.id)),
+    activateSample: uniqueById(
+      changes.activateSample.filter(
+        (sample) =>
+          activeTypes.has(String(sample.id)) ||
+          typesWithTests.has(String(sample.id)),
+      ),
     ),
-    deactivateSample: changes.deactivateSample.filter(
-      (sample) =>
-        activeTypes.has(String(sample.id)) &&
-        !typesWithTests.has(String(sample.id)),
+    deactivateSample: uniqueById(
+      changes.deactivateSample.filter(
+        (sample) =>
+          activeTypes.has(String(sample.id)) &&
+          !typesWithTests.has(String(sample.id)),
+      ),
     ),
-    activateTest: changes.activateTest.filter(
-      (test) => isOn.has(String(test.id)) && !wasOn.has(String(test.id)),
+    activateTest: uniqueById(
+      changes.activateTest.filter((test) => turnedOn.has(String(test.id))),
     ),
-    deactivateTest: changes.deactivateTest.filter(
-      (test) => wasOn.has(String(test.id)) && !isOn.has(String(test.id)),
+    deactivateTest: uniqueById(
+      changes.deactivateTest.filter((test) => turnedOff.has(String(test.id))),
     ),
   };
 };
@@ -1315,7 +1331,7 @@ function TestActivation() {
           testActivationPostCall();
         }}
         onRequestClose={() => {
-          discardPendingChanges();
+          setIsConfirmModalOpen(false);
         }}
         preventCloseOnClickOutside={true}
         shouldSubmitOnEnter={true}
