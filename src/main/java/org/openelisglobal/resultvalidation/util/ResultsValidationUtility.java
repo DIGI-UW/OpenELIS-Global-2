@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.alert.service.AlertService;
 import org.openelisglobal.alert.valueholder.Alert;
@@ -1349,7 +1350,7 @@ public class ResultsValidationUtility {
                         .convertTimestampToStringDateAndTime(Timestamp.from(release.getReleasedAt().toInstant())));
                 SystemUser releasedBy = release.getReleasedBy() == null ? null
                         : systemUsers.get(String.valueOf(release.getReleasedBy()));
-                row.setAutoReleasedBy(releasedBy == null ? "" : releasedBy.getDisplayName());
+                row.setAutoReleasedBy(releasedBy == null ? "" : StringUtils.trim(releasedBy.getNameForDisplay()));
                 row.setAutoReleaseRule(autoReleases.describe(release));
             }
         }

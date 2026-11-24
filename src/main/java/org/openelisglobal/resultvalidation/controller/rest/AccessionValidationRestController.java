@@ -1519,8 +1519,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
     }
 
     /**
-     * Who last touched the analysis, from the audit history; a generic label when
-     * unknown.
+     * Who last touched the analysis, from the audit history, named first name first
+     * as the sign-offs name a user; a generic label when unknown.
      */
     private String resolveLastModifier(Analysis analysis) {
         try {
@@ -1535,7 +1535,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             if (latest != null && !isBlankOrNull(latest.getSysUserId())) {
                 SystemUser user = systemUserService.getUserById(latest.getSysUserId());
                 if (user != null) {
-                    return user.getDisplayName();
+                    return StringUtils.trim(user.getNameForDisplay());
                 }
             }
         } catch (RuntimeException e) {

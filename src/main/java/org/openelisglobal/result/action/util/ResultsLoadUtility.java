@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisAnchor;
 import org.openelisglobal.analysis.service.AnalysisAnchorService;
@@ -1634,13 +1635,14 @@ public class ResultsLoadUtility {
     /**
      * The note's systemUser is a lazy proxy whose session is closed by the time
      * results are assembled, so only its identifier is safe to read; the author is
-     * reloaded by id to get the display name.
+     * reloaded by id and named first name first, as "Entered by" and the sign-offs
+     * name a user.
      */
     private String getNoteAuthorDisplayName(Note note) {
         if (note.getSystemUser() == null || GenericValidator.isBlankOrNull(note.getSystemUser().getId())) {
             return "";
         }
         SystemUser author = SpringContext.getBean(SystemUserService.class).get(note.getSystemUser().getId());
-        return author != null ? author.getDisplayName() : "";
+        return author != null ? StringUtils.trimToEmpty(author.getNameForDisplay()) : "";
     }
 }
