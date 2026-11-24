@@ -52,6 +52,10 @@ public class ComplianceStandardServiceImpl extends AuditableBaseObjectServiceImp
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
 
+    @org.springframework.context.annotation.Lazy
+    @Autowired
+    private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
+
     ComplianceStandardServiceImpl() {
         super(ComplianceStandard.class);
     }
@@ -113,6 +117,10 @@ public class ComplianceStandardServiceImpl extends AuditableBaseObjectServiceImp
         }
         java.util.Comparator<ComplianceThreshold> inSelectionOrder = java.util.Comparator
                 .comparingInt(threshold -> ids.indexOf(threshold.getGroup().getStandard().getId()));
+        List<String> environmentalTypeIds = typeOfSampleService
+                .getTypesForDomain(org.openelisglobal.typeofsample.dao.TypeOfSampleDAO.SampleDomain.ENVIRONMENTAL)
+                .stream().filter(type -> type.getIsActive())
+                .map(org.openelisglobal.typeofsample.valueholder.TypeOfSample::getId).toList();
         List<SuggestedTest> suggested = new java.util.ArrayList<>();
         for (Map.Entry<String, List<ComplianceThreshold>> entry : byTest.entrySet()) {
             org.openelisglobal.test.valueholder.Test test = tests.get(entry.getKey());
@@ -129,17 +137,23 @@ public class ComplianceStandardServiceImpl extends AuditableBaseObjectServiceImp
                         threshold.getUnits()));
             }
             suggested.add(new SuggestedTest(test.getId(), TestServiceImpl.getUserLocalizedTestName(test),
-                    test.getLoinc(), sampleTypeIdsOf(test.getId()), List.copyOf(coverage.values()), limits,
-                    coverage.size() > 1 && disagree(limits)));
+                    test.getLoinc(), sampleTypeIdsOf(test.getId(), environmentalTypeIds),
+                    List.copyOf(coverage.values()), limits, coverage.size() > 1 && disagree(limits)));
         }
         suggested.sort(java.util.Comparator.comparing(SuggestedTest::testName, String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(SuggestedTest::testId));
         return suggested;
     }
 
-    private List<String> sampleTypeIdsOf(String testId) {
-        return typeOfSampleService.getTypeOfSampleForTest(testId).stream()
-                .map(org.openelisglobal.typeofsample.valueholder.TypeOfSample::getId).distinct().toList();
+    /**
+     * The environmental sample types the test runs on, in the order the order entry
+     * lists them; none when the catalog links it to no environmental type.
+     */
+    private List<String> sampleTypeIdsOf(String testId, List<String> environmentalTypeIds) {
+        java.util.Set<String> linked = typeOfSampleTestService.getTypeOfSampleTestsForTest(testId).stream()
+                .map(org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest::getTypeOfSampleId)
+                .collect(java.util.stream.Collectors.toSet());
+        return environmentalTypeIds.stream().filter(linked::contains).toList();
     }
 
     private static boolean disagree(List<SuggestedTest.Threshold> limits) {

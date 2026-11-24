@@ -14,7 +14,7 @@ vi.mock("../../../utils/Utils", () => ({ getFromOpenElisServer }));
 import SampleTestSection from "./SampleTestSection";
 
 let current;
-const Harness = ({ plan }) => {
+const Harness = ({ plan, regulationDriven = plan != null }) => {
   const [samples, setSamples] = useState([
     { index: 0, sampleTypeId: "7", tests: [], panels: [] },
   ]);
@@ -28,6 +28,7 @@ const Harness = ({ plan }) => {
         isReadOnly={false}
         workflowType="environmental"
         planTestIds={plan}
+        regulationDriven={regulationDriven}
       />
     </IntlProvider>
   );
@@ -105,6 +106,19 @@ describe("SampleTestSection — regulation-driven test plan (OGC-768)", () => {
 
     rerender(<Reopened plan={[]} />);
     await waitFor(() => expect(testIds()).toEqual(["32"]));
+  });
+
+  it("keeps the tests an earlier plan ticked once the order turned ad-hoc and back", async () => {
+    const { rerender } = render(<Harness plan={["32"]} />);
+    await waitFor(() => expect(testIds()).toEqual(["32"]));
+
+    rerender(<Harness plan={null} regulationDriven={false} />);
+    rerender(<Harness plan={["32"]} regulationDriven />);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    rerender(<Harness plan={[]} regulationDriven />);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(testIds()).toEqual(["32"]);
   });
 
   it("adds nothing without a plan", async () => {

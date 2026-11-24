@@ -80,7 +80,7 @@ const EnvironmentalOrderEnter = () => {
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
   const [errors, setErrors] = useState({});
   const [showNceForm, setShowNceForm] = useState(false);
-  const [planTestIds, setPlanTestIds] = useState([]);
+  const [planTestIds, setPlanTestIds] = useState(null);
 
   // Seed workflowType + clear patient status on mount.
   useEffect(() => {
@@ -452,6 +452,7 @@ const EnvironmentalOrderEnter = () => {
           isReadOnly={isReadOnly && !isEditMode}
           workflowType={WORKFLOW_TYPE}
           planTestIds={regulationDriven ? planTestIds : null}
+          regulationDriven={regulationDriven}
           renderSampleNote={(index) => (
             <MicroSampleCaseNote preview={microPreview} sampleIndex={index} />
           )}

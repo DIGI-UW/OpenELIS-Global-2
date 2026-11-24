@@ -9761,6 +9761,7 @@
   "env.testPlan.blocked.item": "{test} needs a sample of type {sampleTypes}",
   "env.testPlan.blocked.add": "Add a {sampleType} sample",
   "env.testPlan.blocked.skip": "Skip this test",
+  "env.testPlan.blocked.noSampleType": "{test} has no environmental sample type that runs it. Link one in the test catalog, or skip the test.",
   "env.quickAdd.title": "Add samples for the selected standards",
   "env.quickAdd.count": "Number of {sampleType} samples",
   "env.quickAdd.add": "Add {count} {sampleType}",

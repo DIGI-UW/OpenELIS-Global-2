@@ -71,6 +71,27 @@ public class ComplianceSuggestedTestsTest extends BaseWebContextSensitiveTest {
         assertEquals(List.of(), complianceStandardService.suggestedTests(List.of("abc", "999999")));
     }
 
+    /**
+     * OGC-768 review: a threshold on a test no sample type runs does not break the
+     * plan, and only environmental sample types are offered: a clinical type the
+     * test also runs on is left out.
+     */
+    @Test
+    public void onlyEnvironmentalSampleTypesAreOfferedAndATestWithNoneStillPlans() {
+        jdbcTemplate.update("UPDATE clinlims.compliance_threshold SET is_active = true WHERE id = 9766");
+        jdbcTemplate.update("INSERT INTO clinlims.type_of_sample (id, description, domain, name_localization_id,"
+                + " lastupdated) VALUES (9763, 'Serum', 'H', 9761, now())");
+        jdbcTemplate
+                .update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id) VALUES (9764, 9763, 9762)");
+
+        List<SuggestedTest> tests = complianceStandardService.suggestedTests(List.of("9761", "9762"));
+
+        SuggestedTest nitrate = tests.stream().filter(test -> "9764".equals(test.testId())).findFirst().orElseThrow();
+        assertEquals(List.of(), nitrate.sampleTypeIds());
+        SuggestedTest lead = tests.stream().filter(test -> "9762".equals(test.testId())).findFirst().orElseThrow();
+        assertEquals(List.of("9761"), lead.sampleTypeIds());
+    }
+
     @Test
     public void theEndpointAnswersWithTheUnion() throws Exception {
         mockMvc.perform(get("/rest/compliance/standards/suggested-tests").param("standardIds", "9761,9762"))

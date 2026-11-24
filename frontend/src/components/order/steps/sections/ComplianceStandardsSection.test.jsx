@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
@@ -96,6 +96,7 @@ const SUGGESTED = [
 
 let suggestedResponse;
 let state;
+let planCalls;
 const Harness = ({ standards = '["1","2"]', samples: initialSamples }) => {
   const [orderData, setOrderData] = useState({
     sampleOrderItems: {
@@ -106,7 +107,7 @@ const Harness = ({ standards = '["1","2"]', samples: initialSamples }) => {
     },
   });
   const [samples, setSamples] = useState(initialSamples);
-  const [plan, setPlan] = useState([]);
+  const [plan, setPlan] = useState(null);
   state = { orderData, samples, plan };
   return (
     <IntlProvider locale="en" messages={messages}>
@@ -116,7 +117,10 @@ const Harness = ({ standards = '["1","2"]', samples: initialSamples }) => {
         isReadOnly={false}
         samples={samples}
         setSamples={setSamples}
-        onPlanChange={setPlan}
+        onPlanChange={(next) => {
+          planCalls.push(next);
+          setPlan(next);
+        }}
       />
     </IntlProvider>
   );
@@ -124,6 +128,7 @@ const Harness = ({ standards = '["1","2"]', samples: initialSamples }) => {
 
 beforeEach(() => {
   suggestedResponse = SUGGESTED;
+  planCalls = [];
   vi.mocked(getFromOpenElisServer).mockReset();
   vi.mocked(getFromOpenElisServer).mockImplementation((url, callback) => {
     if (url === "/rest/compliance/standards/active") callback(STANDARDS);
@@ -244,6 +249,48 @@ describe("Regulation-driven environmental order (OGC-768)", () => {
     expect(
       state.orderData.sampleOrderItems.environmentalFields.complianceStandards,
     ).toBe('["1"]');
+  });
+
+  it("reports no plan until the plan of the chosen standards has loaded", () => {
+    let answer;
+    vi.mocked(getFromOpenElisServer).mockImplementation((url, callback) => {
+      if (url === "/rest/compliance/standards/active") callback(STANDARDS);
+      else if (url === "/rest/environmental-sample-types") callback([]);
+      else if (url.startsWith("/rest/compliance/standards/suggested-tests"))
+        answer = callback;
+    });
+    render(<Harness samples={[]} />);
+
+    expect(planCalls.every((call) => call === null)).toBe(true);
+    expect(state.plan).toBeNull();
+
+    act(() => answer(SUGGESTED));
+    expect(state.plan).toEqual(["31", "32", "33"]);
+  });
+
+  it("reports no plan when the plan cannot be loaded", () => {
+    suggestedResponse = null;
+    render(<Harness samples={[]} />);
+
+    expect(planCalls.every((call) => call === null)).toBe(true);
+  });
+
+  it("says a plan test has no environmental sample type and offers only to skip it", () => {
+    suggestedResponse = [
+      { ...SUGGESTED[1], testId: "34", testName: "Glucose", sampleTypeIds: [] },
+    ];
+    render(<Harness samples={[]} />);
+
+    const blocked = screen.getByTestId("compliance-plan-blocked-34");
+    expect(blocked).toHaveTextContent(
+      "Glucose has no environmental sample type that runs it",
+    );
+    expect(
+      within(blocked).queryByRole("button", { name: /^Add a/ }),
+    ).toBeNull();
+    expect(
+      within(blocked).getByRole("button", { name: "Skip this test" }),
+    ).toBeInTheDocument();
   });
 
   it("says when the test plan cannot be loaded and retries", () => {

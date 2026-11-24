@@ -84,6 +84,7 @@ const ComplianceStandardsSection = ({
   const [loading, setLoading] = useState(true);
   const [sampleTypes, setSampleTypes] = useState([]);
   const [suggested, setSuggested] = useState([]);
+  const [loadedKey, setLoadedKey] = useState(null);
   const [planLoading, setPlanLoading] = useState(false);
   const [planFailed, setPlanFailed] = useState(false);
   const [planAttempt, setPlanAttempt] = useState(0);
@@ -115,6 +116,7 @@ const ComplianceStandardsSection = ({
     if (!selectionKey) {
       setSuggested([]);
       setPlanFailed(false);
+      setLoadedKey("");
       return;
     }
     let current = true;
@@ -129,6 +131,7 @@ const ComplianceStandardsSection = ({
         setPlanLoading(false);
         if (Array.isArray(data)) {
           setSuggested(data);
+          setLoadedKey(selectionKey);
         } else {
           setSuggested([]);
           setPlanFailed(true);
@@ -145,11 +148,20 @@ const ComplianceStandardsSection = ({
     [suggested, excluded],
   );
   const planKey = planTests.map((test) => test.testId).join(",");
+  const planKnown = loadedKey === selectionKey;
   useEffect(() => {
     if (onPlanChange) {
-      onPlanChange(planKey ? planKey.split(",") : []);
+      onPlanChange(planKnown ? (planKey ? planKey.split(",") : []) : null);
     }
-  }, [planKey]);
+  }, [planKey, planKnown]);
+  useEffect(
+    () => () => {
+      if (onPlanChange) {
+        onPlanChange(null);
+      }
+    },
+    [],
+  );
 
   const setSelected = (ids) => {
     setOrderData((prev) => ({
@@ -183,8 +195,9 @@ const ComplianceStandardsSection = ({
     .filter(Boolean);
   const blocked = planTests.filter(
     (test) =>
-      (test.sampleTypeIds || []).length > 0 &&
-      !test.sampleTypeIds.some((id) => activeTypeIds.includes(String(id))),
+      !(test.sampleTypeIds || []).some((id) =>
+        activeTypeIds.includes(String(id)),
+      ),
   );
 
   const chipTypes = [];
@@ -513,27 +526,36 @@ const ComplianceStandardsSection = ({
                       key={test.testId}
                       data-testid={`compliance-plan-blocked-${test.testId}`}
                     >
-                      <FormattedMessage
-                        id="env.testPlan.blocked.item"
-                        values={{
-                          test: test.testName,
-                          sampleTypes: test.sampleTypeIds
-                            .map(sampleTypeName)
-                            .join(", "),
-                        }}
-                      />
+                      {typeId ? (
+                        <FormattedMessage
+                          id="env.testPlan.blocked.item"
+                          values={{
+                            test: test.testName,
+                            sampleTypes: test.sampleTypeIds
+                              .map(sampleTypeName)
+                              .join(", "),
+                          }}
+                        />
+                      ) : (
+                        <FormattedMessage
+                          id="env.testPlan.blocked.noSampleType"
+                          values={{ test: test.testName }}
+                        />
+                      )}
                       {!isReadOnly && (
                         <>
-                          <Button
-                            kind="ghost"
-                            size="sm"
-                            onClick={() => addSamples(typeId, 1)}
-                          >
-                            <FormattedMessage
-                              id="env.testPlan.blocked.add"
-                              values={{ sampleType: sampleTypeName(typeId) }}
-                            />
-                          </Button>
+                          {typeId && (
+                            <Button
+                              kind="ghost"
+                              size="sm"
+                              onClick={() => addSamples(typeId, 1)}
+                            >
+                              <FormattedMessage
+                                id="env.testPlan.blocked.add"
+                                values={{ sampleType: sampleTypeName(typeId) }}
+                              />
+                            </Button>
+                          )}
                           <Button
                             kind="ghost"
                             size="sm"

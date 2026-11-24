@@ -65,6 +65,7 @@ const SampleTestSection = ({
   orderData,
   renderSampleNote,
   planTestIds,
+  regulationDriven,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
@@ -341,10 +342,16 @@ const SampleTestSection = ({
    * it (a reopened order, or tests picked before any standard) keeps its
    * selection; only tests a standard adds later are ticked. A test the plan
    * ticked is ticked once: taken off, it stays off. One dropped from the plan
-   * comes off only the rows the plan ticked it on.
+   * comes off only the rows the plan ticked it on. An order that turns ad-hoc
+   * keeps its tests as the user's own, so a later plan never takes them off.
    */
   const planAppliedRef = useRef({});
   const planKey = (planTestIds || []).map(String).join(",");
+  useEffect(() => {
+    if (!regulationDriven) {
+      planAppliedRef.current = {};
+    }
+  }, [regulationDriven]);
   useEffect(() => {
     if (!planTestIds || isReadOnly) {
       return;

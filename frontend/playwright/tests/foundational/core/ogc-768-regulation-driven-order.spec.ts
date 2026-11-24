@@ -1,13 +1,16 @@
+import { randomInt } from "node:crypto";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { test, expect } from "../../../helpers/test-base";
 import { API_PREFIX } from "../../../helpers/admin-ui";
+import { seedNumericTests } from "../../../helpers/analyzer-catalog-api";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
  * OGC-768: a regulation-driven environmental order names its compliance
  * standards, and their linked tests become the test plan each sample starts
- * from. Two standards are created for the run on an environmental sample type
- * that runs at least two tests; they share one test with different limits.
+ * from. The run imports two tests of its own on the fixture's synthetic
+ * environmental sample type, so no shared catalog test changes, and creates two
+ * standards that share one test with different limits.
  */
 
 type Seeded = {
@@ -32,28 +35,37 @@ async function json(request: APIRequestContext, url: string) {
   return response.json();
 }
 
+const SAMPLE_TYPE = "Synthetic Drinking Water";
+const loinc = () => `${randomInt(1_000_000, 9_000_000)}-${randomInt(0, 9)}`;
+
 async function seed(page: Page): Promise<Seeded> {
   await page.goto("/", { waitUntil: "domcontentloaded" });
+  const run = suffix().toLowerCase();
+  const imported = await seedNumericTests(
+    page,
+    run,
+    [
+      { name: `PW768 Lead ${run}`, loinc: loinc() },
+      { name: `PW768 pH ${run}`, loinc: loinc() },
+    ],
+    { testSection: "Biochemistry", sampleType: SAMPLE_TYPE },
+  );
   const types = await json(page.request, "/rest/environmental-sample-types");
-  let chosen: Seeded["sampleType"] | undefined;
-  let tests: Seeded["tests"] = [];
-  for (const type of types) {
-    const catalog = await json(
-      page.request,
-      `/rest/sample-type-tests?sampleType=${type.id}`,
+  const chosen: Seeded["sampleType"] | undefined = types.find(
+    (type: { value: string }) => type.value === SAMPLE_TYPE,
+  );
+  expect(chosen, "the fixture's environmental sample type").toBeTruthy();
+  const catalog = await json(
+    page.request,
+    `/rest/sample-type-tests?sampleType=${chosen!.id}`,
+  );
+  const tests: Seeded["tests"] = imported.map((seeded) => {
+    const listed = (catalog.tests || []).find(
+      (t: { id: string }) => String(t.id) === seeded.id,
     );
-    if ((catalog.tests || []).length >= 2) {
-      chosen = type;
-      tests = catalog.tests
-        .slice(0, 2)
-        .map((t: { id: string; name: string }) => ({
-          id: String(t.id),
-          name: t.name,
-        }));
-      break;
-    }
-  }
-  expect(chosen, "an environmental sample type with two tests").toBeTruthy();
+    expect(listed, `${seeded.name} runs on ${SAMPLE_TYPE}`).toBeTruthy();
+    return { id: seeded.id, name: listed.name };
+  });
   const headers = await csrf(page);
   const tag = suffix();
   const standards: Seeded["standards"] = [];
