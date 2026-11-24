@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="lesotho-004-hiv-vl-program" author="lesotho">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="program"/>
+            <tableExists tableName="questionnaire"/>
+            <columnExists tableName="questionnaire" columnName="resource_json"/>
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.program WHERE code = 'HIV_VL'</sqlCheck>
+        </preConditions>
+        <comment>
+            Seeds the HIV viral load programme and its order-entry questionnaire so the
+            test-triggered programme works on every install. The questionnaire id is fixed so
+            the programme can reference it.
+        </comment>
+
+        <sql splitStatements="false">
+INSERT INTO clinlims.questionnaire
+    (id, fhir_uuid, has_item, status, questionnaire_name, description, last_updated,
+     resource_json, identifier_system, identifier_value)
+SELECT nextval('clinlims.questionnaire_seq'),
+       '6f1d9c3e-8a47-4b52-9e0a-3c5b7d2a1f84'::uuid,
+       true,
+       'ACTIVE',
+       'HIV Viral Load Request',
+       'Clinical information requested with an HIV viral load test',
+       now(),
+       $json${
+  "resourceType": "Questionnaire",
+  "id": "6f1d9c3e-8a47-4b52-9e0a-3c5b7d2a1f84",
+  "identifier": [{"system": "urn:openelis-lesotho:program-questionnaire", "value": "HIV_VL"}],
+  "name": "HIV Viral Load Request",
+  "title": "HIV Viral Load Request",
+  "status": "active",
+  "item": [
+    {"linkId": "art_number", "text": "ART No.", "type": "string"},
+    {"linkId": "district", "text": "District", "type": "choice", "answerOption": [
+      {"valueString": "Berea"}, {"valueString": "Butha-Buthe"}, {"valueString": "Leribe"},
+      {"valueString": "Mafeteng"}, {"valueString": "Maseru"}, {"valueString": "Mohale's Hoek"},
+      {"valueString": "Mokhotlong"}, {"valueString": "Qacha's Nek"}, {"valueString": "Quthing"},
+      {"valueString": "Thaba-Tseka"}]},
+    {"linkId": "currently_pregnant", "text": "Currently pregnant", "type": "boolean"},
+    {"linkId": "currently_breastfeeding", "text": "Currently breastfeeding", "type": "boolean"},
+    {"linkId": "art_initiation_date", "text": "Date of initiation on current ART regimen", "type": "date"},
+    {"linkId": "reason_for_vl", "text": "Reason for VL", "type": "choice", "answerOption": [
+      {"valueString": "Routine"}, {"valueString": "Targeted Clinical Failure"},
+      {"valueString": "Targeted Immunological Failure"}, {"valueString": "Repeat after EAC"}]},
+    {"linkId": "missed_doses_30d", "text": "Did the patient miss one or more dose(s) of ART in the last 30 days", "type": "boolean"},
+    {"linkId": "first_cd4_result", "text": "First CD4 result", "type": "integer"},
+    {"linkId": "first_cd4_date", "text": "First CD4 date", "type": "date"},
+    {"linkId": "last_cd4_result", "text": "Last CD4 result", "type": "integer"},
+    {"linkId": "last_cd4_date", "text": "Last CD4 date", "type": "date"},
+    {"linkId": "previous_vl_result", "text": "Previous viral load result (cps/ml)", "type": "integer"},
+    {"linkId": "previous_vl_log", "text": "Previous viral load log", "type": "decimal"},
+    {"linkId": "previous_vl_date", "text": "Previous viral load date", "type": "date"}
+  ]
+}$json$,
+       'urn:openelis-lesotho:program-questionnaire',
+       'HIV_VL'
+WHERE NOT EXISTS (
+    SELECT 1 FROM clinlims.questionnaire
+    WHERE fhir_uuid = '6f1d9c3e-8a47-4b52-9e0a-3c5b7d2a1f84'::uuid);
+        </sql>
+
+        <sql>
+INSERT INTO clinlims.program (id, code, name, lastupdated, questionnaire_fhir_uuid, domain, is_active)
+SELECT COALESCE(MAX(id), 0) + 1, 'HIV_VL', 'HIV Viral Load', now(),
+       '6f1d9c3e-8a47-4b52-9e0a-3c5b7d2a1f84'::uuid, 'CLINICAL', 'Y'
+FROM clinlims.program;
+        </sql>
+
+        <!-- Seeded programmes have fixed ids, so keep the sequence ahead of them. -->
+        <sql splitStatements="false">
+DO $$
+BEGIN
+    PERFORM setval('clinlims.program_seq',
+                   GREATEST((SELECT MAX(id) FROM clinlims.program)::bigint,
+                            (SELECT last_value FROM clinlims.program_seq)));
+END
+$$;
+        </sql>
+
+        <rollback>
+            <sql>DELETE FROM clinlims.program WHERE code = 'HIV_VL';</sql>
+            <sql>DELETE FROM clinlims.questionnaire WHERE fhir_uuid = '6f1d9c3e-8a47-4b52-9e0a-3c5b7d2a1f84'::uuid;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
