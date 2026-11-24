@@ -393,6 +393,15 @@ public class AnalysisItem implements Serializable {
     private boolean autoValidated = false;
 
     /**
+     * OGC-1017 — for a recorded automatic release: when it happened, who saved the
+     * result and the rule that released it. Blank for results released before
+     * automatic releases were recorded.
+     */
+    private String autoReleasedAt;
+    private String autoReleasedBy;
+    private String autoReleaseRule;
+
+    /**
      * OGC-1030 (FR-D2) — the NCE number filed when rejecting, recorded in the
      * rejection note.
      */
@@ -1191,6 +1200,30 @@ public class AnalysisItem implements Serializable {
 
     public void setAutoValidated(boolean autoValidated) {
         this.autoValidated = autoValidated;
+    }
+
+    public String getAutoReleasedAt() {
+        return autoReleasedAt;
+    }
+
+    public void setAutoReleasedAt(String autoReleasedAt) {
+        this.autoReleasedAt = autoReleasedAt;
+    }
+
+    public String getAutoReleasedBy() {
+        return autoReleasedBy;
+    }
+
+    public void setAutoReleasedBy(String autoReleasedBy) {
+        this.autoReleasedBy = autoReleasedBy;
+    }
+
+    public String getAutoReleaseRule() {
+        return autoReleaseRule;
+    }
+
+    public void setAutoReleaseRule(String autoReleaseRule) {
+        this.autoReleaseRule = autoReleaseRule;
     }
 
     public String getNceNumber() {

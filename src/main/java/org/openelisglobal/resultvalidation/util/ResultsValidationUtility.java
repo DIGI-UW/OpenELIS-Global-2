@@ -102,6 +102,8 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
+import org.openelisglobal.validationpolicy.service.AnalysisAutoReleaseService;
+import org.openelisglobal.validationpolicy.valueholder.AnalysisAutoRelease;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -1256,21 +1258,38 @@ public class ResultsValidationUtility {
 
     /**
      * OGC-1030 (FR-A4) — the sample's analyses that were released at result entry
-     * without a validator: Finalized, with no release date and no validator
-     * e-signature on record. Every validator release (row, bulk "Release all
-     * clear", legacy validation pages) stamps {@code released_date}, and the bulk
-     * release signs once for the whole set, so a missing signature alone does not
-     * mean no validator (OGC-1361). Served read-only behind the queue's "Include
+     * without a validator, served read-only behind the queue's "Include
      * auto-validated" toggle; never part of the queue itself, never releasable.
+     *
+     * <p>
+     * OGC-1017: an automatic release is recorded when it happens, with who saved
+     * the result and the rule that released it. A recorded analysis is shown while
+     * no validator released it after that record. An analysis released before the
+     * records existed falls back to OGC-1030's reading: Finalized with no release
+     * date and no validator e-signature. Every validator release stamps
+     * {@code released_date}, and the bulk release signs once for the whole set, so
+     * a missing signature alone does not mean no validator (OGC-1361).
      */
     public List<AnalysisItem> getAutoValidatedAnalysisBySample(Sample sample) {
         String finalizedId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
-        List<Analysis> finalized = new ArrayList<>(
-                analysisService.getAnalysesBySampleIdAndStatusId(sample.getId(), Set.of(finalizedId)));
+        List<Analysis> finalized = excludeQcAnalyses(
+                new ArrayList<>(analysisService.getAnalysesBySampleIdAndStatusId(sample.getId(), Set.of(finalizedId))));
+        AnalysisAutoReleaseService autoReleases = SpringContext.getBean(AnalysisAutoReleaseService.class);
+        Map<String, AnalysisAutoRelease> recorded = autoReleases
+                .latestOf(finalized.stream().map(Analysis::getId).toList());
         org.openelisglobal.esig.service.ElectronicSignatureService signatures = SpringContext
                 .getBean(org.openelisglobal.esig.service.ElectronicSignatureService.class);
         List<Analysis> autoValidated = new ArrayList<>();
-        for (Analysis analysis : excludeQcAnalyses(finalized)) {
+        Map<String, AnalysisAutoRelease> current = new HashMap<>();
+        for (Analysis analysis : finalized) {
+            AnalysisAutoRelease release = recorded.get(analysis.getId());
+            if (release != null) {
+                if (autoReleases.isCurrent(release, analysis)) {
+                    autoValidated.add(analysis);
+                    current.put(analysis.getId(), release);
+                }
+                continue;
+            }
             if (analysis.getReleasedDate() != null) {
                 continue;
             }
@@ -1287,10 +1306,20 @@ public class ResultsValidationUtility {
         }
         List<AnalysisItem> rows = testResultListToAnalysisItemList(
                 getGroupedTestsForAnalysisList(autoValidated, !StatusRules.useRecordStatusForValidation()));
+        SystemUserService systemUsers = SpringContext.getBean(SystemUserService.class);
         for (AnalysisItem row : rows) {
             row.setAutoValidated(true);
             row.setReadOnly(true);
             row.setClear(false);
+            AnalysisAutoRelease release = current.get(row.getAnalysisId());
+            if (release != null) {
+                row.setAutoReleasedAt(DateUtil
+                        .convertTimestampToStringDateAndTime(Timestamp.from(release.getReleasedAt().toInstant())));
+                SystemUser releasedBy = release.getReleasedBy() == null ? null
+                        : systemUsers.get(String.valueOf(release.getReleasedBy()));
+                row.setAutoReleasedBy(releasedBy == null ? "" : releasedBy.getDisplayName());
+                row.setAutoReleaseRule(autoReleases.describe(release));
+            }
         }
         sortByAccessionNumberAndOrder(rows);
         return rows;

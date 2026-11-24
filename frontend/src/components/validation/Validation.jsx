@@ -1351,6 +1351,12 @@ const Validation = (props) => {
                         <th>
                           <FormattedMessage id="label.validation.autoValidated.releasedOn" />
                         </th>
+                        <th>
+                          <FormattedMessage id="label.validation.autoValidated.savedBy" />
+                        </th>
+                        <th>
+                          <FormattedMessage id="label.validation.autoValidated.rule" />
+                        </th>
                         <th></th>
                       </tr>
                     </thead>
@@ -1371,7 +1377,15 @@ const Validation = (props) => {
                           <td>{row.testName}</td>
                           <td>{row.displayResult ?? row.result}</td>
                           <td>{row.normalRange}</td>
-                          <td>{row.resultDate}</td>
+                          <td>{row.autoReleasedAt || row.resultDate}</td>
+                          <td>{row.autoReleasedBy}</td>
+                          <td
+                            data-testid={`auto-validated-rule-${row.analysisId}`}
+                          >
+                            {row.autoReleaseRule || (
+                              <FormattedMessage id="label.validation.autoValidated.notRecorded" />
+                            )}
+                          </td>
                           <td>
                             <Tag size="sm" type="gray">
                               <FormattedMessage id="label.validation.autoValidated.tag" />

@@ -68,6 +68,8 @@
   <include relativeToChangelogFile="true" file="041-test-result-is-critical.xml"/>
   <!-- OGC-1669: order request and next visit dates stored as ISO dates -->
   <include relativeToChangelogFile="true" file="042-observation-dates-to-iso.xml"/>
+  <!-- OGC-1017: validation policy changes audited, and each automatic release recorded with its rule -->
+  <include relativeToChangelogFile="true" file="043-validation-policy-audit-auto-release.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>
