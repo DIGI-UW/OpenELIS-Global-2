@@ -89,10 +89,19 @@ public class TbSampleServiceImpl implements TbSampleService {
     private OrganizationService organizationService;
     @Autowired
     private SampleOrganizationService sampleOrganizationService;
+    @Autowired(required = false)
+    IStatusService statusService;
 
-    private String sampleId;
-    private String patientId;
-    private String sampleItemId;
+    String sampleId;
+    String patientId;
+    String sampleItemId;
+
+    IStatusService getStatusService() {
+        if (statusService != null) {
+            return statusService;
+        }
+        return SpringContext.getBean(IStatusService.class);
+    }
 
     @Transactional
     @Override
@@ -302,7 +311,7 @@ public class TbSampleServiceImpl implements TbSampleService {
         }
     }
 
-    private String persistSampleData(SampleTbEntryForm formData) {
+    String persistSampleData(SampleTbEntryForm formData) {
         if (ObjectUtils.isEmpty(formData.getSampleId())) {
             // create a new Sample
             Sample sample = new Sample();
@@ -315,7 +324,7 @@ public class TbSampleServiceImpl implements TbSampleService {
             sample.setDomain("H");
             sample.setSysUserId(formData.getSysUserId());
             sample.setLastupdated(DateUtil.getNowAsTimestamp());
-            sample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Entered));
+            sample.setStatusId(getStatusService().getStatusID(OrderStatus.Entered));
             sample.setPriority(OrderPriority.ROUTINE);
             return sampleService.insert(sample);
         } else {
@@ -336,7 +345,19 @@ public class TbSampleServiceImpl implements TbSampleService {
         }
     }
 
-    private String persistSampleHumanData(SampleTbEntryForm formData) {
+    String persistSampleHumanData(SampleTbEntryForm formData) {
+        if (ObjectUtils.isNotEmpty(formData.getSampleId())) {
+            SampleHuman lookup = new SampleHuman();
+            lookup.setSampleId(sampleId != null ? sampleId : formData.getSampleId());
+            SampleHuman existing = sampleHumanService.getDataBySample(lookup);
+            if (existing != null && existing.getId() != null) {
+                existing.setPatientId(patientId);
+                existing.setLastupdated(DateUtil.getNowAsTimestamp());
+                existing.setSysUserId(formData.getSysUserId());
+                existing.setProviderId(createPersonAndProvider(formData));
+                return sampleHumanService.update(existing).getId();
+            }
+        }
         SampleHuman sampleHuman = new SampleHuman();
         sampleHuman.setSampleId(sampleId);
         sampleHuman.setPatientId(patientId);
@@ -346,7 +367,7 @@ public class TbSampleServiceImpl implements TbSampleService {
         return sampleHumanService.insert(sampleHuman);
     }
 
-    private String persistSampleItemData(SampleTbEntryForm formData) {
+    String persistSampleItemData(SampleTbEntryForm formData) {
         SampleItem item = new SampleItem();
         if (!ObjectUtils.isEmpty(sampleId)) {
             List<SampleItem> oldSampleItems = sampleItemService.getSampleItemsBySampleId(sampleId);
@@ -362,36 +383,38 @@ public class TbSampleServiceImpl implements TbSampleService {
         item.setSample(sampleService.get(sampleId));
         item.setLastupdated(DateUtil.getNowAsTimestamp());
         item.setTypeOfSample(typeOfSampleService.get(formData.getTbSpecimenNature()));
-        item.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
+        item.setStatusId(getStatusService().getStatusID(SampleStatus.Entered));
         item.setSortOrder(Integer.toString(1));
         item.setSysUserId(formData.getSysUserId());
         return sampleItemService.insert(item);
     }
 
-    private List<String> persistAnalysisData(SampleTbEntryForm formData) {
+    List<String> persistAnalysisData(SampleTbEntryForm formData) {
         List<Analysis> analysisItems = new ArrayList<Analysis>();
-        for (String testId : formData.getNewSelectedTests()) {
-            Analysis analysis = new Analysis();
-            Test test = testService.get(testId);
-            SampleItem sampleItem = sampleItemService.get(sampleItemId);
-            analysis.setSampleItem(sampleItem);
-            analysis.setTest(test);
-            analysis.setRevision("0");
-            analysis.setTestSection(testSectionService.getTestSectionByName("TB"));
-            analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
-            analysis.setIsReportable(test.getIsReportable());
-            analysis.setAnalysisType(DEFAULT_ANALYSIS_TYPE);
-            analysis.setStartedDate(DateUtil.getNowAsTimestamp());
-            analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
-            analysis.setSysUserId(formData.getSysUserId());
-            analysis.setFhirUuid(UUID.randomUUID());
-            analysis.setSampleTypeName(typeOfSampleService.get(formData.getTbSpecimenNature()).getDescription());
-            analysisItems.add(analysis);
+        if (formData.getNewSelectedTests() != null) {
+            for (String testId : formData.getNewSelectedTests()) {
+                Analysis analysis = new Analysis();
+                Test test = testService.get(testId);
+                SampleItem sampleItem = sampleItemService.get(sampleItemId);
+                analysis.setSampleItem(sampleItem);
+                analysis.setTest(test);
+                analysis.setRevision("0");
+                analysis.setTestSection(testSectionService.getTestSectionByName("TB"));
+                analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
+                analysis.setIsReportable(test.getIsReportable());
+                analysis.setAnalysisType(DEFAULT_ANALYSIS_TYPE);
+                analysis.setStartedDate(DateUtil.getNowAsTimestamp());
+                analysis.setStatusId(getStatusService().getStatusID(AnalysisStatus.NotStarted));
+                analysis.setSysUserId(formData.getSysUserId());
+                analysis.setFhirUuid(UUID.randomUUID());
+                analysis.setSampleTypeName(typeOfSampleService.get(formData.getTbSpecimenNature()).getDescription());
+                analysisItems.add(analysis);
+            }
         }
         return analysisService.insertAll(analysisItems);
     }
 
-    private String persistSampleOrganizationData(SampleTbEntryForm formData) {
+    String persistSampleOrganizationData(SampleTbEntryForm formData) {
         SampleOrganization sampleOrganization = new SampleOrganization();
         if (ObjectUtils.isNotEmpty(formData.getSampleId())) {
             sampleOrganization = sampleOrganizationService.getDataBySample(sampleService.get(formData.getSampleId()));
