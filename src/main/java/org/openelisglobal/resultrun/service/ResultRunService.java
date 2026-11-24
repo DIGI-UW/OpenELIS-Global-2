@@ -64,6 +64,9 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
      */
     Optional<ResultRunSelectionSummary> summarizeSelection(Long runId, RunViewer viewer, ResultRunSelection selection);
 
+    /** Whether the run exists and the viewer may see it. */
+    boolean canSee(Long runId, RunViewer viewer);
+
     /**
      * The run's waiting values the viewer may see, each with its flag, category and
      * exception kind; empty when the viewer may not see the run.

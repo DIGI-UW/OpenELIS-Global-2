@@ -10,13 +10,16 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.resultrun.form.ResultRunExceptionKind;
 import org.openelisglobal.resultrun.form.ResultRunRowCategory;
+import org.openelisglobal.resultrun.form.RunOrderState;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultvalidation.util.ValidationSignals;
 import org.openelisglobal.sample.service.SampleService;
@@ -34,8 +37,9 @@ import org.springframework.stereotype.Component;
  * specimen, the component, the patient's sex and age), with the rule the
  * worklist and Validation use, so a run and the worklist flag a value alike. A
  * value its run cannot accept until someone resolves it, a lab number that
- * names no order, a test not on its order or a code with no mapping, is an
- * exception of the kind the run's Exceptions block lists (FR-E4).
+ * names no order, a test not on its order or already resulted there, or a code
+ * with no mapping, is an exception of the kind the run's Exceptions block lists
+ * (FR-E4).
  */
 @Component
 public class ResultRunRowClassifier {
@@ -76,12 +80,18 @@ public class ResultRunRowClassifier {
     @Lazy
     @Autowired
     private TestService testService;
+    @Lazy
+    @Autowired
+    private ResultService resultService;
+    @Lazy
+    @Autowired
+    private RuleResultScope ruleResultScope;
 
     public List<ClassifiedRow> classify(ResultRun run, List<AnalyzerResults> rows) {
         Map<String, Optional<Sample>> samples = new HashMap<>();
         Map<String, Optional<Patient>> patients = new HashMap<>();
         Map<String, ResultLimit> limits = new HashMap<>();
-        Map<String, Boolean> ordered = new HashMap<>();
+        Map<String, RunOrderState> ordered = new HashMap<>();
         Set<String> heldTests = run.getId() == null ? Set.of() : runQcService.heldTestIds(run.getId());
         return rows.stream().map(row -> {
             ResultRunExceptionKind kind = exceptionKindOf(row, samples, ordered);
@@ -116,7 +126,7 @@ public class ResultRunRowClassifier {
      * repeat, is resolved on the analyzer import page and is none of these.
      */
     private ResultRunExceptionKind exceptionKindOf(AnalyzerResults row, Map<String, Optional<Sample>> samples,
-            Map<String, Boolean> ordered) {
+            Map<String, RunOrderState> ordered) {
         if (row.getIsControl()) {
             return null;
         }
@@ -136,9 +146,14 @@ public class ResultRunRowClassifier {
         if (StringUtils.isBlank(row.getTestId())) {
             return null;
         }
-        boolean isOrdered = ordered.computeIfAbsent(accession + "|" + row.getTestId(),
-                key -> isOrdered(sample.get(), row.getTestId()));
-        return isOrdered ? null : ResultRunExceptionKind.UNORDERED;
+        RunOrderState state = ordered.computeIfAbsent(
+                accession + "|" + row.getTestId() + "|" + StringUtils.defaultString(row.getComponentId()),
+                key -> orderStateOf(sample.get(), row.getTestId(), row.getComponentId()));
+        return switch (state) {
+        case AWAITING -> null;
+        case RESULTED -> ResultRunExceptionKind.RESULTED;
+        case NOT_ORDERED -> ResultRunExceptionKind.UNORDERED;
+        };
     }
 
     /**
@@ -164,11 +179,27 @@ public class ResultRunRowClassifier {
         return name != null ? name : StringUtils.trimToEmpty(test.getName());
     }
 
-    /** Whether the test is on the order, a cancelled analysis not counting. */
-    public boolean isOrdered(Sample sample, String testId) {
+    /**
+     * Where the order stands for the test: a cancelled analysis does not count, and
+     * an analysis waits for the value only while it has no result for the value's
+     * part, the rule the run's Results Entry panel applies before it offers the
+     * value (it never overwrites a result).
+     */
+    public RunOrderState orderStateOf(Sample sample, String testId, String componentId) {
         String cancelled = statusService.getStatusID(AnalysisStatus.Canceled);
-        return analysisService.getAnalysisBySampleAndTestIds(sample.getId(), List.of(testId)).stream()
-                .anyMatch(analysis -> !cancelled.equals(analysis.getStatusId()));
+        List<Analysis> active = analysisService.getAnalysisBySampleAndTestIds(sample.getId(), List.of(testId)).stream()
+                .filter(analysis -> !cancelled.equals(analysis.getStatusId())).toList();
+        if (active.isEmpty()) {
+            return RunOrderState.NOT_ORDERED;
+        }
+        return active.stream().anyMatch(analysis -> awaitsResult(analysis, componentId)) ? RunOrderState.AWAITING
+                : RunOrderState.RESULTED;
+    }
+
+    private boolean awaitsResult(Analysis analysis, String componentId) {
+        return resultService.getResultsByAnalysis(analysis).stream()
+                .noneMatch(result -> StringUtils.isNotBlank(result.getValue())
+                        && ruleResultScope.matchesComponent(result, componentId));
     }
 
     private String flagFor(AnalyzerResults row, Map<String, Optional<Sample>> samples,

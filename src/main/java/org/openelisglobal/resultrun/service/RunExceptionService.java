@@ -22,9 +22,10 @@ public interface RunExceptionService {
 
     /**
      * Up to ten orders whose lab number starts with {@code query} (three characters
-     * at least), saying whether {@code testId} is ordered on each.
+     * at least), saying where {@code testId} (and its part {@code componentId})
+     * stands on each.
      */
-    List<RunOrderMatch> ordersMatching(String query, String testId);
+    List<RunOrderMatch> ordersMatching(String query, String testId, String componentId);
 
     /**
      * Places values whose lab number named no order, or whose test is not on their

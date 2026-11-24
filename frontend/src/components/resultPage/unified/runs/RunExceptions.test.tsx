@@ -22,7 +22,9 @@ const UNMATCHED: RunExceptionRecord = {
   kind: "UNMATCHED",
   accessionNumber: "24-01214",
   testId: "11",
+  componentId: "c-11",
   testName: "Glucose",
+  reportedPatient: "Smith^Robert",
   rowIds: ["501", "502"],
 };
 
@@ -33,6 +35,15 @@ const UNORDERED: RunExceptionRecord = {
   testId: "11",
   testName: "Glucose",
   rowIds: ["503"],
+};
+
+const RESULTED: RunExceptionRecord = {
+  key: "RESULTED|DEV03|11",
+  kind: "RESULTED",
+  accessionNumber: "DEV03",
+  testId: "11",
+  testName: "Glucose",
+  rowIds: ["505"],
 };
 
 const UNMAPPED: RunExceptionRecord = {
@@ -80,15 +91,20 @@ describe("RunExceptions (OGC-1200 FR-E4)", () => {
   });
 
   it("lists each kind with what it is about and the action that resolves it", () => {
-    renderBlock([UNMATCHED, UNORDERED, UNMAPPED]);
+    renderBlock([UNMATCHED, UNORDERED, RESULTED, UNMAPPED]);
 
-    expect(screen.getByText("Exceptions (3)")).toBeInTheDocument();
+    expect(screen.getByText("Exceptions (4)")).toBeInTheDocument();
     expect(screen.getByTestId("run-exception-detail-501")).toHaveTextContent(
       "Lab number 24-01214 names no order (2 values)",
     );
     expect(screen.getByTestId("run-exception-detail-503")).toHaveTextContent(
       "Glucose is not ordered on lab number DEV01 (1 value)",
     );
+    expect(screen.getByTestId("run-exception-detail-505")).toHaveTextContent(
+      "Glucose already has a result on lab number DEV03 (1 value)",
+    );
+    expect(screen.getByText("Already resulted")).toBeInTheDocument();
+    expect(screen.getByTestId("run-exception-match-505")).toBeInTheDocument();
     expect(screen.getByTestId("run-exception-detail-504")).toHaveTextContent(
       "Analyzer code TBIL-2 has no mapped test (1 value)",
     );
@@ -111,7 +127,7 @@ describe("RunExceptions (OGC-1200 FR-E4)", () => {
     );
   });
 
-  it("finds the order by the start of its lab number and matches the values to it with a reason", async () => {
+  it("finds the order by the start of its lab number, says where the test stands on each, and matches the values to it with a reason", async () => {
     vi.useFakeTimers();
     const onResolved = vi.fn();
     utilsMock.getFromOpenElisServer.mockImplementation(
@@ -121,7 +137,19 @@ describe("RunExceptions (OGC-1200 FR-E4)", () => {
             accessionNumber: "24-01215",
             patientName: "Doe, Jane",
             receivedDate: "11/24/2026",
-            testOrdered: true,
+            test: "AWAITING",
+          },
+          {
+            accessionNumber: "24-01216",
+            patientName: "Doe, John",
+            receivedDate: "11/24/2026",
+            test: "RESULTED",
+          },
+          {
+            accessionNumber: "24-01217",
+            patientName: "Roe, Ann",
+            receivedDate: "11/24/2026",
+            test: "NOT_ORDERED",
           },
         ]),
     );
@@ -132,15 +160,28 @@ describe("RunExceptions (OGC-1200 FR-E4)", () => {
     renderBlock([UNMATCHED], onResolved);
 
     fireEvent.click(screen.getByTestId("run-exception-match-501"));
+    expect(
+      screen.getByTestId("run-exception-reported-patient-501"),
+    ).toHaveTextContent(
+      "The analyzer reported patient Smith^Robert with these values.",
+    );
     const input = screen.getByRole("combobox");
     fireEvent.change(input, { target: { value: "24-0" } });
     await act(async () => {
       vi.advanceTimersByTime(350);
     });
     expect(utilsMock.getFromOpenElisServer.mock.calls[0][0]).toBe(
-      "/rest/result-runs/7/exceptions/orders?q=24-0&testId=11",
+      "/rest/result-runs/7/exceptions/orders?q=24-0&testId=11&componentId=c-11",
     );
     vi.useRealTimers();
+    expect(
+      await screen.findByText(
+        "24-01216 · Doe, John · 11/24/2026 · test already resulted",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("24-01217 · Roe, Ann · 11/24/2026 · test not ordered"),
+    ).toBeInTheDocument();
     fireEvent.click(
       await screen.findByText(
         "24-01215 · Doe, Jane · 11/24/2026 · test ordered",

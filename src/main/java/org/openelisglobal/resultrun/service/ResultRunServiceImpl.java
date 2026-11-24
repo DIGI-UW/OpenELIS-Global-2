@@ -240,6 +240,12 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
 
     @Override
     @Transactional(readOnly = true)
+    public boolean canSee(Long runId, RunViewer viewer) {
+        return visibleRun(runId, viewer).isPresent();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<List<ClassifiedRow>> classifiedRows(Long runId, RunViewer viewer) {
         return visibleRun(runId, viewer).map(seen -> classifyVisible(seen, viewer));
     }

@@ -3,12 +3,14 @@ package org.openelisglobal.resultrun.controller.rest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.hibernate.StaleStateException;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.IdValuePair;
@@ -27,6 +29,7 @@ import org.openelisglobal.resultrun.service.RunQcService;
 import org.openelisglobal.resultrun.valueholder.RunTestAction;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.systemuser.service.UserService;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -195,11 +198,12 @@ public class ResultRunRestController extends BaseRestController {
      */
     @GetMapping(value = "/{id}/exceptions/orders", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<RunOrderMatch>> exceptionOrders(HttpServletRequest request, @PathVariable Long id,
-            @RequestParam(required = false) String q, @RequestParam(required = false) String testId) {
-        if (resultRunService.getHeader(id, viewer(request)).isEmpty()) {
+            @RequestParam(required = false) String q, @RequestParam(required = false) String testId,
+            @RequestParam(required = false) String componentId) {
+        if (!resultRunService.canSee(id, viewer(request))) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(runExceptionService.ordersMatching(q, testId));
+        return ResponseEntity.ok(runExceptionService.ordersMatching(q, testId, componentId));
     }
 
     /** What the page sends to resolve an exception's values (FR-E4). */
@@ -238,12 +242,13 @@ public class ResultRunRestController extends BaseRestController {
      * Applies an exception decision and answers with the run header as it now
      * stands, or no exceptions once the viewer has resolved every value they could
      * see: 400 for a missing reason or order, 409 (marked stale) when a value
-     * changed under the page.
+     * changed under the page, including one another user changed in the same moment
+     * (the optimistic lock refused the second write).
      */
     private ResponseEntity<?> resolveException(HttpServletRequest request, Long id, ExceptionDecision decision,
             ExceptionAction action) {
         RunViewer viewer = viewer(request);
-        if (resultRunService.getHeader(id, viewer).isEmpty()) {
+        if (!resultRunService.canSee(id, viewer)) {
             return ResponseEntity.notFound().build();
         }
         if (decision == null) {
@@ -257,9 +262,32 @@ public class ResultRunRestController extends BaseRestController {
         } catch (IllegalStateException e) {
             String message = e.getMessage() == null ? "The run has changed" : e.getMessage();
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", message, "stale", true));
+        } catch (RuntimeException e) {
+            if (!isConcurrentChange(e)) {
+                throw e;
+            }
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("message",
+                            "This record has changed since the run was opened. Reload the run to see what is left.",
+                            "stale", true));
         }
         return ResponseEntity.ok(resultRunService.getHeader(id, viewer).<Object>map(header -> header)
                 .orElse(Map.of("exceptions", List.of())));
+    }
+
+    /**
+     * A write another user's write beat to the same row: the optimistic lock on its
+     * version refused it, raised as Spring's, JPA's or Hibernate's exception
+     * depending on where the flush happened.
+     */
+    static boolean isConcurrentChange(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause() == cause ? null : cause.getCause()) {
+            if (cause instanceof OptimisticLockingFailureException || cause instanceof OptimisticLockException
+                    || cause instanceof StaleStateException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private RunViewer viewer(HttpServletRequest request) {

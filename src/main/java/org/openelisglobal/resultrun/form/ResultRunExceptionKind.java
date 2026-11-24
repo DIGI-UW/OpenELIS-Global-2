@@ -9,6 +9,11 @@ public enum ResultRunExceptionKind {
     UNMATCHED,
     /** The order exists, and the value's test is not ordered on it. */
     UNORDERED,
+    /**
+     * The test is ordered, and every analysis of it already has a result for the
+     * value's part, so there is nothing left for the value to fill.
+     */
+    RESULTED,
     /** The analyzer's code or answer has no test or result mapped to it. */
     UNMAPPED
 }

@@ -19,7 +19,9 @@ import { signIfAsked } from "../../../helpers/results-nce-ui";
  * resolves it, in its Exceptions block. An unordered test is ignored with a
  * reason, an unmapped code opens the analyzer's mapping and is held with a
  * reason, and a value whose lab number names no order is matched to the order
- * the technician finds, then accepted there like any other value.
+ * the technician finds, then accepted there like any other value. A later value
+ * for that same test, which now has a result, is listed as already resulted and
+ * ignored, instead of waiting as a row the run can neither accept nor ignore.
  */
 
 const UI_TIMEOUT = 20_000;
@@ -226,8 +228,9 @@ test(
       );
     });
 
+    let secondRun = "";
     await test.step("A lab number that names no order is matched to the order found, then accepted there", async () => {
-      const secondRun = await runIdOf(page, name, [firstRun]);
+      secondRun = await runIdOf(page, name, [firstRun]);
       await page.goto(`/Results?run=${secondRun}`);
       const block = page.getByTestId("run-exceptions");
       await expect(block).toContainText(
@@ -271,6 +274,36 @@ test(
         .click();
       await signIfAsked(page);
       await expect(valueRows).toHaveCount(0, { timeout: UI_TIMEOUT });
+    });
+
+    await test.step("A value for a test that already has a result is an exception, not a row that cannot be accepted", async () => {
+      await sendMessage(page, source.destination, sender, target.accession, [
+        { test_code: "RXORD", value: "57" },
+      ]);
+      await expect
+        .poll(
+          async () =>
+            (await worklistFor(page, analyzer.id, target.accession)).length,
+        )
+        .toBe(1);
+      const thirdRun = await runIdOf(page, name, [firstRun, secondRun]);
+      await page.goto(`/Results?run=${thirdRun}`);
+      const block = page.getByTestId("run-exceptions");
+      await expect(block).toContainText(
+        `${ordered.name} already has a result on lab number ${target.accession} (1 value)`,
+      );
+      await expect(
+        page.getByTestId("run-rows").getByText("Already resulted"),
+      ).toBeVisible();
+      await block.getByRole("button", { name: "Ignore" }).click();
+      await block.getByLabel(/Reason/).fill("Rerun of a tube already reported");
+      await block.getByRole("button", { name: "Ignore" }).click();
+      await expect(
+        page.getByText(
+          "Ignored with your reason. Only these values are affected.",
+        ),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+      await expect(page.getByTestId("run-exceptions")).toBeHidden();
     });
   },
 );

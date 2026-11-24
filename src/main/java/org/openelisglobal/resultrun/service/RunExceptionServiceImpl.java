@@ -20,6 +20,7 @@ import org.openelisglobal.resultrun.dao.ResultRunEventDAO;
 import org.openelisglobal.resultrun.form.ResultRunException;
 import org.openelisglobal.resultrun.form.ResultRunExceptionKind;
 import org.openelisglobal.resultrun.form.RunOrderMatch;
+import org.openelisglobal.resultrun.form.RunOrderState;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.service.ResultRunRowClassifier.ClassifiedRow;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
@@ -81,20 +82,22 @@ public class RunExceptionServiceImpl implements RunExceptionService {
             AnalyzerResults row = first.row();
             List<String> rowIds = group.getValue().stream().map(member -> member.row().getId()).toList();
             ResultRunException.Hold hold = rowIds.stream().map(holds::get).filter(Objects::nonNull)
+                    .filter(event -> group.getKey().equals(event.getRecordKey()))
                     .max(Comparator.comparing(ResultRunEvent::getOccurredAt))
                     .map(event -> new ResultRunException.Hold(reasonOf(event),
                             names.computeIfAbsent(StringUtils.defaultString(event.getActorId()), this::userName),
                             event.getOccurredAt().toInstant().toString()))
                     .orElse(null);
             return new ResultRunException(group.getKey(), first.exceptionKind(), row.getAccessionNumber(),
-                    row.getTestId(), rowClassifier.testNameOf(row, testNames), codeOf(row), valueOf(row),
-                    row.getImportIssueReason(), rowIds, mappingOf(first, analyzerId), hold);
+                    row.getTestId(), row.getComponentId(), rowClassifier.testNameOf(row, testNames), codeOf(row),
+                    valueOf(row), row.getImportIssueReason(), reportedPatientOf(group.getValue()), rowIds,
+                    mappingOf(first, analyzerId), hold);
         }).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<RunOrderMatch> ordersMatching(String query, String testId) {
+    public List<RunOrderMatch> ordersMatching(String query, String testId, String componentId) {
         String prefix = StringUtils.trimToEmpty(query);
         if (prefix.length() < QUERY_MIN) {
             return List.of();
@@ -102,7 +105,8 @@ public class RunExceptionServiceImpl implements RunExceptionService {
         return sampleService.getSamplesWithAccessionNumberStartingWith(prefix, ORDERS_MAX).stream()
                 .map(sample -> new RunOrderMatch(sample.getAccessionNumber(), patientNameOf(sample),
                         sample.getReceivedDateForDisplay(),
-                        StringUtils.isNotBlank(testId) && rowClassifier.isOrdered(sample, testId)))
+                        StringUtils.isBlank(testId) ? RunOrderState.NOT_ORDERED
+                                : rowClassifier.orderStateOf(sample, testId, StringUtils.trimToNull(componentId))))
                 .toList();
     }
 
@@ -116,8 +120,8 @@ public class RunExceptionServiceImpl implements RunExceptionService {
         if (sample == null) {
             throw new IllegalArgumentException("No order has lab number " + StringUtils.defaultString(target));
         }
-        List<ClassifiedRow> rows = exceptionRows(runId, viewer, rowIds, key,
-                Set.of(ResultRunExceptionKind.UNMATCHED, ResultRunExceptionKind.UNORDERED));
+        List<ClassifiedRow> rows = exceptionRows(runId, viewer, rowIds, key, Set.of(ResultRunExceptionKind.UNMATCHED,
+                ResultRunExceptionKind.UNORDERED, ResultRunExceptionKind.RESULTED));
         for (ClassifiedRow classified : rows) {
             AnalyzerResults row = classified.row();
             if (sample.getAccessionNumber().equals(row.getAccessionNumber())) {
@@ -127,11 +131,12 @@ public class RunExceptionServiceImpl implements RunExceptionService {
         for (ClassifiedRow classified : rows) {
             AnalyzerResults row = classified.row();
             String reported = StringUtils.defaultIfBlank(row.getInstrumentSpecimenId(), row.getAccessionNumber());
+            String record = keyOf(classified);
             row.setAccessionNumber(sample.getAccessionNumber());
             row.setInstrumentSpecimenId(sample.getAccessionNumber());
             row.setSysUserId(sysUserId);
             analyzerResultsService.update(row);
-            log(runId, ResultRunEvent.EXCEPTION_MATCHED, row,
+            log(runId, ResultRunEvent.EXCEPTION_MATCHED, row, record,
                     StringUtils.defaultString(reported) + " -> " + sample.getAccessionNumber() + ": " + why, sysUserId);
         }
     }
@@ -142,7 +147,7 @@ public class RunExceptionServiceImpl implements RunExceptionService {
         String why = requiredReason(reason);
         for (ClassifiedRow classified : exceptionRows(runId, viewer, rowIds, key,
                 Set.of(ResultRunExceptionKind.values()))) {
-            log(runId, ResultRunEvent.EXCEPTION_HELD, classified.row(), why, sysUserId);
+            log(runId, ResultRunEvent.EXCEPTION_HELD, classified.row(), keyOf(classified), why, sysUserId);
         }
     }
 
@@ -153,7 +158,7 @@ public class RunExceptionServiceImpl implements RunExceptionService {
         for (ClassifiedRow classified : exceptionRows(runId, viewer, rowIds, key,
                 Set.of(ResultRunExceptionKind.values()))) {
             AnalyzerResults row = classified.row();
-            log(runId, ResultRunEvent.EXCEPTION_IGNORED, row,
+            log(runId, ResultRunEvent.EXCEPTION_IGNORED, row, keyOf(classified),
                     classified.exceptionKind().name() + " " + describe(row) + ": " + why, sysUserId);
             row.setSysUserId(sysUserId);
             analyzerResultsService.delete(row);
@@ -191,7 +196,9 @@ public class RunExceptionServiceImpl implements RunExceptionService {
 
     /**
      * Each value's latest hold, unless it was matched since: a hold explains why a
-     * record waits, and a match moves the value to another cause.
+     * record waits, and a match moves the value to another cause. A hold is shown
+     * only on the record it was put on, so a value whose cause changed another way
+     * (its code mapped, its order registered) does not carry it along.
      */
     private Map<String, ResultRunEvent> holdsByRow(Long runId) {
         Map<String, ResultRunEvent> latest = new HashMap<>();
@@ -204,12 +211,14 @@ public class RunExceptionServiceImpl implements RunExceptionService {
         return latest;
     }
 
-    private void log(Long runId, String eventName, AnalyzerResults row, String detail, String sysUserId) {
+    private void log(Long runId, String eventName, AnalyzerResults row, String recordKey, String detail,
+            String sysUserId) {
         ResultRunEvent event = new ResultRunEvent();
         event.setRunId(runId);
         event.setEvent(eventName);
         event.setTestId(row.getTestId());
         event.setRowId(row.getId());
+        event.setRecordKey(recordKey);
         event.setDetail(StringUtils.abbreviate(detail, DETAIL_MAX));
         event.setActorId(sysUserId);
         event.setOccurredAt(new Timestamp(System.currentTimeMillis()));
@@ -233,6 +242,7 @@ public class RunExceptionServiceImpl implements RunExceptionService {
         return switch (classified.exceptionKind()) {
         case UNMATCHED -> "UNMATCHED|" + StringUtils.defaultString(row.getAccessionNumber());
         case UNORDERED -> "UNORDERED|" + row.getAccessionNumber() + "|" + row.getTestId();
+        case RESULTED -> "RESULTED|" + row.getAccessionNumber() + "|" + row.getTestId();
         case UNMAPPED -> "UNMAPPED|" + row.getImportIssueReason() + "|" + codeOf(row) + "|"
                 + StringUtils.defaultString(valueOf(row));
         };
@@ -263,6 +273,18 @@ public class RunExceptionServiceImpl implements RunExceptionService {
 
     private static String describe(AnalyzerResults row) {
         return StringUtils.defaultString(row.getAccessionNumber()) + " " + StringUtils.defaultString(codeOf(row));
+    }
+
+    /**
+     * The patient the analyzer sent with the record's values, as the import page
+     * shows it beside an order, so the technician can compare it with the order a
+     * value is matched to.
+     */
+    private static String reportedPatientOf(List<ClassifiedRow> rows) {
+        return rows.stream().map(ClassifiedRow::row)
+                .map(row -> StringUtils.defaultIfBlank(StringUtils.trimToNull(row.getInstrumentPatientName()),
+                        StringUtils.trimToNull(row.getInstrumentPatientId())))
+                .filter(Objects::nonNull).findFirst().orElse(null);
     }
 
     private static String reasonOf(ResultRunEvent event) {

@@ -1,7 +1,6 @@
 package org.openelisglobal.resultrun.service;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
@@ -32,6 +31,7 @@ import org.openelisglobal.resultrun.form.ResultRunHeader;
 import org.openelisglobal.resultrun.form.ResultRunRow;
 import org.openelisglobal.resultrun.form.ResultRunRowCategory;
 import org.openelisglobal.resultrun.form.RunOrderMatch;
+import org.openelisglobal.resultrun.form.RunOrderState;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultrun.valueholder.ResultRunState;
@@ -43,9 +43,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * OGC-1200 FR-E4: a run lists the values it cannot accept until someone
- * resolves them, a lab number that names no order, a test not on its order and
- * an analyzer code with no mapping, and each is resolved on the run: found on
- * another order, held or ignored with a reason, touching only its own values.
+ * resolves them, a lab number that names no order, a test not on its order or
+ * already resulted there, and an analyzer code with no mapping, and each is
+ * resolved on the run: found on another order, held or ignored with a reason,
+ * touching only its own values.
  */
 @Transactional
 public class RunExceptionServiceIntegrationTest extends BaseWebContextSensitiveTest {
@@ -109,6 +110,7 @@ public class RunExceptionServiceIntegrationTest extends BaseWebContextSensitiveT
     public void aLabNumberThatNamesNoOrderIsOneUnmatchedExceptionForAllItsValues() {
         AnalyzerResults first = valueFor(UNKNOWN_LAB_NUMBER, "15");
         AnalyzerResults second = valueFor(UNKNOWN_LAB_NUMBER, "16");
+        second.setInstrumentPatientName("Smith^Robert");
         second.setTestId(OTHER_TEST);
         second.setTestName("Other exception test");
         AnalyzerResults ordered = valueFor(orderWithTheTest().getSample().getAccessionNumber(), "15");
@@ -121,6 +123,8 @@ public class RunExceptionServiceIntegrationTest extends BaseWebContextSensitiveT
         assertEquals(ResultRunExceptionKind.UNMATCHED, unmatched.kind());
         assertEquals(UNKNOWN_LAB_NUMBER, unmatched.accessionNumber());
         assertEquals(Set.of(first.getId(), second.getId()), Set.copyOf(unmatched.rowIds()));
+        assertEquals("the patient the analyzer sent, to compare with the order found", "Smith^Robert",
+                unmatched.reportedPatient());
         assertEquals("only the value on its order is ready", 1, header.chipCounts().normal());
         assertEquals(2, header.chipCounts().exceptions());
     }
@@ -282,6 +286,69 @@ public class RunExceptionServiceIntegrationTest extends BaseWebContextSensitiveT
     }
 
     @Test
+    public void aHoldStaysOnTheRecordItWasPutOnWhenTheValuesCauseChangesAnotherWay() {
+        AnalyzerResults unmapped = valueFor(fixtures.createSampleWithSampleItem("EXC").getSample().getAccessionNumber(),
+                "7.1");
+        unmapped.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
+        unmapped.setRawTestCode("TBIL-2");
+        unmapped.setTestId(null);
+        ResultRun run = open("m-hold-record", List.of(unmapped));
+        String key = onlyException(run).key();
+        runExceptionService.hold(run.getId(), viewer(), List.of(unmapped.getId()), key,
+                "Waiting for the vendor's code list", "1");
+        entityManager.flush();
+        assertEquals("Waiting for the vendor's code list", onlyException(run).hold().reason());
+        assertEquals(key, jdbc.queryForObject("SELECT record_key FROM clinlims.result_run_event WHERE run_id = ?"
+                + " AND row_id = CAST(? AS numeric)", String.class, run.getId(), unmapped.getId()));
+
+        jdbc.update("UPDATE clinlims.analyzer_results SET test_id = CAST(? AS numeric), import_issue_reason = NULL"
+                + " WHERE id = CAST(? AS numeric)", TEST, unmapped.getId());
+        entityManager.clear();
+
+        ResultRunException mapped = onlyException(run);
+        assertEquals("once mapped, the value's test is not on its order", ResultRunExceptionKind.UNORDERED,
+                mapped.kind());
+        assertNull("the hold was on the unmapped code, not on the unordered test", mapped.hold());
+    }
+
+    @Test
+    public void aValueWhoseTestAlreadyHasAResultForItsPartIsAResultedException() {
+        SampleItem resulted = orderWithTheTest();
+        jdbc.update("INSERT INTO clinlims.result (id, analysis_id, value, result_type, lastupdated) VALUES"
+                + " (nextval('clinlims.result_seq'), (SELECT id FROM clinlims.analysis WHERE sampitem_id ="
+                + " CAST(? AS numeric)), '60', 'N', NOW())", resulted.getId());
+        SampleItem blankResult = orderWithTheTest();
+        jdbc.update("INSERT INTO clinlims.result (id, analysis_id, value, result_type, lastupdated) VALUES"
+                + " (nextval('clinlims.result_seq'), (SELECT id FROM clinlims.analysis WHERE sampitem_id ="
+                + " CAST(? AS numeric)), '', 'N', NOW())", blankResult.getId());
+        jdbc.update("DELETE FROM clinlims.test_result_component WHERE id = 'rrc-exc-part'");
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_active,"
+                + " lastupdated, is_primary) VALUES ('rrc-exc-part', CAST(? AS numeric), 'PART', 'Other part', 2, 'Y',"
+                + " NOW(), false)", TEST);
+        AnalyzerResults again = valueFor(resulted.getSample().getAccessionNumber(), "61");
+        AnalyzerResults otherPart = valueFor(resulted.getSample().getAccessionNumber(), "3");
+        otherPart.setComponentId("rrc-exc-part");
+        AnalyzerResults awaiting = valueFor(blankResult.getSample().getAccessionNumber(), "15");
+        ResultRun run = open("m-resulted", List.of(again, otherPart, awaiting));
+
+        ResultRunException exception = onlyException(run);
+
+        assertEquals(ResultRunExceptionKind.RESULTED, exception.kind());
+        assertEquals(List.of(again.getId()), exception.rowIds());
+        assertEquals("a blank result and a part no result fills still wait for the value", 2,
+                resultRunService.getHeader(run.getId(), viewer()).orElseThrow().chipCounts().normal());
+        assertEquals(RunOrderState.RESULTED, runExceptionService
+                .ordersMatching(resulted.getSample().getAccessionNumber(), TEST, null).get(0).test());
+        assertEquals(RunOrderState.AWAITING, runExceptionService
+                .ordersMatching(resulted.getSample().getAccessionNumber(), TEST, "rrc-exc-part").get(0).test());
+
+        runExceptionService.ignore(run.getId(), viewer(), exception.rowIds(), exception.key(),
+                "Rerun of a reported tube", "1");
+        entityManager.flush();
+        assertEquals(List.of(), resultRunService.getHeader(run.getId(), viewer()).orElseThrow().exceptions());
+    }
+
+    @Test
     public void aDecisionOnARecordSomeoneElseResolvedSinceThePageLoadedIsRefused() {
         AnalyzerResults unmatched = valueFor(UNKNOWN_LAB_NUMBER, "15");
         ResultRun run = open("m-stale", List.of(unmatched));
@@ -304,14 +371,14 @@ public class RunExceptionServiceIntegrationTest extends BaseWebContextSensitiveT
         String accession = withTheTest.getSample().getAccessionNumber();
         entityManager.flush();
 
-        List<RunOrderMatch> found = runExceptionService.ordersMatching(accession, TEST);
+        List<RunOrderMatch> found = runExceptionService.ordersMatching(accession, TEST, null);
 
         assertEquals(1, found.size());
         assertEquals(accession, found.get(0).accessionNumber());
-        assertTrue(found.get(0).testOrdered());
-        assertFalse(runExceptionService.ordersMatching(accession, "1").get(0).testOrdered());
+        assertEquals(RunOrderState.AWAITING, found.get(0).test());
+        assertEquals(RunOrderState.NOT_ORDERED, runExceptionService.ordersMatching(accession, "1", null).get(0).test());
         assertEquals("fewer than three characters find nothing", List.of(),
-                runExceptionService.ordersMatching(accession.substring(0, 2), TEST));
+                runExceptionService.ordersMatching(accession.substring(0, 2), TEST, null));
     }
 
     private ResultRunException onlyException(ResultRun run) {

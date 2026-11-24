@@ -20,17 +20,23 @@ import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
 import useSiteDateFormat from "../../../common/useSiteDateFormat";
 import { formatRunTime } from "./runFormat";
 
-export type RunExceptionKind = "UNMATCHED" | "UNORDERED" | "UNMAPPED";
+export type RunExceptionKind =
+  | "UNMATCHED"
+  | "UNORDERED"
+  | "RESULTED"
+  | "UNMAPPED";
 
 export interface RunExceptionRecord {
   key: string;
   kind: RunExceptionKind;
   accessionNumber?: string | null;
   testId?: string | null;
+  componentId?: string | null;
   testName?: string | null;
   code?: string | null;
   value?: string | null;
   issue?: string | null;
+  reportedPatient?: string | null;
   rowIds: string[];
   mapping?: {
     analyzerId: string;
@@ -48,8 +54,14 @@ interface RunOrderMatch {
   accessionNumber: string;
   patientName?: string | null;
   receivedDate?: string | null;
-  testOrdered: boolean;
+  test: "AWAITING" | "RESULTED" | "NOT_ORDERED";
 }
+
+const ORDER_STATE_KEYS: Record<RunOrderMatch["test"], string> = {
+  AWAITING: "run.exception.order.testOrdered",
+  RESULTED: "run.exception.order.testResulted",
+  NOT_ORDERED: "run.exception.order.testNotOrdered",
+};
 
 type Action = "match" | "hold" | "ignore";
 
@@ -112,6 +124,9 @@ const ExceptionLine: React.FC<ExceptionLineProps> = ({
       if (record.testId) {
         params.set("testId", record.testId);
       }
+      if (record.componentId) {
+        params.set("componentId", record.componentId);
+      }
       getFromOpenElisServer(
         `/rest/result-runs/${runId}/exceptions/orders?${params.toString()}`,
         (response?: RunOrderMatch[]) => {
@@ -124,7 +139,7 @@ const ExceptionLine: React.FC<ExceptionLineProps> = ({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [action, query, record.testId, runId]);
+  }, [action, query, record.testId, record.componentId, runId]);
 
   const count = record.rowIds.length;
   const detail = () => {
@@ -135,8 +150,14 @@ const ExceptionLine: React.FC<ExceptionLineProps> = ({
           { labNumber: record.accessionNumber || "—", count },
         );
       case "UNORDERED":
+      case "RESULTED":
         return intl.formatMessage(
-          { id: "run.exception.detail.unordered" },
+          {
+            id:
+              record.kind === "RESULTED"
+                ? "run.exception.detail.resulted"
+                : "run.exception.detail.unordered",
+          },
           {
             test: record.testName || record.code || "—",
             labNumber: record.accessionNumber || "—",
@@ -162,9 +183,9 @@ const ExceptionLine: React.FC<ExceptionLineProps> = ({
           candidate.patientName,
           candidate.receivedDate,
           intl.formatMessage({
-            id: candidate.testOrdered
-              ? "run.exception.order.testOrdered"
-              : "run.exception.order.testNotOrdered",
+            id:
+              ORDER_STATE_KEYS[candidate.test] ??
+              "run.exception.order.testNotOrdered",
           }),
         ]
           .filter(Boolean)
@@ -315,6 +336,14 @@ const ExceptionLine: React.FC<ExceptionLineProps> = ({
               { count },
             )}
           </p>
+          {action === "match" && record.reportedPatient && (
+            <p data-testid={`run-exception-reported-patient-${lineId}`}>
+              <FormattedMessage
+                id="run.exception.reportedPatient"
+                values={{ patient: record.reportedPatient }}
+              />
+            </p>
+          )}
           {action === "match" && (
             <ComboBox
               id={`run-${runId}-exception-order-${lineId}`}
@@ -401,7 +430,7 @@ interface RunExceptionsProps {
 /**
  * OGC-1200 FR-E4: the run's records that cannot be accepted until someone
  * resolves them, a lab number that names no order, a test not on its order or
- * an analyzer code with no mapping. Each is resolved here: found on another
+ * already resulted there, or an analyzer code with no mapping. Each is resolved here: found on another
  * order, mapped, held or ignored with a reason, and only its own values are
  * touched. Hidden when the run has none.
  */

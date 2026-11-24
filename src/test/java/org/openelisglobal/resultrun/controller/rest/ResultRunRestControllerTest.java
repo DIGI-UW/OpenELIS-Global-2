@@ -1,21 +1,29 @@
 package org.openelisglobal.resultrun.controller.rest;
 
 import static org.hamcrest.CoreMatchers.hasItem;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.persistence.OptimisticLockException;
+import jakarta.persistence.RollbackException;
+import org.hibernate.StaleStateException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextImpl;
@@ -149,6 +157,23 @@ public class ResultRunRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(post("/rest/result-runs/999999999/exceptions/hold").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(String.format(body, "r")))
                 .andExpect(status().isNotFound());
+    }
+
+    /**
+     * Two users resolving the same record at once: the second write is refused by
+     * the row's optimistic lock, raised as Spring's, JPA's or Hibernate's exception
+     * depending on where the flush happens, and is answered as stale (409) so the
+     * page reloads, not as a server error.
+     */
+    @Test
+    public void aWriteAnotherUsersWriteBeatIsAnsweredAsStale() {
+        assertTrue(ResultRunRestController
+                .isConcurrentChange(new ObjectOptimisticLockingFailureException(AnalyzerResults.class, "1")));
+        assertTrue(ResultRunRestController.isConcurrentChange(
+                new JpaSystemException(new RuntimeException(new StaleStateException("unexpected row count")))));
+        assertTrue(ResultRunRestController
+                .isConcurrentChange(new RollbackException(new OptimisticLockException("row changed"))));
+        assertFalse(ResultRunRestController.isConcurrentChange(new RuntimeException("database unreachable")));
     }
 
     @Test

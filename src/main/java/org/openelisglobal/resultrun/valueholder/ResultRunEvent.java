@@ -62,6 +62,13 @@ public class ResultRunEvent extends BaseObject<Long> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String rowId;
 
+    /**
+     * The exception record a decision was taken on (FR-E4), so a hold stays with
+     * that record and not with the value once its cause changes.
+     */
+    @Column(name = "record_key", columnDefinition = "text")
+    private String recordKey;
+
     @Column(name = "sys_user_id", precision = 10, scale = 0)
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String actorId;
@@ -75,6 +82,14 @@ public class ResultRunEvent extends BaseObject<Long> {
 
     public void setRowId(String rowId) {
         this.rowId = rowId;
+    }
+
+    public String getRecordKey() {
+        return recordKey;
+    }
+
+    public void setRecordKey(String recordKey) {
+        this.recordKey = recordKey;
     }
 
     @Override
