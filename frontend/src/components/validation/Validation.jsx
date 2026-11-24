@@ -695,6 +695,7 @@ const Validation = (props) => {
         const review = reviewStateOf(row);
         const needsReview =
           !review.blockedReason &&
+          row.selfValidationBlocked !== true &&
           (triage.lane !== LANE_CLEAR || review.levels > 1);
         if (triage.chips.length === 0 && !needsReview && review.levels < 2) {
           return null;

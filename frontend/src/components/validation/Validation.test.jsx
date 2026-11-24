@@ -674,6 +674,34 @@ describe("Validation — sequential sign-off (OGC-1364 v2)", () => {
     expect(screen.queryByTestId("review-row-1")).toBeNull();
   });
 
+  it("offers no Review on a result its own author may not validate", () => {
+    renderValidation(
+      [
+        held(0, { normal: false }),
+        held(1, {
+          normal: false,
+          sequentialSignOff: true,
+          reviewLevels: 2,
+          reviewLevel: 1,
+          selfValidationBlocked: true,
+        }),
+        held(2, { critical: true, selfValidationBlocked: true }),
+      ],
+      BULK_ON,
+    );
+
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "Show results waiting for others (1)",
+      }),
+    );
+    expect(screen.getByTestId("review-level-1")).toBeInTheDocument();
+    expect(screen.getByTestId("check-before-release-2")).toBeInTheDocument();
+    expect(screen.getByTestId("review-row-0")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-row-1")).toBeNull();
+    expect(screen.queryByTestId("review-row-2")).toBeNull();
+  });
+
   it("hides nothing and offers no switch while sequential sign-off is off", () => {
     renderValidation(
       [
