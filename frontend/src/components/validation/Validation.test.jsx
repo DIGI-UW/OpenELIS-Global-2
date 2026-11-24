@@ -608,7 +608,7 @@ describe("Validation — Check before release (OGC-1027)", () => {
 });
 
 describe("Validation — sequential sign-off (OGC-1364 v2)", () => {
-  it("tags each row with its review level and offers Review where bulk release cannot help", () => {
+  it("tags each row with its review level and offers Review to whoever can sign its next level", () => {
     renderValidation(
       [
         row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 }),
@@ -630,7 +630,8 @@ describe("Validation — sequential sign-off (OGC-1364 v2)", () => {
     );
     expect(screen.queryByTestId("review-level-3")).toBeNull();
     expect(screen.getByTestId("review-row-0")).toBeInTheDocument();
-    expect(screen.queryByTestId("review-row-2")).toBeNull();
+    expect(screen.getByTestId("review-row-2")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-row-3")).toBeNull();
     expect(screen.getByTestId("release-all-clear")).toHaveTextContent(
       "Release all clear (2)",
     );
@@ -643,7 +644,34 @@ describe("Validation — sequential sign-off (OGC-1364 v2)", () => {
     expect(screen.getByTestId("review-level-1")).toHaveTextContent(
       "Level 2 of 2",
     );
-    expect(screen.getByTestId("review-row-1")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-row-1")).toBeNull();
+  });
+
+  // QA on OGC-1364: the validator who could sign level 2 of 2 had no Review
+  // link, and the one who had signed level 1 still had one.
+  it("offers Review on a held row only to someone who can sign it", () => {
+    renderValidation(
+      [
+        held(0, { normal: false }),
+        held(1, {
+          critical: true,
+          sequentialSignOff: true,
+          reviewLevels: 1,
+          reviewLevel: 1,
+          reviewBlockedReason: "validationRightsRequired",
+        }),
+      ],
+      BULK_ON,
+    );
+
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "Show results waiting for others (1)",
+      }),
+    );
+    expect(screen.getByTestId("check-before-release-1")).toBeInTheDocument();
+    expect(screen.getByTestId("review-row-0")).toBeInTheDocument();
+    expect(screen.queryByTestId("review-row-1")).toBeNull();
   });
 
   it("hides nothing and offers no switch while sequential sign-off is off", () => {

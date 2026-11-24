@@ -545,7 +545,8 @@ test.describe("OGC-1364 validation policy", () => {
       await expect(main.getByText("Level 2 of 2")).toBeVisible({
         timeout: UI_TIMEOUT,
       });
-      await main.locator('[data-testid^="review-row-"]').first().click();
+      await expect(main.locator('[data-testid^="review-row-"]')).toHaveCount(0);
+      await main.getByRole("button", { name: "Expand Row" }).first().click();
       await expect(main.getByTestId("review-level-blocked")).toContainText(
         "You signed a level of this result.",
       );
@@ -554,6 +555,9 @@ test.describe("OGC-1364 validation policy", () => {
       ).toBeDisabled();
       await expect(main.getByTestId("review-sign-off-1")).toContainText(
         "Level 1 of 2",
+      );
+      await expect(main.getByTestId("review-sign-off-1")).toHaveText(
+        /, \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/,
       );
     });
 
@@ -566,7 +570,7 @@ test.describe("OGC-1364 validation policy", () => {
         await expect(main.getByText("Level 2 of 2")).toBeVisible({
           timeout: LONG_TIMEOUT,
         });
-        await main.getByRole("button", { name: "Expand Row" }).first().click();
+        await main.locator('[data-testid^="review-row-"]').first().click();
         await main.getByRole("button", { name: "Validate & release" }).click();
         await signIfAsked(second.page);
         await openQueueFor(second.page, accession);

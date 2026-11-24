@@ -647,6 +647,7 @@ describe("ValidationReviewPanel sequential sign-off (OGC-1364 v2)", () => {
     signerName: name,
     roleName: "Validation",
     signedAt: "2026-11-13T09:02:00Z",
+    signedWhen: "13/11/2026 12:02",
     ...extra,
   });
 
@@ -681,6 +682,31 @@ describe("ValidationReviewPanel sequential sign-off (OGC-1364 v2)", () => {
     expect(release).toHaveAttribute("data-meaning", "VALIDATED_AND_RELEASED");
     expect(screen.getByTestId("review-sign-off-1")).toHaveTextContent(
       /Level 1 of 2: Ama Kila, Validation/,
+    );
+  });
+
+  // QA on OGC-1364: the time read the browser's format and zone, unlike History.
+  it("shows each signature's time as the server wrote it, in any browser time zone", () => {
+    renderPanel(
+      row({
+        reviewLevels: 2,
+        reviewLevel: 2,
+        signOffs: [signOff(1, "Ama Kila")],
+        supersededSignOffs: [
+          signOff(1, "Bo Lin", {
+            signedAt: "2026-11-12T22:15:00Z",
+            signedWhen: "13/11/2026 01:15",
+            supersededReason: "MODIFIED",
+          }),
+        ],
+      }),
+    );
+
+    expect(screen.getByTestId("review-sign-off-1")).toHaveTextContent(
+      "Level 1 of 2: Ama Kila, Validation, 13/11/2026 12:02",
+    );
+    expect(screen.getByTestId("review-sign-off-superseded")).toHaveTextContent(
+      "Level 1 of 2: Bo Lin, 13/11/2026 01:15 (superseded, value modified)",
     );
   });
 

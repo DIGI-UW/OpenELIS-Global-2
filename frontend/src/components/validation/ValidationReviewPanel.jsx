@@ -101,14 +101,6 @@ const Field = ({ labelKey, value, testId }) => (
 const modifyStartValue = (row) =>
   row.displayResultAsLog ? displayResult(row) : (row.result ?? "");
 
-const signedWhen = (value) => {
-  if (!value) {
-    return "";
-  }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-};
-
 /**
  * OGC-1364 v2: who signed which review level in this pass, and the signatures
  * a modification, retest or rejection superseded.
@@ -136,7 +128,7 @@ const SignOffs = ({ review, intl }) => (
                 levels: signOff.levels,
                 name: signOff.signerName,
                 role: signOff.roleName,
-                when: signedWhen(signOff.signedAt),
+                when: signOff.signedWhen || "",
               },
             )}
           </li>
@@ -157,7 +149,7 @@ const SignOffs = ({ review, intl }) => (
                   level: signOff.level,
                   levels: signOff.levels,
                   name: signOff.signerName,
-                  when: signedWhen(signOff.signedAt),
+                  when: signOff.signedWhen || "",
                   reason: intl.formatMessage({
                     id: `label.validation.review.signOffs.reason.${signOff.supersededReason}`,
                   }),
