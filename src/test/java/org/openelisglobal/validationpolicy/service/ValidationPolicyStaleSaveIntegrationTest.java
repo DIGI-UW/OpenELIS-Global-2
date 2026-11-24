@@ -99,6 +99,27 @@ public class ValidationPolicyStaleSaveIntegrationTest extends BaseWebContextSens
                 .setLabUnitOverrideActive(added.id(), false, theirs.lastupdated(), "1").active());
     }
 
+    /**
+     * OGC-1017 review: a save that lost the race to a concurrent save is refused
+     * with the stored policy's id and version, read after the rollback, so the page
+     * names who changed it as it does for an outdated page.
+     */
+    @Test
+    public void aLostRaceIsRefusedWithTheStoredPolicysIdAndVersion() throws Exception {
+        ValidationPolicyView stored = validationPolicyService.getLabWideDefault();
+
+        ValidationPolicyStaleException refused = validationPolicyService.lostRace(null);
+
+        assertNotNull(refused.getPolicyId());
+        assertEquals(stored.lastupdated(), String.valueOf(refused.getCurrent().getTime()));
+
+        LabUnitPolicyView override = validationPolicyService
+                .addLabUnitOverride(new LabUnitPolicyForm(hematology, "NEEDS_REVIEW", 1, null), "1");
+        ValidationPolicyStaleException overrideRefused = validationPolicyService.lostRace(override.id());
+        assertEquals(override.id(), overrideRefused.getPolicyId());
+        assertEquals(override.lastupdated(), String.valueOf(overrideRefused.getCurrent().getTime()));
+    }
+
     @Test
     public void everyPolicyChangeLeavesAnAuditRowWithTheUser() throws Exception {
         String defaultId = jdbcTemplate.queryForObject(

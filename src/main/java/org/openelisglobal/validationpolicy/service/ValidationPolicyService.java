@@ -65,6 +65,14 @@ public interface ValidationPolicyService {
      */
     LabUnitPolicyView setLabUnitOverrideActive(Long id, boolean active, String lastupdated, String sysUserId);
 
+    /**
+     * The refusal for a save that passed the version check and then lost to another
+     * save committed in the meantime (OGC-1017): the stored policy's id and
+     * version, read after the losing save rolled back, so the page names who
+     * changed it as for an outdated page. {@code null} names the lab-wide default.
+     */
+    ValidationPolicyStaleException lostRace(Long labUnitOverrideId);
+
     default LabUnitPolicyView setLabUnitOverrideActive(Long id, boolean active, String sysUserId) {
         return setLabUnitOverrideActive(id, active, null, sysUserId);
     }

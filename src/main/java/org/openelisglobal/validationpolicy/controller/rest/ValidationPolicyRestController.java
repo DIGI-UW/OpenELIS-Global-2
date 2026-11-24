@@ -54,7 +54,7 @@ public class ValidationPolicyRestController extends BaseRestController {
 
     @PutMapping(value = "/default", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ValidationPolicyView saveLabWideDefault(HttpServletRequest request, @RequestBody ValidationPolicyForm form) {
-        ValidationPolicyView saved = lostRaceIsStale(
+        ValidationPolicyView saved = lostRaceIsStale(null,
                 () -> validationPolicyService.saveLabWideDefault(form, getSysUserId(request)));
         ConfigurationProperties.loadDBValuesIntoConfiguration();
         return saved;
@@ -79,7 +79,7 @@ public class ValidationPolicyRestController extends BaseRestController {
     @PutMapping(value = "/lab-units/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public LabUnitPolicyView saveLabUnitOverride(HttpServletRequest request, @PathVariable Long id,
             @RequestBody ValidationPolicyForm form) {
-        return lostRaceIsStale(() -> validationPolicyService.saveLabUnitOverride(id, form, getSysUserId(request)));
+        return lostRaceIsStale(id, () -> validationPolicyService.saveLabUnitOverride(id, form, getSysUserId(request)));
     }
 
     @PutMapping(value = "/lab-units/{id}/active", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -88,20 +88,21 @@ public class ValidationPolicyRestController extends BaseRestController {
         if (form == null || form.active() == null) {
             throw new ValidationPolicyRefusedException("active", "activeRequired");
         }
-        return lostRaceIsStale(() -> validationPolicyService.setLabUnitOverrideActive(id, form.active(),
+        return lostRaceIsStale(id, () -> validationPolicyService.setLabUnitOverrideActive(id, form.active(),
                 form.lastupdated(), getSysUserId(request)));
     }
 
     /**
      * A save that passed the version check but lost to another save committed in
-     * the meantime fails Hibernate's optimistic lock; it is the same stale save.
+     * the meantime fails Hibernate's optimistic lock; it is the same stale save,
+     * refused with the policy as it is now stored ({@code null} is the default).
      */
-    private static <T> T lostRaceIsStale(Supplier<T> save) {
+    private <T> T lostRaceIsStale(Long labUnitOverrideId, Supplier<T> save) {
         try {
             return save.get();
         } catch (RuntimeException e) {
             if (StaleSaveGuard.isOptimisticLockFailure(e)) {
-                throw new ValidationPolicyStaleException(null, null);
+                throw validationPolicyService.lostRace(labUnitOverrideId);
             }
             throw e;
         }

@@ -147,6 +147,13 @@ public class ValidationPolicyServiceImpl implements ValidationPolicyService {
         return toLabUnitView(policy);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public ValidationPolicyStaleException lostRace(Long labUnitOverrideId) {
+        ValidationPolicy policy = labUnitOverrideId == null ? labWideDefault() : labUnitOverride(labUnitOverrideId);
+        return new ValidationPolicyStaleException(policy.getId(), policy.getLastupdated());
+    }
+
     private static void refuseStale(ValidationPolicy policy, String lastupdated) {
         if (policy.getId() != null && StaleSaveGuard.isStale(lastupdated, policy.getLastupdated())) {
             throw new ValidationPolicyStaleException(policy.getId(), policy.getLastupdated());
