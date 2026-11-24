@@ -532,10 +532,12 @@ test.each([
     const groupLabel = nc ? "Non-Conformance / Rejections" : "Referrals";
     const fieldId = nc ? "ncOccurrenceId" : "referralId";
     const fieldLabel = nc ? "Occurrence ID" : "Referral ID";
+    const typeColor = rejections ? "red" : nc ? "magenta" : "teal";
     alternateCatalog = {
       ...catalog("TABLE"),
       definition: {
         id: typeId,
+        source: nc ? "NON_CONFORMANCE" : "REFERRALS",
         label: typeLabel,
         layouts: ["TABLE"],
         dateAnchor,
@@ -590,6 +592,11 @@ test.each([
       await screen.findByRole("button", { name: "Generate CSV" }),
     ).toBeVisible();
     expect(screen.queryByText(/Finalized/)).toBeNull();
+    expect(
+      screen
+        .getByText(typeLabel, { selector: ".cds--tag *" })
+        .closest(".cds--tag"),
+    ).toHaveClass(`cds--tag--${typeColor}`);
   },
 );
 

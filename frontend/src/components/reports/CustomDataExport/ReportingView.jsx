@@ -963,9 +963,9 @@ export default function ReportingView(p) {
                       <h3>{t("reporting.reportType")}</h3>
                       <Tag
                         type={
-                          sourceTagColors[
-                            data.definition.source || data.definition.id
-                          ] || "gray"
+                          sourceTagColors[data.definition.id] ||
+                          sourceTagColors[data.definition.source] ||
+                          "gray"
                         }
                       >
                         {data.definition.label}
