@@ -11,6 +11,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,6 +25,7 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
@@ -115,12 +117,15 @@ public class AccessionValidationSequentialSignOffTest extends BaseWebContextSens
         assertEquals("level 1 of 2 does not release", statusId(AnalysisStatus.TechnicalAcceptance),
                 analysisService.get(ANALYSIS_ID).getStatusId());
 
+        String signedWhen = DateUtil
+                .convertTimestampToStringDateAndTime((Timestamp) signOffs().get(0).get("signed_at"));
         queue("1").andExpect(jsonPath(row() + ".sequentialSignOff").value(true))
                 .andExpect(jsonPath(row() + ".reviewLevels").value(2))
                 .andExpect(jsonPath(row() + ".reviewLevel").value(2))
                 .andExpect(jsonPath(row() + ".reviewBlockedReason").value("alreadySigned"))
                 .andExpect(jsonPath(row() + ".signOffs[0].level").value(1))
-                .andExpect(jsonPath(row() + ".signOffs[0].signerName").value("John Doe"));
+                .andExpect(jsonPath(row() + ".signOffs[0].signerName").value("John Doe"))
+                .andExpect(jsonPath(row() + ".signOffs[0].signedWhen").value(signedWhen));
         release("1").andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("alreadySigned"));
 
         queue(SECOND_VALIDATOR).andExpect(jsonPath(row() + ".reviewBlockedReason").doesNotExist());
@@ -151,6 +156,8 @@ public class AccessionValidationSequentialSignOffTest extends BaseWebContextSens
         queue("1").andExpect(jsonPath(row() + ".reviewLevel").value(1))
                 .andExpect(jsonPath(row() + ".signOffs.length()").value(0))
                 .andExpect(jsonPath(row() + ".supersededSignOffs[0].supersededReason").value("MODIFIED"))
+                .andExpect(jsonPath(row() + ".supersededSignOffs[0].supersededWhen").value(
+                        DateUtil.convertTimestampToStringDateAndTime((Timestamp) superseded.get("superseded_at"))))
                 .andExpect(jsonPath(row() + ".reviewBlockedReason").doesNotExist());
         release("1").andExpect(status().isOk()).andExpect(jsonPath("$.outcome").value("levelSigned"))
                 .andExpect(jsonPath("$.level").value(1));
@@ -390,9 +397,10 @@ public class AccessionValidationSequentialSignOffTest extends BaseWebContextSens
     }
 
     private List<Map<String, Object>> signOffs() {
-        return jdbcTemplate.queryForList("SELECT level, signer_id, role_id, electronic_signature_id, superseded_at,"
-                + " superseded_by, superseded_reason FROM clinlims.analysis_review_sign_off WHERE analysis_id = ?"
-                + " ORDER BY id", Integer.valueOf(ANALYSIS_ID));
+        return jdbcTemplate
+                .queryForList("SELECT level, signer_id, role_id, electronic_signature_id, signed_at, superseded_at,"
+                        + " superseded_by, superseded_reason FROM clinlims.analysis_review_sign_off WHERE analysis_id = ?"
+                        + " ORDER BY id", Integer.valueOf(ANALYSIS_ID));
     }
 
     private Long signature(String signerId, String meaning) {
