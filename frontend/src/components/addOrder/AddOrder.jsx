@@ -2007,7 +2007,7 @@ const AddOrder = (props) => {
         )}
         {programQuestionnaire && (
           <div className="orderLegendBody clinical-information-section">
-            <h3>Clinical Information</h3>
+            <h3>Clinical Information: HIV Viral Load</h3>
             {programQuestionnaire}
           </div>
         )}
