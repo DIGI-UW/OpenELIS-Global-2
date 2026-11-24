@@ -870,7 +870,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         try {
             SystemUser user = systemUserService.getUserById(sysUserId);
             if (user != null) {
-                return user.getDisplayName();
+                return StringUtils.trim(user.getNameForDisplay());
             }
         } catch (RuntimeException e) {
             LogEvent.logError(e);

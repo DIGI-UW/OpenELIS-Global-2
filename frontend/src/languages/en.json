@@ -4334,6 +4334,7 @@
   "run.verdict.NO_CONTROL": "No control",
   "run.verdict.NOT_REQUIRED": "Not required",
   "run.qc.notEvaluated": "Not evaluated",
+  "run.qc.resultFrom": "Result from {run}",
   "run.qc.testHeld": "This test's rows in the run are held.",
   "run.qc.noTests": "This run has no tests left to cover.",
   "run.qc.observedAgainst": "{observed} against {expected}",

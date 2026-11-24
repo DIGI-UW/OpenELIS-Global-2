@@ -212,6 +212,13 @@ public class AnalysisItem implements Serializable {
      */
     private boolean qcHold = false;
 
+    /**
+     * Whether the row's QC hold keeps it from release: a run's undecided failed
+     * control always does (OGC-1200 FR-C4), an open QC non-conformity only where
+     * the site says so.
+     */
+    private boolean qcHoldBlocksRelease = false;
+
     private String pastNotes;
 
     private String qualifiedDictionaryId;
@@ -246,6 +253,12 @@ public class AnalysisItem implements Serializable {
     private boolean critical = false;
 
     private String qcStatus;
+
+    /**
+     * OGC-1200 FR-G3: what the run this result came from says about its test's
+     * quality control, or null for a result that came from no run.
+     */
+    private org.openelisglobal.resultrun.form.RunQcFact runQc;
 
     /**
      * The server's verdict on the row's lane (OGC-1226 FR-5): true when every row
@@ -962,6 +975,14 @@ public class AnalysisItem implements Serializable {
         this.qcHold = qcHold;
     }
 
+    public boolean isQcHoldBlocksRelease() {
+        return qcHoldBlocksRelease;
+    }
+
+    public void setQcHoldBlocksRelease(boolean qcHoldBlocksRelease) {
+        this.qcHoldBlocksRelease = qcHoldBlocksRelease;
+    }
+
     public String getInnoliaResult() {
         return innoliaResult;
     }
@@ -1080,6 +1101,14 @@ public class AnalysisItem implements Serializable {
 
     public void setQcStatus(String qcStatus) {
         this.qcStatus = qcStatus;
+    }
+
+    public org.openelisglobal.resultrun.form.RunQcFact getRunQc() {
+        return runQc;
+    }
+
+    public void setRunQc(org.openelisglobal.resultrun.form.RunQcFact runQc) {
+        this.runQc = runQc;
     }
 
     public boolean isClear() {

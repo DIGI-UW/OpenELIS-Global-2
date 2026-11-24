@@ -35,6 +35,13 @@ public interface RunQcService {
     Map<String, Long> holdingRuns(Collection<String> analysisIds);
 
     /**
+     * Of these analyses, those whose stored result came from a run, each with what
+     * that run says about the QC of the analysis's test (FR-G3). An analysis with
+     * results from several runs reads the latest run.
+     */
+    Map<String, org.openelisglobal.resultrun.form.RunQcFact> qcOfAnalyses(Collection<String> analysisIds);
+
+    /**
      * Of these analyses, those whose stored result came from a run that holds the
      * test undecided, each with that run: they take no new value until the test is
      * decided (FR-C4, FR-D4). A decided test's stored result is open to a new

@@ -15,8 +15,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analyzer.service.AnalyzerMappingDefinition;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzerimport.dao.AnalyzerDeliveryReceiptDAO;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
@@ -219,7 +221,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             ResultRun run = seen.run();
             Optional<Analyzer> analyzer = run.getAnalyzerId() == null ? Optional.empty()
                     : analyzerService.getWithMapping(run.getAnalyzerId());
-            String method = analyzer.map(Analyzer::getMapping).map(mapping -> mapping.getProfileId()).orElse(null);
+            String method = analyzer.map(Analyzer::getMapping).map(ResultRunServiceImpl::typeNameOf).orElse(null);
             List<String> unitIds = run.getTestSectionId() != null ? List.of(run.getTestSectionId())
                     : seen.analyzerUnits();
             List<String> labUnits = unitIds.stream().map(this::labUnitName).filter(Objects::nonNull).toList();
@@ -496,6 +498,21 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
             return null;
         }
         return analyzerService.getWithMapping(analyzerId).map(Analyzer::getName).orElse(null);
+    }
+
+    /**
+     * Run settings' Method is the analyzer type (FR-E3), named as the type catalog
+     * names it: the name the mapping kept from the type it was made from, or the
+     * type's id for a mapping older than that.
+     */
+    static String typeNameOf(AnalyzerMapping mapping) {
+        if (StringUtils.isNotBlank(mapping.getSourceDefinitionJson())) {
+            String name = AnalyzerMappingDefinition.of(mapping).displayName();
+            if (StringUtils.isNotBlank(name)) {
+                return name;
+            }
+        }
+        return mapping.getProfileId();
     }
 
     private String labUnitName(String testSectionId) {

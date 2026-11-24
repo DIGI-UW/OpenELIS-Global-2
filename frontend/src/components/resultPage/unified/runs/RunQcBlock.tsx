@@ -17,7 +17,7 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import useSiteDateFormat from "../../../common/useSiteDateFormat";
-import { formatRunTime } from "./runFormat";
+import { describeControl, runVerdictTagType } from "./runFormat";
 import RunTestDecision from "./RunTestDecision";
 import RunRetestLink from "./RunRetestLink";
 
@@ -94,26 +94,7 @@ const emptyDraft = (testId: string): Draft => ({
   outcome: "",
 });
 
-const OUTCOME_LABELS: Record<string, string> = {
-  PASS: "label.qc.pass",
-  FAIL: "label.qc.fail",
-  VALID: "label.results.control.capture.valid",
-  INVALID: "label.results.control.capture.invalid",
-};
-
-const verdictTag = (verdict?: string | null) => {
-  switch (verdict) {
-    case "FAIL":
-    case "HELD":
-      return "red";
-    case "DECIDED":
-      return "purple";
-    case "PASS":
-      return "green";
-    default:
-      return "gray";
-  }
-};
+const verdictTag = runVerdictTagType;
 
 /**
  * OGC-1200 FR-E2: the run header's QC block. The run's overall verdict, one
@@ -217,32 +198,8 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({
     );
   };
 
-  const observedText = (observed?: string | null) =>
-    observed && OUTCOME_LABELS[observed]
-      ? intl.formatMessage({ id: OUTCOME_LABELS[observed] })
-      : observed;
-
   const controlText = (control: RunControlLine) =>
-    [
-      control.level,
-      control.lotNumber,
-      observedText(control.observed) &&
-        (control.expected
-          ? intl.formatMessage(
-              { id: "run.qc.observedAgainst" },
-              {
-                observed: observedText(control.observed),
-                expected: control.expected,
-              },
-            )
-          : observedText(control.observed)),
-      control.verdictSource &&
-        intl.formatMessage({ id: `run.qc.source.${control.verdictSource}` }),
-      control.operator,
-      control.recordedAt && formatRunTime(intl, control.recordedAt, pattern),
-    ]
-      .filter(Boolean)
-      .join(" · ");
+    describeControl(intl, control, pattern);
 
   const outcomes =
     draft.kind === "measured"

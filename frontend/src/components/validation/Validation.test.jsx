@@ -877,6 +877,65 @@ describe("Validation — sequential sign-off (OGC-1364 v2)", () => {
 
       expect(refreshResults).toHaveBeenCalled();
     });
+
+    it("closes the dialog and reloads the queue when none of the rows was still clear", () => {
+      answerWith({
+        released: [],
+        skipped: [{ analysisId: "100", reason: "notClear" }],
+      });
+      const refreshResults = vi.fn();
+      const addNotification = vi.fn();
+      renderWithRefresh([row(0)], refreshResults, addNotification);
+
+      fireEvent.click(screen.getByTestId("release-all-clear"));
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message:
+            "None of the selected results is still clear; nothing was released.",
+        }),
+      );
+      expect(refreshResults).toHaveBeenCalled();
+      expect(screen.queryByTestId("release-all-clear-sign")).toBeNull();
+    });
+
+    it("closes the signing dialog and reloads the queue when nothing could be signed", () => {
+      answerWith({
+        signed: [],
+        skipped: [{ analysisId: "100", reason: "notClear" }],
+      });
+      const refreshResults = vi.fn();
+      renderWithRefresh(
+        [row(0, { sequentialSignOff: true, reviewLevels: 2, reviewLevel: 1 })],
+        refreshResults,
+        vi.fn(),
+      );
+
+      fireEvent.click(screen.getByTestId("sign-all-clear"));
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+
+      expect(refreshResults).toHaveBeenCalled();
+      expect(screen.queryByTestId("release-all-clear-sign")).toBeNull();
+    });
+
+    it("keeps the dialog open when the release was refused before anything was decided", () => {
+      answerWith({ error: "qcAcknowledgmentRequired" });
+      const refreshResults = vi.fn();
+      renderWithRefresh([row(0)], refreshResults, vi.fn());
+
+      fireEvent.click(screen.getByTestId("release-all-clear"));
+      fireEvent.click(
+        screen.getByTestId("release-all-clear-sign").querySelector("button"),
+      );
+
+      expect(refreshResults).not.toHaveBeenCalled();
+      expect(screen.getByTestId("release-all-clear-sign")).toBeInTheDocument();
+    });
   });
 
   it("the release modal still signs Validated and Released", () => {
