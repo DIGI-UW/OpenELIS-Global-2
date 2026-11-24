@@ -16,6 +16,7 @@ import org.openelisglobal.resultrun.form.ResultRunSelection;
 import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.form.WaitingRun;
+import org.openelisglobal.resultrun.service.ResultRunRowClassifier.ClassifiedRow;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.test.beanItems.TestResultItem;
 
@@ -62,6 +63,15 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
      * the excluded rows, never from a list of every row (FR-E11, FR-E11a, FR-E12).
      */
     Optional<ResultRunSelectionSummary> summarizeSelection(Long runId, RunViewer viewer, ResultRunSelection selection);
+
+    /** Whether the run exists and the viewer may see it. */
+    boolean canSee(Long runId, RunViewer viewer);
+
+    /**
+     * The run's waiting values the viewer may see, each with its flag, category and
+     * exception kind; empty when the viewer may not see the run.
+     */
+    Optional<List<ClassifiedRow>> classifiedRows(Long runId, RunViewer viewer);
 
     /** The message the run was opened from, as it was accepted. */
     Optional<String> getRawMessage(Long runId, RunViewer viewer);

@@ -1,21 +1,29 @@
 package org.openelisglobal.resultrun.controller.rest;
 
 import static org.hamcrest.CoreMatchers.hasItem;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.persistence.OptimisticLockException;
+import jakarta.persistence.RollbackException;
+import org.hibernate.StaleStateException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextImpl;
@@ -125,6 +133,47 @@ public class ResultRunRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.message").value(org.hamcrest.CoreMatchers.containsString("does not retest")));
         mockMvc.perform(post("/rest/result-runs/999999999/tests/1/retest-of").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"runId\": 1}")).andExpect(status().isNotFound());
+    }
+
+    /**
+     * OGC-1200 slice 7 (FR-E4): an exception decision needs a reason (400), and one
+     * taken on a value no longer under the record the page showed is refused as
+     * stale (409), so the page reloads instead of offering it again.
+     */
+    @Test
+    public void anExceptionDecisionNeedsAReasonAndIsRefusedAsStaleOnAChangedRecord() throws Exception {
+        String rowId = jdbc.queryForObject("SELECT CAST(id AS VARCHAR) FROM clinlims.analyzer_results WHERE run_id = ?",
+                String.class, runId);
+        String body = "{\"rowIds\": [\"" + rowId + "\"], \"key\": \"UNMATCHED|NOT-THIS-ONE\", \"reason\": \"%s\"}";
+
+        mockMvc.perform(post("/rest/result-runs/" + runId + "/exceptions/ignore").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(String.format(body, " ")))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("A reason is required"));
+        mockMvc.perform(post("/rest/result-runs/" + runId + "/exceptions/ignore").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(String.format(body, "Not ours")))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.stale").value(true));
+        mockMvc.perform(get("/rest/result-runs/" + runId + "/exceptions/orders?q=1234&testId=1").session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[*].accessionNumber").value(hasItem("12345")));
+        mockMvc.perform(post("/rest/result-runs/999999999/exceptions/hold").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(String.format(body, "r")))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * Two users resolving the same record at once: the second write is refused by
+     * the row's optimistic lock, raised as Spring's, JPA's or Hibernate's exception
+     * depending on where the flush happens, and is answered as stale (409) so the
+     * page reloads, not as a server error.
+     */
+    @Test
+    public void aWriteAnotherUsersWriteBeatIsAnsweredAsStale() {
+        assertTrue(ResultRunRestController
+                .isConcurrentChange(new ObjectOptimisticLockingFailureException(AnalyzerResults.class, "1")));
+        assertTrue(ResultRunRestController.isConcurrentChange(
+                new JpaSystemException(new RuntimeException(new StaleStateException("unexpected row count")))));
+        assertTrue(ResultRunRestController
+                .isConcurrentChange(new RollbackException(new OptimisticLockException("row changed"))));
+        assertFalse(ResultRunRestController.isConcurrentChange(new RuntimeException("database unreachable")));
     }
 
     @Test

@@ -74,6 +74,8 @@
   <include relativeToChangelogFile="true" file="044-env-order-branch-observation-type.xml"/>
   <!-- OGC-1200 slice 5b: the samples a Retest set aside, and the run confirmed as their retest -->
   <include relativeToChangelogFile="true" file="045-result-run-retest.xml"/>
+  <!-- OGC-1200 slice 7: the run value an exception decision was taken on -->
+  <include relativeToChangelogFile="true" file="046-result-run-event-row.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>
