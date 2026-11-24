@@ -37,10 +37,11 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
     void addRows(Long runId, int count);
 
     /**
-     * A value of the run left staging (accepted, rejected or ignored). An analyzer
-     * run whose last value has left is complete (FR-E5).
+     * A value of the run left staging (accepted, rejected or ignored) by the given
+     * user. An analyzer run whose last value has left is complete (FR-E5), or
+     * superseded when every test it covers was retested and linked (FR-A3).
      */
-    void rowLeftStaging(Long runId);
+    void rowLeftStaging(Long runId, String sysUserId);
 
     ResultRunListResponse listActiveRuns(RunViewer viewer, String testSectionId);
 

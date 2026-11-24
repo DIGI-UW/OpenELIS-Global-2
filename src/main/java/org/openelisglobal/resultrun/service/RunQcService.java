@@ -102,4 +102,12 @@ public interface RunQcService {
      * released by the link. Refused when nothing is left to link.
      */
     void confirmRetest(Long runId, String testId, Long retestOfRunId, String sysUserId);
+
+    /**
+     * Supersedes the run when nothing is left in it to review and every test it
+     * covers was retested and all its retested samples linked (FR-A3). Called on a
+     * confirmed link, and when a run's last row leaves review after its retests
+     * were confirmed.
+     */
+    void supersedeIfRetested(Long runId, String sysUserId);
 }

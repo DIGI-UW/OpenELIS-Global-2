@@ -492,6 +492,50 @@ public class RunQcServiceIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(List.of(later.getId(), last.getId()), runIds(line(run.getId(), TEST).supersededBy()));
     }
 
+    /**
+     * FR-A3: a run that still had a row to review when its retest was confirmed is
+     * superseded once that row leaves, as it would have been without the row.
+     */
+    @Test
+    public void aRunWithARowLeftToReviewIsSupersededWhenTheRowLeaves() {
+        Analysis retested = storedResultOf(TEST);
+        retestTheTest();
+        jdbc.update("UPDATE clinlims.result_run SET state = 'OPEN' WHERE id = ?", run.getId());
+        AnalyzerResults leftover = stagedRow(run.getId(), "RQD-LEFTOVER");
+        ResultRun later = laterRun();
+        acceptedIn(later, retested);
+
+        runQcService.confirmRetest(later.getId(), TEST, run.getId(), "1");
+        entityManager.flush();
+        assertEquals(ResultRunState.OPEN, resultRunService.get(run.getId()).getState());
+
+        analyzerResultsService.delete(leftover.getId(), "1");
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(ResultRunState.SUPERSEDED, resultRunService.get(run.getId()).getState());
+        assertEquals(2, events().stream().filter(ResultRunEvent.SUPERSEDED::equals).count());
+        ResultRunEvent whole = resultRunEventDAO.getEvents(run.getId()).stream()
+                .filter(event -> ResultRunEvent.SUPERSEDED.equals(event.getEvent()) && event.getTestId() == null)
+                .findFirst().orElseThrow();
+        assertEquals("the run is superseded by whoever removed its last row", "1", whole.getActorId());
+    }
+
+    /**
+     * A run with nothing set aside completes as before when its last row leaves.
+     */
+    @Test
+    public void aRunWithNothingRetestedCompletesWhenItsLastRowLeaves() {
+        AnalyzerResults only = stagedRow(run.getId(), "RQD-ONLY");
+
+        analyzerResultsService.delete(analyzerResultsService.get(only.getId()));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(ResultRunState.COMPLETE, resultRunService.get(run.getId()).getState());
+        assertFalse(events().contains(ResultRunEvent.SUPERSEDED));
+    }
+
     private AnalyzerResults stagedRow(Long runId, String accession) {
         AnalyzerResults row = new AnalyzerResults();
         row.setAnalyzerId(ANALYZER);

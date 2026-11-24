@@ -579,21 +579,22 @@ public class RunQcServiceImpl implements RunQcService {
         log(retestOfRunId, ResultRunEvent.SUPERSEDED, testId,
                 "by " + ResultRun.labelOf(runId) + ": " + linked + " of " + setAsideCount(retestOfRunId, testId),
                 sysUserId);
-        refreshSupersession(retestOfRunId, sysUserId);
+        supersedeIfRetested(retestOfRunId, sysUserId);
     }
 
-    /**
-     * An earlier run is superseded when nothing is left in it to review and every
-     * test it covers was retested and all its retested samples linked (FR-A3).
-     */
-    private void refreshSupersession(Long runId, String sysUserId) {
-        ResultRun run = resultRunDAO.get(runId).orElse(null);
+    @Override
+    @Transactional
+    public void supersedeIfRetested(Long runId, String sysUserId) {
+        ResultRun run = runId == null ? null : resultRunDAO.get(runId).orElse(null);
         if (run == null || run.getState() == ResultRunState.SUPERSEDED
                 || (run.getState() == ResultRunState.OPEN && resultRunDAO.countStagedRows(runId) > 0)) {
             return;
         }
         Map<String, List<RetestedSample>> setAside = retestDAO.findSetAsideBy(runId).stream()
                 .collect(Collectors.groupingBy(RetestedSample::testId));
+        if (setAside.isEmpty()) {
+            return;
+        }
         Set<String> covered = testVerdicts(runId).keySet();
         boolean replaced = !covered.isEmpty() && covered.stream().allMatch(testId -> setAside.containsKey(testId)
                 && setAside.get(testId).stream().allMatch(sample -> sample.retestedInRunId() != null));

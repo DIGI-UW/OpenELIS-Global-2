@@ -88,6 +88,7 @@ async function sendResult(
   value: string,
   completedAt: string,
   staged: number,
+  others: Array<Record<string, string>> = [],
 ) {
   const received = await page.request.post(
     `${process.env.MOCK_SIMULATOR_URL || "http://localhost:8085"}/simulate/astm/mindray_ba88a`,
@@ -99,6 +100,7 @@ async function sendResult(
         completed_at: completedAt,
         results: [
           { test_code: setup.code, type: "TEXT", value, unit: "mmol/L" },
+          ...others,
         ],
       },
     },
@@ -220,5 +222,64 @@ test(
     await expect(row).toContainText("52");
     await expect(row).not.toContainText("Duplicate");
     await confirmAndSupersede(page, setup, first, second);
+  },
+);
+
+test(
+  "a held run with a row left to review is superseded once that row is removed",
+  { tag: ["@astm", "@results"] },
+  async ({ page }) => {
+    test.setTimeout(300_000);
+    const setup = await setUp(page, "R1200L");
+    const unmapped = `RTLEFT${setup.run.slice(0, 4).toUpperCase()}`;
+    await sendResult(page, setup, "50", "20261124090000", 2, [
+      { test_code: unmapped, type: "TEXT", value: "7", unit: "" },
+    ]);
+    const first = await openWaitingRun(page, setup.accession);
+    await failControl(page, setup);
+    await retest(page, setup);
+
+    await sendResult(page, setup, "52", "20261124100000", 2);
+    await page.goto(`/Results?accessionNumber=${setup.accession}`);
+    const later = page
+      .getByText(/^Waiting in RUN-\d+$/)
+      .filter({ hasNotText: `Waiting in ${first.label}` })
+      .first();
+    await expect(later).toBeVisible();
+    const second = await openWaitingRun(
+      page,
+      setup.accession,
+      (await later.textContent())?.replace("Waiting in ", ""),
+    );
+    const line = page
+      .getByTestId("run-qc")
+      .getByTestId(`run-qc-test-${setup.testId}`);
+    await line
+      .getByRole("button", { name: `Confirm retest of ${first.label}` })
+      .click();
+    await expect(line).toContainText(`Retest of ${first.label}`);
+
+    await page.goto(first.url);
+    await expect(
+      page.getByTestId("run-qc").getByTestId(`run-qc-test-${setup.testId}`),
+    ).toContainText(`Superseded by ${second.label}`);
+    await expect(page.getByTestId("run-settings")).not.toContainText(
+      "Superseded",
+    );
+
+    await page.goto(`/AnalyzerResults?id=${setup.analyzerId}`);
+    await page
+      .getByRole("button", { name: "Remove from review", exact: true })
+      .first()
+      .click();
+    const dialog = page.getByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    await expect(dialog).toContainText(unmapped);
+    await dialog.getByRole("button", { name: /Remove$/ }).click();
+    await expect(dialog).toBeHidden();
+
+    await page.goto(first.url);
+    await expect(page.getByTestId("run-settings")).toContainText("Superseded");
   },
 );
