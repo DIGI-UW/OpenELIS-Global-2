@@ -62,8 +62,8 @@ public class ReportImplementationFactory {
      * taking over a core report id.
      */
     public static IReportCreator getReportCreator(String report) {
-        IReportCreator module = moduleReportCreator(report);
-        return module != null ? module : builtInReportCreator(report);
+        IReportCreator builtIn = builtInReportCreator(report);
+        return builtIn != null ? builtIn : moduleReportCreator(report);
     }
 
     /**

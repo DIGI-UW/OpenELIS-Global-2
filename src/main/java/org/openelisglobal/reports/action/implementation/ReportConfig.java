@@ -251,6 +251,7 @@ public class ReportConfig {
     }
 
     @Bean("indicatorCDILNSPHIV")
+    @Scope("prototype")
     public IReportParameterSetter indicatorCDILNSPHIV() {
         return new IndicatorCDIHIVLNSP();
     }
@@ -642,6 +643,7 @@ public class ReportConfig {
     }
 
     @Bean("indicatorCDILNSPHIVCreator")
+    @Scope("prototype")
     public IReportCreator indicatorCDILNSPHIVCreator() {
         return new IndicatorCDIHIVLNSP();
     }
