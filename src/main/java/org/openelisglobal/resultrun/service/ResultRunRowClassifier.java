@@ -15,6 +15,7 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.resultrun.form.ResultRunExceptionKind;
@@ -27,6 +28,8 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -86,15 +89,32 @@ public class ResultRunRowClassifier {
     @Lazy
     @Autowired
     private RuleResultScope ruleResultScope;
+    @Lazy
+    @Autowired
+    private TestResultComponentService testResultComponentService;
+
+    /**
+     * What one classification looks up once: a test's parts, an order's analyses of
+     * a test, an analysis's results and a test's primary part, so a large run costs
+     * one query per distinct lookup.
+     */
+    private static final class Lookups {
+        private final Map<String, Optional<String>> parts = new HashMap<>();
+        private final Map<String, List<Analysis>> analyses = new HashMap<>();
+        private final Map<String, List<Result>> results = new HashMap<>();
+        private final Map<String, String> primaryByTest = new HashMap<>();
+        private String cancelled;
+    }
 
     public List<ClassifiedRow> classify(ResultRun run, List<AnalyzerResults> rows) {
         Map<String, Optional<Sample>> samples = new HashMap<>();
         Map<String, Optional<Patient>> patients = new HashMap<>();
         Map<String, ResultLimit> limits = new HashMap<>();
         Map<String, RunOrderState> ordered = new HashMap<>();
+        Lookups lookups = new Lookups();
         Set<String> heldTests = run.getId() == null ? Set.of() : runQcService.heldTestIds(run.getId());
         return rows.stream().map(row -> {
-            ResultRunExceptionKind kind = exceptionKindOf(row, samples, ordered);
+            ResultRunExceptionKind kind = exceptionKindOf(row, samples, ordered, lookups);
             String flag = flagFor(row, samples, patients, limits);
             return new ClassifiedRow(row, flag, categoryOf(row, flag, heldTests.contains(row.getTestId()), kind), kind);
         }).toList();
@@ -126,7 +146,7 @@ public class ResultRunRowClassifier {
      * repeat, is resolved on the analyzer import page and is none of these.
      */
     private ResultRunExceptionKind exceptionKindOf(AnalyzerResults row, Map<String, Optional<Sample>> samples,
-            Map<String, RunOrderState> ordered) {
+            Map<String, RunOrderState> ordered, Lookups lookups) {
         if (row.getIsControl()) {
             return null;
         }
@@ -148,7 +168,7 @@ public class ResultRunRowClassifier {
         }
         RunOrderState state = ordered.computeIfAbsent(
                 accession + "|" + row.getTestId() + "|" + StringUtils.defaultString(row.getComponentId()),
-                key -> orderStateOf(sample.get(), row.getTestId(), row.getComponentId()));
+                key -> orderStateOf(sample.get(), row.getTestId(), row.getComponentId(), lookups));
         return switch (state) {
         case AWAITING -> null;
         case RESULTED -> ResultRunExceptionKind.RESULTED;
@@ -182,24 +202,54 @@ public class ResultRunRowClassifier {
     /**
      * Where the order stands for the test: a cancelled analysis does not count, and
      * an analysis waits for the value only while it has no result for the value's
-     * part, the rule the run's Results Entry panel applies before it offers the
-     * value (it never overwrites a result).
+     * part ({@link #partOf}), the rule the run's Results Entry panel applies before
+     * it offers the value (it never overwrites a result).
      */
     public RunOrderState orderStateOf(Sample sample, String testId, String componentId) {
-        String cancelled = statusService.getStatusID(AnalysisStatus.Canceled);
-        List<Analysis> active = analysisService.getAnalysisBySampleAndTestIds(sample.getId(), List.of(testId)).stream()
-                .filter(analysis -> !cancelled.equals(analysis.getStatusId())).toList();
+        return orderStateOf(sample, testId, componentId, new Lookups());
+    }
+
+    private RunOrderState orderStateOf(Sample sample, String testId, String componentId, Lookups lookups) {
+        if (lookups.cancelled == null) {
+            lookups.cancelled = statusService.getStatusID(AnalysisStatus.Canceled);
+        }
+        List<Analysis> active = lookups.analyses.computeIfAbsent(sample.getId() + "|" + testId,
+                key -> analysisService.getAnalysisBySampleAndTestIds(sample.getId(), List.of(testId)).stream()
+                        .filter(analysis -> !lookups.cancelled.equals(analysis.getStatusId())).toList());
         if (active.isEmpty()) {
             return RunOrderState.NOT_ORDERED;
         }
-        return active.stream().anyMatch(analysis -> awaitsResult(analysis, componentId)) ? RunOrderState.AWAITING
+        String part = lookups.parts.computeIfAbsent(testId + "|" + StringUtils.defaultString(componentId),
+                key -> Optional.ofNullable(partOf(testId, componentId))).orElse(null);
+        return active.stream().anyMatch(analysis -> awaitsResult(analysis, part, lookups)) ? RunOrderState.AWAITING
                 : RunOrderState.RESULTED;
     }
 
-    private boolean awaitsResult(Analysis analysis, String componentId) {
-        return resultService.getResultsByAnalysis(analysis).stream()
-                .noneMatch(result -> StringUtils.isNotBlank(result.getValue())
-                        && ruleResultScope.matchesComponent(result, componentId));
+    private boolean awaitsResult(Analysis analysis, String part, Lookups lookups) {
+        return lookups.results.computeIfAbsent(analysis.getId(), id -> resultService.getResultsByAnalysis(analysis))
+                .stream().noneMatch(result -> StringUtils.isNotBlank(result.getValue())
+                        && (part == null || part.equals(ruleResultScope.componentIdOf(result, lookups.primaryByTest))));
+    }
+
+    /**
+     * The part of a test a value fills: its own, or the primary one when the
+     * analyzer named none on a test with several parts (a test's main value, like a
+     * viral load number beside its log). A test with one part has no part to tell
+     * apart (null). The run's rows, the worklist's waiting tag and the order state
+     * all read a value's part this way, so they agree.
+     */
+    public String partOf(String testId, String componentId) {
+        if (testId == null) {
+            return StringUtils.trimToNull(componentId);
+        }
+        List<TestResultComponent> components = testResultComponentService.getActiveComponentsByTestId(testId);
+        if (components == null || components.size() <= 1) {
+            return null;
+        }
+        String own = StringUtils.trimToNull(componentId);
+        return own != null ? own
+                : components.stream().filter(component -> Boolean.TRUE.equals(component.getIsPrimary()))
+                        .map(TestResultComponent::getId).findFirst().orElse(null);
     }
 
     private String flagFor(AnalyzerResults row, Map<String, Optional<Sample>> samples,

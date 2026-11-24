@@ -585,17 +585,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
      * import treats a test's main value.
      */
     private String componentOf(String testId, String componentId) {
-        if (testId == null) {
-            return StringUtils.trimToNull(componentId);
-        }
-        List<TestResultComponent> components = testResultComponentService.getActiveComponentsByTestId(testId);
-        if (components == null || components.size() <= 1) {
-            return null;
-        }
-        String own = StringUtils.trimToNull(componentId);
-        return own != null ? own
-                : components.stream().filter(component -> Boolean.TRUE.equals(component.getIsPrimary()))
-                        .map(TestResultComponent::getId).findFirst().orElse(null);
+        return rowClassifier.partOf(testId, componentId);
     }
 
     private static String iso(Timestamp timestamp) {

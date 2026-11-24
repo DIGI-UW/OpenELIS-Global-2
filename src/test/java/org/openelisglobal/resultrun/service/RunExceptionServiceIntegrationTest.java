@@ -313,39 +313,59 @@ public class RunExceptionServiceIntegrationTest extends BaseWebContextSensitiveT
 
     @Test
     public void aValueWhoseTestAlreadyHasAResultForItsPartIsAResultedException() {
-        SampleItem resulted = orderWithTheTest();
-        jdbc.update("INSERT INTO clinlims.result (id, analysis_id, value, result_type, lastupdated) VALUES"
-                + " (nextval('clinlims.result_seq'), (SELECT id FROM clinlims.analysis WHERE sampitem_id ="
-                + " CAST(? AS numeric)), '60', 'N', NOW())", resulted.getId());
-        SampleItem blankResult = orderWithTheTest();
-        jdbc.update("INSERT INTO clinlims.result (id, analysis_id, value, result_type, lastupdated) VALUES"
-                + " (nextval('clinlims.result_seq'), (SELECT id FROM clinlims.analysis WHERE sampitem_id ="
-                + " CAST(? AS numeric)), '', 'N', NOW())", blankResult.getId());
-        jdbc.update("DELETE FROM clinlims.test_result_component WHERE id = 'rrc-exc-part'");
+        jdbc.update("DELETE FROM clinlims.test_result_component WHERE id IN ('rrc-exc-main', 'rrc-exc-part')");
         jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_active,"
-                + " lastupdated, is_primary) VALUES ('rrc-exc-part', CAST(? AS numeric), 'PART', 'Other part', 2, 'Y',"
-                + " NOW(), false)", TEST);
-        AnalyzerResults again = valueFor(resulted.getSample().getAccessionNumber(), "61");
-        AnalyzerResults otherPart = valueFor(resulted.getSample().getAccessionNumber(), "3");
-        otherPart.setComponentId("rrc-exc-part");
-        AnalyzerResults awaiting = valueFor(blankResult.getSample().getAccessionNumber(), "15");
-        ResultRun run = open("m-resulted", List.of(again, otherPart, awaiting));
-
-        ResultRunException exception = onlyException(run);
-
-        assertEquals(ResultRunExceptionKind.RESULTED, exception.kind());
-        assertEquals(List.of(again.getId()), exception.rowIds());
-        assertEquals("a blank result and a part no result fills still wait for the value", 2,
-                resultRunService.getHeader(run.getId(), viewer()).orElseThrow().chipCounts().normal());
-        assertEquals(RunOrderState.RESULTED, runExceptionService
-                .ordersMatching(resulted.getSample().getAccessionNumber(), TEST, null).get(0).test());
-        assertEquals(RunOrderState.AWAITING, runExceptionService
-                .ordersMatching(resulted.getSample().getAccessionNumber(), TEST, "rrc-exc-part").get(0).test());
-
-        runExceptionService.ignore(run.getId(), viewer(), exception.rowIds(), exception.key(),
-                "Rerun of a reported tube", "1");
+                + " lastupdated, is_primary) VALUES ('rrc-exc-main', CAST(? AS numeric), 'MAIN', 'Main value', 1, 'Y',"
+                + " NOW(), true), ('rrc-exc-part', CAST(? AS numeric), 'PART', 'Other part', 2, 'Y', NOW(), false)",
+                TEST, TEST);
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, is_active, sort_order,"
+                + " component_id, is_critical, lastupdated) VALUES (97861, CAST(? AS numeric), 'N', '', true, 1,"
+                + " 'rrc-exc-main', false, NOW()), (97862, CAST(? AS numeric), 'N', '', true, 2, 'rrc-exc-part',"
+                + " false, NOW())", TEST, TEST);
+        SampleItem partResulted = orderWithTheTest();
+        jdbc.update("INSERT INTO clinlims.result (id, analysis_id, test_result_id, value, result_type, lastupdated)"
+                + " VALUES (nextval('clinlims.result_seq'), (SELECT id FROM clinlims.analysis WHERE sampitem_id ="
+                + " CAST(? AS numeric)), 97862, '3', 'N', NOW())", partResulted.getId());
+        SampleItem blankResult = orderWithTheTest();
+        jdbc.update("INSERT INTO clinlims.result (id, analysis_id, test_result_id, value, result_type, lastupdated)"
+                + " VALUES (nextval('clinlims.result_seq'), (SELECT id FROM clinlims.analysis WHERE sampitem_id ="
+                + " CAST(? AS numeric)), 97861, '', 'N', NOW())", blankResult.getId());
+        SampleItem singlePart = newSampleItemOfPatient();
+        fixtures.createAnalysis(singlePart, testService.get(OTHER_TEST));
         entityManager.flush();
-        assertEquals(List.of(), resultRunService.getHeader(run.getId(), viewer()).orElseThrow().exceptions());
+        jdbc.update("INSERT INTO clinlims.result (id, analysis_id, value, result_type, lastupdated) VALUES"
+                + " (nextval('clinlims.result_seq'), (SELECT id FROM clinlims.analysis WHERE sampitem_id ="
+                + " CAST(? AS numeric)), '60', 'N', NOW())", singlePart.getId());
+        String accession = partResulted.getSample().getAccessionNumber();
+        AnalyzerResults mainValue = valueFor(accession, "1009.64");
+        AnalyzerResults partAgain = valueFor(accession, "4");
+        partAgain.setComponentId("rrc-exc-part");
+        AnalyzerResults awaiting = valueFor(blankResult.getSample().getAccessionNumber(), "15");
+        AnalyzerResults otherTestAgain = valueFor(singlePart.getSample().getAccessionNumber(), "61");
+        otherTestAgain.setTestId(OTHER_TEST);
+        ResultRun run = open("m-resulted", List.of(mainValue, partAgain, awaiting, otherTestAgain));
+
+        ResultRunHeader header = resultRunService.getHeader(run.getId(), viewer()).orElseThrow();
+
+        assertEquals(List.of(ResultRunExceptionKind.RESULTED, ResultRunExceptionKind.RESULTED),
+                header.exceptions().stream().map(ResultRunException::kind).toList());
+        assertEquals("only the part that has a result, and the test with one part that has one",
+                Set.of(partAgain.getId(), otherTestAgain.getId()),
+                header.exceptions().stream().flatMap(exception -> exception.rowIds().stream())
+                        .collect(java.util.stream.Collectors.toSet()));
+        assertEquals("the main value (no part named: the primary) and a blank result still wait", 2,
+                header.chipCounts().normal());
+        assertEquals("the main part of the order still waits for its value", RunOrderState.AWAITING,
+                runExceptionService.ordersMatching(accession, TEST, null).get(0).test());
+        assertEquals(RunOrderState.RESULTED,
+                runExceptionService.ordersMatching(accession, TEST, "rrc-exc-part").get(0).test());
+
+        ResultRunException resulted = header.exceptions().stream()
+                .filter(exception -> exception.rowIds().contains(partAgain.getId())).findFirst().orElseThrow();
+        runExceptionService.ignore(run.getId(), viewer(), resulted.rowIds(), resulted.key(), "Rerun of a reported part",
+                "1");
+        entityManager.flush();
+        assertEquals(1, resultRunService.getHeader(run.getId(), viewer()).orElseThrow().exceptions().size());
     }
 
     @Test
