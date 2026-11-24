@@ -82,6 +82,9 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     @Lazy
     @Autowired
     private RunQcService runQcService;
+    @Lazy
+    @Autowired
+    private RunExceptionService runExceptionService;
 
     public ResultRunServiceImpl() {
         super(ResultRun.class);
@@ -219,6 +222,7 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
     public Optional<ResultRunHeader> getHeader(Long runId, RunViewer viewer) {
         return visibleRun(runId, viewer).map(seen -> {
             ResultRun run = seen.run();
+            List<ClassifiedRow> classified = classifyVisible(seen, viewer);
             Optional<Analyzer> analyzer = run.getAnalyzerId() == null ? Optional.empty()
                     : analyzerService.getWithMapping(run.getAnalyzerId());
             String method = analyzer.map(Analyzer::getMapping).map(ResultRunServiceImpl::typeNameOf).orElse(null);
@@ -229,9 +233,15 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                     run.getAnalyzerId(), analyzer.map(Analyzer::getName).orElse(null), method, labUnits,
                     run.getOperatorName(), iso(run.getOpenedAt()), iso(run.getLastActivityAt()),
                     iso(run.getCompletedAt()), Math.max(0, run.getRowCount() - seen.staged().size()), run.getRowCount(),
-                    run.getDeliveryReceiptId() != null, chipCounts(classifyVisible(seen, viewer)),
-                    runQcService.qcBlock(run.getId()));
+                    run.getDeliveryReceiptId() != null, chipCounts(classified), runQcService.qcBlock(run.getId()),
+                    runExceptionService.exceptionsOf(run.getId(), run.getAnalyzerId(), classified));
         });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<List<ClassifiedRow>> classifiedRows(Long runId, RunViewer viewer) {
+        return visibleRun(runId, viewer).map(seen -> classifyVisible(seen, viewer));
     }
 
     @Override
@@ -244,8 +254,9 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                     .filter(row -> chip.matches(row.category())).toList();
             int pages = Math.max(1, (matching.size() + size - 1) / size);
             int current = Math.min(Math.max(page, 1), pages);
-            List<ResultRunRow> rows = matching.stream().skip((long) (current - 1) * size).limit(size).map(this::toRow)
-                    .toList();
+            Map<String, String> testNames = new HashMap<>();
+            List<ResultRunRow> rows = matching.stream().skip((long) (current - 1) * size).limit(size)
+                    .map(row -> toRow(row, testNames)).toList();
             return new ResultRunRowsPage(rows, current, size, matching.size());
         });
     }
@@ -262,10 +273,12 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
                     .filter(row -> ids.contains(row.row().getId())
                             || selection.all() && chip.matches(row.category()) && !excluded.contains(row.row().getId()))
                     .toList();
+            Map<String, String> testNames = new HashMap<>();
             List<ResultRunSelectionSummary.SkippedRow> skipped = selected.stream()
                     .filter(row -> SKIPPED.contains(row.category()))
                     .map(row -> new ResultRunSelectionSummary.SkippedRow(row.row().getId(),
-                            row.row().getAccessionNumber(), row.row().getTestName(), row.category()))
+                            row.row().getAccessionNumber(), rowClassifier.testNameOf(row.row(), testNames),
+                            row.category()))
                     .toList();
             return new ResultRunSelectionSummary(selected.size(), count(selected, ResultRunRowCategory.CRITICAL),
                     count(selected, ResultRunRowCategory.ABNORMAL), count(selected, ResultRunRowCategory.NORMAL),
@@ -524,18 +537,24 @@ public class ResultRunServiceImpl extends BaseObjectServiceImpl<ResultRun, Long>
         return StringUtils.isNotBlank(localized) ? localized : section.getTestSectionName();
     }
 
-    private ResultRunRow toRow(ClassifiedRow classified) {
+    private ResultRunRow toRow(ClassifiedRow classified, Map<String, String> testNames) {
         AnalyzerResults row = classified.row();
         String value = StringUtils.isNotBlank(row.getRawResultValue()) ? row.getRawResultValue() : row.getResult();
         String part = StringUtils.isBlank(row.getComponentId()) ? null
                 : testResultComponentService.getMatch("id", row.getComponentId())
                         .map(TestResultComponent::getLocalizedLabel).orElse(null);
-        return new ResultRunRow(row.getId(), row.getAccessionNumber(), row.getTestName(), part, value, row.getUnits(),
-                row.getIsControl(), row.getDuplicateAnalyzerResultId() != null, row.getImportIssueReason(),
-                row.getInstrumentFlags(), iso(row.getCompleteDate()), classified.flag(), classified.category(),
-                row.getTestId(), row.getTestId() == null ? StringUtils.trimToNull(row.getComponentId())
+        return new ResultRunRow(row.getId(), row.getAccessionNumber(), rowClassifier.testNameOf(row, testNames), part,
+                value, row.getUnits(), row.getIsControl(), row.getDuplicateAnalyzerResultId() != null,
+                row.getImportIssueReason(), row.getInstrumentFlags(), iso(row.getCompleteDate()), classified.flag(),
+                classified.category(), row.getTestId(),
+                row.getTestId() == null ? StringUtils.trimToNull(row.getComponentId())
                         : componentOf(row.getTestId(), row.getComponentId()),
-                row.getResult());
+                row.getResult(), classified.exceptionKind(), codeOf(row));
+    }
+
+    /** What the analyzer called the value's test. */
+    static String codeOf(AnalyzerResults row) {
+        return StringUtils.defaultIfBlank(row.getRawTestCode(), row.getTestName());
     }
 
     private String partKey(String accessionNumber, String testId, String componentId) {

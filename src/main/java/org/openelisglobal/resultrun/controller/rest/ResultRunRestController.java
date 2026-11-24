@@ -19,8 +19,10 @@ import org.openelisglobal.resultrun.form.ResultRunListResponse;
 import org.openelisglobal.resultrun.form.ResultRunRowsPage;
 import org.openelisglobal.resultrun.form.ResultRunSelection;
 import org.openelisglobal.resultrun.form.ResultRunSelectionSummary;
+import org.openelisglobal.resultrun.form.RunOrderMatch;
 import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.service.ResultRunService;
+import org.openelisglobal.resultrun.service.RunExceptionService;
 import org.openelisglobal.resultrun.service.RunQcService;
 import org.openelisglobal.resultrun.valueholder.RunTestAction;
 import org.openelisglobal.role.service.RoleService;
@@ -50,13 +52,15 @@ public class ResultRunRestController extends BaseRestController {
 
     private final ResultRunService resultRunService;
     private final RunQcService runQcService;
+    private final RunExceptionService runExceptionService;
     private final UserService userService;
     private final RoleService roleService;
 
     public ResultRunRestController(ResultRunService resultRunService, RunQcService runQcService,
-            UserService userService, RoleService roleService) {
+            RunExceptionService runExceptionService, UserService userService, RoleService roleService) {
         this.resultRunService = resultRunService;
         this.runQcService = runQcService;
+        this.runExceptionService = runExceptionService;
         this.userService = userService;
         this.roleService = roleService;
     }
@@ -183,6 +187,79 @@ public class ResultRunRestController extends BaseRestController {
             return ResponseEntity.badRequest().body(Map.of("message", message));
         }
         return ResponseEntity.ok(runQcService.qcBlock(id));
+    }
+
+    /**
+     * Orders a run exception can be matched to, by the start of their lab number
+     * (FR-E4 type-ahead), saying whether the value's test is on each.
+     */
+    @GetMapping(value = "/{id}/exceptions/orders", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<RunOrderMatch>> exceptionOrders(HttpServletRequest request, @PathVariable Long id,
+            @RequestParam(required = false) String q, @RequestParam(required = false) String testId) {
+        if (resultRunService.getHeader(id, viewer(request)).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(runExceptionService.ordersMatching(q, testId));
+    }
+
+    /** What the page sends to resolve an exception's values (FR-E4). */
+    public record ExceptionDecision(List<String> rowIds, String key, String reason, String accessionNumber) {
+    }
+
+    /** Places an exception's values on the order the technician found (FR-E4). */
+    @PostMapping(value = "/{id}/exceptions/match", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> matchException(HttpServletRequest request, @PathVariable Long id,
+            @RequestBody ExceptionDecision decision) {
+        return resolveException(request, id, decision, (viewer, sysUserId) -> runExceptionService.match(id, viewer,
+                decision.rowIds(), decision.key(), decision.accessionNumber(), decision.reason(), sysUserId));
+    }
+
+    /** Keeps an exception's values blocked with a reason (FR-E4). */
+    @PostMapping(value = "/{id}/exceptions/hold", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> holdException(HttpServletRequest request, @PathVariable Long id,
+            @RequestBody ExceptionDecision decision) {
+        return resolveException(request, id, decision, (viewer, sysUserId) -> runExceptionService.hold(id, viewer,
+                decision.rowIds(), decision.key(), decision.reason(), sysUserId));
+    }
+
+    /** Takes an exception's values off the run with a reason (FR-E4). */
+    @PostMapping(value = "/{id}/exceptions/ignore", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> ignoreException(HttpServletRequest request, @PathVariable Long id,
+            @RequestBody ExceptionDecision decision) {
+        return resolveException(request, id, decision, (viewer, sysUserId) -> runExceptionService.ignore(id, viewer,
+                decision.rowIds(), decision.key(), decision.reason(), sysUserId));
+    }
+
+    private interface ExceptionAction {
+        void apply(RunViewer viewer, String sysUserId);
+    }
+
+    /**
+     * Applies an exception decision and answers with the run header as it now
+     * stands, or no exceptions once the viewer has resolved every value they could
+     * see: 400 for a missing reason or order, 409 (marked stale) when a value
+     * changed under the page.
+     */
+    private ResponseEntity<?> resolveException(HttpServletRequest request, Long id, ExceptionDecision decision,
+            ExceptionAction action) {
+        RunViewer viewer = viewer(request);
+        if (resultRunService.getHeader(id, viewer).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        if (decision == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Choose the records to resolve"));
+        }
+        try {
+            action.apply(viewer, getSysUserId(request));
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage() == null ? "Invalid decision" : e.getMessage();
+            return ResponseEntity.badRequest().body(Map.of("message", message));
+        } catch (IllegalStateException e) {
+            String message = e.getMessage() == null ? "The run has changed" : e.getMessage();
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", message, "stale", true));
+        }
+        return ResponseEntity.ok(resultRunService.getHeader(id, viewer).<Object>map(header -> header)
+                .orElse(Map.of("exceptions", List.of())));
     }
 
     private RunViewer viewer(HttpServletRequest request) {

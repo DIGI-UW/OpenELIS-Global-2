@@ -127,6 +127,30 @@ public class ResultRunRestControllerTest extends BaseWebContextSensitiveTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"runId\": 1}")).andExpect(status().isNotFound());
     }
 
+    /**
+     * OGC-1200 slice 7 (FR-E4): an exception decision needs a reason (400), and one
+     * taken on a value no longer under the record the page showed is refused as
+     * stale (409), so the page reloads instead of offering it again.
+     */
+    @Test
+    public void anExceptionDecisionNeedsAReasonAndIsRefusedAsStaleOnAChangedRecord() throws Exception {
+        String rowId = jdbc.queryForObject("SELECT CAST(id AS VARCHAR) FROM clinlims.analyzer_results WHERE run_id = ?",
+                String.class, runId);
+        String body = "{\"rowIds\": [\"" + rowId + "\"], \"key\": \"UNMATCHED|NOT-THIS-ONE\", \"reason\": \"%s\"}";
+
+        mockMvc.perform(post("/rest/result-runs/" + runId + "/exceptions/ignore").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(String.format(body, " ")))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("A reason is required"));
+        mockMvc.perform(post("/rest/result-runs/" + runId + "/exceptions/ignore").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(String.format(body, "Not ours")))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.stale").value(true));
+        mockMvc.perform(get("/rest/result-runs/" + runId + "/exceptions/orders?q=1234&testId=1").session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[*].accessionNumber").value(hasItem("12345")));
+        mockMvc.perform(post("/rest/result-runs/999999999/exceptions/hold").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(String.format(body, "r")))
+                .andExpect(status().isNotFound());
+    }
+
     @Test
     public void aRunThatDoesNotExistIsNotFound() throws Exception {
         mockMvc.perform(get("/rest/result-runs/999999999").session(session)).andExpect(status().isNotFound());

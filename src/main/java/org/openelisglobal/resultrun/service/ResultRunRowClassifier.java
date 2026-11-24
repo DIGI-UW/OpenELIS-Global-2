@@ -9,15 +9,21 @@ import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.resultrun.form.ResultRunExceptionKind;
 import org.openelisglobal.resultrun.form.ResultRunRowCategory;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultvalidation.util.ValidationSignals;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -26,13 +32,27 @@ import org.springframework.stereotype.Component;
  * Sorts a run's rows for review (OGC-1200 FR-E1a): a value is judged against
  * the result limit the Results worklist selects for the row's analysis (its
  * specimen, the component, the patient's sex and age), with the rule the
- * worklist and Validation use, so a run and the worklist flag a value alike.
+ * worklist and Validation use, so a run and the worklist flag a value alike. A
+ * value its run cannot accept until someone resolves it, a lab number that
+ * names no order, a test not on its order or a code with no mapping, is an
+ * exception of the kind the run's Exceptions block lists (FR-E4).
  */
 @Component
 public class ResultRunRowClassifier {
 
-    /** One row with its flag and review category. */
-    public record ClassifiedRow(AnalyzerResults row, String flag, ResultRunRowCategory category) {
+    /**
+     * Codes and answers the import holds for a mapping fix, which Map now resolves:
+     * the same ones the analyzer import page links to the mapping.
+     */
+    static final Set<String> UNMAPPED_ISSUES = Set.of(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST,
+            AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
+            AnalyzerResults.IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING,
+            AnalyzerResults.IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING, AnalyzerResults.IMPORT_ISSUE_READING_CHANGED,
+            AnalyzerResults.IMPORT_ISSUE_TYPE_READING_CHANGED, AnalyzerResults.IMPORT_ISSUE_OTHER_REVISION);
+
+    /** One row with its flag, review category and, for an exception, its kind. */
+    public record ClassifiedRow(AnalyzerResults row, String flag, ResultRunRowCategory category,
+            ResultRunExceptionKind exceptionKind) {
     }
 
     @Lazy
@@ -50,24 +70,33 @@ public class ResultRunRowClassifier {
     @Lazy
     @Autowired
     private RunQcService runQcService;
+    @Lazy
+    @Autowired
+    private IStatusService statusService;
+    @Lazy
+    @Autowired
+    private TestService testService;
 
     public List<ClassifiedRow> classify(ResultRun run, List<AnalyzerResults> rows) {
         Map<String, Optional<Sample>> samples = new HashMap<>();
         Map<String, Optional<Patient>> patients = new HashMap<>();
         Map<String, ResultLimit> limits = new HashMap<>();
+        Map<String, Boolean> ordered = new HashMap<>();
         Set<String> heldTests = run.getId() == null ? Set.of() : runQcService.heldTestIds(run.getId());
         return rows.stream().map(row -> {
+            ResultRunExceptionKind kind = exceptionKindOf(row, samples, ordered);
             String flag = flagFor(row, samples, patients, limits);
-            return new ClassifiedRow(row, flag, categoryOf(row, flag, heldTests.contains(row.getTestId())));
+            return new ClassifiedRow(row, flag, categoryOf(row, flag, heldTests.contains(row.getTestId()), kind), kind);
         }).toList();
     }
 
-    static ResultRunRowCategory categoryOf(AnalyzerResults row, String flag, boolean testHeld) {
+    static ResultRunRowCategory categoryOf(AnalyzerResults row, String flag, boolean testHeld,
+            ResultRunExceptionKind exceptionKind) {
         if (row.getIsControl()) {
             return ResultRunRowCategory.CONTROL;
         }
-        if (StringUtils.isNotBlank(row.getImportIssueReason()) || row.getDuplicateAnalyzerResultId() != null
-                || "INVALID".equals(flag)) {
+        if (exceptionKind != null || StringUtils.isNotBlank(row.getImportIssueReason())
+                || row.getDuplicateAnalyzerResultId() != null || "INVALID".equals(flag)) {
             return ResultRunRowCategory.EXCEPTION;
         }
         if (testHeld) {
@@ -80,6 +109,66 @@ public class ResultRunRowClassifier {
             return ResultRunRowCategory.ABNORMAL;
         }
         return ResultRunRowCategory.NORMAL;
+    }
+
+    /**
+     * The exception a value is, if any. A value held for another import issue, or a
+     * repeat, is resolved on the analyzer import page and is none of these.
+     */
+    private ResultRunExceptionKind exceptionKindOf(AnalyzerResults row, Map<String, Optional<Sample>> samples,
+            Map<String, Boolean> ordered) {
+        if (row.getIsControl()) {
+            return null;
+        }
+        if (row.getImportIssueReason() != null && UNMAPPED_ISSUES.contains(row.getImportIssueReason())) {
+            return ResultRunExceptionKind.UNMAPPED;
+        }
+        if (StringUtils.isNotBlank(row.getImportIssueReason()) || row.getDuplicateAnalyzerResultId() != null) {
+            return null;
+        }
+        String accession = StringUtils.defaultString(row.getAccessionNumber());
+        Optional<Sample> sample = samples.computeIfAbsent(accession,
+                number -> StringUtils.isBlank(number) ? Optional.empty()
+                        : Optional.ofNullable(sampleService.getSampleByAccessionNumber(number)));
+        if (sample.isEmpty()) {
+            return ResultRunExceptionKind.UNMATCHED;
+        }
+        if (StringUtils.isBlank(row.getTestId())) {
+            return null;
+        }
+        boolean isOrdered = ordered.computeIfAbsent(accession + "|" + row.getTestId(),
+                key -> isOrdered(sample.get(), row.getTestId()));
+        return isOrdered ? null : ResultRunExceptionKind.UNORDERED;
+    }
+
+    /**
+     * A value is named by the test it is mapped to, in the user's language as the
+     * worklist and the QC block name it; a value mapped to no test keeps what the
+     * analyzer called it.
+     */
+    public String testNameOf(AnalyzerResults row, Map<String, String> testNames) {
+        if (StringUtils.isBlank(row.getTestId())) {
+            return row.getTestName();
+        }
+        String name = testNames.computeIfAbsent(row.getTestId(), this::catalogNameOf);
+        return name.isEmpty() ? row.getTestName() : name;
+    }
+
+    private String catalogNameOf(String testId) {
+        Test test = testService.get(testId);
+        if (test == null) {
+            return "";
+        }
+        Localization localized = test.getLocalizedTestName();
+        String name = localized == null ? null : StringUtils.trimToNull(localized.getLocalizedValue());
+        return name != null ? name : StringUtils.trimToEmpty(test.getName());
+    }
+
+    /** Whether the test is on the order, a cancelled analysis not counting. */
+    public boolean isOrdered(Sample sample, String testId) {
+        String cancelled = statusService.getStatusID(AnalysisStatus.Canceled);
+        return analysisService.getAnalysisBySampleAndTestIds(sample.getId(), List.of(testId)).stream()
+                .anyMatch(analysis -> !cancelled.equals(analysis.getStatusId()));
     }
 
     private String flagFor(AnalyzerResults row, Map<String, Optional<Sample>> samples,
