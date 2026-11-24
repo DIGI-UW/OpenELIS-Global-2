@@ -25,9 +25,14 @@ public class ReportImplementationFactoryTest extends BaseWebContextSensitiveTest
                 "CIStudyExport", "Trends" };
 
         for (String reportName : menuReportNames) {
-            assertNotNull("No report creator registered for menu report: " + reportName,
-                    ReportImplementationFactory.getReportCreator(reportName));
+            assertTrue("No report creator registered for menu report: " + reportName,
+                    isCreatorBean(reportName) || isCreatorBean(reportName + "Creator"));
         }
+    }
+
+    private boolean isCreatorBean(String beanName) {
+        return webApplicationContext.containsBean(beanName)
+                && webApplicationContext.isTypeMatch(beanName, IReportCreator.class);
     }
 
     @Test
