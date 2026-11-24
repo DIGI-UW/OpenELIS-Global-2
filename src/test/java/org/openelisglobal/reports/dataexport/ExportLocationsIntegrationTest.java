@@ -81,7 +81,7 @@ public class ExportLocationsIntegrationTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void everyReportTypeOffersTheLocationGroup() {
-        for (String type : List.of("SAMPLE_TESTING", "REFERRALS", "NON_CONFORMANCE")) {
+        for (String type : List.of("SAMPLE_TESTING", "REFERRALS", "NON_CONFORMANCE", "SAMPLE_REJECTIONS")) {
             var definition = catalog.definition(type);
             String layout = definition.layouts().get(0);
             List<String> ids = catalog.variables(definition, layout).stream().map(ReportingVariable::id).toList();
@@ -142,6 +142,46 @@ public class ExportLocationsIntegrationTest extends BaseWebContextSensitiveTest 
         assertEquals(List.of("referralAccessionNumber", "referringSite"), savedReports()
                 .detail(ExportLocationFixture.reportingAdmin(entityManager), PredefinedExportReports.REFERRALS_ID)
                 .definition().selectedVariables());
+    }
+
+    /**
+     * OGC-1655: the Routine sample export ships as a shared Spreadsheet report
+     * dated by order entry, with the Routine CSV Report's columns in its order and
+     * then every test, and every column can be run.
+     */
+    @Test
+    public void theRoutineSampleExportShipsWithTheRoutineColumnsThenEveryTest() throws Exception {
+        predefined.ensure();
+
+        SavedReportDefinition routine = read(PredefinedExportReports.ROUTINE_ID);
+        assertEquals("Routine sample export", stored(PredefinedExportReports.ROUTINE_ID).getName());
+        assertEquals("SPREADSHEET", routine.layout());
+        assertEquals("orderEnteredDate", routine.filters().dateBasis());
+        assertEquals(List.of("accessionNumber", "labUnit", "nationalId", "sex", "dateOfBirth", "ageYears", "ageMonths",
+                "ageWeeks", "receivedDate", "enteredDate", "collectionDate", "referringSiteCode", "referringSite",
+                "program", "orderStatus"), routine.selectedVariables().subList(0, 15));
+        assertTrue(routine.selectedVariables().contains("test:1"));
+        assertFalse("no location areas unless a user adds them",
+                routine.selectedVariables().contains("area:" + ExportLocationFixture.DISTRICT_TYPE));
+        assertEquals(routine.selectedVariables(), catalog
+                .validateSaved(ExportLocationFixture.reportingAdmin(entityManager), routine).selectedVariables());
+    }
+
+    /**
+     * OGC-1656: Sample rejections ships with the CSV Rejection Report's columns in
+     * its order, on the rejections-only report type, and every column can be run.
+     */
+    @Test
+    public void sampleRejectionsShipsWithTheRejectionReportColumns() throws Exception {
+        predefined.ensure();
+
+        SavedReportDefinition rejections = read(PredefinedExportReports.REJECTIONS_ID);
+        assertEquals("Sample rejections", stored(PredefinedExportReports.REJECTIONS_ID).getName());
+        assertEquals("SAMPLE_REJECTIONS", rejections.reportType());
+        assertEquals(List.of("ncAccessionNumber", "ncRequestDate", "referringSite", "ncSampleType", "ncTest",
+                "rejectionReason", "rejectionDate"), rejections.selectedVariables());
+        assertEquals(rejections.selectedVariables(), catalog
+                .validateSaved(ExportLocationFixture.reportingAdmin(entityManager), rejections).selectedVariables());
     }
 
     private void addZoneAboveTheRegion() {

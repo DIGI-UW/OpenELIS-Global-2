@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Optional;
 import org.openelisglobal.reportdefinition.service.ReportDefinitionService;
 import org.openelisglobal.reportdefinition.valueholder.ReportDefinition;
+import org.openelisglobal.reports.dataexport.form.ReportSourceConfig;
+import org.openelisglobal.reports.dataexport.form.ReportingVariable;
 import org.openelisglobal.reports.dataexport.form.SavedReportDefinition;
 import org.openelisglobal.reports.dataexport.form.SavedReportFilters;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,16 +34,39 @@ public class PredefinedExportReports {
 
     public static final String REFERRALS_ID = "CSV-PREDEFINED-REFERRALS-BY-LOCATION";
     public static final String NON_CONFORMANCE_ID = "CSV-PREDEFINED-NC-BY-LOCATION";
+    public static final String ROUTINE_ID = "CSV-PREDEFINED-ROUTINE-SAMPLES";
+    public static final String REJECTIONS_ID = "CSV-PREDEFINED-SAMPLE-REJECTIONS";
     private static final String TYPE = "CSV_SAVED";
     private static final List<String> NON_CONFORMANCE_COLUMNS = List.of("ncAccessionNumber", "rejectionReason",
             "rejectionDate", "rejectionStage", "ncStatus");
+    /**
+     * The Routine CSV Report's columns, in its order (OGC-1655): Lab No, Lab Unit,
+     * Identifier, Sex, Birth Date, Age (Y/M/W), Date Received, Date Entered, Date
+     * Collected, Referrer Code, Referrer, Program, Status (the order's); then every
+     * test.
+     */
+    private static final List<String> ROUTINE_COLUMNS = List.of("accessionNumber", "labUnit", "nationalId", "sex",
+            "dateOfBirth", "ageYears", "ageMonths", "ageWeeks", "receivedDate", "enteredDate", "collectionDate",
+            "referringSiteCode", "referringSite", "program", "orderStatus");
 
-    private record Predefined(String id, String name, String reportType) {
+    /**
+     * The CSV Rejection Report's columns, in its order (OGC-1656): Lab No, Request
+     * Date, Site Name, Sample, Test, Rejection Reason, Rejection Date. Choosing
+     * Test gives one row per rejected test.
+     */
+    private static final List<String> REJECTION_COLUMNS = List.of("ncAccessionNumber", "ncRequestDate", "referringSite",
+            "ncSampleType", "ncTest", "rejectionReason", "rejectionDate");
+
+    private record Predefined(String id, String name, String reportType, String layout, String dateBasis,
+            boolean byLocation) {
     }
 
     private static final List<Predefined> REPORTS = List.of(
-            new Predefined(REFERRALS_ID, "Referrals by location", "REFERRALS"),
-            new Predefined(NON_CONFORMANCE_ID, "Non-conformance by location", "NON_CONFORMANCE"));
+            new Predefined(REFERRALS_ID, "Referrals by location", "REFERRALS", "TABLE", null, true),
+            new Predefined(NON_CONFORMANCE_ID, "Non-conformance by location", "NON_CONFORMANCE", "TABLE", null, true),
+            new Predefined(ROUTINE_ID, "Routine sample export", "SAMPLE_TESTING", "SPREADSHEET", "orderEnteredDate",
+                    false),
+            new Predefined(REJECTIONS_ID, "Sample rejections", "SAMPLE_REJECTIONS", "TABLE", null, false));
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -67,14 +92,17 @@ public class PredefinedExportReports {
 
     /**
      * The definition a saved report opens with: for a shipped report nobody has
-     * changed, its columns as of now; otherwise as stored.
+     * changed, its columns as of now, the test columns limited to the viewer's lab
+     * sections; otherwise as stored.
      */
-    public SavedReportDefinition current(ReportDefinition stored, SavedReportDefinition saved) {
+    public SavedReportDefinition current(ReportDefinition stored, SavedReportDefinition saved, String viewer) {
         Optional<Predefined> report = REPORTS.stream().filter(item -> item.id().equals(stored.getId())).findFirst();
         if (report.isEmpty() || !shipped(stored)) {
             return saved;
         }
-        return definition(report.get());
+        SavedReportDefinition current = definition(report.get());
+        return new SavedReportDefinition(current.schemaVersion(), current.reportType(), current.layout(),
+                catalog.permittedFor(viewer, current.selectedVariables()), current.filters());
     }
 
     private boolean shipped(ReportDefinition stored) {
@@ -82,12 +110,26 @@ public class PredefinedExportReports {
     }
 
     private SavedReportDefinition definition(Predefined report) {
-        List<String> columns = NON_CONFORMANCE_ID.equals(report.id()) ? NON_CONFORMANCE_COLUMNS
-                : catalog.defaultColumns(catalog.definition(report.reportType()), "TABLE");
+        var source = catalog.definition(report.reportType());
+        List<String> columns = switch (report.id()) {
+        case NON_CONFORMANCE_ID -> NON_CONFORMANCE_COLUMNS;
+        case ROUTINE_ID -> routineColumns(source);
+        case REJECTIONS_ID -> REJECTION_COLUMNS;
+        default -> catalog.defaultColumns(source, report.layout());
+        };
         LinkedHashSet<String> selected = new LinkedHashSet<>(columns);
-        selected.addAll(locations.fieldIds());
-        return new SavedReportDefinition(1, report.reportType(), "TABLE", new ArrayList<>(selected),
-                new SavedReportFilters(List.of(), List.of(), List.of()));
+        if (report.byLocation()) {
+            selected.addAll(locations.fieldIds());
+        }
+        return new SavedReportDefinition(1, report.reportType(), report.layout(), new ArrayList<>(selected),
+                new SavedReportFilters(List.of(), List.of(), List.of(), report.dateBasis()));
+    }
+
+    private List<String> routineColumns(ReportSourceConfig source) {
+        List<String> columns = new ArrayList<>(ROUTINE_COLUMNS);
+        catalog.variables(source, "SPREADSHEET").stream().filter(field -> "tests".equals(field.group()))
+                .map(ReportingVariable::id).forEach(columns::add);
+        return columns;
     }
 
     private int ensure(Predefined report) {

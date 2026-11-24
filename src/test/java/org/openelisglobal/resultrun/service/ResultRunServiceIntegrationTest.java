@@ -16,6 +16,7 @@ import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analyzer.service.AnalyzerMappingDefinition;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
@@ -219,6 +220,29 @@ public class ResultRunServiceIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals("op-7", header.operatorName());
         assertEquals(List.of("Run unit A", "Run unit B"), header.labUnits());
         assertFalse("no receipt was attached", header.rawAvailable());
+    }
+
+    @Test
+    public void runSettingsNameTheMethodAsTheAnalyzerTypeCatalogNamesIt() {
+        long mappingId = 97671L;
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping (id, analyzer_id, revision_number, profile_id,"
+                + " profile_revision, profile_fingerprint, mapping_fingerprint, created_by, source_definition_json)"
+                + " VALUES (?, ?::numeric, 1, 'site.0b5ed486-1200', 1, ?, ?, '1', ?)", mappingId, ANALYZER,
+                "sha256:" + "a".repeat(64), "sha256:" + "b".repeat(64),
+                new AnalyzerMappingDefinition("site.0b5ed486-1200", 1, "sha256:" + "a".repeat(64),
+                        "Lab copy of GeneXpert", "ASTM", List.of()).toJson());
+        jdbc.update("UPDATE clinlims.analyzer SET mapping_id = ? WHERE id = ?::numeric", mappingId, ANALYZER);
+        ResultRun run = open("msg-method", List.of(row("RUN1200T", TEST_A, "1", false)));
+        entityManager.clear();
+
+        assertEquals("Lab copy of GeneXpert",
+                resultRunService.getHeader(run.getId(), seesUnitA()).orElseThrow().method());
+
+        jdbc.update("UPDATE clinlims.analyzer_mapping SET source_definition_json = NULL WHERE id = ?", mappingId);
+        entityManager.clear();
+
+        assertEquals("a mapping older than the kept definition names the type by its id", "site.0b5ed486-1200",
+                resultRunService.getHeader(run.getId(), seesUnitA()).orElseThrow().method());
     }
 
     @Test

@@ -377,7 +377,7 @@ const AlertsSection = ({ testId }) => {
                             id={`enabled-${row.id}`}
                             size="sm"
                             hideLabel
-                            labelText={intl.formatMessage({
+                            aria-label={intl.formatMessage({
                               id: "label.testCatalog.alerts.col.enabled",
                             })}
                             labelA=""

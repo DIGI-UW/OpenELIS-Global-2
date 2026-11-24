@@ -18,6 +18,7 @@ import org.openelisglobal.reports.dataexport.form.ExportFilter;
 import org.openelisglobal.reports.dataexport.form.ExportSnapshot;
 import org.openelisglobal.reports.dataexport.form.ReportSourceConfig;
 import org.openelisglobal.reports.dataexport.service.ReportingCatalogService;
+import org.openelisglobal.sampleitem.service.SampleItemServiceImpl;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -104,7 +105,7 @@ public class NonConformanceExportMappingIntegrationTest extends BaseWebContextSe
                 assertEquals("Haemolysed", row.reason());
             }
         }
-        try (var rows = occurrences.rejections(request("2026-05-05", "2026-05-05"))) {
+        try (var rows = occurrences.rejections(request("2026-05-05", "2026-05-05"), false)) {
             var legacy = rows.toList();
             assertEquals(1, legacy.size());
             assertEquals("90001", legacy.get(0).id());
@@ -185,6 +186,121 @@ public class NonConformanceExportMappingIntegrationTest extends BaseWebContextSe
         String csv = output.toString();
         assertTrue(csv, csv.contains("Recorded rejection,12345,Alotau Hospital,Maternity Ward,Southern Region\r\n"));
         assertTrue(csv, csv.contains("Non-conformance event,,,,\r\n"));
+    }
+
+    /**
+     * OGC-1656: a specimen rejected at order entry records only its reason note, no
+     * rejection occurrence. It is a rejection row: its lab number, when it was
+     * received, its sample type, the reason and when it was rejected. With the Test
+     * column chosen it is one row per test ordered on it.
+     */
+    @Test
+    public void aSpecimenRejectedAtOrderEntryIsARowAndOneRowPerTestWhenTestIsChosen() throws Exception {
+        rejectAtOrderEntry();
+        entityManager.createNativeQuery("INSERT INTO clinlims.analysis (id, sampitem_id, test_sect_id, test_id,"
+                + " revision, status_id, analysis_type, lastupdated) VALUES (99951, 1, 1, 2, 1, 4, 'ROUTINE', now())")
+                .executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
+
+        String rows = write(List.of("ncAccessionNumber", "ncRequestDate", "ncSampleType", "rejectionReason",
+                "rejectionDate", "ncRecordSource"));
+        assertEquals(rows, 1, rows.split("Rejected specimen", -1).length - 1);
+        assertTrue(rows, rows
+                .contains("12345,2023-11-15,Test Localization 1,Insufficient volume,2026-05-05,Rejected specimen\r\n"));
+
+        String byTest = write(List.of("ncAccessionNumber", "ncTest", "ncRecordSource"));
+        assertTrue(byTest, byTest.contains("12345,Test Localization 1,Rejected specimen\r\n"));
+        assertTrue(byTest, byTest.contains("12345,Test Localization 2,Rejected specimen\r\n"));
+    }
+
+    /**
+     * OGC-1656: a rejected specimen that already has a recorded rejection
+     * occurrence is that occurrence's row, not a second one.
+     */
+    @Test
+    public void aSpecimenWithARecordedRejectionIsNotCountedTwice() throws Exception {
+        executeDataSetWithStateManagement("testdata/reporting-nonconformance.xml");
+        rejectAtOrderEntry();
+        entityManager.flush();
+
+        try (var rows = occurrences.specimenRejections(request("2026-05-05", "2026-05-05"))) {
+            assertEquals(0, rows.count());
+        }
+        try (var rows = occurrences.rejections(request("2026-05-05", "2026-05-05"), false)) {
+            assertEquals(1, rows.count());
+        }
+    }
+
+    /**
+     * OGC-1656 review: the Test column stays inside the requester's lab sections. A
+     * test from another section on the same rejected specimen is not a row.
+     */
+    @Test
+    public void perTestRowsStayInsideTheRequestersLabSections() throws Exception {
+        rejectAtOrderEntry();
+        entityManager.createNativeQuery("INSERT INTO clinlims.analysis (id, sampitem_id, test_sect_id, test_id,"
+                + " revision, status_id, analysis_type, lastupdated) VALUES (99951, 1, 2, 2, 1, 4, 'ROUTINE', now())")
+                .executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
+
+        String byTest = write(List.of("ncAccessionNumber", "ncTest", "ncRecordSource"));
+
+        assertTrue(byTest, byTest.contains("12345,Test Localization 1,Rejected specimen\r\n"));
+        assertFalse(byTest, byTest.contains("Test Localization 2"));
+    }
+
+    /**
+     * OGC-1656 review: Sample rejections lists rejected specimens only, as the CSV
+     * Rejection Report does. Non-Conformance keeps every event and occurrence.
+     */
+    @Test
+    public void sampleRejectionsListsRejectedSpecimensOnly() throws Exception {
+        executeDataSetWithStateManagement("testdata/reporting-nonconformance.xml");
+        event("2026-05-05", "2026-05-05");
+        entityManager.flush();
+        List<String> columns = List.of("ncAccessionNumber", "rejectionReason", "ncRecordSource");
+
+        String beforeRejection = write("SAMPLE_REJECTIONS", columns);
+        assertFalse(beforeRejection, beforeRejection.contains("12345"));
+        assertFalse(beforeRejection, beforeRejection.contains("Non-conformance event"));
+        String everything = write("NON_CONFORMANCE", columns);
+        assertTrue(everything, everything.contains("Non-conformance event"));
+        assertTrue(everything, everything.contains("12345,Haemolysed,Recorded rejection\r\n"));
+
+        rejectAtOrderEntry();
+        entityManager.flush();
+        String rejections = write("SAMPLE_REJECTIONS", columns);
+        assertTrue(rejections, rejections.contains("12345,Haemolysed,Recorded rejection\r\n"));
+        assertFalse(rejections, rejections.contains("Non-conformance event"));
+    }
+
+    private void rejectAtOrderEntry() {
+        var specimen = entityManager.find(SampleItem.class, "1");
+        specimen.setRejected(true);
+        specimen.setRejectReasonId("479201");
+        entityManager.flush();
+        entityManager
+                .createNativeQuery("INSERT INTO clinlims.note (id, sys_user_id, reference_id, reference_table,"
+                        + " note_type, subject, text, lastupdated) VALUES (99901, 1, 1, CAST(:table AS numeric), 'R',"
+                        + " 'Sample', 'Insufficient volume', timestamp '2026-05-05 10:00:00')")
+                .setParameter("table", SampleItemServiceImpl.getSampleItemTableReferenceId()).executeUpdate();
+    }
+
+    private String write(List<String> fieldIds) throws Exception {
+        return write("NON_CONFORMANCE", fieldIds);
+    }
+
+    private String write(String reportType, List<String> fieldIds) throws Exception {
+        var definition = catalog.definition(reportType);
+        var available = catalog.variables(definition, "TABLE").stream()
+                .collect(java.util.stream.Collectors.toMap(v -> v.id(), java.util.function.Function.identity()));
+        var snapshot = new ExportSnapshot(definition, "TABLE", fieldIds.stream().map(available::get).toList(),
+                new ExportFilter("2026-05-05", "2026-05-05", List.of("1"), List.of(), List.of()), "UTC", List.of());
+        var output = new java.io.StringWriter();
+        catalog.source(definition.source()).write(output, snapshot);
+        return output.toString();
     }
 
     private NcEvent event(String happened, String recorded) {

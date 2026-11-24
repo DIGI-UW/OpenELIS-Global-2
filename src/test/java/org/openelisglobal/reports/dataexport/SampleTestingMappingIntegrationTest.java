@@ -499,6 +499,162 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
         return source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow().label();
     }
 
+    /**
+     * OGC-1655: the Routine sample fields. Date Entered is when the order was
+     * entered, with its time; Program is the order's program answer; Lab Unit names
+     * the lab units of the specimen's tests; the age is the patient's age when the
+     * specimen was collected, in whole years, months and weeks.
+     */
+    @Test
+    public void theRoutineFieldsDescribeTheOrderAndThePatientsAgeAtCollection() throws Exception {
+        String programType = entityManager
+                .createQuery("select t.id from ObservationHistoryType t where t.typeName = 'program'", String.class)
+                .getResultStream().findFirst().orElseGet(() -> {
+                    ObservationHistoryType type = new ObservationHistoryType();
+                    type.setTypeName("program");
+                    type.setDescription("Program");
+                    observationTypes.insert(type);
+                    return type.getId();
+                });
+        observation(programType, "Early Infant Diagnosis", ObservationHistory.ValueType.LITERAL, "1", null, null);
+        Analysis analysis = analyses.get("1");
+        analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+        analyses.update(analysis);
+        reading(analysis, options.get("1"), "85.0");
+        entityManager.flush();
+        List<String> fieldIds = List.of("accessionNumber", "enteredDate", "program", "labUnit", "ageYears", "ageMonths",
+                "ageWeeks", "orderStatus");
+        var catalog = source.catalog();
+        var fields = fieldIds.stream()
+                .map(id -> catalog.stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow()).toList();
+        ExportFilter filter = new ExportFilter("2023-11-15", "2023-11-15", List.of(analysis.getTestSection().getId()),
+                List.of("1"), List.of("FINALIZED"));
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("SPREADSHEET"), fieldIds, List.of(), List.of("testIds"),
+                Map.of("SPREADSHEET", fieldIds));
+        java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+        StringWriter csv = new StringWriter();
+
+        assertEquals(1, source.write(csv, new ExportSnapshot(definition, "SPREADSHEET", fields, filter, zone.getId(),
+                List.of(analysis.getStatusId()))));
+
+        String entered = Timestamp.valueOf("2024-06-03 00:00:00").toInstant().atZone(zone).toOffsetDateTime()
+                .toString();
+        String orderStatus = statuses.getStatusNameFromId(analysis.getSampleItem().getSample().getStatusId());
+        assertNotEquals("the order's status, not the specimen's",
+                statuses.getStatusNameFromId(analysis.getSampleItem().getStatusId()), orderStatus);
+        assertEquals(
+                "Accession Number,Date Entered,Program,Lab Unit,Age at collection (years),"
+                        + "Age at collection (months),Age at collection (weeks),Order Status\r\n" + "12345," + entered
+                        + ",Early Infant Diagnosis,Test Localization 1,43,525,2284," + orderStatus + "\r\n",
+                csv.toString().substring(1));
+    }
+
+    /**
+     * OGC-1655 review: Date Entered is the time order entry first saved the order
+     * (the day alone holds midnight), and the Entered date period files it under
+     * the same day it prints in the reporting zone, whatever the server's zone.
+     */
+    @Test
+    public void dateEnteredIsTheRecordedEntryTimeAndItsPeriodFollowsTheReportingZone() throws Exception {
+        entityManager
+                .createNativeQuery(
+                        "UPDATE clinlims.sample SET order_entered_at = TIMESTAMP '2024-06-03 00:30:00' WHERE id = 1")
+                .executeUpdate();
+        Analysis analysis = analyses.get("1");
+        analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+        analyses.update(analysis);
+        reading(analysis, options.get("1"), "85.0");
+        entityManager.flush();
+        entityManager.clear();
+        List<String> fieldIds = List.of("enteredDate");
+        var fields = fieldIds.stream()
+                .map(id -> source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow())
+                .toList();
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("SPREADSHEET"), fieldIds, List.of(), List.of("testIds"),
+                Map.of("SPREADSHEET", fieldIds));
+        String section = analysis.getTestSection().getId();
+        java.time.Instant entered = Timestamp.valueOf("2024-06-03 00:30:00").toInstant();
+
+        for (java.time.ZoneId zone : List.of(java.time.ZoneId.systemDefault(),
+                java.time.ZoneId.of("Pacific/Honolulu"))) {
+            java.time.LocalDate day = entered.atZone(zone).toLocalDate();
+            StringWriter csv = new StringWriter();
+            ExportFilter onTheDay = new ExportFilter(day.toString(), day.toString(), List.of(section), List.of("1"),
+                    List.of("FINALIZED"), "orderEnteredDate");
+            assertEquals(zone + " " + day, 1, source.write(csv, new ExportSnapshot(definition, "SPREADSHEET", fields,
+                    onTheDay, zone.getId(), List.of(analysis.getStatusId()))));
+            assertEquals("Date Entered\r\n" + entered.atZone(zone).toOffsetDateTime() + "\r\n",
+                    csv.toString().substring(1));
+            java.time.LocalDate other = day.plusDays(1);
+            ExportFilter dayAfter = new ExportFilter(other.toString(), other.toString(), List.of(section), List.of("1"),
+                    List.of("FINALIZED"), "orderEnteredDate");
+            assertEquals(zone + " " + other, 0, source.write(new StringWriter(), new ExportSnapshot(definition,
+                    "SPREADSHEET", fields, dayAfter, zone.getId(), List.of(analysis.getStatusId()))));
+        }
+    }
+
+    /**
+     * OGC-1655: the period applies to the date the user chose: the specimen's
+     * collection (the default), its receipt, or the order's entry.
+     */
+    @Test
+    public void thePeriodAppliesToTheChosenDate() throws Exception {
+        Analysis analysis = analyses.get("1");
+        analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+        analyses.update(analysis);
+        reading(analysis, options.get("1"), "85.0");
+        entityManager.flush();
+        var fields = source.catalog().stream().filter(field -> field.id().equals("accessionNumber")).toList();
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("SPREADSHEET"), List.of("accessionNumber"), List.of(),
+                List.of("testIds"), Map.of("SPREADSHEET", List.of("accessionNumber")));
+        String section = analysis.getTestSection().getId();
+
+        for (Object[] expected : new Object[][] { { "2023-11-15", null, 1L }, { "2023-11-15", "receivedDate", 1L },
+                { "2023-11-15", "orderEnteredDate", 0L }, { "2024-06-03", null, 0L },
+                { "2024-06-03", "orderEnteredDate", 1L } }) {
+            ExportFilter filter = new ExportFilter((String) expected[0], (String) expected[0], List.of(section),
+                    List.of("1"), List.of("FINALIZED"), (String) expected[1]);
+            StringWriter csv = new StringWriter();
+            assertEquals(expected[0] + " " + expected[1], expected[2],
+                    source.write(csv, new ExportSnapshot(definition, "SPREADSHEET", fields, filter,
+                            java.time.ZoneId.systemDefault().getId(), List.of(analysis.getStatusId()))));
+        }
+    }
+
+    /**
+     * OGC-1655: a specimen that was not received on its own was received with its
+     * order, as order entry records it; the Received Date column and the Received
+     * date period use the order's receipt rather than leaving it blank.
+     */
+    @Test
+    public void aSpecimenWithoutItsOwnReceiptTakesItsOrdersReceivedDate() throws Exception {
+        Analysis analysis = analyses.get("1");
+        analysis.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
+        analyses.update(analysis);
+        SampleItem specimen = analysis.getSampleItem();
+        specimen.setReceivedDate(null);
+        specimens.update(specimen);
+        reading(analysis, options.get("1"), "85.0");
+        entityManager.flush();
+        List<String> fieldIds = List.of("accessionNumber", "receivedDate");
+        var fields = fieldIds.stream()
+                .map(id -> source.catalog().stream().filter(field -> field.id().equals(id)).findFirst().orElseThrow())
+                .toList();
+        ReportSourceConfig definition = new ReportSourceConfig("SAMPLE_TESTING", 1, "Sample & Testing",
+                "SAMPLE_TESTING", "collectionDate", List.of("SPREADSHEET"), fieldIds, List.of(), List.of("testIds"),
+                Map.of("SPREADSHEET", fieldIds));
+        ExportFilter filter = new ExportFilter("2024-06-03", "2024-06-03", List.of(analysis.getTestSection().getId()),
+                List.of("1"), List.of("FINALIZED"), "receivedDate");
+        StringWriter csv = new StringWriter();
+
+        assertEquals(1, source.write(csv, new ExportSnapshot(definition, "SPREADSHEET", fields, filter,
+                java.time.ZoneId.systemDefault().getId(), List.of(analysis.getStatusId()))));
+        assertEquals("Accession Number,Received Date\r\n12345,2024-06-03\r\n", csv.toString().substring(1));
+    }
+
     @Test
     public void configuredObservationAppearsByStableIdentityAndUsesItsCurrentLabel() throws Exception {
         ObservationHistoryType type = new ObservationHistoryType();

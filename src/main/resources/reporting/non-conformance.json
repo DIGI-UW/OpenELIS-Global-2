@@ -1,6 +1,6 @@
 {
   "id": "NON_CONFORMANCE",
-  "version": 2,
+  "version": 3,
   "label": "Non-Conformance",
   "source": "NON_CONFORMANCE",
   "dateAnchor": "eventOrRecordedDate",
@@ -19,7 +19,7 @@
     "ncDateBasis",
     "ncEventDate",
     "ncRecordedDate",
-    "ncRecordSource"
+    "ncRecordSource", "ncRequestDate", "ncSampleType", "ncTest"
   ],
   "catalogs": [
     "location"

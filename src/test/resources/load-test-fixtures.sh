@@ -26,6 +26,7 @@ REPORTING_FIELDS_SQL="$SCRIPT_DIR/fixtures/reporting-field-values.sql"
 REPORTING_NC_SQL="$SCRIPT_DIR/fixtures/reporting-non-conformance.sql"
 REPORTING_REFERRALS_SQL="$SCRIPT_DIR/fixtures/reporting-referrals.sql"
 REPORTING_LOCATIONS_SQL="$SCRIPT_DIR/fixtures/reporting-locations.sql"
+ENVIRONMENTAL_REGULATION_SQL="$SCRIPT_DIR/fixtures/environmental-regulation.sql"
 REPORTING_RECOVERY_SQL="$SCRIPT_DIR/fixtures/reporting-recovery.sql"
 REPORTING_SOURCE_JSON="$SCRIPT_DIR/../../main/resources/reporting/sample-testing.json"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
@@ -325,6 +326,7 @@ load_profile_lane_fixtures() {
     load_sql_file "$REPORTING_NC_SQL" "synthetic reporting non-conformance" "fatal"
     load_sql_file "$REPORTING_REFERRALS_SQL" "synthetic reporting referral fixture" "fatal"
     load_sql_file "$REPORTING_LOCATIONS_SQL" "synthetic reporting location fixture" "fatal"
+    load_sql_file "$ENVIRONMENTAL_REGULATION_SQL" "synthetic environmental sample type" "fatal"
     load_sql_file "$REPORTING_RECOVERY_SQL" "synthetic reporting queue fixtures" "fatal" \
         -v "source_definition=$(cat "$REPORTING_SOURCE_JSON")"
 

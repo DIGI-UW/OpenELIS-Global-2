@@ -93,14 +93,14 @@ public class ReportingSavedConfigService {
         long offset = (long) page * size;
         int from = (int) Math.min(offset, matching.size());
         int to = Math.min(from + size, matching.size());
-        List<SavedReportView> result = matching.subList(from, to).stream().map(this::view).toList();
+        List<SavedReportView> result = matching.subList(from, to).stream().map(item -> view(item, actor)).toList();
         return new SavedReportPage(result, to < matching.size(), page);
     }
 
     @Transactional(readOnly = true)
     public SavedReportView detail(String actor, String id) {
         access.requireReports(actor);
-        return view(saved(id));
+        return view(saved(id), actor);
     }
 
     @Transactional
@@ -176,16 +176,16 @@ public class ReportingSavedConfigService {
         return value;
     }
 
-    private SavedReportView view(ReportDefinition stored) {
+    private SavedReportView view(ReportDefinition stored, String viewer) {
         try {
-            return view(stored, mapper.readValue(stored.getDefinitionJson(), SavedReportDefinition.class));
+            SavedReportDefinition saved = mapper.readValue(stored.getDefinitionJson(), SavedReportDefinition.class);
+            return view(stored, predefined == null ? saved : predefined.current(stored, saved, viewer));
         } catch (JsonProcessingException error) {
             throw new IllegalStateException("Invalid saved report definition " + stored.getId(), error);
         }
     }
 
-    private SavedReportView view(ReportDefinition stored, SavedReportDefinition saved) {
-        SavedReportDefinition definition = predefined == null ? saved : predefined.current(stored, saved);
+    private SavedReportView view(ReportDefinition stored, SavedReportDefinition definition) {
         String version = stored.getLastupdated() == null ? null : stored.getLastupdated().toInstant().toString();
         String createdAt = stored.getCreatedDate() == null ? null : stored.getCreatedDate().toInstant().toString();
         return new SavedReportView(stored.getId(), stored.getName(), version, stored.getCreatedBy(),

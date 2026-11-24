@@ -16,8 +16,10 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
-import { formatRunTime } from "./runFormat";
+import useSiteDateFormat from "../../../common/useSiteDateFormat";
+import { describeControl, runVerdictTagType } from "./runFormat";
 import RunTestDecision from "./RunTestDecision";
+import RunRetestLink from "./RunRetestLink";
 
 export interface RunControlLine {
   id: string;
@@ -31,6 +33,13 @@ export interface RunControlLine {
   recordedAt?: string | null;
 }
 
+export interface RunLinkItem {
+  runId: number;
+  label: string;
+  count: number;
+  total: number;
+}
+
 export interface RunQcTestLine {
   testId: string;
   testName: string;
@@ -38,6 +47,9 @@ export interface RunQcTestLine {
   controls: RunControlLine[];
   decision?: string | null;
   nceNumber?: string | null;
+  retestOf?: RunLinkItem[];
+  retestSuggestions?: RunLinkItem[];
+  supersededBy?: RunLinkItem[];
 }
 
 export interface RunQc {
@@ -55,6 +67,7 @@ interface RunQcBlockProps {
   runId: number;
   qc: RunQc;
   onRecorded: (qc: RunQc) => void;
+  onOpenRun?: (runId: number) => void;
 }
 
 type Kind = "measured" | "controlLine";
@@ -81,26 +94,7 @@ const emptyDraft = (testId: string): Draft => ({
   outcome: "",
 });
 
-const OUTCOME_LABELS: Record<string, string> = {
-  PASS: "label.qc.pass",
-  FAIL: "label.qc.fail",
-  VALID: "label.results.control.capture.valid",
-  INVALID: "label.results.control.capture.invalid",
-};
-
-const verdictTag = (verdict?: string | null) => {
-  switch (verdict) {
-    case "FAIL":
-    case "HELD":
-      return "red";
-    case "DECIDED":
-      return "purple";
-    case "PASS":
-      return "green";
-    default:
-      return "gray";
-  }
-};
+const verdictTag = runVerdictTagType;
 
 /**
  * OGC-1200 FR-E2: the run header's QC block. The run's overall verdict, one
@@ -108,8 +102,14 @@ const verdictTag = (verdict?: string | null) => {
  * it, and Record control, which adds a control to the run. A failed control
  * holds that test's rows, and only those (FR-C4).
  */
-const RunQcBlock: React.FC<RunQcBlockProps> = ({ runId, qc, onRecorded }) => {
+const RunQcBlock: React.FC<RunQcBlockProps> = ({
+  runId,
+  qc,
+  onRecorded,
+  onOpenRun,
+}) => {
   const intl = useIntl();
+  const { pattern } = useSiteDateFormat();
   const recordable = qc.tests.filter((test) => !test.decision);
   const [recording, setRecording] = useState(false);
   const [draft, setDraft] = useState<Draft>(
@@ -198,32 +198,8 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({ runId, qc, onRecorded }) => {
     );
   };
 
-  const observedText = (observed?: string | null) =>
-    observed && OUTCOME_LABELS[observed]
-      ? intl.formatMessage({ id: OUTCOME_LABELS[observed] })
-      : observed;
-
   const controlText = (control: RunControlLine) =>
-    [
-      control.level,
-      control.lotNumber,
-      observedText(control.observed) &&
-        (control.expected
-          ? intl.formatMessage(
-              { id: "run.qc.observedAgainst" },
-              {
-                observed: observedText(control.observed),
-                expected: control.expected,
-              },
-            )
-          : observedText(control.observed)),
-      control.verdictSource &&
-        intl.formatMessage({ id: `run.qc.source.${control.verdictSource}` }),
-      control.operator,
-      control.recordedAt && formatRunTime(intl, control.recordedAt),
-    ]
-      .filter(Boolean)
-      .join(" · ");
+    describeControl(intl, control, pattern);
 
   const outcomes =
     draft.kind === "measured"
@@ -262,6 +238,12 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({ runId, qc, onRecorded }) => {
               {intl.formatMessage({ id: `run.verdict.${test.verdict}` })}
             </Tag>
             <RunTestDecision runId={runId} test={test} onDecided={onRecorded} />
+            <RunRetestLink
+              runId={runId}
+              test={test}
+              onLinked={onRecorded}
+              onOpenRun={onOpenRun}
+            />
             {test.controls.length > 0 && (
               <ul className="runQcControls">
                 {test.controls.map((control) => (

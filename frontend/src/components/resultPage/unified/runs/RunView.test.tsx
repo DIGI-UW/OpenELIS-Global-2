@@ -3,7 +3,11 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
-import { ConfigurationContext } from "../../../layout/Layout";
+import { MemoryRouter } from "react-router-dom";
+import {
+  ConfigurationContext,
+  NotificationContext,
+} from "../../../layout/Layout";
 
 const { utilsMock } = vi.hoisted(() => ({
   utilsMock: {
@@ -99,14 +103,23 @@ const renderRun = (filtersReplaced = false, dateLocale = "en-US") => {
     <ConfigurationContext.Provider
       value={{ configurationProperties: { DEFAULT_DATE_LOCALE: dateLocale } }}
     >
-      <IntlProvider locale="en" messages={messages}>
-        <RunView
-          runId={7}
-          filtersReplaced={filtersReplaced}
-          onBack={onBack}
-          onOpenRun={vi.fn()}
-        />
-      </IntlProvider>
+      <NotificationContext.Provider
+        value={{
+          notifications: [],
+          removeNotification: vi.fn(),
+          addNotification: vi.fn(),
+          setNotificationVisible: vi.fn(),
+        }}
+      >
+        <IntlProvider locale="en" messages={messages}>
+          <RunView
+            runId={7}
+            filtersReplaced={filtersReplaced}
+            onBack={onBack}
+            onOpenRun={vi.fn()}
+          />
+        </IntlProvider>
+      </NotificationContext.Provider>
     </ConfigurationContext.Provider>,
   );
   return onBack;
@@ -194,6 +207,16 @@ describe("OGC-1200 run view", () => {
     expect(
       screen.getByRole("link", { name: /analyzer import page/i }),
     ).toHaveAttribute("href", "/AnalyzerResults?id=3");
+  });
+
+  it("shows a superseded run as history, with nothing left to accept on import", () => {
+    wire({ ...HEADER, state: "SUPERSEDED" });
+    renderRun();
+
+    expect(screen.getByTestId("run-settings")).toHaveTextContent("Superseded");
+    expect(
+      screen.queryByRole("link", { name: /analyzer import page/i }),
+    ).toBeNull();
   });
 
   it("shows the run's times in the site date format", () => {
@@ -533,6 +556,111 @@ describe("OGC-1200 slice 2: chips, paging and selection", () => {
 
       fireEvent.click(screen.getByTestId("run-row-expand-44"));
       expect(screen.getByTestId("embedded-entry")).toBeInTheDocument();
+    });
+
+    it("shows the notifications its actions raise, such as a resolved exception's", () => {
+      wire(HEADER);
+      render(
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
+        >
+          <NotificationContext.Provider
+            value={{
+              notifications: [
+                {
+                  id: "n1",
+                  kind: "success",
+                  title: "Exceptions",
+                  message: "Ignored with your reason.",
+                },
+              ],
+              removeNotification: vi.fn(),
+              addNotification: vi.fn(),
+              setNotificationVisible: vi.fn(),
+            }}
+          >
+            <MemoryRouter>
+              <IntlProvider locale="en" messages={messages}>
+                <RunView runId={7} onBack={vi.fn()} onOpenRun={vi.fn()} />
+              </IntlProvider>
+            </MemoryRouter>
+          </NotificationContext.Provider>
+        </ConfigurationContext.Provider>,
+      );
+
+      expect(screen.getByText("Ignored with your reason.")).toBeInTheDocument();
+    });
+
+    it("names a value by its test and keeps the analyzer's code beside it", () => {
+      wire(HEADER, {
+        ...ROWS,
+        rows: [{ ...ROWS.rows[0], testName: "Glucose", code: "GLU-A" }],
+      });
+      renderRun();
+
+      expect(screen.getByTestId("run-row-41")).toHaveTextContent("Glucose");
+      expect(screen.getByTestId("run-row-code-41")).toHaveTextContent(
+        "Analyzer code GLU-A",
+      );
+    });
+
+    it("lists the run's exceptions in their block and points an exception row to it", () => {
+      const unmatched = {
+        ...ROWS.rows[0],
+        id: "45",
+        accessionNumber: "24-01214",
+        category: "EXCEPTION",
+        exceptionKind: "UNMATCHED",
+      };
+      wire(
+        {
+          ...HEADER,
+          exceptions: [
+            {
+              key: "UNMATCHED|24-01214",
+              kind: "UNMATCHED",
+              accessionNumber: "24-01214",
+              testId: "61",
+              rowIds: ["45"],
+            },
+          ],
+        },
+        { ...ROWS, rows: [unmatched] },
+      );
+      render(
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
+        >
+          <NotificationContext.Provider
+            value={{
+              notifications: [],
+              removeNotification: vi.fn(),
+              addNotification: vi.fn(),
+              setNotificationVisible: vi.fn(),
+            }}
+          >
+            <MemoryRouter>
+              <IntlProvider locale="en" messages={messages}>
+                <RunView runId={7} onBack={vi.fn()} onOpenRun={vi.fn()} />
+              </IntlProvider>
+            </MemoryRouter>
+          </NotificationContext.Provider>
+        </ConfigurationContext.Provider>,
+      );
+
+      expect(screen.getByTestId("run-exceptions")).toHaveTextContent(
+        "Lab number 24-01214 names no order (1 value)",
+      );
+      expect(
+        screen
+          .getByTestId("run-rows")
+          .querySelector('[data-testid="run-row-45"]'),
+      ).toHaveTextContent("Unmatched sample");
+      fireEvent.click(screen.getByTestId("run-row-expand-45"));
+      expect(screen.getByTestId("run-row-entry-45")).toHaveTextContent(
+        "This value is listed under Exceptions above.",
+      );
+      expect(screen.queryByTestId("embedded-entry")).not.toBeInTheDocument();
     });
 
     it("reloads the run and closes the row once the value is accepted", () => {

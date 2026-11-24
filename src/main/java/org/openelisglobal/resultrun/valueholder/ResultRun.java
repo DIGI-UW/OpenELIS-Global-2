@@ -87,7 +87,12 @@ public class ResultRun extends BaseObject<Long> {
 
     /** The name the lab reads: RUN-42. */
     public String getLabel() {
-        return id == null ? null : "RUN-" + id;
+        return labelOf(id);
+    }
+
+    /** How a run is named to users: RUN- and its id. */
+    public static String labelOf(Long runId) {
+        return runId == null ? null : "RUN-" + runId;
     }
 
     public ResultRunSource getSource() {

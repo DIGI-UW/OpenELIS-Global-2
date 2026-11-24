@@ -44,7 +44,7 @@ public class NonConformanceSourceTest {
                         Date.valueOf("2026-05-05"), "OPEN"),
                 new EventRow(3, 12, "20", "PUBLIC-NC", "Haemolysed", "Reception", "Demo", null,
                         Date.valueOf("2026-05-05"), "OPEN")));
-        when(dao.rejections(request)).thenReturn(Stream.of(new RejectionRow("1", "20", "PUBLIC-NC", "Haemolysed",
+        when(dao.rejections(request, false)).thenReturn(Stream.of(new RejectionRow("1", "20", "PUBLIC-NC", "Haemolysed",
                 Timestamp.from(Instant.parse("2026-05-06T06:30:00Z")))));
         var output = new StringWriter();
         assertEquals(4, source.write(output, request));
