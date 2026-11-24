@@ -121,6 +121,16 @@ describe("SampleTestSection — regulation-driven test plan (OGC-768)", () => {
     expect(testIds()).toEqual(["32"]);
   });
 
+  it("takes off the plan's tests when the last standard is removed", async () => {
+    const { rerender } = render(<Harness plan={["32"]} />);
+    await waitFor(() => expect(testIds()).toEqual(["32"]));
+
+    rerender(<Harness plan={null} regulationDriven />);
+    rerender(<Harness plan={[]} regulationDriven />);
+
+    await waitFor(() => expect(testIds()).toEqual([]));
+  });
+
   it("adds nothing without a plan", async () => {
     render(<Harness plan={null} />);
 

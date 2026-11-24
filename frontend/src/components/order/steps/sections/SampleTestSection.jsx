@@ -346,7 +346,7 @@ const SampleTestSection = ({
    * keeps its tests as the user's own, so a later plan never takes them off.
    */
   const planAppliedRef = useRef({});
-  const planKey = (planTestIds || []).map(String).join(",");
+  const planKey = planTestIds ? planTestIds.map(String).join(",") : null;
   useEffect(() => {
     if (!regulationDriven) {
       planAppliedRef.current = {};
