@@ -24,6 +24,19 @@ public interface RunQcService {
     Set<String> heldTestIds(Long runId);
 
     /**
+     * Why each test the run holds now is held: a failed control, or a required
+     * control missing under a Hold policy (FR-A3, FR-D4); a decided test is not
+     * held.
+     */
+    Map<String, org.openelisglobal.resultrun.form.RunHoldCause> holdCauses(Long runId);
+
+    /**
+     * Re-evaluates the open and held runs that cover the test, after its QC policy
+     * changed (FR-H1): their holds and state follow the new policy at once.
+     */
+    void refreshActiveRunsOfTest(String testId, String sysUserId);
+
+    /**
      * Of these analyses, those whose result was stored from a run that now holds
      * the analysis's test (FR-C4: not released from any surface).
      */

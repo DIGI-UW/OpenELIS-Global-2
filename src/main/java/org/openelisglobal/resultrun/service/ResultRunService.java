@@ -64,6 +64,13 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
      */
     Optional<ResultRunSelectionSummary> summarizeSelection(Long runId, RunViewer viewer, ResultRunSelection selection);
 
+    /**
+     * Re-evaluates the run's QC holds and state once its values and controls are
+     * in: a message with no control for a test that requires one under a Hold
+     * policy holds that test at once (FR-C7).
+     */
+    void refreshQcState(Long runId, String sysUserId);
+
     /** Whether the run exists and the viewer may see it. */
     boolean canSee(Long runId, RunViewer viewer);
 
@@ -107,7 +114,7 @@ public interface ResultRunService extends BaseObjectService<ResultRun, Long> {
     Optional<AnalyzerResults> stagedValueFor(String runRowId, Analysis analysis, String componentId);
 
     /** The run that holds a row, as the worklist names it (FR-D4). */
-    WaitingRun heldRun(Long runId);
+    WaitingRun heldRun(Long runId, String testId);
 
     static String waitingKey(String accessionNumber, String testId) {
         return accessionNumber + "|" + testId;

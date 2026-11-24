@@ -50,6 +50,8 @@ export interface RunQcTestLine {
   retestOf?: RunLinkItem[];
   retestSuggestions?: RunLinkItem[];
   supersededBy?: RunLinkItem[];
+  holdCause?: "QC_FAILED" | "QC_MISSING" | null;
+  whenMissing?: "WARN" | "HOLD" | null;
 }
 
 export interface RunQc {
@@ -100,7 +102,9 @@ const verdictTag = runVerdictTagType;
  * OGC-1200 FR-E2: the run header's QC block. The run's overall verdict, one
  * line per test it covers with that test's verdict and each control covering
  * it, and Record control, which adds a control to the run. A failed control
- * holds that test's rows, and only those (FR-C4).
+ * holds that test's rows, and only those (FR-C4); so does a required control
+ * that is missing when the test's policy holds, while a Warn policy only names
+ * it (FR-H1, FR-C7).
  */
 const RunQcBlock: React.FC<RunQcBlockProps> = ({
   runId,
@@ -237,6 +241,22 @@ const RunQcBlock: React.FC<RunQcBlockProps> = ({
             <Tag type={verdictTag(test.verdict)} size="sm">
               {intl.formatMessage({ id: `run.verdict.${test.verdict}` })}
             </Tag>
+            {test.verdict === "NO_CONTROL" &&
+              test.whenMissing &&
+              !test.decision && (
+                <p
+                  className="unifiedFieldHint"
+                  data-testid={`run-qc-missing-${test.testId}`}
+                >
+                  <FormattedMessage
+                    id={
+                      test.holdCause === "QC_MISSING"
+                        ? "run.qc.missingHold"
+                        : "run.qc.missingWarn"
+                    }
+                  />
+                </p>
+              )}
             <RunTestDecision runId={runId} test={test} onDecided={onRecorded} />
             <RunRetestLink
               runId={runId}

@@ -11,6 +11,7 @@ import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.Before;
@@ -29,9 +30,12 @@ import org.openelisglobal.qc.valueholder.QCSource;
 import org.openelisglobal.qc.valueholder.RunControlVerdict;
 import org.openelisglobal.qc.valueholder.RunVerdictSource;
 import org.openelisglobal.resultrun.dao.ResultRunEventDAO;
+import org.openelisglobal.resultrun.form.ResultRunRowCategory;
+import org.openelisglobal.resultrun.form.RunHoldCause;
 import org.openelisglobal.resultrun.form.RunLink;
 import org.openelisglobal.resultrun.form.RunQcBlock;
 import org.openelisglobal.resultrun.form.RunTestVerdict;
+import org.openelisglobal.resultrun.form.RunViewer;
 import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.resultrun.valueholder.ResultRunEvent;
 import org.openelisglobal.resultrun.valueholder.ResultRunSource;
@@ -41,6 +45,8 @@ import org.openelisglobal.resultrun.valueholder.RunTestAction;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.testcatalog.service.TestQcPolicyService;
+import org.openelisglobal.testcatalog.valueholder.TestQcPolicy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,6 +83,8 @@ public class RunQcServiceIntegrationTest extends BaseWebContextSensitiveTest {
     private TestService testService;
     @Autowired
     private org.openelisglobal.systemuser.service.SystemUserService systemUserService;
+    @Autowired
+    private TestQcPolicyService testQcPolicyService;
     @Autowired
     private javax.sql.DataSource dataSource;
     @PersistenceContext
@@ -612,5 +620,180 @@ public class RunQcServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> runQcService.decide(run.getId(), TEST, RunTestAction.RETEST, null, false, "1"));
+    }
+
+    /**
+     * OGC-1200 FR-H1, FR-C7: a test that requires a control on every run, and a run
+     * whose message brought none for it, is held as QC missing at once, and a
+     * control recorded on the run releases it.
+     */
+    @Test
+    public void aRequiredControlMissingUnderAHoldPolicyHoldsItsTestUntilOneIsRecorded() {
+        requireControl(TEST, "HOLD");
+        String heldOrder = orderOf(TEST);
+        stagedRow(run.getId(), heldOrder, TEST);
+        stagedRow(run.getId(), orderOf(OTHER_TEST), OTHER_TEST);
+        resultRunService.refreshQcState(run.getId(), "1");
+        entityManager.flush();
+
+        assertEquals(RunTestVerdict.NO_CONTROL, runQcService.testVerdicts(run.getId()).get(TEST));
+        assertEquals(RunTestVerdict.NOT_REQUIRED, runQcService.testVerdicts(run.getId()).get(OTHER_TEST));
+        assertEquals(Map.of(TEST, RunHoldCause.QC_MISSING), runQcService.holdCauses(run.getId()));
+        assertEquals(ResultRunState.HELD, resultRunService.get(run.getId()).getState());
+        assertEquals("HELD", runQcService.qcBlock(run.getId()).overall());
+        assertEquals(RunHoldCause.QC_MISSING, line(run.getId(), TEST).holdCause());
+        assertEquals("HOLD", line(run.getId(), TEST).whenMissing());
+        assertEquals("qcMissing", heldDetail(TEST));
+        ResultRunRowClassifier.ClassifiedRow held = classified(heldOrder);
+        assertEquals(ResultRunRowCategory.HELD, held.category());
+        assertEquals(RunHoldCause.QC_MISSING, held.holdCause());
+
+        analyzerControl(TEST, "101");
+
+        assertTrue(runQcService.heldTestIds(run.getId()).isEmpty());
+        assertEquals(ResultRunState.OPEN, resultRunService.get(run.getId()).getState());
+        assertTrue(events().contains(ResultRunEvent.TEST_RELEASED));
+    }
+
+    /**
+     * FR-A4: under a Warn policy the missing control is named on the run and on the
+     * test's rows, and nothing is held.
+     */
+    @Test
+    public void aRequiredControlMissingUnderAWarnPolicyWarnsAndHoldsNothing() {
+        requireControl(TEST, "WARN");
+        String warnedOrder = orderOf(TEST);
+        stagedRow(run.getId(), warnedOrder, TEST);
+        resultRunService.refreshQcState(run.getId(), "1");
+        entityManager.flush();
+
+        assertEquals(RunTestVerdict.NO_CONTROL, runQcService.testVerdicts(run.getId()).get(TEST));
+        assertTrue(runQcService.heldTestIds(run.getId()).isEmpty());
+        assertEquals(ResultRunState.OPEN, resultRunService.get(run.getId()).getState());
+        assertEquals("NO_CONTROL", runQcService.qcBlock(run.getId()).overall());
+        assertNull(line(run.getId(), TEST).holdCause());
+        assertEquals("WARN", line(run.getId(), TEST).whenMissing());
+        ResultRunRowClassifier.ClassifiedRow warned = classified(warnedOrder);
+        assertTrue("the row carries the warning", warned.missingControl());
+        assertEquals(ResultRunRowCategory.NORMAL, warned.category());
+    }
+
+    /**
+     * A policy saved in the Test Catalog holds the open runs of the test at once,
+     * and never a run that is already complete.
+     */
+    @Test
+    public void aPolicySavedLaterHoldsTheOpenRunsOfTheTestAndNeverACompleteOne() {
+        stagedRow(run.getId(), "RQP-OPEN", TEST);
+        ResultRun complete = laterRun();
+        storedResultIn(complete, TEST);
+        complete.setState(ResultRunState.COMPLETE);
+        resultRunService.update(complete);
+        entityManager.flush();
+        assertEquals(ResultRunState.OPEN, resultRunService.get(run.getId()).getState());
+
+        TestQcPolicy policy = TestQcPolicy.none(TEST);
+        policy.setControlRequired(true);
+        policy.setControlWhenMissing(TestQcPolicy.WhenMissing.HOLD);
+        testQcPolicyService.saveSection(TEST, List.of(), policy, "1");
+        entityManager.flush();
+
+        assertEquals(ResultRunState.HELD, resultRunService.get(run.getId()).getState());
+        assertEquals(ResultRunState.COMPLETE, resultRunService.get(complete.getId()).getState());
+        assertTrue("a complete run is not held by a policy saved after it",
+                runQcService.heldTestIds(complete.getId()).isEmpty());
+    }
+
+    /**
+     * FR-C5, FR-G3: a test held for a missing control is decided like a failed one;
+     * accepting it despite the hold files a non-conformity that says the control
+     * was missing, and Validation sees a known QC problem.
+     */
+    @Test
+    public void acceptingDespiteAMissingControlFilesANonConformityAndReachesValidationAsAQcProblem() {
+        requireControl(TEST, "HOLD");
+        Analysis stored = storedResultOf(TEST);
+        resultRunService.refreshQcState(run.getId(), "1");
+        entityManager.flush();
+        assertEquals(Map.of(TEST, RunHoldCause.QC_MISSING), runQcService.holdCauses(run.getId()));
+
+        ResultRunTestDisposition decision = runQcService.decide(run.getId(), TEST, RunTestAction.ACCEPT_DESPITE,
+                "Control material out of stock; results reviewed by the supervisor", false, "1");
+        entityManager.flush();
+
+        assertEquals(1,
+                (int) jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.nc_event WHERE id = ? AND title LIKE 'Missing control on %'",
+                        Integer.class, decision.getNceId()));
+        assertTrue(runQcService.heldTestIds(run.getId()).isEmpty());
+        assertEquals("the missing control stays visible once decided", "DECIDED_MISSING",
+                runQcService.qcBlock(run.getId()).overall());
+        assertTrue("accepted despite the missing control is a QC problem for the validator",
+                runQcService.qcOfAnalyses(List.of(stored.getId())).get(stored.getId()).failed());
+    }
+
+    /**
+     * A test held for a missing control and rejected leaves no value and no control
+     * on the run, and the QC block still shows what was decided for it.
+     */
+    @Test
+    public void aRejectedMissingControlStaysListedWithItsDecision() {
+        requireControl(TEST, "HOLD");
+        stagedRow(run.getId(), orderOf(TEST), TEST);
+        resultRunService.refreshQcState(run.getId(), "1");
+        entityManager.flush();
+
+        runQcService.decide(run.getId(), TEST, RunTestAction.REJECT, null, false, "1");
+        entityManager.flush();
+
+        RunQcBlock.TestLine rejected = line(run.getId(), TEST);
+        assertEquals("REJECT", rejected.decision());
+        assertEquals(RunTestVerdict.NO_CONTROL.name(), rejected.verdict());
+        assertEquals("DECIDED_MISSING", runQcService.qcBlock(run.getId()).overall());
+    }
+
+    private void requireControl(String testId, String whenMissing) {
+        jdbc.update("INSERT INTO clinlims.test_qc_policy (test_id, control_required, control_when_missing,"
+                + " last_updated) VALUES (?::numeric, true, ?, NOW())", testId, whenMissing);
+    }
+
+    private String heldDetail(String testId) {
+        return resultRunEventDAO.getEvents(run.getId()).stream()
+                .filter(event -> ResultRunEvent.TEST_HELD.equals(event.getEvent()) && testId.equals(event.getTestId()))
+                .map(ResultRunEvent::getDetail).findFirst().orElse(null);
+    }
+
+    private ResultRunRowClassifier.ClassifiedRow classified(String accession) {
+        return resultRunService.classifiedRows(run.getId(), new RunViewer(Set.of(TEST, OTHER_TEST), Set.of(UNIT)))
+                .orElseThrow().stream().filter(row -> accession.equals(row.row().getAccessionNumber())).findFirst()
+                .orElseThrow();
+    }
+
+    private AnalyzerResults stagedRow(Long runId, String accession, String testId) {
+        AnalyzerResults row = stagedRow(runId, accession);
+        if (!TEST.equals(testId)) {
+            row.setTestId(testId);
+            row.setTestName("Run QC " + testId);
+            analyzerResultsService.update(row);
+        }
+        return row;
+    }
+
+    /** A new order with the test on it, waiting for a result. */
+    private String orderOf(String testId) {
+        SampleItem item = fixtures.createSampleWithSampleItem("RQP");
+        fixtures.createAnalysis(item, testService.get(testId));
+        entityManager.flush();
+        return item.getSample().getAccessionNumber();
+    }
+
+    private void storedResultIn(ResultRun target, String testId) {
+        SampleItem item = fixtures.createSampleWithSampleItem("RQP");
+        Analysis analysis = fixtures.createAnalysis(item, testService.get(testId));
+        jdbc.update(
+                "INSERT INTO clinlims.result (id, analysis_id, value, run_id, lastupdated) VALUES"
+                        + " (nextval('clinlims.result_seq'), ?::numeric, '42', ?, now())",
+                analysis.getId(), target.getId());
+        entityManager.flush();
     }
 }
